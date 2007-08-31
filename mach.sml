@@ -148,7 +148,7 @@ datatype VAL = Object of OBJ
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
        | Function of FUN_CLOSURE
-       | Type of Ast.TYPE_EXPR
+       | Type of Ast.TY
        | NativeFunction of NATIVE_FUNCTION
 
      and SCOPE =
@@ -163,6 +163,7 @@ datatype VAL = Object of OBJ
        | InstanceScope
        | ActivationScope
        | TempScope
+       | TypeArgScope
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VAL
@@ -214,17 +215,14 @@ datatype VAL = Object of OBJ
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
-           allTypesBound: bool,
            env: SCOPE }
 
      and CLS_CLOSURE =
          { cls: Ast.CLS,
-           allTypesBound: bool,
            env: SCOPE }
 
      and IFACE_CLOSURE =
          { iface: Ast.IFACE,
-           allTypesBound: bool,
            env: SCOPE }
 
      and REGS = 
@@ -659,6 +657,18 @@ fun needInterface (v:VAL)
         Interface iface => iface
       | _ => error ["require interface object"]
 
+fun needFunction (v:VAL)
+    : (FUN_CLOSURE) =
+    case needMagic v of
+        Function f => f
+      | _ => error ["require function object"]
+
+fun needType (v:VAL)
+    : (Ast.TY) =
+    case needMagic v of
+        Type t => t
+      | _ => error ["require type object"]
+
 fun fitsInUInt (x:LargeInt.int)
     : bool =
     let
@@ -762,7 +772,7 @@ fun magicToUstring (magic:MAGIC)
       | Class _ => Ustring.fromString "[class Class]"
       | Interface _ => Ustring.fromString "[interface Interface]"
       | Function _ => Ustring.fromString "[function Function]"
-      | Type _ => Ustring.fromString "[type Function]"
+      | Type _ => Ustring.fromString "[type Type]"
       | ByteArray _ => Ustring.fromString "[ByteArray]"
       | NativeFunction _ => Ustring.fromString "[function Function]"
       | _ => error0 ["Shouldn't happen: failed to match in magicToUstring."]

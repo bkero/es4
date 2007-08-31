@@ -85,21 +85,6 @@ fun evalTy (regs:Mach.REGS)
         else error regs ["Unable to ground type closure"]
     end
 
-fun instanceType (regs:Mach.REGS)
-                 (name:Ast.NAME)
-                 (args:Ast.TYPE_EXPR list)
-    : Ast.TYPE_EXPR = 
-    let
-        val instanceTy = Fixture.instanceTy (#prog regs) name
-        val fullTy = 
-            case args of 
-                [] => instanceTy
-              | exprs => Type.normalize (makeTy (Ast.AppTy {base = instanceTy,
-                                                            args = args }))    
-    in
-        evalTy regs fullTy
-    end
-        
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -268,26 +253,6 @@ fun shouldBeDontEnum (regs:Mach.REGS)
 
 (* Fundamental object methods *)
 
-fun findConversion (regs:Mach.REGS)
-                   (tyExpr1:Ast.TYPE_EXPR)
-                   (tyExpr2:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR option =
-    (* Decide if we can do ty1 -> ty2, which is true iff
-     * 
-     *  class ty2 {
-     *    meta static function convert (ty1) { ... }
-     *  ...
-     *  }
-     * 
-     * exists. If it does, we return SOME ty2.
-     *)
-    case tyExpr2 of 
-        Ast.InstanceType { conversionTy = SOME t, ... } => 
-        if Type.groundEquals tyExpr2 t
-        then SOME t
-        else NONE
-      | _ => NONE
-
 fun allocRib (regs:Mach.REGS)
              (obj:Mach.OBJ)
              (this:Mach.OBJ option)
@@ -371,7 +336,7 @@ fun allocRib (regs:Mach.REGS)
                     if (not (Mach.isBooting regs)) orelse 
                        Mach.isClass (getValue regs (#global regs) (#name n))
                     then
-                        case findConversion regs (Ast.SpecialType Ast.Undefined) t of
+                        case Type.groundFindConversion (Ast.SpecialType Ast.Undefined) t of
                             SOME _ => Mach.ValProp (checkAndConvert regs Mach.Undef t)
                           | NONE => Mach.UninitProp
                     else
@@ -751,13 +716,14 @@ and checkAndConvert (regs:Mach.REGS)
     then v
     else
         let
-            val className =
-                case findConversion regs (typeOfVal v) tyExpr of
-                    NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; Name.empty)
+            val (classType:Ast.TYPE_EXPR) =
+                case Type.groundFindConversion (typeOfVal v) tyExpr of
+                    NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
+                             Ast.SpecialType Ast.Any)
                   | SOME n => n
-            val class = needObj regs (getValue regs (#global regs) className)
+            val (classObj:Mach.OBJ) = instanceClass regs classType
             (* FIXME: this will call back on itself! *)
-            val converted = evalCallMethodByRef (withThis regs class) (class, Name.meta_convert) [v]
+            val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_convert) [v]
         in
             if isCompatible converted tyExpr
             then converted
@@ -1060,7 +1026,7 @@ and needNameOrString (regs:Mach.REGS)
     : Ast.NAME =
     case v of
         Mach.Object obj => 
-        if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name)
+        if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name [])
         then
             let
                 val nsval = getValue regs obj Name.nons_qualifier
@@ -1298,17 +1264,8 @@ and newName (regs:Mach.REGS)
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
     : Mach.CLS_CLOSURE =
-    let
-        val Ast.Cls {instanceType =
-                     {typeParams, ...}, 
-                     ...} = cls
-        val allTypesBound = (length typeParams = 0)
-    in
-        { cls = cls,
-          allTypesBound = allTypesBound,
-          env = env }
-    end
-
+    { cls = cls, env = env }
+    
 and newClass (regs:Mach.REGS)
              (e:Mach.SCOPE)
              (cls:Ast.CLS)
@@ -1324,16 +1281,7 @@ and newClass (regs:Mach.REGS)
 and newIfaceClosure (env:Mach.SCOPE)
                     (iface:Ast.IFACE)
     : Mach.IFACE_CLOSURE =
-    let
-        val Ast.Iface {instanceType =
-                       {typeParams, ...}, 
-                       ...} = iface
-        val allTypesBound = (length typeParams = 0)
-    in
-        { iface = iface,
-          allTypesBound = allTypesBound,
-          env = env }
-    end
+    { iface = iface, env = env }
 
 and newInterface (regs:Mach.REGS)
                  (e:Mach.SCOPE)
@@ -1350,22 +1298,14 @@ and newFunClosure (e:Mach.SCOPE)
                   (f:Ast.FUNC)
                   (this:Mach.OBJ option)
     : Mach.FUN_CLOSURE =
-    let
-        val Ast.Func { ty={typeParams, ...}, ... } = f
-        val allTypesBound = (length typeParams = 0)
-    in
-        { func = f,
-          this = this,
-          allTypesBound = allTypesBound,
-          env = e }
-    end
+    { func = f, this = this, env = e }
 
 and newFunctionFromClosure (regs:Mach.REGS)
                            (closure:Mach.FUN_CLOSURE) =
     let
         val { func, ... } = closure
         val Ast.Func { ty, ... } = func
-        val tag = Mach.FunctionTag ty
+        val tag = Mach.FunctionTag (evalTy regs ty)
 
         val _ = trace ["finding Function.prototype"]
         val funClass = needObj regs (getValue regs (#global regs) 
@@ -1950,57 +1890,235 @@ and evalExpr (regs:Mach.REGS)
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
+
+and applyTypes (regs:Mach.REGS)
+               (base:Ast.TY)
+               (args:Ast.TYPE_EXPR list)
+    : Ast.TYPE_EXPR = 
+    let
+        val fullTy = 
+            case args of 
+                [] => base
+              | _ => 
+                let
+                    fun f baseTyExpr = Ast.AppType { base = baseTyExpr,
+                                                     args = args }
+                in
+                    AstQuery.inject f base
+                end
+    in
+        evalTy regs fullTy
+    end    
+
+
+and instanceType (regs:Mach.REGS)
+                 (name:Ast.NAME)
+                 (args:Ast.TYPE_EXPR list)
+    : Ast.TYPE_EXPR = 
+    let
+        val instanceTy = Fixture.instanceTy (#prog regs) name
+    in
+        applyTypes regs instanceTy args
+    end
+
+
+and bindTypes (regs:Mach.REGS)
+              (typeParams:Ast.IDENT list)
+              (typeArgs:Ast.TYPE_EXPR list)
+              (env:Mach.SCOPE)
+    : Mach.SCOPE = 
+    let 
+        val _ = 
+            if not (length typeArgs = length typeParams)
+            then error regs ["argument length mismatch when binding type args in env"]
+            else ()
+        val (scopeObj:Mach.OBJ) = Mach.newObjNoTag ()
+        val env = extendScope env scopeObj Mach.TypeArgScope
+        val paramFixtureNames = map (fn id => Ast.PropName (Name.nons id)) typeParams
+        val argFixtures = map (fn te => Ast.TypeFixture (makeTy te)) typeArgs
+        val typeRib = ListPair.zip paramFixtureNames argFixtures
+        val _ = allocObjRib regs scopeObj NONE typeRib
+    in
+        env
+    end
+
+
+and applyTypesToClass (regs:Mach.REGS)
+                      (classVal:Mach.VAL)
+                      (typeArgs:Ast.TYPE_EXPR list)
+    : Mach.VAL = 
+    let
+        val clsClosure = Mach.needClass classVal
+        val { cls, env } = clsClosure
+        val Ast.Cls { instanceType, ... } = cls
+    in
+        if Type.isGroundTy instanceType
+        then classVal
+        else 
+            let
+                fun applyArgs t = makeTy (applyTypes regs t typeArgs)
+                val Ast.Cls c = cls                                    
+                val newCls = Ast.Cls { name = (#name c), 
+                                       typeParams = (#typeParams c),
+                                       nonnullable = (#nonnullable c),
+                                       dynamic = (#dynamic c),
+                                       extends = applyArgs (#extends c),
+                                       implements = map applyArgs (#implements c),
+                                       classRib = (#classRib c),
+                                       instanceRib = (#instanceRib c),
+                                       instanceInits = (#instanceInits c),
+                                       constructor = (#constructor c),
+                                       classType = applyArgs (#classType c),
+                                       instanceType = applyArgs (#instanceType c) }
+                val newClosure = { cls = newCls,
+                                   env = bindTypes regs (#typeParams c) typeArgs env }
+            in
+                newRootBuiltin regs Name.intrinsic_Class (Mach.Class newClosure)
+            end
+    end
+
+
+and applyTypesToInterface (regs:Mach.REGS)
+                          (interfaceVal:Mach.VAL)
+                          (typeArgs:Ast.TYPE_EXPR list)
+    : Mach.VAL = 
+    let
+        val ifaceClosure = Mach.needInterface interfaceVal
+        val { iface, env } = ifaceClosure
+        val Ast.Iface { instanceType, ... } = iface
+    in
+        if Type.isGroundTy instanceType 
+        then interfaceVal
+        else 
+            let
+                fun applyArgs t = makeTy (applyTypes regs t typeArgs)
+                val Ast.Iface i = iface
+                val newIface = Ast.Iface { name = (#name i), 
+                                           typeParams = (#typeParams i),
+                                           nonnullable = (#nonnullable i),
+                                           extends = applyArgs (#extends i),
+                                           instanceRib = (#instanceRib i),
+                                           instanceType = applyArgs (#instanceType i) }
+                val newClosure = { iface = newIface,
+                                   env = bindTypes regs (#typeParams i) typeArgs env }
+            in
+                newRootBuiltin regs Name.intrinsic_Interface (Mach.Interface newClosure)
+            end
+    end
+
+
+and applyTypesToFunction (regs:Mach.REGS)
+                         (functionVal:Mach.VAL)
+                         (typeArgs:Ast.TYPE_EXPR list)
+    : Mach.VAL = 
+    let
+        val funClosure = Mach.needFunction functionVal
+        val { func, this, allTypesBound, env } = funClosure
+        val Ast.Func { ty, ... } = func
+    in
+        if Type.isGroundTy ty
+        then functionVal
+        else 
+            let
+                fun applyArgs t = makeTy (applyTypes regs t typeArgs)
+                val Ast.Func f = func
+                val Ast.FunctionSignature { typeParams, ... } = (#fsig f)
+                val newFunc = Ast.Func { name = (#name f), 
+                                         fsig = (#fsig f),
+                                         native = (#native f),
+                                         block = (#block f),
+                                         param = (#param f),
+                                         defaults = (#defaults f),
+                                         ty = applyArgs (#ty f),
+                                         loc = (#loc f) }
+                val newClosure = { func = newFunc,
+                                   this = this,
+                                   allTypesBound = true,
+                                   env = bindTypes regs typeParams typeArgs env }
+            in
+                newFunctionFromClosure regs newClosure
+            end
+    end
+
+
+and applyTypesToType (regs:Mach.REGS)
+                     (typeVal:Mach.VAL)
+                     (typeArgs:Ast.TYPE_EXPR list)
+    : Mach.VAL = 
+    let
+        (* 
+         * NB: Our restrictions on type normalization are such that, while it is legal to 
+         * write something like this:
+         * 
+         *   type P.<t> = Q.<t>
+         *   val v = type P
+         *   val v2 = v.<int>
+         *
+         * That is to say, you can capture a type closure into a VAL and pass it around
+         * dynamically, and finally apply the val to some concrete types. But it is 
+         * decidedly *not* legal to say something like this:
+         * 
+         *   type P.<t> = Q.<t>
+         *   type R.<x> = P
+         *   val v = type R
+         *   val v2 = v.<int>
+         *
+         * That is to say, you can't do partial applications or recursive types or anything:
+         * any type application may *take* a TY, but it must normalize to a ground TY -- 
+         * a raw TYPE_EXPR -- even if we repackage it as a TY in the empty environment. This
+         * is a *general* restriction on the parametric type system.
+         *  
+         * This is sort of a corner case anyways: there's not a lot you can really do with a
+         * type boxed as a value. You can't use it in annotations or anything. You can perform
+         * runtime tests with it, and possibly query back up to a metaobject representing
+         * an associated nominal type (class or interface), but nothing more. It's not 
+         * super useful.
+         * 
+         *)
+        val ty = Mach.needType typeVal
+        val newTypeExpr = applyTypes regs ty typeArgs
+        val newTy = makeTy newTypeExpr
+    in
+        newRootBuiltin regs Name.intrinsic_Type (Mach.Type newTy)
+    end
+
+
+and instanceClass (regs:Mach.REGS)
+                  (ity:Ast.INSTANCE_TYPE)
+    : Mach.OBJ = 
+    let
+        val { name, typeArgs, ... } = ity
+        val classVal = getValue regs (#global regs) name
+        val newClassVal = case typeArgs of 
+                              [] => classVal
+                            | _ => applyTypesToClass regs classVal typeArgs      
+    in
+        needObj newClassVal
+    end
+
+
 and evalApplyTypeExpr (regs:Mach.REGS)
                       (expr:Ast.EXPR)
                       (actuals:Ast.TYPE_EXPR list)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
-        fun checkTypes allTypesBound params =
-            if allTypesBound
-            then throwTypeErr1 regs ["applying types to non-type-parametric value"]
-            else if (length params) = (length actuals)
-            then ()
-            else throwTypeErr1 regs ["mismatched type application: expecting ",
-                                     (Int.toString (length params)), " types, got ",
-                                     (Int.toString (length actuals))]
+        val args = map (evalTy regs) actuals
     in
-        if Mach.isObject v andalso Mach.hasMagic (needObj regs v)
-        then case Mach.needMagic v of
-                 Mach.Class cc =>
-                 let
-                     val {allTypesBound,
-                          cls=Ast.Cls {
-                              instanceType={typeParams, ...}, ...},
-                          env} = cc
-                 in
-                     checkTypes allTypesBound typeParams;
-                     throwTypeErr regs ["incomplete: apply type expr"]
-                 end
-               | Mach.Interface ic =>
-                 let
-                     val {allTypesBound,
-                          iface=Ast.Iface {
-                                instanceType={typeParams, ...}, ...},
-                          env} = ic
-                 in
-                     checkTypes allTypesBound typeParams;
-                     throwTypeErr regs ["incomplete: apply type expr"]
-                 end
-               | Mach.Function fc =>
-                 let
-                     val {allTypesBound,
-                          func=Ast.Func {
-                               ty={typeParams, ...}, ...},
-                          env,
-                          this} = fc
-                 in
-                     checkTypes allTypesBound typeParams;
-                     throwTypeErr regs ["incomplete: apply type expr"]
-                 end
-               | _ => Mach.Undef
-        else
-            throwTypeErr regs ["applying types to value without magic"]
+        if Mach.isFunction v
+        then applyTypesToFunction regs v args
+        else 
+            if Mach.isClass v
+            then applyTypesToClass regs v args
+            else
+                if Mach.isInterface v
+                then applyTypesToInterface regs v args
+                else 
+                    if Mach.isType v
+                    then applyTypesToType regs v args
+                    else 
+                        throwTypeErr regs ["applying types to unknown base value: ",
+                                           Mach.approx v]
     end
 
 
@@ -2012,7 +2130,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
         val vals = map (evalExpr regs) exprs
         val tys = case ty of
                       NONE => [Ast.SpecialType Ast.Any]
-                    | SOME (Ast.ArrayType tys) => map (evalTy regs) tys
+                    | SOME (Ast.ArrayType tys) => tys
                     (* FIXME: hoist this to parsing or defn; don't use
                      * a full TYPE_EXPR in LiteralArray. *)
                     | SOME _ => error regs ["non-array type on array literal"]
@@ -2059,7 +2177,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
         fun searchFieldTypes n [] = Ast.SpecialType Ast.Any
           | searchFieldTypes n ({name,ty}::ts) =
             if n = name
-            then (evalTy regs ty)
+            then ty
             else searchFieldTypes n ts
         val tys = case ty of
                       NONE => []
@@ -3158,7 +3276,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name)
+                if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name [])
                 then
                     let
                         val nsval = getValue regs obj Name.nons_qualifier

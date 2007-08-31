@@ -68,7 +68,11 @@ fun funcTypeParams (func:Ast.FUNC)
 	    typeParams
     end
 
-
+fun extractType (ty:Ast.TY) 
+    : (Ast.TYPE_EXPR * Ast.RIBS * Ast.UNIT_NAME option) = 
+    case ty of 
+        Ast.Ty {expr, nonTopRibs, topUnit} => (expr, nonTopRibs, topUnit)
+                                              
 fun extractFuncType (ty:Ast.TY) 
     : (Ast.FUNC_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
     case ty of 
@@ -96,6 +100,12 @@ fun lift (q:('a -> Ast.TYPE_EXPR))
                  nonTopRibs = nonTopRibs,
                  topUnit = topUnit }
     end
+
+fun inject (q:Ast.TYPE_EXPR -> Ast.TYPE_EXPR) 
+           (ty:Ast.TY) 
+    : Ast.TY = 
+    lift q extractType ty
+    
 
 and liftOpt (q:('a -> Ast.TYPE_EXPR option))
             (x:(Ast.TY -> ('a * Ast.RIBS * (Ast.UNIT_NAME option))))
