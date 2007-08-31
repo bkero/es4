@@ -782,33 +782,6 @@ fun now (regs:Mach.REGS)
     : Mach.VAL =
     Eval.newDouble (Real.realFloor ((Time.toReal (Time.now())) * 1000.0))
 
-(*
-    Math natives
-
-        addFn Name.intrinsicNS "abs" abs
-        addFn Name.intrinsicNS "acos" acos
-        addFn Name.intrinsicNS "asin" asin
-        addFn Name.intrinsicNS "atan" atan
-        addFn Name.intrinsicNS "atan2" atan2
-        addFn Name.intrinsicNS "ceil" ceil
-        addFn Name.intrinsicNS "cos" cos
-        addFn Name.intrinsicNS "exp" exp
-        addFn Name.intrinsicNS "floor" floor
-        addFn Name.intrinsicNS "log" log
-        addFn Name.intrinsicNS "max" max
-        addFn Name.intrinsicNS "min" min
-        addFn Name.intrinsicNS "pow" pow
-        addFn Name.intrinsicNS "random" random
-        addFn Name.intrinsicNS "round" round
-        addFn Name.intrinsicNS "sin" sin
-        addFn Name.intrinsicNS "sqrt" sqrt
-        addFn Name.intrinsicNS "tan" tan;
-
- NOTE: all of these only work on doubles. We need versions that
- also work on decimals.
-
-*)
-
 val random_state = Random.rand (37, 79)
 
 fun random (regs:Mach.REGS)
@@ -823,6 +796,13 @@ fun unaryDoubleFn (f:(Real64.real -> Real64.real)) :
                then Eval.newDouble (0.0/0.0)
                else Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
 
+fun unaryDecimalFn (f:(Decimal.DEC -> Decimal.DEC)) :
+    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
+    fn regs =>
+    fn vals => if length vals = 0
+               then Eval.newDecimal Decimal.NaN
+               else Eval.newDecimal (f (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)))
+
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
     fn regs =>
@@ -831,21 +811,43 @@ fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) :
                else Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
                                        (Eval.toDouble (rawNth vals 1))))
 
-val abs = unaryDoubleFn Real64.abs
-val ceil = unaryDoubleFn Real64.realCeil
-val floor = unaryDoubleFn Real64.realFloor
-val round = unaryDoubleFn Real64.realRound
+fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
+    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
+    fn regs =>
+    fn vals => if length vals = 0 orelse length vals = 1
+               then Eval.newDecimal Decimal.NaN
+               else Eval.newDecimal (f ((Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)),
+                                        (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 1))))
 
-val acos = unaryDoubleFn Math.acos
-val asin = unaryDoubleFn Math.asin
-val atan = unaryDoubleFn Math.atan
-val atan2 = binaryDoubleFn Math.atan2
-val cos = unaryDoubleFn Math.cos
-val exp = unaryDoubleFn Math.exp
-val log = unaryDoubleFn Math.ln
-val sin = unaryDoubleFn Math.sin
-val sqrt = unaryDoubleFn Math.sqrt
-val tan = unaryDoubleFn Math.tan
+val ceilDouble = unaryDoubleFn Real64.realCeil
+val ceilDecimal = unaryDecimalFn Decimal.ceil
+val floorDouble = unaryDoubleFn Real64.realFloor
+val floorDecimal = unaryDecimalFn Decimal.floor
+val roundDouble = unaryDoubleFn Real64.realRound
+val roundDecimal = unaryDecimalFn Decimal.round
+
+val acosDouble = unaryDoubleFn Math.acos
+val acosDecimal = unaryDecimalFn Decimal.acos
+val asinDouble = unaryDoubleFn Math.asin
+val asinDecimal = unaryDecimalFn Decimal.asin
+val atanDouble = unaryDoubleFn Math.atan
+val atanDecimal = unaryDecimalFn Decimal.atan
+val atan2Double = binaryDoubleFn Math.atan2
+val atan2Decimal = binaryDecimalFn Decimal.atan2
+val cosDouble = unaryDoubleFn Math.cos
+val cosDecimal = unaryDecimalFn Decimal.cos
+val expDouble = unaryDoubleFn Math.exp
+val expDecimal = unaryDecimalFn Decimal.exp
+val logDouble = unaryDoubleFn Math.ln
+val logDecimal = unaryDecimalFn Decimal.log
+val sinDouble = unaryDoubleFn Math.sin
+val sinDecimal = unaryDecimalFn Decimal.sin
+val sqrtDouble = unaryDoubleFn Math.sqrt
+val sqrtDecimal = unaryDecimalFn Decimal.sqrt
+val tanDouble = unaryDoubleFn Math.tan
+val tanDecimal = unaryDecimalFn Decimal.tan
+val powDouble = binaryDoubleFn Math.pow
+val powDecimal = binaryDecimalFn Decimal.pow
 
 (* Math.pow in smlnj 110.60 has an error of 3.33e~6 on computing 2^32! *)
 
@@ -1218,22 +1220,36 @@ fun registerNatives _ =
         addFn 0 Name.nons_DaylightSavingsTA (fn _ => fn _ => Eval.newDouble 0.0);
 
         (* Math.es natives *)
-        addFn 1 Name.intrinsic_abs abs;
-        addFn 1 Name.intrinsic_acos acos;
-        addFn 1 Name.intrinsic_asin asin;
-        addFn 1 Name.intrinsic_atan atan;
-        addFn 2 Name.intrinsic_atan2 atan2;
-        addFn 1 Name.intrinsic_ceil ceil;
-        addFn 1 Name.intrinsic_cos cos;
-        addFn 1 Name.intrinsic_exp exp;
-        addFn 1 Name.intrinsic_floor floor;
-        addFn 1 Name.intrinsic_log log;
-        addFn 2 Name.intrinsic_pow pow;
+        addFn 1 Name.informative_acosDouble acosDouble;
+        addFn 1 Name.informative_acosDecimal acosDecimal;
+        addFn 1 Name.informative_asinDouble asinDouble;
+        addFn 1 Name.informative_asinDecimal asinDecimal;
+        addFn 1 Name.informative_atanDouble atanDouble;
+        addFn 1 Name.informative_atanDecimal atanDecimal;
+        addFn 2 Name.informative_atan2Double atan2Double;
+        addFn 2 Name.informative_atan2Decimal atan2Decimal;
+        addFn 1 Name.informative_ceilDouble ceilDouble;
+        addFn 1 Name.informative_ceilDecimal ceilDecimal;
+        addFn 1 Name.informative_cosDouble cosDouble;
+        addFn 1 Name.informative_cosDecimal cosDecimal;
+        addFn 1 Name.informative_expDouble expDouble;
+        addFn 1 Name.informative_expDecimal expDecimal;
+        addFn 1 Name.informative_floorDouble floorDouble;
+        addFn 1 Name.informative_floorDecimal floorDecimal;
+        addFn 1 Name.informative_logDouble logDouble;
+        addFn 1 Name.informative_logDecimal logDecimal;
+        addFn 2 Name.informative_powDouble powDouble;
+        addFn 2 Name.informative_powDecimal powDecimal;
+        addFn 1 Name.informative_roundDouble roundDouble;
+        addFn 1 Name.informative_roundDecimal roundDecimal;
+        addFn 1 Name.informative_sinDouble sinDouble;
+        addFn 1 Name.informative_sinDecimal sinDecimal;
+        addFn 1 Name.informative_sqrtDouble sqrtDouble;
+        addFn 1 Name.informative_sqrtDecimal sqrtDecimal;
+        addFn 1 Name.informative_tanDouble tanDouble;
+        addFn 1 Name.informative_tanDecimal tanDecimal;
+
         addFn 1 Name.intrinsic_random random;
-        addFn 1 Name.intrinsic_round round;
-        addFn 1 Name.intrinsic_sin sin;
-        addFn 1 Name.intrinsic_sqrt sqrt;
-        addFn 1 Name.intrinsic_tan tan;
 
         addFn 1 Name.intrinsic_print print;
         addFn 1 Name.intrinsic_load load;
