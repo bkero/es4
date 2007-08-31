@@ -42,11 +42,6 @@ fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
 
-fun error0 (regs:Mach.REGS) 
-           (ss:string list) =
-    (LogErr.log ("[stack] " :: [Mach.stackString (Mach.stackOf regs)]);
-     LogErr.evalError ss)
-
 fun error (regs:Mach.REGS) 
           (ss:string list) =
     (LogErr.log ("[stack] " :: [Mach.stackString (Mach.stackOf regs)]);
@@ -712,7 +707,7 @@ and checkAndConvert (regs:Mach.REGS)
                     (v:Mach.VAL)
                     (tyExpr:Ast.TYPE_EXPR)
     : Mach.VAL =
-    if (isCompatible v tyExpr)
+    if (isCompatible regs v tyExpr)
     then v
     else
         let
@@ -721,11 +716,12 @@ and checkAndConvert (regs:Mach.REGS)
                     NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
                              Ast.SpecialType Ast.Any)
                   | SOME n => n
-            val (classObj:Mach.OBJ) = instanceClass regs classType
+            val (classTy:Ast.INSTANCE_TYPE) = needInstanceType regs classType
+            val (classObj:Mach.OBJ) = instanceClass regs classTy
             (* FIXME: this will call back on itself! *)
             val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_convert) [v]
         in
-            if isCompatible converted tyExpr
+            if isCompatible regs converted tyExpr
             then converted
             else typeOpFailure regs "converter returned incompatible value" converted tyExpr
         end
@@ -1021,6 +1017,21 @@ and needNamespaceOrNull (regs:Mach.REGS)
       | Mach.Null => Name.noNS
       | _ => error regs ["need namespace"]
 
+and needInstanceType (regs:Mach.REGS)
+                     (t:Ast.TYPE_EXPR)
+    : Ast.INSTANCE_TYPE =
+    case t of
+        Ast.InstanceType t => t
+      | _ => error regs ["need instance type"]
+
+and needFunctionType (regs:Mach.REGS)
+                     (t:Ast.TYPE_EXPR)
+    : Ast.FUNC_TYPE =
+    case t of
+        Ast.FunctionType t => t
+      | _ => error regs ["need function type"]
+
+
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
     : Ast.NAME =
@@ -1305,7 +1316,8 @@ and newFunctionFromClosure (regs:Mach.REGS)
     let
         val { func, ... } = closure
         val Ast.Func { ty, ... } = func
-        val tag = Mach.FunctionTag (evalTy regs ty)
+        val fty = needFunctionType regs (evalTy regs ty)
+        val tag = Mach.FunctionTag fty
 
         val _ = trace ["finding Function.prototype"]
         val funClass = needObj regs (getValue regs (#global regs) 
@@ -1769,7 +1781,7 @@ and getExpectedType (regs:Mach.REGS)
 and checkCompatible (regs:Mach.REGS)
                     (tyExpr:Ast.TYPE_EXPR)
                     (v:Mach.VAL) =
-    if isCompatible v tyExpr
+    if isCompatible regs v tyExpr
     then v
     else error regs ["typecheck failed, val=", Mach.approx v,
                      " type=", Type.toString (typeOfVal v),
@@ -1815,8 +1827,8 @@ and evalExpr (regs:Mach.REGS)
       | Ast.UnaryExpr (unop, expr) =>
         evalUnaryOp regs unop expr
 
-      | Ast.TypeExpr te =>
-        evalTypeExpr regs te
+      | Ast.TypeExpr ty =>
+        evalTypeExpr regs (evalTy regs ty)
 
       | Ast.ThisExpr =>
         let
@@ -1886,7 +1898,7 @@ and evalExpr (regs:Mach.REGS)
         LogErr.unimplError ["unhandled Slice expression"]
 
       | Ast.ApplyTypeExpr { expr, actuals } =>
-        evalApplyTypeExpr regs expr actuals
+        evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
@@ -1936,7 +1948,7 @@ and bindTypes (regs:Mach.REGS)
         val env = extendScope env scopeObj Mach.TypeArgScope
         val paramFixtureNames = map (fn id => Ast.PropName (Name.nons id)) typeParams
         val argFixtures = map (fn te => Ast.TypeFixture (makeTy te)) typeArgs
-        val typeRib = ListPair.zip paramFixtureNames argFixtures
+        val typeRib = ListPair.zip (paramFixtureNames, argFixtures)
         val _ = allocObjRib regs scopeObj NONE typeRib
     in
         env
@@ -1962,7 +1974,7 @@ and applyTypesToClass (regs:Mach.REGS)
                                        typeParams = (#typeParams c),
                                        nonnullable = (#nonnullable c),
                                        dynamic = (#dynamic c),
-                                       extends = applyArgs (#extends c),
+                                       extends = Option.map applyArgs (#extends c),
                                        implements = map applyArgs (#implements c),
                                        classRib = (#classRib c),
                                        instanceRib = (#instanceRib c),
@@ -1996,7 +2008,7 @@ and applyTypesToInterface (regs:Mach.REGS)
                 val newIface = Ast.Iface { name = (#name i), 
                                            typeParams = (#typeParams i),
                                            nonnullable = (#nonnullable i),
-                                           extends = applyArgs (#extends i),
+                                           extends = map applyArgs (#extends i),
                                            instanceRib = (#instanceRib i),
                                            instanceType = applyArgs (#instanceType i) }
                 val newClosure = { iface = newIface,
@@ -2013,7 +2025,7 @@ and applyTypesToFunction (regs:Mach.REGS)
     : Mach.VAL = 
     let
         val funClosure = Mach.needFunction functionVal
-        val { func, this, allTypesBound, env } = funClosure
+        val { func, this, env } = funClosure
         val Ast.Func { ty, ... } = func
     in
         if Type.isGroundTy ty
@@ -2033,7 +2045,6 @@ and applyTypesToFunction (regs:Mach.REGS)
                                          loc = (#loc f) }
                 val newClosure = { func = newFunc,
                                    this = this,
-                                   allTypesBound = true,
                                    env = bindTypes regs typeParams typeArgs env }
             in
                 newFunctionFromClosure regs newClosure
@@ -2093,17 +2104,16 @@ and instanceClass (regs:Mach.REGS)
                               [] => classVal
                             | _ => applyTypesToClass regs classVal typeArgs      
     in
-        needObj newClassVal
+        needObj regs newClassVal
     end
 
 
 and evalApplyTypeExpr (regs:Mach.REGS)
                       (expr:Ast.EXPR)
-                      (actuals:Ast.TYPE_EXPR list)
+                      (args:Ast.TYPE_EXPR list)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
-        val args = map (evalTy regs) actuals
     in
         if Mach.isFunction v
         then applyTypesToFunction regs v args
@@ -2128,13 +2138,13 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
     : Mach.VAL =
     let
         val vals = map (evalExpr regs) exprs
-        val tys = case ty of
-                      NONE => [Ast.SpecialType Ast.Any]
-                    | SOME (Ast.ArrayType tys) => tys
-                    (* FIXME: hoist this to parsing or defn; don't use
-                     * a full TYPE_EXPR in LiteralArray. *)
-                    | SOME _ => error regs ["non-array type on array literal"]
-        val tag = Mach.ArrayTag tys
+        val tyExprs = case Option.map (evalTy regs) ty of
+                          NONE => [Ast.SpecialType Ast.Any]
+                        | SOME (Ast.ArrayType tys) => tys
+                        (* FIXME: hoist this to parsing or defn; don't use
+                         * a full TYPE_EXPR in LiteralArray. *)
+                        | SOME _ => error regs ["non-array type on array literal"]
+        val tag = Mach.ArrayTag tyExprs
         val arrayClass = needObj regs (getValue regs (#global regs) Name.nons_Array)
         val Mach.Obj { magic, ... } = arrayClass
         val obj = case (!magic) of
@@ -2147,10 +2157,10 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
             let
                 val name = Name.nons (Ustring.fromInt n)
                 (* FIXME: this is probably incorrect wrt. Array typing rules. *)
-                val ty = if n < (length tys)
-                         then List.nth (tys, n)
-                         else (if (length tys) > 0
-                               then List.last tys
+                val ty = if n < (length tyExprs)
+                         then List.nth (tyExprs, n)
+                         else (if (length tyExprs) > 0
+                               then List.last tyExprs
                                else Ast.SpecialType Ast.Any)
                 val prop = { ty = ty,
                              state = Mach.ValProp v,
@@ -2179,13 +2189,13 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
             if n = name
             then ty
             else searchFieldTypes n ts
-        val tys = case ty of
-                      NONE => []
-                    | SOME (Ast.ObjectType tys) => tys
-                    (* FIXME: hoist this to parsing or defn; don't use
-                     * a full TYPE_EXPR in LiteralObject. *)
-                    | SOME _ => error regs ["non-object type on object literal"]
-        val tag = Mach.ObjectTag tys
+        val tyExprs = case Option.map (evalTy regs) ty of
+                          NONE => []
+                        | SOME (Ast.ObjectType tys) => tys
+                        (* FIXME: hoist this to parsing or defn; don't use
+                         * a full TYPE_EXPR in LiteralObject. *)
+                        | SOME _ => error regs ["non-object type on object literal"]
+        val tag = Mach.ObjectTag tyExprs
         val objectClass = needObj regs (getValue regs (#global regs) Name.nons_Object)
         val Mach.Obj { magic, ... } = objectClass
         val obj = case (!magic) of
@@ -2203,7 +2213,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                             Name n => n
                           | Multiname n => Name.nons (#id n)
                 val v = evalExpr regs init
-                val ty = searchFieldTypes (#id n) tys
+                val ty = searchFieldTypes (#id n) tyExprs
                 val prop = { ty = ty,
                              (* FIXME: handle virtuals *)
                              state = Mach.ValProp v,
@@ -3119,7 +3129,7 @@ and typeOfVal (v:Mach.VAL)
       | Mach.Null => Ast.SpecialType Ast.Null
       | Mach.Object (Mach.Obj {tag, ...}) =>
         (case tag of
-             Mach.ClassTag ity => ity
+             Mach.ClassTag ity => Ast.InstanceType ity
            | Mach.ObjectTag tys => Ast.ObjectType tys
            | Mach.ArrayTag tys => Ast.ArrayType tys
            | Mach.FunctionTag fty => Ast.FunctionType fty
@@ -3152,7 +3162,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
     in
         case bop of
             Ast.Cast =>
-            if isCompatible v tyExpr
+            if isCompatible regs v tyExpr
             then v
             else typeOpFailure regs "cast failed" v tyExpr
           | Ast.To => checkAndConvert regs v tyExpr
@@ -3568,8 +3578,8 @@ and invokeFuncClosure (regs:Mach.REGS)
                       (args:Mach.VAL list)
     : Mach.VAL =
     let
-        val { func, this, env, allTypesBound } = closure
-        val Ast.Func { name, block, param=Ast.Head (paramRib, paramInits), ... } = func
+        val { func, this, env } = closure
+        val Ast.Func { name, block, param=Ast.Head (paramRib, paramInits), ty, ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", 
                                          Int.toString (getObjId t)]; t)
@@ -3578,7 +3588,7 @@ and invokeFuncClosure (regs:Mach.REGS)
         val regs = withThis regs this
         val regs = withScope regs env
     in
-        if not allTypesBound
+        if not (Type.isGroundTy ty)
         then error regs ["invoking function with unbound type variables"]
         else
             let
@@ -3646,7 +3656,7 @@ and catch (regs:Mach.REGS)
     case clauses of
         [] => NONE
       | {ty, rib, inits, block, ...}::cs =>
-        if isCompatible e (evalTy regs ty)
+        if isCompatible regs e (evalTy regs ty)
         then
             let
                 val fixs = valOf rib
@@ -3901,9 +3911,11 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                            (args:Mach.VAL list)
                            (instanceObj:Mach.OBJ)
     : unit =
-    case classClosure of
-        { cls, env, allTypesBound } =>
-        if not allTypesBound
+    let
+        val { cls, env } = classClosure
+        val Ast.Cls { instanceType, ... } = cls
+    in
+        if not (Type.isGroundTy instanceType)
         then error classRegs ["constructing instance of class ",
                               "with unbound type variables"]
         else
@@ -3916,20 +3928,14 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                 fun initializeAndConstructSuper (superArgs:Mach.VAL list) =
                     case extends of
                         NONE =>
-                        (trace ["checking all properties initialized at root class",
-                                fmtName name];
+                        (trace ["checking all properties initialized at root class", fmtName name];
                          checkAllPropertiesInitialized classRegs instanceObj)
-                      | SOME superName =>
+                      | SOME parentTy =>
                         let
-                            val _ = trace ["initializing and constructing superclass ", 
-                                           fmtName superName ]
-                            val (superObj:Mach.OBJ) = needObj classRegs (findVal classRegs env superName)
-                            val (superClsClosure:Mach.CLS_CLOSURE) =
-                                case Mach.getObjMagic superObj of
-                                    SOME (Mach.Class cc) => cc
-                                  | _ => error classRegs ["Superclass object ",
-                                                          LogErr.name superName,
-                                                     "is not a class closure"]
+                            val parentTy = evalTy classRegs parentTy
+                            val _ = trace ["initializing and constructing superclass ", Type.fmtType parentTy]
+                            val (superObj:Mach.OBJ) = instanceClass classRegs (needInstanceType classRegs parentTy)
+                            val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
                             val (superRegs:Mach.REGS) = 
                                 withThis (withScope classRegs (#env superClsClosure)) superObj
                         in
@@ -3977,6 +3983,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                         ()
                     end
             end
+    end
 
 and constructStandard (regs:Mach.REGS)
                       (classObj:Mach.OBJ)
@@ -3984,10 +3991,12 @@ and constructStandard (regs:Mach.REGS)
                       (args:Mach.VAL list)
     : Mach.OBJ =
     let
-        val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
-        val (tag:Mach.VAL_TAG) = Mach.ClassTag (instanceType regs name [])
+        val {cls = Ast.Cls { instanceType, ...}, env, ...} = classClosure
+        val classRegs = withScope regs env
+        val ty = needInstanceType regs (evalTy classRegs instanceType)
+        val (tag:Mach.VAL_TAG) = Mach.ClassTag ty
     in
-        constructStandardWithTag regs classObj classClosure args tag
+        constructStandardWithTag classRegs classObj classClosure args tag
     end
 
 and constructStandardWithTag (regs:Mach.REGS)
@@ -4278,16 +4287,14 @@ and initClassPrototype (regs:Mach.REGS)
             val baseProtoVal =
                 case extends of
                     NONE => Mach.Null
-                  | SOME baseClassName =>
+                  | SOME baseClassTy =>
                     let
-                    in
-                        case findVal regs (#scope regs) baseClassName of
-                            Mach.Object ob =>
-                            if hasOwnValue ob Name.nons_prototype
-                            then getValue regs ob Name.nons_prototype
-                            else Mach.Null
-                          | _ => error regs ["base class resolved to non-object: ",
-                                             LogErr.name baseClassName]
+                        val ty = needInstanceType regs (evalTy regs baseClassTy)
+                        val ob = instanceClass regs ty
+                    in                        
+                        if hasOwnValue ob Name.nons_prototype
+                        then getValue regs ob Name.nons_prototype
+                        else Mach.Null
                     end
             val _ = trace ["constructing prototype"]
             val newPrototype = case constructSpecialPrototype regs ident of
