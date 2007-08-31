@@ -41,14 +41,38 @@ val doTrace = ref false
 fun log ss = LogErr.log ("[mach] " :: ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.machError ss
+fun error0 ss = LogErr.machError ss
 
+structure StrListKey = struct type ord_key = string list val compare = List.collate String.compare end
+structure StrListMap = SplayMapFn (StrListKey);
+
+structure NsKey = struct type ord_key = Ast.NAMESPACE val compare = NameKey.cmpNS end
+structure NsMap = SplayMapFn (NsKey);
+
+structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmMap = SplayMapFn (NmKey);
+
+structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
+structure StrMap = SplayMapFn (StrKey);
+
+structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
+structure Real64Map = SplayMapFn (Real64Key);
+
+structure Word32Key = struct type ord_key = Word32.word val compare = Word32.compare end
+structure Word32Map = SplayMapFn (Word32Key);
+
+structure Int32Key = struct type ord_key = Int32.int val compare = Int32.compare end
+structure Int32Map = SplayMapFn (Int32Key);
+          
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
+val cachesz = 1024
+                                       
 type ATTRS = { dontDelete: bool,
                dontEnum: bool,
                readOnly: bool,
-               isFixed: bool }
-
+               isFixed: bool }     
+             
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -64,12 +88,48 @@ datatype VAL = Object of OBJ
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_TYPE
-       | ClassTag of Ast.NAME
+       | ClassTag of Ast.INSTANCE_TYPE
        | NoTag (*
                 * NoTag objects are made for scopes and
                 * temporaries passed as arguments during
                 * builtin construction.
                 *)
+
+     and VAL_CACHE = 
+         ValCache of 
+         {
+          real64Cache: (VAL Real64Map.map) ref, (* ref Real64Map.empty *)
+          word32Cache: (VAL Word32Map.map) ref, (* ref Word32Map.empty *)                                              
+          int32Cache: (VAL Int32Map.map) ref, (* ref Int32Map.empty *)
+          nsCache: (VAL NsMap.map) ref, (* ref NsMap.empty *)
+          nmCache: (VAL NmMap.map) ref, (* ref NmMap.empty *)
+          strCache: (VAL StrMap.map) ref (* ref StrMap.empty *)
+         }
+
+     and PROFILER =
+         Profiler of
+         {
+          profileMap: (int StrListMap.map) ref, (* = ref StrListMap.empty *)
+          doProfile: (int option) ref (*  = ref NONE *)
+         }
+
+     and SPECIAL_OBJS = 
+         SpecialObjs of 
+         { 
+          objectClass : (OBJ option) ref,
+          arrayClass : (OBJ option) ref,
+          functionClass : (OBJ option) ref,
+          stringClass : (OBJ option) ref,
+          numberClass : (OBJ option) ref,
+          booleanClass : (OBJ option) ref,
+
+          booleanTrue : (VAL option) ref,
+          booleanFalse : (VAL option) ref,
+          doubleNaN : (VAL option) ref
+         }
+
+     and FRAME = 
+         Frame of { name: string, args: VAL list }
 
 (*
  * Magic is visible only to the interpreter;
@@ -88,7 +148,7 @@ datatype VAL = Object of OBJ
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
        | Function of FUN_CLOSURE
-       | Type of Ast.TYPE_EXPR
+       | Type of Ast.TY
        | NativeFunction of NATIVE_FUNCTION
 
      and SCOPE =
@@ -103,6 +163,7 @@ datatype VAL = Object of OBJ
        | InstanceScope
        | ActivationScope
        | TempScope
+       | TypeArgScope
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VAL
@@ -136,27 +197,49 @@ datatype VAL = Object of OBJ
                       { getter: FUN_CLOSURE option,
                         setter: FUN_CLOSURE option }
 
+     and AUX = 
+         Aux of 
+         { 
+          (* 
+           * Auxiliary machine/eval data structures, not exactly
+           * spec-normative, but important! Embedded in REGS.
+           *)
+          booting: bool ref,
+          specials: SPECIAL_OBJS,
+          traceStack: bool ref,
+          stack: FRAME list ref,
+          valCache: VAL_CACHE, 
+          profiler: PROFILER 
+         }
+         
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
-           allTypesBound: bool,
            env: SCOPE }
 
      and CLS_CLOSURE =
          { cls: Ast.CLS,
-           allTypesBound: bool,
            env: SCOPE }
 
      and IFACE_CLOSURE =
          { iface: Ast.IFACE,
-           allTypesBound: bool,
            env: SCOPE }
 
-     and REGS = { scope: SCOPE,
-                  this: OBJ }
+     and REGS = 
+         { 
+          scope: SCOPE,
+          this: OBJ,
+          global: OBJ,
+          prog: Fixture.PROGRAM,          
+          aux: AUX
+         }
 
      and NATIVE_FUNCTION =
-         { func: ({ scope: SCOPE, this: OBJ } (* REGS *)
+         { func: ({ scope: SCOPE, 
+                    this: OBJ, 
+                    global: OBJ, 
+                    prog: Fixture.PROGRAM, 
+                    aux: AUX } (* REGS *)
                   -> VAL list -> VAL),
            length: int }
 
@@ -345,17 +428,6 @@ fun es3Type (v:VAL) : MACHTY =
 
 fun isSameType (va:VAL) (vb:VAL) : bool =
     es3Type va = es3Type vb
-
-fun isDirectInstanceOf (n:Ast.NAME)
-                       (v:VAL)
-    : bool =
-    case v of
-        Object (Obj { tag, ... }) =>
-        (case tag of
-             ClassTag cn => nameEq cn n
-           | _ => false)
-      | _ => false
-
 
 (* Binding operations. *)
 
@@ -553,8 +625,8 @@ fun nominalBaseOfTag (t:VAL_TAG)
         ObjectTag _ => Name.nons_Object
       | ArrayTag _ => Name.nons_Array
       | FunctionTag _ => Name.nons_Function
-      | ClassTag c => c
-      | ScopeTag => error ["searching for nominal base of scope object"]
+      | ClassTag ity => (#name ity)
+      | NoTag => error ["searching for nominal base of no-tag object"]
 
 fun getObjMagic (ob:OBJ)
     : (MAGIC option) =
@@ -585,6 +657,18 @@ fun needInterface (v:VAL)
         Interface iface => iface
       | _ => error ["require interface object"]
 
+fun needFunction (v:VAL)
+    : (FUN_CLOSURE) =
+    case needMagic v of
+        Function f => f
+      | _ => error ["require function object"]
+
+fun needType (v:VAL)
+    : (Ast.TY) =
+    case needMagic v of
+        Type t => t
+      | _ => error ["require type object"]
+
 fun fitsInUInt (x:LargeInt.int)
     : bool =
     let
@@ -604,11 +688,373 @@ fun fitsInInt (x:LargeInt.int)
         intMin <= x andalso x <= intMax
     end
 
+(*
+ * ES-262-3 9.8.1: ToString applied to the Number (double) type.
+ *)
 
-val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref []
+and NumberToString (r:Real64.real)
+    : Ustring.STRING =
+    if Real64.isNan r
+    then Ustring.NaN_
+    else
+        if Real64.==(0.0, r) orelse Real64.==(~0.0, r)
+        then Ustring.zero
+        else
+            if Real64.<(r, 0.0)
+            then Ustring.append [Ustring.dash, NumberToString (Real64.~(r))]
+            else
+                if Real64.==(Real64.posInf, r)
+                then Ustring.Infinity_
+                else
+                    let
+                        (*
+                         * Unfortunately SML/NJ has a pretty deficient selection of the numerical
+                         * primitives; about the best we can get from it is a high-precision SCI
+                         * conversion that we then parse. This is significantly more fun than
+                         * writing your own dtoa.
+                         *)
+                        val x = Real64.fmt (StringCvt.SCI (SOME 30)) r
+
+                        val (mantissaSS,expSS) = Substring.splitr (fn c => not (c = #"E")) (Substring.full x)
+                        val mantissaSS = Substring.dropr (fn c => (c = #"E") orelse (c = #"0")) mantissaSS
+                        val (preDot,postDot) = Substring.position "." mantissaSS
+                        val postDot = Substring.triml 1 postDot
+
+                        val exp = valOf (Int.fromString (Substring.string expSS))
+                        val digits = (Substring.explode preDot) @ (Substring.explode postDot)
+                        val k = length digits
+                        val n = exp + 1
+
+                        fun zeroes z = List.tabulate (z, (fn _ => #"0"))
+                        fun expstr _ = (#"e" ::
+                                        (if (n-1) < 0 then #"-" else #"+") ::
+                                        (String.explode (Int.toString (Int.abs (n-1)))))
+                    in
+                        Ustring.fromString
+                        (String.implode
+                         (if k <= n andalso n <= 21
+                          then digits @ (zeroes (n-k))
+                          else
+                              if 0 < n andalso n <= 21
+                              then (List.take (digits, n)) @ [#"."] @ (List.drop (digits, n))
+                              else
+                                  if ~6 < n andalso n <= 0
+                                  then [#"0", #"."] @ (zeroes (~n)) @ digits
+                                  else
+                                      if k = 1
+                                      then digits @ (expstr())
+                                      else (hd digits) :: #"." :: ((tl digits) @ expstr())))
+                    end
 
 
-fun registerNativeFunction (name:Ast.NAME)
+fun magicToUstring (magic:MAGIC)
+    : Ustring.STRING =
+    case magic of
+        Double n => NumberToString n
+      | Decimal d => Ustring.fromString (Decimal.toString d)
+      | Int i => Ustring.fromInt32 i
+      | UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
+      | String s => s
+      | Boolean true => Ustring.true_
+      | Boolean false => Ustring.false_
+      | Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
+      | Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
+      | Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
+      | Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
+      | Namespace (Ast.Public id) => 
+        Ustring.append [Ustring.fromString "[public namespace: ", 
+                        id, Ustring.fromString "]"]
+      | Namespace (Ast.Internal _) => 
+        Ustring.fromString "[internal namespace]"
+      | Namespace (Ast.UserNamespace id) => 
+        Ustring.append [Ustring.fromString "[user-defined namespace ", 
+                        id, Ustring.fromString "]"]
+      | Class _ => Ustring.fromString "[class Class]"
+      | Interface _ => Ustring.fromString "[interface Interface]"
+      | Function _ => Ustring.fromString "[function Function]"
+      | Type _ => Ustring.fromString "[type Type]"
+      | ByteArray _ => Ustring.fromString "[ByteArray]"
+      | NativeFunction _ => Ustring.fromString "[function Function]"
+      | _ => error0 ["Shouldn't happen: failed to match in magicToUstring."]
+
+
+(* Call stack and debugging stuff *)
+
+(* An approximation of an invocation argument list, for debugging. *)
+fun approx (arg:VAL)
+    : string =
+    case arg of
+        Null => "null"
+      | Undef => "undefined"
+      | Object ob =>
+        if hasMagic ob
+        then
+            let
+                val str = Ustring.toAscii (magicToUstring (needMagic arg))
+            in
+                if isString arg
+                then "\"" ^ str ^ "\""
+                else str
+            end
+        else
+            "obj"
+
+fun stackOf (regs:REGS) 
+    : (FRAME list) =
+    let 
+        val { aux = Aux { stack, ...}, ... } = regs
+    in
+        !stack
+    end
+
+
+fun stackString (stack:FRAME list) =
+    let
+        fun fmtFrame (Frame { name, args }) =
+            name ^ "(" ^ (LogErr.join ", " (map approx args)) ^ ")"
+    in
+        "[" ^ (LogErr.join " | " (map fmtFrame (List.rev (stack)))) ^ "]"
+    end
+
+
+fun resetProfile (regs:REGS) : unit =
+    let
+        val { aux = 
+              Aux { profiler = 
+                    Profiler { profileMap, ... }, 
+                    ...}, 
+              ... } = regs
+    in
+        profileMap := StrListMap.empty
+    end
+
+fun resetStack (regs:REGS) : unit =
+    let
+        val { aux = 
+              Aux { stack, ...}, 
+              ... } = regs
+    in
+        stack := []
+    end
+
+fun push (regs:REGS) 
+         (name:string) 
+         (args:VAL list) 
+    : unit =
+    let 
+        val { aux = 
+              Aux { traceStack, 
+                    stack, 
+                    profiler =
+                    Profiler { doProfile,
+                               profileMap }, 
+                    ... }, 
+              ... } = regs
+        val newStack = (Frame { name = name, args = args }) :: (!stack)
+    in
+        stack := newStack;
+        if !traceStack
+        then LogErr.log ("[stack] -> " :: [stackString (!stack)])
+        else ();
+        case !doProfile of
+            NONE => ()
+          | SOME n =>
+            let
+                val n = Int.min (n, length newStack)
+                val frameNames = map (fn Frame { name, ...} => name) (List.take (newStack, n))
+                val count = case StrListMap.find ((!profileMap), frameNames) of
+                                NONE => 1
+                              | SOME k => (k+1)
+            in
+                profileMap := StrListMap.insert ((!profileMap), frameNames, count)
+            end
+    end
+
+fun reportProfile (regs:REGS)
+    : unit = 
+    let 
+        val { aux = 
+              Aux { profiler =
+                    Profiler { doProfile,
+                               profileMap }, 
+                    ... },
+              ... } = regs
+    in
+        case !doProfile of
+            NONE => ()
+          | SOME _ =>
+            let
+                val items = StrListMap.listItemsi (!profileMap)
+                val itemArr = Array.fromList items
+                fun sort ((a,acount), (b,bcount)) = Int.compare (acount,bcount)
+                fun emitEntry (names, count) =
+                    let
+                        val n = LogErr.join " | " (List.rev names)
+                    in
+                        LogErr.log ["[prof] ", (Int.toString count), " : ", n]
+                    end
+            in
+                ArrayQSort.sort sort itemArr;
+                Array.app emitEntry itemArr
+            end
+ 
+    end
+fun pop (regs:REGS) 
+    : unit =
+    let 
+        val { aux = Aux { traceStack, stack, ...}, ... } = regs
+        val newStack = tl (!stack)
+    in
+        if !traceStack
+        then LogErr.log ("[stack] <- " :: [stackString (!stack)])
+        else ();
+        stack := newStack
+    end
+
+fun isBooting (regs:REGS) 
+    : bool =
+    let 
+        val { aux = Aux { booting, ...}, ... } = regs
+    in
+        !booting
+    end
+
+fun setBooting (regs:REGS) 
+               (isBooting:bool)
+    : unit =
+    let 
+        val { aux = Aux { booting, ...}, ... } = regs
+    in
+        booting := isBooting
+    end
+
+fun getSpecials (regs:REGS) =
+    let 
+        val { aux = Aux { specials = SpecialObjs ss, ... }, ... } = regs
+    in
+        ss
+    end
+
+fun getObjectClassSlot (regs:REGS) = (#objectClass (getSpecials regs))
+fun getArrayClassSlot (regs:REGS) = (#arrayClass (getSpecials regs))
+fun getFunctionClassSlot (regs:REGS) = (#functionClass (getSpecials regs))
+fun getStringClassSlot (regs:REGS) = (#stringClass (getSpecials regs))
+fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
+fun getBooleanClassSlot (regs:REGS) = (#booleanClass (getSpecials regs)) 
+fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs)) 
+fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
+fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs)) 
+
+fun getCaches (regs:REGS) =
+    let 
+        val { aux = Aux { valCache = ValCache vc, ... }, ... } = regs
+    in
+        vc
+    end
+
+fun findInCache cacheGetter 
+                cacheQuery 
+                (regs:REGS) 
+                key = 
+    let 
+        val c = cacheGetter regs
+    in
+        cacheQuery ((!c), key)
+    end
+
+fun updateCache cacheGetter
+                cacheNumItems
+                cacheInsert
+                (regs:REGS)
+                (k,v) =
+    let
+        val c = cacheGetter regs 
+    in
+        if cacheNumItems (!c) < cachesz
+        then ((c := cacheInsert ((!c), k, v)); v)
+        else v
+    end
+
+fun getReal64Cache (regs:REGS) = (#real64Cache (getCaches regs)) 
+fun getWord32Cache (regs:REGS) = (#word32Cache (getCaches regs)) 
+fun getInt32Cache (regs:REGS) = (#int32Cache (getCaches regs)) 
+fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
+fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
+fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
+
+val findInReal64Cache = findInCache getReal64Cache Real64Map.find
+val findInWord32Cache = findInCache getWord32Cache Word32Map.find
+val findInInt32Cache = findInCache getInt32Cache Int32Map.find
+val findInNsCache = findInCache getNsCache NsMap.find
+val findInNmCache = findInCache getNmCache NmMap.find
+val findInStrCache = findInCache getStrCache StrMap.find
+
+val updateReal64Cache = updateCache getReal64Cache Real64Map.numItems Real64Map.insert
+val updateWord32Cache = updateCache getWord32Cache Word32Map.numItems Word32Map.insert
+val updateInt32Cache = updateCache getInt32Cache Int32Map.numItems Int32Map.insert
+val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
+val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
+val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
+
+
+fun makeGlobalScopeWith (global:OBJ) 
+    : SCOPE =
+    Scope { object = global,
+            parent = NONE,
+            temps = ref [],
+            kind = GlobalScope }
+
+fun makeInitialRegs (prog:Fixture.PROGRAM)
+    : REGS =
+    let 
+        (* FIXME: tie the knot for ::Object in boot.sml *)
+        val glob = newObj NoTag (* (ClassTag Name.nons_Object) *) Null NONE
+        val prof = Profiler 
+                       { profileMap = ref StrListMap.empty,
+                         doProfile = ref NONE }
+        val vcache = ValCache 
+                     { real64Cache = ref Real64Map.empty,
+                       word32Cache = ref Word32Map.empty,                       
+                       int32Cache = ref Int32Map.empty,
+                       nsCache = ref NsMap.empty,
+                       nmCache = ref NmMap.empty,
+                       strCache = ref StrMap.empty }
+        val specials = SpecialObjs 
+                       { objectClass = ref NONE,
+                         arrayClass = ref NONE,
+                         functionClass = ref NONE,
+                         stringClass = ref NONE,
+                         numberClass = ref NONE,
+                         booleanClass = ref NONE,
+
+                         booleanTrue = ref NONE,
+                         booleanFalse = ref NONE,
+                         doubleNaN = ref NONE }
+        val aux = Aux { booting = ref false,
+                        specials = specials,
+                        traceStack = ref false,
+                        stack = ref [],
+                        valCache = vcache,
+                        profiler = prof }
+    in        
+        { this = glob,
+          global = glob,          
+          scope = makeGlobalScopeWith glob,
+          prog = prog,
+          aux = aux }
+    end
+
+(* native function stuff *)
+
+(* 
+ * FIXME: it is probably tidier if we push this into aux, but it's really 
+ * not a high priority; they only get set at SML-heap-load time anyways.
+ *)
+
+val nativeFunctions: (Ast.NAME * NATIVE_FUNCTION) list ref = ref []
+
+fun registerNativeFunction (regs:REGS)
+                           (name:Ast.NAME)
                            (func:NATIVE_FUNCTION)
     : unit =
     (trace ["registering native function: ", LogErr.name name];
