@@ -588,6 +588,7 @@
             }
             case (ei:ExpressionIdentifier) {
                 cgExpr(ctx, ei.expr);
+                asm.I_swap();
                 return emitter.multinameL(ei);
             }
             case (qi:QualifiedIdentifier) {
