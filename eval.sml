@@ -2094,18 +2094,35 @@ and applyTypesToType (regs:Mach.REGS)
     end
 
 
-and instanceClass (regs:Mach.REGS)
-                  (ity:Ast.INSTANCE_TYPE)
+
+and instanceTypeRepresentative (regs:Mach.REGS)
+                               (ity:Ast.INSTANCE_TYPE)
+                               (applier:Mach.REGS 
+                                        -> Mach.VAL 
+                                        -> Ast.TYPE_EXPR list 
+                                        -> Mach.VAL)
     : Mach.OBJ = 
     let
         val { name, typeArgs, ... } = ity
-        val classVal = getValue regs (#global regs) name
-        val newClassVal = case typeArgs of 
-                              [] => classVal
-                            | _ => applyTypesToClass regs classVal typeArgs      
+        val v = getValue regs (#global regs) name
+        val v = case typeArgs of 
+                    [] => v
+                  | _ => applier regs v typeArgs
     in
-        needObj regs newClassVal
+        needObj regs v
     end
+
+
+and instanceClass (regs:Mach.REGS)
+                  (ity:Ast.INSTANCE_TYPE)
+    : Mach.OBJ = 
+    instanceTypeRepresentative regs ity applyTypesToClass
+
+
+and instanceInterface (regs:Mach.REGS)
+                      (ity:Ast.INSTANCE_TYPE)
+    : Mach.OBJ = 
+    instanceTypeRepresentative regs ity applyTypesToClass
 
 
 and evalApplyTypeExpr (regs:Mach.REGS)

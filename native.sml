@@ -96,18 +96,19 @@ fun nthAsUstr (vals:Mach.VAL list)
     end
 
 
-fun nthAsName (vals:Mach.VAL list)
+fun nthAsName (regs:Mach.REGS)
+              (vals:Mach.VAL list)
               (n:int)
     : Ast.NAME =
     let
         val v = rawNth vals n
     in
-        Eval.needNameOrString v
+        Eval.needNameOrString regs v
     end
 
 
 fun nthAsFn (vals:Mach.VAL list)
-             (n:int)
+            (n:int)
     : Mach.FUN_CLOSURE =
     let
         val Mach.Obj { magic, ... } = nthAsObj vals n
@@ -175,22 +176,24 @@ fun nthAsByteArray (vals:Mach.VAL list)
     end
 
 
-fun propQuery (vals:Mach.VAL list)
+fun propQuery (regs:Mach.REGS)
+              (vals:Mach.VAL list)
               (f:(Mach.PROP_BINDINGS -> Ast.NAME -> bool))
     : Mach.VAL =
     let
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val n = nthAsName vals 1
+        val n = nthAsName regs vals 1
     in
-        Eval.newBoolean (f props n)
+        Eval.newBoolean regs (f props n)
     end
 
-fun arrayToList (arr:Mach.OBJ)
+fun arrayToList (regs:Mach.REGS)
+                (arr:Mach.OBJ)
     : Mach.VAL list =
     let
         val len = Word32.toInt
-                      (Eval.toUInt32
-                           (Eval.getValue arr Name.nons_length))
+                      (Eval.toUInt32 regs
+                           (Eval.getValue regs arr Name.nons_length))
         fun build i vs =
             if i < 0
             then vs
@@ -198,7 +201,7 @@ fun arrayToList (arr:Mach.OBJ)
                 let
                     val n = Name.nons (Ustring.fromInt i)
                     val curr = if Eval.hasValue arr n
-                               then Eval.getValue arr n
+                               then Eval.getValue regs arr n
                                else Mach.Undef
                 in
                     build (i-1) (curr::vs)
@@ -220,9 +223,9 @@ fun construct (regs:Mach.REGS)
     : Mach.VAL =
     let
         val (obj, cls) = nthAsObjAndCls vals 0
-        val args = arrayToList (nthAsObj vals 1)
+        val args = arrayToList regs (nthAsObj vals 1)
     in
-        Eval.constructClassInstance obj cls args
+        Eval.constructClassInstance regs obj cls args
     end
 
 
@@ -251,10 +254,10 @@ fun getClassName (regs:Mach.REGS)
                            Mach.ObjectTag _ => Ustring.Object_
                          | Mach.ArrayTag _ => Ustring.Array_
                          | Mach.FunctionTag _ => Ustring.Function_
-                         | Mach.ClassTag {ns, id} => id
+                         | Mach.ClassTag ity => (#id (#name ity))
                          | Mach.NoTag => Ustring.Object_)
     in
-        Eval.newString ustr
+        Eval.newString regs ustr
     end
 
 
@@ -269,7 +272,7 @@ fun getClassOfObject (regs:Mach.REGS)
     : Mach.VAL =
     let
         val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
-        val globalScope = Eval.getGlobalScope ()
+        val globalScope = Eval.getGlobalScope regs
     in
 (*  This is wrong, because eg "Number" is classified as "Double" because it
  *  stores a double value magically.
@@ -291,11 +294,11 @@ fun getClassOfObject (regs:Mach.REGS)
                | Mach.NoTag => Eval.findVal globalScope Name.nons_Object)
 *)
         case tag of
-            Mach.ObjectTag _ => Eval.findVal globalScope Name.nons_Object
-          | Mach.ArrayTag _ => Eval.findVal globalScope Name.nons_Array
-          | Mach.FunctionTag _ => Eval.findVal globalScope Name.nons_Function
-          | Mach.ClassTag name => Eval.findVal globalScope name
-          | Mach.NoTag => Eval.findVal globalScope Name.nons_Object
+            Mach.ObjectTag _ => Eval.findVal regs globalScope Name.nons_Object
+          | Mach.ArrayTag _ => Eval.findVal regs globalScope Name.nons_Array
+          | Mach.FunctionTag _ => Eval.findVal regs globalScope Name.nons_Function
+          | Mach.ClassTag ity => Mach.Object (Eval.instanceClass regs ity)
+          | Mach.NoTag => Eval.findVal regs globalScope Name.nons_Object
     end
 
 
@@ -311,9 +314,13 @@ fun getSuperClass (regs:Mach.REGS)
     let
         val { cls, env, ... } = Mach.needClass (rawNth vals 0)
         val Ast.Cls { extends, ... } = cls
+        val regs = Eval.withScope regs env 
     in
         (case extends of 
-             SOME name => Eval.findVal env name
+             SOME ty => Mach.Object 
+                            (Eval.instanceClass 
+                                 regs (Eval.needInstanceType 
+                                           regs (Eval.evalTy regs ty)))
            | _ => Mach.Null)
     end
 
@@ -329,13 +336,13 @@ fun getImplementedInterface (regs:Mach.REGS)
     : Mach.VAL =
     let
         val { cls, env, ... } = Mach.needClass (rawNth vals 0)
-        val k = Word32.toInt(nthAsUInt vals 1)
+        val k = Word32.toInt (nthAsUInt vals 1)
         val Ast.Cls { implements, ... } = cls
     in
         if k >= (List.length implements) then
             Mach.Null
         else
-            Eval.findVal env (List.nth(implements, k))
+            Eval.instanceInterface regs env (List.nth(implements, k))
     end
 
 
@@ -356,7 +363,7 @@ fun getSuperInterface (regs:Mach.REGS)
         if k >= (List.length extends) then
             Mach.Null
         else
-            Eval.findVal env (List.nth(extends, k))
+            Eval.findVal regs env (List.nth(extends, k))
     end
 
 
@@ -383,7 +390,7 @@ fun getPrototype (regs:Mach.REGS)
 fun hasOwnProperty (regs:Mach.REGS)
                    (vals:Mach.VAL list)
     : Mach.VAL =
-    propQuery vals Mach.hasProp
+    propQuery regs vals Mach.hasProp
 
 
 (*
@@ -401,7 +408,7 @@ fun getPropertyIsDontEnum (regs:Mach.REGS)
             then (#dontEnum (#attrs (Mach.getProp props n)))
             else false
     in
-        propQuery vals f
+        propQuery regs vals f
     end
 
 
@@ -421,7 +428,7 @@ fun getPropertyIsDontDelete (regs:Mach.REGS)
             then (#dontDelete (#attrs (Mach.getProp props n)))
             else false
     in
-        propQuery vals f
+        propQuery regs vals f
     end
 
 
@@ -448,7 +455,7 @@ fun setPropertyIsDontEnum (regs:Mach.REGS)
 fun isPrimitive (regs:Mach.REGS)
                 (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newBoolean (Eval.isPrimitive (rawNth vals 0))
+    Eval.newBoolean regs (Eval.isPrimitive (rawNth vals 0))
 
 fun toPrimitive (regs:Mach.REGS)
                 (vals:Mach.VAL list)
@@ -458,8 +465,8 @@ fun toPrimitive (regs:Mach.REGS)
         val hint = rawNth vals 1
     in
         if Mach.isString hint
-        then Eval.toPrimitive v (Eval.toUstring hint)
-        else Eval.toPrimitive v Ustring.empty
+        then Eval.toPrimitive regs v (Eval.toUstring hint)
+        else Eval.toPrimitive regs v Ustring.empty
     end
 
 fun defaultValue (regs:Mach.REGS)
@@ -469,17 +476,18 @@ fun defaultValue (regs:Mach.REGS)
         val obj = nthAsObj vals 0
         val hint = nthAsUstr vals 1
     in
-        Eval.defaultValue obj hint
+        Eval.defaultValue regs obj hint
     end
 
-fun convertAndBindMagic (vals:Mach.VAL list)
-                        (cvt:(Mach.VAL -> 'a))
+fun convertAndBindMagic (regs:Mach.REGS)
+                        (vals:Mach.VAL list)
+                        (cvt:(Mach.REGS -> Mach.VAL -> 'a))
                         (mag:('a -> Mach.MAGIC))
     : Mach.VAL =
     let
         val ob = nthAsObj vals 0
         val v = rawNth vals 1
-        val p = cvt v
+        val p = cvt regs v
         val m = mag p
     in
         Mach.setMagic ob (SOME m);
@@ -501,59 +509,61 @@ fun convertAndBindMagic (vals:Mach.VAL list)
 fun bindUInt (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic vals (Eval.toUInt32) (Mach.UInt)
+    convertAndBindMagic regs vals (Eval.toUInt32) (Mach.UInt)
 
 fun bindInt (regs:Mach.REGS)
             (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic vals (Eval.toInt32) (Mach.Int)
+    convertAndBindMagic regs vals (Eval.toInt32) (Mach.Int)
 
 fun bindBoolean (regs:Mach.REGS)
                 (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic vals (Eval.toBoolean) (Mach.Boolean)
+    convertAndBindMagic regs vals (Eval.toBoolean) (Mach.Boolean)
 
 fun bindDouble (regs:Mach.REGS)
                (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic vals (Eval.toDouble) (Mach.Double)
+    convertAndBindMagic regs vals (Eval.toDouble) (Mach.Double)
 
 fun bindDecimal (regs:Mach.REGS)
                 (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic vals (Eval.toDecimal
-                                  Decimal.defaultPrecision
-                                  Decimal.defaultRoundingMode) (Mach.Decimal)
-
+    convertAndBindMagic regs vals 
+                        (Eval.toDecimal
+                             Decimal.defaultPrecision
+                             Decimal.defaultRoundingMode) 
+                        (Mach.Decimal)
+    
 fun bindString (regs:Mach.REGS)
                (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic vals Eval.toUstring Mach.String
+    convertAndBindMagic regs vals Eval.toUstring Mach.String
 
 fun newBoolean (regs:Mach.REGS)
                (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newBoolean (Eval.toBoolean (rawNth vals 0))
+    Eval.newBoolean regs (Eval.toBoolean (rawNth vals 0))
 
 fun newString (regs:Mach.REGS)
               (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newString (Eval.toUstring (rawNth vals 0))
+    Eval.newString regs (Eval.toUstring (rawNth vals 0))
 
 fun newInt (regs:Mach.REGS)
            (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newInt (Eval.toInt32 (rawNth vals 0))
+    Eval.newInt regs (Eval.toInt32 (rawNth vals 0))
 
 fun newUInt (regs:Mach.REGS)
             (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newUInt (Eval.toUInt32 (rawNth vals 0))
+    Eval.newUInt regs (Eval.toUInt32 (rawNth vals 0))
 
 fun newDouble (regs:Mach.REGS)
               (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newDouble (Eval.toDouble (rawNth vals 0))
+    Eval.newDouble regs (Eval.toDouble (rawNth vals 0))
 
 (*
  * Given a function object, a this object, and an array of argument
@@ -568,9 +578,9 @@ fun apply (regs:Mach.REGS)
         val fnObj = nthAsObj vals 0
         val thisObj = nthAsObj vals 1
         val argsObj = nthAsObj vals 2
-        val argsList = arrayToList argsObj
+        val argsList = arrayToList regs argsObj
     in
-        Eval.evalCallExpr (Eval.withThis (Eval.getInitialRegs()) thisObj) fnObj argsList
+        Eval.evalCallExpr (Eval.withThis regs thisObj) fnObj argsList
     end
 
 fun fnLength (regs:Mach.REGS)
@@ -583,7 +593,7 @@ fun fnLength (regs:Mach.REGS)
                     | SOME (Mach.NativeFunction {length, ...}) => length
                     | _ => error ["wrong kind of magic to fnLength"]
     in
-        Eval.newUInt (Word32.fromInt len)
+        Eval.newUInt regs (Word32.fromInt len)
     end
 
 
@@ -600,7 +610,10 @@ fun charCodeAt (regs:Mach.REGS)
         val s = nthAsUstr vals 0
         val i = nthAsUInt vals 1
     in
-        Eval.newUInt (Word32.fromInt (Ustring.charCodeAt s (Word32.toInt i)))
+        Eval.newUInt 
+            regs
+            (Word32.fromInt 
+                 (Ustring.charCodeAt s (Word32.toInt i)))
     end
 
 
@@ -616,7 +629,11 @@ fun fromCharCode (regs:Mach.REGS)
     let
         val i = nthAsUInt vals 0
     in
-        Eval.newString (Ustring.fromCharCode (Word32.toInt (Word32.andb(i, 0wx1FFFFF))))
+        Eval.newString 
+            regs 
+            (Ustring.fromCharCode 
+                 (Word32.toInt 
+                      (Word32.andb(i, 0wx1FFFFF))))
     end
 
 
@@ -632,7 +649,7 @@ fun stringLength (regs:Mach.REGS)
     let
         val s = nthAsUstr vals 0
     in
-        Eval.newUInt (Word32.fromInt (Ustring.stringLength s))
+        Eval.newUInt regs (Word32.fromInt (Ustring.stringLength s))
     end
 
 
@@ -650,7 +667,7 @@ fun stringAppend (regs:Mach.REGS)
         val a = nthAsUstr vals 0
         val b = nthAsUstr vals 1
     in
-        Eval.newString (Ustring.stringAppend a b)
+        Eval.newString regs (Ustring.stringAppend a b)
     end
 
 
@@ -667,7 +684,11 @@ fun getByteArrayByte (regs:Mach.REGS)
         val b = nthAsByteArray vals 0
         val i = nthAsUInt vals 1
     in
-        Eval.newUInt (Word32.fromInt (Word8.toInt (Word8Array.sub (b, (Word32.toInt i)))))
+        Eval.newUInt regs 
+                     (Word32.fromInt 
+                          (Word8.toInt 
+                               (Word8Array.sub 
+                                    (b, (Word32.toInt i)))))
     end
 
 (*
@@ -714,7 +735,7 @@ fun eval (regs:Mach.REGS)
                      * exception here once natives grow the ability to throw
                      * user exceptions.
                      *)
-                    fun str s = Eval.newString (Ustring.fromString s)
+                    fun str s = Eval.newString regs (Ustring.fromString s)
                     val prog = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
@@ -751,7 +772,7 @@ fun get (regs:Mach.REGS)
     : Mach.VAL =
     let
         val obj = (nthAsObj vals 0)
-        val name = (nthAsName vals 1)
+        val name = (nthAsName regs vals 1)
         fun propNotFound (curr:Mach.OBJ) : Mach.VAL =
             Eval.throwRefErr1 ["getting nonexistent property ", LogErr.name name]
     in
@@ -766,7 +787,7 @@ fun set (regs:Mach.REGS)
     : Mach.VAL =
     (Eval.setValueOrVirtual
          (nthAsObj vals 0)
-         (nthAsName vals 1)
+         (nthAsName regs vals 1)
          (rawNth vals 2)
          false;
      Mach.Undef)
@@ -780,7 +801,9 @@ fun set (regs:Mach.REGS)
 fun now (regs:Mach.REGS)
         (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newDouble (Real.realFloor ((Time.toReal (Time.now())) * 1000.0))
+    Eval.newDouble regs 
+                   (Real.realFloor 
+                        ((Time.toReal (Time.now())) * 1000.0))
 
 (*
     Math natives
@@ -814,22 +837,22 @@ val random_state = Random.rand (37, 79)
 fun random (regs:Mach.REGS)
            (v:Mach.VAL list)
     : Mach.VAL =
-    Eval.newDouble (Random.randReal random_state)
+    Eval.newDouble regs (Random.randReal random_state)
 
 fun unaryDoubleFn (f:(Real64.real -> Real64.real)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
     fn regs =>
     fn vals => if length vals = 0
-               then Eval.newDouble (0.0/0.0)
-               else Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
+               then Eval.newDouble regs (0.0/0.0)
+               else Eval.newDouble regs (f (Eval.toDouble (rawNth vals 0)))
 
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
     fn regs =>
     fn vals => if length vals = 0 orelse length vals = 1
-               then Eval.newDouble (0.0/0.0)
-               else Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
-                                       (Eval.toDouble (rawNth vals 1))))
+               then Eval.newDouble regs (0.0/0.0)
+               else Eval.newDouble regs (f ((Eval.toDouble (rawNth vals 0)),
+                                            (Eval.toDouble (rawNth vals 1))))
 
 val abs = unaryDoubleFn Real64.abs
 val ceil = unaryDoubleFn Real64.realCeil
@@ -890,21 +913,22 @@ fun explodeDouble (regs:Mach.REGS)
             Word32.orb(Word32.<<(Word32.fromLargeInt hi, 0w16), Word32.fromLargeInt lo)
 
     in
-        Eval.newUInt(if p2 = 0w0 then
-                         let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
-                             val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
-                                                       IntInf.fromInt((#exp r) + 1022))
-                             val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
-                                                       IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
-                         in
-                             assemble hi_hi hi_lo
-                         end
-                     else
-                         let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
-                             val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
-                         in
-                             assemble lo_hi lo_lo
-                         end)
+        Eval.newUInt regs 
+                     (if p2 = 0w0 then
+                          let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
+                              val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
+                                                        IntInf.fromInt((#exp r) + 1022))
+                              val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
+                                                        IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
+                          in
+                              assemble hi_hi hi_lo
+                          end
+                      else
+                          let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
+                              val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
+                          in
+                              assemble lo_hi lo_lo
+                          end)
     end
 
 
@@ -953,12 +977,12 @@ fun readFile (regs:Mach.REGS)
             : Ustring.SOURCE =
             case reader() of
                 NONE => src
-              | SOME newSrc => readSrc (src@(Ustring.fromSource(newSrc)))
+              | SOME newSrc => readSrc (src @ (Ustring.fromSource newSrc))
 
-        val str = implode (map (Ustring.wcharToChar) (readSrc(Ustring.emptySource)))
+        val str = implode (map Ustring.wcharToChar (readSrc Ustring.emptySource))
 
     in
-        Eval.newString (Ustring.fromString(str))
+        Eval.newString regs (Ustring.fromString str)
     end
 
 fun writeFile (regs:Mach.REGS)
@@ -1014,7 +1038,7 @@ fun assert (regs:Mach.REGS)
 fun typename (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newString
+    Eval.newString regs
     (case hd vals of
         Mach.Null => Ustring.null_
       | Mach.Undef => Ustring.undefined_
@@ -1208,14 +1232,14 @@ fun registerNatives _ =
         addFn 3 Name.intrinsic_set set;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn 1 Name.intrinsic_toFixedStep10 (fn _ => fn _ => Eval.newString Ustring.empty);
-        addFn 1 Name.intrinsic_toExponential (fn _ => fn _ => Eval.newString Ustring.empty);
-        addFn 1 Name.intrinsic_toPrecision (fn _ => fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toFixedStep10 (fn _ => fn _ => Eval.newString regs Ustring.empty);
+        addFn 1 Name.intrinsic_toExponential (fn _ => fn _ => Eval.newString regs Ustring.empty);
+        addFn 1 Name.intrinsic_toPrecision (fn _ => fn _ => Eval.newString regs Ustring.empty);
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn 0 Name.intrinsic_now now;
-        addFn 0 Name.nons_LocalTZA (fn _ => fn _ => Eval.newDouble 0.0);
-        addFn 0 Name.nons_DaylightSavingsTA (fn _ => fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.nons_LocalTZA (fn _ => fn _ => Eval.newDouble regs 0.0);
+        addFn 0 Name.nons_DaylightSavingsTA (fn _ => fn _ => Eval.newDouble regs 0.0);
 
         (* Math.es natives *)
         addFn 1 Name.intrinsic_abs abs;
