@@ -1531,6 +1531,12 @@ public namespace Encode;
         case (nd:Ordinary) {
             var str = "Ordinary";
         }
+        case (g:Get) {
+            var str = "Get";
+        }
+        case (s:Set) {
+            var str = "Set";
+        }
         case (nd: *) {
             var str = "** funcNameKind " + nd + "**";
         }

@@ -311,8 +311,18 @@ namespace Emit;
                 case(le:LiteralExpr) {
                     return defaultLiteralExpr(le.literal);
                 }
-                case(x:*) { throw ("Default expression must be a constant value" + le)}
+                case(lr:LexicalRef) {
+                    switch type ( lr.ident ) {
+                        case (i:Identifier) {
+                            if( i.ident == "undefined" ) {
+                                // Handle defualt expr of (... arg = undefined ...)
+                                return defaultLiteralExpr(new LiteralUndefined());
+                            }
+                        }
+                    } 
+                }
             }
+            throw ("Default expression must be a constant value" + expr);
         }
     }
 

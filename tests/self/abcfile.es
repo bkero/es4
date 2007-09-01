@@ -133,13 +133,13 @@ print ("emitting bodies");
             return bodies.push(b)-1;
         }
 
-        private const methods = [];
-        private const metadatas = [];
-        private const instances = [];
-        private const classes = [];
-        private const scripts = [];
-        private const bodies = [];
-        private var constants;
+        /*private*/ const methods = [];
+        /*private*/ const metadatas = [];
+        /*private*/ const instances = [];
+        /*private*/ const classes = [];
+        /*private*/ const scripts = [];
+        /*private*/ const bodies = [];
+        /*private*/ var constants;
     }
 
     /* FIXME: we should be using hash tables here, not linear searching. */
@@ -156,52 +156,57 @@ print ("emitting bodies");
             multiname_pool.length = 1;
         }
 
-        private static function findOrAdd(x, pool, cmp, emit) {
+        /**/ function findOrAdd(x, pool, cmp, emit) {
             var i;
             for ( i=1 ; i < pool.length ; i++ )
                 if (cmp(pool[i], x))
                     return i;
 
             emit(x);
-            pool[i] = x;
+            pool.push(x);
             return i;
         }
 
-        private static function cmp(a, b) { return a === b }
+        /*private*/ function cmp(a, b) { return a === b }
 
         public function int32(n/*:int*/)/*:uint*/ {
-            return findOrAdd( n, int_pool, cmp, function (x) { int_bytes.int32(x) } );
+            function temp_func (x) { int_bytes.int32(x) };
+            return findOrAdd( n, int_pool, cmp, temp_func );
         }
 
         public function uint32(n/*:uint*/)/*:uint*/ {
-            return findOrAdd( n, uint_pool, cmp, function (x) { uint_bytes.uint32(x) } );
+            function temp_func(x) { uint_bytes.uint32(x) }
+            return findOrAdd( n, uint_pool, cmp, temp_func );
         }
 
         public function float64(n/*FIXME ES4: double*/)/*:uint*/ {
-            return findOrAdd( n, double_pool, cmp, function (x) { double_bytes.float64(x) } );
+            function temp_func(x) { double_bytes.float64(x) } 
+            return findOrAdd( n, double_pool, cmp, temp_func);
         }
 
         public function stringUtf8(s/*FIXME ES4: string*/)/*:uint*/ {
+            function temp_func(x) { utf8_bytes.uint30(x.length); utf8_bytes.utf8(x) }
             return findOrAdd( s,
                               utf8_pool,
                               cmp,
-                              function (x) { utf8_bytes.uint30(x.length); utf8_bytes.utf8(x) } )
+                              temp_func )
         }
 
-        private static function cmpname(a, b) {
+        /*private*/ function cmpname(a, b) {
             return a.kind == b.kind && a.ns == b.ns && a.name == b.name;
         }
 
         public function namespace(kind/*:uint*/, name/*:uint*/) {
+            function temp_func(x) {
+              namespace_bytes.uint8(x.kind);
+              namespace_bytes.uint30(x.name); }
             return findOrAdd( { "kind": kind, "name": name },
                               namespace_pool,
                               cmpname,
-                              function (x) {
-                                  namespace_bytes.uint8(x.kind);
-                                  namespace_bytes.uint30(x.name); } );
+                              temp_func );
         }
 
-        private static function cmparray(a, b) {
+        /*private*/ function cmparray(a, b) {
             var i;
             if (a.length != b.length)
                 return false;
@@ -212,59 +217,69 @@ print ("emitting bodies");
         }
 
         public function namespaceset(namespaces:Array) {
+            function temp_func (x) {
+              namespaceset_bytes.uint30(x.length);
+              for ( var i=0 ; i < x.length ; i++ )
+                  namespaceset_bytes.uint30(x[i]);
+            }
             return findOrAdd( copyArray(namespaces),
                               namespaceset_pool,
                               cmparray,
-                              (function (x) {
-                                  namespaceset_bytes.uint30(x.length);
-                                  for ( var i=0 ; i < x.length ; i++ )
-                                      namespaceset_bytes.uint30(x[i]);
-                              }) );
+                              temp_func );
         }
 
         public function QName(ns/*: uint*/, name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            function temp_func(x) {
+              multiname_bytes.uint8(x.kind);
+              multiname_bytes.uint30(x.ns);
+              multiname_bytes.uint30(x.name); 
+            }
             return findOrAdd( { "kind": is_attr ? CONSTANT_QNameA : CONSTANT_QName, "ns": ns, "name": name },
                               multiname_pool,
                               cmpname,
-                              function (x) {
-                                  multiname_bytes.uint8(x.kind);
-                                  multiname_bytes.uint30(x.ns);
-                                  multiname_bytes.uint30(x.name); } );
+                              temp_func );
         }
 
         public function RTQName(name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            function temp_func(x) {
+              multiname_bytes.uint8(x.kind);
+              multiname_bytes.uint30(x.name); 
+            }
             return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameA : CONSTANT_RTQName, "name": name },
                               multiname_pool,
                               cmpname,
-                              function (x) {
-                                  multiname_bytes.uint8(x.kind);
-                                  multiname_bytes.uint30(x.name); } );
+                              temp_func );
         }
 
         public function RTQNameL(is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            function temp_func (x) { multiname_bytes.uint8(x.kind) } 
             return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameLA : CONSTANT_RTQNameL },
                               multiname_pool,
                               cmpname,
-                              function (x) { multiname_bytes.uint8(x.kind) } );
+                              temp_func);
         }
 
         public function Multiname(nsset/*: uint*/, name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/ ) {
+            function temp_func(x) {
+                  multiname_bytes.uint8(x.kind);
+                  multiname_bytes.uint30(x.name);
+                  multiname_bytes.uint30(x.ns); 
+            } 
             return findOrAdd( { "kind": is_attr ? CONSTANT_MultinameA : CONSTANT_Multiname, "name": name, "ns":nsset },
                               multiname_pool,
                               cmpname,
-                              function (x) {
-                                  multiname_bytes.uint8(x.kind);
-                                  multiname_bytes.uint30(x.name);
-                                  multiname_bytes.uint30(x.ns); } );
+                              temp_func);
         }
 
         public function MultinameL(nsset/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            function temp_func (x) {
+              multiname_bytes.uint8(x.kind);
+              multiname_bytes.uint30(x.ns); 
+            }
             return findOrAdd( { "kind": is_attr ? CONSTANT_MultinameLA : CONSTANT_MultinameL, "ns":nsset },
                               multiname_pool,
                               cmpname,
-                              function (x) {
-                                  multiname_bytes.uint8(x.kind);
-                                  multiname_bytes.uint30(x.ns); } );
+                              temp_func );
         }
 
         public function hasRTNS(index) {
@@ -316,21 +331,21 @@ print ("emitting bodies");
             return bs;
         }
 
-        private const int_pool = new Array;
-        private const uint_pool = new Array;
-        private const double_pool = new Array;
-        private const utf8_pool = new Array;
-        private const namespace_pool = new Array;
-        private const namespaceset_pool = new Array;
-        private const multiname_pool = new Array;
+        /*private*/ const int_pool = new Array;
+        /*private*/ const uint_pool = new Array;
+        /*private*/ const double_pool = new Array;
+        /*private*/ const utf8_pool = new Array;
+        /*private*/ const namespace_pool = new Array;
+        /*private*/ const namespaceset_pool = new Array;
+        /*private*/ const multiname_pool = new Array;
 
-        private const int_bytes = new ABCByteStream;
-        private const uint_bytes = new ABCByteStream;
-        private const double_bytes = new ABCByteStream;
-        private const utf8_bytes = new ABCByteStream;
-        private const namespace_bytes = new ABCByteStream;
-        private const namespaceset_bytes = new ABCByteStream;
-        private const multiname_bytes = new ABCByteStream;
+        /*private*/ const int_bytes = new ABCByteStream;
+        /*private*/ const uint_bytes = new ABCByteStream;
+        /*private*/ const double_bytes = new ABCByteStream;
+        /*private*/ const utf8_bytes = new ABCByteStream;
+        /*private*/ const namespace_bytes = new ABCByteStream;
+        /*private*/ const namespaceset_bytes = new ABCByteStream;
+        /*private*/ const multiname_bytes = new ABCByteStream;
     }
 
     public class ABCMethodInfo
@@ -360,13 +375,16 @@ print ("emitting bodies");
             var i;
             bs.uint30(param_types.length);
             bs.uint30(return_type);
-            for ( i=0 ; i < param_types.length ; i++ )
+            for ( i=0 ; i < param_types.length ; i++ ) {
                 bs.uint30(param_types[i]);
+            }
             bs.uint30(name);
-            if (options != null)
-                flags |= METHOD_HasOptional;
-            if (param_names != null)
-                flags |= METHOD_HasParamNames;
+            if (options != null) {
+                flags = flags | METHOD_HasOptional;
+            }
+            if (param_names != null) {
+                flags = flags | METHOD_HasParamNames;
+            }
             bs.uint8(flags);
             if (options != null) {
                 bs.uint30(options.length);
@@ -382,7 +400,7 @@ print ("emitting bodies");
             }
         }
 
-        private var name, param_types, return_type, flags, options, param_names;
+        /*private*/ var name, param_types, return_type, flags, options, param_names;
     }
 
     public class ABCMetadataInfo
@@ -402,7 +420,7 @@ print ("emitting bodies");
             }
         }
 
-        private var name, items;
+        /*private*/ var name, items;
     }
 
     public class ABCInstanceInfo
@@ -445,7 +463,7 @@ print ("emitting bodies");
                 traits[i].serialize(bs);
         }
 
-        private var name, super_name, flags, protectedNS, interfaces, iinit, traits;
+        /*private*/ var name, super_name, flags, protectedNS, interfaces, iinit, traits;
     }
 
     public class ABCTrait
@@ -462,14 +480,14 @@ print ("emitting bodies");
         public function addMetadata(n) {
             return metadata.push(n)-1;
         }
-
+/*
         public function inner_serialize(bs) {
             throw "ABSTRACT";
         }
-
+*/
         public function serialize(bs) {
             if (metadata.length > 0)
-                kind |= ATTR_Metadata;
+                kind = kind | ATTR_Metadata;
             bs.uint30(name);
             bs.uint30(kind);
             inner_serialize(bs);
@@ -503,7 +521,8 @@ print ("emitting bodies");
             this.vkind = vkind;
         }
 
-        override public function inner_serialize(bs) {
+        // esc doesn't support override yet
+        /*override*/ public function inner_serialize(bs) {
             bs.uint30(slot_id);
             bs.uint30(type_name);
             bs.uint30(vindex);
@@ -511,7 +530,7 @@ print ("emitting bodies");
                 bs.uint8(vkind);
         }
 
-        private var slot_id, type_name, vindex, vkind;
+        /*private*/ var slot_id, type_name, vindex, vkind;
     }
 
     public class ABCOtherTrait extends ABCTrait
@@ -528,12 +547,13 @@ print ("emitting bodies");
             this.val = val;
         }
 
-        override public function inner_serialize(bs) {
+        // esc doesn't support override yet
+        /*override*/ public function inner_serialize(bs) {
             bs.uint30(id);
             bs.uint30(val);
         }
 
-        private var id, val;
+        /*private*/ var id, val;
     }
 
     public class ABCClassInfo
@@ -554,7 +574,7 @@ print ("emitting bodies");
                 traits[i].serialize(bs);
         }
 
-        private var cinit, traits = [];
+        /*private*/ var cinit, traits = [];
     }
 
     public class ABCScriptInfo
@@ -579,7 +599,7 @@ print ("emitting bodies");
                 traits[i].serialize(bs);
         }
 
-        private var init, traits = [];
+        /*private*/ var init, traits = [];
     }
 
     public class ABCMethodBodyInfo
@@ -621,8 +641,8 @@ print ("emitting bodies");
                 traits[i].serialize(bs);
         }
 
-        private var init_scope_depth = 0, exceptions = [], traits = [];
-        private var method, max_stack, local_count, max_scope_depth, code;
+        /*private*/ var init_scope_depth = 0, exceptions = [], traits = [];
+        /*private*/ var method, max_stack, local_count, max_scope_depth, code;
     }
 
     public class ABCException
@@ -643,6 +663,6 @@ print ("emitting bodies");
             bs.uint30(var_name);
         }
 
-        private var first_pc, last_pc, target_pc, exc_type, var_name;
+        /*private*/ var first_pc, last_pc, target_pc, exc_type, var_name;
     }
 }

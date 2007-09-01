@@ -124,7 +124,20 @@ namespace Gen;
                         asm.I_setproperty(name);
                     }
                     case (x:*) {
-                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
+//                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
+                        let trait_kind = TRAIT_Method;
+                        switch type(mf.func.name.kind) {
+                            case (g:Get) {
+                                print("Getter, target: " + target);
+                                trait_kind = TRAIT_Getter;
+                            }
+                            case (s:Set) {
+                                print("Setter, target: " +target);
+                                trait_kind = TRAIT_Setter;
+                            }
+                        }
+                        target.addTrait(new ABCOtherTrait(name, 0, trait_kind, 0, methidx));
+
                     }
                 }
             }
@@ -245,8 +258,15 @@ namespace Gen;
         let ctor_ctx = new CTX(asm, {tag:"function", scope_reg:t}, method);
        
         asm.I_getlocal(0);
+        asm.I_dup();
         // Should this be instanceInits.inits only?
+        asm.I_pushscope();  // This isn't quite right...
+        for( let i = 0; i < instanceInits.length; i++ ) {
+            cgExpr(ctor_ctx, instanceInits[i]);
+            asm.I_pop();
+        }
         cgHead(ctor_ctx, instanceInits);
+        asm.I_popscope();
         //cgHead(ctor_ctx, instanceInits.inits, true);
 
         // Push 'this' onto scope stack

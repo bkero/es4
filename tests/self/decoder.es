@@ -307,6 +307,12 @@ public namespace Decode;
         case 'Ordinary':
             var ndx = new Ordinary;
             break;
+        case 'Get':
+            var ndx = new Get;
+            break;
+        case 'Set':
+            var ndx = new Set;
+            break;
         default:
             throw "error Decoder::funcNameKind " + ob;
         }
