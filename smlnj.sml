@@ -42,10 +42,11 @@ fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor
         (fn () =>
             let
-                val (regs, argvRest) = Main.startup NONE argvRest
+                val argvRest = Main.startup argvRest
+                val regs = Boot.boot ()
                 fun main' (argv0:string, argvRest:string list) =
                     BackTrace.monitor
-                        (fn () => Main.main ((SOME regs), argv0, argvRest))
+                        (fn () => Main.main (regs, argv0, argvRest))
             in
                 case argvRest of
                     ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)

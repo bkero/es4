@@ -99,34 +99,19 @@ fun withHandlers thunk =
   | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
   | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
-fun startup (regsOpt:Mach.REGS option)
-            (argvRest:string list)
-    : (Mach.REGS * string list) =
-    let
-        val argvRest = List.filter consumeOption argvRest
-    in
-        case regsOpt of 
-            SOME r => (r, argvRest)
-          | NONE => 
-            let 
-                val _ = TextIO.print "booting ... \n"
-                val regs = ref NONE
-                fun bootAndCaptureRegs _ = (regs := SOME (Boot.boot ()))
-            in
-                withEofHandler (fn () => withHandlers bootAndCaptureRegs);
-                (valOf (!regs), argvRest)
-            end
-    end
+fun startup (argvRest:string list)
+    : (string list) =
+    List.filter consumeOption argvRest
 
-fun repl regsOpt argvRest =
+fun repl regs argvRest =
     let
-        val (regs, argvRest) = startup regsOpt argvRest                               
+        val argvRest = startup argvRest
+        val regsCell = ref regs
 
         val doParse = ref true
         val doDefn = ref true
         val doEval = ref true
         val beStrict = ref false
-        val regsCell = ref regs
 
         fun toggleRef (n:string) (r:bool ref) =
             (r := not (!r);
@@ -223,17 +208,17 @@ fun repl regsOpt argvRest =
         handle quitException => print "bye\n"
     end
 
-fun parse regsOpt argvRest =
+fun parse argvRest =
     let
-        val (regs, argvRest) = startup regsOpt argvRest
+        val argvRest = startup argvRest
     in
         TextIO.print "parsing ... \n";
-        (regs, List.map Parser.parseFile argvRest)
+        List.map Parser.parseFile argvRest
     end
 
-fun define regsOpt argvRest =
+fun define prog argvRest =
     let
-        val (regs, frags) = parse regsOpt argvRest
+        val frags = parse argvRest
         fun f prog accum (frag::frags) = 
             let 
                 val (prog', frag') = Defn.defTopFragment prog frag
@@ -241,14 +226,13 @@ fun define regsOpt argvRest =
                 f prog' (frag'::accum) frags
             end
           | f prog accum _ = (prog, List.rev accum)
-        val _ = TextIO.print "defining ... \n";
-        val (prog, frags) = f (#prog regs) [] frags
     in
-        (Eval.withProg regs prog, frags)
+        TextIO.print "defining ... \n";
+        f prog [] frags
     end
 
-fun verify regsOpt argvRest =
-    define regsOpt argvRest
+fun verify prog argvRest =
+    define prog argvRest
 (*
     let
         val defined = define argvRest
@@ -258,9 +242,10 @@ fun verify regsOpt argvRest =
     end
 *)
 
-fun eval regsOpt argvRest =
+fun eval regs argvRest =
     let
-        val (regs, frags) = verify regsOpt argvRest
+        val (prog, frags) = verify (#prog regs) argvRest
+        val regs = Eval.withProg regs prog
     in
 (*        Posix.Process.alarm (Time.fromReal 300.0);
 *)
@@ -297,18 +282,18 @@ fun usage () =
                "        boot      standard library boot sequence\n",
                "        stack     stack operations\n"])
 
-fun main (regsOpt:Mach.REGS option, argv0:string, argvRest:string list) =
+fun main (regs:Mach.REGS, argv0:string, argvRest:string list) =
     withEofHandler
         (fn () =>
             withHandlers
                 (fn () =>
                     (case argvRest of
                          ("-h"::argvRest) => (usage (); 0)
-                       | ("-r"::argvRest) => (repl regsOpt argvRest; 0)
-                       | ("-p"::argvRest) => (parse regsOpt argvRest; 0)
-                       | ("-d"::argvRest) => (define regsOpt argvRest; 0)
-                       | ("-v"::argvRest) => (verify regsOpt argvRest; 0)
-                       | ("-e"::argvRest) => (eval regsOpt argvRest)
-                       | _ => (repl regsOpt argvRest; 0))))
+                       | ("-r"::argvRest) => (repl regs argvRest; 0)
+                       | ("-p"::argvRest) => (parse argvRest; 0)
+                       | ("-d"::argvRest) => (define (#prog regs) argvRest; 0)
+                       | ("-v"::argvRest) => (verify (#prog regs) argvRest; 0)
+                       | ("-e"::argvRest) => (eval regs argvRest)
+                       | _ => (repl regs argvRest; 0))))
 
 end
