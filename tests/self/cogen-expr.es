@@ -104,9 +104,11 @@
         cgExpr(ctx, test);
         let L0 = asm.I_iffalse();
         cgExpr(ctx, consequent);
+        asm.I_coerce_a();
         let L1 = asm.I_jump();
         asm.I_label(L0);
         cgExpr(ctx, alternate);
+        asm.I_coerce_a();
         asm.I_label(L1);
     }
 

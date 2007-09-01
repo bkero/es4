@@ -56,36 +56,36 @@
             return bytes.length;
         }
 
-        public function uint8(val/*:uint*/) {
+        public function uint8(val:uint) {
             assert(val < 256);
             bytes.push(val);
         }
 
-        public function uint16(val/*:uint*/) {
+        public function uint16(val:uint) {
             assert(val < 65536);
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF);
         }
 
-        public function int16(val/*:int*/) {
+        public function int16(val:int) {
             assert(-32768 <= val && val < 32768);
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF);
         }
 
-        public function int24(val/*:int*/) {
+        public function int24(val:int) {
             assert(-16777216 <= val && val < 16777216);
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF,
                        (val >> 16) & 0xFF);
         }
 
-        public function uint30(val/*:uint*/) {
+        public function uint30(val:uint) {
             assert(val < 1073741824);
             uint32(val);
         }
 
-        public function int30(val/*:int*/) {
+        public function int30(val:int) {
             assert(-1073741824 <= val && val < 1073741824);
             if (val < 0)
                 uint32(-val);
@@ -93,11 +93,11 @@
                 uint32(toUint(val));
         }
 
-        public function int32(val/*:int*/) {
+        public function int32(val:int) {
             uint32(toUint(val));
         }
 
-        public function uint32(val/*:uint*/) {
+        public function uint32(val:uint) {
             if( val < 0x80 )
                 // 7 bits
                 bytes.push(val & 0x7F);
@@ -179,6 +179,6 @@
             return bytes;
         }
 
-        private const bytes = [];
+        /*private*/ const bytes = [];
     }
 }
