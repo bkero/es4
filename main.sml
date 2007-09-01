@@ -56,7 +56,7 @@ fun findTraceOption (tname:string)
       | "decimal" => SOME (DecimalParams.doTrace)
       | "native" => SOME (Native.doTrace)
       | "boot" => SOME (Boot.doTrace)
-      | "stack" => SOME (Eval.traceStack)
+      (* | "stack" => SOME (Eval.traceStack) *)
       (* FIXME: add "fixture" and "type" *)
       | _ => NONE
 
@@ -68,11 +68,13 @@ fun consumeOption (opt:string) : bool =
            | NONE => true)
       | ([#"-", #"I"]) =>
         (interactive := false; false)
+(*
       | (#"-" :: #"P" :: rest) =>
         (case Int.fromString (String.implode rest) of
             NONE => false
           | SOME 0 => false
           | SOME n => (Eval.doProfile := SOME n; false))
+*)
       | _ => true
 
 exception quitException
@@ -80,41 +82,51 @@ exception quitException
 (* FIXME: should use more portable OS.Process.exit *)
 fun withEofHandler thunk =
     (thunk (); 0)
-    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); 1)
+    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1)
 
 fun withHandlers thunk =
     (thunk (); 0)
     handle
-    LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.TypeError e => (print ("**ERROR** TypeError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.FixtureError e => (print ("**ERROR** FixtureError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-  | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+    LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
+  | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
+  | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
+  | LogErr.TypeError e => (print ("**ERROR** TypeError: " ^ e ^ "\n"); 1)
+  | LogErr.FixtureError e => (print ("**ERROR** FixtureError: " ^ e ^ "\n"); 1)
+  | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
+  | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
+  | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
+  | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
+  | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
+  | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
-fun startup doBoot argvRest =
+fun startup (regsOpt:Mach.REGS option)
+            (argvRest:string list)
+    : (Mach.REGS * string list) =
     let
         val argvRest = List.filter consumeOption argvRest
     in
-        if doBoot then
-    	    (TextIO.print "booting ... \n";
-             withEofHandler (fn () => withHandlers Boot.boot);
-             argvRest)
-        else
-            argvRest
+        case regsOpt of 
+            SOME r => (r, argvRest)
+          | NONE => 
+            let 
+                val _ = TextIO.print "booting ... \n"
+                val regs = ref NONE
+                fun bootAndCaptureRegs _ = (regs := SOME (Boot.boot ()))
+            in
+                withEofHandler (fn () => withHandlers bootAndCaptureRegs);
+                (valOf (!regs), argvRest)
+            end
     end
 
-fun repl argvRest =
+fun repl regsOpt argvRest =
     let
+        val (regs, argvRest) = startup regsOpt argvRest                               
+
         val doParse = ref true
         val doDefn = ref true
         val doEval = ref true
         val beStrict = ref false
+        val regsCell = ref regs
 
         fun toggleRef (n:string) (r:bool ref) =
             (r := not (!r);
@@ -148,7 +160,7 @@ fun repl argvRest =
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (Boot.boot(); doLine ())
+                  | [":reboot"] => (regsCell := Boot.boot(); doLine ())
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
@@ -159,35 +171,38 @@ fun repl argvRest =
                           (print ("unknown trace option " ^ t ^ "\n"))
                         | SOME r => toggleRef ("trace option " ^ t) r);
                      doLine())
-
+(*
                   | [":profile", n] =>
                     ((case Int.fromString n of
                           NONE => Eval.doProfile := NONE
                         | SOME 0 => Eval.doProfile := NONE
                         | SOME n => Eval.doProfile := SOME n);
                      doLine())
+*)
 
                   | [] => doLine ()
                   | _ =>
                     if (!doParse)
                     then
                         let
-                            val p = Parser.parseLines [Ustring.fromSource line]
+                            val frag = Parser.parseLines [Ustring.fromSource line]
                         in
                             if (!doDefn)
                             then
                                 let
-                                    val d = Defn.defProgram p
-                                    val vd = d (* Verify.verifyProgram d *)
+                                    val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
+                                    (* val vd = Verify.verifyProgram d *)
                                 in
+                                    regsCell := Eval.withProg regs prog;
                                     if (!doEval)
                                     then
                                         let
-                                            val res = Eval.evalTopProgram vd
+                                            val res = Eval.evalTopFragment (!regsCell) frag
                                         in
                                             (case res of
                                                  Mach.Undef => ()
-                                               | _ => print (Ustring.toAscii (Eval.toUstring res) ^ "\n"));
+                                               | _ => print (Ustring.toAscii 
+                                                                 (Eval.toUstring (!regsCell) res) ^ "\n"));
                                             doLine ()
                                         end
                                     else
@@ -204,29 +219,36 @@ fun repl argvRest =
             (withEofHandler (fn () => withHandlers doLine);
              runUntilQuit ())
     in
-        startup false argvRest;
         runUntilQuit ()
         handle quitException => print "bye\n"
     end
 
-fun parse argvRest =
+fun parse regsOpt argvRest =
     let
-        val argvRest = startup false argvRest
+        val (regs, argvRest) = startup regsOpt argvRest
     in
         TextIO.print "parsing ... \n";
-        List.map Parser.parseFile argvRest
+        (regs, List.map Parser.parseFile argvRest)
     end
 
-fun define argvRest =
+fun define regsOpt argvRest =
     let
-        val parsed = parse argvRest
+        val (regs, frags) = parse regsOpt argvRest
+        fun f prog accum (frag::frags) = 
+            let 
+                val (prog', frag') = Defn.defTopFragment prog frag
+            in
+                f prog' (frag'::accum) frags
+            end
+          | f prog accum _ = (prog, List.rev accum)
+        val _ = TextIO.print "defining ... \n";
+        val (prog, frags) = f (#prog regs) [] frags
     in
-        TextIO.print "defining ... \n";
-        map Defn.defProgram parsed
+        (Eval.withProg regs prog, frags)
     end
 
-fun verify argvRest =
-    define argvRest
+fun verify regsOpt argvRest =
+    define regsOpt argvRest
 (*
     let
         val defined = define argvRest
@@ -236,14 +258,14 @@ fun verify argvRest =
     end
 *)
 
-fun eval argvRest =
+fun eval regsOpt argvRest =
     let
-        val verified = verify argvRest
+        val (regs, frags) = verify regsOpt argvRest
     in
 (*        Posix.Process.alarm (Time.fromReal 300.0);
 *)
 	    TextIO.print "evaluating ... \n";
-        withHandlers (fn () => map Eval.evalTopProgram verified)
+        withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
     end
 
 fun usage () =
@@ -275,18 +297,18 @@ fun usage () =
                "        boot      standard library boot sequence\n",
                "        stack     stack operations\n"])
 
-fun main (argv0:string, argvRest:string list) =
+fun main (regsOpt:Mach.REGS option, argv0:string, argvRest:string list) =
     withEofHandler
         (fn () =>
             withHandlers
                 (fn () =>
                     (case argvRest of
                          ("-h"::argvRest) => (usage (); 0)
-                       | ("-r"::argvRest) => (repl argvRest; 0)
-                       | ("-p"::argvRest) => (parse argvRest; 0)
-                       | ("-d"::argvRest) => (define argvRest; 0)
-                       | ("-v"::argvRest) => (verify argvRest; 0)
-                       | ("-e"::argvRest) => (eval argvRest)
-                       | _ => (repl argvRest; 0))))
+                       | ("-r"::argvRest) => (repl regsOpt argvRest; 0)
+                       | ("-p"::argvRest) => (parse regsOpt argvRest; 0)
+                       | ("-d"::argvRest) => (define regsOpt argvRest; 0)
+                       | ("-v"::argvRest) => (verify regsOpt argvRest; 0)
+                       | ("-e"::argvRest) => (eval regsOpt argvRest)
+                       | _ => (repl regsOpt argvRest; 0))))
 
 end

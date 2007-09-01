@@ -1005,10 +1005,9 @@ fun makeGlobalScopeWith (global:OBJ)
             kind = GlobalScope }
 
 fun makeInitialRegs (prog:Fixture.PROGRAM)
+                    (glob:OBJ)                     
     : REGS =
     let 
-        (* FIXME: tie the knot for ::Object in boot.sml *)
-        val glob = newObj NoTag (* (ClassTag Name.nons_Object) *) Null NONE
         val prof = Profiler 
                        { profileMap = ref StrListMap.empty,
                          doProfile = ref NONE }

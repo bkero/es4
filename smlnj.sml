@@ -38,15 +38,17 @@
 
 structure SMLofNJEntry = struct
 
-fun main' (argv0:string, argvRest:string list) =
-    BackTrace.monitor
-        (fn () => Main.main (argv0, argvRest))
-
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor
         (fn () =>
-            (case Main.startup true argvRest of
-                 ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
-               | _ => main' (argv0, argvRest)))
-
+            let
+                val (regs, argvRest) = Main.startup NONE argvRest
+                fun main' (argv0:string, argvRest:string list) =
+                    BackTrace.monitor
+                        (fn () => Main.main ((SOME regs), argv0, argvRest))
+            in
+                case argvRest of
+                    ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
+                  | _ => main' (argv0, argvRest)
+            end)
 end
