@@ -173,9 +173,8 @@ public namespace Lex
                 mark();
                 c = next();
                 //print("c[",curIndex-1,"]=",String.fromCharCode(c));
-                switch (c)
-                {
-                    //                case 0xffffffef: return utf8sig ();
+                switch (c) {
+                //  case 0xffffffef: return utf8sig ();
                 case Char::EOS: return Token::EOS;
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Eol;
@@ -228,8 +227,8 @@ public namespace Lex
                     let c = escapeSequence ();
                     return identifier (String.fromCharCode(c));
                 case Char::Zero: return zero ();
-                case Char::One:
-                case Char::Two:
+                case Char::One: print ("one");
+                case Char::Two: print ("two");
                 case Char::Three:
                 case Char::Four:
                 case Char::Five:
@@ -256,11 +255,12 @@ public namespace Lex
 	function zero ()
 	    : int
 	{
+        print ("found zero");
 	    let c : int = next ();
 	    switch (c) {
 	    case Char::x:
 	    case Char::X:
-		return hexLiteral ();
+            return hexLiteral ();
 	    case Char::Zero:
 	    case Char::One:
 	    case Char::Two:
@@ -269,14 +269,14 @@ public namespace Lex
 	    case Char::Five:
 	    case Char::Six:
 	    case Char::Seven:
-		return octalLiteral ();
+            return octalLiteral ();
 	    case Char::Dot:
-		return decimalInteger ();
+            return decimalInteger ();
 	    case Char::Eight:  // what do we do with these?
 	    case Char::Nine:
 	    default :
-		retract ();
-		return numberSuffix ();
+            retract ();
+            return numberSuffix ();
 	    }
 	}
 
@@ -345,14 +345,14 @@ public namespace Lex
 	    case Char::Seven:
 	    case Char::Eight:
 	    case Char::Nine:
-		return decimalInteger ();
+            return decimalInteger ();
 	    case Char::Dot:
-		return decimalFraction ();
+            return decimalFraction ();
 	    case Char::e: case Char::E:
-		return decimalExponent ();
+            return decimalExponent ();
 	    default:
-		retract ();
-		return numberSuffix ();
+            retract ();
+            return numberSuffix ();
 	    }
 	}
 
@@ -1321,5 +1321,5 @@ public namespace Lex
             print ("scanned!");
         }
     }
-    //Lex::test ();
+    Lex::test ();
 }

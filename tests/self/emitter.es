@@ -209,11 +209,15 @@ namespace Emit;
                             else if( name=="boolean" ) {
                                 return nameFromIdent("Boolean");
                             }
+		            else {
+                                print ("warning: unknown type name " + t + ", using Object");
+				return nameFromIdent("Object");
+			    }
                         }
                     }
                 }
                 case (x:*) { 
-                    print ("warning: Unimplemented: typeFromTypeExpr " + t + ", using *")
+                    print ("warning: Unimplemented: typeFromTypeExpr " + t + ", using *");
                 }
             }
             return 0;

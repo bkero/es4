@@ -432,7 +432,10 @@
             if (e.op is Assign) {
                 asm.I_dup();
                 asm.I_setlocal(t);
-                asm.I_setproperty(cgIdentExpr(ctx, name));
+                let nm = cgIdentExpr(ctx, name);
+                if (e.le is ObjectRef && e.le.ident is ExpressionIdentifier)
+                    asm.I_swap();
+                asm.I_setproperty(nm);
             }
             else {
                 asm.I_dup();
@@ -590,7 +593,6 @@
             }
             case (ei:ExpressionIdentifier) {
                 cgExpr(ctx, ei.expr);
-                asm.I_swap();
                 return emitter.multinameL(ei);
             }
             case (qi:QualifiedIdentifier) {

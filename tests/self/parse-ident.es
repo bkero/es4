@@ -76,8 +76,11 @@ use namespace Release;
 
             var str = "";   // fixme: evaluator isn't happy if this is inside of the switch
 
+
+
             switch (hd (ts)) {
             case Token::Identifier:
+                print("ident found");
             case Token::Call:
             case Token::Cast:
             case Token::Const:
@@ -281,22 +284,22 @@ use namespace Release;
             switch (hd (ts1)) {
             case Token::DoubleColon:
                 switch type (nd1) {
-                case (ns:Ast::NAMESPACE) {
-                    nd1 = new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1));
-                }
-                case (id:Ast::IDENT) {
+                case (id:String) {
                     nd1 = new Ast::LexicalRef (new Ast::Identifier (nd1,cx.pragmas.openNamespaces))
+                }
+                case (ns:*) {
+                    nd1 = new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1));
                 }
                 }
                 var [ts2,nd2] = qualifiedNameIdentifier (tl(ts1), nd1);
                 break;
             default:
                 switch type (nd1) {
-                case (ns:Ast::NAMESPACE) {
-                    var [ts2,nd2] = [ts1,new Ast::ReservedNamespace (nd1)];
-                }
-                case (id:Ast::IDENT) {
+                case (id:String) {
                     var [ts2,nd2] = [ts1,new Ast::Identifier (nd1,cx.pragmas.openNamespaces)];
+                }
+                case (ns:*) {
+                    var [ts2,nd2] = [ts1,new Ast::ReservedNamespace (nd1)];
                 }
                 }
                 break;

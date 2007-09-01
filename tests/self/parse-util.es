@@ -142,10 +142,10 @@ public namespace Parse;
         function Pragmas (pragmas) 
         {
             enter ("Pragma ",pragmas);
-            if (pragmas===null)
+            if (pragmas==null)
             {
                 this.openNamespaces = [[]];
-                this.defaultNamespace = new Ast::InternalNamespace ("");
+                this.defaultNamespace = new Ast::PublicNamespace ("");
             }
             else
             {
@@ -168,7 +168,7 @@ public namespace Parse;
         var varHeads  //: [Ast::HEAD];
         var letHeads  //: [Ast::HEAD];
         var ctor: Ast::CTOR;
-        var pragmas: PRAGMAS;
+        var pragmas: PRAGMAS
         var pragmaEnv: PRAGMA_ENV; // push one PRAGMAS for each scope
 
         function Context (topFixtures)
@@ -220,8 +220,9 @@ public namespace Parse;
                     print("hasName ",ns,"::",id);
                     let f2 = getFixture (fxtrs,id,ns);
                     if (f1 is Ast::ValFixture && f2 is Ast::ValFixture) {
-                        if (f1.Ast::type==Ast::anyType || f2.Ast::type==Ast::anyType) // FIXME is this right?
-                            return true;
+                        if (f1.Ast::type==Ast::anyType) return true;
+                        else if (f2.Ast::type==Ast::anyType) return true;
+                        // other positive cases here
                     }
                     throw "incompatible fixture redef "+fn.id;
                 }
@@ -439,12 +440,17 @@ public namespace Parse;
             use namespace Ast;
 
             enter ("evalIdentExprToNamespace");
+
+            var fxtr = null;
+            var val = null;
+
             switch type (nd) {
             case (nd: Identifier) {
                 var fxtr = findFixtureWithIdentifier (nd.ident,null);
                 switch type (fxtr[1]) {
                 case (fxtr:NamespaceFixture) {
                     var val = fxtr.ns;
+                    return fxtr.ns;
                 }
                 case (fxtr:*) {
                     throw "fixture with unknown value " + fxtr;
@@ -452,9 +458,10 @@ public namespace Parse;
                 }
             }
             case (nd: ReservedNamespace) {
-                var val = nd.Ast::ns;
+                var val = nd.ns;
+                return val;
             }
-            case (nd: QualifiedIdentifier) {
+            case (nd: *) {
                 throw "evalIdentExprToNamespace: case not implemented " + nd;
             }
             }
@@ -520,14 +527,14 @@ public namespace Parse;
         {
             //enter ("hd ",ts.head());
             var tk = Token::tokenKind (ts.head());
-            //exit ("hd ",tk);
+            //print ("hd ",tk);
             return tk;
         }
 
         function eat (ts:TokenStream,tc) {
             //print("eating ",Token::tokenText(tc));
             let tk = hd (ts);
-            if (tk === tc) {
+            if (tk == tc) {
                 return tl (ts);
             }
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
@@ -558,7 +565,7 @@ public namespace Parse;
         (fl,el)        head
         fl             fixture list
         el             expr list
-        il             init list
+-        il             init list
         sl             stmt list
         it             init target = VAR, LET (default=LET)
         ie             init expr
@@ -752,3 +759,5 @@ public namespace Parse;
 
     //Parse::test ();
 }
+
+

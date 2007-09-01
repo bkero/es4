@@ -312,7 +312,7 @@ use namespace intrinsic;
             PrimaryIdentifier
         */
 
-        function primaryExpression(ts:TOKENS)
+        function primaryExpression(ts:TOKENS,beta:BETA)
             : [TOKENS,Ast::EXPR]
         {
             enter("Parser::primaryExpression ",ts);
@@ -866,7 +866,9 @@ use namespace intrinsic;
 
                 if (hd (ts1) === Token::BREAK) {
                     let tsx;
-                    [tsx,this.coordList] = scan.tokenList (scan.div);
+                    let csx;
+                    [tsx,csx] = scan.tokenList (scan.div);
+                    coordList = csx;
                     ts1 = new TokenStream (tsx,0);
                 }
 
@@ -1391,7 +1393,10 @@ use namespace intrinsic;
                     }
                     }
                 }
-                case (e: (Ast::LexicalRef, Ast::ObjectRef)) {
+                case (e: Ast::LexicalRef) {
+                    var p = new SimplePattern (e);
+                }
+                case (e: Ast::ObjectRef) {
                     var p = new SimplePattern (e);
                 }
                 case (e: *) {
