@@ -40,6 +40,7 @@ fun newAnonNS _ =
 
 val metaNS = newAnonNS ()
 val magicNS = newAnonNS ()
+val informativeNS = newAnonNS ()
 val noNS = Ast.Public (Ustring.empty)
 val intrinsicNS = Ast.Intrinsic
 
@@ -54,6 +55,7 @@ fun mangle (n:Ast.NAME) : Ast.IDENT =
 
 fun make (id:Ast.IDENT) (ns:Ast.NAMESPACE) : Ast.NAME = { id = id, ns = ns }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
+fun informative (id:Ast.IDENT) : Ast.NAME = { id = id, ns = informativeNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
 fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
@@ -211,22 +213,35 @@ val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
 val intrinsic_proto = intrinsic Ustring.proto_
 val intrinsic_dumpFunc = intrinsic Ustring.dumpFunc_
 val intrinsic_inspect = intrinsic Ustring.inspect_
-val intrinsic_tan = intrinsic Ustring.tan_
-val intrinsic_sqrt = intrinsic Ustring.sqrt_
-val intrinsic_sin = intrinsic Ustring.sin_
-val intrinsic_round = intrinsic Ustring.round_
 val intrinsic_random = intrinsic Ustring.random_
-val intrinsic_pow = intrinsic Ustring.pow_
-val intrinsic_log = intrinsic Ustring.log_
-val intrinsic_floor = intrinsic Ustring.floor_
-val intrinsic_exp = intrinsic Ustring.exp_
-val intrinsic_cos = intrinsic Ustring.cos_
-val intrinsic_ceil = intrinsic Ustring.ceil_
-val intrinsic_atan2 = intrinsic Ustring.atan2_
-val intrinsic_atan = intrinsic Ustring.atan_
-val intrinsic_asin = intrinsic Ustring.asin_
-val intrinsic_acos = intrinsic Ustring.acos_
-val intrinsic_abs = intrinsic Ustring.abs_
+val informative_acosDouble = informative Ustring.acosDouble_
+val informative_acosDecimal = informative Ustring.acosDecimal_
+val informative_asinDouble = informative Ustring.asinDouble_
+val informative_asinDecimal = informative Ustring.asinDecimal_
+val informative_atanDouble = informative Ustring.atanDouble_
+val informative_atanDecimal = informative Ustring.atanDecimal_
+val informative_atan2Double = informative Ustring.atan2Double_
+val informative_atan2Decimal = informative Ustring.atan2Decimal_
+val informative_ceilDouble = informative Ustring.ceilDouble_
+val informative_ceilDecimal = informative Ustring.ceilDecimal_
+val informative_cosDouble = informative Ustring.cosDouble_
+val informative_cosDecimal = informative Ustring.cosDecimal_
+val informative_expDouble = informative Ustring.expDouble_
+val informative_expDecimal = informative Ustring.expDecimal_
+val informative_floorDouble = informative Ustring.floorDouble_
+val informative_floorDecimal = informative Ustring.floorDecimal_
+val informative_logDouble = informative Ustring.logDouble_
+val informative_logDecimal = informative Ustring.logDecimal_
+val informative_powDouble = informative Ustring.powDouble_
+val informative_powDecimal = informative Ustring.powDecimal_
+val informative_roundDouble = informative Ustring.roundDouble_
+val informative_roundDecimal = informative Ustring.roundDecimal_
+val informative_sinDouble = informative Ustring.sinDouble_
+val informative_sinDecimal = informative Ustring.sinDecimal_
+val informative_sqrtDouble = informative Ustring.sqrtDouble_
+val informative_sqrtDecimal = informative Ustring.sqrtDecimal_
+val informative_tanDouble = informative Ustring.tanDouble_
+val informative_tanDecimal = informative Ustring.tanDecimal_
 val intrinsic_now = intrinsic Ustring.now_
 val intrinsic_toPrecision = intrinsic Ustring.toPrecision_
 val intrinsic_toExponential = intrinsic Ustring.toExponential_
@@ -299,5 +314,6 @@ val empty = nons Ustring.empty
 
 val meta_ = nons Ustring.meta_
 val magic_ = nons Ustring.magic_
+val informative_ = nons Ustring.informative_
 
 end

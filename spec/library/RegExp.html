@@ -513,7 +513,7 @@ an exception (except for any host-defined exceptions that can occur anywhere suc
 === Disjunction ===
 
 <P> In the class ''Disjunct'':
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Disjunct">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Disjunct">
 
 <P> Informative comments: The ''|'' regular expression operator separates two alternatives. The pattern
 first tries to match the left Alternative (followed by the sequel of the regular expression); if it fails, it
@@ -542,7 +542,7 @@ and not
 === Alternative ===
 
 <P> In the class ''Alternative'':
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Alternative">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Alternative">
 
 <P> Informative comments: Consecutive Terms try to simultaneously match consecutive portions of the
 input string. If the left Alternative, the right Term, and the sequel of the regular expression all have
@@ -557,7 +557,7 @@ encoded by the assertion holds at the current location.
 <P> Assertions are handled as a common ''match'' function delegating to a
 ''testAssertion'' method overridden in subclasses.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Assertion">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Assertion">
 
 <FIXME> That's fine for code, but for the spec it may well have been
 better to dispense with ''Assertion'' entirely and pushing ''match''
@@ -603,7 +603,7 @@ nor vice versa.
 
 === Quantified ===
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Quantified">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Quantified">
 
 <P> Informative comments: An Atom followed by a Quantifier is repeated the number of times specified
 by the Quantifier. A quantifier can be non-greedy, in which case the Atom pattern is repeated as few
@@ -689,7 +689,7 @@ which returns the array
 <P> The positive lookahead matcher succeeds without consuming input if
 its contained matcher can match the input at the current location:
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class PositiveLookahead">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class PositiveLookahead">
 
 <P> The form ''(?= //Disjunction// )'' specifies a zero-width positive
 lookahead. In order for it to succeed, the pattern inside
@@ -728,7 +728,7 @@ and not:
 its contained matcher fails to match the input at the current
 location:
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class NegativeLookahead">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class NegativeLookahead">
 
 <P> The form ''(?! //Disjunction// )'' specifies a zero-width negative lookahead. In order for it to succeed,
 the pattern inside //Disjunction// must fail to match at the current position. The current position is not
@@ -749,7 +749,7 @@ against undefined and therefore always succeeds. The whole expression returns th
 
 === CharsetMatcher ===
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class CharsetMatcher">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetMatcher">
 
 <INCLUDE file="RegExpEvaluator.es" name="function Canonicalize">
 
@@ -816,14 +816,14 @@ input at the current location.  The string that is matched by the
 contained matcher is saved in the captures array at the index
 corresponding to this capture.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Capturing">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Capturing">
 
 === Backref ===
 
 <P> A back-referencing matcher succeeds if the input at the current location
 exactly matches the captured value referenced by the matcher.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Backref">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Backref">
 
 <P> Informative comments: An escape sequence of the form \ followed by a nonzero decimal number n
 matches the result of the nth set of capturing parentheses (see 15.10.2.11). It is an error if the regular
@@ -835,7 +835,7 @@ always succeeds.
 
 <P> An empty match succeeds without consuming input.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="class Empty">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Empty">
 
 
 == Methods on the class ''RegExp'' ==

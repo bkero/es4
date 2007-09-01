@@ -55,15 +55,14 @@ package
     use default namespace public;
 
     /* E262-3 15.11 */
-    public dynamic class Error
+    dynamic class Error
     {
-        meta static function invoke(msg)
-            new Error(msg);
+        meta static function invoke(message)
+            new Error(message);
 
-        function Error(msg)
-        {
-            if (msg)
-                this.message = ToString(msg);
+        function Error(message) {
+            if (message !== undefined)
+                this.public::message = string(message);
         }
 
         /* E262-3 15.11.4.2: "name" property on prototype */
@@ -75,14 +74,14 @@ package
 
         /* E262-3 15.11.4.4: toString */
         prototype function toString()
-            this.toString();
+            this.intrinsic::toString();
 
         /* INFORMATIVE */
         override intrinsic function toString() {
-            if (this.message)
-                return this.name + ": " + this.message;   /* "this" qualification in case they've been deleted */
+            if (this.public::message !== undefined)
+                return this.public::name + ": " + this.public::message;   // "this" qualification in case they've been deleted
             else
-                return this.name;
+                return this.public::name;
         }
     }
 }

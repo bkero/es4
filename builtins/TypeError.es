@@ -55,12 +55,15 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.5; 15.11.7 */
-    public dynamic class TypeError extends Error
+    dynamic class TypeError extends Error
     {
-        meta static function invoke(msg)
-            new TypeError(msg);
+        meta static function invoke(message)
+            new TypeError(message);
 
-        function TypeError(msg) : super(msg) {}
+        function TypeError(message) 
+            : super(message)
+        {
+        }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "TypeError";

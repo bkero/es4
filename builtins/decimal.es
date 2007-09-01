@@ -57,6 +57,18 @@ package
         static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
         static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
+        // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
+        // FIXME: we can be more precise here, these are just the double values
+        // copied over.
+        static const E: decimal = 2.7182818284590452354m;   /* Approximately */
+        static const LN10: decimal = 2.302585092994046m;    /* Approximately */
+        static const LN2: decimal = 0.6931471805599453m;    /* Approximately */
+        static const LOG2E: decimal = 1.4426950408889634m;  /* Approximately */
+        static const LOG10E: decimal = 0.4342944819032518m; /* Approximately */
+        static const PI: decimal = 3.1415926535897932m;     /* Approximately */
+        static const SQRT1_2: decimal = 0.7071067811865476m;/* Approximately */
+        static const SQRT2: decimal = 1.4142135623730951m;  /* Approximately */
+
         /* E262-4 draft */
         meta static function convert(x)
             decimal(x);
