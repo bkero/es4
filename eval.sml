@@ -168,6 +168,19 @@ fun withScope (r:Mach.REGS)
          aux=aux}
     end
 
+fun withProg (r:Mach.REGS)
+             (newProg:Fixture.PROGRAM)
+    : Mach.REGS =
+    let
+        val {scope,this,global,prog,aux} = r
+    in
+        {scope=scope, 
+         this=this, 
+         global=global, 
+         prog=newProg,
+         aux=aux}
+    end
+
 
 fun getObjId (obj:Mach.OBJ)
     : Mach.OBJ_IDENT =

@@ -125,6 +125,13 @@ and liftOpt (q:('a -> Ast.TYPE_EXPR option))
 val conversionTyOfInstanceTy = liftOpt (#conversionTy) extractInstanceType
 val resultTyOfFuncTy = lift (#result) extractFuncType
 val resultTypeOfFuncTy = typeExprOf o resultTyOfFuncTy
+fun minArgsOfFuncTy (ty:Ast.TY) 
+    : int =
+    let 
+        val (fty, nonTopRibs, topUnit) = extractFuncType ty
+    in
+        (#minArgs fty)
+    end
 
 fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a) 
                 (funcTy:Ast.TY)                 

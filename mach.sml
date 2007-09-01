@@ -1053,8 +1053,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
 
 val nativeFunctions: (Ast.NAME * NATIVE_FUNCTION) list ref = ref []
 
-fun registerNativeFunction (regs:REGS)
-                           (name:Ast.NAME)
+fun registerNativeFunction (name:Ast.NAME)
                            (func:NATIVE_FUNCTION)
     : unit =
     (trace ["registering native function: ", LogErr.name name];

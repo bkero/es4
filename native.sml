@@ -342,7 +342,11 @@ fun getImplementedInterface (regs:Mach.REGS)
         if k >= (List.length implements) then
             Mach.Null
         else
-            Eval.instanceInterface regs env (List.nth(implements, k))
+            Mach.Object 
+                (Eval.instanceInterface 
+                     regs (Eval.needInstanceType 
+                               regs (Eval.evalTy 
+                                         regs (List.nth(implements, k)))))
     end
 
 
@@ -363,7 +367,11 @@ fun getSuperInterface (regs:Mach.REGS)
         if k >= (List.length extends) then
             Mach.Null
         else
-            Eval.findVal regs env (List.nth(extends, k))
+            Mach.Object
+                (Eval.instanceInterface 
+                     regs (Eval.needInstanceType 
+                               regs (Eval.evalTy 
+                                         regs (List.nth(extends, k)))))
     end
 
 
@@ -465,7 +473,7 @@ fun toPrimitive (regs:Mach.REGS)
         val hint = rawNth vals 1
     in
         if Mach.isString hint
-        then Eval.toPrimitive regs v (Eval.toUstring hint)
+        then Eval.toPrimitive regs v (Eval.toUstring regs hint)
         else Eval.toPrimitive regs v Ustring.empty
     end
 
@@ -479,15 +487,14 @@ fun defaultValue (regs:Mach.REGS)
         Eval.defaultValue regs obj hint
     end
 
-fun convertAndBindMagic (regs:Mach.REGS)
-                        (vals:Mach.VAL list)
-                        (cvt:(Mach.REGS -> Mach.VAL -> 'a))
+fun convertAndBindMagic (vals:Mach.VAL list)
+                        (cvt:(Mach.VAL -> 'a))
                         (mag:('a -> Mach.MAGIC))
     : Mach.VAL =
     let
         val ob = nthAsObj vals 0
         val v = rawNth vals 1
-        val p = cvt regs v
+        val p = cvt v
         val m = mag p
     in
         Mach.setMagic ob (SOME m);
@@ -509,27 +516,27 @@ fun convertAndBindMagic (regs:Mach.REGS)
 fun bindUInt (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic regs vals (Eval.toUInt32) (Mach.UInt)
+    convertAndBindMagic vals (Eval.toUInt32 regs) (Mach.UInt)
 
 fun bindInt (regs:Mach.REGS)
             (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic regs vals (Eval.toInt32) (Mach.Int)
+    convertAndBindMagic vals (Eval.toInt32 regs) (Mach.Int)
 
 fun bindBoolean (regs:Mach.REGS)
                 (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic regs vals (Eval.toBoolean) (Mach.Boolean)
+    convertAndBindMagic vals (Eval.toBoolean) (Mach.Boolean)
 
 fun bindDouble (regs:Mach.REGS)
                (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic regs vals (Eval.toDouble) (Mach.Double)
+    convertAndBindMagic vals (Eval.toDouble) (Mach.Double)
 
 fun bindDecimal (regs:Mach.REGS)
                 (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic regs vals 
+    convertAndBindMagic vals 
                         (Eval.toDecimal
                              Decimal.defaultPrecision
                              Decimal.defaultRoundingMode) 
@@ -538,7 +545,7 @@ fun bindDecimal (regs:Mach.REGS)
 fun bindString (regs:Mach.REGS)
                (vals:Mach.VAL list)
     : Mach.VAL =
-    convertAndBindMagic regs vals Eval.toUstring Mach.String
+    convertAndBindMagic vals (Eval.toUstring regs) Mach.String
 
 fun newBoolean (regs:Mach.REGS)
                (vals:Mach.VAL list)
@@ -548,17 +555,17 @@ fun newBoolean (regs:Mach.REGS)
 fun newString (regs:Mach.REGS)
               (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newString regs (Eval.toUstring (rawNth vals 0))
+    Eval.newString regs (Eval.toUstring regs (rawNth vals 0))
 
 fun newInt (regs:Mach.REGS)
            (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newInt regs (Eval.toInt32 (rawNth vals 0))
+    Eval.newInt regs (Eval.toInt32 regs (rawNth vals 0))
 
 fun newUInt (regs:Mach.REGS)
             (vals:Mach.VAL list)
     : Mach.VAL =
-    Eval.newUInt regs (Eval.toUInt32 (rawNth vals 0))
+    Eval.newUInt regs (Eval.toUInt32 regs (rawNth vals 0))
 
 fun newDouble (regs:Mach.REGS)
               (vals:Mach.VAL list)
@@ -588,9 +595,11 @@ fun fnLength (regs:Mach.REGS)
     : Mach.VAL =
     let
         val Mach.Obj { magic, ... } = nthAsObj vals 0
-        val len = case !magic of
-                      SOME (Mach.Function {func=Ast.Func{ty, ...}, ...}) => (length (#params ty))
-                    | SOME (Mach.NativeFunction {length, ...}) => length
+        val len = 
+            case !magic of
+                SOME (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
+                => AstQuery.minArgsOfFuncTy ty
+              | SOME (Mach.NativeFunction {length, ...}) => length
                     | _ => error ["wrong kind of magic to fnLength"]
     in
         Eval.newUInt regs (Word32.fromInt len)
@@ -736,20 +745,30 @@ fun eval (regs:Mach.REGS)
                      * user exceptions.
                      *)
                     fun str s = Eval.newString regs (Ustring.fromString s)
-                    val prog = Parser.parseLines lines
+                    val frag = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
+                    val (prog, frag) = 
+                        (* (Verify.verifyFragment *)
+                        (Defn.defFragment (Defn.mkTopEnv (#prog regs)) frag)
+                        (* ) *)
+                        handle
+                        LogErr.DefnError de => raise Eval.ThrowException (str de)
+                      | LogErr.VerifyError ve => raise Eval.ThrowException (str ve)
                 in
                     (*
                      * FIXME: maybe don't want to permit the full set of
                      * program constructs (classes?) so possibly sanitize the
                      * result of parsing a bit, strip out some sorts of things...
                      *)
-                    Eval.evalProgram regs (Verify.verifyProgram (Defn.defProgram prog))
-                    handle LogErr.DefnError de => raise Eval.ThrowException (str de)
-                         | LogErr.VerifyError ve => raise Eval.ThrowException (str ve)
-                         | LogErr.NameError ne => raise Eval.ThrowException (str ne)
-                         | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
+
+                    (* FIXME: re-enable verify at some point! *)
+                    (* Eval.evalFragment regs (Verify.verifyFragment (Defn.defFragment frag)) *)
+
+                    Eval.evalFragment (Eval.withProg regs prog) frag
+                    handle 
+                    LogErr.NameError ne => raise Eval.ThrowException (str ne)
+                  | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
                 end
         end
 
@@ -774,9 +793,9 @@ fun get (regs:Mach.REGS)
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
         fun propNotFound (curr:Mach.OBJ) : Mach.VAL =
-            Eval.throwRefErr1 ["getting nonexistent property ", LogErr.name name]
+            Eval.throwRefErr1 regs ["getting nonexistent property ", LogErr.name name]
     in
-        Eval.getValueOrVirtual obj name false propNotFound
+        Eval.getValueOrVirtual regs obj name false propNotFound
     end
 
 (*
@@ -786,6 +805,7 @@ fun set (regs:Mach.REGS)
         (vals:Mach.VAL list)
     : Mach.VAL =
     (Eval.setValueOrVirtual
+         regs
          (nthAsObj vals 0)
          (nthAsName regs vals 1)
          (rawNth vals 2)
@@ -939,7 +959,7 @@ fun print (regs:Mach.REGS)
           (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        fun printOne v = TextIO.print (Ustring.toAscii (Eval.toUstring v))
+        fun printOne v = TextIO.print (Ustring.toAscii (Eval.toUstring regs v))
     in
         List.app printOne vals;
         TextIO.print "\n";
@@ -951,9 +971,27 @@ fun load (regs:Mach.REGS)
     : Mach.VAL =
     let
         val fname = Ustring.toFilename (nthAsUstr vals 0)
+        val (prog, frag) = 
+            (* (Verify.verifyProgram *) 
+            Defn.defFragment 
+                (Defn.mkTopEnv (#prog regs)) 
+                (Parser.parseFile fname)
+            (* ) *)
+            handle x => 
+                   raise Eval.ThrowException 
+                             (Eval.newString regs
+                                  (Ustring.fromString "error while loading"))
     in
-        Eval.evalProgram regs (Verify.verifyProgram (Defn.defProgram (Parser.parseFile fname)))
-        handle x => raise Eval.ThrowException (Eval.newString (Ustring.fromString "error while loading"));
+        (* 
+         * FIXME: This is a bit odd. In eval(), we probably -- possibly? -- don't
+         * want the eval'ed string extending the program fixtures. But possibly
+         * we want load() to do so. Or not? Need to discuss.
+         *)
+        Eval.evalFragment (Eval.withProg regs prog) frag
+            handle x => 
+                   raise Eval.ThrowException 
+                             (Eval.newString regs
+                                             (Ustring.fromString "error while loading"));
         Mach.Undef
     end
 
@@ -1107,14 +1145,14 @@ fun inspect (regs:Mach.REGS)
                 Mach.ObjectTag _ => "<Obj>"
               | Mach.ArrayTag _ => "<Arr>"
               | Mach.FunctionTag _ => "<Fn>"
-              | Mach.ClassTag n => "<Class " ^ (LogErr.name n) ^ ">"
+              | Mach.ClassTag t => "<Class " ^ (Type.fmtType (Ast.InstanceType t)) ^ ">"
               | Mach.NoTag => "<NoTag>"
 
         (* FIXME: elaborate printing of type expressions. *)
         fun typ t = Type.toString t
         fun mag m = case m of
                         Mach.String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
-                      | m => Ustring.toAscii (Eval.magicToUstring m)
+                      | m => Ustring.toAscii (Mach.magicToUstring m)
 
         fun printVal indent _ Mach.Undef = TextIO.print "undefined\n"
           | printVal indent _ Mach.Null = TextIO.print "null\n"
@@ -1232,14 +1270,14 @@ fun registerNatives _ =
         addFn 3 Name.intrinsic_set set;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn 1 Name.intrinsic_toFixedStep10 (fn _ => fn _ => Eval.newString regs Ustring.empty);
-        addFn 1 Name.intrinsic_toExponential (fn _ => fn _ => Eval.newString regs Ustring.empty);
-        addFn 1 Name.intrinsic_toPrecision (fn _ => fn _ => Eval.newString regs Ustring.empty);
+        addFn 1 Name.intrinsic_toFixedStep10 (fn regs => fn _ => Eval.newString regs Ustring.empty);
+        addFn 1 Name.intrinsic_toExponential (fn regs => fn _ => Eval.newString regs Ustring.empty);
+        addFn 1 Name.intrinsic_toPrecision (fn regs => fn _ => Eval.newString regs Ustring.empty);
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn 0 Name.intrinsic_now now;
-        addFn 0 Name.nons_LocalTZA (fn _ => fn _ => Eval.newDouble regs 0.0);
-        addFn 0 Name.nons_DaylightSavingsTA (fn _ => fn _ => Eval.newDouble regs 0.0);
+        addFn 0 Name.nons_LocalTZA (fn regs => fn _ => Eval.newDouble regs 0.0);
+        addFn 0 Name.nons_DaylightSavingsTA (fn regs => fn _ => Eval.newDouble regs 0.0);
 
         (* Math.es natives *)
         addFn 1 Name.intrinsic_abs abs;
