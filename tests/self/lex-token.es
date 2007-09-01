@@ -38,7 +38,7 @@
 
 use namespace intrinsic;
 
-namespace Token
+public namespace Token
 
 {
     use default namespace Token

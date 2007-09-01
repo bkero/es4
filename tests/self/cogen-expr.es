@@ -593,18 +593,19 @@
                 return emitter.multinameL(ei);
             }
             case (qi:QualifiedIdentifier) {
-/*                switch type(qi.qual) {
+                switch type(qi.qual) {
                     case( lr:LexicalRef ) {
                         // Hack to deal with namespaces for now...
                         // later we will have to implement a namespace lookup to resolve qualified typenames
-                        return emitter.qname({ns:new AnonymousNamespace(lr.ident.ident), id:qi.ident})
+                        return emitter.qname({ns:new PublicNamespace(lr.ident.ident), id:qi.ident})
                     }
                     case( e:* ) {
-*/                        cgExpr(ctx, qi.qual);
-                        return emitter.rtqname(qi);
-/*                    }
+                        /// cgExpr(ctx, qi.qual);
+                        /// return emitter.rtqname(qi);
+                        throw "unsupported form of qualified identifier " + qi.ident;
+                    }
                 }
-*/            }
+            }
             case (x:*) { throw ("Unimplemented cgIdentExpr " + e) }
         }
     }

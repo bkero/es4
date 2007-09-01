@@ -38,7 +38,7 @@
 
 use namespace intrinsic;
 
-namespace Char
+public namespace Char
 
 {
     use default namespace Char;
@@ -154,20 +154,22 @@ namespace Char
     }
 
     function isIdentifierStart(c) {
-        if ((c >= Char::A && c <= Char::Z) ||
-            (c >= Char::a && c <= Char::z) ||
-            c == Char::UnderScore ||
-            c == Char::Dollar) return true;
+        if (c >= Char::A && c <= Char::Z) return true;
+        else if (c >= Char::a && c <= Char::z) return true;
+        else if (c == Char::UnderScore) return true;
+        else if (c == Char::Dollar) return true;
         return false;
     }
 
-    function _isDigit (c) {
+    function isDigit (c) {
         if (c >= Char::Zero && c <= Char::Nine) return true;
         return false;
     }
 
     function isIdentifierPart(c) {
-        return isIdentifierStart (c) || _isDigit (c);
+        if (isIdentifierStart (c)) return true;
+        else if (isDigit (c)) return true;
+        return false;
     }
 
 

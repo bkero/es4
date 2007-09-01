@@ -12,7 +12,7 @@ to get the same text form back.
 use namespace Release;
 use namespace Ast;
 use namespace intrinsic;
-namespace Decode;
+public namespace Decode;
 
 {
     use default namespace Decode;

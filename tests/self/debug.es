@@ -1,5 +1,5 @@
-namespace Debug;
-namespace Release;
+public namespace Debug;
+public namespace Release;
 
 Debug function trace (s) {
     print (s);

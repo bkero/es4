@@ -39,7 +39,7 @@
 use namespace Release;
 use namespace Ast;
 use namespace intrinsic;
-namespace Encode;
+public namespace Encode;
 
 {
     use default namespace Encode;
@@ -284,7 +284,7 @@ namespace Encode;
         : string {
         var str = "";
         enter ("Encode::stmt");
-        print ("  stmt");
+        // print ("  stmt");
         if (nd == null) {
             var str = "null";
         }
@@ -663,9 +663,6 @@ namespace Encode;
         case (nd: TernaryExpr) {
             var str =
                 "{ 'ast_class': 'TernaryExpr'"
-              + indent(nesting)
-              + ", 'op': "
-              + binOp (nd.op,nesting+", 'op': ".length)
               + indent(nesting)
               + ", 'e1': "
               + expr (nd.e1,nesting+", 'e1': ".length)
