@@ -427,15 +427,13 @@
             asm.I_setproperty(cgIdentExpr(ctx, name));  // Always store it; the effect is observable
         }
         else {
+            let use_once_name = cgIdentExpr(ctx, name);
             cgExpr(ctx, e.re);
             let t = asm.getTemp();
             if (e.op is Assign) {
                 asm.I_dup();
                 asm.I_setlocal(t);
-                let nm = cgIdentExpr(ctx, name);
-                if (e.le is ObjectRef && e.le.ident is ExpressionIdentifier)
-                    asm.I_swap();
-                asm.I_setproperty(nm);
+                asm.I_setproperty(use_once_name);
             }
             else {
                 asm.I_dup();
@@ -456,7 +454,7 @@
                 }
                 asm.I_dup();
                 asm.I_setlocal(t);
-                asm.I_setproperty(cgIdentExpr(ctx, name));
+                asm.I_setproperty(use_once_name);
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
@@ -550,7 +548,21 @@
         case (e:LiteralInt) { asm.I_pushint(ctx.cp.int32(e.intValue)) }
         case (e:LiteralUInt) { asm.I_pushuint(ctx.cp.uint32(e.uintValue)) }
         case (e:LiteralDouble) { asm.I_pushdouble(ctx.cp.float64(e.doubleValue)) }
-        case (e:LiteralDecimal) { asm.I_pushdouble(ctx.cp.float64(Number(e.decimalValue))) } // FIXME - the AVM2 can't handle decimal yet
+        case (e:LiteralDecimal) { 
+            let i : int = int(e.decimalValue);
+            let n : Number = Number(e.decimalValue);
+            if( e.decimalValue == String(i) ) {
+                asm.I_pushint(ctx.cp.int32(i));
+            }
+            else if( e.decimalValue == String(n) ) {
+                asm.I_pushdouble(ctx.cp.float64(Number(n))) 
+            }
+            else {
+                // Work around RI bug - converts all hex strings to 0
+                asm.I_pushstring(ctx.cp.stringUtf8(e.decimalValue));
+                asm.I_convert_d();
+            }
+        } // FIXME - the AVM2 can't handle decimal yet
         case (e:LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
         case (e:LiteralBoolean) {
             if (e.booleanValue)
