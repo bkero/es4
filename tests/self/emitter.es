@@ -75,7 +75,7 @@ namespace Emit;
     public class ABCEmitter
     {
         public var file, constants;
-        private var scripts = [];
+        /*private*/ var scripts = [];
 
         function ABCEmitter() {
             file = new ABCFile;
@@ -93,7 +93,8 @@ namespace Emit;
         }
 
         public function finalize() {
-            forEach(function (s) { s.finalize() }, scripts);
+            function f(s) { s.finalize() }
+            forEach(f, scripts);
             return file;
         }
 
@@ -394,6 +395,7 @@ namespace Emit;
                 cinit = new Method(s.e, [], "$cinit");
             return cinit;
         }
+
 /*
         public function newIInit(formals, name=null) {
             var iinit = new Method(s.e, formals, name);

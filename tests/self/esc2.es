@@ -1,9 +1,10 @@
 import avmplus.*;
+
 {
     import flash.utils.*;
     use namespace Decode;
     var fname = System.argv[0];
-print ("reading ", fname+".abc")
+    print ("reading ", fname+".abc")
     var bytes = ByteArray.readFile (fname+".abc");
     Domain.currentDomain.loadBytes(bytes);   // defines global var 'ast'
     print ("decoding", fname);

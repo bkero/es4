@@ -36,6 +36,25 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+var CTX_shared;
+class CTX {
+    var asm, stk, target;
+    var emitter, script, cp;
+
+    function CTX (asm, stk, target) {
+        this.asm = asm;
+        this.stk = stk;
+        this.target = target;
+
+        // tamarin hack
+        this.emitter = CTX_shared.emitter;
+        this.script = CTX_shared.script;
+        this.cp = CTX_shared.cp;
+    }
+}
+
+
+
 namespace Gen;
 //package cogen
 {
@@ -55,7 +74,8 @@ namespace Gen;
     /// function cg(tree: PROGRAM) {
         var e = new ABCEmitter;
         var s = e.newScript();
-        CTX.prototype = { "emitter": e, "script": s, "cp": e.constants };
+        // CTX.prototype = { "emitter": e, "script": s, "cp": e.constants };  // tamarin doesn't like initing prototype here
+        CTX_shared = { "emitter": e, "script": s, "cp": e.constants };
         cgProgram(new CTX(s.init.asm, null, s), tree);
         return e.finalize();
     }
@@ -76,11 +96,6 @@ namespace Gen;
      * for VAR/CONST/FUNCTION.
      */
 
-    function CTX(asm, stk, target) {
-        this.asm = asm;
-        this.stk = stk;
-        this.target = target;
-    }
 
     function push(ctx, node) {
         node.link = ctx.stk;
@@ -104,6 +119,7 @@ namespace Gen;
     
     function cgFixtures(ctx, fixtures) {
         let { target:target, asm:asm, emitter:emitter } = ctx;
+        let methidx, trait_kind, clsidx;
         for ( let i=0 ; i < fixtures.length ; i++ ) {
             let [fxname, fx] = fixtures[i];
             let name = emitter.fixtureNameToName(fxname);
@@ -115,7 +131,7 @@ namespace Gen;
 					// FIXME when we have more general support for type annos
             }
             case (mf:MethodFixture) {
-                let methidx = cgFunc(ctx, mf.func);
+                methidx = cgFunc(ctx, mf.func);
                 switch type (target) {
                     case (m:Method) {
                         target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
@@ -125,7 +141,7 @@ namespace Gen;
                     }
                     case (x:*) {
 //                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
-                        let trait_kind = TRAIT_Method;
+                        trait_kind = TRAIT_Method;
                         switch type(mf.func.name.kind) {
                             case (g:Get) {
                                 print("Getter, target: " + target);
@@ -142,7 +158,7 @@ namespace Gen;
                 }
             }
             case (cf:ClassFixture) {
-                let clsidx = cgClass(ctx, cf.cls);
+                clsidx = cgClass(ctx, cf.cls);
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
             }
             case (nf:NamespaceFixture) {

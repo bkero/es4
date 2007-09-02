@@ -212,9 +212,9 @@
     }
 
     function cgUnaryExpr(ctx, e) {
-        let {asm:asm, emitter:emitter} = ctx;
+        var {asm:asm, emitter:emitter} = ctx;
 
-        let incdec = function incdec(pre, inc) {
+        function incdec(pre, inc) {
             //let name;
             switch type (e.e1) {
             case (lr:LexicalRef) {

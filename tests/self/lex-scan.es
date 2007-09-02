@@ -110,7 +110,7 @@ public namespace Lex
                     colCoord = 0;
                 }
                 else {
-                    print ("token ", token);
+                    //print ("token ", token);
                     //print ("token ", token, " \t", Token::tokenText(token));
                     colCoord = colCoord + markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
@@ -227,8 +227,8 @@ public namespace Lex
                     let c = escapeSequence ();
                     return identifier (String.fromCharCode(c));
                 case Char::Zero: return zero ();
-                case Char::One: print ("one");
-                case Char::Two: print ("two");
+                case Char::One:
+                case Char::Two:
                 case Char::Three:
                 case Char::Four:
                 case Char::Five:
@@ -255,7 +255,6 @@ public namespace Lex
 	function zero ()
 	    : int
 	{
-        print ("found zero");
 	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::x:
@@ -524,7 +523,7 @@ public namespace Lex
 	    case Char::Six:
 	    case Char::Seven:
             retract ();
-            return octalOrNulEscape (c);
+            return octalOrNulEscape (0);
 	    case Char::x:
             return hexEscape (2);
 	    case Char::u:
@@ -588,7 +587,7 @@ public namespace Lex
 	{
 	    if (n==3) {
 		for (let i=0; i<n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n);
+		return octalEscape (n,0);
 	    }
 
 	    let c /*: int*/ = next ();
@@ -604,7 +603,7 @@ public namespace Lex
 		return octalEscapeFull (n+1);
 	    default:
 		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n);
+		return octalEscape (n,0);
 	    }
 	}
 
@@ -622,10 +621,10 @@ public namespace Lex
 	    case Char::Six:
 	    case Char::Seven:
 		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n+1);
+		return octalEscape (n+1,0);
 	    default:
 		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n);
+		return octalEscape (n,0);
 	    }
 	}
 
@@ -1298,7 +1297,7 @@ public namespace Lex
                           , "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
                           , "/* hello nobody */ hello // goodbye world"
                           , "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
-                          , "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
+                          // , "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
                           , "/abc/ 'hi' \"bye\" null break /def/xyz" ];
 
         for (var i = 0; i < testCases.length; ++i) {
@@ -1321,5 +1320,5 @@ public namespace Lex
             print ("scanned!");
         }
     }
-    Lex::test ();
+    // Lex::test ();
 }

@@ -619,7 +619,6 @@ use namespace intrinsic;
             enter("Parser::program ","");
 
             let [ts,cs] = scan.tokenList (scan.start);
-            print("cs.length ",cs.length); 
             coordList = cs;
             ts = new TokenStream (ts,0);
 
