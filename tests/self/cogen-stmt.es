@@ -217,43 +217,45 @@
         var hasBreak = false;
         for ( let i=0 ; i < cases.length ; i++ ) {
             let c = cases[i];
-            if (c.expr == null)
+
+            if (c.expr == null) {
+                assert (Ldefault===null);
                 Ldefault = asm.I_label();    // label default pos
+            }
 
             if (Lnext !== null) {
-                asm.I_label(Lnext);          // label next pos
-                print ("case label");
+                asm.I_label(Lnext);       // label next pos
                 Lnext = null;
             }
 
-            if (c.expr !== null) {
-                cgExpr(nctx, c.expr);        // check for match
+            if (c.expr != null) {
+                cgExpr(nctx, c.expr);     // check for match
                 asm.I_getlocal(t);
                 asm.I_strictequals();
-                Lnext = asm.I_iffalse();     // if no match jump to next label
-                if (Lfall !== null) {        // label fall through pos
-                    asm.I_label(Lfall);
-                    print ("fall through label");
-                    Lfall = null;
-                }
+                Lnext = asm.I_iffalse();  // if no match jump to next label
+            }
+
+            if (Lfall !== null) {         // label fall through pos
+                asm.I_label(Lfall);
+                Lfall = null;
             }
 
             let stmts = c.stmts;
             for ( let j=0 ; j < stmts.length ; j++ ) {
-                if (stmts[j] is BreakStmt) {
+                if (stmts[j] is BreakStmt) { // FIXME might be nested in if
                     var hasBreak=true;
                 }
-
                 cgStmt(nctx, stmts[j] );
             }
-            if (!hasBreak) {                 // if no break then jump past
-                Lfall = asm.I_jump ();       // next test
+
+            if (!hasBreak) {              // if no break then jump past
+                Lfall = asm.I_jump ();    // next test
             }
         }
         if (Lnext !== null)
             asm.I_label(Lnext);
         if (Lfall !== null)
-            asm.I_jump(Lfall);
+            asm.I_label(Lfall);
         if (Ldefault !== null)
             asm.I_jump(Ldefault);
         asm.I_label(Lbreak);

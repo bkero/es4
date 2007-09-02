@@ -23,7 +23,7 @@
 #./esc.sh tests/self/ast.es
 #./esc.sh tests/self/lex-char.es
 #./esc.sh tests/self/lex-token.es
-./esc.sh tests/self/lex-scan.es
+#./esc.sh tests/self/lex-scan.es
 #./esc.sh tests/self/parse-util.es
 #./esc.sh tests/self/parse-ident.es
 #./esc.sh tests/self/parse-lhsexpr.es

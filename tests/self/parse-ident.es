@@ -76,11 +76,8 @@ use namespace Release;
 
             var str = "";   // fixme: evaluator isn't happy if this is inside of the switch
 
-
-
             switch (hd (ts)) {
             case Token::Identifier:
-                print("ident found");
             case Token::Call:
             case Token::Cast:
             case Token::Const:
