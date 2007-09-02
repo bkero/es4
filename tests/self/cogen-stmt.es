@@ -165,15 +165,21 @@
     }
 
     function cgBreakStmt(ctx, {ident: ident}) {
+        function hit (node) {
+            return node.tag == "break" && (ident == null || memberOf(ident, stk.labels))
+        }
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "break" && (ident == null || memberOf(ident, stk.labels))),
+                                hit,
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
 
     function cgContinueStmt(ctx, {ident: ident}) {
+        function hit(node) {
+             return node.tag == "continue" && (ident == null || memberOf(ident, stk.labels))
+        }
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "continue" && (ident == null || memberOf(ident, stk.labels))),
+                                hit,
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
@@ -191,8 +197,11 @@
             t = asm.getTemp();
             asm.I_setlocal(t);
         }
+        function hit(node){
+            return node.tag == "function" 
+        }
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "function"),
+                                hit,
                                 false,
                                 "Internal error: definer should have checked that top-level code does not return");
         if (s.expr == null)

@@ -93,7 +93,8 @@ namespace Emit;
         }
 
         public function finalize() {
-            forEach(function (s) { s.finalize() }, scripts);
+            function f(s) { s.finalize() }
+            forEach(f, scripts);
             return file;
         }
 
