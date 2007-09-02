@@ -215,7 +215,6 @@
         var {asm:asm, emitter:emitter} = ctx;
 
         function incdec(pre, inc) {
-            //let name;
             switch type (e.e1) {
             case (lr:LexicalRef) {
                 //name = cgIdentExpr(ctx, lr.ident);
