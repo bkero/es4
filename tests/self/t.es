@@ -6,7 +6,6 @@ print(a.length)
 print(a)
 */
 
-/*
 function f (x) {
 switch (x) {
 case 10:
@@ -25,6 +24,4 @@ f(10)  // 10 20
 f(20)  // 20
 f(30)  // 30
 f(40)  // default
-*/
 
-print ("hello world")

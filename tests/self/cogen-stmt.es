@@ -242,15 +242,10 @@
 
             let stmts = c.stmts;
             for ( let j=0 ; j < stmts.length ; j++ ) {
-                if (stmts[j] is BreakStmt) { // FIXME might be nested in if
-                    var hasBreak=true;
-                }
                 cgStmt(nctx, stmts[j] );
             }
 
-            if (!hasBreak) {              // if no break then jump past
-                Lfall = asm.I_jump ();    // next test
-            }
+            Lfall = asm.I_jump ();        // fall through
         }
         if (Lnext !== null)
             asm.I_label(Lnext);
