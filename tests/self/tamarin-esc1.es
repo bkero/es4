@@ -26,6 +26,6 @@
     print ("encoding");
     var tx = "public var ast = "+program (nd);
     print ("writing");
-    writeFile (tx,file+".ast");
+    writeFile (tx,fname+".ast");
     print (tx.length+" chars written");
 }

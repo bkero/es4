@@ -322,6 +322,7 @@ use namespace intrinsic;
                 var [ts2,nd2] = classDefinition (ts, attrs.ns, attrs.dynamic);
                 break;
             case Token::Namespace:
+                print ("found namespace");
                 var [ts2,nd2] = namespaceDefinition (ts, omega, attrs.ns);
                 break;
             case Token::Type:
@@ -410,7 +411,7 @@ use namespace intrinsic;
                     var [ts1,nd1] = [tl (ts), nd];
                     break;
                 default:
-                    var [ts1,nd1] = primaryName (ts,allowIn);
+                    var [ts1,nd1] = primaryName (ts);
                     nd.ns = cx.evalIdentExprToNamespace (nd1);
                     var [ts1,nd1] = [ts1,nd];
                     break;
@@ -443,7 +444,7 @@ use namespace intrinsic;
                     var [ts1,nd1] = [ts1, nd];
                     break;
                 default:
-                    var [ts1,nd1] = primaryName (ts,allowIn);
+                    var [ts1,nd1] = primaryName (ts);
                     nd.ns = cx.evalIdentExprToNamespace (nd1);
                     var [ts1,nd1] = [ts1, nd];
                     break;
@@ -637,8 +638,8 @@ use namespace intrinsic;
                 var [ts1, nd1] = [ts, []];
             }
 
-            current_package = "";
-            current_class = "";
+            currentPackageName = "";
+            currentClassName = "";
 
             cx.enterLetBlock ();
             var [ts2,nd2] = directives (ts1, globalBlk);

@@ -206,19 +206,19 @@ use namespace Release;
 
             switch (hd (ts)) {
             case Token::Internal:
-                var [ts1,nd1] = [tl (ts), new Ast::InternalNamespace (current_package)];
+                var [ts1,nd1] = [tl (ts), new Ast::InternalNamespace (currentPackageName)];
                 break;
             case Token::Public:
-                var [ts1,nd1] = [tl (ts), new Ast::PublicNamespace (current_package)];
+                var [ts1,nd1] = [tl (ts), new Ast::PublicNamespace (currentPackageName)];
                 break;
             case Token::Intrinsic:
                 var [ts1,nd1] = [tl (ts), new Ast::IntrinsicNamespace];
                 break;
             case Token::Private:
-                var [ts1,nd1] = [tl (ts), new Ast::PrivateNamespace (current_class)];
+                var [ts1,nd1] = [tl (ts), new Ast::PrivateNamespace (currentClassName)];
                 break;
             case Token::Protected:
-                var [ts1,nd1] = [tl (ts), new Ast::ProtectedNamespace (current_class)];
+                var [ts1,nd1] = [tl (ts), new Ast::ProtectedNamespace (currentClassName)];
                 break;
             }
 
