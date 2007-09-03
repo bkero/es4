@@ -722,24 +722,22 @@ public namespace Parse;
                     let ptrns = p.ptrns;
                     for (let i=0; i<ptrns.length; ++i) {
                         let sub = ptrns[i];
-                        switch type (sub) {
-                        case (pat: FieldPattern) {
+                        /// switch type (sub) {
+                        /// case (sub: FieldPattern) {
+                        if (sub is FieldPattern) {
                             var typ = new Ast::FieldTypeRef (t,sub.ident);
                             var exp = new Ast::ObjectRef (new Ast::GetTemp (n), sub.ident);
-                            var pat = sub.ptrn;
+                            var sub = sub.ptrn;
                         }
-                        case (pat: *) {
+                        /// case (pat: *) {
+                        else {
                             var typ = new Ast::ElementTypeRef (t,i);
                             var exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::Identifier (i,[[Ast::noNS]]));
                                       // FIXME what is the ns of a temp and how do we refer it
-                            var pat = sub;
                         }
-                        case (x: *) {
-                            throw "internal error: desugarPattern " + p;
-                        }
-                        }
+                        /// }
 
-                        let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
+                        let [fx,ex] = desugarSubPattern (sub,typ,exp,n+1);
                         for (let j=0; j<fx.length; ++j) fxtrs.push(fx[j]);
                         exprs.push(ex);
                     }
