@@ -228,17 +228,17 @@
             let c = cases[i];
 
             if (c.expr == null) {
-                assert (Ldefault===null);
+                assert (Ldefault==null);
                 Ldefault = asm.I_label();    // label default pos
             }
 
             if (Lnext !== null) {
-                asm.I_label(Lnext);       // label next pos
+                asm.I_label(Lnext);          // label next pos
                 Lnext = null;
             }
 
             if (c.expr != null) {
-                cgExpr(nctx, c.expr);     // check for match
+                cgExpr(nctx, c.expr);        // check for match
                 asm.I_getlocal(t);
                 asm.I_strictequals();
                 Lnext = asm.I_iffalse();  // if no match jump to next label
@@ -254,14 +254,14 @@
                 cgStmt(nctx, stmts[j] );
             }
 
-            Lfall = asm.I_jump ();        // fall through
+            Lfall = asm.I_jump ();         // fall through
         }
         if (Lnext !== null)
             asm.I_label(Lnext);
-        if (Lfall !== null)
-            asm.I_label(Lfall);
         if (Ldefault !== null)
             asm.I_jump(Ldefault);
+        if (Lfall !== null)
+            asm.I_label(Lfall);
         asm.I_label(Lbreak);
         asm.killTemp(t);
     }
