@@ -600,11 +600,11 @@
         let{asm:asm, emitter:emitter} = ctx;
         switch type(e) {
             case (id:Identifier) {
-                return emitter.multiname(id);
+                return emitter.multiname(id,false);
             }
             case (ei:ExpressionIdentifier) {
                 cgExpr(ctx, ei.expr);
-                return emitter.multinameL(ei);
+                return emitter.multinameL(ei,false);
             }
             case (qi:QualifiedIdentifier) {
                 switch type(qi.qual) {

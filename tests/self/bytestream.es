@@ -36,11 +36,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-//namespace Util
-//package bytestream
 {
-    use default namespace Util
-
     /* Emitter for various data in ABC-compatible formats, as a byte
      * stream.  The byte stream is represented as an array of unsigned
      * integers below 256 here, the purpose is that we will dump its
@@ -51,52 +47,52 @@
 
     class ABCByteStream
     {
-        public function get length() {
+        function get length() {
             return bytes.length;
         }
 
-        public function uint8(val:uint) {
-            assert(val < 256);
+        function uint8(val:uint) {
+            Util::assert(val < 256);
             bytes.push(val);
         }
 
-        public function uint16(val:uint) {
-            assert(val < 65536);
+        function uint16(val:uint) {
+            Util::assert(val < 65536);
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF);
         }
 
-        public function int16(val:int) {
-            assert(-32768 <= val && val < 32768);
+        function int16(val:int) {
+            Util::assert(-32768 <= val && val < 32768);
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF);
         }
 
-        public function int24(val:int) {
-            assert(-16777216 <= val && val < 16777216);
+        function int24(val:int) {
+            Util::assert(-16777216 <= val && val < 16777216);
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF,
                        (val >> 16) & 0xFF);
         }
 
         function uint30(val:uint) {
-            assert(val < 1073741824);
+            Util::assert(val < 1073741824);
             uint32(val);
         }
 
-        public function int30(val:int) {
-            assert(-1073741824 <= val && val < 1073741824);
+        function int30(val:int) {
+            Util::assert(-1073741824 <= val && val < 1073741824);
             if (val < 0)
                 uint32(-val);
             else
                 uint32(toUint(val));
         }
 
-        public function int32(val:int) {
+        function int32(val:int) {
             uint32(toUint(val));
         }
 
-        public function uint32(val:uint) {
+        function uint32(val:uint) {
             if( val < 0x80 )
                 // 7 bits
                 bytes.push(val & 0x7F);
@@ -124,12 +120,12 @@
                            (val >> 28) & 0x7F);
         }
 
-        public function float64(val /*FIXME ES4: double*/) {
+        function float64(val /*FIXME ES4: double*/) {
             var bs = explodeNumber(val);  /*FIXME ES4: destructuring*/
             bytes.push(bs[0], bs[1], bs[2], bs[3], bs[4], bs[5], bs[6], bs[7]);
         }
 
-        public function utf8(str /*FIXME ES4: string*/) {
+        function utf8(str /*FIXME ES4: string*/) {
             for ( var i=0, limit=str.length ; i < limit ; i++ ) {
                 var c = str.charCodeAt(i);
                 if (c <= 0x7F)
@@ -149,24 +145,24 @@
             }
         }
 
-        public function setInt24(loc, val) {
-            assert(-16777216 <= val && val < 16777216);
+        function setInt24(loc, val) {
+            Util::assert(-16777216 <= val && val < 16777216);
             bytes[loc] = val & 0xFF;
             bytes[loc+1] = (val >> 8) & 0xFF;
             bytes[loc+2] = (val >> 16) & 0xFF;
         }
 
-        public function serialize(s:ABCByteStream) {
+        function serialize(s:ABCByteStream) {
             s.byteStream(this);
         }
 
-        public function byteStream(from:ABCByteStream) {
+        function byteStream(from:ABCByteStream) {
             var from_bytes = from.bytes;
             for ( var i=0, limit=from_bytes.length ; i < limit ; i++ )
                 bytes.push(from_bytes[i]);
         }
 
-        public function writeToArray(a) {
+        function writeToArray(a) {
             return copyArray(bytes);
         }
 
@@ -174,7 +170,7 @@
          * type is not part of the API here.  Clients must be adapted
          * to particular environments anyway.
          */
-        public function getBytes(): * {
+        function getBytes(): * {
             return bytes;
         }
 

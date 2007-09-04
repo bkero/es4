@@ -133,33 +133,35 @@ namespace Gen;
             }
             /// case (fx:MethodFixture) {
             else if (fx is MethodFixture) {
-                print ("ctx.stk.tag ",ctx.stk.tag);
-                var initScopeDepth = ctx.stk.tag=="instance"?2:0;
+                var initScopeDepth = (ctx.stk!=null && ctx.stk.tag=="instance")?2:0;
                 methidx = cgFunc(ctx, fx.func, initScopeDepth);
-                switch type (target) {
-                    case (m:Method) {
-                        target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
-                        asm.I_findpropstrict(name);
-                        asm.I_newfunction(methidx);
-                        asm.I_setproperty(name);
-                    }
-                    case (x:*) {
-//                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
-                        trait_kind = TRAIT_Method;
-                        switch type(fx.func.name.kind) {
-                            case (g:Get) {
-                                print("Getter, target: " + target);
-                                trait_kind = TRAIT_Getter;
-                            }
-                            case (s:Set) {
-                                print("Setter, target: " +target);
-                                trait_kind = TRAIT_Setter;
-                            }
-                        }
-                        target.addTrait(new ABCOtherTrait(name, 0, trait_kind, 0, methidx));
-
-                    }
+                /// switch type (target) {
+                /// case (m:Method) {
+                if (target is Method) {
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
+                    asm.I_findpropstrict(name);
+                    asm.I_newfunction(methidx);
+                    asm.I_setproperty(name);
                 }
+                /// case (x:*) {
+                else {
+                    // target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
+                    trait_kind = TRAIT_Method;
+                    /// switch type(fx.func.name.kind) {
+                    /// case (g:Get) {
+                    if (fx.func.name.kind is Get) {
+                        print("Getter, target: " + target);
+                        trait_kind = TRAIT_Getter;
+                    }
+                    /// case (s:Set) {
+                    else if (fx.func.name.kind is Set) {
+                        print("Setter, target: " +target);
+                        trait_kind = TRAIT_Setter;
+                    }
+                    /// }
+                    target.addTrait(new ABCOtherTrait(name, 0, trait_kind, 0, methidx));
+                }
+                /// }
             }
             /// case (fx:ClassFixture) {
             else if (fx is ClassFixture) {
@@ -172,7 +174,7 @@ namespace Gen;
             }
             /// case (fx:TypeFixture) {
             else if (fx is TypeFixture) {
-		print ("warning: ignoring type fixture");
+                print ("warning: ignoring type fixture");
             }
             /// case (fx:*) { 
             else {

@@ -21,19 +21,9 @@
             throw "assert failed";
         return;
     }
-/*
-    var s = readFile("tmp.txt");
-    print("File contents:");
-    print(s);
-    print("Writing file to out.txt");
-    writeFile(s,"out.txt");
-*/
 }
 
-namespace Util;
 {
-    use default namespace Util;
-    
     import flash.utils.*;
     
     function dumpABCFile(abcfile, filename) {

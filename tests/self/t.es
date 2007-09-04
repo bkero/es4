@@ -1,5 +1,6 @@
+use namespace Util
 class A {
-function m() { print('hi') }
+function m() { assert(false) }
 }
 
 new A().m()
