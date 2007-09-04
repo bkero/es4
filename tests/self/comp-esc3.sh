@@ -5,7 +5,7 @@
 #./esc1-r.sh util.es
 #./esc1-r.sh decoder.es
 #./esc1-r.sh util-tamarin.es
-./esc1-r.sh bytestream.es
+#./esc1-r.sh bytestream.es
 #./esc1-r.sh assembler.es
 #./esc1-r.sh abcfile.es
 #./esc1-r.sh emitter.es
@@ -37,7 +37,7 @@
 #./esc3-r.sh util.es
 #./esc3-r.sh decoder.es
 #./esc3-r.sh util-tamarin.es
-./esc3-r.sh bytestream.es
+#./esc3-r.sh bytestream.es
 #./esc3-r.sh assembler.es
 #./esc3-r.sh abcfile.es
 #./esc3-r.sh emitter.es

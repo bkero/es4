@@ -1,5 +1,5 @@
 #./esc1-t.sh debug.es
-./esc1-t.sh util.es
+#./esc1-t.sh util.es
 #./esc1-t.sh lex-char.es
 #./esc1-t.sh lex-token.es
 #./esc1-t.sh lex-scan.es
