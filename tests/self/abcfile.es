@@ -40,7 +40,6 @@ namespace Abc;
 //package abcfile
 {
     use default namespace Abc;
-    use namespace Util;
     use namespace Asm;
     //import util.*;
     //import assembler.*;
@@ -72,11 +71,11 @@ namespace Abc;
 
             var bytes = new ABCByteStream;
 
-            assert(constants);
-            assert(scripts.length != 0);
-            assert(methods.length != 0);
-            assert(bodies.length != 0);
-            assert(classes.length == instances.length);
+            Util::assert(constants);
+            Util::assert(scripts.length != 0);
+            Util::assert(methods.length != 0);
+            Util::assert(bodies.length != 0);
+            Util::assert(classes.length == instances.length);
 
 print ("emitting magic");
             bytes.uint16(minor_version);
@@ -113,7 +112,7 @@ print ("emitting bodies");
         public function addClassAndInstance(cls, inst)/*: uint*/ {
             var x = addClass(cls);
             var y = addInstance(inst);
-            assert( x == y );
+            Util::assert( x == y );
             return x;
         }
 
@@ -222,7 +221,7 @@ print ("emitting bodies");
               for ( var i=0 ; i < x.length ; i++ )
                   namespaceset_bytes.uint30(x[i]);
             }
-            return findOrAdd( copyArray(namespaces),
+            return findOrAdd( Util::copyArray(namespaces),
                               namespaceset_pool,
                               cmparray,
                               temp_func );
@@ -283,27 +282,33 @@ print ("emitting bodies");
         }
 
         public function hasRTNS(index) {
-            switch (multiname_pool[index].kind) {
+            var kind = multiname_pool[index].kind;
+            var result;
+            switch (kind) {
             case CONSTANT_RTQName:
             case CONSTANT_RTQNameA:
             case CONSTANT_RTQNameL:
             case CONSTANT_RTQNameLA:
-                return true;
+                result = true;
             default:
-                return false;
+                result = false;
             }
+            return result;
         }
 
         public function hasRTName(index) {
+            var kind = multiname_pool[index].kind;
+            var result;
             switch (multiname_pool[index].kind) {
             case CONSTANT_RTQNameL:
             case CONSTANT_RTQNameLA:
             case CONSTANT_MultinameL:
             case CONSTANT_MultinameLA:
-                return true;
+                result = true;
             default:
-                return false;
+                result = false;
             }
+            return result;
         }
 
         public function serialize(bs) {
@@ -394,7 +399,7 @@ print ("emitting bodies");
                 }
             }
             if (param_names != null) {
-                assert( param_names.length == param_types.length );
+                Util::assert( param_names.length == param_types.length );
                 for ( i=0 ; i < param_names.length ; i++ )
                     bs.uint30(param_names[i]);
             }
@@ -406,7 +411,7 @@ print ("emitting bodies");
     public class ABCMetadataInfo
     {
         function ABCMetadataInfo( name/*: uint*/, items: Array ) {
-            assert( name != 0 );
+            Util::assert( name != 0 );
             this.name = name;
             this.items = items;
         }
@@ -445,7 +450,7 @@ print ("emitting bodies");
         public function serialize(bs) {
             var i;
 
-            assert( iinit != undefined );
+            Util::assert( iinit != undefined );
 
             bs.uint30(name);
             bs.uint30(super_name);
@@ -454,7 +459,7 @@ print ("emitting bodies");
                 bs.uint30(protectedNS);
             bs.uint30(interfaces.length);
             for ( i=0 ; i < interfaces.length ; i++ ) {
-                assert( interfaces[i] != 0 );
+                Util::assert( interfaces[i] != 0 );
                 bs.uint30(interfaces[i]);
             }
             bs.uint30(iinit);
@@ -567,7 +572,7 @@ print ("emitting bodies");
         }
 
         public function serialize(bs) {
-            assert( cinit != undefined );
+            Util::assert( cinit != undefined );
             bs.uint30(cinit);
             bs.uint30(traits.length);
             for ( var i=0 ; i < traits.length ; i++ )
@@ -592,7 +597,7 @@ print ("emitting bodies");
         }
 
         public function serialize(bs) {
-            assert( init != undefined );
+            Util::assert( init != undefined );
             bs.uint30(init);
             bs.uint30(traits.length);
             for ( var i=0 ; i < traits.length ; i++ )
@@ -622,9 +627,9 @@ print ("emitting bodies");
         }
 
         public function serialize(bs) {
-            assert( max_stack != undefined && local_count != undefined );
-            assert( init_scope_depth != undefined && max_scope_depth != undefined );
-            assert( code != undefined );
+            Util::assert( max_stack != undefined && local_count != undefined );
+            Util::assert( init_scope_depth != undefined && max_scope_depth != undefined );
+            Util::assert( code != undefined );
 
             bs.uint30(method);
             bs.uint30(max_stack);

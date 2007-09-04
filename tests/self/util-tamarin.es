@@ -26,9 +26,9 @@
 {
     import flash.utils.*;
     
-    function dumpABCFile(abcfile, filename) {
+    public function dumpABCFile(abcfile, filename) {
         var bytes = abcfile.getBytes();
-        assert( bytes.push );  /*FIXME ES4: really "bytes is Array" */
+        Util::assert( bytes.push );  /*FIXME ES4: really "bytes is Array" */
 
         let len = bytes.length;
         let b = new ByteArray();
