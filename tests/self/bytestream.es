@@ -49,8 +49,7 @@
      * All data are dumped in litte-endian format.
      */
 
-
-    public final class ABCByteStream
+    class ABCByteStream
     {
         public function get length() {
             return bytes.length;
@@ -80,7 +79,7 @@
                        (val >> 16) & 0xFF);
         }
 
-        public function uint30(val:uint) {
+        function uint30(val:uint) {
             assert(val < 1073741824);
             uint32(val);
         }

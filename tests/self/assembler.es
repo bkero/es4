@@ -141,9 +141,10 @@ namespace Asm;
         const listify = true;
         const indent = "        ";
 
-        function AVM2Assembler(constants, numberOfFormals) {
+        function AVM2Assembler(constants, numberOfFormals, initScopeDepth) {
             this.constants = constants;
             this.nextTemp = numberOfFormals+1; // local 0 is always "this"
+            this.current_scope_depth = initScopeDepth;
         }
 
         public function get maxStack() { return max_stack_depth }

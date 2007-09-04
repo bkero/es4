@@ -1,7 +1,7 @@
 namespace Util
 //package util
 {
-    use default namespace Util
+    use default namespace Util;
     //import bytestream.*;
     
 

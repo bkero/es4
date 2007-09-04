@@ -715,7 +715,7 @@ public namespace Parse;
                     }
                 }
                 //case (p: (ArrayPattern, ObjectPattern)) {
-                case (x: *) {
+                case (p: *) {
                     let tn = new Ast::TempName (n);
                     var fxtrs = [];
                     let exprs = [];
@@ -727,17 +727,18 @@ public namespace Parse;
                         if (sub is FieldPattern) {
                             var typ = new Ast::FieldTypeRef (t,sub.ident);
                             var exp = new Ast::ObjectRef (new Ast::GetTemp (n), sub.ident);
-                            var sub = sub.ptrn;
+                            var ptn = sub.ptrn;
                         }
                         /// case (pat: *) {
                         else {
                             var typ = new Ast::ElementTypeRef (t,i);
                             var exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::Identifier (i,[[Ast::noNS]]));
                                       // FIXME what is the ns of a temp and how do we refer it
+                            var ptn = sub;
                         }
                         /// }
 
-                        let [fx,ex] = desugarSubPattern (sub,typ,exp,n+1);
+                        let [fx,ex] = desugarSubPattern (ptn,typ,exp,n+1);
                         for (let j=0; j<fx.length; ++j) fxtrs.push(fx[j]);
                         exprs.push(ex);
                     }

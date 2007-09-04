@@ -337,7 +337,7 @@ namespace Emit;
 
         function Script(e:ABCEmitter) {
             this.e = e;
-            this.init = new Method(e,[]);
+            this.init = new Method(e,[], 0);
         }
 
         public function newClass(name, basename) {
@@ -346,8 +346,8 @@ namespace Emit;
 
         /* All functions are in some sense global because the
            methodinfo and methodbody are both global. */
-        public function newFunction(formals) {
-            return new Method(e, formals);
+        public function newFunction(formals,initScopeDepth) {
+            return new Method(e, formals, initScopeDepth);
         }
 
         public function addException(e) {
@@ -392,13 +392,13 @@ namespace Emit;
 
         public function getCInit() {
             if(cinit == null )
-                cinit = new Method(s.e, [], "$cinit");
+                cinit = new Method(s.e, [], 0, "$cinit");
             return cinit;
         }
 
 /*
         public function newIInit(formals, name=null) {
-            var iinit = new Method(s.e, formals, name);
+            var iinit = new Method(s.e, formals, 2, name);
             iinit.I_getlocal(0);
             iinit.I_constructsuper(0);
             return iinit;
@@ -467,11 +467,12 @@ namespace Emit;
     public class Method // extends AVM2Assembler
     {
         public var e, formals, name, asm, traits = [], finalized=false, defaults = null, exceptions=[];
-
-        function Method(e:ABCEmitter, formals:Array, name=null, standardPrologue=true) {
-            asm = new AVM2Assembler(e.constants, formals.length);
+	var initScopeDepth;
+        function Method(e:ABCEmitter, formals:Array, initScopeDepth, name=null, standardPrologue=true) {
+            asm = new AVM2Assembler(e.constants, formals.length, initScopeDepth);
             //super(e.constants, formals.length);
             this.formals = formals;
+            this.initScopeDepth = initScopeDepth
             this.e = e;
             this.name = name;
 
@@ -508,6 +509,7 @@ namespace Emit;
             var body = new ABCMethodBodyInfo(meth);
             body.setMaxStack(asm.maxStack);
             body.setLocalCount(asm.maxLocal);
+            body.setInitScopeDepth(this.initScopeDepth);
             body.setMaxScopeDepth(asm.maxScope);
             body.setCode(asm);
             for ( var i=0 ; i < traits.length ; i++ )

@@ -124,14 +124,18 @@ namespace Gen;
             let [fxname, fx] = fixtures[i];
             let name = emitter.fixtureNameToName(fxname);
 
-            switch type (fx) {
-            case (vf:ValFixture) {
+            /// switch type (fx) {
+            /// case (fx:ValFixture) {
+            if (fx is ValFixture) {
                 if( !hasTrait(target.traits, name, TRAIT_Slot) )
-                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(vf.type))); 
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(fx.type))); 
 					// FIXME when we have more general support for type annos
             }
-            case (mf:MethodFixture) {
-                methidx = cgFunc(ctx, mf.func);
+            /// case (fx:MethodFixture) {
+            else if (fx is MethodFixture) {
+                print ("ctx.stk.tag ",ctx.stk.tag);
+                var initScopeDepth = ctx.stk.tag=="instance"?2:0;
+                methidx = cgFunc(ctx, fx.func, initScopeDepth);
                 switch type (target) {
                     case (m:Method) {
                         target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
@@ -142,7 +146,7 @@ namespace Gen;
                     case (x:*) {
 //                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
                         trait_kind = TRAIT_Method;
-                        switch type(mf.func.name.kind) {
+                        switch type(fx.func.name.kind) {
                             case (g:Get) {
                                 print("Getter, target: " + target);
                                 trait_kind = TRAIT_Getter;
@@ -157,18 +161,24 @@ namespace Gen;
                     }
                 }
             }
-            case (cf:ClassFixture) {
-                clsidx = cgClass(ctx, cf.cls);
+            /// case (fx:ClassFixture) {
+            else if (fx is ClassFixture) {
+                clsidx = cgClass(ctx, fx.cls);
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
             }
-            case (nf:NamespaceFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"}), emitter.namespace(nf.ns), CONSTANT_Namespace));
+            /// case (fx:NamespaceFixture) {
+            else if (fx is NamespaceFixture) {
+                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"}), emitter.namespace(fx.ns), CONSTANT_Namespace));
             }
-            case (tf:TypeFixture) {
+            /// case (fx:TypeFixture) {
+            else if (fx is TypeFixture) {
 		print ("warning: ignoring type fixture");
             }
-            case (x:*) { throw "Internal error: unhandled fixture type" }
+            /// case (fx:*) { 
+            else {
+                throw "Internal error: unhandled fixture type" 
             }
+            /// }
         }
     }
 
@@ -261,7 +271,7 @@ namespace Gen;
      */
     function cgCtor(ctx, c, instanceInits) {
         let formals_type = extractFormalTypes(ctx, c.func);
-        let method = new Method(ctx.script.e, formals_type, "$construct", false);
+        let method = new Method(ctx.script.e, formals_type, 2, "$construct", false);
         let asm = method.asm;
 
         let defaults = extractDefaultValues(ctx, c.func);
@@ -341,9 +351,9 @@ namespace Gen;
      * Generate code for the function
      * Return the function index
      */
-    function cgFunc({emitter:emitter, script:script}, f:FUNC) {
+    function cgFunc({emitter:emitter, script:script}, f:FUNC, initScopeDepth) {
         let formals_type = extractFormalTypes({emitter:emitter, script:script}, f);
-        let method = script.newFunction(formals_type);
+        let method = script.newFunction(formals_type,initScopeDepth);
         let asm = method.asm;
 
         let defaults = extractDefaultValues({emitter:emitter, script:script}, f);
