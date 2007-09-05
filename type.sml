@@ -373,7 +373,12 @@ and ty2norm (prog:Fixture.PROGRAM)
                   | NONE => repackage ty
             end
             
-          | Ast.TypeName _ => error ["dynamic name in type expression"]
+          | Ast.TypeName Ast.WildcardIdentifier => 
+            subTerm2Norm (Ast.SpecialType Ast.Any)
+
+          | Ast.TypeName _ =>             
+            (Pretty.ppType expr;
+             error ["dynamic name in type expression"])
                               
           | Ast.InstanceType it => 
             let

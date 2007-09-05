@@ -77,7 +77,8 @@ fun evalTy (regs:Mach.REGS)
     in
         if Type.isGroundTy norm
         then AstQuery.typeExprOf norm
-        else error regs ["Unable to ground type closure"]
+        else (Pretty.ppType (AstQuery.typeExprOf ty);
+              error regs ["Unable to ground type closure"])
     end
 
 
@@ -3958,7 +3959,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                 fun initializeAndConstructSuper (superArgs:Mach.VAL list) =
                     case extends of
                         NONE =>
-                        (trace ["checking all properties initialized at root class", fmtName name];
+                        (trace ["checking all properties initialized at root class ", fmtName name];
                          checkAllPropertiesInitialized classRegs instanceObj)
                       | SOME parentTy =>
                         let

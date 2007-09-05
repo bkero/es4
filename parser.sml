@@ -7234,18 +7234,26 @@ fun lexLines (lines : Ustring.SOURCE list)
         Lexer.lex ("<no filename>", reader)
     end
 
-fun parse ts =
+fun parseFrags [(Eof, _)] = []
+  | parseFrags ts = 
     let
-        val (residual, result) = (fragment ts)
-        fun check_residual [(Eof, _)] = ()
-          | check_residual _ = error ["residual tokens after parse"]
+        val (residual, frag) = fragment ts
     in
-        check_residual residual;
-        trace ["parsing complete:"];
+        trace ["parsed fragment:"];
         (if (!doTrace)
-         then Pretty.ppFragment result
+         then Pretty.ppFragment frag
          else ());
-        result
+        frag :: (parseFrags residual)
+    end
+
+fun parse ts = 
+    let
+        val frags = parseFrags ts
+    in
+        case frags of 
+            [x] => x
+          | other => Ast.Unit { name = NONE, 
+                                fragments = other }
     end
 
 fun logged thunk name =

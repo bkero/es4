@@ -252,18 +252,6 @@ fun boot _ : Mach.REGS =
         val (prog, funFrag) = loadFile prog "builtins/Function.es"
 
         (* FIXME: val objFrag = Verify.verifyProgram objProg *)
-        val glob = 
-            let
-                val (_, objIty) = lookupRoot prog Name.nons_Object
-                val objTag = Mach.ClassTag objIty
-            in
-                Mach.newObj objTag Mach.Null NONE
-            end
-
-        val regs = Mach.makeInitialRegs prog glob
-        val (objClass, objClassClosure, objClassObj) = 
-            instantiateRootClass regs Name.nons_Object
-
 
         val (prog, otherFrags) = 
             loadFiles prog 
@@ -315,6 +303,18 @@ fun boot _ : Mach.REGS =
                        
                        "builtins/Date.es",
                        "builtins/JSON.es"]
+
+        val glob = 
+            let
+                val (_, objIty) = lookupRoot prog Name.nons_Object
+                val objTag = Mach.ClassTag objIty
+            in
+                Mach.newObj objTag Mach.Null NONE
+            end
+
+        val regs = Mach.makeInitialRegs prog glob
+        val (objClass, objClassClosure, objClassObj) = 
+            instantiateRootClass regs Name.nons_Object
             
         (* Allocate runtime representations of anything in the initRib. *)
         val _ = Eval.allocScopeRib regs Defn.initRib
