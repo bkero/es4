@@ -1055,6 +1055,7 @@ and analyzeClassBody (env:ENV)
         val ns = resolveExprOptToNamespace env ns
         val name = {id=ident, ns=ns}
         val env = enterClass env name
+        val _ = trace ["defining class ", LogErr.name name]
 
         val (unhoisted,classRib,classInits) = defNonTopDefns env classDefns
         val classRib = (mergeRibs (#program env) unhoisted classRib)
@@ -1079,14 +1080,11 @@ and analyzeClassBody (env:ENV)
                 if Fixture.hasFixture classRib fname
                 then
                     case Fixture.getFixture classRib fname of
-                        Ast.MethodFixture { ty, ... } =>
+                        Ast.MethodFixture { ty, ... } => 
                         let
-                            val funcTyExpr:Ast.TYPE_EXPR = 
-                                Type.groundExpr (Type.normalize (#program env) ty)
-                        in
-                            case funcTyExpr of 
-                                Ast.FunctionType { params=[pt], ... } => SOME pt
-                              | _ => error ["conversion function has non-function type"]
+                            val pty = AstQuery.singleParamTyOfFuncTy ty
+                        in 
+                            SOME (Type.groundExpr (Type.normalize (#program env) pty))
                         end
                       | _ => NONE
                 else NONE

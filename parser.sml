@@ -7158,14 +7158,14 @@ and fragment (ts:TOKENS)
         end
       | (Package, _) :: (LeftBrace, _) :: rest =>
         let
-            val (ts1,nd1) = subFragments rest
+            val (ts1,nd1) = subFragments (tl ts)
         in
             (ts1, Ast.Package {name=[], fragments=nd1})
         end
       | (Package, _) :: rest =>
         let
             val (ts1,nd1) = packageName rest
-            val (ts2,nd2) = subFragments (tl ts1)
+            val (ts2,nd2) = subFragments ts1
         in
             (ts2, Ast.Package {name=nd1, fragments=nd2})
         end

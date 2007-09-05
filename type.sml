@@ -221,7 +221,8 @@ fun groundExpr (ty:Ast.TY)
     : Ast.TYPE_EXPR = 
     if isGroundTy ty
     then AstQuery.typeExprOf ty
-    else error ["extracting ground type expr from non-ground ty"]
+    else (Pretty.ppType (AstQuery.typeExprOf ty);
+          error ["extracting ground type expr from non-ground ty"])
              
 (* 
  * During normalization we work with a "slighly unpacked" form of type
@@ -257,15 +258,19 @@ and maybeNamed (prog:Fixture.PROGRAM)
                (mname:Ast.MULTINAME) 
     : TY_NORM =
     let
+        val _ = trace ["resolving type multiname ", LogErr.multiname mname]
         val (fullRibs, closed) = Fixture.getFullRibsForTy prog originalt 
     in
         case Multiname.resolveInRibs mname fullRibs of 
-            NONE => if closed 
-                    then error ["type multiname ", LogErr.multiname mname, 
-                                " failed to resolve in closed unit "]
-                    else repackage originalt
+            NONE => 
+            (trace ["failed to resolve"];
+             if closed 
+             then error ["type multiname ", LogErr.multiname mname, 
+                         " failed to resolve in closed unit "]
+             else repackage originalt)
           | SOME (ribs, n) => 
             let 
+                val _ = trace ["resolved to ", LogErr.name n]
                 val (defn:Ast.TY) = 
                     case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
                         Ast.TypeFixture ty => ty
@@ -436,12 +441,12 @@ and ty2norm (prog:Fixture.PROGRAM)
             {exprs=[], nullable=true, nonTopRibs=nonTopRibs, topUnit=topUnit}
             
           | (Ast.ArrayType []) => 
-            simple (Ast.ArrayType [Ast.SpecialType Ast.Any]) true
+            simple (Ast.ArrayType [Ast.SpecialType Ast.Any]) false
             
           | (Ast.ArrayType tys) => 
             (case subTerms tys of
                  NONE => repackage ty
-               | SOME tys' => simple (Ast.ArrayType tys') true)
+               | SOME tys' => simple (Ast.ArrayType tys') false)
             
           | (Ast.FunctionType { params, result, 
                                 thisType, hasRest, minArgs }) =>
@@ -456,7 +461,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                                                result = r,
                                                thisType = t,
                                                hasRest = hasRest,
-                                               minArgs = minArgs }) true
+                                               minArgs = minArgs }) false
                   | _ => repackage ty
             end
             
@@ -471,7 +476,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                   | SOME tys'=> 
                     simple 
                         (Ast.ObjectType (map pack (ListPair.zip (names, tys')))) 
-                        true
+                        false
             end
             
           | Ast.NullableType { expr, nullable } => 

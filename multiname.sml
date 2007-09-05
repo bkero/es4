@@ -116,7 +116,11 @@ fun resolveInRibs (mname:Ast.MULTINAME)
                   (env:Ast.RIBS)
     : (Ast.RIBS * Ast.NAME) option =
     let
-        fun f env ident nss = matchFixtures (List.hd env) ident nss
+        fun f env ident nss = 
+            case env of 
+                rib::ribs => matchFixtures rib ident nss
+              | _ => []
+
         fun tl [] = NONE
           | tl (x::xs) = SOME xs
     in

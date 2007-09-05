@@ -56,8 +56,9 @@ fun findTraceOption (tname:string)
       | "decimal" => SOME (DecimalParams.doTrace)
       | "native" => SOME (Native.doTrace)
       | "boot" => SOME (Boot.doTrace)
+      | "type" => SOME (Type.doTrace)
       (* | "stack" => SOME (Eval.traceStack) *)
-      (* FIXME: add "fixture" and "type" *)
+      (* FIXME: add "fixture" *)
       | _ => NONE
 
 fun consumeOption (opt:string) : bool =

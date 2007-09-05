@@ -248,6 +248,9 @@ fun boot _ : Mach.REGS =
          *)
 
         val (prog, objFrag) = loadFile prog "builtins/Object.es"
+        val (prog, clsFrag) = loadFile prog "builtins/Class.es"
+        val (prog, funFrag) = loadFile prog "builtins/Function.es"
+
         (* FIXME: val objFrag = Verify.verifyProgram objProg *)
         val glob = 
             let
@@ -261,8 +264,6 @@ fun boot _ : Mach.REGS =
         val (objClass, objClassClosure, objClassObj) = 
             instantiateRootClass regs Name.nons_Object
 
-        val (prog, clsFrag) = loadFile prog "builtins/Class.es"
-        val (prog, funFrag) = loadFile prog "builtins/Function.es"
 
         val (prog, otherFrags) = 
             loadFiles prog 
