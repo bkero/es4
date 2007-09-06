@@ -53,7 +53,7 @@ package
         magic::toPrimitive(value, preferredType);
 
     /* ES-262-3 9.4: The ToInteger operation */
-    intrinsic function ToInteger(value) : Number {
+    intrinsic function ToInteger(value) : Numeric {
         value = ToDouble(value);
         if (value !== value)
             return 0;

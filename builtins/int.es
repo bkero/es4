@@ -48,31 +48,31 @@ package
     use strict;
     import ECMAScript4_Internal.*;
 
-    intrinsic final class int! extends Number
+    // The [[Prototype]] of "int" is Number.[[Prototype]]
+    // Don't add prototype methods or properties here!
+
+    intrinsic final class int!
     {
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;
 
-        /* E262-4 draft */
+        /* Obsolete, needed for the moment because the RI does not yet handle
+           interconversion of numbers */
         meta static function convert(x)
             int(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        meta static function invoke(x=0i)
+        meta static function invoke(x=0)
             x is int ? x : magic::newInt(x);
 
         /* E262-4 draft: The int constructor */
-        function int(x=0i) : super(x)
+        function int(x=0i)
             magic::bindInt(this, x);
-
-        /* E262-4 draft: int.prototype.toString */
-        prototype function toString(this:int, radix)
-            this.toString(radix);
 
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(this);
-            else if (typeof radix === "number" &&
+            if (typeof radix === "number" &&
 		     radix >= 2 &&
 		     radix <= 36 && helper::isIntegral(radix)) {
                 /* INFORMATIVE */
@@ -92,47 +92,27 @@ package
                     q = "0";
                 return s + q;
             }
-            else
-                throw new TypeError("Invalid radix argument to int.toString");
+            throw new TypeError("Invalid radix argument to int.toString");
         }
-
-        /* E262-4 draft: int.prototype.toLocaleString() */
-        prototype function toLocaleString(this:int)
-            this.toLocaleString();
 
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
-            toString();
+            intrinsic::toString();
 
-        /* E262-4 draft: int.prototype.valueOf */
-        prototype function valueOf(this:int)
-            this.valueOf();
-
-        override intrinsic function valueOf() : Object!
+        override intrinsic function valueOf(): int
             this;
 
-        /* E262-3 15.7.4.5 int.prototype.toFixed */
-        prototype function toFixed(this:int, fractionDigits)
-            this.toFixed(ToDouble(fractionDigits));
+        intrinsic function toFixed(fractionDigits=0) : string
+	    double(this).intrinsic::toFixed(fractionDigits);
 
-        override intrinsic function toFixed(fractionDigits:double) : string
-	    ToDouble(this).toFixed(fractionDigits);
+        intrinsic function toExponential(fractionDigits=undefined) : string
+	    double(this).intrinsic::toExponential(fractionDigits);
 
-        /* E262-4 draft: int.prototype.toExponential */
-        prototype function toExponential(this:int, fractionDigits)
-            this.toExponential(ToDouble(fractionDigits));
-
-        override intrinsic function toExponential(fractionDigits:double) : string
-	    ToDouble(this).toExponential(fractionDigits);
-
-        /* E262-4 draft: int.prototype.toPrecision */
-        prototype function toPrecision(this:int, precision)
-            this.toPrecision(ToDouble(precision));
-
-        override intrinsic function toPrecision(precision:double) : string
-	    ToDouble(this).toPrecision(precision);
+        intrinsic function toPrecision(precision=undefined) : string
+	    double(this).intrinsic::toPrecision(precision);
 
         /* The E262-3 number primitive consumes all additional [[set]] operations. */
+        // FIXME: why is this here?
         meta function set(n,v) : void
         {
         }
