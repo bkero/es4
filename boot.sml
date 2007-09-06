@@ -215,19 +215,19 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
     end
 *)
 
-fun describeGlobal _ = ()
-    (*
-     if !doTrace
-     then
-	 (trace ["global object contents:"];
-	  case Eval.getGlobalObject () of
-	      Mach.Obj {props, ...} =>
-	      NameMap.appi printProp (!props);
-	  trace ["top fixture contents:"];
-	  Fixture.printTopFixtures (!Defn.topFixtures))
-     else ()
-     *)
-
+fun describeGlobal (regs:Mach.REGS) = 
+    if !doTrace
+    then
+	    (trace ["global object contents:"];
+	     let 
+             val Mach.Obj { props, ... } = (#global regs)
+         in
+	         NameMap.appi printProp (!props);
+             trace ["top fixture contents:"];
+	         Fixture.printRib (Fixture.getTopRib (#prog regs))
+         end)
+    else 
+        ()
 
 fun boot _ : Mach.REGS =
     let
@@ -242,7 +242,7 @@ fun boot _ : Mach.REGS =
          * There is no provision for this in the standard object-construction
          * protocol Eval.constructClassInstance, so we inline it here.
          *
-         * There are also 3 "root" classes that require special processing
+         * There are also 4 "root" classes that require special processing
          * during startup to avoid feedback loops in their definition: Object, 
          * Class and Function.
          *)
@@ -250,6 +250,7 @@ fun boot _ : Mach.REGS =
         val (prog, objFrag) = loadFile prog "builtins/Object.es"
         val (prog, clsFrag) = loadFile prog "builtins/Class.es"
         val (prog, funFrag) = loadFile prog "builtins/Function.es"
+        val (prog, ifaceFrag) = loadFile prog "builtins/Interface.es"
 
         (* FIXME: val objFrag = Verify.verifyProgram objProg *)
 
@@ -263,9 +264,7 @@ fun boot _ : Mach.REGS =
                        "builtins/string_primitive.es",
                        
                        "builtins/Name.es",
-                       
-                       "builtins/Interface.es",
-                       
+                                              
                        "builtins/Error.es",
                        "builtins/EvalError.es",
                        "builtins/RangeError.es",
@@ -313,16 +312,27 @@ fun boot _ : Mach.REGS =
             end
 
         val regs = Mach.makeInitialRegs prog glob
+        val _ = Mach.setBooting regs true
+
         val (objClass, objClassClosure, objClassObj) = 
             instantiateRootClass regs Name.nons_Object
-            
+
+        val (_, _, classClassObj) = instantiateRootClass regs Name.intrinsic_Class
+        val (_, _, funClassObj) = instantiateRootClass regs Name.nons_Function
+        val (_, _, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface
+
         (* Allocate runtime representations of anything in the initRib. *)
-        val _ = Eval.allocScopeRib regs Defn.initRib
+        val _ = trace ["allocating ribs for all builtins"]
+        val _ = Eval.allocScopeRib regs (Defn.initRib @ (Fixture.getTopRib prog))
+        val _ = trace ["allocated ribs for all builtins"]
+
+        val _ = describeGlobal regs;
 
        (* FIXME: 
 
         val clsFrag = Verify.verifyProgram clsFrag
         val funFrag = Verify.verifyProgram funFrag                      
+        val ifaceFrag = Verify.verifyProgram ifaceFrag
         val otherProgs = verifyFiles otherProgs
                          
         *)
@@ -330,23 +340,23 @@ fun boot _ : Mach.REGS =
         val _ = runObjectConstructorOnGlobalObject 
                     regs objClass objClassObj objClassClosure
 
-        val (_, _, classClassObj) = instantiateRootClass regs Name.intrinsic_Class
-        val (_, _, funClassObj) = instantiateRootClass regs Name.nons_Function
-
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
         completeClassFixtures regs Name.nons_Function funClassObj;
+        completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
         Eval.initClassPrototype regs funClassObj;
+        Eval.initClassPrototype regs ifaceClassObj;
 
         evalFiles regs otherFrags;
 
         Eval.evalTopFragment regs objFrag;
         Eval.evalTopFragment regs clsFrag;
         Eval.evalTopFragment regs funFrag;
+        Eval.evalTopFragment regs ifaceFrag;
 
         Mach.setBooting regs false;
 

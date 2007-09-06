@@ -260,6 +260,59 @@ fun shouldBeDontEnum (regs:Mach.REGS)
       | _ => (Mach.isBooting regs) 
              andalso (getObjId obj) = (getObjId (#global regs))
 
+fun findType (regs:Mach.REGS) 
+             (t:Ast.TYPE_EXPR)
+             (q:Ast.TYPE_EXPR -> ('a option))
+             (kind:string)
+    : 'a =    
+    case q t of
+        SOME a => a
+      | NONE => 
+        (case t of 
+             Ast.UnionType (t::ts) =>              
+             let
+                 fun f ty = case q ty of 
+                                NONE => false
+                              | SOME _ => true
+             in
+                 case q t of 
+                     NONE => findType regs (Ast.UnionType ts) q kind
+                   | SOME a => 
+                     if List.exists f ts
+                     then (Pretty.ppType t;
+                           error regs ["multiple ", kind, 
+                                       " type expressions found in union, ",
+                                       "need unique one"])
+                     else a
+             end
+           | _ => (Pretty.ppType t;
+                   error regs ["unable to find ", kind, " type expression"]))
+                 
+fun needInstanceType (regs:Mach.REGS)
+                     (t:Ast.TYPE_EXPR)
+    : Ast.INSTANCE_TYPE =
+    let 
+        fun isInstanceType ty = 
+            case ty of
+                Ast.InstanceType t => SOME t
+              | _ => NONE
+    in
+        findType regs t isInstanceType "instance"
+    end
+
+fun needFunctionType (regs:Mach.REGS)
+                     (t:Ast.TYPE_EXPR)
+    : Ast.FUNC_TYPE =
+    let 
+        fun isFunctionType ty = 
+            case ty of
+                Ast.FunctionType t => SOME t
+              | _ => NONE
+    in
+        findType regs t isFunctionType "function"
+    end
+
+
 (* Fundamental object methods *)
 
 fun allocRib (regs:Mach.REGS)
@@ -619,6 +672,8 @@ and getValueOrVirtual (regs:Mach.REGS)
                       (propNotFound:(Mach.OBJ -> Mach.VAL))
     : Mach.VAL =
     let
+        val _ = trace ["getting property ", fmtName name, 
+                       " on obj #", Int.toString (getObjId obj)]
         val Mach.Obj { props, ... } = obj
         fun upgraded (currProp:Mach.PROP) newVal =
             (Mach.delProp props name;
@@ -668,10 +723,12 @@ and getValueOrVirtual (regs:Mach.REGS)
                | Mach.ValProp v => v)
           | NONE =>
             let
-                val _ = trace ["in getValueOrVirtual, trying catchall meta::get(", fmtName name, ")"]
+                val _ = trace ["no property ", fmtName name, 
+                               " on obj #", Int.toString (getObjId obj)]
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
-                    evalCallMethodByRef (withThis regs obj) (obj, Name.meta_get) [newString regs (#id name)]
+                    (trace ["in getValueOrVirtual, trying catchall meta::get(", fmtName name, ")"];
+                     evalCallMethodByRef (withThis regs obj) (obj, Name.meta_get) [newString regs (#id name)])
             in
                 case Mach.findProp props Name.meta_get of
                     SOME { state = Mach.MethodProp _, ... } => catchAll ()
@@ -1030,21 +1087,6 @@ and needNamespaceOrNull (regs:Mach.REGS)
            | _ => error regs ["need namespace"])
       | Mach.Null => Name.noNS
       | _ => error regs ["need namespace"]
-
-and needInstanceType (regs:Mach.REGS)
-                     (t:Ast.TYPE_EXPR)
-    : Ast.INSTANCE_TYPE =
-    case t of
-        Ast.InstanceType t => t
-      | _ => error regs ["need instance type"]
-
-and needFunctionType (regs:Mach.REGS)
-                     (t:Ast.TYPE_EXPR)
-    : Ast.FUNC_TYPE =
-    case t of
-        Ast.FunctionType t => t
-      | _ => error regs ["need function type"]
-
 
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
