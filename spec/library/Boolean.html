@@ -1,0 +1,181 @@
+= Boolean classes =
+
+<pre>
+FILE:                       spec/library/Boolean.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-05
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+<P> ECMAScript provides a primitive representation for truth values in
+instances of the class ''boolean''.  It is primitive in the sense that
+the representation is directly operated upon by relational operators
+and control flow statements and control flow expressions, and also in
+the sense that the class ''boolean'' is a final and non-dynamic class
+for which implementations may provide efficient representations.
+
+<P> ECMAScript also provides the class ''Boolean'', which is a dynamic
+non-final class that holds ''boolean'' values.  Instances of
+''Boolean'' are usually converted to ''boolean'' when operated upon by
+relational operators and control flow statements.
+
+
+<H1 id="class Boolean"> The class ''Boolean'' </h1>
+
+<P> The class ''Boolean'' is a dynamic non-final class that represents
+a boolean value.  Instances of ''Boolean'' are usually converted to
+''boolean'' when operated upon by relational operators and control
+flow statements.
+
+== Synopsis ==
+
+<P> The class ''Boolean'' provides the following interface:
+
+{{{
+dynamic class Boolean
+{
+    <SIGNATURE file="Boolean.es" name="function Boolean">
+    <SIGNATURE file="Boolean.es" name="meta static function invoke">
+
+    static const length: uint = 1
+
+    <SIGNATURE file="Boolean.es" name="override intrinsic function toString">
+    <SIGNATURE file="Boolean.es" name="override intrinsic function valueOf">
+}
+}}}
+
+<P> The ''Boolean'' prototype object provides the following direct properties:
+
+{{{
+    toString: function (this: (Boolean,boolean)) <LDOTS>
+    valueOf:  function (this: (Boolean,boolean)) <LDOTS>
+}}}
+
+<P> The ''Boolean'' prototype object is also the prototype object of
+the class ''boolean''.
+
+== Methods on the ''Boolean'' class object ==
+
+=== new Boolean ( value=<LDOTS> ) ===
+
+<DESC> The ''Boolean'' constructor intializes a new ''Boolean'' object
+by storing //value//, converted to a boolean value by the
+''ToBoolean'' operator, in a private property.  The default //value//
+is **false**.
+
+<IMPL> The ''Boolean'' constructor is implementation-defined.
+
+=== Boolean( value=<LDOTS> ) ===
+
+<DESC> The ''Boolean'' class object called as a function converts
+//value// to boolean.
+
+<RETN> The ''boolean'' class object called as a function returns a
+''boolean'' object (not a ''Boolean'' object).
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="meta static function invoke">
+
+== Methods on ''Boolean'' instances ==
+
+=== intrinsic::toString ( ) ===
+
+<DESC> The intrinsic ''toString'' method converts this boolean value
+to a string.
+
+<RETN> The intrinsic ''toString'' method returns a string.
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="override intrinsic function toString">
+
+=== intrinsic::valueOf ( ) ===
+
+<DESC> The intrinsic ''valueOf'' method returns this boolean value.
+
+<RETN> The intrinsic ''valueOf'' method returns a ''boolean'' object
+(not a ''Boolean'' object).
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="override intrinsic function valueOf">
+
+== Methods on the ''Boolean'' prototype object ==
+
+<DESC> The methods on the ''Boolean'' prototype object invoke their
+intrinsic counterparts.
+
+<RETN> The methods on the ''Boolean'' prototype object return what their
+intrinsic counterparts return.
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="prototype function toString">
+<INCLUDE file="Boolean.es" name="prototype function valueOf">
+
+
+<H1 id="class boolean"> The class ''boolean'' </h1>
+
+== Synopsis ==
+
+<P> The class ''boolean'' provides the following interface:
+
+{{{
+final class boolean!
+{
+    <SIGNATURE file="boolean_primitive.es" name="function boolean">
+    <SIGNATURE file="boolean_primitive.es" name="meta static function invoke">
+
+    static const length: uint = 1
+
+    <SIGNATURE file="boolean_primitive.es" name="override intrinsic function toString">
+    <SIGNATURE file="boolean_primitive.es" name="override intrinsic function valueOf">
+}
+}}}
+
+<P> The ''boolean'' prototype object is the same as the ''Boolean''
+prototype object (<XREF target="Boolean.prototype">).
+
+
+== Methods on the ''boolean'' class object ==
+
+=== new boolean ( value=<LDOTS> ) ===
+
+<DESC> The ''boolean'' constructor intializes a new ''boolean'' object
+by storing //value//, converted to a boolean value by the
+''ToBoolean'' operator, in a private property.  The default //value//
+is **false**.
+
+<IMPL> The ''boolean'' constructor is implementation-defined.
+
+=== boolean( value=<LDOTS> ) ===
+
+<DESC> The ''boolean'' class object called as a function converts
+//value// to boolean.
+
+<RETN> The ''boolean'' class object called as a function returns a
+''boolean'' object.
+
+<SHORTIMPL>
+<INCLUDE file="boolean_primitive.es" name="meta static function invoke">
+
+== Methods on ''boolean'' instances ==
+
+=== intrinsic::toString ( ) ===
+
+<DESC> The intrinsic ''toString'' method converts this boolean value
+to a string, either ''"true"'' or ''"false"''.
+
+<RETN> The intrinsic ''toString'' method returns the string.
+
+<SHORTIMPL>
+<INCLUDE file="boolean_primitive.es" name="override intrinsic function toString">
+
+=== intrinsic::valueOf ( ) ===
+
+<DESC> The intrinsic ''valueOf'' method returns a ''boolean'' instance:
+the object on which the method was invoked.
+
+<RETN> The intrinsic ''valueOf'' method returns its ''this'' object.
+
+<SHORTIMPL>
+<INCLUDE file="boolean_primitive.es" name="override intrinsic function valueOf">
+
