@@ -1,4 +1,4 @@
-<H1 id="class int"> The class ''uint'' =
+<H1 id="class int"> The class ''uint'' </h1>
 
 <pre>
 FILE:                       spec/library/uint.html
@@ -9,9 +9,9 @@ REVIEWED AGAINST CODE:      NO
 </pre>
 
 
-<P> The class ''uint'' is a final, non-dynamic class that represents
-unsigned 32-bit integer values in the range 0 to 2<sup>32</sup>-1
-inclusive.
+<P> The class ''uint'' is a final, non-nullable, non-dynamic class
+that represents unsigned 32-bit integer values in the range 0 to
+2<sup>32</sup>-1 inclusive.
 
 <COMP> The class ''uint'' is new in the 4th Edition of this Standard.
 
@@ -20,7 +20,7 @@ inclusive.
 <P> The class ''uint'' provides the following interface:
 
 {{{
-dynamic class Number
+final class uint!
 {
     <SIGNATURE file="uint.es" name="function uint">
     <SIGNATURE file="uint.es" name="meta static function invoke">

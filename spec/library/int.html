@@ -1,4 +1,4 @@
-<H1 id="class int"> The class ''int'' =
+<H1 id="class int"> The class ''int'' </h1>
 
 <pre>
 FILE:                       spec/library/int.html
@@ -9,8 +9,8 @@ REVIEWED AGAINST CODE:      NO
 </pre>
 
 
-<P> The class ''int'' is a final, non-dynamic class that represents
-two's complement signed 32-bit integer values in the range
+<P> The class ''int'' is a final, non-nullable, non-dynamic class that
+represents two's complement signed 32-bit integer values in the range
 -2<sup>31</sup> to 2<sup>31</sup>-1 inclusive.
 
 <COMP> The class ''int'' is new in the 4th Edition of this Standard.
@@ -20,7 +20,7 @@ two's complement signed 32-bit integer values in the range
 <P> The class ''int'' provides the following interface:
 
 {{{
-dynamic class int
+final class int!
 {
     <SIGNATURE file="int.es" name="function int">
     <SIGNATURE file="int.es" name="meta static function invoke">

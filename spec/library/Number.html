@@ -83,10 +83,6 @@ dynamic class Number
     <SIGNATURE file="Number.es" name="function Number">
     <SIGNATURE file="Number.es" name="meta static function invoke">
     
-    <SIGNATURE file="Number.es" name="static function toFixed">
-    <SIGNATURE file="Number.es" name="static function toExponential">
-    <SIGNATURE file="Number.es" name="static function toPrecision">
-
     static const MAX_VALUE: double = double.MAX_VALUE
     static const MIN_VALUE: double = double.MIN_VALUE
     static const NaN: double = double.NAN
@@ -138,84 +134,6 @@ to +0) to ''double''.
 
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="meta static function invoke">
-
-=== toFixed ( x, fractionDigits=<LDOTS> ) ===
-
-<DESC> The static ''toFixed'' method converts the number //x// to a
-string in fixed-point notation with //fractionDigits// digits after
-the decimal point.  If //fractionDigits// is **undefined&=**, 0 is
-assumed.
-
-<RETN> The static ''toFixed'' method returns the fixed-point notation string
-representation of //x//.
-
-<SHORTIMPL>
-<INCLUDE file="Number.es" name="static function toFixed">
-
-<P> An implementation is permitted to extend the behaviour of toFixed
-for values of //fractionDigits// less than 0 or greater than 20.  In
-this case ''toFixed'' would not necessarily throw **RangeError** for
-such values.
-
-<NOTE>The output of ''toFixed'' may be more precise than ''toString''
-for some values because ''toString'' only prints enough significant
-digits to distinguish the number from adjacent number values. For
-example, ''(1000000000000000128).toString()'' returns
-"1000000000000000100", while ''(1000000000000000128).toFixed(0)''
-returns "1000000000000000128".
-
-=== toExponential ( x, fractionDigits=<LDOTS> ) ===
-
-<DESC> The static ''toExponential'' method converts the number //x//
-to a string in exponential notation with one digit before the
-significand's decimal point and //fractionDigits// digits after the
-significand's decimal point.  If //fractionDigits// is undefined,
-include as many significand digits as necessary to uniquely specify
-the number (just like in ''toString'' except that in this case the
-number is always output in exponential notation).
-
-<RETN> The static ''toExponential'' method returns the exponential
-notation string representation of //x//.
-
-<SHORTIMPL>
-<INCLUDE file="Number.es" name="static function toExponential">
-
-<P>An implementation is permitted to extend the behaviour of
-''toExponential'' for values of //fractionDigits// less than 0 or
-greater than 20.  In this case ''toExponential'' would not necessarily
-throw **RangeError** for such values.
-
-<NOTE> For implementations that provide more accurate conversions than
-required by the rules above, it is recommended that the following
-alternative version of step 19 be used as a guideline:
-
-<P class="note">Let e, n, and f be integers such that //f <GEQ> 0//,
-//10<SUP>f</SUP> <LEQ> n <LT> 10<SUP>f+1</SUP>//, the number value for
-//n <TIMES> 10<SUP>e-f</SUP>// is //x//, and //f// is as small as
-possible.  If there are multiple possibilities for //n//, choose the
-value of //n// for which //n <TIMES> 10<SUP>e-f</SUP>// is closest in
-value to //x//.  If there are two such possible values of //n//,
-choose the one that is even.
-
-=== toPrecision ( x, fractionDigits=<LDOTS> ) ===
-
-<DESC> The static ''toPrecision'' method converts the number //x// to
-a string, either in exponential notation with one digit before the
-significand's decimal point and //precision//-1 digits after the
-significand's decimal point or in fixed notation with //precision//
-significant digits.  If precision is undefined, call ToString (9.8.1)
-instead.
-
-<RETN> The static ''toPrecision'' method returns the selected string
-representation of //x//.
-
-<SHORTIMPL>
-<INCLUDE file="Number.es" name="static function toPrecision">
-
-<P> An implementation is permitted to extend the behaviour of
-''toPrecision'' for values of precision less than 1 or greater than
-21.  In this case ''toPrecision'' would not necessarily throw
-**RangeError** for such values.
 
 == Value properties on the ''Number'' class object ==
 
@@ -299,7 +217,7 @@ represented by this ''Number'' object.
 === Intrinsic methods that forward to static methods ===
 
 <DESC> The intrinsic ''toFixed'', ''toExponential'', and
-''toPrecision'' methods calls the corresponding static method on the
+''toPrecision'' methods convertthe corresponding static method on the
 ''Number'' object, passing the number value represented by this
 ''Number'' object (as determined by ''valueOf'') and the arguments
 passed to the intrinsic methods.
