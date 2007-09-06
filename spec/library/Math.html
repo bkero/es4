@@ -101,7 +101,8 @@ of arguments they accept, but convert all their arguments to number.
 
 <FIXME> The constraint on ''constructor'' is for backward
 compatibility and is also necessary to insure that the math object is
-a singleton object.
+a singleton object.  But note that ''Math.constructor'' is still defined,
+it is accessible through the prototype chain and is ''Object.constructor''.
 
 
 == Primitive operations on numbers ==

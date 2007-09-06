@@ -747,6 +747,20 @@ structural types ''FieldIterator'', ''FieldValueIterator'',
 
 <P> See section <XREF target="math-object">.
 
+<FIXME> Currently we have a single ''const'' math object that has some
+intrinsic fixture methods and some nonintrinsic dynamic methods, as per
+E262-3.  When the user opens ''intrinsic'' the intrinsic methods will be
+perferred, but only because the implementation knows the type of the
+Math object in the global environment.  This type is not exposed in the
+spec.  Thus the math object can't be passed around as a strongly typed
+parameter (should we wish for it).
+
+<P class="fixme"> Alternative approaches are to (a) expose that type
+and (b) separate the intrinsic bindings from the nonintrinsic global
+bindings by having two bindings for Math, one of them intrinsic, the
+other not.  (And in case (b) we'd expose that type, and it'd be final
+and nondynamic.)
+
 === global ===
 
 <!-- [[proposals:globals]] -->

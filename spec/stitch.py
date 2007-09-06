@@ -83,7 +83,7 @@ wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|PI|P|p|DESC|RETN|IMPL|SHORTIMPL)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL)>")
 
 entities = { "INFINITY": "&#x221E;",
 	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
@@ -95,6 +95,7 @@ entities = { "INFINITY": "&#x221E;",
 	     "GEQ": "&#x2265;",
 	     "LT": "<",
 	     "GT": ">",
+	     "TIMES": "&#x00D7;",
 	     "PI": "&#x03C0;",
 	     "P": "<P><span class=\"pcounter\"></span>",
 	     "p": "<P><span class=\"pcounter\"></span>",
