@@ -93,20 +93,20 @@ package
     magic native function getPrototype(o : Object!) : Object;
 
     /* Return true iff o has a local property named by p. */
-    magic native function hasOwnProperty(o : Object!, p : (Name,string)) : Boolean;
+    magic native function hasOwnProperty(o : Object!, p : (Name,string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontEnum bit is set */
-    magic native function getPropertyIsDontEnum(o : Object!, p : (Name,string)) : Boolean;
+    magic native function getPropertyIsDontEnum(o : Object!, p : (Name,string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontDelete bit is set */
-    magic native function getPropertyIsDontDelete(o : Object!, p : (Name,string)) : Boolean;
+    magic native function getPropertyIsDontDelete(o : Object!, p : (Name,string)) : boolean;
 
     /* Provided that the property p exists locally on o, set its DontEnum
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    magic native function setPropertyIsDontEnum(o : Object!, p : (Name,string), f : Boolean) : void;
+    magic native function setPropertyIsDontEnum(o : Object!, p : (Name,string), f : boolean) : void;
 
     magic native function isPrimitive(v:*) : boolean;
     magic native function toPrimitive(v:*, hint:string) : *;

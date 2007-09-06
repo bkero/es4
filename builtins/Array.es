@@ -50,7 +50,7 @@ package
     // The callback function typically takes (item, i, list) parameters
     type Mapper  = function (*, uint, Object):*;
     type Eacher  = function (*, uint, Object):void;    // FIXME: 'void' seems too strict
-    type Checker = function (*, uint, Object):Boolean;
+    type Checker = function (*, uint, Object):boolean;
     type Reducer = function (*, *, uint, Object):*;
 
     // INFORMATIVE: this is an implementation that meets the spec, but the spec
