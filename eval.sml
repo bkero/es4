@@ -1074,8 +1074,10 @@ and needNamespace (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => error regs ["need namespace"])
-      | _ => error regs ["need namespace"]
+           | _ => (Mach.inspect v 1;
+                   error regs ["need namespace"]))
+      | _ => (Mach.inspect v 1; 
+              error regs ["need namespace"])
 
 and needNamespaceOrNull (regs:Mach.REGS)
                         (v:Mach.VAL)
@@ -1084,9 +1086,11 @@ and needNamespaceOrNull (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => error regs ["need namespace"])
+           | _ => (Mach.inspect v 1; 
+                   error regs ["need namespace"]))
       | Mach.Null => Name.noNS
-      | _ => error regs ["need namespace"]
+      | _ => (Mach.inspect v 1; 
+              error regs ["need namespace"])
 
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
@@ -1305,7 +1309,7 @@ and newNamespace (regs:Mach.REGS)
         SOME v => v
       | NONE => 
         let 
-            val v = newBuiltin regs Name.intrinsic_Namespace (SOME (Mach.Namespace n))
+            val v = newRootBuiltin regs Name.intrinsic_Namespace (Mach.Namespace n)
         in 
             Mach.updateNsCache regs (n, v)
         end
@@ -2335,7 +2339,7 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralString s => newString regs s
       | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr regs exprs ty
       | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr regs expr ty
-      | Ast.LiteralNamespace n => newNamespace regs n
+      | Ast.LiteralNamespace n => newNamespace regs n                
       | Ast.LiteralFunction f => newFunctionFromFunc regs (#scope regs) f
       | Ast.LiteralContextualDecimal _ => error regs ["contextual decimal literal at runtime"]
       | Ast.LiteralContextualDecimalInteger _ => error regs ["contextual decimal integer literal at runtime"]
@@ -3661,66 +3665,65 @@ and invokeFuncClosure (regs:Mach.REGS)
                                        Int.toString (getObjId (#this regs))]; (#this regs))
         val regs = withThis regs this
         val regs = withScope regs env
+        (* NB: leave this here, it faults if we have a non-ground type, which is the point. *)
+        val tyExpr = evalTy regs ty
     in
-        if not (Type.isGroundTy ty)
-        then error regs ["invoking function with unbound type variables"]
-        else
+        let
+            val idStr = Ustring.toAscii (#ident name)
+            val strname = case (#kind name) of
+                              Ast.Ordinary => idStr
+                            | Ast.Operator => "operator " ^ idStr
+                            | Ast.Get => "get " ^ idStr
+                            | Ast.Set => "set " ^ idStr
+                            | Ast.Call => "call " ^ idStr
+                            | Ast.Has => "has " ^ idStr
+
+            val _ = Mach.push regs strname args
+
+            val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
+            val (varRegs:Mach.REGS) = extendScopeReg regs varObj Mach.ActivationScope
+            val (varScope:Mach.SCOPE) = (#scope varRegs)
+            val (Mach.Obj {props, ...}) = varObj
+
+            (* FIXME: self-name binding is surely more complex than this! *)
+            val selfName = Name.nons (#ident name)
+            fun initSelf _ = Mach.addProp props selfName { ty = Ast.SpecialType Ast.Any,
+                                                           state = Mach.MethodProp closure,
+                                                           attrs = { dontDelete = true,
+                                                                     dontEnum = true,
+                                                                     readOnly = true,
+                                                                     isFixed = true } }
+        in
+            trace ["invokeFuncClosure: allocating scope rib"];
+            allocScopeRib varRegs paramRib;
+            trace ["invokeFuncClosure: binding args"];
+            bindArgs regs varScope func args;
+            trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
+                   Int.toString (getScopeId varScope)];
+            evalScopeInits varRegs Ast.Local paramInits;
+
+            (* NOTE: is this for the binding of a function expression to its optional
+             * identifier? If so, we need to extend the scope chain before extending it
+             * with the activation object, and add the self-name binding to that new
+             * scope, as in sec 13 ed. 3.
+             *
+             * Changing defValue to setValue for now.
+             *)
+
+            initSelf ();
+            checkAllPropertiesInitialized regs varObj;
+            trace ["invokeFuncClosure: evaluating block"];
             let
-                val idStr = Ustring.toAscii (#ident name)
-                val strname = case (#kind name) of
-                                  Ast.Ordinary => idStr
-                                | Ast.Operator => "operator " ^ idStr
-                                | Ast.Get => "get " ^ idStr
-                                | Ast.Set => "set " ^ idStr
-                                | Ast.Call => "call " ^ idStr
-                                | Ast.Has => "has " ^ idStr
-
-                val _ = Mach.push regs strname args
-
-                val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
-                val (varRegs:Mach.REGS) = extendScopeReg regs varObj Mach.ActivationScope
-                val (varScope:Mach.SCOPE) = (#scope varRegs)
-                val (Mach.Obj {props, ...}) = varObj
-
-                (* FIXME: self-name binding is surely more complex than this! *)
-                val selfName = Name.nons (#ident name)
-                fun initSelf _ = Mach.addProp props selfName { ty = Ast.SpecialType Ast.Any,
-                                                               state = Mach.MethodProp closure,
-                                                               attrs = { dontDelete = true,
-                                                                         dontEnum = true,
-                                                                         readOnly = true,
-                                                                         isFixed = true } }
+                val res = case block of 
+                              NONE => Mach.Undef
+                            | SOME b => ((evalBlock varRegs b;
+                                          Mach.Undef)
+                                         handle ReturnException v => v)
             in
-                trace ["invokeFuncClosure: allocating scope rib"];
-                allocScopeRib varRegs paramRib;
-                trace ["invokeFuncClosure: binding args"];
-                bindArgs regs varScope func args;
-                trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
-                       Int.toString (getScopeId varScope)];
-                evalScopeInits varRegs Ast.Local paramInits;
-
-                (* NOTE: is this for the binding of a function expression to its optional
-                 * identifier? If so, we need to extend the scope chain before extending it
-                 * with the activation object, and add the self-name binding to that new
-                 * scope, as in sec 13 ed. 3.
-                 *
-                 * Changing defValue to setValue for now.
-                 *)
-
-                initSelf ();
-                checkAllPropertiesInitialized regs varObj;
-                trace ["invokeFuncClosure: evaluating block"];
-                let
-                    val res = case block of 
-                                  NONE => Mach.Undef
-                                | SOME b => ((evalBlock varRegs b;
-                                              Mach.Undef)
-                                             handle ReturnException v => v)
-                in
-                    Mach.pop regs;
-                    res
-                end
+                Mach.pop regs;
+                res
             end
+        end
     end
 
 and catch (regs:Mach.REGS)
@@ -3988,82 +3991,80 @@ and initializeAndConstruct (classRegs:Mach.REGS)
     let
         val { cls, env } = classClosure
         val Ast.Cls { instanceType, ... } = cls
+        (* NB: leave this here, it faults if we have a non-ground type, which is the point. *)
+        val tyExpr = evalTy classRegs instanceType
     in
-        if not (Type.isGroundTy instanceType)
-        then error classRegs ["constructing instance of class ",
-                              "with unbound type variables"]
-        else
-            let
-                fun idStr ob = Int.toString (getObjId ob)
-                val _ = trace ["initializeAndConstruct: this=#", (idStr (#this classRegs)),
-                               ", constructee=#", (idStr instanceObj),
-                               ", class=#", (idStr classObj)]
-                val _ = if getObjId (#this classRegs) = getObjId instanceObj
-                        then ()
-                        else error classRegs ["constructor running on non-this value"]
-                val Ast.Cls { name,
-                              extends,
-                              instanceInits,
-                              constructor,
-                              ... } = cls
-                fun initializeAndConstructSuper (superArgs:Mach.VAL list) =
-                    case extends of
-                        NONE =>
-                        (trace ["checking all properties initialized at root class ", fmtName name];
-                         checkAllPropertiesInitialized classRegs instanceObj)
-                      | SOME parentTy =>
-                        let
-                            val parentTy = evalTy classRegs parentTy
-                            val _ = trace ["initializing and constructing superclass ", Type.fmtType parentTy]
-                            val (superObj:Mach.OBJ) = instanceClass classRegs (needInstanceType classRegs parentTy)
-                            val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
-                            val (superRegs:Mach.REGS) = 
-                                withThis (withScope classRegs (#env superClsClosure)) instanceObj
-                        in
-                            initializeAndConstruct
-                                superRegs superClsClosure superObj superArgs instanceObj
-                        end
-            in
-                trace ["evaluating instance initializers for ", fmtName name];
-                evalObjInits classRegs instanceObj instanceInits;
-                case constructor of
-                    NONE => initializeAndConstructSuper []
-                  | SOME (Ast.Ctor { settings, superArgs, func }) =>
+        let
+            fun idStr ob = Int.toString (getObjId ob)
+            val _ = trace ["initializeAndConstruct: this=#", (idStr (#this classRegs)),
+                           ", constructee=#", (idStr instanceObj),
+                           ", class=#", (idStr classObj)]
+            val _ = if getObjId (#this classRegs) = getObjId instanceObj
+                    then ()
+                    else error classRegs ["constructor running on non-this value"]
+            val Ast.Cls { name,
+                          extends,
+                          instanceInits,
+                          constructor,
+                          ... } = cls
+            fun initializeAndConstructSuper (superArgs:Mach.VAL list) =
+                case extends of
+                    NONE =>
+                    (trace ["checking all properties initialized at root class ", fmtName name];
+                     checkAllPropertiesInitialized classRegs instanceObj)
+                  | SOME parentTy =>
                     let
-                        val _ = Mach.push classRegs ("ctor " ^ (Ustring.toAscii (#id name))) args
-                        val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
-                        val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
-                        val (varRegs:Mach.REGS) = extendScopeReg classRegs
-                                                                 varObj
-                                                                 Mach.ActivationScope
-                        val varScope = (#scope varRegs)
-                        val (instanceRegs:Mach.REGS) = extendScopeReg classRegs
-                                                                      instanceObj
-                                                                      Mach.InstanceScope
-                        val (ctorRegs:Mach.REGS) = extendScopeReg instanceRegs
-                                                                  varObj
-                                                                  Mach.ActivationScope
+                        val parentTy = evalTy classRegs parentTy
+                        val _ = trace ["initializing and constructing superclass ", Type.fmtType parentTy]
+                        val (superObj:Mach.OBJ) = instanceClass classRegs (needInstanceType classRegs parentTy)
+                        val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
+                        val (superRegs:Mach.REGS) = 
+                            withThis (withScope classRegs (#env superClsClosure)) instanceObj
                     in
-                        trace ["allocating scope rib for constructor of ", fmtName name];
-                        allocScopeRib varRegs paramRib;
-                        trace ["binding constructor args of ", fmtName name];
-                        bindArgs classRegs varScope func args;
-                        trace ["evaluating inits of ", fmtName name,
-                               " in scope #", Int.toString (getScopeId varScope)];
-                        evalScopeInits varRegs Ast.Local paramInits;
-                        trace ["evaluating settings"];
-                        evalObjInits varRegs instanceObj settings;
-                        trace ["initializing and constructing superclass of ", fmtName name];
-                        initializeAndConstructSuper (map (evalExpr varRegs) superArgs);
-                        trace ["entering constructor for ", fmtName name];
-                        (case block of 
-                             NONE => Mach.Undef
-                           | SOME b => (evalBlock ctorRegs b
-                                        handle ReturnException v => v));
-                         Mach.pop classRegs;
-                        ()
+                        initializeAndConstruct
+                            superRegs superClsClosure superObj superArgs instanceObj
                     end
-            end
+        in
+            trace ["evaluating instance initializers for ", fmtName name];
+            evalObjInits classRegs instanceObj instanceInits;
+            case constructor of
+                NONE => initializeAndConstructSuper []
+              | SOME (Ast.Ctor { settings, superArgs, func }) =>
+                let
+                    val _ = Mach.push classRegs ("ctor " ^ (Ustring.toAscii (#id name))) args
+                    val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
+                    val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
+                    val (varRegs:Mach.REGS) = extendScopeReg classRegs
+                                                             varObj
+                                                             Mach.ActivationScope
+                    val varScope = (#scope varRegs)
+                    val (instanceRegs:Mach.REGS) = extendScopeReg classRegs
+                                                                  instanceObj
+                                                                  Mach.InstanceScope
+                    val (ctorRegs:Mach.REGS) = extendScopeReg instanceRegs
+                                                              varObj
+                                                              Mach.ActivationScope
+                in
+                    trace ["allocating scope rib for constructor of ", fmtName name];
+                    allocScopeRib varRegs paramRib;
+                    trace ["binding constructor args of ", fmtName name];
+                    bindArgs classRegs varScope func args;
+                    trace ["evaluating inits of ", fmtName name,
+                           " in scope #", Int.toString (getScopeId varScope)];
+                    evalScopeInits varRegs Ast.Local paramInits;
+                    trace ["evaluating settings"];
+                    evalObjInits varRegs instanceObj settings;
+                    trace ["initializing and constructing superclass of ", fmtName name];
+                    initializeAndConstructSuper (map (evalExpr varRegs) superArgs);
+                    trace ["entering constructor for ", fmtName name];
+                    (case block of 
+                         NONE => Mach.Undef
+                       | SOME b => (evalBlock ctorRegs b
+                                    handle ReturnException v => v));
+                    Mach.pop classRegs;
+                    ()
+                end
+        end
     end
 
 and constructStandard (regs:Mach.REGS)

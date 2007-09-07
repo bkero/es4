@@ -38,6 +38,7 @@ structure Mach = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
+val traceStack = ref false
 fun log ss = LogErr.log ("[mach] " :: ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.machError ss
@@ -206,7 +207,6 @@ datatype VAL = Object of OBJ
            *)
           booting: bool ref,
           specials: SPECIAL_OBJS,
-          traceStack: bool ref,
           stack: FRAME list ref,
           valCache: VAL_CACHE, 
           profiler: PROFILER 
@@ -948,8 +948,7 @@ fun push (regs:REGS)
     : unit =
     let 
         val { aux = 
-              Aux { traceStack, 
-                    stack, 
+              Aux { stack, 
                     profiler =
                     Profiler { doProfile,
                                profileMap }, 
@@ -1007,7 +1006,7 @@ fun reportProfile (regs:REGS)
 fun pop (regs:REGS) 
     : unit =
     let 
-        val { aux = Aux { traceStack, stack, ...}, ... } = regs
+        val { aux = Aux { stack, ...}, ... } = regs
         val newStack = tl (!stack)
     in
         if !traceStack
@@ -1136,7 +1135,6 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          doubleNaN = ref NONE }
         val aux = Aux { booting = ref false,
                         specials = specials,
-                        traceStack = ref false,
                         stack = ref [],
                         valCache = vcache,
                         profiler = prof }

@@ -57,7 +57,7 @@ fun findTraceOption (tname:string)
       | "native" => SOME (Native.doTrace)
       | "boot" => SOME (Boot.doTrace)
       | "type" => SOME (Type.doTrace)
-      (* | "stack" => SOME (Eval.traceStack) *)
+      | "stack" => SOME (Mach.traceStack) 
       (* FIXME: add "fixture" *)
       | _ => NONE
 
