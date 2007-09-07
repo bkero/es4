@@ -38,6 +38,12 @@
 use namespace intrinsic;
 
 intrinsic final class Name extends String {
+
+    // FIXME: until we support something like "static type NS = ..."
+    // these types are not visible in the meta static functions below since
+    // they have class scope. The types are members of *instance* scope, due
+    // to the scope rule for parametric types.
+
     type NS = (Name, Namespace, string);
     type ID = (undefined, string);
 
@@ -56,7 +62,8 @@ intrinsic final class Name extends String {
         }
     }
 
-    meta static function invoke(ns : NS, id : ID = undefined) : Name
+    meta static function invoke(ns : (Name, Namespace, string) /* NS */, 
+                                id : (undefined, string) /* ID */ = undefined) : Name
         new Name(ns, id);
 
     meta static function convert(v : (Namespace, string))

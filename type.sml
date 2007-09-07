@@ -46,48 +46,12 @@ val anyType         = Ast.SpecialType Ast.Any
 
 fun assert b s = if b then () else (raise Fail s)
 
-fun toString ty =
-    let
-        fun nsExprToString e =
-            case e of
-                Ast.LiteralExpr (Ast.LiteralNamespace ns) => LogErr.namespace ns
-              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
-              | _ => error ["unexpected expression type in namespace context"]
-        fun nssToString nss =
-            LogErr.join ", " (map LogErr.namespace nss)
-        fun nsssToString nsss =
-            LogErr.join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
-        fun typeList tys =
-            LogErr.join ", " (map toString tys)
-        fun fieldToString {name, ty} = (Ustring.toAscii name) ^ ": " ^ (toString ty)
-        fun fieldList fields =
-            LogErr.join ", " (map fieldToString fields)
-    in
-        case ty of
-            Ast.SpecialType Ast.Any => "*"
-          | Ast.SpecialType Ast.Null => "null"
-          | Ast.SpecialType Ast.Undefined => "undefined"
-          | Ast.SpecialType Ast.VoidType => "<VoidType>"
-          | Ast.UnionType tys => "(" ^ (typeList tys) ^ ")"
-          | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => "<TypeName: {" ^ (nsssToString openNamespaces) ^ "}::" ^ (Ustring.toAscii ident) ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => "<TypeName: " ^ (nsExprToString qual) ^ "::" ^ (Ustring.toAscii ident) ^ ">"
-          | Ast.TypeName _ => "<TypeName: ...>"
-          | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
-          | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
-          | Ast.FunctionType {params, result, ...} => "<function (" ^ (typeList params) ^ ") -> " ^ (toString result) ^ ">"
-          | Ast.ObjectType fields => "{" ^ fieldList fields ^ "}"
-          | Ast.AppType {base, args} => (toString base) ^ ".<" ^ (typeList args) ^ ">"
-          | Ast.NullableType { expr, nullable } => (toString expr) ^ (if nullable then "?" else "!")
-          | Ast.InstanceType { name, ... } => LogErr.name name
-    end
-
 fun fmtName n = if !doTrace
                 then LogErr.name n
                 else ""
 
-fun fmtType ty = if !doTrace
-                 then toString ty
+fun fmtType t = if !doTrace
+                 then LogErr.ty t
                  else ""
 
 (* -----------------------------------------------------------------------------
@@ -504,7 +468,7 @@ and ty2norm (prog:Fixture.PROGRAM)
             end
             
           | Ast.ElementTypeRef (t, _) => 
-            error ["ElementTypeRef on non-ArrayType: ", toString t]
+            error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
             
           | Ast.FieldTypeRef ((Ast.ObjectType fields), ident) => 
             let
@@ -521,7 +485,7 @@ and ty2norm (prog:Fixture.PROGRAM)
             simple (Ast.SpecialType Ast.Any) false
             
           | Ast.FieldTypeRef (t, _) => 
-            error ["FieldTypeRef on non-ObjectType: ", toString t]
+            error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
             
           | _ => repackage ty
     end
@@ -775,7 +739,7 @@ fun groundIsCompatible (t1:Ast.TYPE_EXPR)
 		                         | (_::_,_::_) => check t1 t2)
                             | check _ _ =
                               error ["unexpected array types: ",
-                                     toString t1, " vs. ", toString t2]
+                                     LogErr.ty t1, " vs. ", LogErr.ty t2]
 	                  in
 		                  check types1 types2
 	                  end

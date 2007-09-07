@@ -380,7 +380,7 @@ fun allocRib (regs:Mach.REGS)
                 Mach.UninitProp
                 
               | Ast.TypeName ident =>
-                error regs ["allocating fixture with unresolved type name: ", Type.toString t]
+                error regs ["allocating fixture with unresolved type name: ", LogErr.ty t]
                 
               | Ast.ElementTypeRef _ =>
                 error regs ["allocating fixture of unresolved element type reference"]
@@ -771,8 +771,8 @@ and typeOpFailure (regs:Mach.REGS)
                   (tyExpr:Ast.TYPE_EXPR)
     : Mach.VAL =
     throwTypeErr regs [prefix, ": val=", Mach.approx v,
-                       " type=", Type.toString (typeOfVal v),
-                       " wanted=", Type.toString tyExpr]
+                       " type=", LogErr.ty (typeOfVal v),
+                       " wanted=", LogErr.ty tyExpr]
     
 and checkAndConvert (regs:Mach.REGS)
                     (v:Mach.VAL)
@@ -1840,8 +1840,8 @@ and checkCompatible (regs:Mach.REGS)
     if isCompatible regs v tyExpr
     then v
     else error regs ["typecheck failed, val=", Mach.approx v,
-                     " type=", Type.toString (typeOfVal v),
-                     " wanted=", Type.toString tyExpr]
+                     " type=", LogErr.ty (typeOfVal v),
+                     " wanted=", LogErr.ty tyExpr]
 
 and evalExpr (regs:Mach.REGS)
              (expr:Ast.EXPR)
@@ -2420,6 +2420,7 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
         val (thisObj, r) = evalRefExprFull regs func true
+        val _ = trace ["resolved thisObj=#", (Int.toString (getObjId thisObj)), " for call"]
         val result = evalCallMethodByRef (withThis regs thisObj) r args
     in
         trace ["<<< evalCallMethodByExpr"];
@@ -3993,6 +3994,13 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                               "with unbound type variables"]
         else
             let
+                fun idStr ob = Int.toString (getObjId ob)
+                val _ = trace ["initializeAndConstruct: this=#", (idStr (#this classRegs)),
+                               ", constructee=#", (idStr instanceObj),
+                               ", class=#", (idStr classObj)]
+                val _ = if getObjId (#this classRegs) = getObjId instanceObj
+                        then ()
+                        else error classRegs ["constructor running on non-this value"]
                 val Ast.Cls { name,
                               extends,
                               instanceInits,
@@ -4010,7 +4018,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                             val (superObj:Mach.OBJ) = instanceClass classRegs (needInstanceType classRegs parentTy)
                             val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
                             val (superRegs:Mach.REGS) = 
-                                withThis (withScope classRegs (#env superClsClosure)) superObj
+                                withThis (withScope classRegs (#env superClsClosure)) instanceObj
                         in
                             initializeAndConstruct
                                 superRegs superClsClosure superObj superArgs instanceObj

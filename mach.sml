@@ -556,32 +556,6 @@ fun setProto (ob:OBJ) (p:VAL)
         ob
     end
 
-fun setMagic (ob:OBJ) (m:MAGIC option)
-    : OBJ =
-    let
-         val Obj {magic, ...} = ob
-    in
-        magic := m;
-        ob
-    end
-
-fun newObject (t:VAL_TAG)
-              (p:VAL)
-              (m:MAGIC option)
-    : VAL =
-    Object (newObj t p m)
-
-
-val (objectType:Ast.TYPE_EXPR) =
-    Ast.ObjectType []
-
-val (emptyBlock:Ast.BLOCK) =
-    Ast.Block { pragmas = [],
-                defns = [],
-                body = [],
-                head= NONE,
-                loc=NONE }
-
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
@@ -612,81 +586,40 @@ fun defTemp (temps:TEMPS)
         else temps := replaceNth n (!temps)
     end
 
-(*
- * To get from any object to its CLS, you work out the
- * "nominal base" of the object's tag. You can then find
- * a fixed prop in the global object that has a "Class"
- * magic value pointing to the CLS.
+(* 
+ * Some stringification helpers on low-level values.
  *)
 
-fun nominalBaseOfTag (t:VAL_TAG)
-    : Ast.NAME =
-    case t of
-        ObjectTag _ => Name.nons_Object
-      | ArrayTag _ => Name.nons_Array
-      | FunctionTag _ => Name.nons_Function
-      | ClassTag ity => (#name ity)
-      | NoTag => error ["searching for nominal base of no-tag object"]
+fun magicToUstring (magic:MAGIC)
+    : Ustring.STRING =
+    case magic of
+        Double n => NumberToString n
+      | Decimal d => Ustring.fromString (Decimal.toString d)
+      | Int i => Ustring.fromInt32 i
+      | UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
+      | String s => s
+      | Boolean true => Ustring.true_
+      | Boolean false => Ustring.false_
+      | Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
+      | Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
+      | Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
+      | Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
+      | Namespace (Ast.Public id) => 
+        Ustring.append [Ustring.fromString "[public namespace: ", 
+                        id, Ustring.fromString "]"]
+      | Namespace (Ast.Internal _) => 
+        Ustring.fromString "[internal namespace]"
+      | Namespace (Ast.UserNamespace id) => 
+        Ustring.append [Ustring.fromString "[user-defined namespace ", 
+                        id, Ustring.fromString "]"]
+      | Class _ => Ustring.fromString "[class Class]"
+      | Interface _ => Ustring.fromString "[interface Interface]"
+      | Function _ => Ustring.fromString "[function Function]"
+      | Type _ => Ustring.fromString "[type Type]"
+      | ByteArray _ => Ustring.fromString "[ByteArray]"
+      | NativeFunction _ => Ustring.fromString "[function Function]"
+      | _ => error0 ["Shouldn't happen: failed to match in magicToUstring."]
 
-fun getObjMagic (ob:OBJ)
-    : (MAGIC option) =
-    case ob of
-        Obj ob' => !(#magic ob')
-
-fun getMagic (v:VAL)
-    : (MAGIC option) =
-    case v of
-        Object (Obj ob) => !(#magic ob)
-      | _ => NONE
-
-fun needMagic (v:VAL)
-    : (MAGIC) =
-    case v of
-        Object (Obj ob) => valOf (!(#magic ob))
-      | _ => error ["require object with magic"]
-
-fun needClass (v:VAL)
-    : (CLS_CLOSURE) =
-    case needMagic v of
-        Class cls => cls
-      | _ => error ["require class object"]
-
-fun needInterface (v:VAL)
-    : (IFACE_CLOSURE) =
-    case needMagic v of
-        Interface iface => iface
-      | _ => error ["require interface object"]
-
-fun needFunction (v:VAL)
-    : (FUN_CLOSURE) =
-    case needMagic v of
-        Function f => f
-      | _ => error ["require function object"]
-
-fun needType (v:VAL)
-    : (Ast.TY) =
-    case needMagic v of
-        Type t => t
-      | _ => error ["require type object"]
-
-fun fitsInUInt (x:LargeInt.int)
-    : bool =
-    let
-        val uintMax = IntInf.pow(2, 32) - 1
-        val uintMin = IntInf.fromInt 0
-    in
-        uintMin <= x andalso x <= uintMax
-    end
-
-
-fun fitsInInt (x:LargeInt.int)
-    : bool =
-    let
-        val intMax = IntInf.pow(2, 31) - 1
-        val intMin = ~ (IntInf.pow(2, 31))
-    in
-        intMin <= x andalso x <= intMax
-    end
 
 (*
  * ES-262-3 9.8.1: ToString applied to the Number (double) type.
@@ -747,35 +680,207 @@ and NumberToString (r:Real64.real)
                     end
 
 
-fun magicToUstring (magic:MAGIC)
-    : Ustring.STRING =
-    case magic of
-        Double n => NumberToString n
-      | Decimal d => Ustring.fromString (Decimal.toString d)
-      | Int i => Ustring.fromInt32 i
-      | UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
-      | String s => s
-      | Boolean true => Ustring.true_
-      | Boolean false => Ustring.false_
-      | Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
-      | Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
-      | Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
-      | Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
-      | Namespace (Ast.Public id) => 
-        Ustring.append [Ustring.fromString "[public namespace: ", 
-                        id, Ustring.fromString "]"]
-      | Namespace (Ast.Internal _) => 
-        Ustring.fromString "[internal namespace]"
-      | Namespace (Ast.UserNamespace id) => 
-        Ustring.append [Ustring.fromString "[user-defined namespace ", 
-                        id, Ustring.fromString "]"]
-      | Class _ => Ustring.fromString "[class Class]"
-      | Interface _ => Ustring.fromString "[interface Interface]"
-      | Function _ => Ustring.fromString "[function Function]"
-      | Type _ => Ustring.fromString "[type Type]"
-      | ByteArray _ => Ustring.fromString "[ByteArray]"
-      | NativeFunction _ => Ustring.fromString "[function Function]"
-      | _ => error0 ["Shouldn't happen: failed to match in magicToUstring."]
+fun inspect (v:VAL)
+            (d:Int32.int)
+    : unit =
+    let
+        val pad = "          "
+        fun p 0 s = List.app TextIO.print s
+          | p n s = (TextIO.print pad; p (n-1) s)
+
+        fun nl _ = TextIO.print "\n";
+
+        fun att {dontDelete,dontEnum,readOnly,isFixed} =
+            if not dontDelete
+               andalso not dontEnum
+               andalso not readOnly
+               andalso not isFixed
+            then ""
+            else
+                (" ("
+                 ^ (if dontDelete then "DD," else "")
+                 ^ (if dontEnum then "DE," else "")
+                 ^ (if readOnly then "RO," else "")
+                 ^ (if isFixed then "FX" else "")
+                 ^ ") ")
+
+        fun id (Obj ob) = Int.toString (#ident ob)
+
+        fun tag (Obj ob) =
+            case (#tag ob) of
+                (* FIXME: elaborate printing of structural tags. *)
+                ObjectTag _ => "<Obj>"
+              | ArrayTag _ => "<Arr>"
+              | FunctionTag _ => "<Fn>"
+              | ClassTag t => "<Class " ^ (LogErr.ty (Ast.InstanceType t)) ^ ">"
+              | NoTag => "<NoTag>"
+
+        (* FIXME: elaborate printing of type expressions. *)
+        fun typ t = LogErr.ty t
+        fun mag m = case m of
+                        String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
+                      | m => Ustring.toAscii (magicToUstring m)
+
+        fun printVal indent _ Undef = TextIO.print "undefined\n"
+          | printVal indent _ Null = TextIO.print "null\n"
+          | printVal indent 0 (Object (Obj ob)) =
+            (TextIO.print (case !(#magic ob) of
+                               NONE => tag (Obj ob)
+                             | SOME m => mag m);
+             TextIO.print "\n")
+
+          | printVal indent n (Object obj) =
+            let
+                fun subVal i v = printVal (i+1) (n-1) v
+                fun prop np =
+                    let
+                        val (n,{ty,state,attrs}) = np
+                        val indent = indent + 1
+                        val stateStr =
+                            case state of
+                                TypeVarProp => "[typeVar]"
+                              | TypeProp => "[type]"
+                              | UninitProp => "[uninit]"
+                              | ValProp v => "[val]"
+                              | VirtualValProp _ => "[virtual val]"
+                              | MethodProp _ => "[method]"
+                              | NativeFunctionProp _ => "[native function]"
+                              | NamespaceProp _ => "[namespace]"
+                              | ValListProp _ => "[val list]"
+                    in
+                        p indent ["   prop = ", LogErr.name n, ": ", typ ty, att attrs,  " = "];
+                        (* p indent ["   type = ", typ ty]; nl(); *)
+                        case state of
+                            ValProp v => subVal indent v
+                          | _ => TextIO.print (stateStr ^ "\n")
+                    end
+                val Obj { magic, props, proto, ... } = obj
+            in
+                TextIO.print "Obj {\n";
+                (case !magic of
+                     SOME m => (p indent ["  magic = ", (mag m)]; nl())
+                   | NONE => ());
+                p indent ["    tag = ", (tag obj)]; nl();
+                p indent ["  ident = ", (id obj)]; nl();
+                p indent ["  proto = "]; subVal indent (!proto);
+                p indent ["  props = ["]; nl();
+                NameMap.appi prop (!props);
+                p indent ["          ] }"]; nl()
+            end
+    in
+        printVal 0 d v
+    end
+
+
+fun magStr (SOME mag) = Ustring.toAscii (magicToUstring mag)
+  | magStr NONE = "<none>"
+                  
+fun setMagic (ob:OBJ) (m:MAGIC option)
+    : OBJ =
+    let
+         val Obj {magic, ident, ...} = ob                      
+    in
+        trace ["changing magic on obj #", Int.toString ident, 
+               " from ", magStr (!magic), " to ", magStr m];
+        magic := m;        
+        ob
+    end
+
+
+fun newObject (t:VAL_TAG)
+              (p:VAL)
+              (m:MAGIC option)
+    : VAL =
+    let
+        val obj = newObj t p m
+        val Obj { magic, ident, ... } = obj
+    in
+        trace ["setting initial magic on obj #", Int.toString ident, 
+               " to ", magStr (!magic)];
+        Object (obj)
+    end
+    
+
+(*
+ * To get from any object to its CLS, you work out the
+ * "nominal base" of the object's tag. You can then find
+ * a fixed prop in the global object that has a "Class"
+ * magic value pointing to the CLS.
+ *)
+
+fun nominalBaseOfTag (t:VAL_TAG)
+    : Ast.NAME =
+    case t of
+        ObjectTag _ => Name.nons_Object
+      | ArrayTag _ => Name.nons_Array
+      | FunctionTag _ => Name.nons_Function
+      | ClassTag ity => (#name ity)
+      | NoTag => error ["searching for nominal base of no-tag object"]
+
+fun getObjMagic (ob:OBJ)
+    : (MAGIC option) =
+    case ob of
+        Obj ob' => !(#magic ob')
+
+fun getMagic (v:VAL)
+    : (MAGIC option) =
+    case v of
+        Object (Obj ob) => !(#magic ob)
+      | _ => NONE
+
+fun needMagic (v:VAL)
+    : (MAGIC) =
+    case v of
+        Object (Obj ob) => valOf (!(#magic ob))
+      | _ => (inspect v 1; 
+              error ["require object with magic"])
+
+fun needClass (v:VAL)
+    : (CLS_CLOSURE) =
+    case needMagic v of
+        Class cls => cls
+      | _ => (inspect v 1; 
+              error ["require class object"])
+
+fun needInterface (v:VAL)
+    : (IFACE_CLOSURE) =
+    case needMagic v of
+        Interface iface => iface
+      | _ => (inspect v 1; 
+              error ["require interface object"])
+
+fun needFunction (v:VAL)
+    : (FUN_CLOSURE) =
+    case needMagic v of
+        Function f => f
+      | _ => (inspect v 1; 
+              error ["require function object"])
+
+fun needType (v:VAL)
+    : (Ast.TY) =
+    case needMagic v of
+        Type t => t
+      | _ => (inspect v 1; 
+              error ["require type object"])
+
+fun fitsInUInt (x:LargeInt.int)
+    : bool =
+    let
+        val uintMax = IntInf.pow(2, 32) - 1
+        val uintMin = IntInf.fromInt 0
+    in
+        uintMin <= x andalso x <= uintMax
+    end
+
+
+fun fitsInInt (x:LargeInt.int)
+    : bool =
+    let
+        val intMax = IntInf.pow(2, 31) - 1
+        val intMin = ~ (IntInf.pow(2, 31))
+    in
+        intMin <= x andalso x <= intMax
+    end
 
 
 (* Call stack and debugging stuff *)

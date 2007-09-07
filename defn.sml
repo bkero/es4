@@ -2796,10 +2796,9 @@ and defDefn (env:ENV)
 
       | Ast.TypeDefn td =>
         let
-            (* FIXME: this should be unhoisted, but it causes type 'Numeric' to vanish. Why? *)
-            val hoisted = defType env td
+            val unhoisted = defType env td
         in
-            ([], hoisted, [])
+            (unhoisted, [], [])
         end
 
       | _ => LogErr.unimplError ["defDefn"]
@@ -2987,17 +2986,21 @@ and defFragment (env:ENV)
                  *)
                 val (env, unhoisted_defn_fxtrs, inits) = defTopDefns env defns [] []
                 val (body, hoisted_body_fxtrs) = defStmts env body
+
+                 (* 
+                  * As far as I can tell, everything essentially hoists up from fragments
+                  * into the top rib. So there's nothing "unhoisted" returned, even
+                  * though we're modeling it via an Ast.BLOCK.
+                  *)
+                val env = extendProgramTopRib env unhoisted_pragma_fxtrs
+                val env = extendProgramTopRib env unhoisted_defn_fxtrs
                 val env = extendProgramTopRib env hoisted_body_fxtrs
             in
                 ((#program env), 
                  Ast.Anon (Ast.Block { pragmas = pragmas,
                                        defns = [],  (* clear definitions, we are done with them *)
                                        body = body,
-                                       head = SOME (Ast.Head 
-                                                        (mergeRibs (#program env) 
-                                                                   unhoisted_defn_fxtrs 
-                                                                   unhoisted_pragma_fxtrs,
-                                                         inits)),
+                                       head = SOME (Ast.Head ([], inits)),
                                        loc = loc}))
             end
     end

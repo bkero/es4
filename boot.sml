@@ -336,10 +336,6 @@ fun boot _ : Mach.REGS =
         val otherProgs = verifyFiles otherProgs
                          
         *)
-
-        val _ = runObjectConstructorOnGlobalObject 
-                    regs objClass objClassObj objClassClosure
-
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
@@ -352,6 +348,9 @@ fun boot _ : Mach.REGS =
         Eval.initClassPrototype regs ifaceClassObj;
 
         evalFiles regs otherFrags;
+
+        runObjectConstructorOnGlobalObject 
+            regs objClass objClassObj objClassClosure;
 
         Eval.evalTopFragment regs objFrag;
         Eval.evalTopFragment regs clsFrag;
