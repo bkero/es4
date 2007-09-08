@@ -291,7 +291,6 @@ fun boot _ : Mach.REGS =
                        "builtins/ByteArray.es",
                        
                        "builtins/Shell.es",   (* before RegExp, for debugging *)
-                       
                        "builtins/UnicodeClasses.es",
                        "builtins/UnicodeCasemapping.es",
                        "builtins/UnicodeTbl.es",
@@ -299,9 +298,9 @@ fun boot _ : Mach.REGS =
                        "builtins/RegExpCompiler.es",
                        "builtins/RegExpEvaluator.es",
                        "builtins/RegExp.es",
-                       
                        "builtins/Date.es",
-                       "builtins/JSON.es"]
+                       "builtins/JSON.es"
+                 ]
 
         val glob = 
             let

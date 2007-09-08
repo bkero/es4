@@ -126,10 +126,24 @@ val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.me
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 
     : Ast.TY = 
-    Ast.Ty { nonTopRibs = (#nonTopRibs e),
-             topUnit = (#topUnitName e),
-             expr = tyExpr }
+    let
+        val ty = 
+            Ast.Ty { nonTopRibs = (#nonTopRibs e),
+                     topUnit = (#topUnitName e),
+                     expr = tyExpr }
+    in
+        (* 
+         * FIXME: controversial? This attempts to normalize each type term the first 
+         * time we see it. This will make things *much* faster at runtime since we 
+         * can stop looking up typenames as we go; but it also means that we might
+         * report something as a type error, even if it's in code that never runs;
+         * something we said we would only do in strict mode. Maybe make a flag in 
+         * Fixture.PROGRAM to control exactly how strict we are?
+         *)        
+        Type.normalize (#program e) ty
+    end
 
+        
 fun hasNamespace (nl:Ast.NAMESPACE list)
                  (n:Ast.NAMESPACE)
     : bool =

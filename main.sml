@@ -98,6 +98,7 @@ fun withHandlers thunk =
   | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
   | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
   | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
+  | LogErr.AstError e => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
   | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
 fun startup (argvRest:string list)

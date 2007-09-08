@@ -42,6 +42,7 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[multiname] " :: ss) else ()
 fun error ss = LogErr.nameError ss
 fun fmtName n = if (!doTrace) then LogErr.name n else ""
+fun fmtFname n = if (!doTrace) then LogErr.fname n else ""
 fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
 fun resolve (mname:Ast.MULTINAME)
@@ -103,7 +104,6 @@ fun matchFixtures  (rib:Ast.RIB)
                             else false
                           | _ => ns = candidateNS
                 in
-                    trace ["considering fixture: ", LogErr.fname fxn];
                     if searchId = id andalso (List.exists matchNS nss)
                     then SOME n
                     else NONE
@@ -125,19 +125,6 @@ fun resolveInRibs (mname:Ast.MULTINAME)
           | tl (x::xs) = SOME xs
     in
         resolve mname env f tl
-    end
-
-fun resolveInFixtures (mname:Ast.MULTINAME)
-                      (env:'a)
-                      (getEnvRib:('a -> Ast.RIB))
-                      (getEnvParent:('a -> ('a option)))
-    : (Ast.RIB * Ast.NAME) option =
-    let
-        fun f env ident nss = matchFixtures (getEnvRib env) ident nss
-    in
-        case resolve mname env f getEnvParent of
-            SOME (env,n) => SOME (getEnvRib env, n)
-          | NONE => NONE
     end
 
 end

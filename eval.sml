@@ -260,59 +260,6 @@ fun shouldBeDontEnum (regs:Mach.REGS)
       | _ => (Mach.isBooting regs) 
              andalso (getObjId obj) = (getObjId (#global regs))
 
-fun findType (regs:Mach.REGS) 
-             (t:Ast.TYPE_EXPR)
-             (q:Ast.TYPE_EXPR -> ('a option))
-             (kind:string)
-    : 'a =    
-    case q t of
-        SOME a => a
-      | NONE => 
-        (case t of 
-             Ast.UnionType (t::ts) =>              
-             let
-                 fun f ty = case q ty of 
-                                NONE => false
-                              | SOME _ => true
-             in
-                 case q t of 
-                     NONE => findType regs (Ast.UnionType ts) q kind
-                   | SOME a => 
-                     if List.exists f ts
-                     then (Pretty.ppType t;
-                           error regs ["multiple ", kind, 
-                                       " type expressions found in union, ",
-                                       "need unique one"])
-                     else a
-             end
-           | _ => (Pretty.ppType t;
-                   error regs ["unable to find ", kind, " type expression"]))
-                 
-fun needInstanceType (regs:Mach.REGS)
-                     (t:Ast.TYPE_EXPR)
-    : Ast.INSTANCE_TYPE =
-    let 
-        fun isInstanceType ty = 
-            case ty of
-                Ast.InstanceType t => SOME t
-              | _ => NONE
-    in
-        findType regs t isInstanceType "instance"
-    end
-
-fun needFunctionType (regs:Mach.REGS)
-                     (t:Ast.TYPE_EXPR)
-    : Ast.FUNC_TYPE =
-    let 
-        fun isFunctionType ty = 
-            case ty of
-                Ast.FunctionType t => SOME t
-              | _ => NONE
-    in
-        findType regs t isFunctionType "function"
-    end
-
-
 (* Fundamental object methods *)
 
 fun allocRib (regs:Mach.REGS)
@@ -490,11 +437,11 @@ fun allocRib (regs:Mach.REGS)
                         
                       | Ast.ValFixture { ty, readOnly, ... } =>
                         let
-                            val tyExpr = evalTy regs ty 
+                            val ty = evalTy regs ty 
                         in
                             allocProp "value"
-                                      { ty = tyExpr ,
-                                        state = valAllocState tyExpr,
+                                      { ty = ty,
+                                        state = valAllocState ty,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum regs pn obj, *)
                                                   readOnly = readOnly,
@@ -787,7 +734,7 @@ and checkAndConvert (regs:Mach.REGS)
                     NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
                              Ast.SpecialType Ast.Any)
                   | SOME n => n
-            val (classTy:Ast.INSTANCE_TYPE) = needInstanceType regs classType
+            val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
             val (classObj:Mach.OBJ) = instanceClass regs classTy
             (* FIXME: this will call back on itself! *)
             val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_convert) [v]
@@ -1376,7 +1323,7 @@ and newFunctionFromClosure (regs:Mach.REGS)
     let
         val { func, ... } = closure
         val Ast.Func { ty, ... } = func
-        val fty = needFunctionType regs (evalTy regs ty)
+        val fty = AstQuery.needFunctionType (evalTy regs ty)
         val tag = Mach.FunctionTag fty
 
         val _ = trace ["finding Function.prototype"]
@@ -4016,7 +3963,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                     let
                         val parentTy = evalTy classRegs parentTy
                         val _ = trace ["initializing and constructing superclass ", Type.fmtType parentTy]
-                        val (superObj:Mach.OBJ) = instanceClass classRegs (needInstanceType classRegs parentTy)
+                        val (superObj:Mach.OBJ) = instanceClass classRegs (AstQuery.needInstanceType parentTy)
                         val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
                         val (superRegs:Mach.REGS) = 
                             withThis (withScope classRegs (#env superClsClosure)) instanceObj
@@ -4075,7 +4022,7 @@ and constructStandard (regs:Mach.REGS)
     let
         val {cls = Ast.Cls { instanceType, ...}, env, ...} = classClosure
         val classRegs = withScope regs env
-        val ty = needInstanceType regs (evalTy classRegs instanceType)
+        val ty = AstQuery.needInstanceType (evalTy classRegs instanceType)
         val (tag:Mach.VAL_TAG) = Mach.ClassTag ty
     in
         constructStandardWithTag classRegs classObj classClosure args tag
@@ -4371,7 +4318,7 @@ and initClassPrototype (regs:Mach.REGS)
                     NONE => Mach.Null
                   | SOME baseClassTy =>
                     let
-                        val ty = needInstanceType regs (evalTy regs baseClassTy)
+                        val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
                         val ob = instanceClass regs ty
                     in                        
                         if hasOwnValue ob Name.nons_prototype

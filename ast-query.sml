@@ -43,7 +43,56 @@ structure AstQuery = struct
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[ast-query] " :: ss) else ()
-fun error ss = LogErr.parseError ss
+fun error ss = LogErr.astError ss
+
+fun findType (t:Ast.TYPE_EXPR)
+             (q:Ast.TYPE_EXPR -> ('a option))
+             (kind:string)
+    : 'a =    
+    case q t of
+        SOME a => a
+      | NONE => 
+        (case t of 
+             Ast.UnionType (t::ts) =>              
+             let
+                 fun f ty = case q ty of 
+                                NONE => false
+                              | SOME _ => true
+             in
+                 case q t of 
+                     NONE => findType (Ast.UnionType ts) q kind
+                   | SOME a => 
+                     if List.exists f ts
+                     then error ["multiple ", kind, 
+                                 " type expressions found in union, ",
+                                 "need unique one: ", LogErr.ty t]
+                     else a
+             end
+           | _ => error ["unable to find ", kind, 
+                         " type expression in ", LogErr.ty t])
+
+
+fun needInstanceType (t:Ast.TYPE_EXPR)
+    : Ast.INSTANCE_TYPE =
+    let 
+        fun isInstanceType ty = 
+            case ty of
+                Ast.InstanceType t => SOME t
+              | _ => NONE
+    in
+        findType t isInstanceType "instance"
+    end
+
+fun needFunctionType (t:Ast.TYPE_EXPR)
+    : Ast.FUNC_TYPE =
+    let 
+        fun isFunctionType ty = 
+            case ty of
+                Ast.FunctionType t => SOME t
+              | _ => NONE
+    in
+        findType t isFunctionType "function"
+    end
 
 fun typeExprOf (ty:Ast.TY) : Ast.TYPE_EXPR = 
     let
@@ -75,18 +124,20 @@ fun extractType (ty:Ast.TY)
                                               
 fun extractFuncType (ty:Ast.TY) 
     : (Ast.FUNC_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
-    case ty of 
-        Ast.Ty {expr=Ast.FunctionType fty, nonTopRibs, topUnit} => 
-        (fty, nonTopRibs, topUnit)
-      | _ => error ["extracting FunctionType from non-FunctionType"]
+    let
+        val Ast.Ty {expr, nonTopRibs, topUnit} = ty
+    in
+        (needFunctionType expr, nonTopRibs, topUnit)
+    end
 
 
 fun extractInstanceType (ty:Ast.TY) 
     : (Ast.INSTANCE_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
-    case ty of 
-        Ast.Ty {expr=Ast.InstanceType ity, nonTopRibs, topUnit} => 
-        (ity, nonTopRibs, topUnit)
-      | _ => error ["extracting InstanceType from non-InstanceType"]
+    let
+        val Ast.Ty {expr, nonTopRibs, topUnit} = ty
+    in
+        (needInstanceType expr, nonTopRibs, topUnit)
+    end
 
 
 fun lift (q:('a -> Ast.TYPE_EXPR))

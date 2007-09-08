@@ -81,8 +81,8 @@ fun getFixture (b:Ast.RIB)
                (n:Ast.FIXTURE_NAME) 
     : Ast.FIXTURE = 
     let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (LogErr.fname n)]
+        fun search [] = LogErr.fixtureError ["fixture binding not found: ", 
+                                             (LogErr.fname n)]
           | search ((k,v)::bs) = 
             if k = n 
             then v
@@ -109,8 +109,8 @@ fun replaceFixture (b:Ast.RIB)
                    (v:Ast.FIXTURE)
     : Ast.RIB = 
     let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (LogErr.fname n)]
+        fun search [] = LogErr.fixtureError ["fixture binding not found: ", 
+                                             (LogErr.fname n)]
           | search ((k,v0)::bs) = 
             if k = n 
             then (k,v)::bs
@@ -183,7 +183,7 @@ fun mergeFixtures (tyeq:Ast.TY -> Ast.TY -> bool)
           | (Ast.ValFixture new, Ast.ValFixture old) =>
             if (tyeq (#ty new) (#ty old)) 
                andalso (#readOnly new) = (#readOnly old)
-            then (trace ["skipping fixture ",LogErr.fname newName]; oldRib)
+            then oldRib
             else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) =>
             replaceFixture oldRib newName (Ast.MethodFixture new) (* FIXME: types *)

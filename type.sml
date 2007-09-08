@@ -50,6 +50,10 @@ fun fmtName n = if !doTrace
                 then LogErr.name n
                 else ""
 
+fun fmtMname n = if !doTrace
+                 then LogErr.multiname n
+                 else ""
+
 fun fmtType t = if !doTrace
                  then LogErr.ty t
                  else ""
@@ -222,25 +226,25 @@ and maybeNamed (prog:Fixture.PROGRAM)
                (mname:Ast.MULTINAME) 
     : TY_NORM =
     let
-        val _ = trace ["resolving type multiname ", LogErr.multiname mname]
+        val _ = trace ["resolving type multiname ", fmtMname mname]
         val (fullRibs, closed) = Fixture.getFullRibsForTy prog originalt 
     in
         case Multiname.resolveInRibs mname fullRibs of 
             NONE => 
             (trace ["failed to resolve"];
              if closed 
-             then error ["type multiname ", LogErr.multiname mname, 
+             then error ["type multiname ", fmtMname mname, 
                          " failed to resolve in closed unit "]
              else repackage originalt)
           | SOME (ribs, n) => 
             let 
-                val _ = trace ["resolved to ", LogErr.name n]
+                val _ = trace ["resolved to ", fmtName n]
                 val (defn:Ast.TY) = 
                     case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
                         Ast.TypeFixture ty => ty
                       | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
                       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-                      | _ => error ["expected type fixture for: ", LogErr.name n]
+                      | _ => error ["expected type fixture for: ", fmtName n]
             in
                 ty2norm prog defn
             end
@@ -341,8 +345,7 @@ and ty2norm (prog:Fixture.PROGRAM)
             subTerm2Norm (Ast.SpecialType Ast.Any)
 
           | Ast.TypeName _ =>             
-            (Pretty.ppType expr;
-             error ["dynamic name in type expression"])
+            error ["dynamic name in type expression: ", LogErr.ty expr]
                               
           | Ast.InstanceType it => 
             let

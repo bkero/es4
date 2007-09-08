@@ -145,6 +145,7 @@ exception ParseError of string
 exception NameError of string
 exception DefnError of string
 exception FixtureError of string
+exception AstError of string
 exception TypeError of string
 exception VerifyError of string
 exception EvalError of string
@@ -179,6 +180,9 @@ fun evalError ss =
 
 fun machError ss =
      raise MachError (locstr ss)
+
+fun astError ss =
+     raise AstError (locstr ss)
 
 fun hostError ss =
      raise HostError (locstr ss)

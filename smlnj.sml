@@ -57,6 +57,7 @@ fun main (argv0:string, argvRest:string list) =
                   | LogErr.MachError e => (print ("**BOOT ERROR** MachError: " ^ e ^ "\n"); raise noboot)
                   | LogErr.VerifyError e => (print ("**BOOT ERROR** VerifyError: " ^ e ^ "\n"); raise noboot)
                   | LogErr.HostError e => (print ("**BOOT ERROR** HostError: " ^ e ^ "\n"); raise noboot)
+                  | LogErr.AstError e => (print ("**BOOT ERROR** AstError: " ^ e ^ "\n"); raise noboot)
                   | LogErr.UnimplError e => (print ("**BOOT ERROR** UnimplError: " ^ e ^ "\n"); raise noboot)
                                             
                 fun main' (argv0:string, argvRest:string list) =
