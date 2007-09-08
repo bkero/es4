@@ -877,10 +877,29 @@ and resolveClassInheritance (env:ENV)
         val (implementsTys:Ast.TY list, 
              instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
 
-        val superTypes:Ast.TY list = 
-            case extendsTy of 
-                NONE => implementsTys
-              | SOME ty => ty :: implementsTys
+
+        val instanceType = 
+            let
+                val (it, ntr, tu) = AstQuery.extractInstanceType instanceType
+                val superTypes:Ast.TY list = 
+                    case extendsTy of 
+                        NONE => implementsTys
+                      | SOME ty => ty :: implementsTys
+                val prog = (#program env)
+                val superTypes = map (Type.groundExpr o (Type.normalize prog)) superTypes
+                val te = Ast.InstanceType { name = (#name it),
+                                            typeArgs = (#typeArgs it),
+                                            nonnullable = (#nonnullable it),
+                                            superTypes = superTypes,
+                                            ty = (#ty it),
+                                            conversionTy = (#conversionTy it),
+                                            dynamic = (#dynamic it)}
+            in
+                Ast.Ty { expr = te,
+                         nonTopRibs = ntr,
+                         topUnit = tu }
+            end
+                
     in
         Ast.Cls {name=name,
                  typeParams=typeParams,
