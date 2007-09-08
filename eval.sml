@@ -670,12 +670,9 @@ and getValueOrVirtual (regs:Mach.REGS)
                | Mach.ValProp v => v)
           | NONE =>
             let
-                val _ = trace ["no property ", fmtName name, 
-                               " on obj #", Int.toString (getObjId obj)]
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
-                    (trace ["in getValueOrVirtual, trying catchall meta::get(", fmtName name, ")"];
-                     evalCallMethodByRef (withThis regs obj) (obj, Name.meta_get) [newString regs (#id name)])
+                    (evalCallMethodByRef (withThis regs obj) (obj, Name.meta_get) [newString regs (#id name)])
             in
                 case Mach.findProp props Name.meta_get of
                     SOME { state = Mach.MethodProp _, ... } => catchAll ()

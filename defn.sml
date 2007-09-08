@@ -2848,8 +2848,11 @@ and defNonTopDefns (env:ENV)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let
         val (unhoisted, hoisted, inits) = unzip3 (map (defDefn env false) defns)
+        fun reduce (oldRib::newRib::rest) = reduce ((mergeRibs (#program env) oldRib newRib) :: rest)
+          | reduce (x::[]) = x
+          | reduce [] = []
     in
-        (List.concat unhoisted, List.concat hoisted, List.concat inits)
+        (reduce unhoisted, reduce hoisted, List.concat inits)
     end
     
 
