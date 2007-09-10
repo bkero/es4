@@ -2,16 +2,17 @@
 
 <pre>
 FILE:                       spec/library/decimal.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-05
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
 REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
 
-<P> The class ''decimal'' is a final, non-nullable, non-dynamic class
-that represents 128-bit IEEE decimal floating point
-number values in the range XXX to YYY inclusive, plus the three
+<P> The class ''decimal'' is a final, non-nullable, non-dynamic direct
+subclass of ''Object'' that represents 128-bit IEEE decimal floating
+point number values in the range XXX to YYY inclusive, plus the three
 special values -<INFINITY>, +<INFINITY>, and NaN.
 
 <COMP> The class ''decimal'' is new in the 4th Edition of this
@@ -60,12 +61,12 @@ prototype object (<XREF target="Number.prototype">).
 
 === new decimal( value=<LDOTS> ) ===
 
-<DESC>The ''decimal'' constructor it initialises the newly created
-''decimal'' object by storing //value// (which defaults to 0),
-converted to a decimal, in a private property.
+<DESC>The ''decimal'' constructor initialises the newly created
+''decimal'' object by storing an implementation-dependent
+representation of the decimal value of //value//, as converted by
+''ToNumber'', in a private property.  The default //value// is +0.
 
-<SHORTIMPL>
-<INCLUDE file="decimal.es" name="function decimal">
+<IMPL>The ''decimal'' constructor is implementation-dependent.
 
 === decimal( value=<LDOTS> ) ===
 
@@ -198,6 +199,8 @@ implementation-dependent string
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="override intrinsic function toString">
 
+<FIXME> Note incomplete code above.
+
 === intrinsic::toLocaleString ( ) ===
 
 <DESC> The intrinsic ''toLocaleString'' method converts this number
@@ -232,7 +235,7 @@ represented by this ''decimal'' object: the object itself.
 
 <DESC> The intrinsic ''toFixed'' method converts this number value
 to a string in fixed-point notation with //fractionDigits// digits
-after the decimal point.  If //fractionDigits// is **undefined&=**, 0
+after the decimal point.  If //fractionDigits// is **undefined**, 0
 is assumed.
 
 <RETN> The intrinsic ''toFixed'' method returns the fixed-point
@@ -240,6 +243,8 @@ notation string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="intrinsic function toFixed">
+
+<FIXME> That implementation is bogus.
 
 <P> An implementation is permitted to extend the behaviour of toFixed
 for values of //fractionDigits// less than 0 or greater than 20.  In
@@ -262,9 +267,9 @@ returns "1000000000000000128".
 <DESC> The intrinsic ''toExponential'' method converts this number value
 to a string in exponential notation with one digit before the
 significand's decimal point and //fractionDigits// digits after the
-significand's decimal point.  If //fractionDigits// is undefined,
+significand's decimal point.  If //fractionDigits// is **undefined**,
 include as many significand digits as necessary to uniquely specify
-the number (just like in ''toString'' except that in this case the
+the number (just like in ''ToString'' except that in this case the
 number is always output in exponential notation).
 
 <RETN> The static ''toExponential'' method returns the exponential
@@ -272,6 +277,8 @@ notation string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="intrinsic function toExponential">
+
+<FIXME> That implementation is bogus.
 
 <P>An implementation is permitted to extend the behaviour of
 ''toExponential'' for values of //fractionDigits// less than 0 or
@@ -297,18 +304,20 @@ choose the one that is even.
 
 === intrinsic::toPrecision ( precision=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toPrecision'' method converts this number value to
-a string, either in exponential notation with one digit before the
+<DESC> The intrinsic ''toPrecision'' method converts this number value
+to a string, either in exponential notation with one digit before the
 significand's decimal point and //precision//-1 digits after the
 significand's decimal point or in fixed notation with //precision//
-significant digits.  If precision is undefined, call ToString (9.8.1)
-instead.
+significant digits.  If precision is **undefined**, call ''ToString''
+(<XREF target="operator:ToString">) instead.
 
-<RETN> The static ''toPrecision'' method returns the selected string
+<RETN> The intrinsic ''toPrecision'' method returns the selected string
 representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="intrinsic function toPrecision">
+
+<FIXME> That implementation is bogus.
 
 <P> An implementation is permitted to extend the behaviour of
 ''toPrecision'' for values of precision less than 1 or greater than

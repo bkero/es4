@@ -2,31 +2,50 @@
 
 <pre>
 FILE:                       spec/library/Boolean.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-05
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
 REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<P> ECMAScript provides a primitive representation for truth values in
-instances of the class ''boolean''.  It is primitive in the sense that
-the representation is directly operated upon by relational operators
-and control flow statements and control flow expressions, and also in
-the sense that the class ''boolean'' is a final and non-dynamic class
-for which implementations may provide efficient representations.
+<P> ECMAScript provides a primitive truth value representation in the
+class ''boolean''.  It is primitive in the sense that this
+representation is directly operated upon by the operators of the
+language, and in the sense that the class ''boolean'' is a final and
+non-dynamic class for which ECMAScript implementations may provide
+efficient representations.
 
 <P> ECMAScript also provides the class ''Boolean'', which is a dynamic
 non-final class that holds ''boolean'' values.  Instances of
-''Boolean'' are usually converted to ''boolean'' when operated upon by
-relational operators and control flow statements.
+''Boolean'' are converted to ''boolean'' when operated upon by
+operators of the language.
+
+
+<H2 id="type Booleans"> The type ''Booleans'' </h2>
+
+<P> The type ''Booleans'' is a union containing all the built-in
+boolean types.  By standard subtyping rules it also includes all
+claases that extend ''Boolean''.
+
+<INCLUDE file="Boolean.es" name="intrinsic type Booleans">
 
 
 <H1 id="class Boolean"> The class ''Boolean'' </h1>
 
-<P> The class ''Boolean'' is a dynamic non-final class that represents
-a boolean value.  Instances of ''Boolean'' are usually converted to
-''boolean'' when operated upon by relational operators and control
-flow statements.
+<P> The class ''Boolean'' is a dynamic, nullable, non-final subclass
+of ''Object'' that holds a boolean value in the form of a ''boolean''
+object.  Instances of ''Boolean'' are converted to ''boolean'' when
+operated upon by operators of the language.
+
+<FIXME> As for ''String'' and ''Number'' there is really no need for
+''Boolean'' to have any magic.  The value it contains could be a
+simple private property that holds a ''boolean''.  This would cause
+far fewer issues for subclasses.
+
+<P> The class ''Boolean'' can be extended and the extending classes
+can provide novel representations for boolean values.
+
 
 == Synopsis ==
 
@@ -48,8 +67,8 @@ dynamic class Boolean
 <P> The ''Boolean'' prototype object provides the following direct properties:
 
 {{{
-    toString: function (this: (Boolean,boolean)) <LDOTS>
-    valueOf:  function (this: (Boolean,boolean)) <LDOTS>
+    toString: function (this: Booleans) <LDOTS>
+    valueOf:  function (this: Booleans) <LDOTS>
 }}}
 
 <P> The ''Boolean'' prototype object is also the prototype object of
@@ -60,19 +79,18 @@ the class ''boolean''.
 === new Boolean ( value=<LDOTS> ) ===
 
 <DESC> The ''Boolean'' constructor intializes a new ''Boolean'' object
-by storing //value//, converted to a boolean value by the
-''ToBoolean'' operator, in a private property.  The default //value//
-is **false**.
+by storing //value//, converted to ''boolean'', in a private property.
+The default //value// is **false**.
 
 <IMPL> The ''Boolean'' constructor is implementation-defined.
 
 === Boolean( value=<LDOTS> ) ===
 
 <DESC> The ''Boolean'' class object called as a function converts
-//value// to boolean.
+//value// to ''boolean'' (not ''Boolean'').
 
 <RETN> The ''boolean'' class object called as a function returns a
-''boolean'' object (not a ''Boolean'' object).
+''boolean'' object.
 
 <SHORTIMPL>
 <INCLUDE file="Boolean.es" name="meta static function invoke">
@@ -114,6 +132,14 @@ intrinsic counterparts return.
 
 <H1 id="class boolean"> The class ''boolean'' </h1>
 
+<P> The class ''boolean'' is a non-dynamic, non-nullable, final
+subclass of ''Object''.  It represents a boolean value (**true** or
+**false**).
+
+<COMP> The class ''boolean'' is new in the 4th Edition of this
+Standard, but ''boolean'' models the "boolean values" in the 3rd
+Edition.
+
 == Synopsis ==
 
 <P> The class ''boolean'' provides the following interface:
@@ -134,22 +160,25 @@ final class boolean!
 <P> The ''boolean'' prototype object is the same as the ''Boolean''
 prototype object (<XREF target="Boolean.prototype">).
 
+<FIXME> Why are the default values to the constructor/converter null
+and not false?  Bootstrapping issue in the reference implementation?
+
 
 == Methods on the ''boolean'' class object ==
 
 === new boolean ( value=<LDOTS> ) ===
 
 <DESC> The ''boolean'' constructor intializes a new ''boolean'' object
-by storing //value//, converted to a boolean value by the
-''ToBoolean'' operator, in a private property.  The default //value//
-is **false**.
+by storing an implementation-dependent representation of the truth
+value of //value//, as computed by ''ToBoolean'', in a private
+property.  The default //value// is **false**.
 
 <IMPL> The ''boolean'' constructor is implementation-defined.
 
 === boolean( value=<LDOTS> ) ===
 
 <DESC> The ''boolean'' class object called as a function converts
-//value// to boolean.
+//value// to ''boolean''.
 
 <RETN> The ''boolean'' class object called as a function returns a
 ''boolean'' object.

@@ -2,8 +2,9 @@
 
 <pre>
 FILE:                       spec/library/uint.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-05
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
 REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
@@ -47,11 +48,12 @@ prototype object (<XREF target="Number.prototype">).
 === new uint( value=<LDOTS> ) ===
 
 <DESC>The ''uint'' constructor initialises the newly created ''uint''
-object by storing //value// (which defaults to 0), converted to an
-unsigned integer by the ToUInt32 operator, in a private property.
+object by storing an implementation-dependent representation of the
+unsigned integer value of //value//, converted to ''uint'' by the
+''ToUint32'' operator, in a private property.  The default //value//
+is 0.
 
-<SHORTIMPL>
-<INCLUDE file="uint.es" name="function uint">
+<IMPL> The ''uint'' constructor is implementation-dependent.
 
 === uint( value=<LDOTS> ) ===
 
@@ -65,6 +67,8 @@ performs a type conversion: it converts //value// (which defaults to
 <SHORTIMPL>
 <INCLUDE file="uint.es" name="meta static function invoke">
 
+<FIXME> The optimization here, using ''newUInt'', is more confusing
+than ''new uint'' would have been.
 
 == Value properties on the ''uint'' class object ==
 
@@ -78,7 +82,7 @@ represented by the ''uint'' class.  Its value is 2<SUP>32</SUP>-1.
 <P> The value of ''MIN_VALUE'' is the smallest value
 represented by the ''uint'' class.  Its value is 0.
 
-<FIXME> This is a silly property, maybe.
+<FIXME> This is a silly property.
 
 
 == Methods on ''uint'' instances ==
@@ -101,10 +105,10 @@ implementation-dependent string
 
 === intrinsic::toLocaleString ( ) ===
 
-<DESC> The intrinsic ''toLocaleString'' method converts this unsigned integer
-value to a string value that represents the value of the integer
-formatted according to the conventions of the host environment's
-current locale.
+<DESC> The intrinsic ''toLocaleString'' method converts this unsigned
+integer value to a string value that represents the value of the
+unsigned integer formatted according to the conventions of the host
+environment's current locale.
 
 <RETN> The intrinsic ''toLocaleString'' method returns an
 implementation-dependent string.
@@ -131,11 +135,13 @@ represented by this ''uint'' object: the object itself.
 
 === intrinsic::toFixed ( fractionDigits=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toFixed'' method converts this unsigned integer
-value to ''double'' and then invokes the ''toFixed'' method on the
-converted value.
+<DESC> The intrinsic ''toFixed'' method converts the this number value
+to a string in fixed-point notation with //fractionDigits// digits
+after the decimal point.  If //fractionDigits// is **undefined**, 0
+is assumed.
 
-<RETN> The intrinsic ''toFixed'' method returns a string.
+<RETN> The intrinsic ''toFixed'' method returns the fixed-point
+notation string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="uint.es" name="intrinsic function toFixed">
@@ -143,22 +149,31 @@ converted value.
 
 === intrinsic::toExponential ( fractionDigits=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toExponential'' method converts this unsigned
-integer value to ''double'' and then invokes the ''toExponential''
-method on the converted value.
+<DESC> The intrinsic ''toExponential'' method converts this number value
+to a string in exponential notation with one digit before the
+significand's decimal point and //fractionDigits// digits after the
+significand's decimal point.  If //fractionDigits// is **undefined**,
+include as many significand digits as necessary to uniquely specify
+the number (just like in ''ToString'' except that in this case the
+number is always output in exponential notation).
 
-<RETN> The intrinsic ''toExponential'' method returns a string.
+<RETN> The intrinsic ''toExponential'' method returns the exponential
+notation string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="uint.es" name="intrinsic function toExponential">
 
 === intrinsic::toPrecision ( precision=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toPrecision'' method converts this unsigned
-integer value to ''double'' and then invokes the ''toPrecision''
-method on the converted value.
+<DESC> The intrinsic ''toPrecision'' method converts this number value
+to a string, either in exponential notation with one digit before the
+significand's decimal point and //precision//-1 digits after the
+significand's decimal point or in fixed notation with //precision//
+significant digits.  If precision is **undefined**, call ''ToString''
+(<XREF target="Operator:ToString">) instead.
 
-<RETN> The intrinsic ''toPrecision'' method returns a string.
+<RETN> The intrinsic ''toPrecision'' method returns the selected string
+representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="uint.es" name="intrinsic function toPrecision">

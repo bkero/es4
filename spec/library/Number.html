@@ -2,17 +2,18 @@
 
 <pre>
 FILE:                       spec/library/Number.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-05
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
 REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
 <P> ECMAScript provides a variety of primitive number representations.
 They are primitive in the sense that these are the representations
-directly operated upon by arithmetic and relational operators, and
-also in the sense that they are represented by final non-dynamic
-classes for which implementations may provide efficient
+directly operated upon by the operators of the language, and also in
+the sense that they are represented by final non-dynamic classes for
+which ECMAScript implementations may provide efficient
 representations.
 
 <P> The class ''int'' represents signed 32-bit integer values in the
@@ -22,45 +23,41 @@ range -2<sup>31</sup> to 2<sup>31</sup>-1 inclusive.
 the range 0 to 2<sup>32</sup>-1 inclusive.
 
 <P> The class ''double'' represents 64-bit IEEE-format binary floating
-point numbers in the range XXXX.
+point numbers approximately in the range -1.7976931348623157 <TIMES>
+10<SUP>308</SUP> to +1.7976931348623157 <TIMES> 10<SUP>308</SUP>.
 
 <P> The class ''decimal'' represents 128-bit IEEE-format decimal
-floating point numbers in the range XXX.
+floating point numbers in the range XXX to YYY.
+
+<FIXME> Compute the correct range for decimals.
 
 <COMP> The 3rd Edition of this Standard provided only one kind of
-primitive number value, represented by 64-bit IEEE-format binary
-floating point numbers.
+primitive number value, represented as 64-bit IEEE-format binary
+floating point.
 
 <P> ECMAScript also provides the class ''Number'', which is a dynamic
 non-final class that represents 64-bit IEEE-format binary floating
-point numbers.  Instances of ''Number'' are usually converted to
-''double'' when operated upon by arithmetic or relational operators or
-functions in the ''Math'' class.
-
-<FIXME> "Usually" or "always"?  I could see ''Math.max'' and
-''Math.min'' returning a Number object at appropriate times, but I
-believe 3rd Edition always converts to primitive.  Are there other
-cases where that does not happen?
+point numbers.  Instances of ''Number'' are converted to
+''double'' when operated upon by the operators ofthe language.
 
 
 <H2 id="type Numeric"> The type ''Numeric'' </h2>
 
-<P> The type ''Numeric'' is a union type that contains all the numeric types
-in the language.
+<P> The type ''Numeric'' is a union type that contains all the number
+types in the language.
 
-{{{
-type Numeric = (int,uint,double,decimal,Number)
-}}}
+<INCLUDE file="Numeric.es" name="intrinsic type Numeric">
 
+<FIXME> By analogy with the types ''Strings'' and ''Booleans'', the
+type ''Numeric'' should instead be called ''Numbers''.
 
 
 <H1 id="class Number"> The class ''Number'' </h1>
 
-<P> The class ''Number'' is a dynamic non-final class that represents
-64-bit IEEE-format binary floating point numbers.  Instances of
-''Number'' are converted to a primitive number type when operated upon
-by arithmetic or relational operators or functions in the ''Math''
-class.
+<P> The class ''Number'' is a dynamic, nullable, non-final direct
+subclass of ''Object'' that holds a ''double'' value.  Instances of
+''Number'' are converted to ''double'' when operated upon by the
+operators of the language.
 
 <P> All intrinsic methods of ''Number'' obtain the number value stored
 in the object by calling the intrinsic ''valueOf'' method.  If the
@@ -69,9 +66,12 @@ intrinsic ''valueOf'' method in order to provide new ways of
 representing the number value stored in the class.
 
 <P> The intrinsic ''valueOf'' method is not constrained to return a
-''double'' value, it can return any ''Numeric'' value (including
-another instance of ''Number'').
+''double'' value, it can return any primitive number type.
 
+<FIXME> As for ''String'' and ''Boolean'' there is really no need for
+''Number'' to have any magic.  The value it contains could be a simple
+private property that holds a double.  This would cause far fewer issues
+for subclasses.
 
 == Synopsis ==
 
@@ -116,21 +116,21 @@ dynamic class Number
 
 === new Number( value=<LDOTS> ) ===
 
-<DESC>The ''Number'' constructor it initialises the newly created
+<DESC>The ''Number'' constructor initialises the newly created
 ''Number'' object by storing //value// (which defaults to +0),
 converted to ''double'', in a private property.
 
-<SHORTIMPL>
-<INCLUDE file="Number.es" name="function Number">
+<IMPL>
+The ''Number'' constructor is implementation-defined.
 
 === Number( value=<LDOTS> ) ===
 
 <DESC> When the ''Number'' class object is called as a function it
-performs a type conversion: it converts //value// (which defaults
-to +0) to ''double''.
+performs a type conversion: if //value// (which defaults to +0) is not
+a primitive number type it is converted to ''double''.
 
 <RETN> The ''Number'' class object called as a function returns
-//value// converted to ''double''.
+//value// converted to a primitive number type.
 
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="meta static function invoke">
@@ -140,32 +140,27 @@ to +0) to ''double''.
 === MAX_VALUE ===
 
 <P> The value of ''MAX_VALUE'' is the largest positive finite value
-represented by the ''double'' class.  It is the same value as the
-''MAX_VALUE'' property of the ''double'' class.
+represented by the ''double'' class.
 
 === MIN_VALUE ===
 
 <P> The value of ''MIN_VALUE'' is the smallest positive value
-represented by the ''double'' class.  It is the same value as the
-''MIN_VALUE'' property of the ''double'' class.
+represented by the ''double'' class.
 
 === NaN ===
 
 <P> The value of ''NaN'' is the not-a-number value represented by the
-''double'' class.  It is the same value as the ''NAN'' property of the
 ''double'' class.
 
 === NEGATIVE_INFINITY ===
 
 <P> The value of ''NEGATIVE_INFINITY'' is the value -<INFINITY> as
-represented by a ''double'' object.  It is the same value as the
-''NEGATIVE_INFINITY'' property of the ''double'' class.
+represented by a ''double'' object.
 
 === POSITIVE_INFINITY ===
 
 <P> The value of ''POSITIVE_INFINITY'' is the value +<INFINITY> as
-represented by a ''double'' object.  It is the same value as the
-''POSITIVE_INFINITY'' property of the ''double'' class.
+represented by a ''double'' object.
 
 
 == Methods on ''Number'' instances ==
@@ -185,10 +180,14 @@ in a base given by //radix//.
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="override intrinsic function toString">
 
+<NOTE> The intrinsic ''toString'' method operates by obtaining a
+primitive number value, which it then converts to string by invoking
+the intrinsic ''toString'' method on the primitive value.
+
 === intrinsic::toLocaleString ( ) ===
 
-<DESC> The intrinsic ''toLocaleString'' method converts this number value to
-a string value that represents the value of the Number formatted
+<DESC> The intrinsic ''toLocaleString'' method converts this number
+value to a string value that represents the number value formatted
 according to the conventions of the host environment's current locale.
 
 <RETN> The intrinsic ''toLocaleString'' method returns an
@@ -208,22 +207,21 @@ implementations do not use this parameter position for anything else.
 <DESC> The intrinsic ''valueOf'' method returns the number value
 represented by this ''Number'' object.
 
-<RETN> The intrinsic ''valueOf'' method returns a ''double'' value.
+<RETN> The intrinsic ''valueOf'' method returns a primitive number value.
 
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="override intrinsic function valueOf">
 
 
-=== Intrinsic methods that forward to static methods ===
+=== Intrinsic methods that delegate to methods on primitive types ===
 
 <DESC> The intrinsic ''toFixed'', ''toExponential'', and
-''toPrecision'' methods convertthe corresponding static method on the
-''Number'' object, passing the number value represented by this
-''Number'' object (as determined by ''valueOf'') and the arguments
-passed to the intrinsic methods.
+''toPrecision'' methods operate by obtaining a primitive number value
+from the intrinsic ''valueOf'' method, then invoking the appropriate
+method on the primitive value.
 
 <RETN> The intrinsic ''toFixed'', ''toExponential'', and
-''toPrecision'' methods return strings.
+''toPrecision'' methods return what their delegates return.
 
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="intrinsic function toFixed">

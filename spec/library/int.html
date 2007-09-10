@@ -2,16 +2,18 @@
 
 <pre>
 FILE:                       spec/library/int.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-05
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
 REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
 
-<P> The class ''int'' is a final, non-nullable, non-dynamic class that
-represents two's complement signed 32-bit integer values in the range
--2<sup>31</sup> to 2<sup>31</sup>-1 inclusive.
+<P> The class ''int'' is a final, non-nullable, non-dynamic direct
+subclass of ''Object'' that represents two's complement signed 32-bit
+integer values in the range -2<sup>31</sup> to 2<sup>31</sup>-1
+inclusive.
 
 <COMP> The class ''int'' is new in the 4th Edition of this Standard.
 
@@ -46,12 +48,12 @@ prototype object (<XREF target="Number.prototype">).
 
 === new int( value=<LDOTS> ) ===
 
-<DESC>The ''int'' constructor it initialises the newly created
-''int'' object by storing //value// (which defaults to 0),
-converted to an integer by the ToInt32 operator, in a private property.
+<DESC> The ''int'' constructor it initialises the newly created
+''int'' object by storing an implementation-defined representation of
+the integer value of //value//, as computed by the ''ToInt32''
+operator, in a private property.  The default //value// is 0.
 
-<SHORTIMPL>
-<INCLUDE file="int.es" name="function int">
+<IMPL> The ''int'' constructor is implementation-defined.
 
 === int( value=<LDOTS> ) ===
 
@@ -59,12 +61,14 @@ converted to an integer by the ToInt32 operator, in a private property.
 performs a type conversion: it converts //value// (which defaults
 to 0) to ''int''.
 
-<RETN> The ''int'' class object called as a function returns
-//value// converted to ''int''.
+<RETN> The ''int'' class object called as a function returns an
+''int''.
 
 <SHORTIMPL>
 <INCLUDE file="int.es" name="meta static function invoke">
 
+<FIXME> It would be less confusing if the converter used ''new int''
+instead of ''newInt'' here.
 
 == Value properties on the ''int'' class object ==
 
@@ -100,10 +104,12 @@ the ''ToString'' operator.
 <P> If radix is an integer from 2 to 36, but not 10, the result is an
 implementation-dependent string
 
-<RETN> The intrinsic ''toString'' method returns a string.
+<RETN> The intrinsic ''toString'' method returns a ''string''.
 
 <SHORTIMPL>
 <INCLUDE file="int.es" name="override intrinsic function toString">
+
+<FIXME> What's "informative" in the above?
 
 === intrinsic::toLocaleString ( ) ===
 
@@ -137,11 +143,13 @@ represented by this ''int'' object: the object itself.
 
 === intrinsic::toFixed ( fractionDigits=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toFixed'' method converts this integer value to
-''double'' and then invokes the ''toFixed'' method on the converted
-value.
+<DESC> The intrinsic ''toFixed'' method converts the this number value
+to a string in fixed-point notation with //fractionDigits// digits
+after the decimal point.  If //fractionDigits// is **undefined**, 0
+is assumed.
 
-<RETN> The intrinsic ''toFixed'' method returns a string.
+<RETN> The intrinsic ''toFixed'' method returns the fixed-point
+notation string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="int.es" name="intrinsic function toFixed">
@@ -149,22 +157,31 @@ value.
 
 === intrinsic::toExponential ( fractionDigits=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toExponential'' method converts this integer
-value to ''double'' and then invokes the ''toExponential'' method on
-the converted value.
+<DESC> The intrinsic ''toExponential'' method converts this number value
+to a string in exponential notation with one digit before the
+significand's decimal point and //fractionDigits// digits after the
+significand's decimal point.  If //fractionDigits// is **undefined**,
+include as many significand digits as necessary to uniquely specify
+the number (just like in ''ToString'' except that in this case the
+number is always output in exponential notation).
 
-<RETN> The intrinsic ''toExponential'' method returns a string.
+<RETN> The intrinsic ''toExponential'' method returns the exponential
+notation string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="int.es" name="intrinsic function toExponential">
 
 === intrinsic::toPrecision ( precision=<LDOTS> ) ===
 
-<DESC> The intrinsic ''toPrecision'' method converts this integer
-value to ''double'' and then invokes the ''toPrecision'' method on the
-converted value.
+<DESC> The intrinsic ''toPrecision'' method converts this number value
+to a string, either in exponential notation with one digit before the
+significand's decimal point and //precision//-1 digits after the
+significand's decimal point or in fixed notation with //precision//
+significant digits.  If precision is **undefined**, call ''ToString''
+(<XREF target="Operator:ToString">) instead.
 
-<RETN> The intrinsic ''toPrecision'' method returns a string.
+<RETN> The intrinsic ''toPrecision'' method returns the selected string
+representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="int.es" name="intrinsic function toPrecision">
