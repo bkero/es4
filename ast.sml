@@ -597,7 +597,6 @@ datatype FRAGMENT =
        | Package of { name: IDENT list,
                       fragments: FRAGMENT list }
 
-       | Anon of { block: BLOCK,
-                   rib: RIB option }
+       | Anon of BLOCK
 
 end

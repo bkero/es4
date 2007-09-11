@@ -232,7 +232,7 @@ fun closeTopFragment (prog:PROGRAM)
             List.concat (map fragBlocks fragments)
           | fragBlocks (Ast.Package {name, fragments}) = 
             List.concat (map fragBlocks fragments)
-          | fragBlocks (Ast.Anon { block, ... }) = [block]
+          | fragBlocks (Ast.Anon block) = [block]
 
         fun fragPackages (Ast.Unit {name, fragments}) = 
             List.concat (map fragPackages fragments)

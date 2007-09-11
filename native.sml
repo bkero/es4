@@ -749,22 +749,25 @@ fun eval (regs:Mach.REGS)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
                     val (prog, frag) = 
                         (* (Verify.verifyFragment *)
-                        (Defn.defFragment (Defn.mkTopEnv (#prog regs)) frag)
+                        (Defn.defTopFragment (#prog regs) frag)
                         (* ) *)
                         handle
                         LogErr.DefnError de => raise Eval.ThrowException (str de)
                       | LogErr.VerifyError ve => raise Eval.ThrowException (str ve)
+
+                    val regs = Eval.withProg regs prog
                 in
                     (*
                      * FIXME: maybe don't want to permit the full set of
-                     * program constructs (classes?) so possibly sanitize the
-                     * result of parsing a bit, strip out some sorts of things...
+                     * program constructs (classes?) so possibly set a flag in defn's env
+                     * that says we're in an eval context, and should only permit a 
+                     * subset of definitions.
                      *)
-
+                    
                     (* FIXME: re-enable verify at some point! *)
                     (* Eval.evalFragment regs (Verify.verifyFragment (Defn.defFragment frag)) *)
 
-                    Eval.evalFragment (Eval.withProg regs prog) frag
+                    Eval.evalTopFragment regs frag
                     handle 
                     LogErr.NameError ne => raise Eval.ThrowException (str ne)
                   | LogErr.EvalError ee => raise Eval.ThrowException (str ee)

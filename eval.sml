@@ -3883,46 +3883,48 @@ and evalObjInits (regs:Mach.REGS)
     end
 
 
+and findTargetObj (regs:Mach.REGS)
+                  (scope:Mach.SCOPE)
+                  (target:Ast.INIT_TARGET) =
+    let
+        val Mach.Scope { object, kind, parent, ...} = scope
+        val Mach.Obj {props,...} = object
+    in
+        trace ["considering init target as object #", Int.toString (getScopeId scope)];
+        case target of
+            Ast.Local =>
+            if (NameMap.numItems (!props)) > 0 orelse 
+               not (Option.isSome parent)
+            then object
+            else findTargetObj regs (valOf parent) target
+          (* if there are no props then it is at temp scope *)
+                 
+          | Ast.Hoisted =>
+            if kind = Mach.InstanceScope orelse
+               kind = Mach.ActivationScope orelse
+               not (Option.isSome parent)
+            then object
+            else findTargetObj regs (valOf parent) target
+                 
+          | Ast.Prototype =>
+            if kind = Mach.InstanceScope
+            then (needObj regs (getValue regs object Name.nons_prototype))
+            else findTargetObj regs (valOf parent) target
+    end
+
+
 and evalScopeInits (regs:Mach.REGS)
                    (target:Ast.INIT_TARGET)
                    (inits:Ast.INITS)
     : unit =
     let
-        fun findTargetObj scope =
-            let
-                val Mach.Scope { object, kind, parent, ...} = scope
-                val Mach.Obj {props,...} = object
-            in
-                trace ["considering init target as object #",
-                       Int.toString (getScopeId scope)];
-                case target of
-                    Ast.Local =>
-                    if (NameMap.numItems (!props)) > 0 orelse 
-                       not (Option.isSome parent)
-                    then object
-                    else findTargetObj (valOf parent)
-                  (* if there are no props then it is at temp scope *)
-
-                  | Ast.Hoisted =>
-                    if kind = Mach.InstanceScope orelse
-                       kind = Mach.ActivationScope orelse
-                       not (Option.isSome parent)
-                    then object
-                    else findTargetObj (valOf parent)
-
-                  | Ast.Prototype =>
-                    if kind = Mach.InstanceScope
-                    then (needObj regs (getValue regs object Name.nons_prototype))
-                    else findTargetObj (valOf parent)
-            end
-
-        val obj = findTargetObj (#scope regs)
+        val { scope, ... } = regs
+        val Mach.Scope { temps, ...} = scope
+        val obj = findTargetObj regs scope target
         val Mach.Obj { ident, ... } = obj
         val _ = trace ["resolved init target to object id #", Int.toString ident]
     in
-        case (#scope regs) of
-            Mach.Scope { temps, ...} =>
-            evalInitsMaybePrototype regs obj temps inits (target=Ast.Prototype)
+        evalInitsMaybePrototype regs obj temps inits (target=Ast.Prototype)
     end
 
 
@@ -4829,8 +4831,31 @@ and evalFragment (regs:Mach.REGS)
          List.last (map (evalFragment regs ) fragments)
        | Ast.Package { fragments, ... } => 
          List.last (map (evalFragment regs ) fragments)
-       | Ast.Anon { block, ... } => 
-         evalAnonFragment regs block)
+       | Ast.Anon (Ast.Block {head=NONE, ...}) => 
+         error regs ["top-level block with no head"]
+       | Ast.Anon (Ast.Block {head=SOME (Ast.Head (rib, inits)), body, loc, ...}) => 
+         (* 
+          * NB: do *not* do evalBlock here. It's not a "normal" block. The ribs 
+          * and inits are not intended for a temporary scope, but rather the 
+          * scope that you'd search for as a hoisting target (either the activation 
+          * scope enclosing an eval, or the global scope)
+          *)
+         let
+             val { scope, ... } = regs
+             val Mach.Scope { temps, ...} = scope
+             val obj = findTargetObj regs scope Ast.Hoisted
+             val Mach.Obj { ident, ... } = obj
+         in
+             trace ["resolved anonymous fragment target to obj #", Int.toString ident];
+             LogErr.setLoc loc;
+             allocObjRib regs obj NONE rib;
+             LogErr.setLoc loc;
+             trace ["allocating anonymous fragment inits on obj #", Int.toString ident];
+             evalInits regs obj temps;
+             LogErr.setLoc loc;
+             trace ["running anonymous fragment stmts"];
+             evalStmts regs body
+         end)
     handle ThrowException v =>
            let
                val loc = !LogErr.loc
@@ -4840,24 +4865,30 @@ and evalFragment (regs:Mach.REGS)
                error regs ["uncaught exception: ", Ustring.toAscii (toUstring regs v)]
            end
 
+(*
+and collectFragRibs (regs:Mach.REGS)
+                    (frag:Ast.FRAGMENT)
+    : Ast.RIB = 
+    let
+        fun mergeRibs ((oldRib:Ast.RIB), (newRib:Ast.RIB)) = 
+            List.foldl (Fixture.mergeFixtures (Type.equals (#prog regs))) oldRib newRib
+            
+        fun collectRib (Ast.Package { fragments, ... }) = mapReduceRibs fragments
+          | collectRib (Ast.Unit { fragments, ... }) = mapReduceRibs fragments
+          | collectRib (Ast.Anon (Ast.Block { head=NONE, ... })) = []
+          | collectRib (Ast.Anon (Ast.Block { head=SOME (Ast.Head (rib,_)), ...})) = rib
+            
+        and mapReduceRibs fs = List.foldl mergeRibs [] (map collectRib fs)
+    in
+        collectRib frag
+    end
+*)    
+
 and evalTopFragment (regs:Mach.REGS)
                     (frag:Ast.FRAGMENT)
     : Mach.VAL =
     let
-        fun mergeRibs ((oldRib:Ast.RIB), (newRib:Ast.RIB)) = 
-            List.foldl (Fixture.mergeFixtures (Type.equals (#prog regs))) oldRib newRib
-
-        fun collectRib (Ast.Package { fragments, ... }) = mapReduceRibs fragments
-          | collectRib (Ast.Unit { fragments, ... }) = mapReduceRibs fragments
-          | collectRib (Ast.Anon { rib = NONE, ... }) = []
-          | collectRib (Ast.Anon { rib = (SOME r), ... }) = r
-
-        and mapReduceRibs fs = List.foldl mergeRibs [] (map collectRib fs)
-
         val _ = LogErr.setLoc NONE
-        val _ = Mach.resetProfile regs
-        val combinedRib = collectRib frag
-        val _ = allocObjRib regs (#global regs) NONE combinedRib
         val res = evalFragment regs frag
         val _ = Mach.reportProfile regs
     in

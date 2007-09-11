@@ -2995,7 +2995,7 @@ and defFragment (env:ENV)
                 (prog, Ast.Package { name=name, fragments=fragments })
             end
 
-          | Ast.Anon { block, ... } => 
+          | Ast.Anon block => 
             (* 
              * Ast.Anon blocks ("top blocks") are a touch different than all other
              * blocks. In particular: 
@@ -3035,12 +3035,11 @@ and defFragment (env:ENV)
                 val env = extendProgramTopRib env combinedRib
             in
                 ((#program env), 
-                 Ast.Anon { block = Ast.Block { pragmas = pragmas,
-                                                defns = [],  (* clear definitions, we are done with them *)
-                                                body = body,
-                                                head = SOME (Ast.Head ([], inits)),
-                                                loc = loc},
-                            rib = SOME combinedRib })
+                 Ast.Anon (Ast.Block { pragmas = pragmas,
+                                       defns = [],  (* clear definitions, we are done with them *)
+                                       body = body,
+                                       head = SOME (Ast.Head (combinedRib, inits)),
+                                       loc = loc }))
             end
     end
 

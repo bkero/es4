@@ -357,7 +357,7 @@ fun boot _ : Mach.REGS =
         Eval.evalTopFragment regs ifaceFrag;
 
         Mach.setBooting regs false;
-
+        Mach.resetProfile regs;
         describeGlobal regs;
         regs
     end

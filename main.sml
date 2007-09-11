@@ -249,8 +249,7 @@ fun eval regs argvRest =
         val (prog, frags) = verify (#prog regs) argvRest
         val regs = Eval.withProg regs prog
     in
-(*        Posix.Process.alarm (Time.fromReal 300.0);
-*)
+        Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
     end

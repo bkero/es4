@@ -7176,7 +7176,7 @@ and fragment (ts:TOKENS)
         let
             val (ts1, nd1) = directives (ts, GlobalScope)
         in
-            (ts1, Ast.Anon { block = Ast.Block nd1, rib = NONE })
+            (ts1, Ast.Anon (Ast.Block nd1))
         end
         
 and packageName (ts:TOKENS)
