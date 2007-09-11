@@ -4829,7 +4829,7 @@ and evalFragment (regs:Mach.REGS)
          List.last (map (evalFragment regs ) fragments)
        | Ast.Package { fragments, ... } => 
          List.last (map (evalFragment regs ) fragments)
-       | Ast.Anon block => 
+       | Ast.Anon { block, ... } => 
          evalAnonFragment regs block)
     handle ThrowException v =>
            let
@@ -4844,8 +4844,20 @@ and evalTopFragment (regs:Mach.REGS)
                     (frag:Ast.FRAGMENT)
     : Mach.VAL =
     let
+        fun mergeRibs ((oldRib:Ast.RIB), (newRib:Ast.RIB)) = 
+            List.foldl (Fixture.mergeFixtures (Type.equals (#prog regs))) oldRib newRib
+
+        fun collectRib (Ast.Package { fragments, ... }) = mapReduceRibs fragments
+          | collectRib (Ast.Unit { fragments, ... }) = mapReduceRibs fragments
+          | collectRib (Ast.Anon { rib = NONE, ... }) = []
+          | collectRib (Ast.Anon { rib = (SOME r), ... }) = r
+
+        and mapReduceRibs fs = List.foldl mergeRibs [] (map collectRib fs)
+
         val _ = LogErr.setLoc NONE
         val _ = Mach.resetProfile regs
+        val combinedRib = collectRib frag
+        val _ = allocObjRib regs (#global regs) NONE combinedRib
         val res = evalFragment regs frag
         val _ = Mach.reportProfile regs
     in

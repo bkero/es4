@@ -2858,22 +2858,22 @@ and defNonTopDefns (env:ENV)
 
 and defTopDefns (env:ENV)
                 (defns:Ast.DEFN list)
-                (unhoisted:Ast.RIB)
+                (rib:Ast.RIB)
                 (inits:Ast.INITS)
     : (ENV * Ast.RIB * Ast.INITS) = (* env, unhoisted, inits *)
     let
         val _ = trace([">> defTopDefns"])
     in 
         case defns of
-            [] => (trace(["<< defTopDefns"]); (env, unhoisted, inits))
+            [] => (trace(["<< defTopDefns"]); (env, rib, inits))
           | d::ds =>
             let
                 val (unhoisted', hoisted', inits') = defDefn env true d
-                val env = extendProgramTopRib env hoisted'
-                val env = updateRib env unhoisted'
+                val combinedRib = mergeRibs (#program env) hoisted' unhoisted'
+                val env = updateRib env combinedRib
            in
                 defTopDefns env ds
-                            (mergeRibs (#program env) unhoisted unhoisted')
+                            (mergeRibs (#program env) combinedRib rib)
                             (inits@inits') 
            end
     end
@@ -2990,12 +2990,12 @@ and defFragment (env:ENV)
                             defaultNamespace = Ast.Internal packageIdent,
                             topUnitName = topUnitName,
                             program = program }
-                val (prog, fragments) = subFragments env fragments              
+                val (prog, fragments) = subFragments env fragments
             in
                 (prog, Ast.Package { name=name, fragments=fragments })
             end
 
-          | Ast.Anon block => 
+          | Ast.Anon { block, ... } => 
             (* 
              * Ast.Anon blocks ("top blocks") are a touch different than all other
              * blocks. In particular: 
@@ -3007,20 +3007,22 @@ and defFragment (env:ENV)
              *)
             let
                 val Ast.Block { pragmas, defns, body, loc, ... } = block
-                val _ = LogErr.setLoc loc                                                              
+                val _ = LogErr.setLoc loc                            
 
                 (* 
-                 * NB: pragmas don't produce any hoisted ribs, so we can get away
+                 * NB: pragmas don't produce any hoisted fixtures, so we can get away
                  * with doing them as a batch like in defBlock.
                  *)
                 val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
 
                 (* 
-                 * FIXME: we are probably not quite doing the hoisting right here. 
-                 * It'll require some committee discussion to figure out how to 
-                 * simulate eval() properly in terms of fragments. 
+                 * top Defns merge the hoisted and unhoisted rib into a single one.
                  *)
-                val (env, unhoisted_defn_fxtrs, inits) = defTopDefns env defns [] []
+                val (env, all_top_defn_fixtures, inits) = defTopDefns env defns [] []
+
+                (* 
+                 * statements, like pragmas, don't produce any hosited fixtures.
+                 *)
                 val (body, hoisted_body_fxtrs) = defStmts env body
 
                  (* 
@@ -3028,16 +3030,17 @@ and defFragment (env:ENV)
                   * into the top rib. So there's nothing "unhoisted" returned, even
                   * though we're modeling it via an Ast.BLOCK.
                   *)
-                val env = extendProgramTopRib env unhoisted_pragma_fxtrs
-                val env = extendProgramTopRib env unhoisted_defn_fxtrs
-                val env = extendProgramTopRib env hoisted_body_fxtrs
+                val combinedRib = mergeRibs program unhoisted_pragma_fxtrs all_top_defn_fixtures
+                val combinedRib = mergeRibs program combinedRib hoisted_body_fxtrs
+                val env = extendProgramTopRib env combinedRib
             in
                 ((#program env), 
-                 Ast.Anon (Ast.Block { pragmas = pragmas,
-                                       defns = [],  (* clear definitions, we are done with them *)
-                                       body = body,
-                                       head = SOME (Ast.Head ([], inits)),
-                                       loc = loc}))
+                 Ast.Anon { block = Ast.Block { pragmas = pragmas,
+                                                defns = [],  (* clear definitions, we are done with them *)
+                                                body = body,
+                                                head = SOME (Ast.Head ([], inits)),
+                                                loc = loc},
+                            rib = SOME combinedRib })
             end
     end
 

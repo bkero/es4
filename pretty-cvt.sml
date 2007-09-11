@@ -862,6 +862,11 @@ structure PrettyCvt = struct
                                                                  ) ls1892)), 
           ("fragments", PrettyRep.List (List.map (fn x1896 => cvtFRAGMENT x1896
                                                  ) ls1897))]))
-     | cvtFRAGMENT (Anon x1908) = PrettyRep.Ctor ("Anon", SOME (cvtBLOCK x1908))
+     | cvtFRAGMENT (Anon{block=x1908, rib=opt1910}) = PrettyRep.Ctor ("Anon", 
+          SOME (PrettyRep.Rec [("block", cvtBLOCK x1908), ("rib", 
+       (case opt1910 of
+         NONE => PrettyRep.Ctor ("NONE", NONE)
+       | SOME x1909 => PrettyRep.Ctor ("SOME", SOME (cvtRIB x1909))
+       ))]))
 end
 
