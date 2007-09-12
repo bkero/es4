@@ -165,15 +165,21 @@
     }
 
     function cgBreakStmt(ctx, {ident: ident}) {
+        function hit (node) {
+            return node.tag == "break" && (ident == null || memberOf(ident, stk.labels))
+        }
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "break" && (ident == null || memberOf(ident, stk.labels))),
+                                hit,
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
 
     function cgContinueStmt(ctx, {ident: ident}) {
+        function hit(node) {
+             return node.tag == "continue" && (ident == null || memberOf(ident, stk.labels))
+        }
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "continue" && (ident == null || memberOf(ident, stk.labels))),
+                                hit,
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
@@ -191,8 +197,11 @@
             t = asm.getTemp();
             asm.I_setlocal(t);
         }
+        function hit(node){
+            return node.tag == "function" 
+        }
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "function"),
+                                hit,
                                 false,
                                 "Internal error: definer should have checked that top-level code does not return");
         if (s.expr == null)
@@ -211,30 +220,48 @@
         asm.I_setlocal(t);
         let Ldefault = null;
         let Lnext = null;
+        let Lfall = null;
         let Lbreak = asm.newLabel();
         let nctx = pushBreak(ctx, labels, Lbreak);
+        var hasBreak = false;
         for ( let i=0 ; i < cases.length ; i++ ) {
             let c = cases[i];
+
+            if (c.expr == null) {
+                assert (Ldefault==null);
+                Ldefault = asm.I_label();    // label default pos
+            }
+
             if (Lnext !== null) {
-                asm.I_label(Lnext);
+                asm.I_label(Lnext);          // label next pos
                 Lnext = null;
             }
-            if (c.expr == null)
-                Ldefault = asm.I_label();
-            else {
-                cgExpr(nctx, c.expr);
+
+            if (c.expr != null) {
+                cgExpr(nctx, c.expr);        // check for match
                 asm.I_getlocal(t);
                 asm.I_strictequals();
-                Lnext = asm.I_iffalse();
+                Lnext = asm.I_iffalse();  // if no match jump to next label
             }
+
+            if (Lfall !== null) {         // label fall through pos
+                asm.I_label(Lfall);
+                Lfall = null;
+            }
+
             let stmts = c.stmts;
-            for ( let j=0 ; j < stmts.length ; j++ )
+            for ( let j=0 ; j < stmts.length ; j++ ) {
                 cgStmt(nctx, stmts[j] );
+            }
+
+            Lfall = asm.I_jump ();         // fall through
         }
         if (Lnext !== null)
             asm.I_label(Lnext);
         if (Ldefault !== null)
             asm.I_jump(Ldefault);
+        if (Lfall !== null)
+            asm.I_label(Lfall);
         asm.I_label(Lbreak);
         asm.killTemp(t);
     }

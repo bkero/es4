@@ -2,8 +2,9 @@
 
 <pre>
 FILE:                       spec/library/intro.html
-DRAFT STATUS:               DRAFT 1 - ROUGH
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
 REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
@@ -269,3 +270,20 @@ class description.
 <P> As far as ''constructor'' is concerned, it is a standard feature of
 the prototype object and its initial value is always the class object,
 so it does not have to be described either.  So it isn't.
+
+== Special cases ==
+
+<P> This is a list of all the special cases I'm aware of in the sections
+following.
+
+<UL>
+  <LI> Object.prototype.[[Prototype]] is null
+  <LI> Math.[[Prototype]] does not have a constructor
+  <LI> Math is an instance of a class that is not constructable through the meta-objects system
+  <LI> int.prototype === Number.prototype and int.[[Prototype]] === Number.[[Prototype]]
+  <LI> uint.prototype === Number.prototype and uint.[[Prototype]] === Number.[[Prototype]]
+  <LI> double.prototype === Number.prototype and double.[[Prototype]] === Number.[[Prototype]]
+  <LI> decimal.prototype === Number.prototype and decimal.[[Prototype]] === Number.[[Prototype]]
+  <LI> string.prototype === String.prototype and string.[[Prototype]] === String.[[Prototype]]
+  <LI> boolean.prototype === Boolean.prototype and boolean.[[Prototype]] === Boolean.[[Prototype]]
+</UL>

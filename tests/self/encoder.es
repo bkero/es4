@@ -39,7 +39,7 @@
 use namespace Release;
 use namespace Ast;
 use namespace intrinsic;
-namespace Encode;
+public namespace Encode;
 
 {
     use default namespace Encode;
@@ -284,7 +284,7 @@ namespace Encode;
         : string {
         var str = "";
         enter ("Encode::stmt");
-        print ("  stmt");
+        // print ("  stmt");
         if (nd == null) {
             var str = "null";
         }
@@ -664,9 +664,6 @@ namespace Encode;
             var str =
                 "{ 'ast_class': 'TernaryExpr'"
               + indent(nesting)
-              + ", 'op': "
-              + binOp (nd.op,nesting+", 'op': ".length)
-              + indent(nesting)
               + ", 'e1': "
               + expr (nd.e1,nesting+", 'e1': ".length)
               + indent(nesting)
@@ -988,6 +985,7 @@ namespace Encode;
             for (var n=0; n<len; ++n) {
                 let c = nd.strValue.charAt(n);
                 if (c === "\n") c = "\\n";
+                else if (c === "\r") c = "\\r";
                 else if (c == '\"') c = '\\"';
                 else if (c == "'") c = "\\'";
                 else if (c == "\\") c = "\\\\";
@@ -1533,6 +1531,12 @@ namespace Encode;
         switch type (nd) {
         case (nd:Ordinary) {
             var str = "Ordinary";
+        }
+        case (g:Get) {
+            var str = "Get";
+        }
+        case (s:Set) {
+            var str = "Set";
         }
         case (nd: *) {
             var str = "** funcNameKind " + nd + "**";

@@ -124,7 +124,7 @@ fun toLargeInt (prec:int)
                    | NONE => raise (DecimalException "parsing integral value")
 
 
-fun floor (a:DEC)
+fun floorInt (a:DEC)
     : LargeInt.int =
     toLargeInt defaultPrecision Floor a
 
@@ -183,6 +183,63 @@ fun isNaN (a:DEC)
         Dec "NaN" => true
       | _ => false
 
+
+(* FIXME *)
+fun acos (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun asin (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun atan (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun atan2 (a:DEC, b:DEC)
+    : DEC =
+    Dec "0"
+
+fun ceil (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun cos (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun exp (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun floor (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun log (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun sin (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun sqrt (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun tan (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun round (a:DEC)
+    : DEC =
+    Dec "0"
+
+fun pow (a:DEC, b:DEC)
+    : DEC =
+    Dec "0"
 
 val NaN = Dec "NaN"
 val zero = Dec "0"

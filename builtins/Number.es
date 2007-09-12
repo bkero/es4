@@ -47,82 +47,71 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import ECMAScript4_Internal.*;
 
     dynamic class Number
     {
+        // Implementation artifact:
         // These need to be static getters rather than static consts,
         // since 'Number' initializes before 'double'.
 
         static function get MAX_VALUE() : double         1.7976931348623157e+308;  /* INFORMATIVE */
         static function get MIN_VALUE() : double         5e-324;                   /* INFORMATIVE */
-        static function get NaN() : Number               0.0 / 0.0;
-        static function get NEGATIVE_INFINITY() : Number -1.0 / 0.0;
-        static function get POSITIVE_INFINITY() : Number 1.0 / 0.0;
+        static function get NaN() : double               0d / 0d;
+        static function get NEGATIVE_INFINITY() : double -1d / 0d;
+        static function get POSITIVE_INFINITY() : double 1d / 0d;
 
-        /* E262-4 draft */
-        meta static function convert(x) : Number
-            Number(x);
+        /* Obsolete, needed for the moment because the RI does not yet handle
+           interconversion of numbers */
+        meta static function convert(x)
+            x is Number ? x : new Number(x);
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        meta static function invoke(x=0.0d)
-            x is double ? x : double(x)
+        meta static function invoke(x=0d)
+            x is double ? x : double(x);
 
         /* E262-3 15.7.2.1: The Number constructor */
         function Number(x=0.0d)
             magic::bindDouble(this, x);
 
-        prototype function toString(radix = 10)
-            this.toString(radix);
-
         override intrinsic function toString(radix = 10) : string
-	    private::toString(radix);
-
-	private function toString(radix = 10) : string
-            ToDouble(this).toString(radix);
-
-        prototype function toLocaleString()
-            this.toLocaleString();
+            intrinsic::valueOf().intrinsic::toString(radix);
 
         override intrinsic function toLocaleString() : string
-            value.toLocaleString();
+            intrinsic::valueOf().intrinsic::toLocaleString();
 
-	private function toLocaleString() : string
-	    ToDouble(this).toLocaleString();
+        override intrinsic function valueOf(): (int,uint,double,decimal)
+            double(this);
 
-        prototype function valueOf()
-            this.valueOf();
+        intrinsic function toFixed(fractionDigits=0): string
+            intrinsic::valueOf().intrinsic::toFixed(fractionDigits);
 
-        override intrinsic function valueOf() : Numeric
-            private::valueOf();
+        intrinsic function toExponential(fractionDigits=undefined) : string
+            intrinsic::valueOf().intrinsic::toExponential(fractionDigits);
 
-	private function valueOf() : Numeric
-	    ToNumeric(this);
+        intrinsic function toPrecision(precision=undefined) : string
+            intrinsic::valueOf().intrinsic::toPrecision(precision);
 
-        prototype function toFixed(fractionDigits)
-            this.toFixed(fractionDigits);
+        /* The prototype is shared with int, uint, double, and decimal, and none
+         * of these functions may assume they operate on a "Number".
+         */
 
-        intrinsic function toFixed(fractionDigits:double) : string
-            private::toFixed(fracitonDigits);
+        prototype function toString(this: Numeric, radix=10)
+            this.intrinsic::toString(radix);
 
-        private function toFixed(fractionDigits:double) : string
-            ToDouble(this).toFixed(fractionDigits);
+        prototype function toLocaleString(this: Numeric)
+            this.intrinsic::toLocaleString();
 
-        prototype function toExponential(fractionDigits)
-            this.toExponential(fractionDigits);
+        prototype function valueOf(this: Numeric)
+            this.intrinsic::valueOf();
 
-        intrinsic function toExponential(fractionDigits:double) : string
-            private::toExponential(fractionDigits);
+        prototype function toFixed(this:Numeric, fractionDigits)
+            this.intrinsic::toFixed(fractionDigits);
 
-        private function toExponential(fractionDigits:double) : string
-            ToDouble(this).toExponential(fractionDigits);
+        prototype function toExponential(this: Numeric, fractionDigits)
+            this.intrinsic::toExponential(fractionDigits);
 
-        prototype function toPrecision(precision)
-            this.toPrecision(precision);
-
-        intrinsic function toPrecision(precision:double) : string
-            private::toPrecision(precision);
-
-        private function toPrecision(precision:double) : string
-            ToDouble(this).toPrecision(precision);
+        prototype function toPrecision(this: Numeric, precision)
+            this.intrinsic::toPrecision(precision);
     }
 }

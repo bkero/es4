@@ -1,4 +1,4 @@
-/* -*- mode: java -*-
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "boolean" object
  *
@@ -53,22 +53,22 @@ package
      *
      * The literals true and false denote instances of this class.
      */
-    intrinsic final class boolean! extends Boolean
+    intrinsic final class boolean!
     {
-
-	meta static function convert(x) : boolean
-	    boolean(x);
+        // Obsolete, but RI needs to be extended first
+        meta static function convert(x) : boolean
+            boolean(x);
 
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
             x is boolean ? x : new boolean(x);
 
-	function boolean(x=null)
-	    : super(x)
-	{
-            // No need to magic::bindBoolean a second time,
-            // since our super(x) call did it for us.
-	}
+        function boolean(x=null)
+            magic::bindBoolean(this, x);
+
+        /* E262-4 early-binding variant. */
+        override intrinsic function toString() : string
+            this ? "true" : "false";
 
         /* E262-4 draft ch 19 */
         override intrinsic function valueOf() : boolean

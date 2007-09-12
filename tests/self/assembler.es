@@ -141,9 +141,10 @@ namespace Asm;
         const listify = true;
         const indent = "        ";
 
-        function AVM2Assembler(constants, numberOfFormals) {
+        function AVM2Assembler(constants, numberOfFormals, initScopeDepth) {
             this.constants = constants;
             this.nextTemp = numberOfFormals+1; // local 0 is always "this"
+            this.current_scope_depth = initScopeDepth;
         }
 
         public function get maxStack() { return max_stack_depth }
@@ -151,34 +152,38 @@ namespace Asm;
         public function get maxScope() { return max_scope_depth }
         public function get flags() { return (set_dxns ? METHOD_Setsdxns : 0) | (need_activation ? METHOD_Activation : 0) }
 
-        private function listL(n) {
+        /*private*/ function listL(n) {
             if (listify)
                 print(n);
         }
 
-        private function list1(name) {
+        /*private*/ function list1(name) {
             if (listify)
                 print(indent + name);
         }
 
-        private function list2(name, v) {
+        /*private*/ function list2(name, v) {
             if (listify)
                 print(indent + name + " " + v);
         }
 
-        private function list3(name, v1, v2) {
+        /*private*/ function list3(name, v1, v2) {
             if (listify)
                 print(indent + name + " " + v1 + " " + v2);
         }
 
-        private function listn(name, ...rest) {
+        /*private*/ function list5(name, v1, v2, v3, v4) {
+            if (listify)
+                print(indent + name + " " + v1 + " " + v2 + " " + v3 + " " + v4);
+        }
+/*         function listn(name, ...rest) {
             if (listify)
                 print(indent + name + " " + rest.join(" "));
         }
-
+*/
 
         // Instructions that push one value, with a single opcode byte
-        private function pushOne(name, opcode) {
+        /*private*/ function pushOne(name, opcode) {
             stack(1);
             list1(name);
             code.uint8(opcode);
@@ -198,7 +203,7 @@ namespace Asm;
         public function I_pushundefined() { pushOne("pushundefined", 0x21) }
 
         // Instructions that push one value, with an opcode byte followed by a u30 argument
-        private function pushOneU30(name, opcode, v) {
+        /*private*/ function pushOneU30(name, opcode, v) {
             stack(1);
             list2(name, v);
             code.uint8(opcode);
@@ -221,7 +226,7 @@ namespace Asm;
         public function startCatch() { stack(1) }
         
         // Instructions that pop one value, with a single opcode byte
-        private function dropOne(name, opcode) {
+        /*private*/ function dropOne(name, opcode) {
             stack(-1);
             list1(name);
             code.uint8(opcode);
@@ -266,7 +271,7 @@ namespace Asm;
         public function I_urshift() { dropOne("urshift", 0xA7) }
 
         // Instructions that pop one value, with an opcode byte followed by an u30 argument
-        private function dropOneU30(name, opcode, v) {
+        /*private*/ function dropOneU30(name, opcode, v) {
             stack(-1);
             list2(name, v);
             code.uint8(opcode);
@@ -276,7 +281,7 @@ namespace Asm;
         public function I_setglobalslot(index) { dropOneU30("setglobalslot", 0x6F, index) }
 
         // Instructions that do not change the stack height, with a single opcode byte
-        private function dropNone(name, opcode)
+        /*private*/ function dropNone(name, opcode)
         {
             //stack(0);
             list1(name);
@@ -310,7 +315,7 @@ namespace Asm;
 
         // Instructions that do not change the stack height, with an opcode byte
         // followed by a u30 argument
-        private function dropNoneU30(name, opcode, x) {
+        /*private*/ function dropNoneU30(name, opcode, x) {
             //stack(0)
             list2(name, x);
             code.uint8(opcode);
@@ -376,7 +381,7 @@ namespace Asm;
             return { "name": nextLabel++, "address": -1, "stack": current_stack_depth, "scope": current_scope_depth };
         }
 
-        private function relativeOffset(base, L) {
+        /*private*/ function relativeOffset(base, L) {
             if (L.address != -1)
                 code.int24(L.address - base);
             else {
@@ -385,7 +390,7 @@ namespace Asm;
             }
         }
 
-        private function jmp(stk, name, opcode, L) {
+        /*private*/ function jmp(stk, name, opcode, L) {
             stack(stk);
 
             if (L === undefined)
@@ -464,7 +469,8 @@ namespace Asm;
                 }
             }
 
-            list3("lookupswitch", default_label.name, map(function (L) { return L.name }, case_labels));
+            function map_func(L) { return L.name };
+            list3("lookupswitch", default_label.name, map(map_func, case_labels));
             var base = code.length;
             code.uint8(0x1B);
             relativeOffset(base, default_label);
@@ -476,14 +482,14 @@ namespace Asm;
         }
 
         // Standard function calls
-        private function call(name, opcode, nargs) {
+        /*private*/ function call(name, opcode, nargs) {
             stack(1-(nargs+2)); /* pop function/receiver/args; push result */
             list2(name, nargs);
             code.uint8(opcode);
             code.uint30(nargs);
         }
 
-        private function construct(name, opcode, nargs) {
+        /*private*/ function construct(name, opcode, nargs) {
             stack(1-(nargs+1)); /* pop function/receiver/args; push result */
             list2(name, nargs);
             code.uint8(opcode);
@@ -500,7 +506,7 @@ namespace Asm;
             code.uint30(nargs);
         }
 
-        private function callIDX(name, opcode, index, nargs) {
+        /*private*/ function callIDX(name, opcode, index, nargs) {
             stack(1-(nargs+1)); /* pop receiver/args; push result */
             list3(name, index, nargs);
             code.uint8(opcode);
@@ -511,7 +517,7 @@ namespace Asm;
         public function I_callmethod(index, nargs) { callIDX("callmethod", 0x43, index, nargs) }
         public function I_callstatic(index, nargs) { callIDX("callstatic", 0x44, index, nargs) }
 
-        private function callMN(name, opcode, index, nargs, isVoid=false) {
+        /*private*/ function callMN(name, opcode, index, nargs, isVoid=false) {
             /* pop receiver/NS?/Name?/args; push result? */
             var hasRTNS = constants.hasRTNS(index);
             var hasRTName = constants.hasRTName(index);
@@ -531,7 +537,7 @@ namespace Asm;
 
         public function I_debug(debug_type, index, reg, extra=0) {
             //stack(0);
-            listn("debug", debug_type, index, reg, extra);
+            list5("debug", debug_type, index, reg, extra);
             code.uint8(0xEF);
             code.uint8(debug_type);
             code.uint30(index);
@@ -544,7 +550,7 @@ namespace Asm;
            fixed amount and may pop one or two more items, depending
            on the kind of name that index references.
         */
-        private function propU30(name, pops, pushes, opcode, index) {
+        /*private*/ function propU30(name, pops, pushes, opcode, index) {
             var hasRTNS = constants.hasRTNS(index);
             var hasRTName = constants.hasRTName(index);
             stack(pushes - (pops + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
@@ -619,7 +625,7 @@ namespace Asm;
             code.serialize(bs);
         }
 
-        private function resolveBackpatches() {
+        /*private*/ function resolveBackpatches() {
             for ( var i=0 ; i < backpatches.length ; i++ ) {
                 var bp = backpatches[i];
                 if (bp.label.address == -1)
@@ -630,30 +636,30 @@ namespace Asm;
             backpatches.length = 0;
         }
 
-        private function stack(n) {
+        /*private*/ function stack(n) {
             current_stack_depth = current_stack_depth + n;
             if (current_stack_depth > max_stack_depth) {
                 max_stack_depth = current_stack_depth;
             }
         }
 
-        private function scope(n) {
+        /*private*/ function scope(n) {
             current_scope_depth = current_scope_depth + n;
             if (current_scope_depth > max_scope_depth)
                 max_scope_depth = current_scope_depth;
         }
 
-        private var code = new ABCByteStream;
-        private var nextLabel = 1000;
-        private var backpatches = [];
-        private var current_scope_depth = 0;
-        private var max_scope_depth = 0;
-        private var current_stack_depth = 0;
-        private var max_stack_depth = 0;
-        private var nextTemp;
-        private var freeTemps = [];
-        private var constants;
-        private var set_dxns = false;
-        private var need_activation = false;
+        /*private*/ var code = new ABCByteStream;
+        /*private*/ var nextLabel = 1000;
+        /*private*/ var backpatches = [];
+        /*private*/ var current_scope_depth = 0;
+        /*private*/ var max_scope_depth = 0;
+        /*private*/ var current_stack_depth = 0;
+        /*private*/ var max_stack_depth = 0;
+        /*private*/ var nextTemp;
+        /*private*/ var freeTemps = [];
+        /*private*/ var constants;
+        /*private*/ var set_dxns = false;
+        /*private*/ var need_activation = false;
     }
 }

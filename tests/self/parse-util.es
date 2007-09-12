@@ -39,7 +39,7 @@
 use namespace Release;
 use namespace intrinsic;
 
-namespace Parse;
+public namespace Parse;
 
 {
     use default namespace Parse;
@@ -142,10 +142,10 @@ namespace Parse;
         function Pragmas (pragmas) 
         {
             enter ("Pragma ",pragmas);
-            if (pragmas===null)
+            if (pragmas==null)
             {
                 this.openNamespaces = [[]];
-                this.defaultNamespace = new Ast::InternalNamespace ("");
+                this.defaultNamespace = new Ast::PublicNamespace ("");
             }
             else
             {
@@ -168,7 +168,7 @@ namespace Parse;
         var varHeads  //: [Ast::HEAD];
         var letHeads  //: [Ast::HEAD];
         var ctor: Ast::CTOR;
-        var pragmas: PRAGMAS;
+        var pragmas: PRAGMAS
         var pragmaEnv: PRAGMA_ENV; // push one PRAGMAS for each scope
 
         function Context (topFixtures)
@@ -185,10 +185,11 @@ namespace Parse;
 
         function enterVarBlock () 
         {
+            use namespace Ast;
             enter ("enterVarBlock");
             let varHead = new Ast::Head ([],[]);
             this.varHeads.push(varHead);
-            this.env.push (varHead.Ast::fixtures);
+            this.env.push (varHead.fixtures);
             this.pragmas = new Pragmas (this.pragmas);
             this.pragmaEnv.push (this.pragmas);
             exit ("exitVarBlock");
@@ -219,8 +220,9 @@ namespace Parse;
                     print("hasName ",ns,"::",id);
                     let f2 = getFixture (fxtrs,id,ns);
                     if (f1 is Ast::ValFixture && f2 is Ast::ValFixture) {
-                        if (f1.Ast::type==Ast::anyType || f2.Ast::type==Ast::anyType) // FIXME is this right?
-                            return true;
+                        if (f1.Ast::type==Ast::anyType) return true;
+                        else if (f2.Ast::type==Ast::anyType) return true;
+                        // other positive cases here
                     }
                     throw "incompatible fixture redef "+fn.id;
                 }
@@ -233,12 +235,13 @@ namespace Parse;
 
         function addVarFixtures (fxtrs) 
         {
+            use namespace Ast;
             let varHead = this.varHeads[this.varHeads.length-1];
             for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
             {
                 let fb = fxtrs[n];
                 /// if (!hasFixture (varHead.Ast::fixtures,fb)) {
-                    varHead.Ast::fixtures.push (fxtrs[n]);
+                    varHead.fixtures.push (fxtrs[n]);
                 /// }
             }
         }
@@ -252,10 +255,11 @@ namespace Parse;
 
         function enterLetBlock () 
         {
+            use namespace Ast;
             enter ("enterLetBlock");
             let letHead = new Ast::Head ([],[]);
             this.letHeads.push(letHead);
-            this.env.push (letHead.Ast::fixtures);
+            this.env.push (letHead.fixtures);
             this.pragmas = new Pragmas (this.pragmas);
             this.pragmaEnv.push (this.pragmas);
             exit ("enterLetBlock");
@@ -274,16 +278,17 @@ namespace Parse;
 
         function addLetFixtures (fxtrs) 
         {
+            use namespace Ast;
             let letHead = this.letHeads[this.letHeads.length-1];
             for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
-                letHead.Ast::fixtures.push (fxtrs[n]);
+                letHead.fixtures.push (fxtrs[n]);
         }
 
         function addLetInits (inits) 
         {
             let letHead = this.letHeads[this.letHeads.length-1];
             for (let n = 0, len = inits.length; n < len; ++n)  // until array conact works
-                letHead.Ast::exprs.push (inits[n]);
+                letHead.exprs.push (inits[n]);
         }
 
         function openNamespace (nd: Ast::IDENT_EXPR) {
@@ -307,6 +312,8 @@ namespace Parse;
 
         function hasName (fxtrs,id,ns) 
         {
+            use namespace Ast;
+
             enter ("hasName ",id);
             if (fxtrs.length===0) 
             {
@@ -317,7 +324,7 @@ namespace Parse;
             let pn = fxtrs[0][0];
             // print ("pn..id=",pn.Ast::name.id," id=",id);
             // print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
-            if (pn.Ast::name.id==id && pn.Ast::name.ns.Ast::hash()==ns.Ast::hash())  // FIXME: need ns compare
+            if (pn.name.id==id && pn.name.ns.hash()==ns.hash())  // FIXME: need ns compare
             {
                 exit ("hasName true");
                 return true;
@@ -331,6 +338,8 @@ namespace Parse;
 
         function getFixture (fxtrs,id,ns) 
         {
+            use namespace Ast;
+
             enter ("getFixture ");
             if (fxtrs.length===0) 
             {
@@ -338,7 +347,7 @@ namespace Parse;
             }
 
             let pn = fxtrs[0][0];
-            if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString()) 
+            if (pn.name.id==id && pn.name.ns.toString()==ns.toString()) 
             {
                 exit ("getFixture");
                 return fxtrs[0];
@@ -428,23 +437,31 @@ namespace Parse;
         function evalIdentExprToNamespace (nd: Ast::IDENT_EXPR)
             : Ast::NAMESPACE
         {
+            use namespace Ast;
+
             enter ("evalIdentExprToNamespace");
+
+            var fxtr = null;
+            var val = null;
+
             switch type (nd) {
-            case (nd: Ast::Identifier) {
-                var fxtr = findFixtureWithIdentifier (nd.Ast::ident,null);
+            case (nd: Identifier) {
+                var fxtr = findFixtureWithIdentifier (nd.ident,null);
                 switch type (fxtr[1]) {
-                case (fxtr:Ast::NamespaceFixture) {
-                    var val = fxtr.Ast::ns;
+                case (fxtr:NamespaceFixture) {
+                    var val = fxtr.ns;
+                    return fxtr.ns;
                 }
                 case (fxtr:*) {
                     throw "fixture with unknown value " + fxtr;
                 }
                 }
             }
-            case (nd: Ast::ReservedNamespace) {
-                var val = nd.Ast::ns;
+            case (nd: ReservedNamespace) {
+                var val = nd.ns;
+                return val;
             }
-            case (nd: Ast::QualifiedIdentifier) {
+            case (nd: *) {
                 throw "evalIdentExprToNamespace: case not implemented " + nd;
             }
             }
@@ -497,7 +514,7 @@ namespace Parse;
         function initParser(src,topFixtures)
         {
             this.cx = new Context (topFixtures)
-            this.scan = new Scanner (src)
+            this.scan = new Scanner (src,"")
         }
 
         var defaultNamespace: Ast::NAMESPACE;
@@ -510,14 +527,14 @@ namespace Parse;
         {
             //enter ("hd ",ts.head());
             var tk = Token::tokenKind (ts.head());
-            //exit ("hd ",tk);
+            //print ("hd ",tk);
             return tk;
         }
 
         function eat (ts:TokenStream,tc) {
             //print("eating ",Token::tokenText(tc));
             let tk = hd (ts);
-            if (tk === tc) {
+            if (tk == tc) {
                 return tl (ts);
             }
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
@@ -548,7 +565,7 @@ namespace Parse;
         (fl,el)        head
         fl             fixture list
         el             expr list
-        il             init list
+-        il             init list
         sl             stmt list
         it             init target = VAR, LET (default=LET)
         ie             init expr
@@ -698,31 +715,30 @@ namespace Parse;
                     }
                 }
                 //case (p: (ArrayPattern, ObjectPattern)) {
-                case (x: *) {
+                case (p: *) {
                     let tn = new Ast::TempName (n);
                     var fxtrs = [];
                     let exprs = [];
                     let ptrns = p.ptrns;
                     for (let i=0; i<ptrns.length; ++i) {
                         let sub = ptrns[i];
-                        switch type (sub) {
-                        case (pat: FieldPattern) {
+                        /// switch type (sub) {
+                        /// case (sub: FieldPattern) {
+                        if (sub is FieldPattern) {
                             var typ = new Ast::FieldTypeRef (t,sub.ident);
                             var exp = new Ast::ObjectRef (new Ast::GetTemp (n), sub.ident);
-                            var pat = sub.ptrn;
+                            var ptn = sub.ptrn;
                         }
-                        case (pat: *) {
+                        /// case (pat: *) {
+                        else {
                             var typ = new Ast::ElementTypeRef (t,i);
                             var exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::Identifier (i,[[Ast::noNS]]));
                                       // FIXME what is the ns of a temp and how do we refer it
-                            var pat = sub;
+                            var ptn = sub;
                         }
-                        case (x: *) {
-                            throw "internal error: desugarPattern " + p;
-                        }
-                        }
+                        /// }
 
-                        let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
+                        let [fx,ex] = desugarSubPattern (ptn,typ,exp,n+1);
                         for (let j=0; j<fx.length; ++j) fxtrs.push(fx[j]);
                         exprs.push(ex);
                     }
@@ -742,3 +758,5 @@ namespace Parse;
 
     //Parse::test ();
 }
+
+

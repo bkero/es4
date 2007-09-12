@@ -38,7 +38,7 @@
 
 use namespace intrinsic;
 
-namespace Token
+public namespace Token
 
 {
     use default namespace Token
@@ -415,84 +415,84 @@ namespace Token
 
         // ContextuallyReservedIdentifiers
 
-        case "break": return Break;
-        case "case": return Case;
-        case "catch": return Catch;
-        case "class": return Class;
-        case "continue": return Continue;
-        case "default": return Default;
-        case "delete": return Delete;
-        case "do": return Do;
-        case "else": return Else;
-        case "enum": return Enum;
-        case "extends": return Extends;
-        case "false": return False;
-        case "finally": return Finally;
-        case "for": return For;
-        case "function": return Function;
-        case "if": return If;
-        case "in": return In;
-        case "instanceof": return InstanceOf;
-        case "new": return New;
-        case "null": return Null;
-        case "return": return Return;
-        case "super": return Super;
-        case "switch": return Switch;
-        case "this": return This;
-        case "throw": return Throw;
-        case "true": return True;
-        case "try": return Try;
-        case "typeof": return TypeOf;
-        case "var": return Var;
-        case "void": return Void;
-        case "while": return While;
-        case "with": return With;
+        case "break": return Token::Break;
+        case "case": return Token::Case;
+        case "catch": return Token::Catch;
+        case "class": return Token::Class;
+        case "continue": return Token::Continue;
+        case "default": return Token::Default;
+        case "delete": return Token::Delete;
+        case "do": return Token::Do;
+        case "else": return Token::Else;
+        case "enum": return Token::Enum;
+        case "extends": return Token::Extends;
+        case "false": return Token::False;
+        case "finally": return Token::Finally;
+        case "for": return Token::For;
+        case "function": return Token::Function;
+        case "if": return Token::If;
+        case "in": return Token::In;
+        case "instanceof": return Token::InstanceOf;
+        case "new": return Token::New;
+        case "null": return Token::Null;
+        case "return": return Token::Return;
+        case "super": return Token::Super;
+        case "switch": return Token::Switch;
+        case "this": return Token::This;
+        case "throw": return Token::Throw;
+        case "true": return Token::True;
+        case "try": return Token::Try;
+        case "typeof": return Token::TypeOf;
+        case "var": return Token::Var;
+        case "void": return Token::Void;
+        case "while": return Token::While;
+        case "with": return Token::With;
 
         // ContextuallyReservedIdentifiers
 
-        case "call": return Call;
-        case "cast": return Cast;
-        case "const": return Const;
-        case "decimal": return Decimal;
-        case "double": return Double;
-        case "dynamic": return Dynamic;
-        case "each": return Each;
-        case "eval": return Eval;
-        case "final": return Final;
-        case "get": return Get;
-        case "has": return Has;
-        case "implements": return Implements;
-        case "import": return Import;
-        case "int": return Int;
-        case "interface" : return Interface;
-        case "internal": return Internal;
-        case "intrinsic": return Intrinsic;
-        case "is": return Is;
-        case "let": return Let;
-        case "namespace": return Namespace;
-        case "native": return Native;
-        case "Number": return Number;
-        case "override": return Override;
-        case "package": return Package;
-        case "precision": return Precision;
-        case "private": return Private;
-        case "protected": return Protected;
-        case "prototype": return Prototype;
-        case "public": return Public;
-        case "rounding": return Rounding;
-        case "standard": return Standard;
-        case "strict": return Strict;
-        case "to": return To;
-        case "set": return Set;
-        case "static": return Static;
-        case "to": return To;
-        case "type": return Type;
-        case "uint": return UInt;
-        case "undefined": return Undefined;
-        case "use": return Use;
-        case "unit": return Unit;
-        case "xml": return Xml;
-        case "yield": return Yield;
+        case "call": return Token::Call;
+        case "cast": return Token::Cast;
+        case "const": return Token::Const;
+        case "decimal": return Token::Decimal;
+        case "double": return Token::Double;
+        case "dynamic": return Token::Dynamic;
+        case "each": return Token::Each;
+        case "eval": return Token::Eval;
+        case "final": return Token::Final;
+        case "get": return Token::Get;
+        case "has": return Token::Has;
+        case "implements": return Token::Implements;
+        case "import": return Token::Import;
+        case "int": return Token::Int;
+        case "interface" : return Token::Interface;
+        case "internal": return Token::Internal;
+        case "intrinsic": return Token::Intrinsic;
+        case "is": return Token::Is;
+        case "let": return Token::Let;
+        case "namespace": return Token::Namespace;
+        case "native": return Token::Native;
+        case "Number": return Token::Number;
+        case "override": return Token::Override;
+        case "package": return Token::Package;
+        case "precision": return Token::Precision;
+        case "private": return Token::Private;
+        case "protected": return Token::Protected;
+        case "prototype": return Token::Prototype;
+        case "public": return Token::Public;
+        case "rounding": return Token::Rounding;
+        case "standard": return Token::Standard;
+        case "strict": return Token::Strict;
+        case "to": return Token::To;
+        case "set": return Token::Set;
+        case "static": return Token::Static;
+        case "to": return Token::To;
+        case "type": return Token::Type;
+        case "uint": return Token::UInt;
+        case "undefined": return Token::Undefined;
+        case "use": return Token::Use;
+        case "unit": return Token::Unit;
+        case "xml": return Token::Xml;
+        case "yield": return Token::Yield;
         default: return makeInstance (Identifier,lexeme);
         }
     }
@@ -556,6 +556,6 @@ namespace Token
             print(i,": ",names[-i])
     }
 
-    //Token::test()
+    Token::test()
 }
 

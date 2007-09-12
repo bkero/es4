@@ -1,9 +1,7 @@
 namespace Util
-//package util
+
 {
-    use default namespace Util
-    //import bytestream.*;
-    
+    use default namespace Util;
 
     function assert(cond) {
         if (!cond)

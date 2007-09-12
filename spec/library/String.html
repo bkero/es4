@@ -1,18 +1,55 @@
-= The class "String" =
+= String classes =
 
-<P>There are two native string classes, ''String'' and ''string'', the
-latter a subclass of the former.  Instances of ''String'' are
-compatible with ''String'' objects in 3rd Edition, while instances of
-''string'' are compatible with ''string'' values in 3rd Edition.
+<pre>
+FILE:                       spec/library/String.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+<P> ECMAScript provides a primitive string representation in the class
+''string''.  It is primitive in the sense that this representation is
+directly operated upon by operators of the language, and in the sense
+that it is a final and non-dynamic class for which ECMAScript
+implementations may provide efficient representations.
+
+<P> ECMAScript also provides the class ''String'', which is a dynamic
+non-final class that holds ''string'' values.  Instances of ''String''
+are converted to ''string'' when operated upon by operators of the
+language.
 
 
-== The class ''String'' ==
+<h2 id="type Strings"> The type ''Strings'' </h2>
 
-<P>The String class is dynamic, non-final, and holds a sequence of
-Unicode character values (its "string value").  The string value is
-immutable and is set at the time a String object is constructed.
+<P> The type ''Strings'' is a union type that contains the two
+built-in string types.  By standard subtyping rules it also includes
+all classes that extend ''String''.
+
+<INCLUDE file="String.es" name="intrinsic type Strings">
+
+
+<H1 id="class String"> The class ''String'' </h1>
+
+<P>The class ''String'' is a dynamic, nullable, non-final subclass of
+''Object''.  It is a container for ''string'' values.  Instances of
+''String'' are converted to ''string'' when operated upon by the
+operators of the language.
+
+<FIXME> As for ''Number'' and ''Boolean'' there is really no need for
+''String'' to have any magic.  The value it contains could be a simple
+private property that holds a string.  This would cause far fewer issues
+for subclasses.
+
+<P> The class ''String'' can be extended and the extending classes can
+provide novel representations for string values.
 
 === Synopsis ===
+
+<P> The class ''String'' provides the following interface:
+
+<FIXME> Optional arguments need to be handled better in these interfaces.
 
 {{{
 dynamic class String
@@ -28,6 +65,7 @@ dynamic class String
     <SIGNATURE file="String.es" name="static function lastIndexOf">
     <SIGNATURE file="String.es" name="static function localeCompare">
     <SIGNATURE file="String.es" name="static function match">
+    <SIGNATURE file="String.es" name="static function parseJSON">
     <SIGNATURE file="String.es" name="static function replace">
     <SIGNATURE file="String.es" name="static function search">
     <SIGNATURE file="String.es" name="static function slice">
@@ -40,9 +78,10 @@ dynamic class String
     <SIGNATURE file="String.es" name="static function trim">
 
     static const length: uint = 1
-    static const prototype: Object = <LDOTS>
 
-    <SIGNATURE file="String.es" name="intrinsic function fromCharCode">
+    <SIGNATURE file="String.es" name="override intrinsic function toString">
+    <SIGNATURE file="String.es" name="override intrinsic function valueOf">
+
     <SIGNATURE file="String.es" name="intrinsic function charAt">
     <SIGNATURE file="String.es" name="intrinsic function charCodeAt">
     <SIGNATURE file="String.es" name="intrinsic function concat">
@@ -50,6 +89,7 @@ dynamic class String
     <SIGNATURE file="String.es" name="intrinsic function lastIndexOf">
     <SIGNATURE file="String.es" name="intrinsic function localeCompare">
     <SIGNATURE file="String.es" name="intrinsic function match">
+    <SIGNATURE file="String.es" name="intrinsic function parseJSON">
     <SIGNATURE file="String.es" name="intrinsic function replace">
     <SIGNATURE file="String.es" name="intrinsic function search">
     <SIGNATURE file="String.es" name="intrinsic function slice">
@@ -62,30 +102,219 @@ dynamic class String
     <SIGNATURE file="String.es" name="intrinsic function trim">
 
     <SIGNATURE file="String.es" name="function get length">
-    
-    <SIGNATURE file="String.es" name="prototype function charAt">
-    <SIGNATURE file="String.es" name="prototype function charCodeAt">
-    <SIGNATURE file="String.es" name="prototype function concat">
-    <SIGNATURE file="String.es" name="prototype function indexOf">
-    <SIGNATURE file="String.es" name="prototype function lastIndexOf">
-    <SIGNATURE file="String.es" name="prototype function localeCompare">
-    <SIGNATURE file="String.es" name="prototype function match">
-    <SIGNATURE file="String.es" name="prototype function replace">
-    <SIGNATURE file="String.es" name="prototype function search">
-    <SIGNATURE file="String.es" name="prototype function slice">
-    <SIGNATURE file="String.es" name="prototype function split">
-    <SIGNATURE file="String.es" name="prototype function substring">
-    <SIGNATURE file="String.es" name="prototype function toLowerCase">
-    <SIGNATURE file="String.es" name="prototype function toLocaleLowerCase">
-    <SIGNATURE file="String.es" name="prototype function toUpperCase">
-    <SIGNATURE file="String.es" name="prototype function toLocaleUpperCase">
-    <SIGNATURE file="String.es" name="prototype function trim">
+    <SIGNATURE file="String.es" name="meta function get">
 }
 }}}
 
+<P> The ''String'' prototype object provides the following direct properties:
 
-<FIXME> Should ''string'' methods be generic (ie unconstrained in
-their object argument), or only ''String'' methods?  The prototype
-methods on ''string'' have to be generic, for sure, but the static
-methods are new and we can choose.
+<FIXME> Optional arguments need to be handled better in these interfaces.
 
+{{{
+    toString:          function (this:Strings) <LDOTS>
+    valueOf:           function (this:Strings) <LDOTS>
+    charAt:            function (pos) <LDOTS>
+    charCodeAt:        function (pos) <LDOTS>
+    concat:            function (...strings) <LDOTS>
+    indexOf:           function (searchString, pos) <LDOTS>
+    lastIndexOf:       function (searchString, pos) <LDOTS>
+    localeCompare:     function (that) <LDOTS>
+    match:             function (regexp) <LDOTS>
+    parseJSON:         function () <LDOTS>
+    replace:           function (searchValue, replaceValue) <LDOTS>
+    search:            function (regexp) <LDOTS>
+    slice:             function (start, end) <LDOTS>
+    split:             function (separator, limit) <LDOTS>
+    substring:         function (start, end) <LDOTS>
+    toLowerCase:       function () <LDOTS>
+    toLocaleLowerCase: function () <LDOTS>
+    toUpperCase:       function () <LDOTS>
+    toLocaleUpperCase: function () <LDOTS>
+    trim:              function () <LDOTS>
+}}}
+
+<P> The ''String'' prototype object is also used as the prototype object for the
+class ''string''.
+
+== Methods on the ''String'' class object ==
+
+=== new String ( value=<LDOTS> ) ===
+
+<DESC> The ''String'' constructor initializes a new ''String'' object
+by storing //value//, converted to ''string'', in a private property.
+//Value// defaults to the empty string.
+
+<IMPL> The ''String'' constructor is implementation-defined.
+
+=== String( value=<LDOTS> ) ===
+
+<DESC> The ''String'' class object called as a function converts
+//value// to ''string'' (not to ''String'').  //Value// defaults to
+the empty string.
+
+<RETN> The ''String'' class object called as a function returns a
+''string'' object.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="meta static function invoke">
+
+=== Methods that delegate to ''string'' methods ===
+
+<DESC> The intrinsic methods ''charAt'', ''charCodeAt'', ''concat'',
+''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'', ''parseJSON'',
+''replace'', ''search'', ''slice'', ''split'', ''substring'',
+''toLowerCase'', ''toLocaleLowerCase'', ''toUpperCase'',
+''toLocaleUpperCase'', and ''trim'' all delegate 
+to the corresponding static methods on the ''string'' class.
+
+<RETN> These intrinsic methods return what their corresponding static
+methods on the ''string'' class return.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="static function charAt">
+<INCLUDE file="String.es" name="static function charCodeAt">
+<INCLUDE file="String.es" name="static function concat">
+<INCLUDE file="String.es" name="static function indexOf">
+<INCLUDE file="String.es" name="static function lastIndexOf">
+<INCLUDE file="String.es" name="static function localeCompare">
+<INCLUDE file="String.es" name="static function match">
+<INCLUDE file="String.es" name="static function parseJSON">
+<INCLUDE file="String.es" name="static function replace">
+<INCLUDE file="String.es" name="static function search">
+<INCLUDE file="String.es" name="static function slice">
+<INCLUDE file="String.es" name="static function split">
+<INCLUDE file="String.es" name="static function substring">
+<INCLUDE file="String.es" name="static function toLowerCase">
+<INCLUDE file="String.es" name="static function toLocaleLowerCase">
+<INCLUDE file="String.es" name="static function trim">
+
+== Methods on ''String'' instances ==
+
+=== toString ===
+
+<RETN> The intrinsic ''toString'' method returns this ''String''
+object converted to ''string''.  For the class ''String'' itself this
+results in the extraction of the private string value held by the
+''String''.  Subclasses of ''String'' can represent strings
+differently by overriding ''toString''.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="override intrinsic function toString">
+
+=== valueOf ===
+
+<RETN> The intrinsic ''valueOf'' method returns the result of calling
+the intrinsic ''toString'' method.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="override intrinsic function valueOf">
+
+=== Methods that delegate to ''string'' methods ===
+
+<DESC> The intrinsic methods ''charAt'', ''charCodeAt'', ''concat'',
+''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'', ''parseJSON'',
+''replace'', ''search'', ''slice'', ''split'', ''substring'',
+''toLowerCase'', ''toLocaleLowerCase'', ''toUpperCase'',
+''toLocaleUpperCase'', and ''trim'' all delegate 
+to the corresponding static methods on the ''string'' class, passing
+''this'' as the first argument in all cases.
+
+<RETN> These intrinsic methods return what their corresponding static
+methods on the ''string'' class return.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="intrinsic function charAt">
+<INCLUDE file="String.es" name="intrinsic function charCodeAt">
+<INCLUDE file="String.es" name="intrinsic function concat">
+<INCLUDE file="String.es" name="intrinsic function indexOf">
+<INCLUDE file="String.es" name="intrinsic function lastIndexOf">
+<INCLUDE file="String.es" name="intrinsic function localeCompare">
+<INCLUDE file="String.es" name="intrinsic function match">
+<INCLUDE file="String.es" name="intrinsic function parseJSON">
+<INCLUDE file="String.es" name="intrinsic function replace">
+<INCLUDE file="String.es" name="intrinsic function search">
+<INCLUDE file="String.es" name="intrinsic function slice">
+<INCLUDE file="String.es" name="intrinsic function split">
+<INCLUDE file="String.es" name="intrinsic function substring">
+<INCLUDE file="String.es" name="intrinsic function toLowerCase">
+<INCLUDE file="String.es" name="intrinsic function toLocaleLowerCase">
+<INCLUDE file="String.es" name="intrinsic function toUpperCase">
+<INCLUDE file="String.es" name="intrinsic function toLocaleUpperCase">
+<INCLUDE file="String.es" name="intrinsic function trim">
+
+<NOTE> The second parameter to the intrinsic method ''localeCompare''
+and the first parameter to the intrinsic methods ''toLocaleLowerCase''
+and ''toLocaleUpperCase'' are likely to be used in a future version of
+this standard; it is recommended that implementations do not use these
+parameter position for anything else.
+
+== Methods on the ''String'' prototype object ==
+
+=== toString ( ) ===
+
+<RETN> Returns this result of invoking the intrinsic ''toString''
+method.
+
+<P> The ''toString'' function is not generic; it throws a
+**TypeError** exception if its this value is not a ''String'' or
+''string'' object.  Therefore, it cannot be transferred to other kinds
+of objects for use as a method.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="prototype function toString">
+
+=== valueOf ( ) ===
+
+<RETN> Returns this result of invoking the intrinsic ''valueOf'' method.
+
+<P> The ''valueOf'' function is not generic; it throws a **TypeError**
+exception if its this value is not a ''String'' or ''string'' object.
+Therefore, it cannot be transferred to other kinds of objects for use
+as a method.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="prototype function valueOf">
+
+=== Methods that delegate to ''string'' methods ===
+
+<DESC> The methods ''charAt'', ''charCodeAt'', ''concat'',
+''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'',
+''parseJSON'', ''replace'', ''search'', ''slice'', ''split'',
+''substring'', ''toLowerCase'', ''toLocaleLowerCase'',
+''toUpperCase'', ''toLocaleUpperCase'', and ''trim'' on the ''String''
+prototype object all delegate to the
+corresponding static methods on the ''string'' class, passing ''this''
+as the first argument in all cases.
+
+<P> These methods are all generic, they do not require that their
+''this'' object is a ''String''.  Therefore, they can be transferred
+to other kinds of objects for use as methods.
+
+<RETN> These methods on the ''String'' prototype object all return the
+values returned by their corresponding static methods on the
+''string'' class.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="prototype function charAt">
+<INCLUDE file="String.es" name="prototype function charCodeAt">
+<INCLUDE file="String.es" name="prototype function concat">
+<INCLUDE file="String.es" name="prototype function indexOf">
+<INCLUDE file="String.es" name="prototype function lastIndexOf">
+<INCLUDE file="String.es" name="prototype function localeCompare">
+<INCLUDE file="String.es" name="prototype function match">
+<INCLUDE file="String.es" name="prototype function parseJSON">
+<INCLUDE file="String.es" name="prototype function replace">
+<INCLUDE file="String.es" name="prototype function search">
+<INCLUDE file="String.es" name="prototype function slice">
+<INCLUDE file="String.es" name="prototype function split">
+<INCLUDE file="String.es" name="prototype function substring">
+<INCLUDE file="String.es" name="prototype function toLowerCase">
+<INCLUDE file="String.es" name="prototype function toLocaleLowerCase">
+<INCLUDE file="String.es" name="prototype function trim">
+
+
+<NOTE> The second parameter to the prototype method ''localeCompare''
+and the first parameter to the prototype methods ''toLocaleLowerCase''
+and ''toLocaleUpperCase'' are likely to be used in a future version of
+this standard; it is recommended that implementations do not use these
+parameter position for anything else.

@@ -55,12 +55,15 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.3; 15.11.7 */
-    public dynamic class ReferenceError extends Error
+    dynamic class ReferenceError extends Error
     {
-        meta static function invoke(msg)
-            new ReferenceError(msg);
+        meta static function invoke(message)
+            new ReferenceError(message);
 
-        function ReferenceError(msg) : super(msg) {}
+        function ReferenceError(message)
+            : super(message)
+        {
+        }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "ReferenceError";

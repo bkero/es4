@@ -206,19 +206,19 @@ use namespace Release;
 
             switch (hd (ts)) {
             case Token::Internal:
-                var [ts1,nd1] = [tl (ts), new Ast::InternalNamespace (current_package)];
+                var [ts1,nd1] = [tl (ts), new Ast::InternalNamespace (currentPackageName)];
                 break;
             case Token::Public:
-                var [ts1,nd1] = [tl (ts), new Ast::PublicNamespace (current_package)];
+                var [ts1,nd1] = [tl (ts), new Ast::PublicNamespace (currentPackageName)];
                 break;
             case Token::Intrinsic:
                 var [ts1,nd1] = [tl (ts), new Ast::IntrinsicNamespace];
                 break;
             case Token::Private:
-                var [ts1,nd1] = [tl (ts), new Ast::PrivateNamespace (current_class)];
+                var [ts1,nd1] = [tl (ts), new Ast::PrivateNamespace (currentClassName)];
                 break;
             case Token::Protected:
-                var [ts1,nd1] = [tl (ts), new Ast::ProtectedNamespace (current_class)];
+                var [ts1,nd1] = [tl (ts), new Ast::ProtectedNamespace (currentClassName)];
                 break;
             }
 
@@ -281,22 +281,22 @@ use namespace Release;
             switch (hd (ts1)) {
             case Token::DoubleColon:
                 switch type (nd1) {
-                case (ns:Ast::NAMESPACE) {
-                    nd1 = new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1));
-                }
-                case (id:Ast::IDENT) {
+                case (id:String) {
                     nd1 = new Ast::LexicalRef (new Ast::Identifier (nd1,cx.pragmas.openNamespaces))
+                }
+                case (ns:*) {
+                    nd1 = new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1));
                 }
                 }
                 var [ts2,nd2] = qualifiedNameIdentifier (tl(ts1), nd1);
                 break;
             default:
                 switch type (nd1) {
-                case (ns:Ast::NAMESPACE) {
-                    var [ts2,nd2] = [ts1,new Ast::ReservedNamespace (nd1)];
-                }
-                case (id:Ast::IDENT) {
+                case (id:String) {
                     var [ts2,nd2] = [ts1,new Ast::Identifier (nd1,cx.pragmas.openNamespaces)];
+                }
+                case (ns:*) {
+                    var [ts2,nd2] = [ts1,new Ast::ReservedNamespace (nd1)];
                 }
                 }
                 break;

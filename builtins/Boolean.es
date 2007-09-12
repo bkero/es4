@@ -44,6 +44,10 @@ package
     use default namespace public;
     use namespace intrinsic;
 
+    // RI bug: the "this" constraint on methods can't use union types,
+    // but the parser allows type names...
+    type AnyBoolean = (Boolean,boolean);
+
     dynamic class Boolean
     {
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
@@ -56,25 +60,20 @@ package
 
 	/* E262-4 early-binding variant. */
         override intrinsic function toString() : string
-            this ? "true" : "false";
-
-        /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-        prototype function toString() {
-            if (this is Boolean)
-                return this ? "true" : "false";
-            throw new TypeError("Boolean.prototype.toString called on incompatible " + typeof(this));
-        }
+            intrinsic::valueOf().intrinsic::toString();
 
 	/* E262-4 early-binding variant. */
         override intrinsic function valueOf() : boolean
             boolean(this);
 
+        // The boolean class uses the Boolean class's prototype too.
+
+        /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
+        prototype function toString(this: AnyBoolean )
+            intrinsic::toString();
+
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-        prototype function valueOf()
-        {
-            if (this is Boolean)
-                return boolean(this);
-            throw new TypeError("Boolean.prototype.valueOf called on incompatible " + typeof(this));
-        }
+        prototype function valueOf(this: AnyBoolean)
+            intrinsic::valueOf();
     }
 }

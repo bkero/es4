@@ -121,7 +121,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
       precision = Decimal.defaultPrecision }
 
 val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
-                          (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
+                                    (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
+                                    (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS) ]
 
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 

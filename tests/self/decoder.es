@@ -12,7 +12,7 @@ to get the same text form back.
 use namespace Release;
 use namespace Ast;
 use namespace intrinsic;
-namespace Decode;
+public namespace Decode;
 
 {
     use default namespace Decode;
@@ -306,6 +306,12 @@ namespace Decode;
         switch (ob.ast_class) {
         case 'Ordinary':
             var ndx = new Ordinary;
+            break;
+        case 'Get':
+            var ndx = new Get;
+            break;
+        case 'Set':
+            var ndx = new Set;
             break;
         default:
             throw "error Decoder::funcNameKind " + ob;

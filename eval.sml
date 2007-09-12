@@ -1687,7 +1687,7 @@ and sign (v:Mach.VAL)
 and floor (v:Mach.VAL)
     : LargeInt.int =
     mathOp v
-           (SOME Decimal.floor)
+           (SOME Decimal.floorInt)
            (SOME (Real64.toLargeInt IEEEReal.TO_NEGINF))
            (SOME Int32.toLarge)
            (SOME Word32.toLargeInt)

@@ -36,6 +36,25 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+var CTX_shared;
+class CTX {
+    var asm, stk, target;
+    var emitter, script, cp;
+
+    function CTX (asm, stk, target) {
+        this.asm = asm;
+        this.stk = stk;
+        this.target = target;
+
+        // tamarin hack
+        this.emitter = CTX_shared.emitter;
+        this.script = CTX_shared.script;
+        this.cp = CTX_shared.cp;
+    }
+}
+
+
+
 namespace Gen;
 //package cogen
 {
@@ -55,7 +74,8 @@ namespace Gen;
     /// function cg(tree: PROGRAM) {
         var e = new ABCEmitter;
         var s = e.newScript();
-        CTX.prototype = { "emitter": e, "script": s, "cp": e.constants };
+        // CTX.prototype = { "emitter": e, "script": s, "cp": e.constants };  // tamarin doesn't like initing prototype here
+        CTX_shared = { "emitter": e, "script": s, "cp": e.constants };
         cgProgram(new CTX(s.init.asm, null, s), tree);
         return e.finalize();
     }
@@ -76,11 +96,6 @@ namespace Gen;
      * for VAR/CONST/FUNCTION.
      */
 
-    function CTX(asm, stk, target) {
-        this.asm = asm;
-        this.stk = stk;
-        this.target = target;
-    }
 
     function push(ctx, node) {
         node.link = ctx.stk;
@@ -104,42 +119,68 @@ namespace Gen;
     
     function cgFixtures(ctx, fixtures) {
         let { target:target, asm:asm, emitter:emitter } = ctx;
+        let methidx, trait_kind, clsidx;
         for ( let i=0 ; i < fixtures.length ; i++ ) {
             let [fxname, fx] = fixtures[i];
             let name = emitter.fixtureNameToName(fxname);
 
-            switch type (fx) {
-            case (vf:ValFixture) {
+            /// switch type (fx) {
+            /// case (fx:ValFixture) {
+            if (fx is ValFixture) {
                 if( !hasTrait(target.traits, name, TRAIT_Slot) )
-                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(vf.type))); 
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(fx.type))); 
 					// FIXME when we have more general support for type annos
             }
-            case (mf:MethodFixture) {
-                let methidx = cgFunc(ctx, mf.func);
-                switch type (target) {
-                    case (m:Method) {
-                        target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
-                        asm.I_findpropstrict(name);
-                        asm.I_newfunction(methidx);
-                        asm.I_setproperty(name);
-                    }
-                    case (x:*) {
-                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
-                    }
+            /// case (fx:MethodFixture) {
+            else if (fx is MethodFixture) {
+                var initScopeDepth = (ctx.stk!=null && ctx.stk.tag=="instance")?2:0;
+                methidx = cgFunc(ctx, fx.func, initScopeDepth);
+                /// switch type (target) {
+                /// case (m:Method) {
+                if (target is Method) {
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
+                    asm.I_findpropstrict(name);
+                    asm.I_newfunction(methidx);
+                    asm.I_setproperty(name);
                 }
+                /// case (x:*) {
+                else {
+                    // target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
+                    trait_kind = TRAIT_Method;
+                    /// switch type(fx.func.name.kind) {
+                    /// case (g:Get) {
+                    if (fx.func.name.kind is Get) {
+                        print("Getter, target: " + target);
+                        trait_kind = TRAIT_Getter;
+                    }
+                    /// case (s:Set) {
+                    else if (fx.func.name.kind is Set) {
+                        print("Setter, target: " +target);
+                        trait_kind = TRAIT_Setter;
+                    }
+                    /// }
+                    target.addTrait(new ABCOtherTrait(name, 0, trait_kind, 0, methidx));
+                }
+                /// }
             }
-            case (cf:ClassFixture) {
-                let clsidx = cgClass(ctx, cf.cls);
+            /// case (fx:ClassFixture) {
+            else if (fx is ClassFixture) {
+                clsidx = cgClass(ctx, fx.cls);
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
             }
-            case (nf:NamespaceFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"}), emitter.namespace(nf.ns), CONSTANT_Namespace));
+            /// case (fx:NamespaceFixture) {
+            else if (fx is NamespaceFixture) {
+                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"}), emitter.namespace(fx.ns), CONSTANT_Namespace));
             }
-            case (tf:TypeFixture) {
-		print ("warning: ignoring type fixture");
+            /// case (fx:TypeFixture) {
+            else if (fx is TypeFixture) {
+                print ("warning: ignoring type fixture");
             }
-            case (x:*) { throw "Internal error: unhandled fixture type" }
+            /// case (fx:*) { 
+            else {
+                throw "Internal error: unhandled fixture type" 
             }
+            /// }
         }
     }
 
@@ -232,7 +273,7 @@ namespace Gen;
      */
     function cgCtor(ctx, c, instanceInits) {
         let formals_type = extractFormalTypes(ctx, c.func);
-        let method = new Method(ctx.script.e, formals_type, "$construct", false);
+        let method = new Method(ctx.script.e, formals_type, 2, "$construct", false);
         let asm = method.asm;
 
         let defaults = extractDefaultValues(ctx, c.func);
@@ -245,8 +286,15 @@ namespace Gen;
         let ctor_ctx = new CTX(asm, {tag:"function", scope_reg:t}, method);
        
         asm.I_getlocal(0);
+        asm.I_dup();
         // Should this be instanceInits.inits only?
+        asm.I_pushscope();  // This isn't quite right...
+        for( let i = 0; i < instanceInits.length; i++ ) {
+            cgExpr(ctor_ctx, instanceInits[i]);
+            asm.I_pop();
+        }
         cgHead(ctor_ctx, instanceInits);
+        asm.I_popscope();
         //cgHead(ctor_ctx, instanceInits.inits, true);
 
         // Push 'this' onto scope stack
@@ -305,9 +353,9 @@ namespace Gen;
      * Generate code for the function
      * Return the function index
      */
-    function cgFunc({emitter:emitter, script:script}, f:FUNC) {
+    function cgFunc({emitter:emitter, script:script}, f:FUNC, initScopeDepth) {
         let formals_type = extractFormalTypes({emitter:emitter, script:script}, f);
-        let method = script.newFunction(formals_type);
+        let method = script.newFunction(formals_type,initScopeDepth);
         let asm = method.asm;
 
         let defaults = extractDefaultValues({emitter:emitter, script:script}, f);

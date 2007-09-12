@@ -38,7 +38,7 @@
 
 /* ast.es */
 
-namespace Ast
+public namespace Ast
 
 {
     use default namespace Ast;

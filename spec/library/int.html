@@ -1,0 +1,189 @@
+<H1 id="class int"> The class ''int'' </h1>
+
+<pre>
+FILE:                       spec/library/int.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+
+<P> The class ''int'' is a final, non-nullable, non-dynamic direct
+subclass of ''Object'' that represents two's complement signed 32-bit
+integer values in the range -2<sup>31</sup> to 2<sup>31</sup>-1
+inclusive.
+
+<COMP> The class ''int'' is new in the 4th Edition of this Standard.
+
+== Synopsis ==
+
+<P> The class ''int'' provides the following interface:
+
+{{{
+final class int!
+{
+    <SIGNATURE file="int.es" name="function int">
+    <SIGNATURE file="int.es" name="meta static function invoke">
+    
+    static const MAX_VALUE: int = 0x7FFFFFFF
+    static const MIN_VALUE: int = -0x80000000
+    static const length: uint = 1
+
+    <SIGNATURE file="int.es" name="override intrinsic function toString">
+    <SIGNATURE file="int.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="int.es" name="override intrinsic function valueOf">
+
+    <SIGNATURE file="int.es" name="intrinsic function toFixed">
+    <SIGNATURE file="int.es" name="intrinsic function toExponential">
+    <SIGNATURE file="int.es" name="intrinsic function toPrecision">
+}
+}}}
+
+<P> The ''int'' prototype object is identical to the ''Number''
+prototype object (<XREF target="Number.prototype">).
+
+== Methods on the ''int'' class object ==
+
+=== new int( value=<LDOTS> ) ===
+
+<DESC> The ''int'' constructor it initialises the newly created
+''int'' object by storing an implementation-defined representation of
+the integer value of //value//, as computed by the ''ToInt32''
+operator, in a private property.  The default //value// is 0.
+
+<IMPL> The ''int'' constructor is implementation-defined.
+
+=== int( value=<LDOTS> ) ===
+
+<DESC> When the ''int'' class object is called as a function it
+performs a type conversion: it converts //value// (which defaults
+to 0) to ''int''.
+
+<RETN> The ''int'' class object called as a function returns an
+''int''.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="meta static function invoke">
+
+<FIXME> It would be less confusing if the converter used ''new int''
+instead of ''newInt'' here.
+
+== Value properties on the ''int'' class object ==
+
+=== MAX_VALUE ===
+
+<P> The value of ''MAX_VALUE'' is the largest positive integer value
+represented by the ''int'' class.  Its value is 2<SUP>31</SUP>-1.
+
+=== MIN_VALUE ===
+
+<P> The value of ''MIN_VALUE'' is the smallest negative value
+represented by the ''int'' class.  Its value is -2<SUP>31</SUP>.
+
+<FIXME> int.MIN_VALUE is not symmetric with Number.MIN_VALUE, as the
+latter holds the smallest //positive// value represented by a double.
+Ditto, uint.MIN_VALUE is 0 (a bit silly) and decimal.MIN_VALUE will
+be a positive value as for double.
+
+<P class="fixme"> It's not clear to me that the asymmetry is a problem,
+though.
+
+
+== Methods on ''int'' instances ==
+
+=== intrinsic::toString ( radix=<LDOTS> ) ===
+
+<DESC> The intrinsic ''toString'' method converts this integer value
+to a string representation in a base given by //radix//.
+
+<P> If radix is the number 10 or undefined, then the result is as for
+the ''ToString'' operator.
+
+<P> If radix is an integer from 2 to 36, but not 10, the result is an
+implementation-dependent string
+
+<RETN> The intrinsic ''toString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="override intrinsic function toString">
+
+<FIXME> What's "informative" in the above?
+
+=== intrinsic::toLocaleString ( ) ===
+
+<DESC> The intrinsic ''toLocaleString'' method converts this integer
+value to a string value that represents the value of the integer
+formatted according to the conventions of the host environment's
+current locale.
+
+<RETN> The intrinsic ''toLocaleString'' method returns an
+implementation-dependent string.
+
+<IMPL> The intrinsic ''toLocaleString'' method is
+implementation-dependent, and it is permissible, but not encouraged,
+for it to return the same thing as the intrinsic ''toString'' method.
+
+<NOTE> The first parameter to this function is likely to be used in a
+future version of this standard; it is recommended that
+implementations do not use this parameter position for anything else.
+
+
+=== intrinsic::valueOf ( ) ===
+
+<DESC> The intrinsic ''valueOf'' method returns the integer value
+represented by this ''int'' object: the object itself.
+
+<RETN> The intrinsic ''valueOf'' method returns its ''this'' object.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="override intrinsic function valueOf">
+
+
+=== intrinsic::toFixed ( fractionDigits=<LDOTS> ) ===
+
+<DESC> The intrinsic ''toFixed'' method converts the this number value
+to a string in fixed-point notation with //fractionDigits// digits
+after the decimal point.  If //fractionDigits// is **undefined**, 0
+is assumed.
+
+<RETN> The intrinsic ''toFixed'' method returns the fixed-point
+notation string representation of this number value.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="intrinsic function toFixed">
+
+
+=== intrinsic::toExponential ( fractionDigits=<LDOTS> ) ===
+
+<DESC> The intrinsic ''toExponential'' method converts this number value
+to a string in exponential notation with one digit before the
+significand's decimal point and //fractionDigits// digits after the
+significand's decimal point.  If //fractionDigits// is **undefined**,
+include as many significand digits as necessary to uniquely specify
+the number (just like in ''ToString'' except that in this case the
+number is always output in exponential notation).
+
+<RETN> The intrinsic ''toExponential'' method returns the exponential
+notation string representation of this number value.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="intrinsic function toExponential">
+
+=== intrinsic::toPrecision ( precision=<LDOTS> ) ===
+
+<DESC> The intrinsic ''toPrecision'' method converts this number value
+to a string, either in exponential notation with one digit before the
+significand's decimal point and //precision//-1 digits after the
+significand's decimal point or in fixed notation with //precision//
+significant digits.  If precision is **undefined**, call ''ToString''
+(<XREF target="Operator:ToString">) instead.
+
+<RETN> The intrinsic ''toPrecision'' method returns the selected string
+representation of this number value.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="intrinsic function toPrecision">
+
+<!-- End of int.html -->

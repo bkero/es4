@@ -38,7 +38,7 @@
 
 use namespace intrinsic;
 
-namespace Lex
+public namespace Lex
 
 {
     use default namespace Lex;
@@ -110,7 +110,7 @@ namespace Lex
                     colCoord = 0;
                 }
                 else {
-                    print ("token ", token);
+                    //print ("token ", token);
                     //print ("token ", token, " \t", Token::tokenText(token));
                     colCoord = colCoord + markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
@@ -140,7 +140,7 @@ namespace Lex
 
         function regexp ()
         {
-            let c : int = next ();
+            let c = next ();
             switch (c)
             {
             case Char::Slash :
@@ -154,8 +154,8 @@ namespace Lex
 
         function regexpFlags ()
         {
-            let c : int = next ();
-            if (Unicode.isIdentifierPart (String.fromCharCode(c))) {
+            let c /*: int*/ = next ();
+            if (Char::isIdentifierPart (c)) {
                 return regexpFlags ();
             }
             else {
@@ -167,15 +167,14 @@ namespace Lex
         function start ()
             : int
         {
-            var c : int;
+            var c /*: int*/;
             while (true)
             {
                 mark();
                 c = next();
                 //print("c[",curIndex-1,"]=",String.fromCharCode(c));
-                switch (c)
-                {
-                case 0xffffffef: return utf8sig ();
+                switch (c) {
+                //  case 0xffffffef: return utf8sig ();
                 case Char::EOS: return Token::EOS;
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Eol;
@@ -239,7 +238,7 @@ namespace Lex
                 case Char::Nine:
                     return decimalInteger ();
                 default:
-                    if (Unicode.isIdentifierStart (String.fromCharCode(c)))
+                    if (Char::isIdentifierStart (c))
                     {
                         return identifier (String.fromCharCode(c));
                     }
@@ -256,11 +255,11 @@ namespace Lex
 	function zero ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::x:
 	    case Char::X:
-		return hexLiteral ();
+            return hexLiteral ();
 	    case Char::Zero:
 	    case Char::One:
 	    case Char::Two:
@@ -269,21 +268,21 @@ namespace Lex
 	    case Char::Five:
 	    case Char::Six:
 	    case Char::Seven:
-		return octalLiteral ();
+            return octalLiteral ();
 	    case Char::Dot:
-		return decimalInteger ();
+            return decimalInteger ();
 	    case Char::Eight:  // what do we do with these?
 	    case Char::Nine:
 	    default :
-		retract ();
-		return numberSuffix ();
+            retract ();
+            return numberSuffix ();
 	    }
 	}
 
 	function hexLiteral ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -311,7 +310,7 @@ namespace Lex
 	function octalLiteral ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -333,7 +332,7 @@ namespace Lex
 	function decimalInteger ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -345,21 +344,21 @@ namespace Lex
 	    case Char::Seven:
 	    case Char::Eight:
 	    case Char::Nine:
-		return decimalInteger ();
+            return decimalInteger ();
 	    case Char::Dot:
-		return decimalFraction ();
+            return decimalFraction ();
 	    case Char::e: case Char::E:
-		return decimalExponent ();
+            return decimalExponent ();
 	    default:
-		retract ();
-		return numberSuffix ();
+            retract ();
+            return numberSuffix ();
 	    }
 	}
 
 	function decimalFraction ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -390,7 +389,7 @@ namespace Lex
 	function decimalExponent ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -412,7 +411,7 @@ namespace Lex
 	function numberSuffix ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::i:
 		return Token::makeInstance (Token::ExplicitIntLiteral, lexeme ());
@@ -431,7 +430,7 @@ namespace Lex
 	function slash ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Slash:
 		lineComment ();
@@ -448,7 +447,7 @@ namespace Lex
 	function lineComment ()
 	    : void
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Newline:
 	    case Char::EOS:
@@ -462,7 +461,7 @@ namespace Lex
 	function blockComment ()
 	    : void
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Asterisk :
             switch (next()) {
@@ -493,7 +492,7 @@ namespace Lex
 	function stringLiteral (delimiter, text="")
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case delimiter:
             return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
@@ -513,7 +512,7 @@ namespace Lex
 	function escapeSequence ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -524,7 +523,7 @@ namespace Lex
 	    case Char::Six:
 	    case Char::Seven:
             retract ();
-            return octalOrNulEscape ();
+            return octalOrNulEscape (0);
 	    case Char::x:
             return hexEscape (2);
 	    case Char::u:
@@ -553,7 +552,7 @@ namespace Lex
 	function octalOrNulEscape (n:int)
 	    : uint
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 		switch (next()) {
@@ -588,10 +587,10 @@ namespace Lex
 	{
 	    if (n==3) {
 		for (let i=0; i<n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n);
+		return octalEscape (n,0);
 	    }
 
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -604,14 +603,14 @@ namespace Lex
 		return octalEscapeFull (n+1);
 	    default:
 		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n);
+		return octalEscape (n,0);
 	    }
 	}
 
 	function octalEscapeShort (n:int)
 	    : uint
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Zero:
 	    case Char::One:
@@ -622,10 +621,10 @@ namespace Lex
 	    case Char::Six:
 	    case Char::Seven:
 		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n+1);
+		return octalEscape (n+1,0);
 	    default:
 		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
-		return octalEscape (n);
+		return octalEscape (n,0);
 	    }
 	}
 
@@ -636,7 +635,7 @@ namespace Lex
 		return v;
 	    }
 
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    var m;
 	    switch (c) {
 	    case Char::Zero:
@@ -677,7 +676,7 @@ namespace Lex
 		return v;
 	    }
 
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    var m;
 	    switch (c) {
 	    case Char::Zero:
@@ -744,7 +743,7 @@ namespace Lex
 	function dot ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Dot : return dotdot ();
 	    case Char::LeftAngle : return Token::LeftDotAngle;
@@ -768,7 +767,7 @@ namespace Lex
 	function dotdot ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Dot : return Token::TripleDot;
 	    default :
@@ -786,7 +785,7 @@ namespace Lex
 	function not ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return notequal ();
 	    default :
@@ -798,7 +797,7 @@ namespace Lex
 	function notequal ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::StrictNotEqual;
 	    default :
@@ -816,7 +815,7 @@ namespace Lex
 	function remainder ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::RemainderAssign;
 	    default :
@@ -834,7 +833,7 @@ namespace Lex
 	function and ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::BitwiseAndAssign;
 	    case Char::Ampersand : return logicalAnd ();
@@ -847,7 +846,7 @@ namespace Lex
 	function logicalAnd ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::LogicalAndAssign;
 	    default :
@@ -865,7 +864,7 @@ namespace Lex
 	function mult ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::MultAssign;
 	    default :
@@ -883,7 +882,7 @@ namespace Lex
 	function plus ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Plus : return Token::PlusPlus;
 	    case Char::Equal : return Token::PlusAssign;
@@ -902,7 +901,7 @@ namespace Lex
 	function minus ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Dash : return Token::MinusMinus;
 	    case Char::Equal : return Token::MinusAssign;
@@ -921,7 +920,7 @@ namespace Lex
 	function div ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::DivAssign;
 	    case Char::RightAngle : return Token::XmlTagEndEnd;
@@ -940,7 +939,7 @@ namespace Lex
 	function leftAngle ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::LessThanOrEqual;
 	    case Char::LeftAngle : return leftShift ();
@@ -954,7 +953,7 @@ namespace Lex
 	function leftShift ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::LeftShiftAssign;
 	    default :
@@ -972,7 +971,7 @@ namespace Lex
 	function equal ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return equalEqual ();
 	    default :
@@ -984,7 +983,7 @@ namespace Lex
 	function equalEqual ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::StrictEqual;
 	    default :
@@ -1003,7 +1002,7 @@ namespace Lex
 	function rightAngle ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::GreaterThanOrEqual;
 	    case Char::RightAngle : return rightShift ();
@@ -1016,7 +1015,7 @@ namespace Lex
 	function rightShift ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::RightShiftAssign;
 	    case Char::RightAngle : return unsignedRightShift ();
@@ -1029,7 +1028,7 @@ namespace Lex
 	function unsignedRightShift ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::UnsignedRightShiftAssign;
 	    default :
@@ -1047,7 +1046,7 @@ namespace Lex
 	function bitwiseXor ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::BitwiseXorAssign;
 	    default :
@@ -1065,7 +1064,7 @@ namespace Lex
 	function bitwiseOr ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::BitwiseOrAssign;
 	    case Char::Bar : return logicalOr ();
@@ -1078,7 +1077,7 @@ namespace Lex
 	function logicalOr ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Equal : return Token::LogicalOrAssign;
 	    default :
@@ -1096,7 +1095,7 @@ namespace Lex
 	function colon ()
 	    : int
 	{
-	    let c : int = next ();
+	    let c /*: int*/ = next ();
 	    switch (c) {
 	    case Char::Colon : return Token::DoubleColon;
 	    default :
@@ -1114,7 +1113,7 @@ namespace Lex
         function identifier (str:string)
             : int
         {
-            let c : int = next ();
+            let c /*: int*/ = next ();
             //print("c[",curIndex-1,"]=",String.fromCharCode(c))
             switch (c)
             {
@@ -1176,7 +1175,7 @@ namespace Lex
 		let c = escapeSequence ();
 		return identifier (str+String.fromCharCode(c));
             default:
-                if (Unicode.isIdentifierPart (String.fromCharCode(c)) && c != Char::EOS)
+                if (Char::isIdentifierPart (c) && c != Char::EOS)
                 {
                     return identifier (str+String.fromCharCode(c));
                 }
@@ -1190,7 +1189,7 @@ namespace Lex
 
         function b_ () : int
         {
-            let c : int = next ();
+            let c /*: int*/ = next ();
             switch (c)
             {
                 case Char::r:
@@ -1204,7 +1203,7 @@ namespace Lex
         function br_ ()
             : int
         {
-            let c : int = next ();
+            let c /*: int*/ = next ();
             switch (c)
             {
                 case Char::e :
@@ -1218,7 +1217,7 @@ namespace Lex
         function d_ ()
             : int
         {
-            let c : int = next ();
+            let c /*: int*/ = next ();
             switch (c)
             {
                 case Char::e : return identifier ("de");
@@ -1231,7 +1230,7 @@ namespace Lex
         function n_ ()
             : int
         {
-            let c : int = next();
+            let c /*: int*/ = next();
             switch (c)
             {
                 case Char::a : return identifier ("na");
@@ -1246,7 +1245,7 @@ namespace Lex
         function nu_ ()
             : int
         {
-            let c : int = next ();
+            let c /*: int*/ = next ();
             switch (c) {
             case Char::l : return nul_ ();
             default:
@@ -1258,7 +1257,7 @@ namespace Lex
         function nul_ ()
             : int
         {
-            let c : int = next ();
+            let c /*: int*/ = next ();
             switch (c) {
             case Char::l : return null_ ();
             default:
@@ -1270,8 +1269,8 @@ namespace Lex
         function null_ ()
             : int
         {
-            let c : int = next ();
-            if (Unicode.isIdentifierPart (String.fromCharCode(c)))
+            let c /*: int*/ = next ();
+            if (Char::isIdentifierPart (c))
             {
                 return identifier ("null"+String.fromCharCode(c));
             }
@@ -1298,7 +1297,7 @@ namespace Lex
                           , "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
                           , "/* hello nobody */ hello // goodbye world"
                           , "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
-                          , "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
+                          // , "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
                           , "/abc/ 'hi' \"bye\" null break /def/xyz" ];
 
         for (var i = 0; i < testCases.length; ++i) {
@@ -1321,5 +1320,5 @@ namespace Lex
             print ("scanned!");
         }
     }
-    //Lex::test ();
+    // Lex::test ();
 }

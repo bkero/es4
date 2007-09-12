@@ -40,8 +40,8 @@
     use namespace Ast;
     use namespace Util;
     load ("esc-env.ast")
-    print ("booting")
-    var nd = Decode::program (ast);
+    print ("decoding")
+    var nd = Decode::program (esc_env);
     var topFixtures = nd.head.fixtures;
     var str = readFile ("esc-tmp.es");
     var parser = Parse::initParser(str,topFixtures);

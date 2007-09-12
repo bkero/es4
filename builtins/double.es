@@ -53,38 +53,40 @@ package
     use strict;
     import ECMAScript4_Internal.*;
 
-    intrinsic final class double! extends Number
+    // The [[Prototype]] of "int" is Number.[[Prototype]]
+    // Don't add prototype methods or properties here!
+
+    intrinsic final class double!
     {
         static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
         static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
         static const NaN : double               = 0.0 / 0.0;
         static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
         static const POSITIVE_INFINITY : double = 1.0 / 0.0;
+        // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
+        static const E: double = 2.7182818284590452354;   /* Approximately */
+        static const LN10: double = 2.302585092994046;    /* Approximately */
+        static const LN2: double = 0.6931471805599453;    /* Approximately */
+        static const LOG2E: double = 1.4426950408889634;  /* Approximately */
+        static const LOG10E: double = 0.4342944819032518; /* Approximately */
+        static const PI: double = 3.1415926535897932;     /* Approximately */
+        static const SQRT1_2: double = 0.7071067811865476;/* Approximately */
+        static const SQRT2: double = 1.4142135623730951;  /* Approximately */
 
-        /* E262-4 draft */
+        /* Obsolete, needed for the moment because the RI does not yet handle
+           interconversion of numbers */
         meta static function convert(x)
             double(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        meta static function invoke(x=0.0d)
+        meta static function invoke(x=0d)
             x is double ? x : magic::newDouble(x);
 
         /* E262-3 15.7.2.1: The double constructor */
-        function double(x=0.0d) : super(x)
-        {
-            // No need to magic::bindDouble a second time,
-            // since our super(x) call did it for us.
-        }
+        function double(x=0d)
+            magic::bindDouble(this, x);
 
-
-        /* E262-3 15.7.4.2: double.prototype.toString */
-        prototype function toString(radix = 10)
-            this.toString(radix);
-
-        override intrinsic function toString(radix = 10) : string
-            private::toString(radix);
-
-        private function toString(radix) : string {
+        override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && helper::isIntegral(radix)) {
@@ -95,34 +97,23 @@ package
                 throw new TypeError("Invalid radix argument to double.toString");
         }
 
-
-        /* E262-3 15.7.4.3: double.prototype.toLocaleString() */
-        prototype function toLocaleString(this:double)
-            this.toLocaleString();
-
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
             toString();
 
-        /* E262-3 15.7.4.4: double.prototype.valueOf */
-        prototype function valueOf(this:double)
-            this.valueOf();
-
         override intrinsic function valueOf() : double
             this;
 
-        /* E262-3 15.7.4.5 Number.prototype.toFixed */
-        prototype function toFixed(this:double, fractionDigits)
-            this.toFixed(ToDouble(fractionDigits));
-
-        override intrinsic function toFixed(fractionDigits:double) : string {
-            let f : double = ToInteger(fractionDigits);
+        intrinsic function toFixed(fractionDigits=0) : string {
+            print("here");
+            let x = this;
+            let f = ToInteger(fractionDigits);
             if (f < 0 || f > 20)
-                throw new RangeError("fractionDigits out of range");
-            let x : double = this;
+                throw new RangeError();
+
             if (isNaN(x))
                 return "NaN";
-            let s : string = "";
+            let s = "";
             if (x < 0) {
                 s = "-";
                 x = -x;
@@ -131,11 +122,11 @@ package
             if (x >= Math.pow(10,21))
                 return s + ToString(m);
 
-            let n : double = toFixedStep10(x, f);
-            let m : string = n == 0 ? "0" : ToString(n);
+            let n = toFixedStep10(x, f);
+            let m = n == 0 ? "0" : ToString(n);
             if (f == 0)
                 return s + m;
-            let k : int = m.length;
+            let k = m.length;
             if (k <= f) {
                 m = "00000000000000000000".substring(0,f+1-k) + m;
                 k = f+1;
@@ -149,22 +140,19 @@ package
 
            x must be positive, f is in the range [0,20]. */
 
-        native intrinsic function toFixedStep10(x : double, f : int) : int;
+        // FIXME: really informative, not intrinsic
+        native intrinsic function toFixedStep10(x : (double,decimal), f : int) : int;
 
-        /* E262-3 15.7.4.6: Number.prototype.toExponential */
-        prototype function toExponential(this:double, fractionDigits)
-            this.toExponential(ToDouble(fractionDigits));
+        intrinsic function toExponential(fractionDigits=undefined) : string {
+            return "**toExponential: FIXME**";
+        }            
 
-        /* E262-3 15.7.4.7: Number.prototype.toPrecision */
-        prototype function toPrecision(this:double, precision)
-            this.toPrecision(ToDouble(precision));
-
-        // FIXME these are supposed to be native, but the parser has trouble
-        // parsing "override intrinsic function native". No idea why.
-        override intrinsic function toExponential(fractionDigits:double) : string "";
-        override intrinsic function toPrecision(precision:double) : string "";
+        intrinsic function toPrecision(precision=undefined) : string {
+            return "**toPrecision: FIXME**";
+        }
 
         /* The E262-3 number primitive consumes all additional [[set]] operations. */
+        // FIXME: why is this here?
         meta function set(n,v) : void
         {
         }

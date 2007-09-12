@@ -104,9 +104,11 @@
         cgExpr(ctx, test);
         let L0 = asm.I_iffalse();
         cgExpr(ctx, consequent);
+        asm.I_coerce_a();
         let L1 = asm.I_jump();
         asm.I_label(L0);
         cgExpr(ctx, alternate);
+        asm.I_coerce_a();
         asm.I_label(L1);
     }
 
@@ -210,10 +212,9 @@
     }
 
     function cgUnaryExpr(ctx, e) {
-        let {asm:asm, emitter:emitter} = ctx;
+        var {asm:asm, emitter:emitter} = ctx;
 
-        let incdec = function incdec(pre, inc) {
-            //let name;
+        function incdec(pre, inc) {
             switch type (e.e1) {
             case (lr:LexicalRef) {
                 //name = cgIdentExpr(ctx, lr.ident);
@@ -425,12 +426,13 @@
             asm.I_setproperty(cgIdentExpr(ctx, name));  // Always store it; the effect is observable
         }
         else {
+            let use_once_name = cgIdentExpr(ctx, name);
             cgExpr(ctx, e.re);
             let t = asm.getTemp();
             if (e.op is Assign) {
                 asm.I_dup();
                 asm.I_setlocal(t);
-                asm.I_setproperty(cgIdentExpr(ctx, name));
+                asm.I_setproperty(use_once_name);
             }
             else {
                 asm.I_dup();
@@ -451,7 +453,7 @@
                 }
                 asm.I_dup();
                 asm.I_setlocal(t);
-                asm.I_setproperty(cgIdentExpr(ctx, name));
+                asm.I_setproperty(use_once_name);
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
@@ -545,7 +547,21 @@
         case (e:LiteralInt) { asm.I_pushint(ctx.cp.int32(e.intValue)) }
         case (e:LiteralUInt) { asm.I_pushuint(ctx.cp.uint32(e.uintValue)) }
         case (e:LiteralDouble) { asm.I_pushdouble(ctx.cp.float64(e.doubleValue)) }
-        case (e:LiteralDecimal) { asm.I_pushdouble(ctx.cp.float64(Number(e.decimalValue))) } // FIXME - the AVM2 can't handle decimal yet
+        case (e:LiteralDecimal) { 
+            let i : int = int(e.decimalValue);
+            let n : Number = Number(e.decimalValue);
+            if( e.decimalValue == String(i) ) {
+                asm.I_pushint(ctx.cp.int32(i));
+            }
+            else if( e.decimalValue == String(n) ) {
+                asm.I_pushdouble(ctx.cp.float64(Number(n))) 
+            }
+            else {
+                // Work around RI bug - converts all hex strings to 0
+                asm.I_pushstring(ctx.cp.stringUtf8(e.decimalValue));
+                asm.I_convert_d();
+            }
+        } // FIXME - the AVM2 can't handle decimal yet
         case (e:LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
         case (e:LiteralBoolean) {
             if (e.booleanValue)
@@ -584,25 +600,26 @@
         let{asm:asm, emitter:emitter} = ctx;
         switch type(e) {
             case (id:Identifier) {
-                return emitter.multiname(id);
+                return emitter.multiname(id,false);
             }
             case (ei:ExpressionIdentifier) {
                 cgExpr(ctx, ei.expr);
-                return emitter.multinameL(ei);
+                return emitter.multinameL(ei,false);
             }
             case (qi:QualifiedIdentifier) {
-/*                switch type(qi.qual) {
+                switch type(qi.qual) {
                     case( lr:LexicalRef ) {
                         // Hack to deal with namespaces for now...
                         // later we will have to implement a namespace lookup to resolve qualified typenames
-                        return emitter.qname({ns:new AnonymousNamespace(lr.ident.ident), id:qi.ident})
+                        return emitter.qname({ns:new PublicNamespace(lr.ident.ident), id:qi.ident})
                     }
                     case( e:* ) {
-*/                        cgExpr(ctx, qi.qual);
-                        return emitter.rtqname(qi);
-/*                    }
+                        /// cgExpr(ctx, qi.qual);
+                        /// return emitter.rtqname(qi);
+                        throw "unsupported form of qualified identifier " + qi.ident;
+                    }
                 }
-*/            }
+            }
             case (x:*) { throw ("Unimplemented cgIdentExpr " + e) }
         }
     }

@@ -55,12 +55,15 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.1; 15.11.7 */
-    public dynamic class EvalError extends Error
+    dynamic class EvalError extends Error
     {
-        meta static function invoke(msg)
-            new EvalError(msg);
+        meta static function invoke(message)
+            new EvalError(message);
 
-        function EvalError(msg) : super(msg) {}
+        function EvalError(message) 
+            : super(message) 
+        {
+        }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "EvalError";
