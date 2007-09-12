@@ -47,7 +47,6 @@ package
 {
     import ECMAScript4_Internal.*;
 
-    {
     use default namespace public;
     use namespace helper;
     use namespace informative;
@@ -1036,6 +1035,5 @@ package
         while (s.length < k)
             s = "0" + s;
         return s;
-    }
     }
 }

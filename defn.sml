@@ -1726,6 +1726,23 @@ and defPragmas (env:ENV)
         val rib = ref []
         val tempOffset = #tempOffset env
 
+        fun modifiedEnv _ = 
+            { nonTopRibs = !rib :: nonTopRibs,
+              tempOffset = tempOffset,
+              openNamespaces = (case !opennss of
+                                    [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
+                                  | _  => !opennss :: (#openNamespaces env)),
+              numericMode = { numberType = !numType,
+                              roundingMode = !rounding,
+                              precision = !precision },
+              labels = (#labels env),
+              packageNames = !packageNames,
+              className = (#className env),
+              packageName = (#packageName env),
+              topUnitName = (#topUnitName env),
+              defaultNamespace = !defaultNamespace,
+              program = (#program env) }
+
         fun defPragma x =
             case x of
                 Ast.UseNumber n => numType := n
@@ -1733,13 +1750,13 @@ and defPragmas (env:ENV)
               | Ast.UsePrecision p => precision := p
               | Ast.UseNamespace ns =>
                     let
-                        val namespace = resolveExprToNamespace env ns
+                        val namespace = resolveExprToNamespace (modifiedEnv()) ns
                     in
                         opennss := addNamespace (namespace, (!opennss))
                     end
               | Ast.UseDefaultNamespace ns =>
                     let
-                        val namespace = resolveExprToNamespace env ns
+                        val namespace = resolveExprToNamespace (modifiedEnv()) ns
                         val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=Ustring.empty}]
                     in
                         (case namespace of
@@ -1767,7 +1784,7 @@ and defPragmas (env:ENV)
                             end
                       | _ =>
                             let
-                                val aliasFixture = makeAliasFixture env alias (packageIdentFromPath package) name
+                                val aliasFixture = makeAliasFixture (modifiedEnv()) alias (packageIdentFromPath package) name
                                 val aliasName = {ns=(!defaultNamespace),id=valOf alias}
                                 val _ = trace ["aliasName ",LogErr.name aliasName]
                                 val id = packageIdentFromPath package
@@ -1781,26 +1798,9 @@ and defPragmas (env:ENV)
                             end
                     end
               | _ => ()
-
     in
         List.app defPragma pragmas;
-
-          ({ nonTopRibs = !rib :: nonTopRibs,
-             tempOffset = tempOffset,
-             openNamespaces = (case !opennss of
-                                   [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
-                                 | _  => !opennss :: (#openNamespaces env)),
-             numericMode = { numberType = !numType,
-                             roundingMode = !rounding,
-                             precision = !precision },
-             labels = (#labels env),
-             packageNames = !packageNames,
-             className = (#className env),
-             packageName = (#packageName env),
-             topUnitName = (#topUnitName env),
-             defaultNamespace = !defaultNamespace,
-             program = (#program env)},
-           !rib)
+        (modifiedEnv (), !rib)
     end
 
 (*

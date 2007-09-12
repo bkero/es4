@@ -845,8 +845,8 @@ fun unaryDecimalFn (f:(Decimal.DEC -> Decimal.DEC)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
     fn regs =>
     fn vals => if length vals = 0
-               then Eval.newDecimal Decimal.NaN
-               else Eval.newDecimal (f (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)))
+               then Eval.newDecimal regs Decimal.NaN
+               else Eval.newDecimal regs (f (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)))
 
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
@@ -860,8 +860,8 @@ fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
     fn regs =>
     fn vals => if length vals = 0 orelse length vals = 1
-               then Eval.newDecimal Decimal.NaN
-               else Eval.newDecimal (f ((Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)),
+               then Eval.newDecimal regs Decimal.NaN
+               else Eval.newDecimal regs (f ((Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)),
                                         (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 1))))
 
 val ceilDouble = unaryDoubleFn Real64.realCeil
