@@ -49,6 +49,7 @@ package
     use namespace intrinsic;
     use default namespace public;
     use strict;
+    import ECMAScript4_Internal.*;
 
     /* E262-3 15.10: Regular expression object */
     public dynamic class RegExp
@@ -110,7 +111,7 @@ package
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
         intrinsic function exec(s : string) : Array {
             let length : uint = s.length;
-            let i : double = ToInteger(lastIndex);
+            let i : double = helper::toInteger(lastIndex);
             if (!global)
                 i = 0;
             let res : MatchResult = failure;
@@ -140,14 +141,14 @@ package
         }
 
         prototype function exec(s)
-            this.exec(ToString(s));
+            this.exec(string(s));
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
         intrinsic function test(s : string) : boolean
              exec(s) !== null;
 
         prototype function test(s)
-            this.test(ToString(s));
+            this.test(string(s));
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
         override intrinsic function toString() : string
@@ -169,17 +170,13 @@ package
         /* E262-4 - [[Match]] may not *have* to be public, but String
          * uses it, and if we want to model the language in the
          * language we should expose it -- it's benign.
-         *
-         * FIXME: Should it be exposed like this?  Recorded as ticket #56.
-        */
-        intrinsic function match(s : string, i : uint) : MatchResult
+         */
+        helper function match(s : string, i : uint) : MatchResult
             matcher.match(s, i, multiline, ignoreCase);
 
         /* E262-4 - nCapturingParens used by String.prototype.replace.
-         *
-         * FIXME: Should it be exposed like this?  Recorded as ticket #56.
          */
-        intrinsic function get nCapturingParens() : uint
+        helper function get nCapturingParens() : uint
             matcher.nCapturingParens;
 
         /* Internal */

@@ -43,25 +43,20 @@ package
     use namespace intrinsic;
     use strict;
 
+    // Unused functions have been commented out.  lth / 2007-09-07
+
+    /*
     intrinsic function IsPrimitive(value)
         magic::isPrimitive(value);
+    */
 
+    /*
     intrinsic function DefaultValue(obj, preferredType)
         magic::defaultValue(obj, preferredType);
+    */
 
     intrinsic function ToPrimitive(value, preferredType)
         magic::toPrimitive(value, preferredType);
-
-    /* ES-262-3 9.4: The ToInteger operation */
-    intrinsic function ToInteger(value) : Numeric {
-        value = ToDouble(value);
-        if (value !== value)
-            return 0;
-        if (value === 0 || !isFinite(value))
-            return value;
-        var sign:double = value < 0d ? -1d : 1d;
-        return sign * Math.floor(Math.abs(value));
-    }
 
     /*
      * ES-262-3 9.9: ToObject.
@@ -70,50 +65,11 @@ package
      * already objects, no conversion is necessary.
     */
 
+    /*
     intrinsic function ToObject(value) : Object! {
         if (value === undefined || value === null)
             throw new TypeError("Can't convert undefined or null to Object");
         return new Object(value);
     }
-
-    /*
-     * The remaining ES-262-3 9.x primitive conversions are formulated
-     * in terms of calling the class meta::invoke of the associated
-     * primitive, which generally calls the primitive constructor and
-     * thus one of the native magic::bindFoo() primitive conversion
-     * routines provided by the implementation.
-     *
-     * It is done this way because expressing the conversion
-     * algorithms in ES4 code proved difficult: the code invariably
-     * fed back on primitive constructors (for literals, control-flow
-     * booleans, temporaries, etc). This meant that the conversions
-     * could seldom be called from primitive constructors without
-     * entering infinite loops. This was unacceptable since the
-     * conversion algorithms are primarily *intended* to be called
-     * from the bodies of primitive constructors.
-     */
-
-    intrinsic function ToBoolean(value) : boolean
-        boolean(value);
-
-    intrinsic function ToInt(v) : int
-        int(value)
-
-    intrinsic function ToUint(x) : uint
-        uint(x);
-
-    intrinsic function ToDouble(x) : double
-        double(x);
-
-    intrinsic function ToDecimal(x) : decimal
-        decimal(x);
-
-    intrinsic function ToString(x) : string
-        string(x);
-
-    intrinsic function ToNumeric(x) : Numeric {
-        if (x is Numeric)
-            return x;
-        return ToDouble(x);
-    }
+    */
 }

@@ -74,100 +74,91 @@ package
     import RegExpInternals.*
     import ECMAScript4_Internal.*;
 
-    intrinsic final class string! extends String
+    intrinsic final class string!
     {
         /* E262-4 draft */
         meta static function convert(x)
             string(x);
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        meta static function invoke(x="")
-            x is string ? x : magic::newString(x);
+        meta static function invoke(value="")
+            value is string ? value : magic::newString(value);
 
         /* 15.5.2 The string Constructor */
-        function string(x="") 
-            : super(x)
-        {
-            // No need to magic::bindString a second time,
-            // since our super(x) call did it for us.
-        }
-
+        function string(value="") 
+            magic::bindString(this, value);
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        static function fromCharCode(...args)
-            string.helper::fromCharCode(args);
+        static function fromCharCode(...codes)
+            string.helper::fromCharCode(codes);
 
-        intrinsic static function fromCharCode(...args) : double
-            string.helper::fromCharCode(args);
+        intrinsic static function fromCharCode(...codes): string
+            string.helper::fromCharCode(codes);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
          * it is called from methods in 'String'.
          */
-        helper static function fromCharCode(codes : Array) : double {
-            let s : string = "";
-            let n : uint = codes.length;
-            for (let i : uint = 0 ; i < n ; ++i)
-                s += magic::fromCharCode(uint(codes[i]));
+        helper static function fromCharCode(codes: Array): string {
+            let s = "";
+            for (let i=0, limit=codes.length ; i < limit ; ++i)
+                s += magic::fromCharCode(uint(codes[i] & 0x1FFFFF));
             return s;
         }
 
 
         /* E262-3 15.5.4.2: String.prototype.toString */
+        /*
         prototype function toString(this : string)
             this;
+        */
 
-        /*
         override intrinsic function toString() : string
             this;
-        */
 
         /* E262-3 15.5.4.3: String.prototype.valueOf */
+        /*
         prototype function valueOf(this : string)
             this;
+        */
 
-        /*
         override intrinsic function valueOf() : string
             this;
-        */
 
         /* E262-3 15.5.4.4: String.prototype.charAt
            E262-4 draft proposals:static_generics
         */
+        /*
         prototype function charAt(pos)
             string.charAt(this, pos);
-
-        /*
-        override intrinsic function charAt(pos: double = 0) : string
-            string.charAt(this, pos);
         */
+
+        intrinsic function charAt(pos: double = 0) : string
+            string.charAt(this, pos);
+
         static function charAt(self, pos) : string {
-            let S    : string = ToString(self);
-            let ipos : double = ToInteger(pos);
+            let S    = string(self);
+            let ipos = helper::toInteger(pos);
             if (ipos < 0 || ipos >= S.length)
                 return "";
-            return magic::fromCharCode(magic::charCodeAt(S, ToUint(ipos)));
+            return magic::fromCharCode(magic::charCodeAt(S, uint(ipos)));
         }
 
 
         /* E262-3 15.5.4.5: String.prototype.charCodeAt
            E262-4 draft proposals:static_generics
         */
-        prototype function charCodeAt(pos)
-            string.charCodeAt(this, ToDouble(pos));
 
-        /*
-        override intrinsic function charCodeAt(pos: double = 0) : double
+        intrinsic function charCodeAt(pos: double = 0) : double
             string.charCodeAt(this, pos);
-        */
 
         static function charCodeAt(self, pos) : double {
-            let S : string = ToString(self);
-            let ipos: double = ToInteger(pos);
+            let S = string(self);
+            let ipos = helper::toInteger(pos);
             if (ipos < 0 || ipos >= S.length)
                 return NaN;
-            return magic::charCodeAt(S, ToUint(ipos));
+            return magic::charCodeAt(S, uint(ipos));
         }
 
 
@@ -175,13 +166,13 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
          */
+        /*
         prototype function concat(...args)
             string.helper::concat(this, args);
-
-        /*
-        override intrinsic function concat(...args) : string
-            string.helper::concat(this, args);
         */
+
+        intrinsic function concat(...args) : string
+            string.helper::concat(this, args);
 
         static function concat(self, ...args)
             string.helper::concat(self, args);
@@ -190,10 +181,10 @@ package
          * it is called from methods in 'String'.
          */
         helper static function concat(self, strings) : string {
-            let S : string = ToString(self);
-            let n : uint = strings.length;
-            for (let i : uint = 0; i < n ; i++)
-                S += ToString(strings[i]);
+            let S = string(self);
+            let n = strings.length;
+            for (let i=0; i < n ; i++)
+                S += string(strings[i]);
             return S;
         }
 
@@ -202,22 +193,22 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        prototype function indexOf(searchString, position)
-            string.indexOf(this, searchString, position);
-
         /*
-        override intrinsic function indexOf(searchString: string, position: double = 0.0) : double
+        prototype function indexOf(searchString, position)
             string.indexOf(this, searchString, position);
         */
 
+        intrinsic function indexOf(searchString: string, position: double = 0.0) : double
+            string.indexOf(this, searchString, position);
+
         static function indexOf(self, searchString, position) : double {
-            let S     : string = ToString(self);
-            let SS    : string = ToString(searchString);
-            let pos   : double = ToInteger(position);
-            let slen  : uint = S.length;
-            let m     : uint = Math.min(Math.max(pos, 0), slen);
-            let sslen : uint = SS.length;
-            let lim          = slen - sslen + 1;  /* Beware of uint optimization... */
+            let S     = string(self);
+            let SS    = string(searchString);
+            let pos   = helper::toInteger(position);
+            let slen  = S.length;
+            let m     = Math.min(Math.max(pos, 0), slen);
+            let sslen = SS.length;
+            let lim   = slen - sslen + 1;
 
             outer:
             for ( let k = m ; k < lim ; k++ ) {
@@ -235,27 +226,27 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
+        /*
         prototype function lastIndexOf(searchString, position)
             string.lastIndexOf(this, searchString, position);
-
-        /*
-        override intrinsic function lastIndexOf(searchString: string, position: double) : double
-            string.lastIndexOf(self, searchString, position);
         */
 
+        intrinsic function lastIndexOf(searchString: string, position: double) : double
+            string.lastIndexOf(this, searchString, position);
+
         static function lastIndexOf(self, searchString, position) : double {
-            let S     : string = ToString(self);
-            let SS    : string = ToString(searchString);
-            let pos   : double = let (tmp = ToDouble(position)) isNaN(tmp) ? Infinity : ToInteger(tmp);
-            let slen  : uint = S.length;
-            let sslen : uint = SS.length;
-            let m     : uint = Math.min(Math.max(pos, 0), slen);
+            let S     = string(self);
+            let SS    = string(searchString);
+            let pos   = let (tmp = double(position)) isNaN(tmp) ? Infinity : helper::toInteger(tmp);
+            let slen  = S.length;
+            let sslen = SS.length;
+            let m     = Math.min(Math.max(pos, 0), slen);
 
             if (sslen > slen)
                 return -1;
 
             outer:
-            for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {  /* Beware of uint optimization... */
+            for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {
                 for ( let w = 0 ; w < sslen ; w++ ) {
                     if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w)))
                         continue outer;
@@ -268,21 +259,21 @@ package
         /* E262-3 15.5.4.9: String.prototype.localeCompare
            E262-4 draft proposals:static_generics
          */
+        /*
         prototype function localeCompare(that)
             string.localeCompare(this, that);
-
-        /*
-        override intrinsic function localeCompare(that : string) : double
-            string.localeCompare(self, that);
         */
+
+        intrinsic function localeCompare(that : string) : double
+            string.localeCompare(this, that);
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function localeCompare(self, that) : double {
-            let A  : string = ToString(self);
-            let B  : string = ToString(that);
-            let la : uint = A.length;
-            let lb : uint = B.length;
-            let l  : uint = la < lb ? la : lb;
+            let A  = string(self);
+            let B  = string(that);
+            let la = A.length;
+            let lb = B.length;
+            let l  = la < lb ? la : lb;
 
             for ( let i=0 ; i < l ; i++ ) {
                 let a = A.charCodeAt(i),
@@ -297,17 +288,17 @@ package
         /* E262-3 15.5.4.10: String.prototype.match
            E262-4 draft proposals:static_generics
         */
-        prototype function match(regexp)
-            string.match(this, regexp);
-
         /*
-        override intrinsic function match(regexp: RegExp) : Array
+        prototype function match(regexp)
             string.match(this, regexp);
         */
 
+        intrinsic function match(regexp: RegExp) : Array
+            string.match(this, regexp);
+
         static function match(self, regexp): Array {
-            let S : string = ToString(self);
-            let R : RegExp = regexp is RegExp ? regexp : new RegExp(regexp);
+            let S = string(self);
+            let R = regexp is RegExp ? regexp : new RegExp(regexp);
 
             if (!R.global)
                 return R.exec(S);  // ie, intrinsic::exec
@@ -316,8 +307,8 @@ package
 
             R.lastIndex = 0;
             while (true) {
-                let oldLastIndex : double = R.lastIndex;
-                let res : Array = R.exec(S);
+                let oldLastIndex = Number(R.lastIndex);
+                let res = R.exec(S);
 
                 if (res === null)
                     break;
@@ -327,7 +318,7 @@ package
                     ++R.lastIndex;
             }
             if (matches.length == 0)
-                return null;      /* Cf errata */
+                return null;      // Cf errata
             else
                 return matches;
         }
@@ -336,42 +327,34 @@ package
         /* E262-3 15.5.4.11: String.prototype.replace
            E262-4 draft proposals:static_generics
          */
+        /*
         prototype function replace(searchValue, replaceValue)
             string.replace(this, searchValue, replaceValue);
+        */
 
-        /* FIXME: it's an open question if the interface here should use (String!,RegExp!)
-           or (string,RegExp!), and whether the replace function should return "string" or
-           "String!".  This has implications for strict mode only.
-           
-           Note that the superclass uses String!, and will need to be involved in the fix
-           somehow.
-        */
-        /*
-        override
-        intrinsic function replace(searchValue: (String!,RegExp!),
-                                   replaceValue: (String!,function(...):String!)) : string
+        intrinsic function replace(searchValue: (string,RegExp!),
+                                   replaceValue: (string,function(...):string)) : string
             string.replace(this, searchValue, replaceValue);
-        */
 
         static function replace(self, s, r): string {
 
-            /* paragraph 4 */
+            // paragraph 4
             let function substituteFunction(start: uint, end: uint, m: uint, cap: Array) : string {
-                let A : Array = [];
+                let A = [];
                 A[0] = S.substring(start, end);
-                for ( let i : uint=0 ; i < m ; i++ )
+                for ( let i=0 ; i < m ; i++ )
                     A[i+1] = cap[i+1];
                 A[m+2] = start;
                 A[m+3] = S;
-                return ToString(replaceFun.apply(null, A));
+                return string(replaceFun.apply(null, A));
             }
 
-            /* paragraph 5 */
+            // paragraph 5
             let function substituteString(start: uint, end: uint, m: uint, cap: Array) : string {
-                let s   : string = "";
-                let i   : uint = 0;
-                let r   : RegExp = /\$(?:(\$)|(\&)|(\`)|(\')|([0-9]{1,2}))/g;
-                let res : Array;
+                let s   = "";
+                let i   = 0;
+                let r   = /\$(?:(\$)|(\&)|(\`)|(\')|([0-9]{1,2}))/g;
+                let res;
 
                 while ((res = r.exec(replaceString)) !== null) {
                     s += replaceString.substring(i, r.lastIndex - res[0].length);
@@ -382,7 +365,7 @@ package
                     else if (res[3]) s += S.substring(0, start);
                     else if (res[4]) s += S.substring(end);
                     else {
-                        let n : int = parseInt(res[5]);
+                        let n = parseInt(res[5]);
                         if (n <= m && cap[n] !== undefined)
                             s += cap[n];
                     }
@@ -394,7 +377,7 @@ package
 
             let function match( regexp, i : uint ) : [uint, CapArray]  {
                 while (i <= S.length) {
-                    let res : MatchResult = regexp.match(S, i);
+                    let res : MatchResult = regexp.helper::match(S, i);
                     if (res !== null) {
                         res.cap[0] = S.substring(i,res.endIndex);
                         return [i, res.cap];
@@ -404,48 +387,48 @@ package
                 return [0, null];
             }
 
-            let S             : string = ToString(self);
-            let replaceString : string? = r is string ? r cast string : null;
-            let replaceFun    : Function = r is Function ? r cast Function : null;
+            let S             = string(self);
+            let replaceString = r is string ? r cast string : null;
+            let replaceFun    = r is Function ? r cast Function : null;
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
 
             if (s !== null && s is RegExp) {
-                /* paragraph 2 */
+                // paragraph 2
 
-                let regexp : RegExp = s cast RegExp;
-                let m : uint = regexp.nCapturingParens;
+                let regexp = s cast RegExp;
+                let m      = regexp.helper::nCapturingParens;
 
                 if (!regexp.global) {
-                    let [i, res] : [uint, CapArray] = match(regexp, 0);
+                    let [i, res] = match(regexp, 0);
 
                     if (res === null)
                         return S;
 
-                    let end : uint = i + res[0].length;
+                    let end = i + res[0].length;
                     return S.substring(0,i) + substitute(i, end, m, res) + S.substring(end);
                 }
                 else {
-                    /* Note that regexp.lastIndex is visible to the
-                     * user's replace function, if any, and should be
-                     * updated before that function is called and read
-                     * anew on each iteration, in case it was updated.
-                     */
-                    let newstring : string = "";
-                    let prevEnd : uint = 0;
+                    // Note that regexp.lastIndex is visible to the
+                    // user's replace function, if any, and should be
+                    // updated before that function is called and read
+                    // anew on each iteration, in case it was updated.
+
+                    let newstring = "";
+                    let prevEnd   = 0;
 
                     regexp.lastIndex = 0;
                     while (true) {
                         let oldLastIndex : double = regexp.lastIndex;
-                        let [i,res] : [uint, CapArray?] = match(regexp, uint(oldLastIndex));
+                        let [i,res] = match(regexp, uint(oldLastIndex));
 
                         if (res === null)
                             break;
 
                         newstring += S.substring(prevEnd, i);
 
-                        let end : uint = i + res[0].length;
+                        let end = i + res[0].length;
                         regexp.lastIndex = end;
                         if (regexp.lastIndex == oldLastIndex)
                             regexp.lastIndex++;
@@ -458,18 +441,18 @@ package
                 }
             }
             else {
-                /* paragraph 3 */
+                // paragraph 3
 
-                let searchString : string = ToString(s);
-                let pos : double = S.indexOf(searchString, 0);
+                let searchString = string(s);
+                let pos          = S.indexOf(searchString, 0);
 
-                /* paragraph 6: the new string is derived from the old string by
-                   making replacements for each match.  If there are no matches,
-                   then the new string must therefore be the old string.  */
+                // paragraph 6: the new string is derived from the old string by
+                // making replacements for each match.  If there are no matches,
+                // then the new string must therefore be the old string.
                 if (pos === -1)
                     return S;
 
-                let end : uint = pos + searchString.length;
+                let end = pos + searchString.length;
                 return S.substring(0,pos) + substitute(pos, end, 0, []) + S.substring(end);
             }
         }
@@ -478,21 +461,20 @@ package
         /* E262-3 15.5.4.12: String.prototype.search
            E262-4 draft proposals:static_generics
          */
-        prototype function search(regexp)
-            string.search(this, regexp);
-
         /*
-        override intrinsic function search(regexp: RegExp!) : double
+        prototype function search(regexp)
             string.search(this, regexp);
         */
 
-        static function search(self, regexp): double {
-            let S   : string = ToString(self);
-            let R   : RegExp = regexp is RegExp ? regexp : new RegExp(regexp);
-            let lim : uint = S.length;
+        intrinsic function search(regexp: RegExp!) : double
+            string.search(this, regexp);
 
-            for ( let i : uint=0 ; i < lim ; i++ )
-                if (R.match(S, i) !== null)
+        static function search(self, regexp): double {
+            let S = string(self);
+            let R = regexp is RegExp ? regexp : new RegExp(regexp);
+
+            for ( let i=0, limit=S.length ; i < limit ; i++ )
+                if (R.helper::match(S, i) !== null)
                     return i;
             return -1;
         }
@@ -501,19 +483,19 @@ package
         /* E262-3 15.5.4.13: String.prototype.slice
            E262-4 draft proposals:static_generics
          */
-        prototype function slice(start, end)
-            string.slice(this, start, end);
-
         /*
-        override intrinsic function slice(start: double, end: double): Array
+        prototype function slice(start, end)
             string.slice(this, start, end);
         */
 
+        intrinsic function slice(start: double, end: double): Array
+            string.slice(this, start, end);
+
         static function slice(self, s, e): Array {
-            let S     : string = ToString(self);
-            let len   : double = S.length;
-            let start : double = ToInteger(s);
-            let end   : double = e === undefined ? len : ToInteger(e);
+            let S     = string(self);
+            let len   = S.length;
+            let start = helper::toInteger(s);
+            let end   = e === undefined ? len : helper::toInteger(e);
 
             let startpos = start < 0 ? Math.max(len+start,0) : Math.min(start,len);
             let endpos = end < 0 ? Math.max(len+end,0) : Math.min(end,len);
@@ -526,38 +508,29 @@ package
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics
         */
+        /*
         prototype function split(separator, limit)
             string.split(this, separator, limit);
-
-        /* FIXME: it's an open question if the interface here should use (String!,RegExp!) or
-           (string,RegExp!).  
-
-           Note that the superclass uses String! and that that has an impact here.
         */
-        /*
-        override
-        intrinsic function split(separator:(String!,RegExp!), limit: uint = uint.MAX_VALUE): Array!
+
+        intrinsic function split(separator:(string,RegExp!), limit: uint = uint.MAX_VALUE): Array!
             string.split(this, separator, limit)
-        */
 
         static function split(self, separator, limit) : Array! {
 
             type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
-                /* FIXME (Ticket #70): type annotation on expression in 'switch type'
-                 * should not be necessary.
-                 */
-                switch type (R):* {
+                switch type (R) {
                 case (x: string) {
-                    let r : uint = x.length;
+                    let r = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
                     else
                         return null;
                 }
                 case (x: RegExp!) {
-                    let mr : MatchResult = x.match(S, q);
+                    let mr: MatchResult = x.helper::match(S, q);
                     if (mr === null)
                         return null;
                     else
@@ -566,31 +539,31 @@ package
                 }
             }
 
-            /* 1-6 */
+            // 1-6
             let A   = new Array;
-            let lim : uint = limit === undefined ? uint.MAX_VALUE : ToUint(limit);
-            let S   : string = ToString(self);
-            let s   : uint = S.length;
-            let p   : uint = 0;
-            let R   : matcher;
+            let lim = limit === undefined ? uint.MAX_VALUE : uint(limit);
+            let S   = string(self);
+            let s   = S.length;
+            let p   = 0;
+            let R;
 
-            /* FIXME: Ticket #72 / #73: ought to be enough to use `separator is RegExp!` */
+            // FIXME: Ticket #72 / #73: ought to be enough to use `separator is RegExp!`
             if (separator !== null && separator is RegExp)
                 R = separator;
             else
-                R = ToString(separator);
+                R = string(separator);
 
-            /* 7 */
+            // 7
             if (lim === 0)
                 return A;
 
-            /* 8; 33-34 */
+            // 8; 33-34
             if (separator === undefined) {
                 A[0] = S;
                 return A;
             }
 
-            /* 9; 31-34 */
+            // 9; 31-34
             if (s === 0) {
                 let z = splitMatch(R, S, 0);
                 if (z === null)
@@ -598,30 +571,30 @@ package
                 return A;
             }
 
-            /* 10-27 */
-            for ( let q : uint = p ; q !== s ; ) {
-                /* 12-13; 26-27 */
+            // 10-27
+            for ( let q = p ; q !== s ; ) {
+                // 12-13; 26-27
                 let z = splitMatch(R, S, q);
                 if (z === null) {
                     ++q;
                     continue;
                 }
 
-                /* 14-15 */
-                let [e,cap] : [uint,[*]] = z;
+                // 14-15
+                let [e,cap] = z;
                 if (e === p) {
                     ++q;
                     continue;
                 }
 
-                /* 16-25 */
+                // 16-25
                 A[A.length] = S.substring(p, q);
                 if (A.length === lim)
                     return A;
 
                 p = e;
 
-                for ( let i : uint = 1 ; i < cap.length ; i++ ) {
+                for ( let i=1 ; i < cap.length ; i++ ) {
                     A[A.length] = cap[i];
                     if (A.length === lim)
                         return A;
@@ -630,7 +603,7 @@ package
                 q = p;
             }
 
-            /* 28-30 */
+            // 28-30
             A[A.length] = S.substring(p, s);
             return A;
         }
@@ -638,20 +611,20 @@ package
         /* E262-3 15.5.4.15: String.prototype.substring
            E262-4 draft proposals:static_generics
          */
-        prototype function substring(start, end)
-            string.substring(this, start, end);
-
         /*
-        override intrinsic function substring(start: double, end: double=this.length) : string
+        prototype function substring(start, end)
             string.substring(this, start, end);
         */
 
-        static function substring(self, start, end) : string {
-            let S   : string = ToString(self);
-            let len : double = S.length;
+        intrinsic function substring(start: double, end: double=this.length) : string
+            string.substring(this, start, end);
 
-            start = ToInteger(start);
-            end = end === undefined ? len : ToInteger(end);
+        static function substring(self, start, end) : string {
+            let S   = string(self);
+            let len = S.length;
+
+            start = helper::toInteger(start);
+            end = end === undefined ? len : helper::toInteger(end);
 
             start = Math.min(Math.max(start, 0), len);
             end = Math.min(Math.max(end, 0), len);
@@ -659,11 +632,8 @@ package
             if (start > end)
                 [start, end] = [end, start];
 
-            let s : string = "";
-            let a : uint = start;
-            let b : uint = end;
-
-            for ( let i : uint = a ; i < b ; i++ )
+            let s = "";
+            for ( let i=start ; i < end ; i++ )
                 s += S[i];
 
             return s;
@@ -673,20 +643,20 @@ package
         /* E262-3 15.5.4.16: String.prototype.toLowerCase
            E262-4 draft proposals:static_generics
          */
-        prototype function toLowerCase()
-            string.toLowerCase(this);
-
         /*
-        override intrinsic function toLowerCase() : string
+        prototype function toLowerCase()
             string.toLowerCase(this);
         */
 
+        intrinsic function toLowerCase() : string
+            string.toLowerCase(this);
+
         static function toLowerCase(self): string {
-            let S   : string = ToString(self);
-            let s   : string = "";
-            let len : uint = S.length;
-            for ( let i : uint = 0u ; i < len ; i++ ) {
-                let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,i));
+            let S = string(self);
+            let s = "";
+
+            for ( let i=0, limit=S.length ; i < limit ; i++ ) {
+                let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,uint(i)));
                 if (u is uint)
                     s += magic::fromCharCode(u);
                 else {
@@ -701,13 +671,13 @@ package
         /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase
            E262-4 draft proposals:static_generics
          */
+        /*
         prototype function toLocaleLowerCase()
             string.toLocaleLowerCase(this);
-
-        /*
-        override intrinsic function toLocaleLowerCase() : string
-            string.toLowerCase(this);
         */
+
+        intrinsic function toLocaleLowerCase() : string
+            string.toLowerCase(this);
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function toLocaleLowerCase(self): string
@@ -717,20 +687,20 @@ package
         /* E262-3 15.5.4.18: String.prototype.toUpperCase
            E262-4 draft proposals:static_generics
          */
-        prototype function toUpperCase()
-            string.toUpperCase(this);
-
         /*
-        override intrinsic function toUpperCase() : string
+        prototype function toUpperCase()
             string.toUpperCase(this);
         */
 
+        intrinsic function toUpperCase() : string
+            string.toUpperCase(this);
+
         static function toUpperCase(self): string {
-            let S   : string = ToString(self);
-            let s   : string = "";
-            let len : uint = S.length;
-            for ( let i : uint = 0u ; i < len ; i++ ) {
-                let u = Unicode.toUpperCaseCharCode(magic::charCodeAt(S,i));
+            let S   = string(self);
+            let s   = "";
+
+            for ( let i=0, limit=S.length ; i < limit ; i++ ) {
+                let u = Unicode.toUpperCaseCharCode(magic::charCodeAt(S,uint(i)));
                 if (u is uint)
                     s += magic::fromCharCode(u);
                 else {
@@ -745,13 +715,13 @@ package
         /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase
            E262-4 draft proposals:static_generics
          */
+        /*
         prototype function toLocaleUpperCase()
             string.toLocaleUpperCase(this);
-
-        /*
-        override intrinsic function toLocaleUpperCase() : string
-            string.toLocaleUpperCase(this);
         */
+
+        intrinsic function toLocaleUpperCase() : string
+            string.toLocaleUpperCase(this);
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function toLocaleUpperCase(self)
@@ -759,27 +729,28 @@ package
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
+        /*
         prototype function parseJSON()
             this.parseJSON();
-
-        /*
-        override intrinsic function parseJSON(...args)
-            JSON.parse.apply(null, args.unshift(this));
         */
 
+        intrinsic function parseJSON(...args)
+            string.helper::parseJSON(this, args);
 
-        /* E262-4 draft proposals:string.prototype.trim */
-        prototype function trim()
-            ToString(this).trim();
+        static function parseJSON(self, ...args)
+            string.helper::parseJSON(self, args);
 
-        /*
-        override intrinsic function trim() : string
+        helper static function parseJSON(self, args)
+            JSON.parse.apply(null, args.unshift(self));
+
+        intrinsic function trim() : string
             string.trim(this);
-        */
 
-        static function trim(s: string) : string {
-            let len  : uint = s.length;
-            let i, j : uint;
+        static function trim(s): string {
+            s = string(s);
+
+            let len = s.length;
+            let i, j;
 
             for ( i=0 ; i < len && Unicode.isTrimmableSpace(s.charAt(i)) ; i++ )
                 ;
@@ -790,10 +761,16 @@ package
 
 
         /* E262-3 15.5.5.1: length. */
-        /*
-        override function get length() : uint
+        function get length() : uint
             magic::stringLength(this);
-        */
+
+        /* Catchall indexing operation. */
+        meta function get(pos) {
+            let x = double(pos);
+            if (isNaN(x))
+                return undefined;
+            return charAt(x);
+        }
 
         /* The E262-3 string primitive consumes all additional [[set]] operations. */
         meta function set(n,v) : void

@@ -60,7 +60,7 @@ package
         meta static function invoke(value=undefined) {
             if (value === null || value === undefined)
                 return new Object();
-            return ToObject(value);
+            return new Object(value);
         }
 
         /* E262-3 15.2.2.1: The Object constructor. */

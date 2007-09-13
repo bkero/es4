@@ -312,20 +312,48 @@ package
 
         prototype function slice(start, end)
             Array.slice(this, 
-                        start === undefined ? 0 : ToNumeric(start), 
-                        end === undefined ? Infinity : ToNumeric(end));
+                        start === undefined ? 0 : Number(start), 
+                        end === undefined ? Infinity : Number(end));
 
         intrinsic function slice(start: Numeric=0, end: Numeric=Infinity): Array
             Array.slice(this, start, end);
 
         // FIXME #155: type system bug
         static function sort(object/*: Object!*/, comparefn) {
-            let len:uint = object.length;
+            let len = uint(object.length);
 
-            if (len > 1)
-                object.private::qsort(0, len-1, comparefn);  // FIXME: "private::" should not be necessary
+            if (len > 0)
+                informative::sortEngine(object, 0, len-1, this.helper::sortCompare, comparefn);
 
             return object;
+        }
+
+        helper function sortCompare(j:uint, k:uint, comparefn:Comparator): Numeric {
+            if (!(j in this) && !(k in this))
+                return 0;
+            if (!(j in this))
+                return 1;
+            if (!(k in this))
+                return -1;
+
+            let x = this[j];
+            let y = this[k];
+
+            if (x === undefined && y === undefined)
+                return 0;
+            if (x === undefined)
+                return 1;
+            if (y === undefined)
+                return -1;
+
+            if (comparefn === undefined) {
+                x = x.toString();
+                y = y.toString();
+                if (x < y) return -1;
+                if (x > y) return 1;
+                return 0;
+            }
+            return comparefn(x, y);
         }
 
         prototype function sort(comparefn)
@@ -397,7 +425,7 @@ package
             Array.helper::splice(object, start, deleteCount, items);
 
         prototype function splice(start, deleteCount, ...items)
-            Array.helper::splice(this, ToNumeric(start), ToNumeric(deleteCount), items);
+            Array.helper::splice(this, Number(start), Number(deleteCount), items);
 
         intrinsic function splice(start: Numeric, deleteCount: Numeric, ...items): Array
             Array.helper::splice(this, start, deleteCount, items);
@@ -585,7 +613,7 @@ package
         }
 
         prototype function indexOf(value, from=0)
-            Array.indexOf(this, value, ToNumeric(from));
+            Array.indexOf(this, value, Number(from));
 
         intrinsic function indexOf(value, from:Numeric=0): Numeric
             Array.indexOf(this, value, from);
@@ -617,7 +645,7 @@ package
         }
 
         prototype function lastIndexOf(value, from=NaN)
-            Array.lastIndexOf(this, value, ToNumeric(from));
+            Array.lastIndexOf(this, value, Number(from));
 
         intrinsic function lastIndexOf(value, from:Numeric=NaN): Numeric
             Array.lastIndexOf(this, value, from);
@@ -652,84 +680,51 @@ package
                     delete this[i];
             this.private::_length = newLengthAsUint;
         }
+    }
 
-
-        // --------------------------------------------------
-        // private utility methods
-        // --------------------------------------------------
-        helper static function clamp(intValue: double, len: uint): uint {
-            if (intValue < 0) {
-                if (intValue + len < 0)
-                    return 0;
-                else
-                    return uint(intValue + len);
-            }
-            else if (intValue > len)
-                return len;
-            else
-                return uint(intValue);
+    // Also used by Vector.es
+    helper function clamp(val: Numeric, len: uint): uint {
+        if (val < 0) {
+            val = Math.ceil(val);
+            val += len;
         }
+        else
+            val = Math.floor(val);
+        return uint( Math.min( len, Math.max( 0, len ) ) );
+    }
 
-        helper function sortCompare(j:uint, k:uint, comparefn:Comparator): Numeric {
-            if (!(j in this) && !(k in this))
-                return 0;
-            if (!(j in this))
-                return 1;
-            if (!(k in this))
-                return -1;
+    // INFORMATIVE note: as noted above, this is a very simple recursive
+    // implementation of Quicksort.  While it suffices for spec purposes,
+    // it is not efficient enough for a real implementation, which
+    // typically faces mostly-ordered inputs.  It is also not a stable
+    // sort, which may be desirable but is not required by the spec
 
-            let x = this[j];
-            let y = this[k];
-
-            if (x === undefined && y === undefined)
-                return 0;
-            if (x === undefined)
-                return 1;
-            if (y === undefined)
-                return -1;
-
-            if (comparefn === undefined) {
-                x = x.toString();
-                y = y.toString();
-                if (x < y) return -1;
-                if (x > y) return 1;
-                return 0;
-            }
-            return comparefn(x, y);
-        }
-
-        // INFORMATIVE note: as noted above, this is a very simple recursive
-        // implementation of Quicksort.  While it suffices for spec purposes,
-        // it is not efficient enough for a real implementation, which
-        // typically faces mostly-ordered inputs.  It is also not a stable
-        // sort, which may be desirable but is not required by the spec
-
-        private function qsort(lo:uint, hi:uint, comparefn:Comparator):void {
+    informative function sortEngine(v, lo: uint, hi: uint, sortCompare, comparefn): void {
+        function qsort(lo, hi) {
             if (lo >= hi)
                 return;
 
-            let size:uint  = (hi - lo) + 1;
-            let pivot:uint = lo + (size / 2);
-            let i:uint = lo;
-            let j:uint = hi;
+            let size  = (hi - lo) + 1;
+            let pivot = lo + (size / 2);
+            let i     = lo;
+            let j     = hi;
             while (i <= j) {
-                while (helper::sortCompare(i, pivot, comparefn) < 0)
+                while (sortCompare(i, pivot, comparefn) < 0)
                     ++i;
-                while (helper::sortCompare(j, pivot, comparefn) > 0)
+                while (sortCompare(j, pivot, comparefn) > 0)
                     --j;
                 if (i <= j) {
-                    let temp = this[i];
-                    this[i] = this[j];
-                    this[j] = temp;
+                    [v[i], v[j]] = [v[j], v[i]];
                     ++i;
                     --j;
                 }
             }
-
+        
             if (lo < j)
-                qsort(lo, j, comparefn);
+                qsort(lo, j);
             if (i < hi)
-                qsort(i, hi, comparefn);
+                qsort(i, hi);
         }
+        qsort( lo, hi );
     }
 }

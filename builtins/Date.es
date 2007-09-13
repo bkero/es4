@@ -100,7 +100,7 @@ package
                 year = double(year);
                 month = double(month);
 
-                let intYear : int = ToInteger(year);
+                let intYear : int = helper::toInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
                 timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date),
@@ -121,7 +121,7 @@ package
            Take your pick.
         */
         static var parse = function parse(string, reference:double=0.0) {
-            return Date.parse(ToString(string), reference);
+            return Date.parse(string(string), reference);
         }
 
         static intrinsic function parse(s:string, reference:double=0.0) : double {
@@ -205,7 +205,7 @@ package
                                       seconds: double=0, 
                                       ms: double=0) : double
         {
-            let intYear = ToInteger(year);
+            let intYear = helper::toInteger(year);
             if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                 intYear += 1900;
             return TimeClip(MakeDate(MakeDay(intYear, month, date),
@@ -759,7 +759,7 @@ package
                 timeval = NaN;
                 return NaN;
             }
-            let y = ToInteger(year);
+            let y = helper::toInteger(year);
             if (y < 0 || y > 99)
                 y += 1900;
             timeval = TimeClip(UTC(MakeDate(MakeDay(y, MonthFromTime(t), DateFromTime(t)),
@@ -874,19 +874,19 @@ package
         if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
             return NaN;
 
-        return (ToInteger(hour) * msPerHour +
-                ToInteger(min) * msPerMinute +
-                ToInteger(sec) * msPerSecond +
-                ToInteger(ms));
+        return (helper::toInteger(hour) * msPerHour +
+                helper::toInteger(min) * msPerMinute +
+                helper::toInteger(sec) * msPerSecond +
+                helper::toInteger(ms));
     }
 
     helper function MakeDay(year : double, month : double, date : double) : double {
         if (!isFinite(year) || !isFinite(month) || !isFinite(date))
             return NaN;
 
-        year = ToInteger(year);
-        month = ToInteger(month);
-        date = ToInteger(date);
+        year = helper::toInteger(year);
+        month = helper::toInteger(month);
+        date = helper::toInteger(date);
 
         /* INFORMATIVE, the spec is non-operational. */
         year += Math.floor(month / 12);
@@ -997,7 +997,7 @@ package
         t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
 
     helper function TimeClip(t : double) : double
-        (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : adjustZero(ToInteger(t));
+        (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : adjustZero(helper::toInteger(t));
 
     // This can return t or t + (+0.0), and it is a specification hack to allow
     // time values to actually be represented by 64-bit ints (which can't represent

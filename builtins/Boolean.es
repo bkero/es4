@@ -46,34 +46,34 @@ package
 
     // RI bug: the "this" constraint on methods can't use union types,
     // but the parser allows type names...
-    type AnyBoolean = (Boolean,boolean);
+    intrinsic type Booleans = (boolean,Boolean!);
 
     dynamic class Boolean
     {
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
-	    boolean(x);
+            boolean(x);
 
         /* E262-3 15.6.2: The Boolean Constructor. */
         function Boolean(x=null)
             magic::bindBoolean(this, x);
 
-	/* E262-4 early-binding variant. */
+        /* E262-4 early-binding variant. */
         override intrinsic function toString() : string
             intrinsic::valueOf().intrinsic::toString();
 
-	/* E262-4 early-binding variant. */
+        /* E262-4 early-binding variant. */
         override intrinsic function valueOf() : boolean
             boolean(this);
 
         // The boolean class uses the Boolean class's prototype too.
 
         /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-        prototype function toString(this: AnyBoolean )
+        prototype function toString(this: Booleans)
             intrinsic::toString();
 
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-        prototype function valueOf(this: AnyBoolean)
+        prototype function valueOf(this: Booleans)
             intrinsic::valueOf();
     }
 }

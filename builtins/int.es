@@ -71,10 +71,10 @@ package
 
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
-                return ToString(this);
+                return string(this);
             if (typeof radix === "number" &&
-		     radix >= 2 &&
-		     radix <= 36 && helper::isIntegral(radix)) {
+                     radix >= 2 &&
+                     radix <= 36 && helper::isIntegral(radix)) {
                 /* INFORMATIVE */
                 radix = int(radix);
                 let v = this;
@@ -103,13 +103,13 @@ package
             this;
 
         intrinsic function toFixed(fractionDigits=0) : string
-	    double(this).intrinsic::toFixed(fractionDigits);
+            double(this).intrinsic::toFixed(fractionDigits);
 
         intrinsic function toExponential(fractionDigits=undefined) : string
-	    double(this).intrinsic::toExponential(fractionDigits);
+            double(this).intrinsic::toExponential(fractionDigits);
 
         intrinsic function toPrecision(precision=undefined) : string
-	    double(this).intrinsic::toPrecision(precision);
+            double(this).intrinsic::toPrecision(precision);
 
         /* The E262-3 number primitive consumes all additional [[set]] operations. */
         // FIXME: why is this here?

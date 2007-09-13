@@ -67,12 +67,15 @@ package
             x is Number ? x : new Number(x);
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        meta static function invoke(x=0d)
-            x is double ? x : double(x);
+        meta static function invoke(value=0d) {
+            if (value is (int,uint,double,decimal))
+                return value;
+            return double(value);
+        }
 
         /* E262-3 15.7.2.1: The Number constructor */
-        function Number(x=0.0d)
-            magic::bindDouble(this, x);
+        function Number(value=0d)
+            magic::bindDouble(this, value);
 
         override intrinsic function toString(radix = 10) : string
             intrinsic::valueOf().intrinsic::toString(radix);

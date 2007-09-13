@@ -49,11 +49,9 @@ package
 
         const prototype;
 
-        /* FIXME #137: should probably use "string?" here, but that class is not available 
-           when this file is loaded.  Presumably some magic needs to be fixed in the RI.  */
-        private var classname : String;
+        private var classname : string?;
 
-        intrinsic function getClass() : String! { return classname; }
+        intrinsic function getClass() : string { return classname; }
 
 //         intrinsic function isSubtypeOf(t/*: Type*/) /* : boolean */ {
 //             for ( let s in superTypes() )

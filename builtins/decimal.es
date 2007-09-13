@@ -53,7 +53,7 @@ package
 
     intrinsic final class decimal!
     {
-	// FIXME
+        // FIXME
         static const MAX_VALUE         = 1.7976931348623157e+308m;
         static const MIN_VALUE         = 5e-324m;
         static const NaN               = 0.0m / 0.0m;  // ???
@@ -87,8 +87,11 @@ package
 
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
-                return ToString(this);
-            else if (typeof radix === "number" && radix >= 2 && radix <= 36 && helper::isIntegral(radix)) {
+                return string(this);
+            else if (typeof radix === "number" && 
+                     radix >= 2 && 
+                     radix <= 36 && 
+                     helper::isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
             }
@@ -109,11 +112,11 @@ package
 
         // FIXME: wrong to convert to double here
         intrinsic function toExponential(fractionDigits=undefined) : string
-	    double(this).intrinsic::toExponential(fractionDigits);
+            double(this).intrinsic::toExponential(fractionDigits);
 
         // FIXME: wrong to convert to double here
         intrinsic function toPrecision(precision=undefined) : string
-	    double(this).intrinsic::toPrecision(precision);
+            double(this).intrinsic::toPrecision(precision);
 
         /* The E262-3 number primitive consumes all additional [[set]] operations. */
         // FIXME: why is this here?

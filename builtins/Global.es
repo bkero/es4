@@ -82,7 +82,7 @@ package
     intrinsic native function eval(s: string);
 
     function eval(x) {
-        if (!(x is String))
+        if (!(x is (string,String)))
             return x;
         return intrinsic::eval(string(x));
     }
@@ -184,7 +184,7 @@ package
         (!(n === n));
 
     function isNaN(number)
-        intrinsic::isNaN(ToNumeric(number));
+        intrinsic::isNaN(Number(number));
 
 
     // 15.1.2.5 isFinite (number)
@@ -197,7 +197,7 @@ package
     }
 
     function isFinite(x)
-        intrinsic::isFinite(ToNumeric(x));
+        intrinsic::isFinite(Number(x));
 
     helper function isIntegral(v:*):boolean {
         switch type (v) {
@@ -229,6 +229,16 @@ package
         (k is uint && k <= 0xFFFFFFFE) ||
         (k is (double,decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
     
+    helper function toInteger(value): Numeric {
+        value = Number(value);
+        if (isNaN(value))
+            return 0;
+        if (value === 0 || !isFinite(value))
+            return value;
+        var sign = value < 0d ? -1d : 1d;
+        return sign * Math.floor(Math.abs(value));
+    }
+
     // Return a hash code for the string.
     //
     // INFORMATIVE: this particular algorithm is not mandated and
@@ -281,6 +291,7 @@ package
         case (x: uint)      { return x }
         case (x: double)    { return isNaN(x) ? 0u : uint(x) }
         case (x: decimal)   { return isNaN(x) ? 0u : uint(x) }
+        case (x: string)    { return informative::stringHash(string(x)) }
         case (x: String)    { return informative::stringHash(string(x)) }
         case (x: *)         { return informative::objectHash(x) }
         }

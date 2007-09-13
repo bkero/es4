@@ -88,8 +88,11 @@ package
 
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
-                return ToString(this);
-            else if (typeof radix === "number" && radix >= 2 && radix <= 36 && helper::isIntegral(radix)) {
+                return string(this);
+            else if (typeof radix === "number" && 
+                     radix >= 2 && 
+                     radix <= 36 && 
+                     helper::isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
             }
@@ -107,7 +110,7 @@ package
         intrinsic function toFixed(fractionDigits=0) : string {
             print("here");
             let x = this;
-            let f = ToInteger(fractionDigits);
+            let f = helper::toInteger(fractionDigits);
             if (f < 0 || f > 20)
                 throw new RangeError();
 
@@ -120,10 +123,10 @@ package
             }
 
             if (x >= Math.pow(10,21))
-                return s + ToString(m);
+                return s + string(m);
 
             let n = toFixedStep10(x, f);
-            let m = n == 0 ? "0" : ToString(n);
+            let m = n == 0 ? "0" : string(n);
             if (f == 0)
                 return s + m;
             let k = m.length;
