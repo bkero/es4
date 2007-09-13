@@ -34,7 +34,7 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
- * Status: not reviewed against specs.
+ * Status: not reviewed against specs, not tested.
  */
 
 package
@@ -50,46 +50,68 @@ package
             setLength(length);
         }
 
+        meta static function invoke(object) {
+            let length = uint(object.length);
+            let result = new Vector.<T>(length);
+            for ( let i=0 ; i < length ; i++ )
+                result[i] = object[i];
+            return result;
+        }
+
         function get length()
             informative::getLength();
 
-        function set length(len: uint) {
+        function set length(len: Numeric) {
             if (fixed)
+                throw new RangeError();
+            if (!helper::isIntegral(idx) || idx < 0 || idx > uint.MAX_VALUE)
                 throw new RangeError();
             informative::setLength(len);
         }
 
-        meta function get(idx: uint): T {
-            if (idx >= length)
-                throw new RangeError();
-            return informative::getValue(idx);
+        meta function get(name): T {
+            if (name is Numeric) {
+                let idx = name;
+                if (!helper::isIntegral(idx) || idx < 0 || idx >= length)
+                    throw new RangeError();
+                return informative::getValue(uint(idx));
+            }
+            else 
+                this.intrinsic::get(name);
         }
 
-        meta function set(idx: uint, v: T) {
-            if (fixed && idx > length-1 || !fixed && idx > length)
-                throw new RangeError();
-            informative::setValue(idx, v);
+        meta function set(name, v) {
+            if (name is Numeric) {
+                let idx = name;
+                let value: T = v;  // Note, effectful
+                if (!helper::isIntegral(idx) || 
+                    idx < 0 || 
+                    fixed && idx >= length || 
+                    !fixed && idx > length)
+                    throw new RangeError();
+                informative::setValue(uint(idx), value);
+            }
+            else
+                this.intrinsic::set(name, v);
         }
 
         function toString()
             join();
 
         function toLocaleString() {
-            function cleanString(s) {
-                if (s === undefined || s === null)
-                    return "";
-                return Object(s).toLocaleString();
-            }
-
             let limit = length;
             let separator = ",";
+            let s = "";
+            let i = 0;
 
-            if (limit == 0)
-                return "";
-
-            let s = cleanString(this[0]);
-            for ( let i=1 ; i < limit ; i++ )
-                s = s + separator + cleanString(this[i]);
+            while (true) {
+                let x = this[i];
+                if (x !== undefined && x !== null)
+                    s += x.toLocaleString();
+                if (++i == limit)
+                    break;
+                s += separator;
+            }
             return s;
         }
 
@@ -97,20 +119,21 @@ package
             let v = new Vector.<T>;
             let k = 0;
 
-            // Note that "each" enumeration here and below do the right thing.
-            for each ( let x in this )
-                v[k++] = x;
-            // The type annotation here performs type checking, do not remove it.
-            for each ( let item: Vector.<T> in items )
-                for each ( let x in item )
-                    v[k++] = x;
+            for ( let i=0 ; i < length ; i++ )
+                v[k++] = this[i];
+
+            for ( let j=0 ; j < items.length ; j++ ) {
+                let item: Vector.<T> = items[j];         // Note the type check is effectful
+                for ( let i=0 ; i < item.length ; i++ )
+                    v[k++] = item[i];
+            }
 
             return v;
         }
 
         function every(checker: Checker, thisObj: Object=null): boolean { 
             for ( let i=0, limit=length ; i < limit ; i++ )
-                if (!checker(this[i], i, thisObj))
+                if (!checker.call(thisObj, this[i], i, this))
                     return false;
             return true;
         }
@@ -118,18 +141,18 @@ package
         function filter(checker: Checker, thisObj: Object=null): Vector.<T> { 
             var result = new Vector.<T>;
             for ( let i=0, limit=length ; i < limit ; i++ )
-                if (checker(this[i], i, thisObj))
+                if (checker.call(thisObj, this[i], i, this))
                     result.push(this[i]);
             return result;
         }
 
         function forEach(eacher: Eacher, thisObj: Object=null): void { 
             for ( let i=0, limit=length ; i < limit ; i++ )
-                eacher(this[i], i, thisObj);
+                eacher.call(thisObj, this[i], i, this);
         }
 
         function indexOf(value: T, from: Numeric=0): Numeric {
-            let start = ...; /* FIXME */
+            let start = helper::clamp( helper::toInteger(from), length );
             for ( let i=start, limit=length ; i < limit ; i++ )
                 if (this[i] === value)
                     return i;
@@ -137,24 +160,23 @@ package
         }
 
         function join(separator: string=","): string {
-            function cleanString(s) {
-                if (s === undefined || s === null)
-                    return "";
-                return string(s);
-            }
-
             let limit = length;
-            if (limit == 0)
-                return "";
+            let s = "";
+            let i = 0;
 
-            let s = cleanString(this[0]);
-            for ( let i=1 ; i < limit ; i++ )
-                s = s + separator + cleanString(this[i]);
+            while (true) {
+                let x = this[i];
+                if (x !== undefined && x !== null)
+                    s += string(x);
+                if (++i == limit)
+                    break;
+                s += separator;
+            }
             return s;
         }
 
         function lastIndexOf(value: T, from: Numeric=Infinity): Numeric { 
-            let start = ...; /* FIXME */
+            let start = helper::clamp( helper::toInteger(from), length );
             for ( let i=start ; i >= 0 ; i-- )
                 if (this[i] === value)
                     return i;
@@ -164,7 +186,7 @@ package
         function map(mapper:Mapper, thisObj:Object=null) { 
             var result = new Vector.<T>(length);
             for ( let i=0, limit=length ; i < limit ; i++ )
-                result[i] = mapper(this[i], i, thisObj);
+                result[i] = mapper.call(thisObj, this[i], i, this);
             return result;
         }
 
@@ -199,33 +221,59 @@ package
             return v;
         }
 
-        function slice(start: uint, end: uint=uint.MAX_VALUE): Vector.<T> {
-            /* FIXME */
+        function slice(start: Numeric=0, end: Numeric=Infinity): Vector.<T> {
+            let first = helper::clamp(start, length);
+            let limit = helper::clamp(end, length);
+            let result = new Vector.<T>(limit-first);
+            for ( let i=first, n=0 ; i < limit ; i++, n++ )
+                result[n] = this[i];
+            return result;
         }
 
         function some(checker: Checker, thisObj: Object=null): boolean { 
             for ( let i=0, limit=length ; i < limit ; i++ )
-                if (checker(this[i], i, thisObj))
+                if (checker.call(thisObj, this[i], i, this))
                     return true;
             return false;
         }
 
-        // Signature of comparefn too constraining?
-        //
-        // Note that with comparefn required, various strange
-        // behaviors surrounding how sorting are gone.  But a good
-        // spec of this function would provide an alternative
-        // sortCompare method, probably, and then parameterize a "sort
-        // engine" that could be defined in the Array package and used
-        // there as well.
-        //
-        // FIXME.
+        // FIXME: Is the signature of comparefn too constraining?
 
-        function sort(comparefn: function(T, T): Numeric) 
-            informative::sort(comparefn);
+        function sort(comparefn: function(T, T): Numeric): Vector.<T> {
+            if (length > 0)
+                informative::sortEngine(this, 0, length-1, this.helper::sortCompare, comparefn);
+            return this;
+        }
 
-        function splice(start: uint, deleteCount: uint, ...items) {
-            /* FIXME */
+        helper function sortCompare(j: uint, k: uint, comparefn: Comparator): Numeric {
+            let x = this[j];
+            let y = this[k];
+            return comparefn(x, y);
+        }
+
+        function splice(start: Numeric, deleteCount: Numeric, ...items): Vector.<T> {
+            let first  = helper::clamp(start, length);
+            let delcnt = helper::clamp( helper::toInteger(deleteCount), length-first );
+
+            let result = new Vector.<T>;
+            for ( let n=0, i=first ; n < delcnt ; n++, i++ )
+                result[n] = this[i];
+
+            if (items.length < delcnt) {
+                let shift = delcnt - items.length;
+                for ( let n=0, i=first; n < shift ; n++, i++ )
+                    this[i] = this[i+shift];
+                length -= shift;
+            }
+            else {
+                let shift = items.length - delcnt;
+                for ( let n=shift-1, i=first+shift; n >= 0 ; n--, i-- )
+                    this[i] = this[i-shift];
+            }
+            for ( let n=0, i=first ; n < items.lenth ; n++, i++ )
+                this[i] = items[n];
+
+            return result;
         }
 
         function unshift(...items): uint {
@@ -261,9 +309,6 @@ package
 
         informative function setValue(idx: uint, val: T)
             storage[idx] = val;
-
-        informative function sort(comparefn)
-            Array.sort(storage, comparefn);
 
         private const storage: T = new [T];
     }
