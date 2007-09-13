@@ -1249,7 +1249,7 @@ and newUInt (n:Word32.word)
 
 and newPublicString (s:Ustring.STRING)
     : Mach.VAL =
-    newBuiltin Name.nons_String (SOME (Mach.String s))
+    newBuiltin Name.intrinsic_string (SOME (Mach.String s))
 
 and newString (s:Ustring.STRING)
     : Mach.VAL =
@@ -4231,7 +4231,7 @@ and bindAnySpecialIdentity (name:Ast.NAME)
                 (Name.nons_Object, ObjectClassIdentity),
                 (Name.nons_Array, ArrayClassIdentity),
                 (Name.nons_Function, FunctionClassIdentity),
-                (Name.nons_String, StringClassIdentity),
+                (Name.intrinsic_string, StringClassIdentity),
                 (Name.nons_Number, NumberClassIdentity),
                 (Name.nons_Boolean, BooleanClassIdentity)
             ]

@@ -496,7 +496,7 @@ and verifyExpr (env:ENV)
                 val (e1', t1) = verifySub e1
                 val (e2', t2) = verifySub e2
                 val NumericType = verifyTypeExpr env (Name.typename Name.intrinsic_Numeric)
-                val AdditionType = Ast.UnionType [ NumericType, instanceTypeExpr Name.nons_String ]
+                val AdditionType = Ast.UnionType [ NumericType, instanceTypeExpr Name.intrinsic_string ]
                 (* FIXME: these are way wrong. *)
                 (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
