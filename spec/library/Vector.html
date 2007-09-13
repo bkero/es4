@@ -409,7 +409,7 @@ that the good bits can reasonably be referenced from here.
 <FIXME> We could provide a default comparators that would work like this:
 
 <PRE class="FIXME">
-    // T is the base type 
+    /* T is the base type */
     function comparator(a, b) {
        if (T is Numbers) {
          if (a < b) return -1;
@@ -426,7 +426,7 @@ that the good bits can reasonably be referenced from here.
          if (b < a) return 1;
          return 0;
        }
-       // default behavior -- from Array.sort
+       /* default behavior -- from Array.sort */
        return comparator(string(a), string(b))
     }
 </PRE>

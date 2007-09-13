@@ -7,6 +7,7 @@
 .nonterm { padding-top: 1em }
 .xref { border: thin solid red; }
 .section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
 .literal { font-style: normal; font-weight: bold }
 H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
 H1 { font-size: 14pt }

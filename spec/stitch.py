@@ -101,8 +101,8 @@ entities = { "INFINITY": "&#x221E;",
 	     "p": "<P><span class=\"pcounter\"></span>",
 	     "DESC": "<P class=\"section\"><b>Description</b> <P><span class=\"pcounter\"></span>",
 	     "RETN": "<P class=\"section\"><b>Returns</b> <P><span class=\"pcounter\"></span>",
-	     "IMPL": "<P class=\"section\"><b>Implementation</b> <P><span class=\"pcounter\"></span>",
-	     "SHORTIMPL": "<P class=\"section\"><b>Implementation</b>"
+	     "IMPL": "<P class=\"implsection\"><b>Implementation</b> <P><span class=\"pcounter\"></span>",
+	     "SHORTIMPL": "<P class=\"implsection\"><b>Implementation</b>"
 	     }
 
 currentlevel = 0
