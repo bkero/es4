@@ -1,8 +1,8 @@
-= The class ''RegExp'' (Regular Expression) =
+= The class ''RegExp'' =
 
 <PRE>
 FILE:                       spec/library/RegExp.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-08-30
+DRAFT STATUS:               DRAFT 1 - VERY ROUGH - 2007-09-11
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
@@ -10,26 +10,30 @@ REVIEWED AGAINST CODE:      NO
 </PRE>
 
 
-<P> A RegExp object contains a regular expression and the associated flags.
+<P> The class ''RegExp'' is a dynamic, nullable, non-final direct
+subclass of ''Object''.
+
+<P> A RegExp object contains a regular expression //pattern// and the
+associated //flags//.
 
 <NOTE> The form and functionality of regular expressions is modelled
 after the regular expression facility in the Perl 5 programming
 language.
 
 <P> A regular expression is transformed into a //matcher// that can be
-used to test whether a string has a certain form or contains
+used to test whether an input string has a certain form or contains
 substrings of a certain form, where the form is defined by the regular
 expression.
 
-<P> Regular expressions are written down using a compact and rich
-source syntax that is separate from the syntax of the surrounding
+<P> Regular expressions patterns are written down using a compact and
+rich source syntax that is separate from the syntax of the surrounding
 language.  A grammar for this syntax is presented below (<XREF
 target="RegExp grammar">).
 
 <P> This Standard defines the meaning of regular expressions in two
 stages: declaratively as a mapping from surface syntax to abstract
 syntax trees, and then operationally (in ECMAScript itself) as an
-interpreter that parses input strings by interpreting those abstract
+interpreter that matches input strings by interpreting those abstract
 syntax trees.
 
 <P> The abstract syntax trees for regular expressions are represented
@@ -42,7 +46,7 @@ target="RegExp ASTs">).
 <P> The class ''RegExp'' provides the following interface:
 
 {{{
-dynamic class RegExp extends Object
+dynamic class RegExp
 {
     <SIGNATURE file="RegExp.es" name="function RegExp">
     <SIGNATURE file="RegExp.es" name="meta static function invoke">
@@ -72,6 +76,10 @@ dynamic class RegExp extends Object
     test:     function (s) <LDOTS> ,
     toString: function () <LDOTS>
 }}}
+
+<FIXME> The new requirement that regexes are function-like, along with
+the old/new requirement that the prototype object be a RegExp object,
+implies that the prototype has a "meta function invoke" too, I think.
 
 == Surface syntax and mapping to abstract syntax trees ==
 

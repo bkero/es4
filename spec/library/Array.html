@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Array.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-12
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
@@ -380,7 +380,7 @@ containing the extracted array elements.
 
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="static function slice">
-<INCLUDE file="Array.es" name="helper static function clamp">
+<INCLUDE file="Array.es" name="helper function clamp">
 
 
 === some ( object, checker, thisObj=<LDOTS> ) ===
@@ -659,7 +659,7 @@ be locale-specific.
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="prototype function toLocaleString">
 
-<NOTE>The first parameter to this function is likely to be used in a
+<NOTE>The first parameter to this method is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
 
