@@ -104,7 +104,7 @@
 \renewcommand{\convert}[2]{\fun{convert}(#1,#2)}
 \newcommand{\istype}[2]{#1~\t{is}_{\sigma}~ #2}
 \newcommand{\safe}[1]{\t{safe}~#1}
- 
+\newcommand{\self}{\t{Self}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%				   
 
@@ -120,6 +120,7 @@
 \begin{abstract}
 We formalize the ES4 notions of \t{like} types and \t{wrap} operators for a lambda-calculus with ES4-style objects,
 to better understand these concepts and to clarify what guarantees can be provided by the verifier in strict mode.
+We also formalize $\self$.
 \end{abstract}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -144,6 +145,9 @@ The type $\likety{T}$ describes values whose value components match $T$, but who
 %Any value of type $\likety{T}$ can be assigned to a variable to type $\wrapty{T}$,
 %but that value is immediate wrapped (if necessary) so that the resulting value is guaranteed to have type $T$. 
 
+The type ${\self}$ may be used only within an object type $T$, and refers to the \emph{allocated type} of the current object.
+The type rules for $\self$ are somewhat subtle, since
+it may denote any subtype of the object type $T$.
 
 \begin{displayfigure}{th}{\label{fig:syntax}Syntax}
 \[
@@ -186,6 +190,7 @@ The type $\likety{T}$ describes values whose value components match $T$, but who
 %	\mydefcase{\dynobjty 	   				}{dynamic object type}
 	\mydefcase{\dynamic 		    				}{dynamic type}
 	\mydefcase{\likety{T}					}{like types}
+	\mydefcase{\self							}{self type}
 %	\mydefcase{\wrapty{T}					}{wrap types}
 	
 %\\
@@ -247,24 +252,30 @@ The rule \rel{E-Alloc} requires an explicit object type with a type for each fie
 but those field types could simply be $\dynamic$. (Note, fields can never be deleted in our semantics.)
 Thus, the necessary object type could always be locally inferred from the object expression.
 
+In general, states never contain types that have free occurrences of $\self$. 
+Instead, whenever we pull a component type $S$ out of an object with allocated type $T=\objty{l:S,\dots}$, 
+we replace all occurrences of $\self$ in $S$ with the type $T$.
+
 Several rules refer to the judgement $\istype{v}{T}$, which checks if the value $v$ matches the type $T$: 
-see  Figure ~\ref{fig:convert}. This judgement relies on two subtype-like relations on types.
+see  Figure ~\ref{fig:convert}. The type $\self$ should not occur free in $T$.
+This judgement relies on two subtype-like relations on types.
 
 The judgement $\subtype{S}{T}$ (\emph{$S$ is a subtype of $T$}) checks if every value of type $S$ 
-can be assigned to a variable of type $T$.
+can be assigned to a variable of type $T$. The type $\self$ can occur free in both $S$ and $T$.
 The type $\dynamic$ is a top type. 
 
-\begin{lemma}
-The subtyping judgement is reflexively-transitively closed.
-\end{lemma}
-
 The judgement $\compatible{S}{T}$  (\emph{$S$ is compatible with $T$}) 
-extends the assignable relation with a more flexible interpretation of dynamic types; 
+extends the subtyping relation with a more flexible interpretation of dynamic types; 
 in particular, the type $\dynamic$ is compatible with any type.
 The compatibility judgement is not transitively closed.
 In particular, we have that   $\compatible{\Int}{\dynamic}$ and
 $\compatible{\dynamic}{\Bool}$, but the judgement $\compatible{\Int}{\Bool}$ does not hold. 
 The rule~\rel{S-Like} for \t{like} types switches from checking subtyping to checking compatibility.
+
+\begin{lemma}
+The subtyping judgement is reflexively-transitively closed.
+\end{lemma}
+
 
 \begin{lemma}[Preservation under subtyping]
 If $\istype v S$ and $\subtype S T$ then $\istype v T$.
@@ -313,7 +324,8 @@ Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable
 	&\lred&
 	\sigma[a:=(\obje{l_i=v_i}{T})],C[a] 
 	&\rel{E-Alloc} \\
-	&&\mbox{where }T=\objty{l_i:T_i^{i\in 1..n}}, \istype{v_i}{T_i} \\
+	&&\mbox{where }T=\objty{l_i:T_i^{i\in 1..n}}  \\
+	&&\mbox{and } \istype{v_i}{T_i[\self :=T]} \\
 	&&\mbox{and $a$ fresh}
 \\~\\
 	\sigma,C[\objget{a}{l}]
@@ -322,10 +334,11 @@ Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable
 	\qquad\mbox{if $\sigma(a)=\obje{l=v,\dots}{T}$}
 	&\rel{E-Get1}
 \\~\\
-	\sigma,C[\objget{(\wrapv{w}{\objty{l:T,\dots}})}{l}]
+	\sigma,C[\objget{(\wrapv{w}{T})}{l}]
 	&\lred&
-	\sigma,C[\wrap{(\objget{w}{l})}{T}] 
-	&\rel{E-Get2}
+	\sigma,C[\wrap{(\objget{w}{l})}{S[\self:=T]}] 
+	&\rel{E-Get2} \\
+	&&\mbox{where $T=\objty{l:S,\dots}$} 
 \\~\\
 	\sigma,C[\objcall{a}{l}]
 	&\lred&
@@ -337,19 +350,21 @@ Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable
 	&\lred&
 	\sigma[a,l:=v],C[v] 
 	&\rel{E-Assign1} \\
-	&&\mbox{where if $\sigma(a)=\obje{\dots}{\objty{l:T,\dots}}$ }\\
-	&&\mbox{then $\istype{v}{T}$} 
+	&&\mbox{where $\sigma(a)=\obje{\dots}{T}$ }\\
+	&&\mbox{and if $T=\objty{l:S,\dots}$} \\
+	&&\mbox{then $\istype{v}{S[\self:=T]}$} 
 \\~\\
-	\sigma,C[\objset{(\wrapv{w}{\objty{l:T,\dots}})}{l}{v}]
+	\sigma,C[\objset{(\wrapv{w}{T})}{l}{v}]
 	&\lred&
-	\sigma,C[\objset{w}{l}{(\wrap{v}{T})}]
+	\sigma,C[\objset{w}{l}{(\wrap{v}{S[\self:=T]})}]
 	&\rel{E-Assign2} \\
+	&&\mbox{where $T=\objty{l:S,\dots}$} 
 \end{array}
 \]
 \end{displayfigure}
 
 
-\begin{displayfigure}{th}{Dynamic Type Checks}
+\begin{displayfigure}{th}{Relations on Types}
 \label{fig:convert} 
 \begin{trules}
 \headtrule{$\istype{v}{T}$}{Dynamic type check}
@@ -453,18 +468,18 @@ and so cannot be used for run-time check elimination.
 
 The strict mode type system is based on a judgement $\judge{E}{e}{T}$,
 stating that expression $e$ has type $T$ in environment $E$.
-Note that the type $T$ \emph{only} indicates that $e$ is intended to produce values of type $T$; there are no guarantees here, due to the use of \t{like} types. Thus, the strict mode type system 
-If $T$ is not a $\likety{}$ type, then $e$ will only produce values of that type.
-If $T=\likety{T'}$, then the intent is that $e$ will only produce values of type $T'$,
-but there is no guarantee. However, this intent can be still used to detect type errors at compile time.
-%We sometimes use $k$ to range over $\likety{}^+$ or $\epsilon$.
+Note that the type $T$ \emph{only} indicates that $e$ is intended to produce values of type $T$; there are no guarantees here, due to the use of \t{like} types. 
+However, this intent can be still used to detect type errors at compile time.
 
+\comment{
 Note that the judgement $\judge{E}{e}{T}$ means that $e$ is \emph{expected} to only produce values of type $T$,
 and the purpose of the strict mode type system is only to heuristically detect errors at verification time.
 The following section presents a type system with stronger guarantees that are sufficient for removing some run-time type checks.
+}
 
 \begin{displayfigure}{th}{Type Rules for Strict Mode}
 \label{fig:typerules}
+\footnotesize
 \begin{trules}
 \headtrule{$\judge{E}{t}{T}$}{\underline{T}ype rules}
 \trule{T-Var}{
@@ -516,16 +531,17 @@ The following section presents a type system with stronger guarantees that are s
 %	}
 \trule{T-Alloc}{
 		\judge{E}{t_i}{S_i} \qquad
-		\subtype{S_i}{T_i} \qquad
+		\subtype{S_i}{T_i[\self:=T]} \qquad
 		T=\objty{l_i:T_i^{i\in 1..n}}
 	}{
 		\judge{E}{(\obje{l_i=t_i^{i\in 1..n}}{T})}{T}
 	}
 \trule{T-Get1}{
-		\judge{E}{e}{\objty{l:T,\dots}}  
+		\judge{E}{e}{T} \qquad
+		T=\objty{l:S,\dots}  
 		%k\in\setz{\likety{},\wrapty{},\epsilon}
 	}{
-		\judge{E}{\objget{e}{l}}{T}
+		\judge{E}{\objget{e}{l}}{S[\self^+:=T,\self^-:=..T..]}
 	}
 \trule{T-Get2}{
 		\judge{E}{e}{\dynamic}
@@ -533,9 +549,10 @@ The following section presents a type system with stronger guarantees that are s
 		\judge{E}{\objget{e}{l}}{\dynamic}
 	}
 \trule{T-Set1}{
-		\judge{E}{e_1}{\objty{l:T,\dots}} \qquad
-		\judge{E}{e_2}{S} \qquad
-		\subtype{S}{T}  
+		\judge{E}{e_1}{T} \qquad
+		T=\objty{l:S,\dots} \qquad
+		\judge{E}{e_2}{S'} \\
+		\subtype{S'}{S[\self^-:=T,\self^+:=..T..]}  
 	}{
 		\judge{E}{\objset{e_1}{l}{e_2}}{S}
 	}
@@ -563,8 +580,9 @@ We introduce the following additional ``\t{safe}'' expression forms, for which r
 	\mydefcase{\safe{\lam{x}{S}{T}{e}} 				}{safe abstraction} 
 	\mydefcase{\safe{\app{e}{e}} 					}{safe application} 
 	\mydefcase{\safe{} \obje{\bar{l}=\bar{e}}{T}		}{safe object allocation}
-	\mydefcase{\safe{}\objget{e}{l}					}{safe field selection}
-	\mydefcase{\safe{}\objset{e}{l}{e}				}{safe field update}
+	\mydefcase{\safe{}\objget{e}{l}					}{safe member selection}
+	\mydefcase{\safe{}\objcall{e}{l}					}{safe member invocation}
+	\mydefcase{\safe{}\objset{e}{l}{e}				}{safe member update}
 	\\
 	\mydefhead{v ::=\qquad\qquad\qquad\qquad\qquad}{Values:} 
 	\mydefcase{\dots								}{values mentioned earlier} 
@@ -575,6 +593,15 @@ It is straightforward to formulate the operational semantics of the extended lan
 
 Figure~\ref{fig:typerules2} presents \emph{optimization rules}, which verify that $\safe \dots$ occurs in correct places;
 it is straightforward to reformulate the analysis to infer these $\safe{}$ annotations.
+
+Some rules, such as \rel{O-Get-Safe}, replace contravariant occurrences of $\self$ with a minimal type $\bot$,
+whihc is guaranteed to always be a subtype of the current object type.
+Thus, extracting a field (whose type has no contravariant occurrences of $\self$) is safe;
+extracting a method (a function whose argument type is $\self$) may also be safe, 
+but the static argument type of the resulting function is $\bot$, 
+so invoking that function is always unsafe,
+and its argument must be checked dynamically.
+Via \rel{O-Set-Safe}, updating a member is in general safe only if its type does not contain covariant occurrences of $\self$.
 
 The following lemmas remain to be proven.
 
@@ -654,7 +681,7 @@ If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stu
 %	}
 \trule{O-Alloc-Safe}{
 		\judges{E}{t_i}{S_i} \qquad
-		\subtype{S_i}{T_i} \qquad
+		\subtype{S_i}{T_i[\self:=T]} \qquad
 		T=\objty{l_i:T_i^{i\in 1..n}}
 	}{
 		\judges{E}{\safe{(\obje{l_i=t_i^{i\in 1..n}}{T})}}{T}
@@ -665,10 +692,11 @@ If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stu
 		\judges{E}{(\obje{l_i=t_i^{i\in 1..n}}{T})}{T}
 	}
 \trule{O-Get-Safe}{
-		\judges{E}{e}{\objty{l:T,\dots}}  
+		\judges{E}{e}{T} \qquad
+		T=\objty{l:S,\dots} 
 		%k\in\setz{\likety{},\wrapty{},\epsilon}
 	}{
-		\judges{E}{\safe{\objget{e}{l}}}{T}
+		\judges{E}{\safe{\objget{e}{l}}}{S[\self^+:=T,\self^-:=\bot]}
 	}
 \trule{O-Get-Unsafe}{
 		\judges{E}{e}{S}
@@ -676,9 +704,10 @@ If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stu
 		\judges{E}{\objget{e}{l}}{\dynamic}
 	}
 \trule{O-Set-Safe}{
-		\judges{E}{e_1}{\objty{l:T,\dots}} \qquad
-		\judges{E}{e_2}{S} \qquad
-		\subtype{S}{T}  
+		\judges{E}{e_1}{T} \qquad
+		T=\objty{l:S,\dots} \qquad
+		\judges{E}{e_2}{S'} \\
+		\subtype{S'}{S[\self^-:=T,\self^+:=\bot]}  
 	}{
 		\judges{E}{\safe{(\objset{e_1}{l}{e_2})}}{S}
 	}
