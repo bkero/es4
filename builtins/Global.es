@@ -171,7 +171,7 @@ package
 
     /*  No reason most of this has to be native.
     intrinsic function parseFloat(s: string) {
-        // FIXME
+        FIXME: Needs implementation
     }
     */
 
