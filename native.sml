@@ -1138,6 +1138,15 @@ fun proto (regs:Mach.REGS)
         !proto
     end
 
+fun id (regs:Mach.REGS)
+       (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val Mach.Obj { ident, ... } = nthAsObj vals 0
+    in
+        Eval.newInt regs (Int32.fromInt ident)
+    end
+
 
 (* Register all the native functions in this file. *)
 fun registerNatives _ =
@@ -1246,7 +1255,8 @@ fun registerNatives _ =
         addFn 1 Name.intrinsic_typename typename;
         addFn 1 Name.intrinsic_dumpFunc dumpFunc;
         addFn 1 Name.intrinsic_inspect inspect;
-        addFn 1 Name.intrinsic_proto proto
+        addFn 1 Name.intrinsic_proto proto;
+        addFn 1 Name.intrinsic_id id
 
     end
 

@@ -37,6 +37,7 @@ structure Defn = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
+val doTraceSummary = ref false
 fun log ss = LogErr.log ("[defn] " :: ss)
 fun error ss = LogErr.defnError ss
 fun trace ss = if (!doTrace) then log ss else ()
@@ -121,8 +122,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
       precision = Decimal.defaultPrecision }
 
 val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
-                                    (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
-                                    (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS) ]
+                          (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
+                          (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS) ]
 
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 
@@ -2934,8 +2935,9 @@ and defFragment (env:ENV)
                     in
                         (prog', frag' :: frags)
                     end
+                val (p, f) = List.foldl subFragment ((#program e), []) fragments 
             in
-                List.foldl subFragment ((#program e), []) fragments 
+                (p, List.rev f)
             end
 
         val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
@@ -3057,7 +3059,25 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       defaultNamespace = Name.noNS,
       topUnitName = NONE,
       program = prog }     
-    
+
+and summarizeFragment (Ast.Unit { name, fragments }) = 
+    let
+        val n = case name of 
+                    SOME comps => LogErr.join "." (map Ustring.toAscii comps)
+                  | NONE => ""
+    in
+        LogErr.log ["unit ", n, " { "];
+        List.app summarizeFragment fragments;
+        LogErr.log ["}"]
+    end
+  | summarizeFragment (Ast.Package { name, fragments }) =
+    (LogErr.log ["package ", (LogErr.join "." (map Ustring.toAscii name)), " { "];
+     List.app summarizeFragment fragments;
+     LogErr.log ["}"])
+  | summarizeFragment (Ast.Anon (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
+    Fixture.printRib rib
+  | summarizeFragment _ = ()
+
 and defTopFragment (prog:Fixture.PROGRAM)
                    (frag:Ast.FRAGMENT)
     : (Fixture.PROGRAM * Ast.FRAGMENT) =
@@ -3067,6 +3087,9 @@ and defTopFragment (prog:Fixture.PROGRAM)
         val prog = Fixture.closeTopFragment prog frag (Type.equals prog)
     in
         trace ["fragment definition complete"];
+        (if !doTraceSummary
+         then summarizeFragment frag
+         else ());
         (if !doTrace
          then Pretty.ppFragment frag
          else ());

@@ -600,25 +600,13 @@ fun magicToUstring (magic:MAGIC)
       | String s => s
       | Boolean true => Ustring.true_
       | Boolean false => Ustring.false_
-      | Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
-      | Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
-      | Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
-      | Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
-      | Namespace (Ast.Public id) => 
-        Ustring.append [Ustring.fromString "[public namespace: ", 
-                        id, Ustring.fromString "]"]
-      | Namespace (Ast.Internal _) => 
-        Ustring.fromString "[internal namespace]"
-      | Namespace (Ast.UserNamespace id) => 
-        Ustring.append [Ustring.fromString "[user-defined namespace ", 
-                        id, Ustring.fromString "]"]
+      | Namespace ns => Ustring.fromString (LogErr.namespace ns)
       | Class _ => Ustring.fromString "[class Class]"
       | Interface _ => Ustring.fromString "[interface Interface]"
       | Function _ => Ustring.fromString "[function Function]"
       | Type _ => Ustring.fromString "[type Type]"
       | ByteArray _ => Ustring.fromString "[ByteArray]"
       | NativeFunction _ => Ustring.fromString "[function Function]"
-      | _ => error0 ["Shouldn't happen: failed to match in magicToUstring."]
 
 
 (*
@@ -749,7 +737,6 @@ fun inspect (v:VAL)
                               | ValListProp _ => "[val list]"
                     in
                         p indent ["   prop = ", LogErr.name n, ": ", typ ty, att attrs,  " = "];
-                        (* p indent ["   type = ", typ ty]; nl(); *)
                         case state of
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")

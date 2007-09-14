@@ -69,8 +69,8 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
     in
 	case n of
-	    Ast.TempName n => trace ["temp #", Int.toString n, " -> ", fs]
-      | Ast.PropName n => trace [LogErr.name n, " -> ", fs]
+	    Ast.TempName n => log ["temp #", Int.toString n, " -> ", fs]
+      | Ast.PropName n => log [LogErr.name n, " -> ", fs]
     end
 
 (* -----------------------------------------------------------------------------

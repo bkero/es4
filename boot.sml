@@ -37,7 +37,8 @@ structure Boot = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[boot] " :: ss) else ()
+fun log ss = LogErr.log ("[boot] " :: ss)
+fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.hostError ss
 
 
@@ -73,12 +74,20 @@ fun instantiateRootClass (regs:Mach.REGS)
       val obj = Mach.newObj (Mach.ClassTag cty) Mach.Null (SOME (Mach.Class closure))
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
-      val _ = trace ["allocating class fixtures for ", LogErr.name fullName];
       val Ast.Cls { classRib, ... } = cls
+      val _ = trace ["allocating ", Int.toString (length classRib), 
+                     " class fixtures on class ", LogErr.name fullName,
+                     ", object #", Int.toString (Eval.getObjId (obj))];          
+      val _ = if (!doTrace) 
+              then Fixture.printRib classRib
+              else ()
       val _ = Eval.allocObjRib classRegs obj NONE classRib
 
       val _ = trace ["binding class ", LogErr.name fullName];
       val Mach.Obj { props, ... } = (#global regs)
+      val _ = if Mach.hasProp props fullName
+              then error ["global object already has a binding for ", LogErr.name fullName]
+              else ()
       val _ = Mach.addProp props fullName
                            { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
@@ -196,38 +205,45 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
 	trace [LogErr.name n, " -> ", ps]
     end
 
-(*
-fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
-    let
-	val fs = case f of
-		     Ast.NamespaceFixture _ => "[namespace]"
-		   | Ast.ClassFixture _ => "[class]"
-		   | Ast.InterfaceFixture _ => "[interface]"
-		   | Ast.TypeVarFixture => "[typeVar]"
-		   | Ast.TypeFixture _ => "[type]"
-		   | Ast.MethodFixture _ => "[method]"
-		   | Ast.ValFixture _ => "[val]"
-		   | Ast.VirtualValFixture _ => "[virtualVal]"
-    in
-	case n of
-	    Ast.TempName n => trace ["temp #", Int.toString n, " -> ", fs]
-      | Ast.PropName n => trace [LogErr.name n, " -> ", fs]
-    end
-*)
 
 fun describeGlobal (regs:Mach.REGS) = 
     if !doTrace
     then
-	    (trace ["global object contents:"];
-	     let 
-             val Mach.Obj { props, ... } = (#global regs)
-         in
-	         NameMap.appi printProp (!props);
-             trace ["top fixture contents:"];
-	         Fixture.printRib (Fixture.getTopRib (#prog regs))
-         end)
+        (trace ["contents of global object:"];
+         Mach.inspect (Mach.Object (#global regs)) 1;
+         trace ["contents of top rib:"];
+         Fixture.printRib (Fixture.getTopRib (#prog regs)))
     else 
         ()
+
+fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
+    let
+        fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.nons_Object orelse
+                                                           n = Name.intrinsic_Class orelse
+                                                           n = Name.nons_Function orelse
+                                                           n = Name.intrinsic_Interface
+                                                        then false
+                                                        else true
+          | nonRootClassFixture _ = true
+        fun filterRib rib = 
+            List.filter nonRootClassFixture rib
+        fun filterHeadOpt (SOME (Ast.Head (rib, inits))) = SOME (Ast.Head (filterRib rib, inits))
+          | filterHeadOpt NONE = NONE
+    in
+        case frag of 
+            Ast.Unit { name, fragments } =>
+            Ast.Unit { name = name, 
+                       fragments = map filterOutRootClasses fragments }
+          | Ast.Package { name, fragments } => 
+            Ast.Package { name = name, 
+                          fragments = map filterOutRootClasses fragments }
+          | Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
+            Ast.Anon (Ast.Block { pragmas = pragmas, 
+                                  defns = defns, 
+                                  head = filterHeadOpt head, 
+                                  body = body, 
+                                  loc = loc })
+    end
 
 fun boot _ : Mach.REGS =
     let
@@ -322,8 +338,9 @@ fun boot _ : Mach.REGS =
 
         (* Allocate runtime representations of anything in the initRib. *)
         val _ = trace ["allocating ribs for all builtins"]
-        val _ = Eval.allocScopeRib regs (Defn.initRib @ (Fixture.getTopRib prog))
-        val _ = trace ["allocated ribs for all builtins"]
+                                    
+        val _ = Eval.allocScopeRib regs Defn.initRib
+        val _ = trace ["allocated ribs for initial rib"]
 
         val _ = describeGlobal regs;
 
@@ -335,6 +352,7 @@ fun boot _ : Mach.REGS =
         val otherProgs = verifyFiles otherProgs
                          
         *)
+
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
@@ -351,10 +369,10 @@ fun boot _ : Mach.REGS =
         runObjectConstructorOnGlobalObject 
             regs objClass objClassObj objClassClosure;
 
-        Eval.evalTopFragment regs objFrag;
-        Eval.evalTopFragment regs clsFrag;
-        Eval.evalTopFragment regs funFrag;
-        Eval.evalTopFragment regs ifaceFrag;
+        Eval.evalTopFragment regs (filterOutRootClasses objFrag);
+        Eval.evalTopFragment regs (filterOutRootClasses clsFrag);
+        Eval.evalTopFragment regs (filterOutRootClasses funFrag);
+        Eval.evalTopFragment regs (filterOutRootClasses ifaceFrag);
 
         Mach.setBooting regs false;
         Mach.resetProfile regs;

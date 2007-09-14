@@ -395,18 +395,36 @@ fun allocRib (regs:Mach.REGS)
                 end
               | Ast.PropName pn =>
                 let
-                    val _ = trace ["allocating fixture for property ", fmtName pn]
                     fun allocProp state p =
                         if Mach.hasProp props pn
-                        (* FIXME: make a detailed check of fixture-compatibility here! *)
-                        (* error regs ["allocating duplicate property name: ",
-                                       fmtName pn] *)
-                        then (trace ["replacing fixture for ", state, " property ",
-                                     fmtName pn];
-                              Mach.delProp props pn; Mach.addProp props pn p)
-                             
-                        else (trace ["allocating fixture for ", state, " property ",
-                                     fmtName pn];
+                        then
+                            (* FIXME: 
+                             * This is ugly: boot code has no instances of fixture-replacement.
+                             * Some ES3 code -- notably the spidermonkey testsuite -- does in fact
+                             * have instances of fixture-replacing. We need to decide on the exact
+                             * rule here, and its interaction with the fixture-merging code in Fixture.sml
+                             *
+                             * For the time being I'm only permitting replacement of methods and vars,
+                             * in non-boot code, since those are the only things ES3 is supposed to know 
+                             * about.
+                             *)
+                            let
+                                fun fail _ = error regs ["allocating duplicate property name: ", LogErr.name pn]
+                                fun permit _ = (trace ["replacing ", state, " property ", fmtName pn];
+                                                Mach.delProp props pn; 
+                                                Mach.addProp props pn p)
+                                val state = (#state (Mach.getProp props pn))
+                            in
+                                if Mach.isBooting regs 
+                                then fail ()
+                                else case state of
+                                      Mach.ValProp _ => permit ()
+                                    | Mach.MethodProp _ => permit ()
+                                    | Mach.NativeFunctionProp _ => permit ()
+                                    | Mach.VirtualValProp _ => permit ()
+                                    | _ => fail ()
+                            end
+                        else (trace ["allocating fixture for ", state, " property ", fmtName pn];
                               Mach.addProp props pn p)
                 in
                     case f of
@@ -949,67 +967,91 @@ and throwExn (regs:Mach.REGS)
              (name:Ast.NAME) 
              (args:string list)
     : Mach.VAL =
-    raise ThrowException 
-              (instantiateGlobalClass 
-                   regs name 
-                   [((newString regs) o Ustring.fromString o String.concat) args])
+    if Mach.isBooting regs
+    then error regs ["trapped ThrowException during boot: ", 
+                     LogErr.name name, "(", LogErr.join ", " args, ")"]
+    else raise ThrowException 
+                   (instantiateGlobalClass 
+                        regs name 
+                        [((newString regs) o Ustring.fromString o String.concat) args])
 
 and throwExn0 (regs:Mach.REGS)
               (name:Ast.NAME) 
               (args:string list)
     : REF =
-    raise ThrowException 
-              (instantiateGlobalClass 
-                   regs name 
-                   [((newString regs) o Ustring.fromString o String.concat) args])
+    if Mach.isBooting regs
+    then error regs ["trapped ThrowException during boot: ", 
+                     LogErr.name name, "(", LogErr.join ", " args, ")"]
+    else raise ThrowException 
+                   (instantiateGlobalClass 
+                        regs name 
+                        [((newString regs) o Ustring.fromString o String.concat) args])
 
 and throwExn1 (regs:Mach.REGS)
               (name:Ast.NAME) 
               (args:string list)
     : Mach.OBJ =
-    raise ThrowException 
-              (instantiateGlobalClass 
-                   regs name 
-                   [((newString regs) o Ustring.fromString o String.concat) args])
+    if Mach.isBooting regs
+    then error regs ["trapped ThrowException during boot: ", 
+                     LogErr.name name, "(", LogErr.join ", " args, ")"]
+    else raise ThrowException 
+                   (instantiateGlobalClass 
+                        regs name 
+                        [((newString regs) o Ustring.fromString o String.concat) args])
 
 and throwExn2 (regs:Mach.REGS)
               (name:Ast.NAME) 
               (args:string list)
     : unit =
-    raise ThrowException
-              (instantiateGlobalClass 
-                   regs name 
-                   [((newString regs) o Ustring.fromString o String.concat) args])
+    if Mach.isBooting regs
+    then error regs ["trapped ThrowException during boot: ", 
+                     LogErr.name name, "(", LogErr.join ", " args, ")"]
+    else raise ThrowException
+                   (instantiateGlobalClass 
+                        regs name 
+                        [((newString regs) o Ustring.fromString o String.concat) args])
 
 and throwTypeErr (regs:Mach.REGS)
                  (args:string list)
     : Mach.VAL =
-    throwExn regs Name.nons_TypeError args
+    if Mach.isBooting regs
+    then error regs ("trapped TypeError during boot: " :: args)
+    else throwExn regs Name.nons_TypeError args
 
 and throwTypeErr0 (regs:Mach.REGS)
                   (args:string list)
     : Mach.OBJ =
-    throwExn1 regs Name.nons_TypeError args
+    if Mach.isBooting regs
+    then error regs ("trapped TypeError during boot: " :: args)
+    else throwExn1 regs Name.nons_TypeError args
 
 and throwTypeErr1 (regs:Mach.REGS)
                   (args:string list)
     : unit =
-    throwExn2 regs Name.nons_TypeError args
+    if Mach.isBooting regs
+    then error regs ("trapped TypeError during boot: " :: args)
+    else throwExn2 regs Name.nons_TypeError args
 
 and throwRefErr (regs:Mach.REGS)
                 (args:string list)
     : REF =
-    throwExn0 regs Name.nons_ReferenceError args
+    if Mach.isBooting regs
+    then error regs ("trapped ReferenceError during boot: " :: args)
+    else throwExn0 regs Name.nons_ReferenceError args
 
 and throwRefErr0 (regs:Mach.REGS)
                  (args:string list)
     : Mach.OBJ =
-    throwExn1 regs Name.nons_ReferenceError args
+    if Mach.isBooting regs
+    then error regs ("trapped ReferenceError during boot: " :: args)
+    else throwExn1 regs Name.nons_ReferenceError args
 
 and throwRefErr1 (regs:Mach.REGS)
                  (args:string list)
     : Mach.VAL =
-    throwExn regs Name.nons_ReferenceError args
+    if Mach.isBooting regs
+    then error regs ("trapped ReferenceError during boot: " :: args)
+    else throwExn regs Name.nons_ReferenceError args
 
 and needNamespace (regs:Mach.REGS)
                   (v:Mach.VAL)
@@ -1018,10 +1060,8 @@ and needNamespace (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => (Mach.inspect v 1;
-                   error regs ["need namespace"]))
-      | _ => (Mach.inspect v 1; 
-              error regs ["need namespace"])
+           | _ => error regs ["need namespace"])
+      | _ => error regs ["need namespace"]
 
 and needNamespaceOrNull (regs:Mach.REGS)
                         (v:Mach.VAL)
@@ -1030,11 +1070,9 @@ and needNamespaceOrNull (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => (Mach.inspect v 1; 
-                   error regs ["need namespace"]))
+           | _ => error regs ["need namespace"])
       | Mach.Null => Name.noNS
-      | _ => (Mach.inspect v 1; 
-              error regs ["need namespace"])
+      | _ => error regs ["need namespace"]
 
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
@@ -4829,8 +4867,15 @@ and evalFragment (regs:Mach.REGS)
     (case frag of 
          Ast.Unit { fragments, ... } => 
          List.last (map (evalFragment regs ) fragments)
-       | Ast.Package { fragments, ... } => 
-         List.last (map (evalFragment regs ) fragments)
+       | Ast.Package { name, fragments } => 
+         let
+             val n = LogErr.join "." (map Ustring.toAscii name)
+             val _ = trace ["entering package fragment: ", n]
+             val res = List.last (map (evalFragment regs ) fragments)
+             val _ = trace ["leaving package fragment: ", n]
+         in
+             res
+         end
        | Ast.Anon (Ast.Block {head=NONE, ...}) => 
          error regs ["top-level block with no head"]
        | Ast.Anon (Ast.Block {head=SOME (Ast.Head (rib, inits)), body, loc, ...}) => 

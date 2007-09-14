@@ -7234,7 +7234,7 @@ fun lexLines (lines : Ustring.SOURCE list)
         Lexer.lex ("<no filename>", reader)
     end
 
-fun parseFrags [(Eof, _)] = []
+fun parseFrags [(Eof, _)] = ([], [])
   | parseFrags ts = 
     let
         val (residual, frag) = fragment ts
@@ -7243,17 +7243,24 @@ fun parseFrags [(Eof, _)] = []
         (if (!doTrace)
          then Pretty.ppFragment frag
          else ());
-        frag :: (parseFrags residual)
+        let 
+            val (residual, frags) = parseFrags residual
+        in
+            case residual of 
+                [] => (residual, frag :: frags)
+              | tok::_ => error ["residual token seen after parsing: ", tokenname tok]
+        end
     end
 
 fun parse ts = 
     let
-        val frags = parseFrags ts
+        val (_, frags) = parseFrags ts
+        val frag = case frags of 
+                       [x] => x
+                     | other => Ast.Unit { name = NONE, 
+                                           fragments = other }
     in
-        case frags of 
-            [x] => x
-          | other => Ast.Unit { name = NONE, 
-                                fragments = other }
+        frag
     end
 
 fun logged thunk name =

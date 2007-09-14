@@ -243,7 +243,7 @@ package
                     twoDigit(hours) + ":" +
                     twoDigit(minutes) + ":" +
                     twoDigit(seconds) + " GMT" +
-                    sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
+                    signString(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
         }
 
         prototype function toGMTString(this:Date)
@@ -288,7 +288,7 @@ package
             let (tz:double = timezoneOffset)
                 let (atz:double = Math.abs(tz))
                     twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
-                    " GMT" + sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
+                    " GMT" + signString(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
 
         /* E262-3 15.9.5.5: Date.prototype.toLocaleString */
         prototype function toLocaleString(this:Date)
@@ -830,7 +830,7 @@ package
     informative function twoDigit(n : double)
         (n + 100).toString().substring(1,3);
 
-    informative function sign(n : double)
+    informative function signString(n : double)
         n < 0 ? "-" : "+";
 
     helper const hoursPerDay = 24;
