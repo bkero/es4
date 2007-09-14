@@ -69,25 +69,27 @@
  * to create it.
  */
 
-package Library
+package
 {
     use namespace intrinsic;
+    use default namespace public;
 
-    public class Map.<K,V>
+    // Should be __ES4__
+    intrinsic class Map.<K,V>
     {
-        use default namespace public;
-
         /* Create the map.  Note that the equality and hashcode
          * predicates must always agree: if two objects are equal,
          * they must hash to the same value.
          */
         function Map(equals=intrinsic::===, hashcode=intrinsic::hashcode) 
-            : equals(equals)
-            , hashcode(hashcode)
+            : equals = equals
+            , hashcode = hashcode
+            , element_count = 0
         {
         }
 
         /* Create a Map from an Object */
+        // OBSOLETE
         meta static function convert(x : Object!) {
             let d = new Map.<EnumerableId,V>;
             for ( let n in x )
@@ -98,47 +100,44 @@ package Library
 
         /* Return the number of mappings in the dictionary */
         function size() : uint
-            population;
+            element_count;
 
         /* Return the value associated with 'key', or null if 'key' does
          * not exist in the dictionary
          */
         function get(key: K) : V? {
-            let [l] = find(key);
-            return l ? l.value : null;
+            let probe = informative::find(key);
+            return probe ? probe.value : null;
         }
 
         /* Associate 'value' with 'key', overwriting any previous
          * association for 'key'
          */
         function put(key:K, value:V) : void {
-            let [l] = find(key);
-            if (l)
-                l.value = value;
-            else
-                insert( key, value );
+            let probe = informative::find(key);
+            if (probe)
+                probe.value = value;
+            else {
+                ++element_count;
+                informative::insert( key, value );
+            }
         }
 
         /* Return true iff the dictionary has an association for 'key'
          */
         function has(key:K) : boolean {
-            let [l] = find(key);
-            return l to boolean;
+            let probe = informative::find(key);
+            return probe ? true : false;
         }
 
         /* Remove any association for 'key' in the dictionary.  Returns
          * true if an association was in fact removed
          */
         function remove(key:K) : boolean {
-            let [l,p] = find(key);
-            if (l) {
-                if (p)
-                    p.link = l.link;
-                else
-                    tbl[h] = l.link;
-                population -= 1;
-                if (population < limit*REHASH_DOWN)
-                    rehash(false);
+            let probe = informative::find(key);
+            if (probe) {
+                --element_count;
+                informative::eject(probe);
                 return true;
             }
             return false;
@@ -148,100 +147,127 @@ package Library
             getKeys(deep);
 
         iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<K>
-            iterate.<K>(function (a,k,v) { a.push(k) });
+            helper::iterate.<K>(function (a,k,v) { a.push(k) });
 
         iterator function getValues(deep: boolean = false) : iterator::IteratorType.<V>
-            iterate.<V>(function (a,k,v) { a.push(v) });
+            helper::iterate.<V>(function (a,k,v) { a.push(v) });
 
         iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[K,V]>
-            iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
+            helper::iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
 
-        private function iterate.<T>(f: function(k,v):*) {
+        helper function iterate.<T>(f: function(*,*,*):*) {
             let a = [] : [T];
-            allElements( tbl, limit, function (k,v) { f(a,k,v) } );
+            informative::allElements( tbl, limit, function (k,v) { f(a,k,v) } );
             let i = 0;
             return {
                 next: function () : T {
                     if (i === a.length)
-                        throw StopIteration;
+                        throw iterator::StopIteration;
                     return a[i++];
                 }
             };
         }
 
-        private function find(key:K): [box,box] {
-            let h = this.hashcode(key) % limit;
-            let l = tbl[h];
-            let p = null;
+        informative function find(key:K): Box.<K,V> {
             // Documented behavior: the key in the table is the left
             // operand, while the key we're looking for is the right
             // operand.
-            while (l && !this.equals(l.key,key)) {
-                p = l;
-                l = l.link;
-            }
-            return [l,p];
+            for ( let l=tbl[this.hashcode(key) % limit] ; l && !this.equals(l.key,key) ; l=l.next )
+                ;
+            return l;
         }
 
-        private function insert(key:K, value:V) : void {
-            let hash = this.hashcode(key);
-            if (population > limit*REHASH_UP)
-                rehash(true);
-            let h = hash % limit;
-            let o = {key: key, value: value, link: tbl[h]};
-            tbl[h] = o;
-            population += 1;
+        informative function insert(key:K, value:V) : void {
+            if (element_count > limit*REHASH_UP)
+                informative::rehash(true);
+            let box = new Box.<K,V>(key, this.hashcode(key), value);
+            let h = box.hash % limit;
+            box.prev = null;
+            box.next = tbl[h];
+            tbl[h] = box;
         }
 
-        private function rehash(grow: boolean) : void {
+        informative function eject(box: Box.<K,V>): void {
+            if (box.prev)
+                box.prev.next = box.next;
+            else
+                tbl[box.hash % limit] = box.next;
+            if (box.next)
+                box.next.prev = box.prev;
+            if (element_count < limit*REHASH_DOWN)
+                informative::rehash(false);
+        }
+
+        // This is inefficient, it would be better to reuse the existing boxes.
+        informative function rehash(grow: boolean) : void {
             let oldtbl = tbl;
             let oldlimit = limit;
 
-            population = 0;
+            element_count = 0;
             limit = grow ? limit * 2 : limit / 2;
-            tbl = newTbl(limit);
+            tbl = informative::newTbl(limit);
 
-            allElements( oldtbl, oldlimit, insert );
+            informative::allElements( oldtbl, oldlimit, function (k,v) { ++element_count; informative::insert(k, v) } );
         }
 
-        private function allElements(tbl: [box], limit: uint, fn: function (K,V):*) {
+        informative function allElements(tbl: [box], limit: uint, fn: function (K,V):*) {
             for ( let i=0 ; i < limit ; i++ )
                 for ( let p=tbl[i] ; p ; p = p.link )
                     fn(p.key, p.value);
         }
 
-        private static function newTbl(limit: uint) : [box] {
-            let a = [] : [box];
+        informative static function newTbl(limit: uint) : [Box.<K,V>] {
+            let a = [] : [Box.<K,V>];
             a.limit = limit;
             return a;
         }
 
+        /* These are part of the spec */
+
+        private var hashcode : function(K):uint;      // key hash function (should be const?)
+        private var equals : function (K,K):boolean;  // key equality tester (should be const?)
+        private var element_count: uint = 0;             // number of elements in the table */
+
+        /* These are private to the implementation */
         /* We need to have REHASH_UP > REHASH_DOWN*2 for things to work */
 
-        private const REHASH_UP = 1;                  /* rehash if population > REHASH_UP*limit */
-        private const REHASH_DOWN = 1/3;              /* rehash if population < REHASH_DOWN*limit */
+        private const REHASH_UP = 1;                  /* rehash if element_count > REHASH_UP*limit */
+        private const REHASH_DOWN = 1/3;              /* rehash if element_count < REHASH_DOWN*limit */
 
-        private type box = {key:K, value:V, link:* /*box*/};
-
-        private var hashcode : function(K):uint;      /* key hash function (should be const?) */
-        private var equals : function (K,K):boolean;  /* key equality tester (should be const?) */
-        private var population: uint = 0;             /* number of elements in the table */
         private var limit: uint = 10;                 /* number of buckets in the table */
-        private var tbl: [box] = newTbl(limit);       /* hash table */
+        private var tbl: [Box.<K,V>] = newTbl(limit); /* hash table */
+    }
+
+    internal class Box.<K,V> 
+    {
+        function Box(key:K, hash:uint, value:V) 
+            : key = key
+            , hash = hash
+            , value = value
+            , prev = null
+            , next = null
+        {
+        }
+
+        var key: K;
+        var hash: uint;
+        var value: V;
+        var prev: Box.<K,V>;
+        var next: Box.<K,V>;
     }
 
     /* FIXME: Do we really want this to be parameterized? */
-    public interface ObjectIdentity.<T>
-    {
-        function equals(that: ObjectIdentity.<T>): boolean;
-        function hashcode(): uint;
-    }
+//     public interface ObjectIdentity.<T>
+//     {
+//         function equals(that: ObjectIdentity.<T>): boolean;
+//         function hashcode(): uint;
+//     }
 
-    public class IdentityMap.<K /* implements ObjectIdentity.<K> */, V> extends Map.<K,V> {
-        function IdentityMap() 
-            : super(function (x: ObjectIdentity.<K>, y: ObjectIdentity.<K>): boolean { return x.equals(y) },
-                    function (x: ObjectIdentity.<K>): uint { return x.hashcode() })
-        {
-        }
-    }
+//     public class IdentityMap.<K /* implements ObjectIdentity.<K> */, V> extends Map.<K,V> {
+//         function IdentityMap() 
+//             : super(function (x: ObjectIdentity.<K>, y: ObjectIdentity.<K>): boolean { return x.equals(y) },
+//                     function (x: ObjectIdentity.<K>): uint { return x.hashcode() })
+//         {
+//         }
+//     }
 }

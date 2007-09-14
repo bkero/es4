@@ -64,9 +64,11 @@ package
         function set length(len: Numeric) {
             if (fixed)
                 throw new RangeError();
-            if (!helper::isIntegral(idx) || idx < 0 || idx > uint.MAX_VALUE)
+            if (!helper::isIntegral(len) ||
+                len < 0 ||
+                len > 0xFFFFFFFF)
                 throw new RangeError();
-            informative::setLength(len);
+            informative::setLength(uint(len));
         }
 
         meta function get(name): T {

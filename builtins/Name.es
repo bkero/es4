@@ -37,35 +37,34 @@
 
 use namespace intrinsic;
 
-intrinsic final class Name extends String {
-    type NS = (Name, Namespace, string);
-    type ID = (undefined, string);
-
-    function Name(ns : NS, id : ID = undefined) {
-        if (id == undefined) {
-            if (ns is Name) {
-                let n : Name = ns;
-                identifier = n.identifier;
-                qualifier = n.qualifier;
-            } else {
-                identifier = ns;
-            }
-        } else {
-            qualifier = ns;
-            identifier = id;
+intrinsic final class Name extends String 
+{
+    function Name(a, b=undefined) {
+        if (a is Namespace && b is string) {
+            qualifier = a;
+            identifier = b;
         }
+        if (a is Name && b is undefined) {
+            qualifier = a.qualifier;
+            identifier = a.identifier;
+        }
+        if (a is string && b is undefined) {
+            identifier = a;
+        }
+        throw new TypeError();
     }
 
-    meta static function invoke(ns : NS, id : ID = undefined) : Name
-        new Name(ns, id);
+    meta static function invoke(a, b=undefined): Name
+        new Name(a, b);
 
+    // OBSOLETE
     meta static function convert(v : (Namespace, string))
         new Name(v);
 
     prototype function toString(this : Name)
         this.intrinsic::toString();
 
-    intrinsic override function toString() : string {
+    override intrinsic function toString() : string {
         if (qualifier === null)
             return identifier;
         return qualifier + "::" + identifier;
@@ -74,7 +73,7 @@ intrinsic final class Name extends String {
     prototype function valueOf(this : Name)
         this.intrinsic::valueOf();
 
-    intrinsic override function valueOf() : string
+    override intrinsic function valueOf() : string
         intrinsic::toString();
 
     // FIXME #42: use const again when it works
