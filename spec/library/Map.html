@@ -2,11 +2,166 @@
 
 <pre>
 FILE:                       spec/library/Map.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-13
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-14
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
+<P> The class ''Map'' is a parameterized, dynamic, non-final, direct
+subclass of ''Object'' that provides a reliable and efficient map from
+keys to values.  Keys and values may be of arbitrary types.
+
+<P> A ''Map'' is realized as a hash table.  When the ''Map'' is
+constructed the client program may provide functions that compare keys
+and compute hash values for keys.
+
+
 == Synopsis ==
+
+<P> The class ''Map'' provides the following interface:
+
+{{{
+class Map.<K,V>
+{
+    <SIGNATURE file="Map.es" name="function Map">
+
+    <SIGNATURE file="Map.es" name="function size">
+    <SIGNATURE file="Map.es" name="function get">
+    <SIGNATURE file="Map.es" name="function put">
+    <SIGNATURE file="Map.es" name="function has">
+    <SIGNATURE file="Map.es" name="function remove">
+
+    <SIGNATURE file="Map.es" name="iterator function get">
+    <SIGNATURE file="Map.es" name="iterator function getKeys">
+    <SIGNATURE file="Map.es" name="iterator function getValues">
+    <SIGNATURE file="Map.es" name="iterator function getItems">
+
+    private const equals = <LDOTS>
+    private const hashcode = <LDOTS>
+    private var population = <LDOTS>
+}
+}}}
+
+<P> The ''Map'' prototype object contains no direct properties apart
+from the ones defined on ''Object''.
+
+<FIXME> So, if an class's prototype object appears to be an instance
+of that class, what does that mean?  It means it must at least have
+the method suite.  That made sense in ES3 because the prototype
+methods were defined directly on the prototype object, thus they were
+available; a little magic changed the class name of the object from
+"Object" to that of the class, and we were (more or less) done.  Not
+so in ES4!  In ES4 there are all sorts of properties on the instance
+that are obviously not methods on the prototype object.
+
+
+== Methods on the ''Map'' class object ==
+
+=== new Map.&lt;K,V&gt;( equals=<LDOTS>, hashcode=<LDOTS> ) ===
+
+<DESC> The ''Map'' constructor creates a new map for key type //K//
+and value type //V//.
+
+<P> The optional //equals// argument is a function that compares two
+keys and returns **true** if they are equal and **false** if they are
+not.  Whenever a key //k1// that is already in the table is compared
+with a key //k2// that is not, //k1// will be the first argment to
+//equals// and //k2// will be the second argument.  The default value
+for //equals// is a function that compares the two keys using the
+''==='' operator.
+
+<P> The optional //hashcode// argument is a function that takes a key
+and returns a hash code for it.  This code may be used to find
+associations more quickly in the map.  The //hashcode// function must
+always return the same value for the same object, and it must always
+return the same value for two objects that compare equal by the
+//equals// function.  The default value for //equals// is the
+intrinsic global function ''hashcode''.
+
+<IMPL> The ''Map'' constructor initializes the ''Map'' object by
+saving its parameters in private storage and initializing the element
+count to zero.
+
+<INCLUDE file="Map.es" name="function Map">
+
+
+== Methods on ''Map'' instances ==
+
+=== size ( ) ===
+
+<RETN> The ''size'' method returns the number of associations in the map.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="function size">
+
+=== get ( key ) ===
+
+<RETN> The ''get'' method returns the value associated with //key//, or null if
+there's no such association.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="function get">
+
+<P> The informative function ''find'' searches for //key// in the
+''Map'' and returns an object containing at least the properties
+''key'' and ''value'' if the association was found, or otherwise
+**null**.
+
+=== put ( key, value ) ===
+
+<DESC> The ''put'' method creates an association between //key// and //value//, or
+overwrites an existing association if there is one.
+
+<RETN> The ''put'' method returns nothing.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="function put">
+
+<P> The informative function ''insert'' adds a new association between
+//key// and //value// to the ''Map''.
+
+=== has ( key ) ===
+
+<RETN> The ''has'' method returns **true** if there exists an association for //key//,
+or **false** otherwise.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="function has">
+
+=== remove ( key ) ===
+
+<DESC> The ''remove'' method removes any association for //key//.
+
+<RETN> The ''remove'' method returns **true** if there was an association for //key//,
+or **false** otherwise.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="function remove">
+
+<P> The informative function ''eject'' removes the association for
+//key// from the ''Map''.
+
+== Iteration protocol on ''Map'' instances ==
+
+<P> The iterator protocol makes use of a helper method ''iterate''
+which first collects the values that will be returned by the iterator
+methods and then returns an object provides the correct ''next''
+method:
+
+<INCLUDE file="Map.es" name="helper function iterate">
+
+<P> As per normal, the iterator methods ''getKeys'', ''getValues'', and ''getItems''
+return iterator objects that iterate over keys, values, and key/value pairs, respectively.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="iterator function getKeys">
+<INCLUDE file="Map.es" name="iterator function getValues">
+<INCLUDE file="Map.es" name="iterator function getItems">
+
+<P> The iterator method ''get'' iterates over keys (like ''getKeys'').
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="iterator function get">

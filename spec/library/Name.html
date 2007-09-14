@@ -1,2 +1,112 @@
 <H1 id="class Name"> The class ''Name'' </H1>
 
+<pre>
+FILE:                       spec/library/Name.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-14
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+<P> The class ''Name'' is a final, nullable, non-dynamic, direct
+subclass of ''String'' that reflects a property name as a pair of
+''Namespace'' and ''string'' values.
+
+== Synopsis ==
+
+<P> The class ''Name'' provides the following interface:
+
+{{{
+final class Name extends String
+{
+    <SIGNATURE file="Name.es" name="function Name">
+    <SIGNATURE file="Name.es" name="meta static function invoke">
+    
+    <SIGNATURE file="Name.es" name="override intrinsic function toString">
+    <SIGNATURE file="Name.es" name="override intrinsic function valueOf">
+
+    const qualifier:  Namespace
+    const identifier: string
+}
+}}}
+
+<P> The ''Name'' prototype object provides the following direct interfaces:
+
+{{{
+    toString: function (this:Name) <LDOTS>
+    valueOf:  function (this:Name) <LDOTS>
+}}}
+
+== Methods on the ''Name'' class object ==
+
+=== new Name( a, b=<LDOTS> ) ===
+
+<DESC> The ''Name'' constructor initializes a new ''Name'' object.
+Three combinations of the two arguments //a// and //b// (whose default
+value is **undefined** are allowed).  If //a// is a ''string'' or a ''Name''
+then //b// must be **undefined**.  Otherwise, if //a// is a ''Namespace'' then
+//b// must be a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="Name.es" name="function Name">
+
+=== Name (a, b=<LDOTS>) ===
+
+<DESC> The ''Name'' class object called as a function creates a new
+''Name'' object by passing its arguments //a// and //b// (whose
+default value is **undefined**) to the ''Name'' constructor.
+
+<RETN> The ''Name'' class object called as a function returns a
+''Name'' object.
+
+<SHORTIMPL>
+<INCLUDE file="Name.es" name="meta static function invoke">
+
+
+== Methods on ''Name'' instances ==
+
+=== intrinsic::toString ( ) ===
+
+<DESC> The intrinsic ''toString'' method converts this ''Name'' object
+to a string.
+
+<RETN> The intrinsic ''toString'' method returns a string.
+
+<SHORTIMPL>
+<INCLUDE file="Name.es" name="override intrinsic function toString">
+
+=== intrinsic::valueOf ( ) ===
+
+<RETN> The intrinsic ''toString'' method returns what the ''toString''
+method returns.
+
+<SHORTIMPL>
+<INCLUDE file="Name.es" name="override intrinsic function valueOf">
+
+== Value properties of ''Name'' instances ==
+
+=== qualifier ===
+
+<P> The ''qualifier'' property holds the namespace value for this
+''Name'' object.  It may be null.
+
+=== identifier ===
+
+<P> The ''identifier'' property holds the identifier value for this
+''Name'' object.  It is never null.
+
+
+== Methods on the ''Name'' prototype object ==
+
+<DESC> The methods on the ''Name'' prototype object delegate to their
+corresponding intrinsic methods.
+
+<RETN> The methods on the ''Name'' prototype object return what their
+corresponding intrinsic methods return.
+
+<SHORTIMPL>
+<INCLUDE file="Name.es" name="prototype function toString">
+<INCLUDE file="Name.es" name="prototype function valueOf">
+
