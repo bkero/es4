@@ -1234,7 +1234,7 @@ and newUInt (regs:Mach.REGS)
 and newPublicString (regs:Mach.REGS)
                     (s:Ustring.STRING)
     : Mach.VAL =
-    newBuiltin regs Name.intrinsic_String (SOME (Mach.String s))
+    newBuiltin regs Name.intrinsic_string (SOME (Mach.String s))
 
 and newString (regs:Mach.REGS)
               (s:Ustring.STRING)
@@ -4391,7 +4391,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
                 (Name.nons_Object, Mach.getObjectClassSlot),
                 (Name.nons_Array, Mach.getArrayClassSlot),
                 (Name.nons_Function, Mach.getFunctionClassSlot),
-                (Name.intrinsic_String, Mach.getStringClassSlot),
+                (Name.intrinsic_string, Mach.getStringClassSlot),
                 (Name.nons_Number, Mach.getNumberClassSlot),
                 (Name.nons_Boolean, Mach.getBooleanClassSlot)
             ]
