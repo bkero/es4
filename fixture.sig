@@ -34,6 +34,13 @@
 
 signature FIXTURE = sig
 
+    (* FRAME_ID management code *)
+
+    val allocFrame : (Ast.FRAME_ID option) -> Ast.FRAME_ID
+    val saveFrame : Ast.FRAME_ID -> Ast.RIB -> unit
+
+    (* Basic FIXTURE / RIB operations *)
+
     val printFixture : Ast.FIXTURE_NAME * Ast.FIXTURE -> unit
     val getFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE
     val hasFixture : Ast.RIB -> Ast.FIXTURE_NAME -> bool

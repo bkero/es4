@@ -88,6 +88,7 @@ type ENV =
        * with the unit system properly.
        *) 
      { nonTopRibs: Ast.RIBS,
+       frameIds: Ast.FRAME_ID list,
        tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list,
        numericMode: Ast.NUMERIC_MODE,
@@ -98,6 +99,12 @@ type ENV =
        topUnitName: Ast.IDENT list option,
        defaultNamespace: Ast.NAMESPACE,
        program: Fixture.PROGRAM }    
+
+fun getFrameId (e:ENV) 
+    : Ast.FRAME_ID option = 
+    case (#frameIds e) of 
+        [] => NONE
+      | (x :: xs) => SOME x
 
 fun getFullRibs (e:ENV) 
     : Ast.RIBS = 
@@ -130,7 +137,7 @@ fun makeTy (e:ENV)
     : Ast.TY = 
     let
         val ty = 
-            Ast.Ty { nonTopRibs = (#nonTopRibs e),
+            Ast.Ty { frameId = getFrameId e,
                      topUnit = (#topUnitName e),
                      expr = tyExpr }
     in
@@ -321,11 +328,13 @@ fun extendEnvironment (env:ENV)
                       (rib:Ast.RIB)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
+        val newFrameIds = (Fixture.allocFrame (getFrameId env)) :: frameIds
     in
         { nonTopRibs = rib :: nonTopRibs,
+          frameIds = newFrameIds, 
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
@@ -342,11 +351,12 @@ fun withProgram (env:ENV)
                 (newProgram:Fixture.PROGRAM)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
@@ -363,7 +373,7 @@ fun extendProgramTopRib (env:ENV)
                         (rib:Ast.RIB)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
@@ -379,12 +389,19 @@ fun mergeRibs (program:Fixture.PROGRAM)
 fun updateRib (env:ENV) (rib:Ast.RIB)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
-        val rib = mergeRibs program (hd nonTopRibs) rib
+        val nonTopRibs = case nonTopRibs of 
+                             head :: tail => (mergeRibs program head rib) :: tail
+                           | [] => [rib]
+        val rib = hd nonTopRibs
+        val _ = case getFrameId env of 
+                    NONE => ()
+                  | SOME fid => Fixture.saveFrame fid rib
     in
-        { nonTopRibs = rib :: nonTopRibs,
+        { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
@@ -400,11 +417,12 @@ fun updateRib (env:ENV) (rib:Ast.RIB)
 fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
@@ -420,11 +438,12 @@ fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
 fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
           tempOffset = newTempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
@@ -440,11 +459,12 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
 fun clearPackageName (env:ENV)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
@@ -460,12 +480,13 @@ fun clearPackageName (env:ENV)
 fun enterClass (env:ENV) (newClassName:Ast.NAME)
     : ENV =
     let
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
         val className = Name.mangle newClassName
     in
         { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
           tempOffset = tempOffset,
           openNamespaces = [Ast.Private className]::openNamespaces,
           numericMode = numericMode,
@@ -496,7 +517,7 @@ fun dumpPath
 fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
-            val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+            val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
                   labels, packageNames, className,
                   packageName, defaultNamespace, topUnitName, program } = env
             val (labelId,labelKnd) = label
@@ -509,6 +530,7 @@ fun addLabel ((label:LABEL),(env:ENV))
             then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
             else ();
             { nonTopRibs = nonTopRibs,
+              frameIds = frameIds,
               tempOffset = tempOffset,
               openNamespaces = openNamespaces,
               numericMode = numericMode,
@@ -896,7 +918,7 @@ and resolveClassInheritance (env:ENV)
 
         val instanceType = 
             let
-                val (it, ntr, tu) = AstQuery.extractInstanceType instanceType
+                val (it, fid, tu) = AstQuery.extractInstanceType instanceType
                 val superTypes:Ast.TY list = 
                     case extendsTy of 
                         NONE => implementsTys
@@ -912,7 +934,7 @@ and resolveClassInheritance (env:ENV)
                                             dynamic = (#dynamic it)}
             in
                 Ast.Ty { expr = te,
-                         nonTopRibs = ntr,
+                         frameId = fid,
                          topUnit = tu }
             end
                 
@@ -1613,7 +1635,7 @@ and makeAliasFixture (env:ENV)
             
         val (getterTy, setterTy) = 
             let 
-                val Ast.Ty { expr, nonTopRibs, topUnit } = fixtureType 
+                val Ast.Ty { expr, frameId, topUnit } = fixtureType 
                 val getterFuncType = {params=[],
                                       result=expr,
                                       thisType=NONE,
@@ -1627,9 +1649,9 @@ and makeAliasFixture (env:ENV)
                                       minArgs=1}
             in
                 (Ast.Ty { expr=(Ast.FunctionType getterFuncType), 
-                          nonTopRibs=nonTopRibs, topUnit=topUnit },
+                          frameId=frameId, topUnit=topUnit },
                  Ast.Ty { expr=(Ast.FunctionType setterFuncType), 
-                          nonTopRibs=nonTopRibs, topUnit=topUnit })
+                          frameId=frameId, topUnit=topUnit })
             end
 
         val getterFunc : Ast.FUNC = 
@@ -1717,6 +1739,7 @@ and defPragmas (env:ENV)
     : (ENV * Ast.RIB) =
     let
         val nonTopRibs      = #nonTopRibs env
+        val frameIds        = #frameIds env
         val mode      = #numericMode env
         val numType   = ref (#numberType mode)
         val rounding  = ref (#roundingMode mode)
@@ -1728,21 +1751,25 @@ and defPragmas (env:ENV)
         val tempOffset = #tempOffset env
 
         fun modifiedEnv _ = 
-            { nonTopRibs = !rib :: nonTopRibs,
-              tempOffset = tempOffset,
-              openNamespaces = (case !opennss of
-                                    [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
-                                  | _  => !opennss :: (#openNamespaces env)),
-              numericMode = { numberType = !numType,
-                              roundingMode = !rounding,
-                              precision = !precision },
-              labels = (#labels env),
-              packageNames = !packageNames,
-              className = (#className env),
-              packageName = (#packageName env),
-              topUnitName = (#topUnitName env),
-              defaultNamespace = !defaultNamespace,
-              program = (#program env) }
+            ((case getFrameId env of 
+                  NONE => ()
+                | SOME fid => Fixture.saveFrame fid (!rib));
+             { nonTopRibs = !rib :: nonTopRibs,
+               frameIds = frameIds,
+               tempOffset = tempOffset,
+               openNamespaces = (case !opennss of
+                                     [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
+                                   | _  => !opennss :: (#openNamespaces env)),
+               numericMode = { numberType = !numType,
+                               roundingMode = !rounding,
+                               precision = !precision },
+               labels = (#labels env),
+               packageNames = !packageNames,
+               className = (#className env),
+               packageName = (#packageName env),
+               topUnitName = (#topUnitName env),
+               defaultNamespace = !defaultNamespace,
+               program = (#program env) })
 
         fun defPragma x =
             case x of
@@ -2831,9 +2858,9 @@ and defDefn (env:ENV)
 
       | Ast.TypeDefn td =>
         let
-            val unhoisted = defType env td
+            val hoisted = defType env td
         in
-            (unhoisted, [], [])
+            ([], hoisted, [])
         end
 
       | _ => LogErr.unimplError ["defDefn"]
@@ -2940,7 +2967,7 @@ and defFragment (env:ENV)
                 (p, List.rev f)
             end
 
-        val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
@@ -2952,6 +2979,7 @@ and defFragment (env:ENV)
                         NONE => name
                       | x => x
                 val env = { nonTopRibs = nonTopRibs,
+                            frameIds = frameIds, 
                             tempOffset = tempOffset,
                             openNamespaces = openNamespaces,
                             numericMode = numericMode,
@@ -2981,6 +3009,7 @@ and defFragment (env:ENV)
             let
                 val packageIdent = packageIdentFromPath name
                 val env = { nonTopRibs = nonTopRibs,
+                            frameIds = frameIds,
                             tempOffset = tempOffset,
                             openNamespaces = [[Ast.Internal packageIdent, 
                                                Ast.Public packageIdent]] 
@@ -3049,6 +3078,7 @@ and defFragment (env:ENV)
 and mkTopEnv (prog:Fixture.PROGRAM) 
     : ENV =
     { nonTopRibs = [],
+      frameIds = [],
       tempOffset = 0,
       openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty], [Ast.Intrinsic]],
       numericMode = defaultNumericMode,

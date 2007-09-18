@@ -43,6 +43,8 @@ type IDENT = Ustring.STRING
 
 type UNIT_NAME = IDENT list
 
+type FRAME_ID = int
+
 datatype NAMESPACE =
          Intrinsic
        | OperatorNamespace
@@ -167,7 +169,7 @@ datatype PRAGMA =
      and TY = 
          Ty of 
          { expr: TYPE_EXPR,
-           nonTopRibs: RIBS,
+           frameId: FRAME_ID option,
            topUnit: UNIT_NAME option }
          
      and CLS =

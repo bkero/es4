@@ -82,7 +82,7 @@ type TOKENS = (TOKEN * Ast.LOC) list
 fun makeTy (typeExpr:Ast.TYPE_EXPR) 
     : Ast.TY = 
     Ast.Ty { expr = typeExpr,
-             nonTopRibs = [],
+             frameId = NONE,
              topUnit = NONE }
 
 fun unwrapTy (ty:Ast.TY) 
@@ -708,7 +708,9 @@ and qualifiedIdentifier (ts:TOKENS) =
         SimpleTypeIdentifier  .<  TypeExpressionList  >
 *)
 
-and propertyIdentifier (ts:TOKENS) =
+and propertyIdentifier (ts:TOKENS) = 
+    nonAttributeQualifiedIdentifier ts
+(*
     let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))])
         val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
     in case ts1 of
@@ -725,6 +727,7 @@ and propertyIdentifier (ts:TOKENS) =
             (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);
             (ts1, nd1))
     end
+*)
     
 and primaryIdentifier (ts:TOKENS) =
     let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))])

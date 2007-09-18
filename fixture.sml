@@ -50,6 +50,72 @@ val compare = (Vector.collate (fn (a,b) => Ustring.compare a b))
 end
 structure StrVecMap = SplayMapFn (StrVecKey);
 
+(* 
+ * Operations on FRAMEs. FRAMEs must be vaguely mutable in order to
+ * support constructing a type closure that refers to other members of
+ * its own scope out-of-order. This is more common than we might like.
+ * 
+ * For pure type definitions we could theoretically sort them by dependency
+ * before instantiating them into RIBs, but even putting aside how miserable
+ * that would be, we'd still lose on classes: classes with signatures may
+ * introduce circular dependencies on other classes at same scope.
+ *
+ * They *need* to go through a recursion-permitting identifier / ref cell.
+ * Sad but true.
+ * 
+ * FIXME: possibly make this non-global. Since it's not keyed by name it's less
+ * of an issue than units, but it'd be nice not to leak them. Requires rewriting
+ * much of defn to thread PROGRAM values back up from each defFoo function. 
+ *)
+
+structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
+structure IntMap = SplayMapFn (IntKey);
+
+(* Safe: will overflow when it runs out of identities. *)
+val currFrameId = ref 0
+fun nextFrameId _ =    
+    (currFrameId := (((!currFrameId) + 1) 
+                    handle Overflow => error ["overflowed maximum frame ID"]);
+     !currFrameId)
+
+type FRAME = { curr: int,
+               parent: int option,
+               rib: Ast.RIB }
+            
+val (frameMap:(FRAME IntMap.map) ref) = ref IntMap.empty
+
+fun allocFrame (parent:int option)
+    : int =
+    let 
+        val frameId = nextFrameId ()
+        val frame = { curr = frameId,
+                      parent = parent,
+                      rib = [] }
+    in
+        frameMap := IntMap.insert (!frameMap, frameId, frame);
+        frameId
+    end
+
+fun getFrame (frameId:int)
+    : FRAME = 
+    case IntMap.find(!frameMap, frameId) of
+        NONE => error ["no stored frame found for frame #", Int.toString frameId ]
+      | SOME frame => frame
+
+fun saveFrame (frameId:int)
+              (rib:Ast.RIB)
+    : unit = 
+    let
+        val oldFrame = getFrame frameId
+        val newFrame = { curr = frameId, 
+                         parent = (#parent oldFrame),
+                         rib = rib }
+    in
+        frameMap := IntMap.insert (!frameMap, frameId, newFrame)
+    end
+
+
+
 (* -----------------------------------------------------------------------------
  * Operations on FIXTURE
  * ----------------------------------------------------------------------------- *)
@@ -287,6 +353,17 @@ fun getCurrFullRibs (prog:PROGRAM)
     : Ast.RIBS = 
     nonTopRibs @ [getTopRib prog]
 
+fun resolveToRibs (frameId:Ast.FRAME_ID) 
+    : Ast.RIBS = 
+    let
+        val frame = getFrame frameId 
+        val parents = case (#parent frame) of 
+                          NONE => []
+                        | SOME pid => resolveToRibs pid
+    in
+        (#rib frame) :: parents
+    end
+
 fun getFullRibsForTy (prog:PROGRAM) 
                      (ty:Ast.TY)                
     : (Ast.RIBS * bool) = 
@@ -297,14 +374,17 @@ fun getFullRibsForTy (prog:PROGRAM)
      * full ribs. 
      *)
     let       
-        val Ast.Ty { nonTopRibs, topUnit, ... } = ty
+        val Ast.Ty { frameId, topUnit, ... } = ty
+        val ribs = case frameId of 
+                       NONE => []
+                     | SOME fid => resolveToRibs fid
         val (topRib, closed) = 
             case topUnit of 
                 NONE => (getTopRib prog, false)
               | SOME u => (case getTopRibForUnit prog u of
                                NONE => (getTopRib prog, false)
-                             | SOME closedRib => (closedRib, true))
-        val fullRibs = nonTopRibs @ [topRib]
+                             | SOME closedRib => (closedRib, true))                          
+        val fullRibs = ribs @ [topRib]
     in
         (fullRibs, closed)
     end

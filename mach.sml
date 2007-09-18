@@ -529,8 +529,9 @@ fun setPropDontEnum (props:PROP_BINDINGS)
 
 (* Safe: will overflow when it runs out of identities. *)
 val currIdent = ref 0
-fun nextIdent _ =
-    (currIdent := (!currIdent) + 1;
+fun nextIdent _ =    
+    (currIdent := (((!currIdent) + 1) 
+                   handle Overflow => error ["overflowed maximum object ID"]);
      !currIdent)
 
 fun newObj (t:VAL_TAG)

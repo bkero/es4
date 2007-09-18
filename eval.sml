@@ -59,7 +59,7 @@ fun makeTy (tyExpr:Ast.TYPE_EXPR)
      * ground TYPE_EXPR values in empty environments are a semantic
      * subset (though not an ML-type-theoretic subset) of TY values.
      *)
-    Ast.Ty { nonTopRibs = [],
+    Ast.Ty { frameId = NONE,
              topUnit = NONE,
              expr = tyExpr }
 
