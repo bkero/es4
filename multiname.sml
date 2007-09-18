@@ -42,6 +42,7 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[multiname] " :: ss) else ()
 fun error ss = LogErr.nameError ss
 fun fmtName n = if (!doTrace) then LogErr.name n else ""
+fun fmtFname n = if (!doTrace) then LogErr.fname n else ""
 fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
 fun resolve (mname:Ast.MULTINAME)
@@ -84,7 +85,7 @@ fun resolve (mname:Ast.MULTINAME)
     end
 
 
-fun matchFixtures  (fixtures:Ast.FIXTURES)
+fun matchFixtures  (rib:Ast.RIB)
                    (searchId:Ast.IDENT)
                    (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
@@ -103,26 +104,27 @@ fun matchFixtures  (fixtures:Ast.FIXTURES)
                             else false
                           | _ => ns = candidateNS
                 in
-                    trace ["considering fixture: ", LogErr.fname fxn];
                     if searchId = id andalso (List.exists matchNS nss)
                     then SOME n
                     else NONE
                 end
     in
-        List.mapPartial matchFixture fixtures
+        List.mapPartial matchFixture rib
     end
 
-fun resolveInFixtures (mname:Ast.MULTINAME)
-                      (env:'a)
-                      (getEnvFixtures:('a -> Ast.FIXTURES))
-                      (getEnvParent:('a -> ('a option)))
-    : (Ast.FIXTURES * Ast.NAME) option =
+fun resolveInRibs (mname:Ast.MULTINAME)
+                  (env:Ast.RIBS)
+    : (Ast.RIBS * Ast.NAME) option =
     let
-        fun f env ident nss = matchFixtures (getEnvFixtures env) ident nss
+        fun f env ident nss = 
+            case env of 
+                rib::ribs => matchFixtures rib ident nss
+              | _ => []
+
+        fun tl [] = NONE
+          | tl (x::xs) = SOME xs
     in
-        case resolve mname env f getEnvParent of
-            SOME (env,n) => SOME (getEnvFixtures env, n)
-          | NONE => NONE
+        resolve mname env f tl
     end
 
 end

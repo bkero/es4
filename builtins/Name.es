@@ -43,6 +43,7 @@ intrinsic final class Name extends String
         if (a is Namespace && b is string) {
             qualifier = a;
             identifier = b;
+
         }
         if (a is Name && b is undefined) {
             qualifier = a.qualifier;

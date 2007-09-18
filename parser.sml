@@ -79,6 +79,21 @@ type ATTRS = {ns: Ast.EXPR option,
 
 type TOKENS = (TOKEN * Ast.LOC) list
 
+fun makeTy (typeExpr:Ast.TYPE_EXPR) 
+    : Ast.TY = 
+    Ast.Ty { expr = typeExpr,
+             frameId = NONE,
+             topUnit = NONE }
+
+fun unwrapTy (ty:Ast.TY) 
+    : Ast.TYPE_EXPR = 
+    let
+        
+        val Ast.Ty { expr, ... } = ty
+    in 
+        expr
+    end
+    
 (*
 
     PATTERNS to BINDINGS to FIXTURES
@@ -693,7 +708,9 @@ and qualifiedIdentifier (ts:TOKENS) =
         SimpleTypeIdentifier  .<  TypeExpressionList  >
 *)
 
-and propertyIdentifier (ts:TOKENS) =
+and propertyIdentifier (ts:TOKENS) = 
+    nonAttributeQualifiedIdentifier ts
+(*
     let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))])
         val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
     in case ts1 of
@@ -703,14 +720,15 @@ and propertyIdentifier (ts:TOKENS) =
             in case ts2 of
                 (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
                     (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]);
-                    (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
+                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
               | _ => error ["unknown final token of parametric type expression"]
             end
       | _ =>
             (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);
             (ts1, nd1))
     end
-
+*)
+    
 and primaryIdentifier (ts:TOKENS) =
     let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))])
     in case ts of
@@ -818,7 +836,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                          (Ast.LiteralFunction
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
-                                                         block=nd4,
+                                                         block=SOME nd4,
                                                          native=false,
                                                          defaults=[],
                                                          param=Ast.Head ([],[]),
@@ -833,11 +851,11 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                          (Ast.LiteralFunction
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
-                                                         block=Ast.Block {pragmas=[],
-                                                                          defns=[],
-                                                                          body=[Ast.ReturnStmt nd4],
-                                                                          head=NONE,
-                                                                          loc=locOf ts3},
+                                                         block=SOME (Ast.Block {pragmas=[],
+                                                                                defns=[],
+                                                                                body=[Ast.ReturnStmt nd4],
+                                                                                head=NONE,
+                                                                                loc=locOf ts3}),
                                                          native=false,
                                                          param=Ast.Head ([],[]),
                                                          defaults=[],
@@ -864,7 +882,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                          (Ast.LiteralFunction
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=nd2},
                                                          fsig=nd3,
-                                                         block=nd4,
+                                                         block=SOME nd4,
                                                          native=false,
                                                          param=Ast.Head ([],[]),
                                                          defaults=[],
@@ -880,12 +898,12 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                               (Ast.Func
                                                    {name={kind=Ast.Ordinary,ident=nd2},
                                                     fsig=nd3,
-                                                    block=Ast.Block
-                                                              {pragmas=[],
-                                                               defns=[],
-                                                               body=[Ast.ReturnStmt nd4],
-                                                               head=NONE,
-                                                               loc=locOf ts3},
+                                                    block=SOME (Ast.Block
+                                                                    {pragmas=[],
+                                                                     defns=[],
+                                                                     body=[Ast.ReturnStmt nd4],
+                                                                     head=NONE,
+                                                                     loc=locOf ts3}),
                                                     native=false,
                                                     param=Ast.Head ([],[]),
                                                     defaults=[],
@@ -1280,7 +1298,7 @@ and parameterType (ts) =
         val (ts2,t) = nullableTypeExpression ts
     in
         trace(["<< parameter with next=",tokenname(hd(ts2))]);
-        (ts2,t)
+        (ts2, (unwrapTy t))
     end
 
 and parameterKind (ts)
@@ -1352,7 +1370,7 @@ and resultType (ts:TOKENS)
                 val (ts1,nd1) = nullableTypeExpression (tl ts)
             in
                 trace ["<< resultType with next=",tokenname(hd ts1)];
-                (ts1,nd1)
+                (ts1,unwrapTy nd1)
             end
       | ts1 => (ts1,Ast.SpecialType(Ast.Any))
     end
@@ -1464,7 +1482,7 @@ and literalField (ts:TOKENS)
                                (Ast.LiteralFunction
                                     (Ast.Func {name={kind=Ast.Get, ident=Ustring.empty},
                                                fsig=fsig,
-                                               block=block,
+                                               block=SOME block,
                                                native=false,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
@@ -1483,7 +1501,7 @@ and literalField (ts:TOKENS)
                                (Ast.LiteralFunction
                                     (Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
                                                fsig=fsig,
-                                               block=block,
+                                               block=SOME block,
                                                native=false,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
@@ -2251,7 +2269,7 @@ and unaryExpression (ts:TOKENS, a:ALPHA, b:BETA)
                         let
                             val (ts1,nd1) = nullableTypeExpression (tl ts)
                         in
-                            (ts1,Ast.TypeExpr(nd1))
+                            (ts1,Ast.TypeExpr nd1)
                         end
             in
                 (case (hd (tl ts)) of
@@ -3411,7 +3429,7 @@ and typedIdentifier (ts:TOKENS)
             let
                 val (ts2,nd2) = nullableTypeExpression (tl ts1)
             in
-                (ts2,(nd1,nd2))
+                (ts2,(nd1,unwrapTy nd2))
             end
       | _ =>
             let
@@ -3444,7 +3462,7 @@ and typedPattern (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts2,nd2) = typeExpression (tl ts1)
                     in
-                        (ts2,(nd1,nd2))
+                        (ts2,(nd1,unwrapTy nd2))
                     end
               | _ =>
                     (ts1,(nd1,Ast.SpecialType Ast.Any))  (* FIXME: this could be {*:*} to be more specific *)
@@ -3457,7 +3475,7 @@ and typedPattern (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts2,nd2) = typeExpression (tl ts1)
                     in
-                        (ts2,(nd1,nd2))
+                        (ts2,(nd1,unwrapTy nd2))
                     end
               | _ =>
                     (ts1,(nd1,Ast.ArrayType []))
@@ -3470,7 +3488,7 @@ and typedPattern (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts2,nd2) = nullableTypeExpression (tl ts1)
                     in
-                        (ts2,(nd1,nd2))
+                        (ts2,(nd1,unwrapTy nd2))
                     end
               | _ =>
                     (trace(["<< typedPattern with next=",tokenname(hd ts1)]);
@@ -3499,33 +3517,33 @@ and typedPattern (ts:TOKENS, a:ALPHA, b:BETA)
 *)
 
 and nullableTypeExpression (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR) =
+    : (TOKENS * Ast.TY) =
     let val _ = trace([">> nullableTypeExpression with next=",tokenname(hd ts)])
         val (ts1,nd1) = typeExpression ts
     in case ts1 of
         (Not, _) :: _ =>
-            (tl ts1,Ast.NullableType {expr=nd1,nullable=false})
+            (tl ts1,makeTy (Ast.NullableType {expr=unwrapTy nd1,nullable=false}))
       | (QuestionMark, _) :: _ =>
-            (tl ts1,Ast.NullableType {expr=nd1,nullable=true})
+            (tl ts1,makeTy (Ast.NullableType {expr=unwrapTy nd1,nullable=true}))
       | _ =>
             (ts1,nd1)
     end
 
 and typeExpression (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR) =
+    : (TOKENS * Ast.TY) =
     let val _ = trace([">> typeExpression with next=",tokenname(hd ts)])
     in case ts of
         (Function, _) :: _ => functionType ts
       | (LeftParen, _) :: _ => unionType ts
       | (LeftBrace, _) :: _ => objectType ts
       | (LeftBracket, _) :: _ => arrayType ts
-      | (Null, _) :: _ => (tl ts, Ast.SpecialType Ast.Null)
-      | (Undefined, _) :: _ => (tl ts, Ast.SpecialType Ast.Undefined)
+      | (Null, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Null))
+      | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
       | _ =>
             let
                 val (ts1,nd1) = primaryIdentifier ts
             in
-                (ts1,needType(nd1,NONE))
+                (ts1,makeTy (needType(nd1,NONE)))
             end
     end
 
@@ -3535,7 +3553,7 @@ and typeExpression (ts:TOKENS)
 *)
 
 and functionType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR) =
+    : (TOKENS * Ast.TY) =
     let val _ = trace([">> functionType with next=",tokenname(hd(ts))])
     in case ts of
         (Function, _) :: _ =>
@@ -3543,27 +3561,30 @@ and functionType (ts:TOKENS)
                 val (ts1,nd1) = functionSignatureType (tl ts)
             in
                 trace(["<< functionType with next=",tokenname(hd ts1)]);
-                (ts1, (Ast.FunctionType (functionTypeFromSignature nd1)))
+                (ts1, (functionTypeFromSignature nd1))
             end
       | _ => error ["unknown token in functionType"]
     end
 
 
 and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
-    : Ast.FUNC_TYPE =
+    : Ast.TY =
     let
     in
        case fsig of
         Ast.FunctionSignature {typeParams,params,paramTypes,returnType,thisType,hasRest,defaults,...} =>
             let
                 val (b,i) = params
+                val typeExpr = Ast.FunctionType {params=paramTypes,
+                                                 result=returnType,
+                                                 thisType=thisType,
+                                                 hasRest=hasRest,
+                                                 minArgs=(length paramTypes)-(length defaults)}
             in
-                {typeParams=typeParams,
-                 params=paramTypes,
-                 result=returnType,
-                 thisType=thisType,
-                 hasRest=hasRest,
-                 minArgs=(length paramTypes)-(length defaults)}
+                case typeParams of 
+                    [] => makeTy typeExpr
+                  | _ => makeTy (Ast.LamType { params = typeParams,
+                                               body = typeExpr })
             end
     end
 
@@ -3573,7 +3594,7 @@ and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
 *)
 
 and unionType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR)  =
+    : (TOKENS * Ast.TY)  =
     let val _ = trace([">> unionType with next=",tokenname(hd(ts))])
     in case ts of
         (LeftParen, _) :: _ =>
@@ -3581,7 +3602,7 @@ and unionType (ts:TOKENS)
                 val (ts1,nd1) = typeExpressionList (tl ts)
             in case ts1 of
                 (RightParen, _) :: _ =>
-                    (tl ts1, Ast.UnionType nd1)
+                    (tl ts1, makeTy (Ast.UnionType (map unwrapTy nd1)))
               | _ => error ["unknown token in unionType"]
             end
       | _ => error ["unknown token in unionType"]
@@ -3593,7 +3614,7 @@ and unionType (ts:TOKENS)
 *)
 
 and objectType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR) =
+    : (TOKENS * Ast.TY) =
     let val _ = trace([">> objectType with next=",tokenname(hd(ts))])
     in case ts of
         (LeftBrace, _) :: ts1 =>
@@ -3602,7 +3623,7 @@ and objectType (ts:TOKENS)
             in case ts2 of
                 (RightBrace, _) :: ts3 =>
                     (trace(["<< objectType with next=",tokenname(hd(ts3))]);
-                    (ts3,Ast.ObjectType nd2))
+                    (ts3, makeTy (Ast.ObjectType nd2)))
               | _ => error ["unknown token in objectType"]
             end
       | _ => error ["unknown token in objectType"]
@@ -3661,7 +3682,7 @@ and fieldType (ts:TOKENS)
             let
                 val (ts2,nd2) = nullableTypeExpression (tl ts1)
             in
-                (ts2,{name=ident,ty=nd2})
+                (ts2,{name=ident,ty=unwrapTy nd2})
             end
       | _ => error ["unknown token in fieldType"]
     end
@@ -3672,14 +3693,14 @@ and fieldType (ts:TOKENS)
 *)
 
 and arrayType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR) =
+    : (TOKENS * Ast.TY) =
     let val _ = trace([">> arrayType with next=",tokenname(hd(ts))])
     in case ts of
         (LeftBracket, _) :: _ =>
             let
                 val (ts1,nd1) = elementTypeList (tl ts)
             in case ts1 of
-                (RightBracket, _) :: _ => (tl ts1,Ast.ArrayType nd1)
+                (RightBracket, _) :: _ => (tl ts1, makeTy (Ast.ArrayType nd1))
               | _ => error ["unknown token in arrayType"]
             end
       | _ => error ["unknown token in arrayType"]
@@ -3712,9 +3733,9 @@ and elementTypeList (ts:TOKENS)
                     let
                         val (ts2,nd2) = elementTypeList (tl ts1)
                     in
-                        (ts2,nd1::nd2)
+                        (ts2,(unwrapTy nd1)::nd2)
                     end
-              | _ => (ts1,nd1::[])
+              | _ => (ts1,(unwrapTy nd1)::[])
             end
     end
 
@@ -3725,7 +3746,7 @@ and elementTypeList (ts:TOKENS)
 *)
 
 and typeExpressionList (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR list) =
+    : (TOKENS * Ast.TY list) =
     let
         fun typeExpressionList' (ts) =
             let
@@ -4015,7 +4036,7 @@ and withStatement (ts:TOKENS, w:OMEGA)
                 val (ts1,(e1,t1)) = typedExpression (tl ts)
                 val (ts2,nd2) = substatement (ts1,w)
             in
-                (ts2,Ast.WithStmt {obj=e1,ty=t1,body=nd2})
+                (ts2,Ast.WithStmt {obj=e1,ty=makeTy t1,body=nd2})
             end
       | _ => error ["unknown token in withStatement"]
     end
@@ -4035,7 +4056,7 @@ and typedExpression (ts:TOKENS)
             let
                 val (ts2,nd2) = nullableTypeExpression (tl ts1)
             in
-                (ts2,(nd1,nd2))
+                (ts2,(nd1,unwrapTy nd2))
             end
       | _ => (ts1,(nd1,Ast.SpecialType Ast.Any))
     end
@@ -4081,7 +4102,7 @@ and switchStatement (ts:TOKENS)
                     let
                         val (ts2,nd2) = typeCaseElements (tl ts1)
                     in case ts2 of
-                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchTypeStmt{cond=e1,ty=t1,cases=nd2})
+                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchTypeStmt{cond=e1,ty=makeTy t1,cases=nd2})
                       | _ => error ["unknown token in switchStatement"]
                     end
               | _ => error ["unknown token in switchStatement"]
@@ -4272,7 +4293,8 @@ and typeCaseBinding (ts:TOKENS)
         TypeCaseElement TypeCaseElements'
 *)
 
-and isDefaultTypeCase (x:Ast.TYPE_EXPR) =
+and isDefaultTypeCase (x:Ast.TYPE_EXPR) 
+    : bool =
     case x of
         Ast.SpecialType Ast.Any => true
       | _ => false
@@ -4285,7 +4307,8 @@ and typeCaseElements (ts:TOKENS)
                 fun nextCase () =
                     let
                         val (ts1,nd1) = typeCaseElement (ts,has_default)
-                        val (ts2,nd2) = typeCaseElements' (ts1,has_default orelse (isDefaultTypeCase (#ty nd1)))
+                        val (ts2,nd2) = typeCaseElements' (ts1,has_default orelse 
+                                                               (isDefaultTypeCase (unwrapTy (#ty nd1))))
                     in
                         trace(["<< typeCaseElements' with next=", tokenname(hd ts2)]);
                         (ts2,nd1::nd2)
@@ -4296,7 +4319,7 @@ and typeCaseElements (ts:TOKENS)
               | _ => (ts,[])
             end
         val (ts1,nd1) = typeCaseElement (ts,false)
-        val (ts2,nd2) = typeCaseElements' (ts1,isDefaultTypeCase (#ty nd1))
+        val (ts2,nd2) = typeCaseElements' (ts1,isDefaultTypeCase (unwrapTy (#ty nd1)))
     in
         trace(["<< typeCaseElements with next=", tokenname(hd ts2)]);
         (ts2,nd1::nd2)
@@ -4316,7 +4339,11 @@ and typeCaseElement (ts:TOKENS, has_default:bool)
                    let
                        val (ts2,nd2) = block (tl ts1,LocalScope)
                    in
-                       (ts2,{bindings=((temp::b),i),ty=ty,block=nd2,fixtures=NONE,inits=NONE})
+                       (ts2,{bindings=((temp::b),i),
+                             ty=(makeTy ty),
+                             block=nd2,
+                             rib=NONE,
+                             inits=NONE})
                    end
                  | _ => error ["unknown token in typeCaseElement"]
            end
@@ -4325,7 +4352,11 @@ and typeCaseElement (ts:TOKENS, has_default:bool)
                val (ts1,nd1) = block (tl ts,LocalScope)
            in
                trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
-               (ts1,{bindings=([],[]),ty=Ast.SpecialType Ast.Any,block=nd1,fixtures=NONE,inits=NONE})
+               (ts1,{bindings=([],[]),
+                     ty=(makeTy (Ast.SpecialType Ast.Any)),
+                     block=nd1,
+                     rib=NONE,
+                     inits=NONE})
            end
          | ((Default, _) :: _,true) =>
            (error(["redundant default switch type case"]); error ["unknown token in typeCaseElement"])
@@ -4432,7 +4463,7 @@ and doStatement (ts:TOKENS)
                     let
                         val (ts2,nd2) = parenListExpression (tl ts1)
                     in
-                        (ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,fixtures=NONE,labels=[]})
+                        (ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,rib=NONE,labels=[]})
                     end
               | _ => error ["unknown token in doStatement"]
             end
@@ -4453,7 +4484,7 @@ and whileStatement (ts:TOKENS, w:OMEGA)
                 val (ts1,nd1) = parenListExpression (tl ts)
                 val (ts2,nd2) = substatement(ts1, w)
             in
-                (ts2,Ast.WhileStmt {cond=nd1,fixtures=NONE,body=nd2,labels=[]})
+                (ts2,Ast.WhileStmt {cond=nd1,rib=NONE,body=nd2,labels=[]})
             end
       | _ => error ["unknown token in whileStatement"]
     end
@@ -4505,7 +4536,7 @@ and forStatement (ts:TOKENS, w:OMEGA)
                                     cond=nd2,
                                     update=nd3,
                                     labels=[],
-                                    fixtures=NONE,
+                                    rib=NONE,
                                     body=nd4})
                     end
               | _ => error ["unknown token in forStatement"]
@@ -4564,7 +4595,7 @@ and forStatement (ts:TOKENS, w:OMEGA)
                                      defn=defn,
                                      obj=nd2,
                                      labels=[],
-                                     fixtures=NONE,
+                                     rib=NONE,
                                      next=next,
                                      body=nd3 })
                     end
@@ -4848,8 +4879,8 @@ and tryStatement (ts:TOKENS)
 
 and catchClauses (ts:TOKENS)
     : (TOKENS * {bindings:Ast.BINDINGS,
-                 ty:Ast.TYPE_EXPR,
-                 fixtures:Ast.FIXTURES option,
+                 ty:Ast.TY,
+                 rib:Ast.RIB option,
                  inits:Ast.INITS option,
                  block:Ast.BLOCK} list) =
     let val _ = trace([">> catchClauses with next=", tokenname(hd ts)])
@@ -4870,8 +4901,8 @@ and catchClauses (ts:TOKENS)
 
 and catchClause (ts:TOKENS)
     : (TOKENS * {bindings:Ast.BINDINGS,
-                 ty:Ast.TYPE_EXPR,
-                 fixtures:Ast.FIXTURES option,
+                 ty:Ast.TY,
+                 rib:Ast.RIB option,
                  inits:Ast.INITS option,
                  block:Ast.BLOCK}) =
     let val _ = trace([">> catchClause with next=", tokenname(hd ts)])
@@ -4885,7 +4916,11 @@ and catchClause (ts:TOKENS)
                     let
                         val (ts2,nd2) = block (tl ts1,LocalScope)
                     in
-                        (ts2,{bindings=((temp::b),i),ty=ty,block=nd2,fixtures=NONE,inits=NONE})
+                        (ts2,{bindings=((temp::b),i),
+                              ty=(makeTy ty),
+                              block=nd2,
+                              rib=NONE,
+                              inits=NONE})
                     end
               | _ => error ["unknown token in catchClause"]
             end
@@ -5748,18 +5783,13 @@ and functionDeclaration (ts:TOKENS, attrs:ATTRS)
                                                override=override,
                                                prototype=prototype,
                                                static=static,
-                                               abstract=true,
                                                func=Ast.Func {name=nd1,
                                                               fsig=nd2,
                                                               param=Ast.Head ([],[]),
                                                               defaults=[],
                                                               ty=functionTypeFromSignature nd2,
                                                               native=native,
-                                                              block=Ast.Block {pragmas=[],
-                                                                               defns=[],
-                                                                               body=[],
-                                                                               head=NONE,
-                                                                               loc=locOf ts},
+                                                              block=NONE,
                                                               loc=unionLoc (SOME funcStartLoc) (locOf ts)}}],
                       body=[],
                       head=NONE,
@@ -5821,7 +5851,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                            ty=functionTypeFromSignature nd3,
                                                                            native=false,
                                                                            loc=unionLoc (locOf ts) blockLoc,
-                                                                           block=nd4}})],
+                                                                           block=SOME nd4}})],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5842,12 +5872,12 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                              ty=functionTypeFromSignature nd3,
                                                              native=false,
                                                              loc=unionLoc (locOf ts) listLoc,
-                                                             block=Ast.Block
-                                                                       {pragmas=[],
-                                                                        defns=[],
-                                                                        body=[Ast.ReturnStmt nd4],
-                                                                        head=NONE,
-                                                                        loc=listLoc}}})],
+                                                             block=SOME (Ast.Block
+                                                                             {pragmas=[],
+                                                                              defns=[],
+                                                                              body=[Ast.ReturnStmt nd4],
+                                                                              head=NONE,
+                                                                              loc=listLoc})}})],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5873,7 +5903,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
                                              loc=unionLoc (locOf ts) blockLoc,
-                                             block=nd4}
+                                             block=SOME nd4}
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1,
@@ -5883,7 +5913,6 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
-                                                       abstract=false,
                                                        func=func}],
                               body=[],
                               head=NONE,
@@ -5901,7 +5930,6 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
-                                                       abstract=false,
                                                        func=Ast.Func {name=nd2,
                                                                       fsig=nd3,
                                                                       param=Ast.Head ([],[]),
@@ -5909,11 +5937,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                       ty=functionTypeFromSignature nd3,
                                                                       native=false,
                                                                       loc=unionLoc (locOf ts) listLoc,
-                                                                      block=Ast.Block { pragmas=[],
-                                                                                        defns=[],
-                                                                                        body=[Ast.ReturnStmt nd4],
-                                                                                        head=NONE,
-                                                                                        loc=listLoc}}}],
+                                                                      block=SOME (Ast.Block { pragmas=[],
+                                                                                              defns=[],
+                                                                                              body=[Ast.ReturnStmt nd4],
+                                                                                              head=NONE,
+                                                                                              loc=listLoc})}}],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5935,7 +5963,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              loc=unionLoc (locOf ts) blockLoc,
                                              native=false,
-                                             block=nd4}
+                                             block=SOME nd4}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
                                                        ns=ns,
@@ -5963,11 +5991,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              loc=unionLoc (locOf ts) listLoc,
                                              native=false,
-                                             block=Ast.Block {pragmas=[],
-                                                              defns=[],
-                                                              body=[Ast.ReturnStmt nd4],
-                                                              head=NONE,
-                                                              loc=listLoc}}
+                                             block=SOME (Ast.Block {pragmas=[],
+                                                                    defns=[],
+                                                                    body=[Ast.ReturnStmt nd4],
+                                                                    head=NONE,
+                                                                    loc=listLoc})}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident,
                                                        Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
@@ -6005,7 +6033,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                              ty=ty,
                              loc=unionLoc (locOf ts) blockLoc,
                              native=false,
-                             block=nd4}
+                             block=SOME nd4}
 
         fun hasNonStar (ts) : bool =
             case ts of
@@ -6013,16 +6041,18 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
               | Ast.SpecialType AstAny :: _ => hasNonStar (tl ts)
               | _ => true
 
-        val hasNonStarAnno = hasNonStar (#params ty) orelse hasNonStar [(#result ty)]
+        val hasNonStarAnno = hasNonStar (AstQuery.paramTypesOfFuncTy ty) 
+                             orelse hasNonStar [(AstQuery.resultTypeOfFuncTy ty)]
     in
         (ts4,{pragmas=[],
-              defns=[Ast.FunctionDefn {kind=if hasNonStarAnno then nd1 else Ast.Var, (* dynamic function are writable *)
+              defns=[Ast.FunctionDefn {kind=if hasNonStarAnno 
+                                            then nd1 
+                                            else Ast.Var, (* dynamic function are writable *)
                                        ns=ns,
                                        final=final,
                                        override=override,
                                        prototype=prototype,
                                        static=static,
-                                       abstract=false,
                                        func=func}],
               body=[],
               head=NONE,
@@ -6408,17 +6438,17 @@ and classDefinition (ts:TOKENS, attrs:ATTRS)
                 val (instanceStmts,body) = List.partition isInstanceInit body
 
                 val classDefn = Ast.ClassDefn {ident=ident,
-                                            nonnullable=nonnullable,
-                                            ns=ns,
-                                            final=final,
-                                            dynamic=dynamic,
-                                            params=params,
-                                            extends=extends,
-                                            implements=implements,
-                                            classDefns=classDefns,
-                                            instanceDefns=instanceDefns,
-                                            instanceStmts=instanceStmts,
-                                            ctorDefn=ctorDefn }
+                                               nonnullable=nonnullable,
+                                               ns=ns,
+                                               final=final,
+                                               dynamic=dynamic,
+                                               params=params,
+                                               extends=extends,
+                                               implements=implements,
+                                               classDefns=classDefns,
+                                               instanceDefns=instanceDefns,
+                                               instanceStmts=instanceStmts,
+                                               ctorDefn=ctorDefn }
 
             in
                 (ts3,{pragmas=[],
@@ -6492,31 +6522,31 @@ and parameterisedClassName (ts:TOKENS)
 *)
 
 and classInheritance (ts:TOKENS)
-    : (TOKENS * {extends:Ast.IDENT_EXPR option,
-                 implements:Ast.IDENT_EXPR list}) =
+    : (TOKENS * {extends:Ast.TYPE_EXPR option,
+                 implements:Ast.TYPE_EXPR list}) =
     let val _ = trace([">> classInheritance with next=", tokenname(hd ts)])
     in case ts of
         (Extends, _) :: _ =>
             let
-                val (ts1,nd1) = primaryIdentifier (tl ts)
+                val (ts1,nd1) = typeExpression (tl ts)
             in case ts1 of
                 (Implements, _) :: _ =>
                     let
-                        val (ts2,nd2) = typeIdentifierList (tl ts1)
+                        val (ts2,nd2) = typeExpressionList (tl ts1)
                     in
-                        (ts2,{extends=SOME nd1,implements=nd2})
+                        (ts2,{extends=SOME (unwrapTy nd1),implements=(map unwrapTy nd2)})
                     end
               | _ =>
                     let
                     in
-                        (ts1,{extends=SOME nd1,implements=[]})
+                        (ts1,{extends=SOME (unwrapTy nd1),implements=[]})
                     end
             end
       | (Implements, _) :: _ =>
             let
-                val (ts1,nd1) = typeIdentifierList (tl ts)
+                val (ts1,nd1) = typeExpressionList (tl ts)
             in
-                (ts1,{extends=NONE,implements=nd1})
+                (ts1,{extends=NONE,implements=(map unwrapTy nd1)})
             end
       | _ => (ts,{extends=NONE,implements=[]})
     end
@@ -6595,14 +6625,14 @@ and interfaceDefinition (ts:TOKENS, attrs:ATTRS)
     end
 
 and interfaceInheritance (ts:TOKENS)
-    : (TOKENS * {extends:Ast.IDENT_EXPR list}) =
+    : (TOKENS * {extends:Ast.TYPE_EXPR list}) =
     let val _ = trace([">> interfaceInheritance with next=", tokenname(hd ts)])
     in case ts of
         (Extends, _) :: _ =>
             let
-                val (ts1,nd1) = typeIdentifierList (tl ts)
+                val (ts1,nd1) = typeExpressionList (tl ts)
             in
-                (ts1,{extends=nd1})
+                (ts1,{extends=(map unwrapTy nd1)})
             end
       | _ => (ts,{extends=[]})
     end
@@ -6710,7 +6740,7 @@ and typeInitialisation (ts:TOKENS)
                 val (ts1,nd1) = nullableTypeExpression (tl ts)
             in
                 trace(["<< typeInitialisation with next=", tokenname(hd ts1)]);
-                (ts1,nd1)
+                (ts1,unwrapTy nd1)
             end
       | _ => error ["unknown token in typeInitialisation"]
     end
@@ -7008,6 +7038,7 @@ and block (ts:TOKENS, t:TAU)
         Blockglobal
 *)
 
+(* 
 and program (ts:TOKENS)
     : (TOKENS * Ast.PROGRAM) =
     let val _ = trace([">> program with next=",tokenname(hd(ts))])
@@ -7046,6 +7077,7 @@ and packages (ts:TOKENS)
       | (Package, _) :: _ => next ()
       | _ => (trace(["<< packages with next=",tokenname(hd(ts))]);(ts,[]))
     end
+*)
 
 (*
     Package
@@ -7066,7 +7098,7 @@ and packages (ts:TOKENS)
     PackageBody
         Block(global)
 *)
-
+(*
 and package (ts:TOKENS)
     : (TOKENS * Ast.PACKAGE) =
     let val _ = trace([">> package with next=",tokenname(hd(ts))])
@@ -7093,7 +7125,63 @@ and package (ts:TOKENS)
             end
       | _ => error ["unknown token in package"]
     end
+*)
 
+and subFragments (ts:TOKENS) 
+    : (TOKENS * Ast.FRAGMENT list) = 
+    let
+        fun fragments (accum:Ast.FRAGMENT list) 
+                      (ts0:TOKENS) 
+            : (TOKENS * Ast.FRAGMENT list) = 
+            case ts0 of 
+                (RightBrace, _) :: rest => (rest, List.rev accum)
+              | (Eof, _) :: _ => (ts0, List.rev accum)
+              | _ => 
+                let
+                    val (ts1, frag) = fragment ts0
+                in                    
+                    fragments (frag::accum) ts1 
+                end
+    in
+        case ts of 
+            (LeftBrace, _) :: rest => fragments [] rest
+          | _ => error ["expecting left brace in subFragments"]
+    end
+            
+
+and fragment (ts:TOKENS)
+    : (TOKENS * Ast.FRAGMENT) =            
+    case ts of
+        (Internal, _) :: (Package, _) :: rest =>
+        let
+            val (ts1,nd1) = packageName rest
+            val (ts2,nd2) = subFragments (tl ts1)
+        in
+            (ts2, Ast.Package {name=nd1, fragments=nd2})
+        end
+      | (Package, _) :: (LeftBrace, _) :: rest =>
+        let
+            val (ts1,nd1) = subFragments (tl ts)
+        in
+            (ts1, Ast.Package {name=[], fragments=nd1})
+        end
+      | (Package, _) :: rest =>
+        let
+            val (ts1,nd1) = packageName rest
+            val (ts2,nd2) = subFragments ts1
+        in
+            (ts2, Ast.Package {name=nd1, fragments=nd2})
+        end
+
+      (* FIXME: add code here to parse units *)
+
+      | _ => 
+        let
+            val (ts1, nd1) = directives (ts, GlobalScope)
+        in
+            (ts1, Ast.Anon (Ast.Block nd1))
+        end
+        
 and packageName (ts:TOKENS)
     : TOKENS * Ast.IDENT list =
     let val _ = trace([">> packageName with next=", tokenname(hd ts)])
@@ -7111,6 +7199,7 @@ and packageName (ts:TOKENS)
                 (ts1,nd1::[])
             end
     end
+
 
 fun mkReader (filename:string)
     : (unit -> Ustring.SOURCE) =
@@ -7148,18 +7237,33 @@ fun lexLines (lines : Ustring.SOURCE list)
         Lexer.lex ("<no filename>", reader)
     end
 
-fun parse ts =
+fun parseFrags [(Eof, _)] = ([], [])
+  | parseFrags ts = 
     let
-        val (residual, result) = (program ts)
-        fun check_residual [(Eof, _)] = ()
-          | check_residual _ = error ["residual tokens after parse"]
+        val (residual, frag) = fragment ts
     in
-        check_residual residual;
-        trace ["parsing complete:"];
+        trace ["parsed fragment:"];
         (if (!doTrace)
-         then Pretty.ppProgram result
+         then Pretty.ppFragment frag
          else ());
-        result
+        let 
+            val (residual, frags) = parseFrags residual
+        in
+            case residual of 
+                [] => (residual, frag :: frags)
+              | tok::_ => error ["residual token seen after parsing: ", tokenname tok]
+        end
+    end
+
+fun parse ts = 
+    let
+        val (_, frags) = parseFrags ts
+        val frag = case frags of 
+                       [x] => x
+                     | other => Ast.Unit { name = NONE, 
+                                           fragments = other }
+    in
+        frag
     end
 
 fun logged thunk name =

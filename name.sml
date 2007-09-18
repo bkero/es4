@@ -210,6 +210,7 @@ val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
  * Natives
  *)
 
+val intrinsic_id = intrinsic Ustring.id_
 val intrinsic_proto = intrinsic Ustring.proto_
 val intrinsic_dumpFunc = intrinsic Ustring.dumpFunc_
 val intrinsic_inspect = intrinsic Ustring.inspect_
