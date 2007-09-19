@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/global.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -52,13 +52,13 @@ __ES4__ class decimal <LDOTS>
 __ES4__ class Name <LDOTS>
 __ES4__ class Namespace <LDOTS>
 __ES4__ class ByteArray <LDOTS>
-__ES4__ class Map <LDOTS>
-__ES4__ class IdentityMap <LDOTS>
-
-__ES4__ interface ObjectIdentity <LDOTS>
+__ES4__ class Map.<K,V> <LDOTS>
+__ES4__ class Vector.<T> <LDOTS>
 
 __ES4__ type EnumerableId = <LDOTS>
 __ES4__ type Numeric = <LDOTS>
+
+__ES4__ namespace intrinsic = <LDOTS>
 
 intrinsic interface Field <LDOTS>
 intrinsic interface FieldValue <LDOTS>
@@ -66,6 +66,9 @@ intrinsic interface Type <LDOTS>
 intrinsic interface NominalType <LDOTS>
 intrinsic interface InterfaceType <LDOTS>
 intrinsic interface ClassType <LDOTS>
+intrinsic interface AnyType <LDOTS>
+intrinsic interface NullType <LDOTS>
+intrinsic interface UndefinedType <LDOTS>
 intrinsic interface UnionType <LDOTS>
 intrinsic interface RecordType <LDOTS>
 intrinsic interface FunctionType <LDOTS>
@@ -75,6 +78,8 @@ intrinsic type FieldIterator = <LDOTS>
 intrinsic type FieldValueIterator = <LDOTS>
 intrinsic type TypeIterator = <LDOTS>
 intrinsic type InterfaceIterator = <LDOTS>
+
+intrinsic class ControlInspector.<T> <LDOTS>
 
 const NaN: double = <LDOTS>
 const Infinity: double = <LDOTS>
@@ -689,6 +694,9 @@ numbers, cookies, or similar.
 of each operator, bypassing any user overloading.  They can be
 referenced by prefixing them with a namespace, eg ''intrinsic::===''.
 
+<FIXME> These may be obsolete now that we've killed the operator
+overloading proposal and not yet accepted the generic function proposal.
+
 
 == Class and Interface Properties of the Global Object ==
 
@@ -707,6 +715,7 @@ referenced by prefixing them with a namespace, eg ''intrinsic::===''.
   <li> The ''Map'' class is defined in section <XREF target="class Map">
   <li> The ''Vector'' class is defined in section <XREF target="class Vector">
   <li> The ''ByteArray'' class is defined in section <XREF target="class ByteArray">
+  <li> The ''ControlInspector'' class is defined in section <XREF target="class ControlInspector">
   <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in sections <XREF target="class Error">, <XREF target="class EvalError">, <XREF target="class RangeError">, <XREF target="class ReferenceError">,  <XREF target="class SyntaxError">, <XREF target="class TypeError">, and <XREF target="class URIError">, respectively.
 </ul>
 
