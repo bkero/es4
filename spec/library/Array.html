@@ -19,14 +19,9 @@ REVIEWED AGAINST CODE:      NO
 property names.  A property name that can be interpreted as an
 unsigned integer less than 2<sup>32</sup>-1 is an //array index//.
 
-<P> A property name //P// of some type //T// from among ''int'',
-''double'', ''decimal'', or ''string'' is an array index if and only
-if //T(uint(P))// is equal to //P// and //uint(P)// is not equal to
-2<sup>32</sup>-1.
-
-<FIXME> What about ''Name'' objects and ''String'' objects more
-generally?  For the latter, maybe a general ''ToString'' conversion
-applies, but for the former?
+<P> A property name //P// (in the form of a string value) is an array
+index if and only if //string(uint(P))// is equal to //P// and
+//uint(P)// is not equal to 2<sup>32</sup>-1.
 
 <p> Every ''Array'' object has a ''length'' property whose value is
 always a nonnegative integer less than 2<sup>32</sup>.  The value of
@@ -424,15 +419,10 @@ satisfied then the behaviour of ''sort'' is implementation-defined:
 <ol>
 <li> //0 <LEQ> i <LT> len//
 <li> //0 <LEQ> j <LT> len//
-<li> //object// does not have a property with name ''ToString(//i//)''
+<li> //object// does not have a property with name ''string(//i//)''
 <li> //P// is obtained by following one or more [[Prototype]] properties starting at this
-<li> //P// has a property with name ''ToString(//j//)''
+<li> //P// has a property with name ''string(//j//)''
 </ol>
-
-<FIXME>Probably use ''uint(x)'' rather than ''ToUint32(x)'' throughout.
-
-<FIXME>The use of ''ToString'' is not suitable for ES4 (though it is
-correct).  See comments at the top of the Array section.
 
 <p>Otherwise the following steps are taken.
 
@@ -441,7 +431,7 @@ correct).  See comments at the top of the Array section.
 <LI> Let //M// be the result of calling the [[Get]] method of
 //object// with argument ''"length"''.
 
-<LI> Let //L// be the result of ''ToUint32(//M//)''.
+<LI> Let //L// be the result of ''uint(//M//)''.
 
 <LI> Perform an implementation-dependent sequence of calls to the
 [[Get]], [[Put]], and [[Delete]] methods of //object// and to
@@ -609,13 +599,13 @@ native ECMAScript objects (section 8.6.2.2).
 <LI> Go to step 8.
 <LI> Create a property with name P, set its value to V and give it empty attributes.
 <LI> If P is not an array index, return.
-<LI> If ToUint32(P) is less than the value of the length property of A, then return.
-<LI> Change (or set) the value of the length property of A to ToUint32(P)+1.
+<LI> If uint(P) is less than the value of the length property of A, then return.
+<LI> Change (or set) the value of the length property of A to uint(P)+1.
 <LI> Return.
-<LI> Compute ToUint32(V).
-<LI> If Result(12) is not equal to ToNumber(V), throw a RangeError exception.
+<LI> Compute uint(V).
+<LI> If Result(12) is not equal to Number(V), throw a RangeError exception.
 <LI> For every integer k that is less than the value of the length property of A but not less than Result(12), if A
-itself has a property (not an inherited property) named ToString(k), then delete that property.
+itself has a property (not an inherited property) named string(k), then delete that property.
 <LI> Set the value of property P of A to Result(12).
 <LI> Return.
 </OL>
@@ -632,7 +622,7 @@ and also have the following properties.
 greater than the name of every property whose name is an array index.
 
 
-== Method properties on the ''Array'' prototype object ===
+== Method properties on the ''Array'' prototype object ==
 
 === toString ( ) ===
 
