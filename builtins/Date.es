@@ -46,6 +46,7 @@
 package
 {
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     {
     use default namespace public;
@@ -227,6 +228,12 @@ package
                     removeTrailingZeroes(int(UTCMilliseconds)) + 
                     "Z");
         }
+
+        prototype function toJSONString(this:Date, pretty=false) 
+            this.intrinsic::toJSONString(pretty);
+
+        override intrinsic function toJSONString(pretty: boolean=false)
+            JSON.formatDate(this, pretty);
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
         prototype function toString(this:Date)
@@ -1022,13 +1029,13 @@ package
         if (n >= 0 && n <= 9999)
             return zeroFill(int(n), 4);
         else
-            return n.toString();
+            return string(n);
     }
 
     helper function removeTrailingZeroes(n: int): string {
         while (n > 0 && n % 10 === 0)
             n /= 10;
-        return n.toString();
+        return string(n);
     }
 
     helper function zeroFill(n: int, k): string {

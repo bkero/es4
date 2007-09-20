@@ -43,6 +43,7 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    import JSON.*;
 
     /*
      * The boolean class is final and non-dynamic because most
@@ -69,6 +70,9 @@ package
         /* E262-4 early-binding variant. */
         override intrinsic function toString() : string
             this ? "true" : "false";
+
+        override intrinsic function toJSONString(pretty: boolean=null) : string
+            JSON.formatBoolean(this, pretty);
 
         /* E262-4 draft ch 19 */
         override intrinsic function valueOf() : boolean

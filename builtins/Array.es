@@ -44,6 +44,7 @@ package
     use namespace intrinsic;
     use strict;
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
@@ -127,6 +128,13 @@ package
             }
             return out;
         }
+
+        prototype function toJSONString(this:Array, pretty=false)
+            this.intrinsic::toJSONString(pretty);
+
+        override intrinsic function toJSONString(pretty: boolean=false): string
+            JSON.formatArray(this, pretty);
+
 
         // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , ... ] ] ] )
 
@@ -298,8 +306,8 @@ package
 
             // If a param is passed then the first one is start.
             // If no params are passed then start = 0.
-            let a = helper::clamp(start, len);
-            let b = helper::clamp(end, len);
+            let a = helper::clamp( start, len);
+            let b = helper::clamp( end, len);
             if (b < a)
                 b = a;
 
@@ -367,32 +375,24 @@ package
         // FIXME #155: type system bug
         helper static function splice(object/*: Object!*/, start: Numeric, deleteCount: Numeric, items: Array) {
             let out = new Array();
+            let len = uint(object.length);
 
-            let numitems = uint(items.length);
-            if (numitems == 0)
-                return undefined;
-
-            let len = object.length;
-            let start = helper::clamp(double(items[0]), len);
-            let d_deleteCount = numitems > 1 ? double(items[1]) : (len - start);
-            let deleteCount = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
-            if (deleteCount > len - start)
-                deleteCount = len - start;
+            start = helper::clamp( start, len );
+            deleteCount = helper::clamp( deleteCount, len - start );
 
             let end = start + deleteCount;
 
             // Copy out the elements we are going to remove
-            for (let i:uint = 0; i < deleteCount; i++)
+            for (let i = 0; i < deleteCount; i++)
                 out.push(object[i + start]);
 
-            let insertCount = (numitems > 2) ? (numitems - 2) : 0;
-            let l_shiftAmount = insertCount - deleteCount;
-            let shiftAmount;
+            let insertCount = items.length;
+            let shiftAmount = insertCount - deleteCount;
 
             // delete items by shifting elements past end (of delete) by l_shiftAmount
-            if (l_shiftAmount < 0) {
+            if (shiftAmount < 0) {
                 // Shift the remaining elements down
-                shiftAmount = uint(-l_shiftAmount);
+                shiftAmount = -shiftAmount;
 
                 for (let i = end; i < len; i++)
                     object[i - shiftAmount] = object[i];
@@ -403,8 +403,6 @@ package
             }
             else {
                 // Shift the remaining elements up.
-                shiftAmount = uint(l_shiftAmount);
-
                 for (let i = len; i > end; ) {
                     --i;
                     object[i + shiftAmount] = object[i];
@@ -412,11 +410,11 @@ package
             }
 
             // Add the items to insert
-            for (let i:uint = 0; i < insertCount; i++)
-                object[start+i] = items[i + 2];
+            for (let i = 0; i < insertCount; i++)
+                object[start+i] = items[i];
 
             // shrink array if shiftAmount is negative
-            object.length = len + l_shiftAmount;
+            object.length = len + shiftAmount;
             return out;
         }
 
@@ -682,15 +680,16 @@ package
         }
     }
 
+    // Convert val to integer (this rounds it toward zero and discards NaN).
+    // If the number is negative, add "len".
+    // Then clamp it between 0 and len inclusive, and cast it to uint.
+    //
     // Also used by Vector.es
     helper function clamp(val: Numeric, len: uint): uint {
-        if (val < 0) {
-            val = Math.ceil(val);
+        val = helper::toInteger(val);
+        if (val < 0)
             val += len;
-        }
-        else
-            val = Math.floor(val);
-        return uint( Math.min( len, Math.max( 0, len ) ) );
+        return uint( Math.min( Math.max( val, 0 ), len ) );
     }
 
     // INFORMATIVE note: as noted above, this is a very simple recursive

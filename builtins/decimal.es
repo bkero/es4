@@ -47,6 +47,7 @@ package
     use namespace intrinsic;
     use strict;
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     // The [[Prototype]] of "int" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
@@ -88,20 +89,23 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            else if (typeof radix === "number" && 
-                     radix >= 2 && 
-                     radix <= 36 && 
-                     helper::isIntegral(radix)) {
-                // FIXME
-                throw new Error("Unimplemented: non-decimal radix");
-            }
-            else
-                throw new TypeError("Invalid radix argument to decimal.toString");
+            if (radix is Numeric && 
+                radix >= 2 && radix <= 36 && helper::isIntegral(radix))
+                return informative::toString(int(radix));
+            throw new TypeError("Invalid radix argument to decimal.toString");
+        }
+
+        informative function toString(radix) {
+            // FIXME
+            throw new Error("Unimplemented: non-decimal radix");
         }
 
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
             toString();
+
+        override intrinsic function toJSONString(pretty: boolean=false) : string
+            JSON.formatNumber(this, pretty);
 
         override intrinsic function valueOf() : decimal
             this;

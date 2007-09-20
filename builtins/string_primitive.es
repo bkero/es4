@@ -73,6 +73,7 @@ package
     import Unicode.*
     import RegExpInternals.*
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     intrinsic final class string!
     {
@@ -116,6 +117,9 @@ package
 
         override intrinsic function toString() : string
             this;
+
+        override intrinsic function toJSONString(pretty:boolean=false) : string
+            JSON.formatString(this, pretty);
 
         /* E262-3 15.5.4.3: String.prototype.valueOf */
         /*
@@ -379,8 +383,8 @@ package
                 while (i <= S.length) {
                     let res : MatchResult = regexp.helper::match(S, i);
                     if (res !== null) {
-                        res.cap[0] = S.substring(i,res.endIndex);
-                        return [i, res.cap];
+                        res.captures[0] = S.substring(i,res.endIndex);
+                        return [i, res.captures];
                     }
                     ++i;
                 }
@@ -534,7 +538,7 @@ package
                     if (mr === null)
                         return null;
                     else
-                        return [mr.endIndex, mr.cap];
+                        return [mr.endIndex, mr.captures];
                 }
                 }
             }
@@ -734,14 +738,11 @@ package
             this.parseJSON();
         */
 
-        intrinsic function parseJSON(...args)
-            string.helper::parseJSON(this, args);
+        intrinsic function parseJSON(filter=undefined)
+            string.parseJSON(this, filter);
 
-        static function parseJSON(self, ...args)
-            string.helper::parseJSON(self, args);
-
-        helper static function parseJSON(self, args)
-            JSON.parse.apply(null, args.unshift(self));
+        static function parseJSON(self, filter=undefined)
+            JSON.parse(self, filter);
 
         intrinsic function trim() : string
             string.trim(this);

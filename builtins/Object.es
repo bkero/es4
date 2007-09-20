@@ -44,6 +44,7 @@
 package
 {
     use default namespace public;
+    import JSON.*;
 
     // FIXME: this needs to be here to open the intrinsic namespace in the class.
     // There is a bug in the definer.
@@ -137,11 +138,10 @@ package
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
-        prototype function toJSONString()
+        prototype function toJSONString(pretty=false)
             this.intrinsic::toJSONString();
 
-        intrinsic function toJSONString() : string {
-            // FIXME
-        }
+        intrinsic function toJSONString(pretty: boolean=false) : string
+            JSON.formatObject(this, pretty);
     }
 }

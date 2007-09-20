@@ -62,29 +62,36 @@ package
     {
         use strict;
 
-        function ByteArray(n : uint = 0) {
-            length = n;
+        function ByteArray(length: uint = 0)
+            : length = length
+        {
         }
 
-        meta static function invoke(...as) : ByteArray! {
+        meta static function invoke(value) : ByteArray! {
+            if (value is ByteArray)
+                return value;
             let ba = new ByteArray();
-            for ( let k=0, limit=as.length ; k < limit ; k++ ) {
-                let a = as[k];
-                for ( let i=0, n=uint(a.length) ; i < n ; i++ ) {
-                    switch type (a[i]) {
-                    case (s:String) { ba[i] = s.intrinsic::charCodeAt(0) }
-                    case (n:Numeric) { ba[i] = uint(n) }
-                    case (x:*) { throw new TypeError() }
-                    }
-                }
-                return ba;
+            if (value is Strings) {
+                value = string(value);
+                for ( let i=0, limit=value.length ; i < limit ; i++ )
+                    ba[i] = value.intrinsic::charCodeAt(i) & 255;
             }
+            else {
+                for ( let i=0, limit=Number(value.length) ; i < limit ; i++ )
+                    ba[i] = Number(value[i]) & 255;
+            }
+            return ba;
         }
 
-        function get length() : uint
+        function get length()
             _length;
 
-        function set length(n : uint) : void {
+        function set length(n) : void {
+            if (!(n is Numeric &&
+                  n >= 0 && n <= 0xFFFFFFFF &&
+                  helper::isIntegral(n)))
+                throw new RangeError("Invalid ByteArray length");
+            n = uint(n);
             for ( let i=length ; i < n ; i++ )
                 magic::setByteArrayByte(this, n, 0);
             _length = n;
@@ -114,15 +121,15 @@ package
                 intrinsic::set(this, k, v);
         }
 
-        prototype function toString(this: ByteArray)
-            this.intrinsic::toString();
-
         override intrinsic function toString() : string {
             let s = "";
             for ( let i=0, limit=length ; i < limit ; i++ )
                 s += string.fromCharCode(this[i]);
             return s;
         }
+
+        prototype function toString(this: ByteArray)
+            this.intrinsic::toString();
 
         private var _length : uint = 0;
     }

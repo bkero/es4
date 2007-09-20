@@ -49,6 +49,8 @@ package
     use strict;
     import ECMAScript4_Internal.*;
 
+    intrinsic type Numbers = (int, uint, double, decimal, Number!);
+
     dynamic class Number
     {
         // Implementation artifact:
@@ -83,6 +85,9 @@ package
         override intrinsic function toLocaleString() : string
             intrinsic::valueOf().intrinsic::toLocaleString();
 
+        override intrinsic function toJSONString(pretty: boolean=false) : string
+            intrinsic::valueOf().intrinsic::toJSONString(pretty);
+
         override intrinsic function valueOf(): (int,uint,double,decimal)
             double(this);
 
@@ -104,6 +109,9 @@ package
 
         prototype function toLocaleString(this: Numeric)
             this.intrinsic::toLocaleString();
+
+        prototype function toJSONString(this: Numeric, pretty=false)
+            this.intrinsic::toJSONString(pretty);
 
         prototype function valueOf(this: Numeric)
             this.intrinsic::valueOf();

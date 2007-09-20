@@ -37,13 +37,35 @@ package JSON
 {
     use default namespace public;
 
-    // API not yet determined
-    public function emit(o : Object, ...args) : string {
-        return "";
+    function formatObject(object, pretty): string {
+        // FIXME
+        return "formatObject not implemented";
     }
 
-    // API not yet determined
-    public function parse(s : string, ...args) : Object! {
+    function formatArray(array, pretty): string {
+        // FIXME
+        return "formatArray not implemented";
+    }
+
+    function formatDate(date, pretty): string
+        '"' + date.intrinsic::toISOString() + '"';
+
+    function formatString(s, pretty): string {
+        // FIXME
+        return "formatString not implemented";
+    }
+
+    function formatNumber(n, pretty): string {
+        if (isNaN(n) || !isFinite(n))
+            return "null";
+        return string(n);
+    }
+
+    function formatBoolean(bool, pretty): string
+        bool ? "true" : "false";
+
+    function parse(s: string, filter) {
+        // FIXME
         return {};
     }
 }

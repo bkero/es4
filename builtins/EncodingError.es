@@ -1,10 +1,6 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "Boolean" wrapper object
- *
- * E262-3 15.6
- * E262-4 19.x
- * E262-4 proposals:builtin_classes
+ * ECMAScript 4 builtins - the "EncodingError" object
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
@@ -37,49 +33,41 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
+ * E262-4 draft (intrinsic functions)
+ *
+ * Status: Incomplete; Not reviewed against spec; Not tested.
+ *
+ * To check:
+ *
+ * Can we use "prototype" with "var" like I do here?  It makes sense,
+ * and is desirable, but probably not necessary.
+ *
+ * It's my belief that making eg EvalError extend Error makes
+ * EvalError.prototype be an Error object, though that needs to be
+ * verified.
  */
 
 package
 {
-    use default namespace public;
     use namespace intrinsic;
+    use default namespace public;
 
-    // RI bug: the "this" constraint on methods can't use union types,
-    // but the parser allows type names...
-    intrinsic type Booleans = (boolean,Boolean!);
-
-    dynamic class Boolean
+    /* E262-3 15.11.6.1; 15.11.7 */
+    dynamic class EncodingError extends Error
     {
-        /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        meta static function invoke(x=null) : boolean
-            boolean(x);
+        meta static function invoke(message)
+            new EncodingError(message);
 
-        /* E262-3 15.6.2: The Boolean Constructor. */
-        function Boolean(x=null)
-            magic::bindBoolean(this, x);
+        function EncodingError(message) 
+            : super(message) 
+        {
+        }
 
-        /* E262-4 early-binding variant. */
-        override intrinsic function toString() : string
-            intrinsic::valueOf().intrinsic::toString();
+        /* E262-3 15.11.7.9: "name" property on NativeError prototype */
+        prototype var name = "EncodingError";
 
-        override intrinsic function toJSONString(pretty: boolean=false) : string
-            intrinsic::valueOf().intrinsic::toJSONString();
-
-        /* E262-4 early-binding variant. */
-        override intrinsic function valueOf() : boolean
-            boolean(this);
-
-        // The boolean class uses the Boolean class's prototype too.
-
-        /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-        prototype function toString(this: Booleans)
-            intrinsic::toString();
-
-        prototype function toJSONString(this: Booleans, pretty=false)
-            intrinsic::toJSONString(pretty);
-
-        /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-        prototype function valueOf(this: Booleans)
-            intrinsic::valueOf();
+        /* E262-3 15.11.7.10: "message" property on NativeError prototype */
+        /* INFORMATIVE */
+        prototype var message = "Bad encoding";
     }
 }

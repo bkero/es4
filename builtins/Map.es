@@ -99,13 +99,13 @@ package
         }
 
         /* Return the number of mappings in the dictionary */
-        function size() : uint
+        intrinsic function size() : uint
             element_count;
 
         /* Return the value associated with 'key', or null if 'key' does
          * not exist in the dictionary
          */
-        function get(key: K) : V? {
+        intrinsic function get(key: K) : V? {
             let probe = informative::find(key);
             return probe ? probe.value : null;
         }
@@ -113,7 +113,7 @@ package
         /* Associate 'value' with 'key', overwriting any previous
          * association for 'key'
          */
-        function put(key:K, value:V) : void {
+        intrinsic function put(key:K, value:V) : void {
             let probe = informative::find(key);
             if (probe)
                 probe.value = value;
@@ -125,7 +125,7 @@ package
 
         /* Return true iff the dictionary has an association for 'key'
          */
-        function has(key:K) : boolean {
+        intrinsic function has(key:K) : boolean {
             let probe = informative::find(key);
             return probe ? true : false;
         }
@@ -133,7 +133,7 @@ package
         /* Remove any association for 'key' in the dictionary.  Returns
          * true if an association was in fact removed
          */
-        function remove(key:K) : boolean {
+        intrinsic function remove(key:K) : boolean {
             let probe = informative::find(key);
             if (probe) {
                 --element_count;
@@ -142,6 +142,21 @@ package
             }
             return false;
         }
+
+        prototype function size(this: Map.<*,*>)
+            this.intrinsic::size();
+
+        prototype function get(this: Map.<*,*>, key)
+            this.intrinsic::get(key);
+
+        prototype function put(this: Map.<*,*>, key, value)
+            this.intrinsic::put(key, value);
+
+        prototype function has(this: Map.<*,*>, key)
+            this.intrinsic::has(key);
+
+        prototype function remove(this: Map.<*,*>, key)
+            this.intrinsic::remove(key);
 
         iterator function get(deep: boolean = false) : iterator::IteratorType.<K>
             getKeys(deep);

@@ -82,7 +82,7 @@ package
     intrinsic native function eval(s: string);
 
     function eval(x) {
-        if (!(x is (string,String)))
+        if (!(x is Strings))
             return x;
         return intrinsic::eval(string(x));
     }
@@ -229,13 +229,14 @@ package
         (k is uint && k <= 0xFFFFFFFE) ||
         (k is (double,decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
     
+    // Note, this rounds toward zero
     helper function toInteger(value): Numeric {
         value = Number(value);
         if (isNaN(value))
             return 0;
         if (value === 0 || !isFinite(value))
             return value;
-        var sign = value < 0d ? -1d : 1d;
+        var sign = value < 0 ? -1 : 1;
         return sign * Math.floor(Math.abs(value));
     }
 
