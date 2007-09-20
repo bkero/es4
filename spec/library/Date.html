@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Date.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -274,10 +274,10 @@ such that ''TimeFromYear(//y//) <LEQ> //t//''.
 informative static function YearFromTime(t: double): double <LDOTS>
 }}}
 
-<FIXME> Is there any good reason not to define how ''YearFromTime''
-should be computed?  The RI uses a non-iterative algorithm which I
-believe comes from SpiderMonkey.  I have seen iterative algorithms
-elsewhere.
+<FIXME> (Ticket #190.) Is there any good reason not to define how
+''YearFromTime'' should be computed?  The RI uses a non-iterative
+algorithm which I believe comes from SpiderMonkey.  I have seen
+iterative algorithms elsewhere.
 
 <P>The leap-year function ''InLeapYear'' is 1 for a time within a leap
 year and otherwise is zero:
@@ -339,7 +339,7 @@ informative function LocalTZA(): double <LDOTS>
 <P> The value ''LocalTZA'' does not vary with time but depends only on
 the geographic location.
 
-<FIXME> This is bogus because it assumes time zone boundaries are
+<FIXME> (Ticket #191.) This is bogus because it assumes time zone boundaries are
 fixed for all eternity.  Yet time zone (standard time) is political;
 changing political conditions can lead to adoption of a different
 standard time (analogous to the changes in daylight savings time
@@ -380,7 +380,7 @@ same starting week day for the year) for which the host environment
 provides daylight saving time information.  The only restriction is
 that all equivalent years should produce the same result.
 
-<FIXME> We've already agreed that the above is bogus; the
+<FIXME> (Ticket #191.) We've already agreed that the above is bogus; the
 implementation needs to make a "best effort" to find the correct
 adjustment for the time //t//, in the year of //t//.  More to come
 here.  Also see note above for ''LocalTZA''.
@@ -489,7 +489,7 @@ regular expression:
 
 <INCLUDE file="Date.es" name="helper const isoTimestamp">
 
-<FIXME> Replace the regexp by a proper grammar, eventually.
+<FIXME> (Ticket #192.) Replace the regexp by a proper grammar, eventually.
 
 
 == Methods on the Date class ==

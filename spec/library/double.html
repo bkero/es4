@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/double.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -87,7 +87,7 @@ to +0) to ''double''.
 <SHORTIMPL>
 <INCLUDE file="double.es" name="meta static function invoke">
 
-<FIXME> The optimization used here, ''magic::newDouble'' for ''new
+<FIXME> (Ticket #176.)  The optimization used here, ''magic::newDouble'' for ''new
 double'', makes the spec harder than it needs to be.
 
 == Value properties on the ''double'' class object ==
@@ -190,8 +190,6 @@ implementation-dependent string
 <SHORTIMPL>
 <INCLUDE file="double.es" name="override intrinsic function toString">
 
-<FIXME> Note "unimplemented" bit above.
-
 
 === intrinsic::toLocaleString ( ) ===
 
@@ -227,7 +225,7 @@ represented by this ''double'' object: the object itself.
 
 <DESC> The intrinsic ''toFixed'' method converts the this number value
 to a string in fixed-point notation with //fractionDigits// digits
-after the decimal point.  If //fractionDigits// is **undefined&=**, 0
+after the decimal point.  If //fractionDigits// is **undefined**, 0
 is assumed.
 
 <RETN> The intrinsic ''toFixed'' method returns the fixed-point
@@ -236,10 +234,11 @@ notation string representation of this number value.
 <SHORTIMPL>
 <INCLUDE file="double.es" name="intrinsic function toFixed">
 
-<FIXME> Note that "step 10" no longer makes sense.
+<FIXME> (Ticket #184.) Note that calling anything "step 10" no longer
+makes sense.
 
-<FIXME> Note that "step 10" is informative and needs to be documented
-and implemented as such.
+<p class="fixme"> Note also that "step 10" is informative and needs to
+be documented and implemented as such.
 
 <P> An implementation is permitted to extend the behaviour of toFixed
 for values of //fractionDigits// less than 0 or greater than 20.  In
@@ -270,6 +269,8 @@ notation string representation of this number value.
 <SHORTIMPL>
 <INCLUDE file="double.es" name="intrinsic function toExponential">
 
+<FIXME> (Ticket #185.) Implement this function.
+
 <P>An implementation is permitted to extend the behaviour of
 ''toExponential'' for values of //fractionDigits// less than 0 or
 greater than 20.  In this case ''toExponential'' would not necessarily
@@ -287,7 +288,7 @@ value of //n// for which //n <TIMES> 10<SUP>e-f</SUP>// is closest in
 value to //x//.  If there are two such possible values of //n//,
 choose the one that is even.
 
-<FIXME> "Step 19" is obsolete.
+<FIXME> (Ticket #186.) "Step 19" is obsolete.
 
 === intrinsic::toPrecision ( precision=<LDOTS> ) ===
 
@@ -303,6 +304,8 @@ string representation of this number value.
 
 <SHORTIMPL>
 <INCLUDE file="double.es" name="intrinsic function toPrecision">
+
+<FIXME> (Ticket #185.) Implement this function.
 
 <P> An implementation is permitted to extend the behaviour of
 ''toPrecision'' for values of precision less than 1 or greater than

@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Number.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -28,9 +28,9 @@ point numbers approximately in the range -1.7976931348623157 <TIMES>
 10<SUP>308</SUP> to +1.7976931348623157 <TIMES> 10<SUP>308</SUP>.
 
 <P> The class ''decimal'' represents 128-bit IEEE-format decimal
-floating point numbers in the range XXX to YYY.
-
-<FIXME> Compute the correct range for decimals.
+floating point numbers in the range
+<NOBR>-(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR> to
+<NOBR>(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR>.
 
 <COMP> The 3rd Edition of this Standard provided only one kind of
 primitive number value, represented as 64-bit IEEE-format binary
@@ -49,8 +49,8 @@ types in the language.
 
 <INCLUDE file="Numeric.es" name="intrinsic type Numeric">
 
-<FIXME> By analogy with the types ''Strings'' and ''Booleans'', the
-type ''Numeric'' should instead be called ''Numbers''.
+<FIXME> (Ticket #181.)  The type ''Numeric'' should instead be called
+''Numbers''.
 
 
 <H1 id="class Number"> The class ''Number'' </h1>
@@ -68,11 +68,6 @@ representing the number value stored in the class.
 
 <P> The intrinsic ''valueOf'' method is not constrained to return a
 ''double'' value, it can return any primitive number type.
-
-<FIXME> As for ''String'' and ''Boolean'' there is really no need for
-''Number'' to have any magic.  The value it contains could be a simple
-private property that holds a double.  This would cause far fewer issues
-for subclasses.
 
 == Synopsis ==
 

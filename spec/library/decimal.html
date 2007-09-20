@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/decimal.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -88,16 +88,13 @@ to +0) to ''decimal''.
 
 <P> The value of ''MAX_VALUE'' is the largest positive finite value
 represented by the ''decimal'' class, type, which is
-approximately XXX.
-
-<FIXME> Proper value here.
+<NOBR>(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR>.
 
 === MIN_VALUE ===
 
 <P> The value of ''MIN_VALUE'' is the smallest positive value
-represented by the ''decimal'' class, which is approximately XXX.
-
-<FIXME> Proper value here.
+represented by the ''decimal'' class, which is
+<NOBR>10<SUP>-6143</SUP></NOBR>.
 
 === NaN ===
 
@@ -119,21 +116,21 @@ represented by a ''decimal'' instance.
 <P> The value of ''E'' is the ''decimal'' value for //e//, the base of the
 natural logarithms, which is approximately 2.7182818284590452354.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 === LN10 ===
 
 <P>The value of ''LN10'' is the ''decimal'' value for the natural
 logarithm of 10, which is approximately 2.302585092994046.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 === LN2 ===
 
 <P>The value of ''LN2'' is the ''decimal'' value for the natural
 logarithm of 2, which is approximately 0.6931471805599453.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 === LOG2E ===
 
@@ -141,7 +138,7 @@ logarithm of 2, which is approximately 0.6931471805599453.
 logarithm of //e//, the base of the natural logarithms; this value is
 approximately 1.4426950408889634.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 <NOTE> The value of ''decimal.LOG2E'' is approximately the reciprocal
 of the value of ''decimal.LN2''.
@@ -152,7 +149,7 @@ of the value of ''decimal.LN2''.
 logarithm of //e//, the base of the natural logarithms; this value is
 approximately 0.4342944819032518.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 <NOTE> The value of ''decimal.LOG10E'' is approximately the reciprocal
 of the value of ''decimal.LN10''.
@@ -163,14 +160,14 @@ of the value of ''decimal.LN10''.
 the circumference of a circle to its diameter, which is approximately
 3.1415926535897932.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 === SQRT1_2 ===
 
 <P>The value of ''SQRT1_2'' is the ''decimal'' value for the square
 root of 1/2, which is approximately 0.7071067811865476.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 <NOTE> The value of ''decimal.SQRT1_2'' is approximately the reciprocal
 of the value of ''decimal.SQRT2''.
@@ -180,7 +177,7 @@ of the value of ''decimal.SQRT2''.
 <P>The value of ''SQRT2'' is the ''decimal'' value for the square root
 of 2, which is approximately 1.4142135623730951.
 
-<FIXME> More precision here.
+<FIXME> (Ticket #187.) More precision here.
 
 == Methods on ''decimal'' instances ==
 
@@ -199,8 +196,6 @@ implementation-dependent string
 
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="override intrinsic function toString">
-
-<FIXME> Note incomplete code above.
 
 === intrinsic::toLocaleString ( ) ===
 
@@ -245,14 +240,14 @@ notation string representation of this number value.
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="intrinsic function toFixed">
 
-<FIXME> That implementation is bogus.
+<FIXME> (Ticket #188.) That implementation is bogus.
 
 <P> An implementation is permitted to extend the behaviour of toFixed
 for values of //fractionDigits// less than 0 or greater than 20.  In
 this case ''toFixed'' would not necessarily throw **RangeError** for
 such values.
 
-<FIXME> Greater number of fractionDigits is possible for decimal.
+<FIXME> (Ticket #188.) Greater number of fractionDigits is possible for decimal.
 
 <NOTE>The output of ''toFixed'' may be more precise than ''toString''
 for some values because ''toString'' only prints enough significant
@@ -261,7 +256,7 @@ example, ''(1000000000000000128).toString()'' returns
 "1000000000000000100", while ''(1000000000000000128).toFixed(0)''
 returns "1000000000000000128".
 
-<FIXME> Better example / more precision (for decimal).
+<FIXME> (Ticket #188.) Better example / more precision (for decimal).
 
 === intrinsic::toExponential ( fractionDigits=<LDOTS> ) ===
 
@@ -279,14 +274,14 @@ notation string representation of this number value.
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="intrinsic function toExponential">
 
-<FIXME> That implementation is bogus.
+<FIXME> (Ticket #188.) That implementation is bogus.
 
 <P>An implementation is permitted to extend the behaviour of
 ''toExponential'' for values of //fractionDigits// less than 0 or
 greater than 20.  In this case ''toExponential'' would not necessarily
 throw **RangeError** for such values.
 
-<FIXME> Greater number of fractionDigits is possible for decimal.
+<FIXME> (Ticket #188.) Greater number of fractionDigits is possible for decimal.
 
 <NOTE> For implementations that provide more accurate conversions than
 required by the rules above, it is recommended that the following
@@ -300,7 +295,7 @@ value of //n// for which //n <TIMES> 10<SUP>e-f</SUP>// is closest in
 value to //x//.  If there are two such possible values of //n//,
 choose the one that is even.
 
-<FIXME> "Step 19" is obsolete.
+<FIXME> (Ticket #188.) "Step 19" is obsolete.
 
 
 === intrinsic::toPrecision ( precision=<LDOTS> ) ===
@@ -318,14 +313,14 @@ representation of this number value.
 <SHORTIMPL>
 <INCLUDE file="decimal.es" name="intrinsic function toPrecision">
 
-<FIXME> That implementation is bogus.
+<FIXME> (Ticket #188.) That implementation is bogus.
 
 <P> An implementation is permitted to extend the behaviour of
 ''toPrecision'' for values of precision less than 1 or greater than
 21.  In this case ''toPrecision'' would not necessarily throw
 **RangeError** for such values.
 
-<FIXME> Greater precision possible for decimal.
+<FIXME> (Ticket #188.) Greater precision possible for decimal.
 
 
 <!-- End of decimal.html -->
