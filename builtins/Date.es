@@ -237,7 +237,7 @@ package
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
         prototype function toString(this:Date)
-            this.toString();
+            this.intrinsic::toString();
 
         /* INFORMATIVE */
         override intrinsic function toString() : string {
@@ -836,7 +836,7 @@ package
     }
 
     informative function twoDigit(n : double)
-        (n + 100).toString().substring(1,3);
+        string(n + 100).substring(1,3);
 
     informative function sign(n : double)
         n < 0 ? "-" : "+";

@@ -69,7 +69,7 @@ package
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
-            this.intrinsic::toString();
+            "[object " + magic::getClassName(this) + "]";
 
         intrinsic function toString() : string
             "[object " + magic::getClassName(this) + "]";
@@ -77,15 +77,15 @@ package
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         prototype function toLocaleString()
-            this.intrinsic::toLocaleString();
+            this.public::toString();
 
         intrinsic function toLocaleString() : string
-            this.toString();
+            this.public::toString();
 
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
         prototype function valueOf()
-            this.intrinsic::valueOf();
+            this;
 
         intrinsic function valueOf() : Object!
             this;
@@ -93,7 +93,7 @@ package
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            this.intrinsic::hasOwnProperty(V is EnumerableId ? V : string(V));
+            magic::hasOwnProperty(this, V is EnumerableId ? V : string(V));
 
         intrinsic function hasOwnProperty(V: EnumerableId): boolean
             magic::hasOwnProperty(this, V);
@@ -101,9 +101,12 @@ package
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
         prototype function isPrototypeOf(V)
-            this.intrinsic::isPrototypeOf(V);
+            private::isPrototypeOf(this,V);
 
-        intrinsic function isPrototypeOf(V): boolean {
+        intrinsic function isPrototypeOf(V): boolean
+            private::isPrototypeOf(this,V);
+
+        private function isPrototypeOf(self, V): boolean {
             if (!(V is Object))
                 return false;
 
@@ -111,7 +114,7 @@ package
                 V = magic::getPrototype(V);
                 if (V === null || V === undefined)
                     return false;
-                if (V === this)
+                if (V === self)
                     return true;
             }
         }
@@ -119,27 +122,30 @@ package
 
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
         /* E262-4 draft proposals:enumerability */
-        prototype function propertyIsEnumerable(prop, e)
-            this.intrinsic::propertyIsEnumerable(prop is EnumerableId ? prop : string(prop),
-                                                 e is (boolean,undefined) ? e : boolean(e));
+        prototype function propertyIsEnumerable(prop, e=undefined)
+            private::propertyIsEnumerable(this, 
+                                         prop is EnumerableId ? prop : string(prop), 
+                                         e is (boolean,undefined) ? e : boolean(e));
 
         intrinsic function propertyIsEnumerable(prop: EnumerableId,
-                                                e:(boolean,undefined) = undefined): boolean
-        {
-            if (!magic::hasOwnProperty(this,prop))
+                                                e:(boolean,undefined) = undefined): boolean 
+            private::propertyIsEnumerable(this, prop, e);
+
+        private function propertyIsEnumerable(self, prop, e) {
+            if (!magic::hasOwnProperty(self,prop))
                 return false;
 
-            let oldval = !magic::getPropertyIsDontEnum(this, prop);
-            if (!magic::getPropertyIsDontDelete(this, prop))
+            let oldval = !magic::getPropertyIsDontEnum(self, prop);
+            if (!magic::getPropertyIsDontDelete(self, prop))
                 if (e is boolean)
-                    magic::setPropertyIsDontEnum(this, prop, !e);
+                    magic::setPropertyIsDontEnum(self, prop, !e);
             return oldval;
         }
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function toJSONString(pretty=false)
-            this.intrinsic::toJSONString();
+            JSON.formatObject(this, pretty);
 
         intrinsic function toJSONString(pretty: boolean=false) : string
             JSON.formatObject(this, pretty);
