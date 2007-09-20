@@ -1,8 +1,8 @@
-= The class ''RegExp'' =
+<H1 id="class RegExp"> The class ''RegExp'' </H1>
 
 <PRE>
 FILE:                       spec/library/RegExp.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -426,8 +426,8 @@ break the token are:
   <LI> //DecimalDigits// and //Identifier//
 </UL>
 
-<FIXME> The definition on where whitespace is ignored / not ignored
-needs to be stronger, particularly around backspace.  Eg,
+<FIXME> (Ticket #194.) The definition on where whitespace is ignored /
+not ignored needs to be stronger, particularly around backspace.  Eg,
 <NOBR>''\p{N}''</NOBR> is the same as <NOBR>''\p{ N }''</NOBR> but not
 the same as <NOBR>''\p {N}''</NOBR>.  We could go fascist and say that
 the middle of those three is not allowed, but that seems unnatural.
@@ -1237,9 +1237,10 @@ indicating whether the flags contained the character "y".
 <P> The value of the ''lastIndex'' property is an integer that
 specifies the string position at which to start the next match.
 
-<FIXME> Is this a getter/setter?  Currently the property has no type
-constraits, and it's not obvious it should have them (backwards
-compatibility); anyhow, ''exec'' performs conversion as necessary.
+<FIXME> (Ticket #195.) Is this a getter/setter?  Currently the
+property has no type constraits, and it's not obvious it should have
+them (backwards compatibility); anyhow, ''exec'' in ES3 performs
+conversion as necessary.
 
 
 == Methods on the ''RegExp'' prototype object ==

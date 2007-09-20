@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/meta.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -21,19 +21,20 @@ provide a simple reflection capability.
 <P> The standard meta-objects described by the interface types may be
 immutable.
 
-<FIXME> Right now the class ''Class'' is not defined in ES4.  (Nor is
-there an ''Interface'', nor are there described classes for other type
-objects.)  If these are defined, then we must decide whether they
-implement the meta-object interfaces or not.  Otherwise we have
-problems of nonportability due to name shadowing in some systems but
-not in others, or subclassability in some systems but not in others.
+<FIXME> (Ticket #199.) Right now the class ''Class'' is not defined in
+ES4.  (Nor is there an ''Interface'', nor are there described classes
+for other type objects.)  If these are defined, then we must decide
+whether they implement the meta-object interfaces or not.  Otherwise
+we have problems of nonportability due to name shadowing in some
+systems but not in others, or subclassability in some systems but not
+in others.
 
 <P> ECMAScript implementations may choose to provide extensions to
 these interfaces, in order to provide richer reflective capabilities.
 Clients wishing to use extended meta-object interfaces can perform
 runtime downcasts on the meta-objects described by this Standard.
 
-<FIXME> The meta-objects system does not currently deal with
+<FIXME> (Ticket #200.)  The meta-objects system does not currently deal with
 parameterized types.  It will almost certainly need to.  First,
 classes can contain type definitions and those definitions can be
 public, and it would be strange if they could not be iterated by the
@@ -233,7 +234,7 @@ properties and value properties).
 <P> The constructor method is included in the set of static members,
 provided that it is public.
 
-<FIXME> Likely, this will also iterate type definitions (see comment
+<FIXME> (Ticket #200.) Likely, this will also iterate type definitions (see comment
 at the start of this chapter).
 
 

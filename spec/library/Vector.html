@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Vector.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-18
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -15,9 +15,9 @@ subclass of ''Object''.  It represents dense, typed, 0-based,
 one-dimensional arrays with bounds checking and optionally fixed
 length.
 
-<FIXME> It may not be necessary for ''Vector'' to be final, as long as
-the catchall getters and setters and the getters and setters for
-''length'' are final.
+<FIXME> (Ticket #196.) It may not be necessary for ''Vector'' to be
+final, as long as the catchall getters and setters and the getters and
+setters for ''length'' are final.
 
 <P> The class ''Vector'' provides two benefits.  One is optimization:
 the restrictions placed on the class---denseness and a predefined
@@ -440,37 +440,13 @@ two arguments //x// and //y// of the base type of ''this'' and returns
 a negative value if //x <LT> y//, zero if //x = y//, or a positive
 value if //x <GT> y//.
 
-<FIXME> More here, but not too much more.  We should factor Array.sort so
-that the good bits can reasonably be referenced from here.
+<FIXME> (Ticket #198.) More here, but not too much more.  We should
+factor Array.sort so that the good bits can reasonably be referenced
+from here.
 
 <COMP> Unlike the case for ''Array'', the //comparefn// is a required argument.
 
-<FIXME> We could provide a default comparators that would work like this:
-
-<PRE class="FIXME">
-    /* T is the base type */
-    function comparator(a, b) {
-       if (T is Numbers) {
-         if (a < b) return -1;
-         if (b < a) return 1;
-         return 0;
-       }
-       if (T is Booleans) {
-         if (!a && b) return -1;
-         if (a && !b) return 1;
-         return 0;
-       }
-       if (T is Strings) {
-         if (a < b) return -1;
-         if (b < a) return 1;
-         return 0;
-       }
-       /* default behavior -- from Array.sort */
-       return comparator(string(a), string(b))
-    }
-</PRE>
-
-<P class="fixme"> It's kind of weird, though, to provide this.
+<FIXME> (Ticket #197.) Should we provide a default comparator?
 
 <RETN> The ''sort'' method returns ''this''.
 

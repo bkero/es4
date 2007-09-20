@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Date.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -989,28 +989,22 @@ and //ms// to be values in the local time zone.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setSeconds">
 
-<FIXME> Default arguments: is this the way we want it?
+<FIXME> (Ticket #193.) Default arguments: is this the way we want it?
 
-<BR><BR>
+<P class="fixme"> For this and the following methods the signature has
+the following impliciation: if a program subclasses Date and overrides
+the intrinsic ''getMilliseconds()'' method, the new method //will// be
+invoked if setSeconds is called with one argument.
 
-For this and the following methods the signature has the following
-impliciation: if a program subclasses Date and overrides the
-intrinsic ''getMilliseconds()'' method, the new method //will// be invoked if
-setSeconds is called with one argument.
+<P class="fixme"> There are various ways to avoid this, though I don't
+think it's really a problem that there is this dependence, except that
+it binds implementations in how they represent and handle dates.
 
-<BR><BR>
-
-There are various ways to avoid this, though I don't think it's really
-a problem that there is this dependence, except that it binds
-implementations in how they represent and handle dates.
-
-<BR><BR>
-
-3rd Edition has imprecise language here, it says that if ms is not
-provided by the caller then its value will be as if //ms// were
-specified with the value //getMilliseconds()//.  Whether that implies
-that that method is called (and that the user could override it) or
-not is not at all clear.
+<P class="fixme"> 3rd Edition has imprecise language here, it says
+that if ms is not provided by the caller then its value will be as if
+//ms// were specified with the value //getMilliseconds()//.  Whether
+that implies that that method is called (and that the user could
+override it) or not is not at all clear.
 
 
 === intrinisic::setUTCSeconds (sec, ms=<LDOTS> ) ===
