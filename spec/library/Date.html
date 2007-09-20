@@ -51,6 +51,7 @@ dynamic class Date extends Object
     <SIGNATURE file="Date.es" name="intrinsic function toLocaleTimeString">
     <SIGNATURE file="Date.es" name="intrinsic function toUTCString">
     <SIGNATURE file="Date.es" name="intrinsic function toISOString">
+    <SIGNATURE file="Date.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Date.es" name="intrinsic function nanoAge">
     <SIGNATURE file="Date.es" name="intrinsic function getTime">
     <SIGNATURE file="Date.es" name="intrinsic function getYear">
@@ -142,6 +143,7 @@ time value is NaN.  It provides the following direct properties:
     toLocaleTimeString: function () <LDOTS> ,
     toUTCString:        function () <LDOTS> ,
     toISOString:        function () <LDOTS> ,
+    toJSONString:       function (pretty=false) <LDOTS> ,
     valueOf:            function () <LDOTS> ,
     getTime:            function () <LDOTS> ,
     getFullYear:        function () <LDOTS> ,
@@ -747,6 +749,16 @@ UTC, denoted by a suffix ''Z''.
 
 <P> The helper functions ''removeTrailingZeroes'' and ''zeroFill'' are
 described in section <XREF target="Minor date helpers">.
+
+=== intrinsic::toJSONString ( pretty=false ) ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this date object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a string.
+
+<SHORTIMPL>
+<INCLUDE file="Date.es" name="override intrinsic function toJSONString">
 
 
 === intrinsic::nanoAge() ===

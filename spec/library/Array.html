@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Array.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-12
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -74,6 +74,9 @@ dynamic class Array extends Object
 
     static const length = 1
 
+    <SIGNATURE file="Array.es" name="override intrinsic function toString">
+    <SIGNATURE file="Array.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="Array.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Array.es" name="intrinsic function concat">
     <SIGNATURE file="Array.es" name="intrinsic function every">
     <SIGNATURE file="Array.es" name="intrinsic function filter">
@@ -102,6 +105,7 @@ dynamic class Array extends Object
 {{{
    toString:       function () <LDOTS> ,
    toLocaleString: function () <LDOTS> ,
+   toJSONString:   function (pretty=false) <LDOTS> ,
    concat:         function (...items) <LDOTS> ,
    every:          function (checker, thisObj=null) <LDOTS> ,
    filter:         function (checker, thisObj=null) <LDOTS> ,
@@ -561,6 +565,7 @@ counterparts return.
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="override intrinsic function toString">
 <INCLUDE file="Array.es" name="override intrinsic function toLocaleString">
+<INCLUDE file="Array.es" name="override intrinsic function toJSONString">
 <INCLUDE file="Array.es" name="intrinsic function concat">
 <INCLUDE file="Array.es" name="intrinsic function every">
 <INCLUDE file="Array.es" name="intrinsic function filter">
@@ -653,6 +658,42 @@ be locale-specific.
 <NOTE>The first parameter to this method is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
+
+=== toJSONString ( pretty=<LDOTS> ) ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this array object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<P> The object is serialized as a a sequence of comma (''","'')
+separated values wrapped in square brackets (''"["'' and ''"]"'').
+The string representation of a value is computed by calling the public
+''toJSONString'' method on the value.
+
+<P> The [[Prototype]] internal property is not used when computing the
+set of properties of an object that will be serialized.
+
+<P> Values that are not directly represented in JSON (such as
+**undefined**, functions, and unknown types) will be silently skipped.
+This means that holes in arrays, and array length, are not preserved.
+The value **null** is serialized as the unquoted string ''null''.
+
+<P> An **EncodingError** exception will be thrown if this object
+contains a cyclical (sub)structure.  Recurring objects that do not
+cause cycles are allowed, but will produce a complete text for each
+occurrence.
+
+<P> If //pretty// is true, then linefeeds are inserted after each left
+square bracket and comma and before a right square bracket, and
+multiples of 4 spaces are inserted to indicate the level of nesting.
+Otherwise, no whitespace is inserted between the tokens.
+
+<RETN> The ''toJSONString'' method returns a ''string''.
+
+<IMPL> The ''toJSONString'' method is implementation-dependent.
+
+<FIXME> (Ticket #201.)  Only cycle finding need be
+implementation-dependent, we should have code here.
+
 
 === Generic methods ===
 

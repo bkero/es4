@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/int.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -34,6 +34,7 @@ final class int!
 
     <SIGNATURE file="int.es" name="override intrinsic function toString">
     <SIGNATURE file="int.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="int.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="int.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="int.es" name="intrinsic function toFixed">
@@ -128,6 +129,15 @@ for it to return the same thing as the intrinsic ''toString'' method.
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
 
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this ''int''
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="override intrinsic function toJSONString">
 
 === intrinsic::valueOf ( ) ===
 

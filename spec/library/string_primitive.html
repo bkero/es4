@@ -264,14 +264,23 @@ method returns an array of strings containing the substrings of
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function match">
 
-=== parseJSON( self, <LDOTS> ) ===
+=== parseJSON( self, filter=<LDOTS> ) ===
 
 <DESC> The static ''parseJSON'' method parses //self// (converted to
-''string'') as a JSON object.
+''string'') as a JSON object.  The argument ''filter'', if not
+**undefined**, should be a function that takes two arguments //key//
+and //value// and returns a possibly modified //value//.  It will be
+called for each element of objects and arrays.
 
-<RETN> TBD.
+<P> A **SyntaxError** exception will be thrown if //self// is not
+parseable as a JSON object.
 
-<IMPL> TBD.
+<FIXME> (Ticket #202.) It would seem more natural to use an
+**EncodingError** here, since JSON encoding uses that object.
+
+<RETN> The ''parseJSON'' method returns an ECMAScript value.
+
+<IMPL> The ''parseJSON'' method is implementation-dependent.
 
 === replace (self, searchValue, replaceValue) ===
 
@@ -527,6 +536,16 @@ whitespace characters at either end.
 <RETN> The intrinsic ''toString'' method returns this string value: the object itself.
 
 <INCLUDE file="string_primitive.es" name="override intrinsic function toString">
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this string object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="string_primitive.es" name="override intrinsic function toJSONString">
 
 === intrinsic::valueOf ===
 

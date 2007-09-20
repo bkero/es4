@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/String.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -76,6 +76,7 @@ dynamic class String
     static const length: uint = 1
 
     <SIGNATURE file="String.es" name="override intrinsic function toString">
+    <SIGNATURE file="String.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="String.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="String.es" name="intrinsic function charAt">
@@ -108,6 +109,7 @@ dynamic class String
 
 {{{
     toString:          function (this:Strings) <LDOTS>
+    toJSONString:      function (this:Strings, pretty=false) <LDOTS>
     valueOf:           function (this:Strings) <LDOTS>
     charAt:            function (pos) <LDOTS>
     charCodeAt:        function (pos) <LDOTS>
@@ -196,6 +198,16 @@ differently by overriding ''toString''.
 
 <SHORTIMPL>
 <INCLUDE file="String.es" name="override intrinsic function toString">
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this string object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a string.
+
+<SHORTIMPL>
+<INCLUDE file="String.es" name="override intrinsic function toJSONString">
 
 === valueOf ===
 

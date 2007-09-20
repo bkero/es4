@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Boolean.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -56,6 +56,7 @@ dynamic class Boolean
     static const length: uint = 1
 
     <SIGNATURE file="Boolean.es" name="override intrinsic function toString">
+    <SIGNATURE file="Boolean.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Boolean.es" name="override intrinsic function valueOf">
 }
 }}}
@@ -103,6 +104,16 @@ to a string.
 <SHORTIMPL>
 <INCLUDE file="Boolean.es" name="override intrinsic function toString">
 
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this boolean
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="override intrinsic function toJSONString">
+
 === intrinsic::valueOf ( ) ===
 
 <DESC> The intrinsic ''valueOf'' method returns this boolean value.
@@ -123,6 +134,7 @@ intrinsic counterparts return.
 
 <SHORTIMPL>
 <INCLUDE file="Boolean.es" name="prototype function toString">
+<INCLUDE file="Boolean.es" name="prototype function toJSONString">
 <INCLUDE file="Boolean.es" name="prototype function valueOf">
 
 
@@ -149,6 +161,7 @@ final class boolean!
     static const length: uint = 1
 
     <SIGNATURE file="boolean_primitive.es" name="override intrinsic function toString">
+    <SIGNATURE file="boolean_primitive.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="boolean_primitive.es" name="override intrinsic function valueOf">
 }
 }}}
@@ -194,6 +207,16 @@ to a string, either ''"true"'' or ''"false"''.
 
 <SHORTIMPL>
 <INCLUDE file="boolean_primitive.es" name="override intrinsic function toString">
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this boolean
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="override intrinsic function toJSONString">
 
 === intrinsic::valueOf ( ) ===
 

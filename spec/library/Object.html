@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Object.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -157,11 +157,41 @@ implementations do not use this parameter position for anything else.
 <INCLUDE file="Object.es" name="intrinsic function toLocaleString">
 
 
-=== intrinsic::toJSONString ( ) ===
+=== intrinsic::toJSONString ( pretty=<LDOTS> ) ===
 
-<FIXME>Waiting for proposal to be cleaned up and the RI method to be
-implemented.
+<DESC> The intrinsic ''toJSONString'' method convert this object to
+JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
 
+<P> The object is serialized as a a sequence of comma (''","'')
+separated pairs wrapped in curly braces (''"{"'' and ''"}"'').  Each
+pair consists of a property name and a property value, separated by a
+colon (''":"'').  The string representation of a property value is
+computed by calling the public ''toJSONString'' method on the value.
+
+<P> The [[Prototype]] internal property is not used when computing the
+set of properties of an object that will be serialized.
+
+<P> Values which are not directly represented in JSON (such as
+**undefined**, functions, and unknown types) will be silently skipped.
+The value **null** is serialized as the unquoted string ''null''.
+
+<P> An **EncodingError** exception will be thrown if this object
+contains a cyclical (sub)structure.  Recurring objects that do not
+cause cycles are allowed, but will produce a complete text for each
+occurrence.
+
+<P> If //pretty// is true, then linefeeds are inserted after each left
+curly brace and comma and before a right curly brace, and multiples of
+4 spaces are inserted to indicate the level of nesting, and one space
+will be inserted after the separating colon.  Otherwise, no whitespace
+is inserted between the tokens.
+
+<RETN> The ''toJSONString'' method returns a ''string''.
+
+<IMPL> The ''toJSONString'' method is implementation-dependent.
+
+<FIXME> (Ticket #201.)  Only cycle finding need be
+implementation-dependent, we should have code here.
 
 === intrinsic::valueOf ( ) ===
 

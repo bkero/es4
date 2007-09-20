@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/double.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -52,6 +52,7 @@ final class double!
 
     <SIGNATURE file="double.es" name="override intrinsic function toString">
     <SIGNATURE file="double.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="double.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="double.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="double.es" name="intrinsic function toFixed">
@@ -208,6 +209,16 @@ for it to return the same thing as the intrinsic ''toString'' method.
 <NOTE> The first parameter to this function is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this ''double''
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="double.es" name="override intrinsic function toJSONString">
 
 
 === intrinsic::valueOf ( ) ===
