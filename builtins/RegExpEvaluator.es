@@ -103,12 +103,12 @@ package RegExpInternals
     {
         function State(endIndex: int, cap: CapArray)
             : endIndex = endIndex
-            , cap = cap
+            , captures = captures
         {
         }
 
         var endIndex : int;
-        var cap : CapArray;
+        var captures : CapArray;
     }
 
     /* Captures array.

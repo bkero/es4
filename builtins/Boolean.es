@@ -73,13 +73,13 @@ package
 
         /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
         prototype function toString(this: Booleans)
-            intrinsic::toString();
+            this.intrinsic::toString();
 
         prototype function toJSONString(this: Booleans, pretty=false)
-            intrinsic::toJSONString(pretty);
+            this.intrinsic::toJSONString(pretty);
 
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
         prototype function valueOf(this: Booleans)
-            intrinsic::valueOf();
+            this.intrinsic::valueOf();
     }
 }
