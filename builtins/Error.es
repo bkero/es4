@@ -73,7 +73,7 @@ package
         prototype var message = "Generic error";
 
         /* E262-3 15.11.4.4: toString */
-        prototype function toString()
+        prototype function toString(this:Error)
             this.intrinsic::toString();
 
         /* INFORMATIVE */
