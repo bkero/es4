@@ -60,6 +60,8 @@ package
     {
         use default namespace public;
 
+        static const length = 7;
+
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         meta static function invoke(...args)   // args are ignored.
             (new Date()).public::toString();

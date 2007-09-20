@@ -54,6 +54,8 @@ package
     /* E262-3 15.10: Regular expression object */
     public dynamic class RegExp
     {
+        static const length = 2;
+
         /* E262-3 15.10.3.1: The RegExp constructor called as a function */
         meta static function invoke( pattern, flags ) {
             if (pattern is RegExp && flags === undefined)

@@ -54,6 +54,8 @@ package
 
     intrinsic final class int!
     {
+        static const length = 1;
+
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;
 

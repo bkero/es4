@@ -584,7 +584,6 @@ package RegExpInternals
                 fail( SyntaxError, "EOF inside escape sequence" );
 
             let (c = consumeChar()) {
-                advance();
                 return c;
             }
         }

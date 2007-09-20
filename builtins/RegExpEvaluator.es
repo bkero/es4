@@ -101,7 +101,7 @@ package RegExpInternals
 
     class State!
     {
-        function State(endIndex: int, cap: CapArray)
+        function State(endIndex: int, captures: CapArray)
             : endIndex = endIndex
             , captures = captures
         {

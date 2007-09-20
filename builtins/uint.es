@@ -54,6 +54,8 @@ package
 
     intrinsic final class uint!
     {
+        static const length = 1;
+
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 

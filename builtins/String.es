@@ -70,6 +70,9 @@ package
      */
     dynamic class String
     {
+        // A getter because String is loaded before int
+        static function get length() { return 1 }
+
         /* E262-4 draft */
         /* OBSOLETE */
         meta static function convert(x)

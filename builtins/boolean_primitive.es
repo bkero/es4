@@ -56,6 +56,9 @@ package
      */
     intrinsic final class boolean!
     {
+        // IMPLEMENTATION ARTIFACT: A getter because boolean is loaded before int.
+        static function get length() { return 1 }
+
         // Obsolete, but RI needs to be extended first
         meta static function convert(x) : boolean
             boolean(x);

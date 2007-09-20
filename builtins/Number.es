@@ -53,10 +53,10 @@ package
 
     dynamic class Number
     {
-        // Implementation artifact:
-        // These need to be static getters rather than static consts,
-        // since 'Number' initializes before 'double'.
+        // IMPLEMENTATION ARTIFACT: A getter because Number is loaded before int.
+        static function get length() { return 1 }
 
+        // IMPLEMENTATION ARTIFACT:  Static getters because Number is loaded before double.
         static function get MAX_VALUE() : double         1.7976931348623157e+308;  /* INFORMATIVE */
         static function get MIN_VALUE() : double         5e-324;                   /* INFORMATIVE */
         static function get NaN() : double               0d / 0d;

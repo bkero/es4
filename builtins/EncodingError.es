@@ -55,6 +55,8 @@ package
     /* E262-3 15.11.6.1; 15.11.7 */
     dynamic class EncodingError extends Error
     {
+        static const length = 1;
+
         meta static function invoke(message)
             new EncodingError(message);
 

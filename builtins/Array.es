@@ -60,6 +60,8 @@ package
 
     dynamic class Array
     {
+        static const length = 1;
+
         // 15.4.1 The Array Constructor Called as a Function
         meta static function invoke(...items) {
             if (items.length == 1)

@@ -57,6 +57,8 @@ package
     /* E262-3 15.11.6.2; 15.11.7 */
     dynamic class RangeError extends Error
     {
+        static const length = 1;
+
         meta static function invoke(message)
             new RangeError(message);
 

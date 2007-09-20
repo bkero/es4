@@ -57,6 +57,9 @@ package
         use namespace intrinsic;
         use strict;
 
+        // IMPLEMENTATION ARTIFACT: A getter because Object is loaded before int.
+        static function get length() { return 1 }
+
         /* E262-3 15.2.1.1: The Object constructor called as a function */
         meta static function invoke(value=undefined) {
             if (value === null || value === undefined)

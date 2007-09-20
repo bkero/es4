@@ -57,6 +57,8 @@ package
     /* E262-3 15.11 */
     dynamic class Error
     {
+        static const length = 1;
+
         meta static function invoke(message)
             new Error(message);
 

@@ -50,6 +50,9 @@ package
 
     dynamic class Boolean
     {
+        // IMPLEMENTATION ARTIFACT: A getter because Boolean is loaded before int.
+        static function get length() { return 1 }
+
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
             boolean(x);

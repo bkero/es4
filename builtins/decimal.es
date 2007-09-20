@@ -54,6 +54,8 @@ package
 
     intrinsic final class decimal!
     {
+        static const length = 1;
+
         // FIXME
         static const MAX_VALUE         = 1.7976931348623157e+308m;
         static const MIN_VALUE         = 5e-324m;

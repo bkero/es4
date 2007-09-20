@@ -77,6 +77,9 @@ package
 
     intrinsic final class string!
     {
+        // A getter because string is loaded before int
+        static function get length() { return 1 }
+
         /* E262-4 draft */
         meta static function convert(x)
             string(x);
