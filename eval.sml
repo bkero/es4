@@ -352,10 +352,10 @@ fun allocRib (regs:Mach.REGS)
                         Mach.UninitProp
                 else
                     Mach.ValProp Mach.Null
-                    
-        (* FIXME: this error should probably be turned on. *)
-        (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#valAllocState."] *)
-                    
+
+              | Ast.LamType _ => 
+                Mach.UninitProp
+
         fun tempPadding n =
             if n = 0
             then []
@@ -2011,7 +2011,7 @@ and applyTypesToClass (regs:Mach.REGS)
         else 
             let
                 fun applyArgs t = makeTy (applyTypes regs t typeArgs)
-                val Ast.Cls c = cls                                    
+                val Ast.Cls c = cls
                 val newCls = Ast.Cls { name = (#name c), 
                                        typeParams = (#typeParams c),
                                        nonnullable = (#nonnullable c),

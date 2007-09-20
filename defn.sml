@@ -1476,13 +1476,20 @@ and defFunc (env:ENV)
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
-        val (funcType:Ast.FUNC_TYPE, _, _) = AstQuery.extractFuncType ty
-                     
-        val numParams = length (#params funcType)
+        val Ast.Ty { expr, ... } = ty 
+        fun mkParamRib idents = map (fn id => (Ast.PropName (Name.nons id), Ast.TypeVarFixture)) idents
+        fun findFuncType env e = 
+            case e of 
+                Ast.LamType { params, body } => 
+                findFuncType (extendEnvironment env (mkParamRib params)) body 
+              | Ast.FunctionType fty => (env, fty)
+              | _ => error ["unexpected primary type in function: ", LogErr.ty e]
 
+        val newT = defTyFromTy env ty
+        val (env, funcType) = findFuncType env expr                     
+        val numParams = length (#params funcType)
         val env = updateTempOffset env numParams
         val (paramRib, paramInits, defaults, settingsRib, settingsInits, superArgs, thisType) = defFuncSig env fsig
-        val newType:Ast.FUNC_TYPE = defFuncTy env funcType
         val defaults = defExprs env defaults
         val env = extendEnvironment env paramRib
         val (blockOpt:Ast.BLOCK option, hoisted:Ast.RIB) = 
@@ -1501,7 +1508,7 @@ and defFunc (env:ENV)
                    fsig = fsig,
                    block = blockOpt,
                    defaults = defaults,
-                   ty = makeTy env (Ast.FunctionType newType),
+                   ty = newT,
                    param = Ast.Head (mergeRibs (#program env) paramRib hoisted, 
                                      paramInits),
                    native=native,
@@ -1848,10 +1855,6 @@ and defIdentExpr (env:ENV)
 
           | Ast.AttributeIdentifier ai =>
             Ast.AttributeIdentifier (defIdentExpr env ai)
-
-          | Ast.TypeIdentifier { ident, typeArgs } =>
-            Ast.TypeIdentifier { ident=(defIdentExpr env ident),
-                                 typeArgs=map (defTyFromTy env) typeArgs }
 
           | Ast.QualifiedIdentifier { qual, ident } =>
             Ast.QualifiedIdentifier { qual = defExpr env qual,
@@ -2218,11 +2221,6 @@ and defExpr (env:ENV)
                                Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
                                            loc=loc}
-                         | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
-                           Ast.LexicalRef {ident=Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                                                    ident=id},
-                                                                     typeArgs=map (defTyFromTy env) typeArgs},
-                                           loc=loc}
                          | (Ast.LiteralExpr _,_) =>
                                LogErr.defnError ["invalid package qualification"]
 
@@ -2320,14 +2318,6 @@ and defTypeExpr (env:ENV)
                    (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
                    Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                           ident=id})
-                 | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
-                   let
-                       val groundArgs = map (Type.groundExpr o (Type.normalize (#program env))) typeArgs 
-                   in
-                       Ast.AppType { base = Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                                   ident=id}),
-                                     args=groundArgs}
-                   end
                  | (_,_) =>
                        LogErr.defnError ["invalid type expr ", Ustring.toAscii (hd p)]
                 end

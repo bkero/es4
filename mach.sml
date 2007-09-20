@@ -695,20 +695,33 @@ fun inspect (v:VAL)
 
         fun id (Obj ob) = Int.toString (#ident ob)
 
+        fun typ t = LogErr.ty t
+        fun ty (Ast.Ty { expr, ... }) = typ expr
+
+        fun magType t = 
+            case t of 
+                Class { cls = Ast.Cls { instanceType, classType, ... }, ... } => 
+                (" : instanceType=" ^ (ty instanceType) ^ ", classType=" ^ (ty classType))
+              | Interface { iface = Ast.Iface { instanceType, ... }, ... } => 
+                (" : instanceType=" ^ (ty instanceType))
+              | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
+                (" : " ^ (ty ty0))
+              | Type t => (" = " ^ (ty t))
+              | _ => ""
+                
         fun tag (Obj ob) =
             case (#tag ob) of
                 (* FIXME: elaborate printing of structural tags. *)
                 ObjectTag _ => "<Obj>"
               | ArrayTag _ => "<Arr>"
-              | FunctionTag _ => "<Fn>"
-              | ClassTag t => "<Class " ^ (LogErr.ty (Ast.InstanceType t)) ^ ">"
+              | FunctionTag t => "<Fn " ^ (typ (Ast.FunctionType t)) ^ ">"
+              | ClassTag t => "<Class " ^ (typ (Ast.InstanceType t)) ^ ">"
               | NoTag => "<NoTag>"
 
         (* FIXME: elaborate printing of type expressions. *)
-        fun typ t = LogErr.ty t
         fun mag m = case m of
                         String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
-                      | m => Ustring.toAscii (magicToUstring m)
+                      | m => Ustring.toAscii (magicToUstring m) ^ (magType m)
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"

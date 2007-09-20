@@ -120,6 +120,8 @@ fun ty t =
         fun fieldToString {name, ty=fieldType} = (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
         fun fieldList fields =
             join ", " (map fieldToString fields)
+        fun identList fields =
+            join ", " (map Ustring.toAscii fields)
     in
         case t of
             Ast.SpecialType Ast.Any => "*"
@@ -138,6 +140,7 @@ fun ty t =
           | Ast.AppType {base, args} => (ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NullableType { expr, nullable } => (ty expr) ^ (if nullable then "?" else "!")
           | Ast.InstanceType { name=n, ... } => name n
+	  | Ast.LamType { params, body } => "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
     end
 
 exception LexError of string

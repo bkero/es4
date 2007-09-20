@@ -378,9 +378,6 @@ datatype PRAGMA =
        | QualifiedIdentifier of
            { qual : EXPR,
              ident : Ustring.STRING }
-       | TypeIdentifier of (* In a type context, these will be AppType *)
-         { ident : IDENT_EXPR,
-           typeArgs : TY list }
        | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
        | WildcardIdentifier
 

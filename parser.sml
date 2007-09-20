@@ -1847,6 +1847,7 @@ and memberExpressionPrime (ts:TOKENS, nd:Ast.EXPR, a:ALPHA, b:BETA)
     in case ts of
         (LeftBracket, _) :: _ => withPropertyOperator ()
       | (Dot, _) :: _ => withPropertyOperator ()
+      | (LeftDotAngle, _) :: _ => withPropertyOperator ()
       | _ =>
             let
             in
@@ -2089,6 +2090,16 @@ and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
                            ident=Ast.ExpressionIdentifier {expr = nd1, openNamespaces = []},
                            loc=locOf ts})
             end
+      | (LeftDotAngle, _) :: _ =>
+        let
+            val (ts1, nd1) = typeExpressionList (tl ts)
+        in 
+            case ts1 of
+                (* FIXME: what about >> and >>> *)
+                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpr {expr=nd, actuals=nd1})
+              | _ => error ["unknown final token of parametric type expression"]
+            end
+
       | _ => error ["unknown token in propertyOperator"]
     end
 
@@ -3570,22 +3581,24 @@ and functionType (ts:TOKENS)
 and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
     : Ast.TY =
     let
+        val Ast.FunctionSignature {typeParams,
+                                   params,
+                                   paramTypes,
+                                   returnType,
+                                   thisType,
+                                   hasRest,
+                                   defaults,...} = fsig
+        val (b,i) = params
+        val typeExpr = Ast.FunctionType {params=paramTypes,
+                                         result=returnType,
+                                         thisType=thisType,
+                                         hasRest=hasRest,
+                                         minArgs=(length paramTypes)-(length defaults)}
     in
-       case fsig of
-        Ast.FunctionSignature {typeParams,params,paramTypes,returnType,thisType,hasRest,defaults,...} =>
-            let
-                val (b,i) = params
-                val typeExpr = Ast.FunctionType {params=paramTypes,
-                                                 result=returnType,
-                                                 thisType=thisType,
-                                                 hasRest=hasRest,
-                                                 minArgs=(length paramTypes)-(length defaults)}
-            in
-                case typeParams of 
-                    [] => makeTy typeExpr
-                  | _ => makeTy (Ast.LamType { params = typeParams,
-                                               body = typeExpr })
-            end
+        case typeParams of 
+            [] => makeTy typeExpr
+          | _ => makeTy (Ast.LamType { params = typeParams,
+                                       body = typeExpr })
     end
 
 (*
@@ -6041,7 +6054,8 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
               | Ast.SpecialType AstAny :: _ => hasNonStar (tl ts)
               | _ => true
 
-        val hasNonStarAnno = hasNonStar (AstQuery.paramTypesOfFuncTy ty) 
+        val hasNonStarAnno = (not (Type.isGroundTy ty))
+                             orelse hasNonStar (AstQuery.paramTypesOfFuncTy ty) 
                              orelse hasNonStar [(AstQuery.resultTypeOfFuncTy ty)]
     in
         (ts4,{pragmas=[],
