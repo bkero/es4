@@ -89,7 +89,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.InstanceType cty,
+                           { ty = Ast.Ty { expr=Ast.InstanceType cty, frameId=NONE, topUnit=NONE },
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
                                        dontEnum = true,

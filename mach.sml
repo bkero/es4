@@ -253,11 +253,11 @@ withtype FUN_CLOSURE =
 
      and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
-     and PROP = { ty: Ast.TYPE_EXPR,
+     and PROP = { ty: Ast.TY,
                   state: PROP_STATE,
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = ({ ty: Ast.TYPE_EXPR,
+     and PROP_BINDINGS = ({ ty: Ast.TY,
                             state: PROP_STATE,
                             attrs: ATTRS } (* PROP *)
                           NameMap.map) ref
@@ -472,6 +472,12 @@ fun matchProps (fixedProps:bool)
         List.mapPartial tryNS nss
     end
 
+fun makeTy (te:Ast.TYPE_EXPR) 
+    : Ast.TY = 
+    Ast.Ty { expr = te,
+             frameId = NONE,
+             topUnit = NONE }
+
 fun getProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
     : PROP =
@@ -483,7 +489,7 @@ fun getProp (b:PROP_BINDINGS)
          * with value undefined. Any property not found
          * errors would have been caught by evalRefExpr
          *)
-        {ty=Ast.SpecialType Ast.Undefined,
+        {ty=makeTy (Ast.SpecialType Ast.Undefined),
          state=ValProp Undef,
          attrs={dontDelete=false,  (* unused attrs *)
                 dontEnum=false,
@@ -736,7 +742,7 @@ fun inspect (v:VAL)
                 fun subVal i v = printVal (i+1) (n-1) v
                 fun prop np =
                     let
-                        val (n,{ty,state,attrs}) = np
+                        val (n,{ty=ty0,state,attrs}) = np
                         val indent = indent + 1
                         val stateStr =
                             case state of
@@ -750,7 +756,7 @@ fun inspect (v:VAL)
                               | NamespaceProp _ => "[namespace]"
                               | ValListProp _ => "[val list]"
                     in
-                        p indent ["   prop = ", LogErr.name n, ": ", typ ty, att attrs,  " = "];
+                        p indent ["   prop = ", LogErr.name n, ": ", ty ty0, att attrs,  " = "];
                         case state of
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")

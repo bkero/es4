@@ -63,23 +63,29 @@ fun makeTy (tyExpr:Ast.TYPE_EXPR)
              topUnit = NONE,
              expr = tyExpr }
 
-fun evalTy (regs:Mach.REGS)
-           (ty:Ast.TY)
-    : Ast.TYPE_EXPR = 
+fun needGroundTy (regs:Mach.REGS)
+                 (ty:Ast.TY)
+    : Ast.TY = 
+    let
     (* 
-     * evalTy implements the above assumption: a last-ditch, no-option
+     * needGroundTy implements the above assumption: a last-ditch 
      * requirement that we *must* turn this TY into a ground TYPE_EXPR. 
      * We call this in a variety of contexts where the program can't 
      * really sensibly proceed if we can't ground the type.
      *)
-    let
         val norm = Type.normalize (#prog regs) ty
     in
         if Type.isGroundTy norm
-        then AstQuery.typeExprOf norm
-        else (Pretty.ppType (AstQuery.typeExprOf ty);
-              error regs ["Unable to ground type closure"])
+        then norm             
+        else error regs ["Unable to ground type closure: ", 
+                         LogErr.ty (AstQuery.typeExprOf ty)]
     end
+    
+
+fun evalTy (regs:Mach.REGS)
+           (ty:Ast.TY)
+    : Ast.TYPE_EXPR = 
+    AstQuery.typeExprOf (needGroundTy regs ty)
 
 
 (* Exceptions for object-language control transfer. *)
@@ -274,7 +280,7 @@ fun allocRib (regs:Mach.REGS)
         val _ = trace ["allocating rib on object id #", Int.toString ident]
         val {scope, ...} = regs
         val methodScope = extendScope scope obj Mach.ActivationScope
-        fun valAllocState (t:Ast.TYPE_EXPR)
+        fun valAllocState (ty:Ast.TY)
             : Mach.PROP_STATE =
             
             (* Every value fixture has a type, and every type has an
@@ -290,71 +296,75 @@ fun allocRib (regs:Mach.REGS)
              * error to complete the initialization phase of an
              * object with any properties remaining in
              * Mach.UninitProp state. *)
-            
-            case t of
-                Ast.SpecialType (Ast.Any) =>
-                Mach.ValProp (Mach.Undef)
-                
-              | Ast.SpecialType (Ast.Null) =>
-                Mach.ValProp (Mach.Null)
-                
-              | Ast.SpecialType (Ast.Undefined) =>
-                Mach.ValProp (Mach.Undef)
-                
-              | Ast.SpecialType (Ast.VoidType) =>
-                error regs ["attempt to allocate void-type property"]
-                
-              (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
-              | Ast.UnionType _ =>
-                Mach.ValProp (Mach.Null)
-                
-              | Ast.ArrayType _ =>
-                Mach.ValProp (Mach.Null)
-                
-              | Ast.FunctionType _ =>
-                Mach.UninitProp
-                
-              | Ast.ObjectType _ =>
-                Mach.ValProp (Mach.Null)
-                
-              | Ast.AppType {base, ...} =>
-                valAllocState base
-                
-              | Ast.NullableType { expr, nullable=true } =>
-                Mach.ValProp (Mach.Null)
-                
-              | Ast.NullableType { expr, nullable=false } =>
-                Mach.UninitProp
-                
-              | Ast.TypeName ident =>
-                error regs ["allocating fixture with unresolved type name: ", LogErr.ty t]
-                
-              | Ast.ElementTypeRef _ =>
-                error regs ["allocating fixture of unresolved element type reference"]
-                
-              | Ast.FieldTypeRef _ =>
-                error regs ["allocating fixture of unresolved field type reference"]
-                
-              (* Note, the definer must have created inits for nonnullable primitive types
-               * where the program does not contain such inits.
-               *)
-              | Ast.InstanceType n =>
-                if (#nonnullable n)
-                then
-                    (* It is possible that we're booting and the class n doesn't even exist yet. *)
-                    if (not (Mach.isBooting regs)) orelse 
-                       Mach.isClass (getValue regs (#global regs) (#name n))
-                    then
-                        case Type.groundFindConversion (Ast.SpecialType Ast.Undefined) t of
-                            SOME _ => Mach.ValProp (checkAndConvert regs Mach.Undef t)
-                          | NONE => Mach.UninitProp
-                    else
-                        Mach.UninitProp
-                else
-                    Mach.ValProp Mach.Null
 
-              | Ast.LamType _ => 
-                Mach.UninitProp
+            let
+                val Ast.Ty { expr, frameId, topUnit } = ty 
+            in            
+                case expr of
+                    Ast.SpecialType (Ast.Any) =>
+                    Mach.ValProp (Mach.Undef)
+                    
+                  | Ast.SpecialType (Ast.Null) =>
+                    Mach.ValProp (Mach.Null)
+                    
+                  | Ast.SpecialType (Ast.Undefined) =>
+                    Mach.ValProp (Mach.Undef)
+                    
+                  | Ast.SpecialType (Ast.VoidType) =>
+                    error regs ["attempt to allocate void-type property"]
+                    
+                  (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
+                  | Ast.UnionType _ =>
+                    Mach.ValProp (Mach.Null)
+                    
+                  | Ast.ArrayType _ =>
+                    Mach.ValProp (Mach.Null)
+                    
+                  | Ast.FunctionType _ =>
+                    Mach.UninitProp
+                    
+                  | Ast.ObjectType _ =>
+                    Mach.ValProp (Mach.Null)
+                    
+                  | Ast.AppType {base, ...} =>
+                    valAllocState (Ast.Ty { expr=base, frameId=frameId, topUnit=topUnit })
+                
+                  | Ast.NullableType { expr, nullable=true } =>
+                    Mach.ValProp (Mach.Null)
+                    
+                  | Ast.NullableType { expr, nullable=false } =>
+                    Mach.UninitProp
+                    
+                  | Ast.TypeName ident =>
+                    error regs ["allocating fixture with unresolved type name: ", LogErr.ty expr]
+                    
+                  | Ast.ElementTypeRef _ =>
+                    error regs ["allocating fixture of unresolved element type reference"]
+                
+                  | Ast.FieldTypeRef _ =>
+                    error regs ["allocating fixture of unresolved field type reference"]
+                    
+                  (* Note, the definer must have created inits for nonnullable primitive types
+                   * where the program does not contain such inits.
+                   *)
+                  | Ast.InstanceType n =>
+                    if (#nonnullable n)
+                    then
+                        (* It is possible that we're booting and the class n doesn't even exist yet. *)
+                        if (not (Mach.isBooting regs)) orelse 
+                           Mach.isClass (getValue regs (#global regs) (#name n))
+                        then
+                            case Type.groundFindConversion (Ast.SpecialType Ast.Undefined) expr of
+                                SOME _ => Mach.ValProp (checkAndConvert regs Mach.Undef ty)
+                              | NONE => Mach.UninitProp
+                        else
+                            Mach.UninitProp
+                    else
+                        Mach.ValProp Mach.Null
+                        
+                  | Ast.LamType _ => 
+                    Mach.UninitProp
+            end
 
         fun tempPadding n =
             if n = 0
@@ -430,7 +440,7 @@ fun allocRib (regs:Mach.REGS)
                     case f of
                         Ast.TypeFixture ty =>
                             allocProp "type"
-                                      { ty = evalTy regs ty,
+                                      { ty = Type.normalize (#prog regs) ty,
                                         state = Mach.TypeProp,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -445,7 +455,7 @@ fun allocRib (regs:Mach.REGS)
                                     else Mach.MethodProp (newFunClosure methodScope func this)
                         in
                             allocProp "method"
-                                      { ty = evalTy regs ty,
+                                      { ty = Type.normalize (#prog regs) ty,
                                         state = p,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -455,7 +465,7 @@ fun allocRib (regs:Mach.REGS)
                         
                       | Ast.ValFixture { ty, readOnly, ... } =>
                         let
-                            val ty = evalTy regs ty 
+                            val ty = needGroundTy regs ty
                         in
                             allocProp "value"
                                       { ty = ty,
@@ -476,7 +486,7 @@ fun allocRib (regs:Mach.REGS)
                                           | SOME f => SOME (newFunClosure methodScope f this)
                         in
                             allocProp "virtual value"
-                                      { ty = evalTy regs ty,
+                                      { ty = needGroundTy regs ty,
                                         state = Mach.VirtualValProp { getter = getFn,
                                                                       setter = setFn },
                                         attrs = { dontDelete = true,
@@ -495,10 +505,7 @@ fun allocRib (regs:Mach.REGS)
                             val _ = allocObjRib regs classObj NONE classRib
                         in
                             allocProp "class"
-                                      (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Class type;
-                                       * this is a little tricky since it has to interact with 
-                                       * bootstrapping, but we can do it. For now we use '*' *)
-                                      { ty = Ast.SpecialType Ast.Any,
+                                      { ty = makeTy (Name.typename Name.intrinsic_Class),
                                         state = Mach.ValProp (Mach.Object classObj),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -508,10 +515,7 @@ fun allocRib (regs:Mach.REGS)
 
                       | Ast.NamespaceFixture ns =>
                         allocProp "namespace"
-                                  (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Namespace type;
-                                   * this is a little tricky since it has to interact with 
-                                   * bootstrapping, but we can do it. For now we use '*' *)
-                                  { ty = Ast.SpecialType Ast.Any,
+                                  { ty = makeTy (Name.typename Name.intrinsic_Namespace),
                                     state = Mach.NamespaceProp ns,
                                     attrs = { dontDelete = true,
                                               dontEnum = true,
@@ -520,10 +524,7 @@ fun allocRib (regs:Mach.REGS)
 
                       | Ast.TypeVarFixture =>
                         allocProp "type variable"
-                                  (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Type type;
-                                   * this is a little tricky since it has to interact with 
-                                   * bootstrapping, but we can do it. For now we use '*' *)
-                                  { ty = Ast.SpecialType Ast.Any,
+                                  { ty = makeTy (Name.typename Name.intrinsic_Type),
                                     state = Mach.TypeVarProp,
                                     attrs = { dontDelete = true,
                                               dontEnum = true,
@@ -535,11 +536,8 @@ fun allocRib (regs:Mach.REGS)
                             val _ = trace ["allocating interface object for interface ", fmtName pn]
                             val ifaceObj = needObj regs (newInterface regs scope iface)
                         in
-                            (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Interface type;
-                             * this is a little tricky since it has to interact with 
-                             * bootstrapping, but we can do it. For now we use '*' *)
                             allocProp "interface"
-                                      { ty = Ast.SpecialType Ast.Any,
+                                      { ty = makeTy (Name.typename Name.intrinsic_Type),
                                         state = Mach.ValProp (Mach.Object ifaceObj),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -645,6 +643,7 @@ and getValueOrVirtual (regs:Mach.REGS)
              Mach.addProp props name { state = Mach.ValProp newVal,
                                        ty = (#ty currProp),
                                        attrs = (#attrs currProp) };
+             trace ["upgraded property ", fmtName name ];
              newVal)
     in
         case Mach.findProp props name of
@@ -733,31 +732,35 @@ and typeOpFailure (regs:Mach.REGS)
                   (tyExpr:Ast.TYPE_EXPR)
     : Mach.VAL =
     throwTypeErr regs [prefix, ": val=", Mach.approx v,
-                       " type=", LogErr.ty (typeOfVal v),
+                       " type=", LogErr.ty (typeOfVal regs v),
                        " wanted=", LogErr.ty tyExpr]
     
 and checkAndConvert (regs:Mach.REGS)
                     (v:Mach.VAL)
-                    (tyExpr:Ast.TYPE_EXPR)
+                    (ty:Ast.TY)
     : Mach.VAL =
-    if (isCompatible regs v tyExpr)
-    then v
-    else
-        let
-            val (classType:Ast.TYPE_EXPR) =
-                case Type.groundFindConversion (typeOfVal v) tyExpr of
-                    NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
-                             Ast.SpecialType Ast.Any)
-                  | SOME n => n
-            val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
-            val (classObj:Mach.OBJ) = instanceClass regs classTy
-            (* FIXME: this will call back on itself! *)
-            val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_convert) [v]
-        in
-            if isCompatible regs converted tyExpr
-            then converted
-            else typeOpFailure regs "converter returned incompatible value" converted tyExpr
-        end
+    let
+        val tyExpr = evalTy regs ty
+    in
+        if (isCompatible regs v tyExpr)
+        then v
+        else
+            let
+                val (classType:Ast.TYPE_EXPR) =
+                    case Type.groundFindConversion (typeOfVal regs v) tyExpr of
+                        NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
+                                 Ast.SpecialType Ast.Any)
+                      | SOME n => n
+                val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
+                val (classObj:Mach.OBJ) = instanceClass regs classTy
+                (* FIXME: this will call back on itself! *)
+                val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_convert) [v]
+            in
+                if isCompatible regs converted tyExpr
+                then converted
+                else typeOpFailure regs "converter returned incompatible value" converted tyExpr
+            end
+    end
 
 and isDynamic (regs:Mach.REGS)
               (obj:Mach.OBJ)
@@ -849,7 +852,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                 fun newProp _ =
                     let
                         val prop = { state = Mach.ValProp v,
-                                     ty = Ast.SpecialType Ast.Any,
+                                     ty = makeTy (Ast.SpecialType Ast.Any),
                                      attrs = { dontDelete = false,
                                                dontEnum = shouldBeDontEnum regs name obj,
                                                readOnly = false,
@@ -1079,7 +1082,7 @@ and needNameOrString (regs:Mach.REGS)
     : Ast.NAME =
     case v of
         Mach.Object obj => 
-        if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name [])
+        if (typeOfVal regs v) <: (instanceType regs Name.intrinsic_Name [])
         then
             let
                 val nsval = getValue regs obj Name.nons_qualifier
@@ -1358,7 +1361,13 @@ and newFunctionFromClosure (regs:Mach.REGS)
     let
         val { func, ... } = closure
         val Ast.Func { ty, ... } = func
-        val fty = AstQuery.needFunctionType (evalTy regs ty)
+        fun findFuncType e = 
+            case e of 
+                Ast.LamType { params, body } =>  findFuncType body 
+              | Ast.FunctionType fty => fty
+              | _ => error regs ["unexpected primary type in function: ", LogErr.ty e]
+
+        val fty = findFuncType (AstQuery.typeExprOf ty)
         val tag = Mach.FunctionTag fty
 
         val _ = trace ["finding Function.prototype"]
@@ -1826,7 +1835,7 @@ and checkCompatible (regs:Mach.REGS)
     if isCompatible regs v tyExpr
     then v
     else error regs ["typecheck failed, val=", Mach.approx v,
-                     " type=", LogErr.ty (typeOfVal v),
+                     " type=", LogErr.ty (typeOfVal regs v),
                      " wanted=", LogErr.ty tyExpr]
 
 and evalExpr (regs:Mach.REGS)
@@ -1975,6 +1984,21 @@ and instanceType (regs:Mach.REGS)
         applyTypes regs instanceTy args
     end
 
+and traceScope (s:Mach.SCOPE)
+    : unit =
+    let
+        val Mach.Scope { object, parent, ... } = s
+        val Mach.Obj { ident, props, ... } = getScopeObj s
+        val names = map (fn (n,_) => n) (NameMap.listItemsi (!props))
+    in        
+        trace ["scope: ", Int.toString ident, " = ",
+               (if length names > 5
+                then " ...lots... "
+                else (LogErr.join ", " (map LogErr.name names)))];
+        case parent of 
+            NONE => ()
+          | SOME p => traceScope p
+    end
 
 and bindTypes (regs:Mach.REGS)
               (typeParams:Ast.IDENT list)
@@ -1987,6 +2011,8 @@ and bindTypes (regs:Mach.REGS)
             then error regs ["argument length mismatch when binding type args in env"]
             else ()
         val (scopeObj:Mach.OBJ) = Mach.newObjNoTag ()
+        val _ = trace ["binding ", Int.toString (length typeArgs), 
+                       " type args to scope #", Int.toString (getObjId scopeObj)]
         val env = extendScope env scopeObj Mach.TypeArgScope
         val paramFixtureNames = map (fn id => Ast.PropName (Name.nons id)) typeParams
         val argFixtures = map (fn te => Ast.TypeFixture (makeTy te)) typeArgs
@@ -2216,11 +2242,11 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
             let
                 val name = Name.nons (Ustring.fromInt n)
                 (* FIXME: this is probably incorrect wrt. Array typing rules. *)
-                val ty = if n < (length tyExprs)
-                         then List.nth (tyExprs, n)
-                         else (if (length tyExprs) > 0
-                               then List.last tyExprs
-                               else Ast.SpecialType Ast.Any)
+                val ty = makeTy (if n < (length tyExprs)
+                                 then List.nth (tyExprs, n)
+                                 else (if (length tyExprs) > 0
+                                       then List.last tyExprs
+                                       else Ast.SpecialType Ast.Any))
                 val prop = { ty = ty,
                              state = Mach.ValProp v,
                              attrs = { dontDelete = false,
@@ -2272,7 +2298,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                             Name n => n
                           | Multiname n => Name.nons (#id n)
                 val v = evalExpr regs init
-                val ty = searchFieldTypes (#id n) tyExprs
+                val ty = makeTy (searchFieldTypes (#id n) tyExprs)
                 val prop = { ty = ty,
                              (* FIXME: handle virtuals *)
                              state = Mach.ValProp v,
@@ -3182,33 +3208,45 @@ and doubleEquals (regs:Mach.REGS)
 
  *)
 
-and typeOfVal (v:Mach.VAL)
+and typeOfVal (regs:Mach.REGS)
+              (v:Mach.VAL)
     : Ast.TYPE_EXPR =
-    case v of
-        Mach.Undef => Ast.SpecialType Ast.Undefined
-      | Mach.Null => Ast.SpecialType Ast.Null
-      | Mach.Object (Mach.Obj {tag, ...}) =>
-        (case tag of
-             Mach.ClassTag ity => Ast.InstanceType ity
-           | Mach.ObjectTag tys => Ast.ObjectType tys
-           | Mach.ArrayTag tys => Ast.ArrayType tys
-           | Mach.FunctionTag fty => Ast.FunctionType fty
-           | Mach.NoTag =>
-             (* FIXME: this would be a hard error if we didn't use NoTag values
-              * as temporaries. Currently we do, so there are contexts where we
-              * want them to have a type in order to pass a runtime type test.
-              * this is of dubious value to me. -graydon.
-              *
-              * error regs ["typeOfVal on NoTag object"])
-              *)
-             Ast.SpecialType Ast.Any)
-
+    let
+        val te = case v of
+                     Mach.Undef => Ast.SpecialType Ast.Undefined
+                   | Mach.Null => Ast.SpecialType Ast.Null
+                   | Mach.Object (Mach.Obj {tag, ...}) =>
+                     (case tag of
+                          (* 
+                           * FIXME: Class and Object should be pulling their 
+                           * ty from their magic closures, not their tags.
+                           * 
+                           * Possibly the tags should not carry types at all? Or 
+                           * should carry TYs rather than TYPE_EXPR subforms?
+                           *)
+                          Mach.ClassTag ity => Ast.InstanceType ity
+                        | Mach.ObjectTag tys => Ast.ObjectType tys
+                        | Mach.ArrayTag tys => Ast.ArrayType tys
+                        | Mach.FunctionTag fty => Ast.FunctionType fty
+                        | Mach.NoTag =>
+                          (* FIXME: this would be a hard error if we didn't use NoTag values
+                           * as temporaries. Currently we do, so there are contexts where we
+                           * want them to have a type in order to pass a runtime type test.
+                           * this is of dubious value to me. -graydon.
+                           *
+                           * error regs ["typeOfVal on NoTag object"])
+                           *)
+                          Ast.SpecialType Ast.Any)
+    in
+        evalTy regs (makeTy te)
+    end
+                     
 
 and isCompatible (regs:Mach.REGS)
                  (v:Mach.VAL)
                  (tyExpr:Ast.TYPE_EXPR)
     : bool =
-    Type.groundIsCompatible (typeOfVal v) tyExpr
+    Type.groundIsCompatible (typeOfVal regs v) tyExpr
 
 
 and evalBinaryTypeOp (regs:Mach.REGS)
@@ -3218,15 +3256,14 @@ and evalBinaryTypeOp (regs:Mach.REGS)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
-        val tyExpr = evalTy regs ty
     in
         case bop of
             Ast.Cast =>
-            if isCompatible regs v tyExpr
+            if isCompatible regs v (evalTy regs ty)
             then v
-            else typeOpFailure regs "cast failed" v tyExpr
-          | Ast.To => checkAndConvert regs v tyExpr
-          | Ast.Is => newBoolean regs ((typeOfVal v) <: tyExpr)
+            else typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty)
+          | Ast.To => checkAndConvert regs v ty
+          | Ast.Is => newBoolean regs ((typeOfVal regs v) <: (evalTy regs ty))
     end
 
 and evalBinaryOp (regs:Mach.REGS)
@@ -3346,7 +3383,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name [])
+                if (typeOfVal regs v) <: (instanceType regs Name.intrinsic_Name [])
                 then
                     let
                         val nsval = getValue regs obj Name.nons_qualifier
@@ -3639,6 +3676,9 @@ and invokeFuncClosure (regs:Mach.REGS)
     : Mach.VAL =
     let
         val { func, this, env } = closure
+        val _ = trace ["entering func closure in scope #", 
+                       Int.toString (getObjId (getScopeObj env))]
+        val _ = traceScope env
         val Ast.Func { name, block, param=Ast.Head (paramRib, paramInits), ty, ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", 
@@ -3669,7 +3709,7 @@ and invokeFuncClosure (regs:Mach.REGS)
 
             (* FIXME: self-name binding is surely more complex than this! *)
             val selfName = Name.nons (#ident name)
-            fun initSelf _ = Mach.addProp props selfName { ty = Ast.SpecialType Ast.Any,
+            fun initSelf _ = Mach.addProp props selfName { ty = makeTy (Ast.SpecialType Ast.Any),
                                                            state = Mach.MethodProp closure,
                                                            attrs = { dontDelete = true,
                                                                      dontEnum = true,
@@ -3814,7 +3854,7 @@ and bindArgs (regs:Mach.REGS)
              *)
             (Mach.addProp props Name.arguments { state = Mach.ValListProp args,  
                                                  (* args is a better approximation than finalArgs *)
-                                                 ty = Name.typename Name.nons_Object,
+                                                 ty = makeTy (Name.typename Name.nons_Object),
                                                  attrs = { dontDelete = true,
                                                            dontEnum = true,
                                                            readOnly = false,
