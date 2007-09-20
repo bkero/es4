@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/global.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -57,9 +57,12 @@ __ES4__ class Namespace <LDOTS>
 __ES4__ class ByteArray <LDOTS>
 __ES4__ class Map.<K,V> <LDOTS>
 __ES4__ class Vector.<T> <LDOTS>
+__ES4__ class EncodingError <LDOTS>
 
 __ES4__ type EnumerableId = <LDOTS>
 __ES4__ type Numeric = <LDOTS>
+__ES4__ type Strings = <LDOTS>
+__ES4__ type Booleans = <LDOTS>
 
 __ES4__ namespace intrinsic = <LDOTS>
 
@@ -102,29 +105,6 @@ intrinsic function decodeURIComponent(s: string): string <LDOTS>
 intrinsic function encodeURI(s: string): string <LDOTS>
 intrinsic function encodeURIComponent(s: string): string <LDOTS>
 intrinsic function hashcode(x): uint <LDOTS>
-
-<!--
-intrinsic function +(a,b) <LDOTS>
-intrinsic function -(a,b) <LDOTS>
-intrinsic function *(a,b) <LDOTS>
-intrinsic function /(a,b) <LDOTS>
-intrinsic function %(a,b) <LDOTS>
-intrinsic function ^(a,b) <LDOTS>
-intrinsic function &(a,b) <LDOTS>
-intrinsic function |(a,b) <LDOTS>
-intrinsic function <<(a,b) <LDOTS>
-intrinsic function >>(a,b) <LDOTS>
-intrinsic function >>>(a,b) <LDOTS>
-intrinsic function ===(a,b) <LDOTS>
-intrinsic function !==(a,b) <LDOTS>
-intrinsic function ==(a,b) <LDOTS>
-intrinsic function !=(a,b) <LDOTS>
-intrinsic function <(a,b) <LDOTS>
-intrinsic function <=(a,b) <LDOTS>
-intrinsic function >(a,b) <LDOTS>
-intrinsic function >=(a,b) <LDOTS>
-intrinsic function ~(a) <LDOTS>
--->
 
 function eval(x) <LDOTS>
 function parseInt(s, r=undefined) <LDOTS>
