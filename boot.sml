@@ -253,6 +253,7 @@ fun boot _ =
                                     "builtins/Interface.es",
 
                                     "builtins/Error.es",
+                                    "builtins/EncodingError.es",
                                     "builtins/EvalError.es",
                                     "builtins/RangeError.es",
                                     "builtins/ReferenceError.es",
