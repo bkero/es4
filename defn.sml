@@ -149,7 +149,7 @@ fun makeTy (e:ENV)
          * something we said we would only do in strict mode. Maybe make a flag in 
          * Fixture.PROGRAM to control exactly how strict we are?
          *)        
-        Type.normalize (#program e) ty
+        Type.normalize (#program e) [] ty
     end
 
         
@@ -377,14 +377,14 @@ fun extendProgramTopRib (env:ENV)
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
-        withProgram env (Fixture.extendTopRib program rib (Type.equals program))
+        withProgram env (Fixture.extendTopRib program rib (Type.equals program []))
     end
 
 
 fun mergeRibs (program:Fixture.PROGRAM)
               (oldRib:Ast.RIB) 
               (newRib:Ast.RIB) = 
-    List.foldl (Fixture.mergeFixtures (Type.equals program)) oldRib newRib
+    List.foldl (Fixture.mergeFixtures (Type.equals program [])) oldRib newRib
 
 fun updateRib (env:ENV) (rib:Ast.RIB)
     : ENV =
@@ -638,7 +638,7 @@ and defInterface (env: ENV)
 
         val prog = (#program env)
 
-        val groundSuperInterfaceExprs = map (Type.groundExpr o (Type.normalize prog)) superInterfaces
+        val groundSuperInterfaceExprs = map (Type.groundExpr o (Type.normalize prog [])) superInterfaces
 
         val env = enterClass env name
 
@@ -924,7 +924,7 @@ and resolveClassInheritance (env:ENV)
                         NONE => implementsTys
                       | SOME ty => ty :: implementsTys
                 val prog = (#program env)
-                val superTypes = map (Type.groundExpr o (Type.normalize prog)) superTypes
+                val superTypes = map (Type.groundExpr o (Type.normalize prog [])) superTypes
                 val te = Ast.InstanceType { name = (#name it),
                                             typeArgs = (#typeArgs it),
                                             nonnullable = (#nonnullable it),
@@ -1141,7 +1141,7 @@ and analyzeClassBody (env:ENV)
                         let
                             val pty = AstQuery.singleParamTyOfFuncTy ty
                         in 
-                            SOME (Type.groundExpr (Type.normalize (#program env) pty))
+                            SOME (Type.groundExpr (Type.normalize (#program env) [] pty))
                         end
                       | _ => NONE
                 else NONE
@@ -3104,7 +3104,7 @@ and defTopFragment (prog:Fixture.PROGRAM)
     let
         val topEnv = mkTopEnv prog
         val (prog, frag) = defFragment topEnv frag
-        val prog = Fixture.closeTopFragment prog frag (Type.equals prog)
+        val prog = Fixture.closeTopFragment prog frag (Type.equals prog [])
     in
         trace ["fragment definition complete"];
         (if !doTraceSummary

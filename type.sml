@@ -207,8 +207,9 @@ type TY_NORM = { exprs: Ast.TYPE_EXPR list,
                  topUnit: Ast.UNIT_NAME option }
 
 fun normalize (prog:Fixture.PROGRAM) 
+              (locals:Ast.RIBS)
               (t:Ast.TY) 
-    : Ast.TY = (norm2ty (ty2norm prog t []))
+    : Ast.TY = (norm2ty (ty2norm prog t locals))
 
 and repackage (t:Ast.TY) 
     : TY_NORM = 
@@ -560,12 +561,13 @@ fun serializeGroundType (a:Ast.TYPE_EXPR)
 fun normalizingPredicate groundPredicate 
                          nonNormalizableDefault
                          (prog:Fixture.PROGRAM)
+                         (locals:Ast.RIBS)
                          (t1:Ast.TY)
                          (t2:Ast.TY)
   =
   let
-      val norm1 = normalize prog t1
-      val norm2 = normalize prog t2
+      val norm1 = normalize prog locals t1
+      val norm2 = normalize prog locals t2
   in
       if isGroundTy norm1 andalso
          isGroundTy norm2 

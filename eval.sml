@@ -63,6 +63,41 @@ fun makeTy (tyExpr:Ast.TYPE_EXPR)
              topUnit = NONE,
              expr = tyExpr }
 
+
+fun extractRuntimeTypeRibs (regs:Mach.REGS)
+                           (scope:Mach.SCOPE) 
+                           (ribs:Ast.RIBS) 
+    : Ast.RIBS = 
+      let
+          fun typePropToFixture (n:Ast.NAME, prop:Mach.PROP) : 
+              (Ast.FIXTURE_NAME * Ast.FIXTURE) = 
+              case (#state prop) of 
+                  Mach.TypeProp => (Ast.PropName n, Ast.TypeFixture (#ty prop))
+                | _ => error regs ["non-type property in type-arg scope"]
+                       
+          fun typePropsToRib (props:Mach.PROP_BINDINGS) 
+              : Ast.RIB = 
+              map typePropToFixture (NameMap.listItemsi (!props))
+              
+          val Mach.Scope {kind, object=Mach.Obj {props, ...}, parent, ...} = scope
+          val ribs' = case kind of 
+                          Mach.TypeArgScope => (typePropsToRib props) :: ribs
+                        | _ => ribs
+      in
+          case parent of 
+              NONE => List.rev ribs'
+            | SOME p => extractRuntimeTypeRibs regs p ribs'
+      end
+
+fun normalize (regs:Mach.REGS)
+              (ty:Ast.TY)
+    : Ast.TY = 
+    let
+        val locals = extractRuntimeTypeRibs regs (#scope regs) []
+    in
+        Type.normalize (#prog regs) locals ty
+    end
+
 fun needGroundTy (regs:Mach.REGS)
                  (ty:Ast.TY)
     : Ast.TY = 
@@ -73,7 +108,7 @@ fun needGroundTy (regs:Mach.REGS)
      * We call this in a variety of contexts where the program can't 
      * really sensibly proceed if we can't ground the type.
      *)
-        val norm = Type.normalize (#prog regs) ty
+        val norm = normalize regs ty
     in
         if Type.isGroundTy norm
         then norm             
@@ -84,7 +119,7 @@ fun needGroundTy (regs:Mach.REGS)
 
 fun evalTy (regs:Mach.REGS)
            (ty:Ast.TY)
-    : Ast.TYPE_EXPR = 
+    : Ast.TYPE_EXPR =     
     AstQuery.typeExprOf (needGroundTy regs ty)
 
 
@@ -440,7 +475,7 @@ fun allocRib (regs:Mach.REGS)
                     case f of
                         Ast.TypeFixture ty =>
                             allocProp "type"
-                                      { ty = Type.normalize (#prog regs) ty,
+                                      { ty = normalize regs ty,
                                         state = Mach.TypeProp,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -455,7 +490,7 @@ fun allocRib (regs:Mach.REGS)
                                     else Mach.MethodProp (newFunClosure methodScope func this)
                         in
                             allocProp "method"
-                                      { ty = Type.normalize (#prog regs) ty,
+                                      { ty = normalize regs ty,
                                         state = p,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -1986,19 +2021,23 @@ and instanceType (regs:Mach.REGS)
 
 and traceScope (s:Mach.SCOPE)
     : unit =
-    let
-        val Mach.Scope { object, parent, ... } = s
-        val Mach.Obj { ident, props, ... } = getScopeObj s
-        val names = map (fn (n,_) => n) (NameMap.listItemsi (!props))
-    in        
-        trace ["scope: ", Int.toString ident, " = ",
-               (if length names > 5
-                then " ...lots... "
-                else (LogErr.join ", " (map LogErr.name names)))];
-        case parent of 
-            NONE => ()
-          | SOME p => traceScope p
-    end
+    if !doTrace
+    then 
+        let
+            val Mach.Scope { object, parent, ... } = s
+            val Mach.Obj { ident, props, ... } = getScopeObj s
+            val names = map (fn (n,_) => n) (NameMap.listItemsi (!props))
+        in    
+            trace ["scope: ", Int.toString ident, " = ",
+                   (if length names > 5
+                    then " ...lots... "
+                    else (LogErr.join ", " (map LogErr.name names)))];
+            case parent of 
+                NONE => ()
+              | SOME p => traceScope p
+        end
+    else
+        ()
 
 and bindTypes (regs:Mach.REGS)
               (typeParams:Ast.IDENT list)
