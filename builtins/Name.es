@@ -68,7 +68,7 @@ intrinsic final class Name extends String
     override intrinsic function toString() : string {
         if (qualifier === null)
             return identifier;
-        return qualifier + "::" + identifier;
+        return string(qualifier) + "::" + identifier;
     }
 
     prototype function valueOf(this : Name)

@@ -54,6 +54,8 @@ package
     /* E262-3 15.10: Regular expression object */
     public dynamic class RegExp
     {
+        static const length = 2;
+
         /* E262-3 15.10.3.1: The RegExp constructor called as a function */
         meta static function invoke( pattern, flags ) {
             if (pattern is RegExp && flags === undefined)
@@ -110,11 +112,11 @@ package
 
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
         intrinsic function exec(s : string) : Array {
-            let length : uint = s.length;
-            let i : double = helper::toInteger(lastIndex);
+            let length = s.length;
+            let i = helper::toInteger(lastIndex);
             if (!global)
                 i = 0;
-            let res : MatchResult = failure;
+            let res = failure;
             while (true) {
                 if (i < 0 || i > length) {
                     lastIndex = 0;
@@ -127,34 +129,34 @@ package
             }
             if (global)
                 lastIndex = res.endIndex;
-            let a = new Array(res.cap.length);
+            let a = new Array(res.captures.length);
             a.index = i;
             a.input = s;
-            a.length = res.cap.length;
+            a.length = res.captures.length;
             a[0] = s.substring(i,res.endIndex);
-            for ( let j=1 ; j < res.cap.length ; j++ )
-                a[j] = res.cap[j];
+            for ( let j=1 ; j < res.captures.length ; j++ )
+                a[j] = res.captures[j];
             for ( let j=1 ; j < names.length ; j++ )
                 if (names[j] !== null)
-                    a[names[j]] = res.cap[j];
+                    a[names[j]] = res.captures[j];
             return a;
         }
 
-        prototype function exec(s)
+        prototype function exec(this:RegExp, s)
             this.exec(string(s));
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
         intrinsic function test(s : string) : boolean
              exec(s) !== null;
 
-        prototype function test(s)
+        prototype function test(this:RegExp, s)
             this.test(string(s));
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
         override intrinsic function toString() : string
             "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
 
-        prototype function toString()
+        prototype function toString(this:RegExp)
             this.intrinsic::toString();
 
         /* E262-3 15.10.7: properties of regexp instances */

@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Vector.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-13
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -10,18 +10,18 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<P> The class ''Vector'' is a parameterized, final, dynamic direct
+<P> The class ''Vector'' is a parameterized, final, dynamic, direct
 subclass of ''Object''.  It represents dense, typed, 0-based,
 one-dimensional arrays with bounds checking and optionally fixed
 length.
 
-<FIXME> It may not be necessary for ''Vector'' to be final, as long as
-the catchall getters and setters and the getters and setters for
-''length'' are final.
+<FIXME> (Ticket #196.) It may not be necessary for ''Vector'' to be
+final, as long as the catchall getters and setters and the getters and
+setters for ''length'' are final.
 
 <P> The class ''Vector'' provides two benefits.  One is optimization:
-the restrictions placed on the class--denseness and a predefined
-iteration order--makes it possible for ECMAScript implementations to
+the restrictions placed on the class---denseness and a predefined
+iteration order---make it possible for ECMAScript implementations to
 implement it particularly efficiently.  The other is error checking:
 ''Vector'' provides stronger type checking and bounds checking than
 ''Array''.
@@ -37,9 +37,9 @@ type and bounds checking.
 
 <P> The type parameter of the ''Vector'' is called its //base type//.
 
-<P> Since the ''Vector'' class is dynamic new properties can be added
-to its instances, but any property whose name is a number (an instance
-of any class in the type ''Numbers'') is handled specially.  These
+<P> As the ''Vector'' class is dynamic, new properties can be added to
+its instances but any property whose name is a number (an instance of
+any class in the type ''Numbers'') is handled specially.  These
 properties are called //indexed properties//.
 
 <P> Only indexed properties named by nonnegative integers less than
@@ -53,20 +53,16 @@ can be defined.
 <P> Any attempt to write an undefined indexed property results in a
 **RangeError** being thrown unless the index is equal to the current
 value of ''length'', the current value of ''length'' is not
-2<SUP>32</SUP>-1, and the value of the ''fixed'' property is not
+2<SUP>32</SUP>-1, and the value of the property ''fixed'' is not
 **true**.
 
-<P> The ''fixed'' property is a flag that determines whether the
+<P> The property ''fixed'' is a flag that determines whether the
 vector has a fixed length or not.  Any attempt to update the value of
 ''length'' fails if the ''fixed'' property has the value **true**.
 
 <NOTE> If ''v'' is a ''Vector'' then reading and writing ''v[3.14]''
 or ''v[-3]'' will always fail, though reading and writing
 ''v["3.14"]'' or ''v["-3"]'' will succeed.  
-
-<P> A vector does not have "holes" in its index range: all indexed
-properties named by nonnegative integers less than ''length'' are
-always defined.
 
 <P class="note"> This deviates from the 3rd Edition, where strings and
 numbers are interchangeable as property names.  But that's no longer
@@ -80,6 +76,10 @@ the end of an Array are probably errors.  And in a number of cases,
 attempts to write beyond the end of an Array are probably errors too.
 The ''Vector'' class makes it possible to discover these errors.
 
+<P> A vector does not have "holes" in its index range: all indexed
+properties named by nonnegative integers less than ''length'' are
+always defined.
+
 
 == Synopsis ==
 
@@ -91,37 +91,68 @@ final class Vector.<T>
     <SIGNATURE file="Vector.es" name="function Vector">
     <SIGNATURE file="Vector.es" name="meta static function invoke">
 
-    <SIGNATURE file="Vector.es" name="function toString">
-    <SIGNATURE file="Vector.es" name="function toLocaleString">
-    <SIGNATURE file="Vector.es" name="function concat">
-    <SIGNATURE file="Vector.es" name="function every">
-    <SIGNATURE file="Vector.es" name="function filter">
-    <SIGNATURE file="Vector.es" name="function forEach">
-    <SIGNATURE file="Vector.es" name="function indexOf">
-    <SIGNATURE file="Vector.es" name="function join">
-    <SIGNATURE file="Vector.es" name="function lastIndexOf">
-    <SIGNATURE file="Vector.es" name="function map">
-    <SIGNATURE file="Vector.es" name="function pop">
-    <SIGNATURE file="Vector.es" name="function push">
-    <SIGNATURE file="Vector.es" name="function reverse">
-    <SIGNATURE file="Vector.es" name="function shift">
-    <SIGNATURE file="Vector.es" name="function slice">
-    <SIGNATURE file="Vector.es" name="function some">
-    <SIGNATURE file="Vector.es" name="function sort">
-    <SIGNATURE file="Vector.es" name="function splice">
-    <SIGNATURE file="Vector.es" name="function unshift">
+    <SIGNATURE file="Vector.es" name="intrinsic function toString">
+    <SIGNATURE file="Vector.es" name="intrinsic function toLocaleString">
+    <SIGNATURE file="Vector.es" name="intrinsic function concat">
+    <SIGNATURE file="Vector.es" name="intrinsic function every">
+    <SIGNATURE file="Vector.es" name="intrinsic function filter">
+    <SIGNATURE file="Vector.es" name="intrinsic function forEach">
+    <SIGNATURE file="Vector.es" name="intrinsic function indexOf">
+    <SIGNATURE file="Vector.es" name="intrinsic function join">
+    <SIGNATURE file="Vector.es" name="intrinsic function lastIndexOf">
+    <SIGNATURE file="Vector.es" name="intrinsic function map">
+    <SIGNATURE file="Vector.es" name="intrinsic function pop">
+    <SIGNATURE file="Vector.es" name="intrinsic function push">
+    <SIGNATURE file="Vector.es" name="intrinsic function reverse">
+    <SIGNATURE file="Vector.es" name="intrinsic function shift">
+    <SIGNATURE file="Vector.es" name="intrinsic function slice">
+    <SIGNATURE file="Vector.es" name="intrinsic function some">
+    <SIGNATURE file="Vector.es" name="intrinsic function sort">
+    <SIGNATURE file="Vector.es" name="intrinsic function splice">
+    <SIGNATURE file="Vector.es" name="intrinsic function unshift">
+
+    <SIGNATURE file="Vector.es" name="iterator function get">
+    <SIGNATURE file="Vector.es" name="iterator function getKeys">
+    <SIGNATURE file="Vector.es" name="iterator function getValues">
+    <SIGNATURE file="Vector.es" name="iterator function getItems">
 
     <SIGNATURE file="Vector.es" name="var fixed">
+
     <SIGNATURE file="Vector.es" name="function get length">
     <SIGNATURE file="Vector.es" name="function set length">
+
     <SIGNATURE file="Vector.es" name="meta function get">
     <SIGNATURE file="Vector.es" name="meta function set">
 }
 }}}
 
-<FIXME> Iterators!!
+<P> The types ''Checker'', ''Eacher'', and ''Mapper'' are as for the ''Array'' class
+(see <XREF target="class Array">).
 
-<P> The ''Vector'' prototype object does not provide any direct properties.
+<P> The ''Vector'' prototype object provides these direct properties:
+
+{{{
+    toString:       function () <LDOTS>
+    toLocaleString: function () <LDOTS>
+    concat:         function (...items) <LDOTS>
+    every:          function (checker, thisObj) <LDOTS>
+    filter:         function (checker, thisObj) <LDOTS>
+    forEach:        function (eacher, thisObj) <LDOTS>
+    indexOf:        function (value, from) <LDOTS>
+    join:           function (separator) <LDOTS>
+    lastIndexOf:    function (value, from) <LDOTS>
+    map:            function (mapper, thisObj) <LDOTS>
+    pop:            function () <LDOTS>
+    push:           function (...items) <LDOTS>
+    reverse:        function () <LDOTS>
+    shift:          function () <LDOTS>
+    slice:          function (start, end) <LDOTS>
+    some:           function (checker, thisObj) <LDOTS>
+    sort:           function (comparefn) <LDOTS>
+    splice:         function (start, deleteCount, ...items) <LDOTS>
+    unshift:        function (...items) <LDOTS>
+}}}
+
 
 == Methods on the ''Vector'' class object ==
 
@@ -129,11 +160,13 @@ final class Vector.<T>
 
 <DESC> The ''Vector'' constructor initializes a new ''Vector'' object.
 
-<P> //Length// is the inital value of the ''length'' property.  Every
-indexed element of the new vector below //length// is initialized to
-**undefined** cast to the base type //T//.
+<P> //Length// is the inital value of the ''length'' property.  Its
+default value is zero.  Every indexed element of the new vector below
+//length// is initialized to **undefined** cast to the base type
+//T//.
 
-<P> //Fixed// is the initial value of the ''fixed'' property.
+<P> //Fixed// is the initial value of the ''fixed'' property.  Its
+default value is **false**.
 
 <IMPL> The ''Vector'' constructor is implementation-defined.
 
@@ -153,21 +186,24 @@ from //object// between indices ''0'' and //object//''.length''.
 
 == Methods on ''Vector'' instances ==
 
-=== toString ( ) ===
+=== intrinsic::toString ( ) ===
 
-<DESC> The ''toString'' method converts the vector to a ''string''.
+<DESC> The intrinsic ''toString'' method converts the vector to a ''string''.
 It has the same effect as if the ''join'' method were invoked for this
 object with no argument.
 
 <RETN> The ''toString'' method returns a ''string''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function toString">
+<INCLUDE file="Vector.es" name="intrinsic function toString">
 
-=== toLocaleString ( ) ===
+=== intrinsic::toLocaleString ( ) ===
 
-<DESC> The elements of this ''Vector'' are converted to strings using
-their public ''toLocaleString'' methods, and these strings are then
+<DESC> The intrinsic ''toLocaleString'' method converts the ''Vector''
+to a string in the following manner.
+
+Elements of this ''Vector'' are converted to strings using their
+public ''toLocaleString'' methods, and these strings are then
 concatenated, separated by occurrences of a separator string that has
 been derived in an implementation-defined locale-specific way.  The
 result of calling this function is intended to be analogous to the
@@ -177,152 +213,155 @@ intended to be locale-specific.
 <RETN> The ''toLocaleString'' method returns a ''string''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function toLocaleString">
+<INCLUDE file="Vector.es" name="intrinsic function toLocaleString">
 
 <NOTE> The first parameter to this method is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
 
-=== concat ( ...items )===
+=== intrinsic::concat ( ...items ) ===
 
-<DESC> The ''concat'' method collects the vector elements from
-''this'' followed by the vector elements from the additional
+<DESC> The intrinsic ''concat'' method collects the vector elements
+from ''this'' followed by the vector elements from the additional
 //items//, in order, into a new ''Vector'' object.  All the //items//
-must be '''Vector'' instances with the same base type as ''this''.
+must be ''Vector'' instances whose base types are subtypes of the base
+type of ''this''.
 
 <RETN> The ''concat'' method returns a new ''Vector'' object with the
 same base type as ''this''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function concat">
+<INCLUDE file="Vector.es" name="intrinsic function concat">
+<INCLUDE file="Vector.es" name="helper function concat">
 
-=== every ( checker, thisObj=<LDOTS> ) ===
+=== intrinsic::every ( checker, thisObj=<LDOTS> ) ===
 
-<DESC> The ''every'' method calls //checker// on every vector
-element of ''this'' in increasing index order, stopping as
-soon as any call returns **false**.
+<DESC> The intrinsic ''every'' method calls //checker// on every
+vector element of ''this'' in increasing index order, stopping as soon
+as any call returns **false**.
 
-<P>//Checker// is called with three arguments: the property value, the
-property index, and ''this'' itself.  The //thisObj// is used as the
-''this'' object in the call.
+<P>//Checker// is called with three arguments: the vector element
+value, the vector element index, and ''this'' itself.  //ThisObj//
+is used as the ''this'' object in the call.
 
 <RETN> The ''every'' method returns **true** if all the calls to
 //checker// returned true values, otherwise it returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function every">
+<INCLUDE file="Vector.es" name="intrinsic function every">
 
-=== filter ( checker, thisObj=<LDOTS> ) ===
+=== intrinsic::filter ( checker, thisObj=<LDOTS> ) ===
 
-<DESC> The ''filter'' method calls //checker// on every vector element
-of ''this'' in increasing index order, collecting all the
-vector elements for which checker returns a true value.
+<DESC> The intrinsic ''filter'' method calls //checker// on every
+vector element of ''this'' in increasing index order, collecting all
+the vector elements for which checker returns a true value.
 
-<P> //Checker// is called with three arguments: the property value, the
-property index, and ''this'' itself.  The //thisObj// is used as the
-''this'' object in the call.
+<P> //Checker// is called with three arguments: the vector element
+value, the vector element index, and ''this'' itself.  //ThisObj// is
+used as the ''this'' object in the call.
 
 <RETN> The ''filter'' method returns a new ''Vector'' object with the
 same base type as ''this'', containing the elements that were
 collected, in the order they were collected.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function filter">
+<INCLUDE file="Vector.es" name="intrinsic function filter">
 
-=== forEach ( eacher, thisObj=<LDOTS> ) ===
+=== intrinsic::forEach ( eacher, thisObj=<LDOTS> ) ===
 
-<DESC> The ''forEach'' method calls //eacher// on every vector
-element of ''this'' in increasing index order, discarding
-any return value of //eacher//.
+<DESC> The intrinsic ''forEach'' method calls //eacher// on every
+vector element of ''this'' in increasing index order, discarding any
+return value of //eacher//.
 
-<P> //Eacher// is called with three arguments: the property value, the
-property index, and ''this''.  The //thisObj// is used as the
-''this'' object in the call.
+<P> //Eacher// is called with three arguments: the vector element
+value, the vector element index, and ''this''.  //ThisObj// is used as
+the ''this'' object in the call.
 
 <RETN> The ''forEach'' method does not return a value.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function forEach">
+<INCLUDE file="Vector.es" name="intrinsic function forEach">
 
-=== indexOf ( value, from=<LDOTS> ) ===
+=== intrinsic::indexOf ( value, from=<LDOTS> ) ===
 
-<DESC> The ''indexOf'' method compares //value// with every
-vector element of ''this'' in increasing index order,
-starting at the index //from//, stopping when a vector element is
-equal to //value// by the ''==='' operator.
+<DESC> The intrinsic ''indexOf'' method compares //value// with every
+vector element of ''this'' in increasing index order, starting at the
+index //from//, stopping when a vector element is equal to //value//
+by the ''==='' operator.
 
-<P> //From// is rounded toward zero before use.  If //from// is
-negative, it is treated as ''this.length+//from//''.
+<P> If //from// is negative, it is treated as
+''this.length+//from//''.
 
 <RETN> The static ''indexOf'' method returns the vector index the first
 time //value// is equal to an element, or -1 if no such element is
 found.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function indexOf">
+<INCLUDE file="Vector.es" name="intrinsic function indexOf">
 
-=== join ( separator=<LDOTS> ) ===
+=== intrinsic::join ( separator=<LDOTS> ) ===
 
-<DESC> The ''join'' method concatenates the string representations of
-the vector elements of ''this'' in increasing index order, separating
-the individual strings by occurrences of //separator//.
+<DESC> The intrinsic ''join'' method concatenates the string
+representations of the vector elements of ''this'' in increasing index
+order, separating the individual strings by occurrences of
+//separator//.
 
 <RETN> The ''join'' method returns the concatenated string.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function join">
+<INCLUDE file="Vector.es" name="intrinsic function join">
 
-=== lastIndexOf ( value, from=<LDOTS> ) ===
+=== intrinsic::lastIndexOf ( value, from=<LDOTS> ) ===
 
-<DESC> The ''lastIndexOf'' method compares //value// with every
+<DESC> The intrinsic ''lastIndexOf'' method compares //value// with every
 vector element of ''this'' in decreasing numerical index order,
 starting at the index //from//, stopping when a vector element is
 equal to //value// by the ''==='' operator.
 
-<P> //From// is rounded toward zero before use.  If //from// is
-negative, it is treated as ''this.length+//from//''.
+<P> If //from// is negative, it is treated as
+''this.length+//from//''.
 
 <RETN> The ''lastIndexOf'' method returns the vector index the first
 time //value// is equal to an element, or -1 if no such element is
 found.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function lastIndexOf">
+<INCLUDE file="Vector.es" name="intrinsic function lastIndexOf">
 
-=== map ( mapper, thisObj=<LDOTS> ) ===
+=== intrinsic::map ( mapper, thisObj=<LDOTS> ) ===
 
-<DESC> The ''map'' method calls //mapper// on each vector element of
-''this'' in increasing numerical index order, collecting the return
-values from //mapper// in a new ''Vector'' object with the same base
-type as ''this''.
+<DESC> The intrinsic ''map'' method calls //mapper// on each vector
+element of ''this'' in increasing numerical index order, collecting
+the return values from //mapper// in a new ''Vector'' object with the
+same base type as ''this''.
 
-<P>//Mapper// is called with three arguments: the property value, the
-property index, and ''this''.  The //thisObj// is used as the ''this''
-object in the call.
+<P>//Mapper// is called with three arguments: the vector element
+value, the vector element index, and ''this''.  //ThisObj// is used as
+the ''this'' object in the call.
 
 <RETN> The ''map'' method returns a new ''Vector'' object where the
 vector element at index //i// is the value returned from the call to
-//mapper// on //object[i]//.
+//mapper// on ''this''//[i]//.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function map">
+<INCLUDE file="Vector.es" name="intrinsic function map">
 
-=== pop () ===
+=== intrinsic::pop () ===
 
-<DESC> The ''pop'' method extracts the last vector element from
-''this'' and removes it by decreasing the value of the ''length''
+<DESC> The intrinsic ''pop'' method extracts the last vector element
+from ''this'' and removes it by decreasing the value of the ''length''
 property of ''this'' by 1.
 
-<RETN> The static ''pop'' method returns the removed element, or
+<RETN> The ''pop'' method returns the removed element, or
 **undefined** cast to the base type of ''this'' if there are no
 elements.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function pop">
+<INCLUDE file="Vector.es" name="intrinsic function pop">
 
-=== push ( ...items ) ===
+=== intrinsic::push ( ...items ) ===
 
-<DESC> The static ''push'' method appends the values in //items// to
+<DESC> The intrinsic ''push'' method appends the values in //items// to
 the end of the vector elements of ''this'', in the order in which
 they appear, in the process updating the ''length'' property of ''this''.
 
@@ -330,69 +369,68 @@ they appear, in the process updating the ''length'' property of ''this''.
 property of ''this''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function push">
+<INCLUDE file="Vector.es" name="intrinsic function push">
+<INCLUDE file="Vector.es" name="helper function push">
 
 
-=== reverse () ===
+=== intrinsic::reverse () ===
 
-<DESC> The ''reverse'' method rearranges the vector elements of
+<DESC> The intrinsic ''reverse'' method rearranges the vector elements of
 ''this'' so as to reverse their order.  The ''length'' property of
 ''this'' remains unchanged.
 
 <RETN> The ''reverse'' method returns ''this''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function reverse">
+<INCLUDE file="Vector.es" name="intrinsic function reverse">
 
-=== shift () ===
+=== intrinsic::shift () ===
 
-<DESC> The ''shift'' method removes the element called ''0'' in
+<DESC> The intrinsic ''shift'' method removes the element called ''0'' in
 ''this'', moves the element at index //i+1// to index //i//, and
 decrements the ''length'' property of ''this'' by 1.
 
 <RETN> The ''shift'' method returns the element that was removed.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function shift">
+<INCLUDE file="Vector.es" name="intrinsic function shift">
 
-=== slice ( start=<LDOTS>, end=<LDOTS> ) ===
+=== intrinsic::slice ( start=<LDOTS>, end=<LDOTS> ) ===
 
-<DESC> The ''slice'' method extracts the subrange of array elements
+<DESC> The intrinsic ''slice'' method extracts the subrange of array elements
 from ''this'' between //start// (inclusive) and //end// (exclusive)
 into a new Array.
 
 <P> If //start// is negative, it is treated as
 ''//object//.length+//start//''.  If //end// is negative, it is
-treated as ''//object//.length+//end//''.  In either case the values
-of //start// and //end// are bounded between 0 and
-''//object//.length''.
+treated as ''//object//.length+//end//''. 
 
 <RETN> The ''slice'' method returns a new ''Vector'' object with the
 same base type as ''this'', containing the extracted vector elements.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function slice">
+<INCLUDE file="Vector.es" name="intrinsic function slice">
 
-=== some ( checker, thisObj=<LDOTS> ) ===
+=== intrinsic::some ( checker, thisObj=<LDOTS> ) ===
 
-<DESC> The ''some'' method calls //checker// on every vector element
-in ''this'' in increasing index order, stopping as soon as //checker//
-returns a true value.
+<DESC> The intrinsic ''some'' method calls //checker// on every vector
+element in ''this'' in increasing index order, stopping as soon as
+//checker// returns a true value.
 
-<P>//Checker// is called with three arguments: the property value, the
-property index, and ''this''.  The //thisObj// is used as the ''this''
-object in the call.
+<P>//Checker// is called with three arguments: the vector element
+value, the vector element index, and ''this''.  //ThisObj// is used as
+the ''this'' object in the call.
 
 <RETN> The ''some'' method returns **true** when //checker// returns a
 true value, otherwise returns **false** if all the calls to
 //checker// return false values.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function some">
+<INCLUDE file="Vector.es" name="intrinsic function some">
 
-=== sort ( comparefn ) ===
+=== intrinsic::sort ( comparefn ) ===
 
-<DESC> The ''sort'' method sorts the vector elements of
+<DESC> The intrinsic::''sort'' method sorts the vector elements of
 ''this'' according to the ordering defined by ''comparefn''.
 
 <P> The sort is not necessarily stable (that is, elements that compare
@@ -402,50 +440,26 @@ two arguments //x// and //y// of the base type of ''this'' and returns
 a negative value if //x <LT> y//, zero if //x = y//, or a positive
 value if //x <GT> y//.
 
-<FIXME> More here, but not too much more.  We should factor Array.sort so
-that the good bits can reasonably be referenced from here.
+<FIXME> (Ticket #198.) More here, but not too much more.  We should
+factor Array.sort so that the good bits can reasonably be referenced
+from here.
 
 <COMP> Unlike the case for ''Array'', the //comparefn// is a required argument.
 
-<FIXME> We could provide a default comparators that would work like this:
-
-<PRE class="FIXME">
-    /* T is the base type */
-    function comparator(a, b) {
-       if (T is Numbers) {
-         if (a < b) return -1;
-         if (b < a) return 1;
-         return 0;
-       }
-       if (T is Booleans) {
-         if (!a && b) return -1;
-         if (a && !b) return 1;
-         return 0;
-       }
-       if (T is Strings) {
-         if (a < b) return -1;
-         if (b < a) return 1;
-         return 0;
-       }
-       /* default behavior -- from Array.sort */
-       return comparator(string(a), string(b))
-    }
-</PRE>
-
-<P class="fixme"> It's kind of weird, though, to provide this.
+<FIXME> (Ticket #197.) Should we provide a default comparator?
 
 <RETN> The ''sort'' method returns ''this''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function sort">
+<INCLUDE file="Vector.es" name="intrinsic function sort">
 <INCLUDE file="Vector.es" name="helper function sortCompare">
 
 <NOTE> For a description of the informative ''sortEngine'' method, see
 <XREF target="sortEngine">.
 
-=== splice ( start, deleteCount, ...items ) ===
+=== intrinsic::splice ( start, deleteCount, ...items ) ===
 
-<DESC> The ''splice'' method replaces the //deleteCount// vector
+<DESC> The intrinsic ''splice'' method replaces the //deleteCount// vector
 elements of ''this'' starting at index //start// with values
 from the //items//.
 
@@ -454,14 +468,15 @@ same base type as ''this'', containing the vector elements that were
 removed from ''this'', in order.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function splice">
+<INCLUDE file="Vector.es" name="intrinsic function splice">
+<INCLUDE file="Vector.es" name="helper function splice">
 
-=== unshift ( ...items ) ===
+=== intrinsic::unshift ( ...items ) ===
 
-<DESC> The ''unshift'' method inserts the values in //items//
-as new vector elements at the start of ''this'', such that their
-order within the vector elements of ''this'' is the same as the order
-in which they appear in //items//.  Existing vector elements in
+<DESC> The instrinsic ''unshift'' method inserts the values in
+//items// as new vector elements at the start of ''this'', such that
+their order within the vector elements of ''this'' is the same as the
+order in which they appear in //items//.  Existing vector elements in
 ''this'' are shifted upward in the index range, and the ''length''
 property of ''this'' is updated.
 
@@ -469,32 +484,39 @@ property of ''this'' is updated.
 ''length'' property of ''this''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="function unshift">
+<INCLUDE file="Vector.es" name="intrinsic function unshift">
+<INCLUDE file="Vector.es" name="helper function unshift">
 
 
 == Iteration protocol on ''Vector'' instances ==
 
 <P> Iterators are defined on the ''Vector'' such that ''for''-''in''
 and ''for each''-''in'' loops always iterate across the vector from
-low indices toward high indices.
+low indices toward high indices.  Only indexed properties defined on
+directly on the vector object are visited.
 
-<FIXME> Elaborate this.
+<SHORTIMPL>
+<INCLUDE file="Vector.es" name="iterator function get">
+<INCLUDE file="Vector.es" name="iterator function getKeys">
+<INCLUDE file="Vector.es" name="iterator function getValues">
+<INCLUDE file="Vector.es" name="iterator function getItems">
+
 
 == Value properties of ''Vector'' instances ==
 
 === length ===
 
 <P> The property ''length'' determines the range of valid indices into
-the ''Vector''.  Indices up to but not including ''length''-1 are
-always defined.
+the ''Vector''.  Indices up to but not including ''length'' are always
+defined.
 
 <P> When ''length'' is given a new value that is smaller than its old
-value then the elements in the vector beyond the new length are
+value then the elements in the vector at the new length and beyond are
 removed from the vector.
 
 <P> When ''length'' is given a new value that is greater than its old
-value then the elements in the vector beyond the old length are given
-the value **undefined** cast to the base type ''T''.
+value then the elements in the vector at the old length and beyond are
+given the value **undefined** cast to the base type ''T''.
 
 <P> If an attempt is made to set ''length'' when the ''fixed'' property
 is **true** then a **RangeError** is thrown.
@@ -529,16 +551,42 @@ a nonnegative integer below ''length'' then one of two things happen:
 <UL>
   <LI> If the ''fixed'' property has the value ''true'', or if the
   number is not a nonnegative integer, or if it is a nonnegative number but
-  not the value ''length''+1, or if ''length'' is already uint.MAX_VALUE,
+  not the value ''length'', or if ''length'' is already 2<SUP>32</SUP>-1,
   then a **RangeError** is thrown.
   <LI> Otherwise, the property is defined on the vector and the ''length'' property
   is incremented by 1.
 </UL>
 
+== Methods on the ''Vector'' prototype object ==
+
+<DESC> The methods on the ''Vector'' prototype object perform a small
+amount of type conversion and delegate to the corresponding intrinsic
+methods.
+
+<RETN> The methods on the ''Vector'' prototype object return what their
+corresponding intrinsic methods return.
+
+<SHORTIMPL>
+<INCLUDE file="Vector.es" name="prototype function toString">
+<INCLUDE file="Vector.es" name="prototype function toLocaleString">
+<INCLUDE file="Vector.es" name="prototype function concat">
+<INCLUDE file="Vector.es" name="prototype function every">
+<INCLUDE file="Vector.es" name="prototype function filter">
+<INCLUDE file="Vector.es" name="prototype function forEach">
+<INCLUDE file="Vector.es" name="prototype function indexOf">
+<INCLUDE file="Vector.es" name="prototype function join">
+<INCLUDE file="Vector.es" name="prototype function lastIndexOf">
+<INCLUDE file="Vector.es" name="prototype function map">
+<INCLUDE file="Vector.es" name="prototype function pop">
+<INCLUDE file="Vector.es" name="prototype function push">
+<INCLUDE file="Vector.es" name="prototype function reverse">
+<INCLUDE file="Vector.es" name="prototype function shift">
+<INCLUDE file="Vector.es" name="prototype function slice">
+<INCLUDE file="Vector.es" name="prototype function some">
+<INCLUDE file="Vector.es" name="prototype function sort">
+<INCLUDE file="Vector.es" name="prototype function splice">
+<INCLUDE file="Vector.es" name="prototype function unshift">
+
+
 <!-- end of Vector.html -->
-
-
-
-
-
 

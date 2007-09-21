@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Boolean.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -39,11 +39,6 @@ of ''Object'' that holds a boolean value in the form of a ''boolean''
 object.  Instances of ''Boolean'' are converted to ''boolean'' when
 operated upon by operators of the language.
 
-<FIXME> As for ''String'' and ''Number'' there is really no need for
-''Boolean'' to have any magic.  The value it contains could be a
-simple private property that holds a ''boolean''.  This would cause
-far fewer issues for subclasses.
-
 <P> The class ''Boolean'' can be extended and the extending classes
 can provide novel representations for boolean values.
 
@@ -61,6 +56,7 @@ dynamic class Boolean
     static const length: uint = 1
 
     <SIGNATURE file="Boolean.es" name="override intrinsic function toString">
+    <SIGNATURE file="Boolean.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Boolean.es" name="override intrinsic function valueOf">
 }
 }}}
@@ -108,6 +104,16 @@ to a string.
 <SHORTIMPL>
 <INCLUDE file="Boolean.es" name="override intrinsic function toString">
 
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this boolean
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="override intrinsic function toJSONString">
+
 === intrinsic::valueOf ( ) ===
 
 <DESC> The intrinsic ''valueOf'' method returns this boolean value.
@@ -128,6 +134,7 @@ intrinsic counterparts return.
 
 <SHORTIMPL>
 <INCLUDE file="Boolean.es" name="prototype function toString">
+<INCLUDE file="Boolean.es" name="prototype function toJSONString">
 <INCLUDE file="Boolean.es" name="prototype function valueOf">
 
 
@@ -154,6 +161,7 @@ final class boolean!
     static const length: uint = 1
 
     <SIGNATURE file="boolean_primitive.es" name="override intrinsic function toString">
+    <SIGNATURE file="boolean_primitive.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="boolean_primitive.es" name="override intrinsic function valueOf">
 }
 }}}
@@ -161,8 +169,9 @@ final class boolean!
 <P> The ''boolean'' prototype object is the same as the ''Boolean''
 prototype object (<XREF target="Boolean.prototype">).
 
-<FIXME> Why are the default values to the constructor/converter null
-and not false?  Bootstrapping issue in the reference implementation?
+<FIXME> (Ticket #180.)  Why are the default values to the
+constructor/converter null and not false?  Bootstrapping issue in the
+reference implementation?
 
 
 == Methods on the ''boolean'' class object ==
@@ -198,6 +207,16 @@ to a string, either ''"true"'' or ''"false"''.
 
 <SHORTIMPL>
 <INCLUDE file="boolean_primitive.es" name="override intrinsic function toString">
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this boolean
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="Boolean.es" name="override intrinsic function toJSONString">
 
 === intrinsic::valueOf ( ) ===
 

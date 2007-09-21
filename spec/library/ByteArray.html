@@ -1,8 +1,8 @@
-= ByteArray Objects =
+<H1 id="class ByteArray"> The class ''ByteArray'' </H1>
 
 <pre>
 FILE:                       spec/library/ByteArray.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  NO
@@ -10,73 +10,128 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<P>A ''ByteArray'' object is a container for an indexable, dense,
-mutable, and extensible sequence of unsigned integer values in the
-value range 0 through 255.
+<P> The class ''ByteArray'' is a final, non-dynamic, nullable, direct
+subclass of ''Object''.  It is a container for an indexable, dense,
+0-based, mutable, and extensible sequence of unsigned integer values
+in the value range 0 through 255 ("bytes").
 
-<NOTE>ByteArray objects are motivated by efficiency: They are likely
-to use less storage and to be faster than Array objects.
+<NOTE> ''ByteArray'' objects are motivated by efficiency: They are
+likely to use less storage and to be faster than ''Array'' or
+''Vector'' objects.
+
+<COMP>The ''ByteArray'' class is new in 4th Edition.
+
+<COMP> The ''ByteArray'' class in 4th Edition is compatible with the
+''ByteArray'' class in ActionScript (<CITE ref="ActionScript manual"></CITE>)
+in the sense that it does not define any methods that conflict with
+methods defined by the latter (as of ActionScript 3 and Adobe Flex 2).
 
 
 == Synopsis ==
 
+<P> The class ''ByteArray'' provides the following interface:
+
 {{{
-intrinsic final class ByteArray
+__ES4__ final class ByteArray
 {
     <SIGNATURE file="ByteArray.es" name="function ByteArray">
     <SIGNATURE file="ByteArray.es" name="meta static function invoke">
 
-    <SIGNATURE file="ByteArray.es" name="static function fromString">
-    <SIGNATURE file="ByteArray.es" name="static function fromArray">
-
     <SIGNATURE file="ByteArray.es" name="override intrinsic function toString">
+
     <SIGNATURE file="ByteArray.es" name="function get length">
     <SIGNATURE file="ByteArray.es" name="function set length">
-
     <SIGNATURE file="ByteArray.es" name="meta function get">
     <SIGNATURE file="ByteArray.es" name="meta function set">
 }
 }}}
 
-<FIXME>Why is this class ''intrinsic''?  It should be enough for it to
-be ''__ES4__'' for it to be hidden.
+<P> The ''ByteArray'' prototype object provides the following direct properties:
 
-<COMP>The ''ByteArray'' class is new in 4th Edition.
-
-<COMP>The ''ByteArray'' class in 4th Edition is compatible with the
-''ByteArray'' class in ActionScript <CITE ref="ActionScript manual">
-in the sense that it does not define any methods that conflict with
-methods defined by the latter (as of ActionScript 3 and Adobe Flex 2).
-
-== Construction ==
-
-=== The ByteArray Class Called as a Function ===
-
-<P> This creates a new ByteArray and then populates it with data from
-the argument(s).
-
-<FIXME> The following is a proposal.
-
-<P> If the argument is anything with a "length" property, then
-elements from 0 through length-1 are extracted.  If an element is a string then
-its first character code is extracted.  If an element is numeric then it is converted to uint().
-(If neither string nor numeric an exception is thrown.)
-Finally the low 8 bits of the value are appended to the ByteArray.
-
-<P> There can be arbitrarily many arguments.
+{{{
+    toString: function () <LDOTS>
+}}}
 
 
-=== The ByteArray Constructor ===
+== Methods on the ''ByteArray'' class object ==
+
+=== new ByteArray ( length=<LDOTS> ) ===
+
+<DESC> The ''ByteArray'' constructor initializes a new ''ByteArray''
+object.  The //length// is the initial value of the object's
+//length// property.
+
+<SHORTIMPL>
+<INCLUDE file="ByteArray.es" name="function ByteArray">
+
+=== ByteArray( value ) ===
+
+<DESC> The ''ByteArray'' class object called as a function converts
+//value// to ''ByteArray''.  If //value// is a ''ByteArray'' then it
+is returned unchanged.  Otherwise a new ''ByteArray'' is created and
+initialized from the contents of //value//: Every property value of
+//value// between 0 and //value//''.length'' is extracted and
+converted to number, and that number's low byte is stored in the new
+''ByteArray''.
+
+<RETN> The ''ByteArray'' function returns a ''ByteArray''.
+
+<SHORTIMPL>
+<INCLUDE file="ByteArray.es" name="meta static function invoke">
 
 
-=== Creating ByteArrays from Strings ===
+== Methods on ''ByteArray'' instances ==
 
-<FIXME> I vote that we remove this, ByteArray(string) does the same job
+=== intrinsic::toString ( ) ===
 
-=== Creating ByteArrays from Objects ===
+<DESC> The intrinsic ''toString'' method converts a ''ByteArray'' to a
+string.  The string representation is the concatenation of the decimal
+representations of all the values in the ''ByteArray'', separated by
+the comma character (''","'').
 
-<FIXME> I vote that we remove this, ByteArray(array) does the same job
+<RETN> The ''toString'' method returns a ''string''.
 
+<SHORTIMPL>
+<INCLUDE file="ByteArray.es" name="override intrinsic function toString">
 
-== Methods on ByteArray Objects ==
+== Value properties of ''ByteArray'' instances ==
 
+=== length ===
+
+<P> The property ''length'' determines the range of valid indices into
+the ''ByteArray''.  Its value is always an unsigned integer.
+
+<P> When ''length'' is given a new value that is smaller than its old
+value then the elements in the ''ByteArray'' at the new length and
+beyond are removed from the ''ByteArray''.
+
+<P> When ''length'' is given a new value that is greater than its old
+value then the elements in the ''ByteArray'' at the old length and
+beyond are given the value 0.
+
+<P> If an attempt is made to set ''length'' to any value that is not a
+nonnegative integer less than 2<SUP>32</SUP> then a **RangeError** is
+thrown.
+
+=== Numerically named properties ===
+
+<P> A ''ByteArray'' contains all properties whose names are
+nonnegative integers below the value of ''length''.
+
+<P> If an attempt is made to write a property whose //name// is a
+number that is a number then ''length'' is set to the value of that
+number plus one (this may fail as described above), and the property
+at that name is assigned the low byte of the //value// converted to
+number.
+
+== Methods on the ''ByteArray'' prototype object ==
+
+=== toString ( ) ===
+
+<RETN> The ''toString'' prototype method calls its intrinsic
+counterpart and returns the result of that call.
+
+<SHORTIMPL>
+<INCLUDE file="ByteArray.es" name="prototype function toString">
+
+<!-- End of ByteArray.html -->

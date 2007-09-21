@@ -182,7 +182,7 @@ package Unicode
         format_control.containsCode(cc);
 
     public function explodeString(s : string) : [string] {
-        let cs : [string] = [] : [string];
+        let cs = [] : [string];
         for ( let i=0 ; i < s.length ; i++ )
             cs[i] = s[i];
         return cs;

@@ -1,6 +1,6 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "EvalError" object
+ * ECMAScript 4 builtins - the "EncodingError" object
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
@@ -33,8 +33,6 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
- *
- * E262-3 15.11
  * E262-4 draft (intrinsic functions)
  *
  * Status: Incomplete; Not reviewed against spec; Not tested.
@@ -55,23 +53,23 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.1; 15.11.7 */
-    dynamic class EvalError extends Error
+    dynamic class EncodingError extends Error
     {
         static const length = 1;
 
         meta static function invoke(message)
-            new EvalError(message);
+            new EncodingError(message);
 
-        function EvalError(message) 
+        function EncodingError(message) 
             : super(message) 
         {
         }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
-        prototype var name = "EvalError";
+        prototype var name = "EncodingError";
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Illegal use of 'eval'";
+        prototype var message = "Bad encoding";
     }
 }

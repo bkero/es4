@@ -107,7 +107,7 @@ package RegExpInternals
                 let p : Matcher? = term();
                 if (p === null)
                     return t;
-                t = new Alternative(t, p);
+                t = new Conjunct(t, p);
             }
         }
 
@@ -216,7 +216,7 @@ package RegExpInternals
 
             case 0x2Eu /* "." */:
                 advance();
-                return new CharsetMatcher(charset_notlinebreak);
+                return new CharacterSet(charset_notlinebreak);
 
             case 0x28u /* "(" */:
                 consumeChar("(");
@@ -302,7 +302,7 @@ package RegExpInternals
                 return null;
 
             default: {
-                let m = new CharsetMatcher(new CharsetAdhoc(consumeChar()));
+                let m = new CharacterSet(new CharsetAdhoc(consumeChar()));
                 skip();
                 return m;
             }
@@ -313,14 +313,14 @@ package RegExpInternals
             if (!eat("\\"))
                 fail( SyntaxError, "Backslash required here (internal compiler error)" );
 
-            let (t : Charset? = characterClassEscape()) {
+            let (t : CharsetMatcher? = characterClassEscape()) {
                 if (t !== null)
-                    return new CharsetMatcher(t);
+                    return new CharacterSet(t);
             }
 
             let (t : string? = characterEscape(false)) {
                 if (t !== null)
-                    return new CharsetMatcher(new CharsetAdhoc(t));
+                    return new CharacterSet(new CharsetAdhoc(t));
             }
 
             let (t : double? = decimalEscape()) {
@@ -334,17 +334,17 @@ package RegExpInternals
         }
 
         function characterClass() : Matcher {
-            return new CharsetMatcher(characterClassHelper());
+            return new CharacterSet(characterClassHelper());
         }
 
-        function characterClassHelper() : Charset {
+        function characterClassHelper() : CharsetMatcher {
             match("[");
             let inverted : boolean = false;
             if (peekChar() == "^") {
                 advance();
                 inverted = true;
             }
-            let ranges : Charset = classRanges();
+            let ranges : CharsetMatcher = classRanges();
             match("]");
             return inverted ? new CharsetComplement(ranges) : ranges;
         }
@@ -370,20 +370,20 @@ package RegExpInternals
 
         */
 
-        function classRanges() : Charset {
+        function classRanges() : CharsetMatcher {
             if (lookingAt("]"))
                 return new CharsetEmpty;
 
-            return nonemptyClassRanges();
+            return nonemptyClassRanges() cast CharsetMatcher;
         }
 
-        function nonemptyClassRanges(acc: Charset? = null, also: Charset? = null) : Charset {
+        function nonemptyClassRanges(acc: CharsetMixin? = null, also: CharsetMixin? = null) : CharsetMixin {
 
-            function accumulate(acc : Charset?, x : Charset) : Charset {
+            function accumulate(acc : CharsetMixin?, x : CharsetMixin) : CharsetMixin {
                 return acc === null ? x : new CharsetUnion(acc, x);
             }
 
-            function intersect(cs: Charset?, x: Charset) : Charset {
+            function intersect(cs: CharsetMixin?, x: CharsetMixin) : CharsetMixin {
                 return cs === null ? x : new CharsetIntersection(cs, x);
             }
 
@@ -396,7 +396,7 @@ package RegExpInternals
                     return nonemptyClassRanges(acc, intersect(also,s));
             }
 
-            let a1 : Charset = classAtom();
+            let a1 : CharsetMixin = classAtom();
 
             if (lookingAt("]"))
                 return intersect(also,accumulate(acc,a1));
@@ -407,11 +407,11 @@ package RegExpInternals
                     return intersect(also,accumulate(acc, new CharsetAdhoc("-")));
 
                 if (a1.hasOneCharacter()) {
-                    let a2 : Charset = classAtom();
+                    let a2 : CharsetMixin = classAtom();
                     if (a2.hasOneCharacter()) {
-                        let a3 : Charset = accumulate(acc,
-                                                      new CharsetRange(a1.singleCharacter(),
-                                                                       a2.singleCharacter()));
+                        let a3 : CharsetMixin = accumulate(acc,
+                                                           new CharsetRange(a1.singleCharacter(),
+                                                                            a2.singleCharacter()));
                         if (lookingAt("]"))
                             return intersect(also,a3);
 
@@ -432,7 +432,7 @@ package RegExpInternals
             return nonemptyClassRanges(accumulate(acc,a1), also);
         }
 
-        function classAtom() : Charset {
+        function classAtom() : CharsetMatcher {
             if (lookingAt("]") || atEnd())
                 fail( SyntaxError, "Premature end of input" );
 
@@ -442,11 +442,11 @@ package RegExpInternals
             return new CharsetAdhoc(consumeChar());
         }
 
-        function classEscape() : Charset {
+        function classEscape() : CharsetMatcher {
             if (!eat("\\"))
                 fail( SyntaxError, "Backslash required here (internal compiler error)" );
 
-            let (t : Charset? = characterClassEscape()) {
+            let (t : CharsetMatcher? = characterClassEscape()) {
                 if (t !== null)
                     return t;
             }
@@ -467,12 +467,12 @@ package RegExpInternals
         /* Returns null if it does not consume anything but fails;
          * throws an error if it consumes and then fails.
          */
-        function characterClassEscape() : Charset? {
+        function characterClassEscape() : CharsetMatcher? {
 
-            function unicodeSet(invert : boolean) : Charset {
+            function unicodeSet(invert : boolean) : CharsetMatcher {
                 let name : string = identifier();
                 match("}");
-                let cls : Charset? = unicodeClass(name, invert);
+                let cls : CharsetMatcher? = unicodeClass(name, invert);
                 if (cls === null)
                     fail( ReferenceError, "Unsupported unicode character class " + name );
                 return cls;
@@ -584,7 +584,6 @@ package RegExpInternals
                 fail( SyntaxError, "EOF inside escape sequence" );
 
             let (c = consumeChar()) {
-                advance();
                 return c;
             }
         }

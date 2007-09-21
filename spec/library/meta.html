@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/meta.html
-DRAFT STATUS:               DRAFT 1 - VERY ROUGH - 2007-09-14
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -11,53 +11,100 @@ REVIEWED AGAINST CODE:      NO
 </pre>
 
 <P> The intrinsic meta-object interfaces ''Type'', ''NominalType'',
-''ClassType'', ''InterfaceType'', ''UnionType'', ''RecordType'',
+''ClassType'', ''InterfaceType'', ''AnyType'', ''UndefinedType'',
+''NullType'', ''UnionType'', ''RecordType'', ''ArrayType'',
 ''FunctionType'', ''Field'', and ''FieldValue'', along with the
 intrinsic helper types ''FieldIterator'', ''NominalTypeIterator'',
 ''TypeIterator'', ''ValueIterator'', and ''FieldValueIterator'',
 provide a simple reflection capability.
 
 <P> The standard meta-objects described by the interface types may be
-immutable, and do not necessarily map to any other types described in
-this Standard.
+immutable.
+
+<FIXME> (Ticket #199.) Right now the class ''Class'' is not defined in
+ES4.  (Nor is there an ''Interface'', nor are there described classes
+for other type objects.)  If these are defined, then we must decide
+whether they implement the meta-object interfaces or not.  Otherwise
+we have problems of nonportability due to name shadowing in some
+systems but not in others, or subclassability in some systems but not
+in others.
 
 <P> ECMAScript implementations may choose to provide extensions to
 these interfaces, in order to provide richer reflective capabilities.
 Clients wishing to use extended meta-object interfaces can perform
 runtime downcasts on the meta-objects described by this Standard.
 
-<NOTE> In the following sections all interfaces, types, and method
-names are implicitly defined in the ''intrinsic'' name space.
+<FIXME> (Ticket #200.)  The meta-objects system does not currently deal with
+parameterized types.  It will almost certainly need to.  First,
+classes can contain type definitions and those definitions can be
+public, and it would be strange if they could not be iterated by the
+''publicMembers'' and ''publicStaticMembes'' methods of
+''NominalType''.  But type definitions can bind type parameters, so
+there would need to be a representation of that.  Second, method
+definitions can bind type parameters (this facility is used in eg the
+''Map'' class for internal helper methods), so even if type
+definitions were not iterated we'd have to deal with the problem for
+methods.
 
-<NOTE> About parameterized types: The only way to obtain a Type object
-is by starting with a call to the ''typeOf'' function.  The type thus
-obtained is always fully instantiated.  It is possible for it to
-contain type definitions that are parameterized; however, those are
-not visible through the meta-objects system.  Therefore, the
-meta-objects system has no types representing unresolved type
-parameters.  Furthermore, when constructing an instance of some type
-through the type's ''construct'' method, there is no need to supply
-type parameters, because the types are bound for that class in any
-case, and inspecting the constructor will reveal the types of any
-arguments.
+<P class="fixme"> There is also the question of what the meaning of
+''typeOf(Map)'' means, when ''Map'' is a paremeterized type.
+Presumably that too needs to reveal parameterization in some way.
 
+<P class="fixme"> The original meta-objects proposal had some
+facilities for parameterization in the context of instantiation: the
+''construct'' methods would take a type iterator that would provide
+values for type parameters.  But that's not good enough, and the
+following spec does not provide for these.  Something like that will
+come back in, though.
 
-== Retreiving the type of an object ==
+<P class="fixme"> There will probably be a new interface
+''ParemeterizedType'' that acts as a binder for type parameters:
+
+<PRE class="fixme">
+interface ParameterizedType
+{
+    function numberOfParameters()
+    function construct(typeVals: TypeIterator): Type
+}
+</PRE>
+
+<P class="fixme"> We must decide whether only instantiated types can
+be manipulated or not.  If so, then we could then arrange for a "dummy
+type" factory to allow easy instantiation for inspection purposes:
+
+<PRE class="fixme">
+intrinsic function dummyTypes(t: Type): TypeIterator
+</PRE>
+
+<P class="fixme"> That may or may not run afoul of type checking, if
+any type checking happens at instantiation time.  The alternative
+would be to provide an interface for ''TypeParameter'', and for
+''ParameterizedType'' to allow inspection of its contained type
+without instantiation, with the proviso that ''TypeParameter'' values
+will pop up during inspection and will have to be handled.
+
+<NOTE> In the following sections all interfaces, types, and methods
+are implicitly defined in the ''intrinsic'' namespace.  The methods
+defined on the interfaces are not defined on the prototypes of the
+classes that implement those interfaces.
+
+<NOTE> Type annotations that denote nullable types are revealed as a
+union of ''NullType'' and another type.
+
+== Retrieving the type of an object ==
 
 === typeOf ( v ) ===
 
-<DESC> The global intrinsic function ''typeOf'' retrieves the an
-object describing the run-time type of its argument //v//, which may
-be of any type.
+<DESC> The global intrinsic function ''typeOf'' delivers the run-time
+type of its argument //v//, which may be a value of any type.
 
-<RETN> The global intrinsic function ''typeOf'' returns an object that
-implements one of the interfaces extending the ''Type'' interface.
+<RETN> The function ''typeOf'' returns an object that implements
+''Type'' and possibly one of the interfaces extending ''Type''.
 
-<IMPL> The global intrinsic function ''typeOf'' is
-implementation-dependent.
+<IMPL> The function ''typeOf'' is implementation-dependent.
 
 
-== ''Type'' ==
+== The interface ''Type'' ==
 
 <P> The intrinsic interface ''Type'' describes a type in the system in
 basic terms.
@@ -67,8 +114,8 @@ basic terms.
 {{{
 interface Type 
 {
-    function canConvertTo(t: Type): boolean;
-    function isSubtypeOf(t: Type): boolean;
+    function canConvertTo(t: Type): boolean
+    function isSubtypeOf(t: Type): boolean
 }
 }}}
 
@@ -77,26 +124,26 @@ interface Type
 ==== canConvertTo ( t ) ====
 
 <RETN> The ''canConvertTo'' method returns **true** if this type can
-be converted to the type //t//.
+be converted to the type //t//, otherwise it returns **false**.
 
 ==== isSubtypeOf ( t ) ====
 
 <RETN> The ''isSubtypeOf'' method returns **true** if this type is a
-subtype of the type //t//.
+subtype of the type //t//, otherwise it returns **false**.
 
 
-== ''Field'' ==
+== The interface ''Field'' ==
 
 <P> The intrinsic interface ''Field'' describes a field (property) of
-a class or record type by the field name and field type.
+a class, record, or array type by the field name and field type.
 
 === Synopsis ===
 
 {{{
 interface Field
 {
-    function name(): Name;
-    function type(): Type;
+    function name(): Name
+    function type(): Type
 }
 }}}
 
@@ -109,22 +156,22 @@ interface Field
 ==== type ( ) ====
 
 <RETN> The ''type'' method returns the field type as an object that
-implements one of the interfaces that extends ''Type''.
+implements ''Type'' or one of the interfaces extending ''Type''.
 
 
-== ''FieldValue'' ==
+== The interface ''FieldValue'' ==
 
 <P> The intrinsic interface ''FieldValue'' describes a field
-(property) of a class or record value by the field name and field
-value.  It is used for constructing new record instances.
+(property) of a record or array by the field name and field value.  It
+is used for constructing new record and array instances.
 
 === Synopsis ===
 
 {{{
 interface FieldValue
 {
-    function name(): Name;
-    function value(): *;
+    function name(): Name
+    function value(): *
 }
 }}}
 
@@ -138,11 +185,11 @@ object.
 
 ==== value ( ) ====
 
-<RETN> The ''name'' method returns the actual field value as a
-standard ECMAScript value.
+<RETN> The ''value'' method returns the actual field value as an
+ECMAScript value.
 
 
-== ''NominalType'' ==
+== The interface ''NominalType'' ==
 
 <P> The intrinsic interface ''NominalType'' is a base interface for
 ''InterfaceType'' and ''ClassType''.  It provides accessors for
@@ -170,7 +217,7 @@ interface NominalType extends Type
 ==== superTypes ( ) ====
 
 <RETN> The ''superTypes'' method returns an iterator that iterates
-over superclasses and implemented interfaces.
+over the superclasses and implemented interfaces of this nominal type.
 
 ==== publicMembers ( ) ====
 
@@ -184,11 +231,14 @@ properties and value properties).
 over the field definitions of all public class fields (both method
 properties and value properties).
 
-<P> The constructor method is included in the set of static members
-provided it is public.
+<P> The constructor method is included in the set of static members,
+provided that it is public.
+
+<FIXME> (Ticket #200.) Likely, this will also iterate type definitions (see comment
+at the start of this chapter).
 
 
-== ''InterfaceType'' ==
+== The interface ''InterfaceType'' ==
 
 <P> The intrinsic interface ''InterfaceType'' describes an interface.
 
@@ -209,7 +259,7 @@ interface InterfaceType extends NominalType
 over all the class types that implement this interface.
 
 
-== ''ClassType'' ==
+== The interface ''ClassType'' ==
 
 <P> The intrinsic interface ''ClassType'' describes a class and
 provides a means of creating new instances of the class.
@@ -219,7 +269,7 @@ provides a means of creating new instances of the class.
 {{{
 interface ClassType extends NominalType
 {
-    function construct(valArgs: ValueIterator): Object;
+    function construct(valArgs: ValueIterator): Object
 }
 }}}
 
@@ -234,49 +284,49 @@ public.
 <P> The iterator //valArgs// provides any value arguments required by
 the constructor.  Only as many values as necessary for calling the
 constructor will be consumed from the iterator.  If the constructor
-takes exactly zero arguments then //valArgs// may be null.
+takes no arguments then //valArgs// may be null.
 
 <RETN> The ''construct'' method returns a new object of the type
 represented by this ''ClassType''.
 
-== ''AnyType'' ==
+== The interface ''AnyType'' ==
 
 <P> The intrinsic interface ''AnyType'' describes the type ''*''.
 
 === Synopsis ===
 
 {{{
-interface AnyType
+interface AnyType extends Type
 {
 }
 }}}
 
-== ''NullType'' ==
+== The interface ''NullType'' ==
 
 <P> The intrinsic interface ''NullType'' describes the type ''null''.
 
 === Synopsis ===
 
 {{{
-interface NullType
+interface NullType extends Type
 {
 }
 }}}
 
 
-== ''UndefinedType'' ==
+== The interface ''UndefinedType'' ==
 
 <P> The intrinsic interface ''UndefinedType'' describes the type ''undefined''.
 
 === Synopsis ===
 
 {{{
-interface UndefinedType
+interface UndefinedType extends Type
 {
 }
 }}}
 
-== ''UnionType'' ==
+== The interface ''UnionType'' ==
 
 <P> The intrinsic interface ''UnionType'' describes a union of other
 types.  No object has a union type for its manifest type.  Union types
@@ -287,7 +337,7 @@ are only used for annotating parameters or fields, and cannot be instantiated.
 {{{
 interface UnionType extends Type
 {
-    function members(): TypeIterator;
+    function members(): TypeIterator
 }
 }}}
 
@@ -299,7 +349,7 @@ interface UnionType extends Type
 member types of the union.
 
 
-== ''RecordType'' ==
+== The interface ''RecordType'' ==
 
 <P> The intrinsic interface ''RecordType'' describes a structural
 object type.
@@ -309,8 +359,8 @@ object type.
 {{{
 interface RecordType extends Type
 {
-    function fields(): FieldIterator;
-    function construct(valArgs: FieldValueIterator): Object;
+    function fields(): FieldIterator
+    function construct(valArgs: FieldValueIterator): Object
 }
 }}}
 
@@ -339,7 +389,7 @@ to **undefined** cast to the type of the field; this may cause a
 <RETN> The ''construct'' method returns a new object of the type
 represented by this ''RecordType''.
 
-== ''ArrayType'' ==
+== The interface ''ArrayType'' ==
 
 <P> The intrinsic interface ''ArrayType'' describes a structural array
 type.
@@ -347,23 +397,23 @@ type.
 === Synopsis ===
 
 {{{
-interface RecordType extends Type
+interface ArrayType extends Type
 {
-    function fields(): FieldIterator;
-    function construct(length: uint, valArgs: FieldValueIterator): Object;
+    function fields(): FieldIterator
+    function construct(length: uint, valArgs: FieldValueIterator): Object
 }
 }}}
 
 === Methods ===
 
-==== fields ====
+==== fields ( ) ====
 
 <RETN> The ''fields'' method returns an iterator that iterates over
-the fields of the array type.  The fields are iterated in arbitrary
-order, and only fields that are present are iterated.  The name of the
-field provides the field index as the ''identifier''.
+the fields of the array type.  The fields are iterated from low to
+high indices, and only fields that are present are iterated.  The name
+of the field provides the field index as the ''identifier''.
 
-==== constuct ====
+==== construct ( length, valArgs ) ====
 
 <DESC> The ''construct'' method creates a new instance of the
 structural array type represented by this ''ArrayType''.
@@ -385,15 +435,10 @@ may cause a **TypeError** exception to be thrown at run-time.
 <RETN> The ''construct'' method returns a new object of the type
 represented by this ''ArrayType''.
 
-<FIXME> It may be false economy to reuse ''FieldIterator'' and
-''FieldValueIterator'' here, instead of something tailored better to
-arrays.
-
-== ''FunctionType'' ==
+== The interface ''FunctionType'' ==
 
 <P> The intrinsic interface ''FunctionType'' describes a structural
-function type.  Function types cannot be instantiated (use the
-''Function'' constructor instead).
+function type.  Function types cannot be instantiated.
 
 === Synopsis ===
 
@@ -413,8 +458,7 @@ interface FunctionType extends Type
 ==== boundThis ( ) ====
 
 <RETN> The ''boundThis'' method returns a type if the function has a
-bound ''this'' value, otherwise it returns a type object that
-implements ''AnyType''.
+bound ''this'' value, otherwise it returns an ''AnyType'' object.
 
 ==== argTypes ( ) ====
 
@@ -423,8 +467,8 @@ the types of the formal parameters of the function, starting with the
 first argument and iterating in order, including all optional and rest
 arguments.
 
-<P> Arguments that do not have annotations will be revealed as having
-types that implement ''AnyType''.
+<P> Arguments that do not have annotations will be revealed as type
+''AnyType''.
 
 ==== defaultValues ( ) ====
 
@@ -440,20 +484,23 @@ has a rest argument, **false** otherwise.
 ==== returnType ( ) ====
 
 <RETN> The ''returnType'' method returns the return type annotation
-for this function.
+for this function, or an ''AnyType'' object if there was no type
+annotation.
 
 
 == Iterator types ==
 
-<P> The iterator types are used as annotations on parameters and
-methods in the interface hierarchy described previously.
+<P> The following iterator type definitions are used as annotations on
+parameters and methods in the interface hierarchy described
+previously.
 
 {{{
 type FieldIterator = iterator::IteratorType.<Field>
 type ClassTypeIterator = iterator::IteratorType.<ClassType>
 type NominalTypeIterator = iterator::IteratorType.<NominalType>
 type TypeIterator = iterator::IteratorType.<Type>
-type FieldValueIterator = iterator::IteratorType.<FieldValue>;
+type FieldValueIterator = iterator::IteratorType.<FieldValue>
 type ValueIterator = iterator::IteratorType.<*>
 }}}
 
+<!-- End of meta.html -->

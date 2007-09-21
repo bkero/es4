@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/uint.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -33,6 +33,7 @@ final class uint!
 
     <SIGNATURE file="uint.es" name="override intrinsic function toString">
     <SIGNATURE file="uint.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="uint.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="uint.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="uint.es" name="intrinsic function toFixed">
@@ -68,7 +69,7 @@ performs a type conversion: it converts //value// (which defaults to
 <SHORTIMPL>
 <INCLUDE file="uint.es" name="meta static function invoke">
 
-<FIXME> The optimization here, using ''newUInt'', is more confusing
+<FIXME> (Ticket #176.) The optimization here, using ''newUInt'', is more confusing
 than ''new uint'' would have been.
 
 == Value properties on the ''uint'' class object ==
@@ -83,7 +84,7 @@ represented by the ''uint'' class.  Its value is 2<SUP>32</SUP>-1.
 <P> The value of ''MIN_VALUE'' is the smallest value
 represented by the ''uint'' class.  Its value is 0.
 
-<FIXME> This is a silly property.
+<FIXME> (Ticket #183.) This is a silly property.
 
 
 == Methods on ''uint'' instances ==
@@ -121,6 +122,16 @@ for it to return the same thing as the intrinsic ''toString'' method.
 <NOTE> The first parameter to this function is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this ''uint''
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="uint.es" name="override intrinsic function toJSONString">
 
 
 === intrinsic::valueOf ( ) ===

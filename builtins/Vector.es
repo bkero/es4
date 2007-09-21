@@ -97,19 +97,19 @@ package
                 this.intrinsic::set(name, v);
         }
 
-        function toString()
+        intrinsic function toString()
             join();
 
-        function toLocaleString() {
+        intrinsic function toLocaleString() {
             let limit = length;
-            let separator = ",";
+            let separator = informative::localeSpecificSeparatorString;
             let s = "";
             let i = 0;
 
             while (true) {
                 let x = this[i];
                 if (x !== undefined && x !== null)
-                    s += x.toLocaleString();
+                    s += x.public::toLocaleString();
                 if (++i == limit)
                     break;
                 s += separator;
@@ -117,7 +117,12 @@ package
             return s;
         }
 
-        function concat(...items): Vector.<T> {
+        informative var localeSpecificSeparatorString = ",";
+
+        intrinsic function concat(...items): Vector.<T>
+            helper::concat(items);
+
+        helper function concat(items) {
             let v = new Vector.<T>;
             let k = 0;
 
@@ -133,14 +138,14 @@ package
             return v;
         }
 
-        function every(checker: Checker, thisObj: Object=null): boolean { 
+        intrinsic function every(checker: Checker, thisObj: Object=null): boolean { 
             for ( let i=0, limit=length ; i < limit ; i++ )
                 if (!checker.call(thisObj, this[i], i, this))
                     return false;
             return true;
         }
 
-        function filter(checker: Checker, thisObj: Object=null): Vector.<T> { 
+        intrinsic function filter(checker: Checker, thisObj: Object=null): Vector.<T> { 
             var result = new Vector.<T>;
             for ( let i=0, limit=length ; i < limit ; i++ )
                 if (checker.call(thisObj, this[i], i, this))
@@ -148,20 +153,20 @@ package
             return result;
         }
 
-        function forEach(eacher: Eacher, thisObj: Object=null): void { 
+        intrinsic function forEach(eacher: Eacher, thisObj: Object=null): void { 
             for ( let i=0, limit=length ; i < limit ; i++ )
                 eacher.call(thisObj, this[i], i, this);
         }
 
-        function indexOf(value: T, from: Numeric=0): Numeric {
-            let start = helper::clamp( helper::toInteger(from), length );
+        intrinsic function indexOf(value: T, from: Numeric=0): Numeric {
+            let start = helper::clamp( from, length );
             for ( let i=start, limit=length ; i < limit ; i++ )
                 if (this[i] === value)
                     return i;
             return -1;
         }
 
-        function join(separator: string=","): string {
+        intrinsic function join(separator: string=","): string {
             let limit = length;
             let s = "";
             let i = 0;
@@ -177,22 +182,22 @@ package
             return s;
         }
 
-        function lastIndexOf(value: T, from: Numeric=Infinity): Numeric { 
-            let start = helper::clamp( helper::toInteger(from), length );
+        intrinsic function lastIndexOf(value: T, from: Numeric=Infinity): Numeric { 
+            let start = helper::clamp( from, length );
             for ( let i=start ; i >= 0 ; i-- )
                 if (this[i] === value)
                     return i;
             return -1;
         }
 
-        function map(mapper:Mapper, thisObj:Object=null) { 
+        intrinsic function map(mapper:Mapper, thisObj:Object=null) { 
             var result = new Vector.<T>(length);
             for ( let i=0, limit=length ; i < limit ; i++ )
                 result[i] = mapper.call(thisObj, this[i], i, this);
             return result;
         }
 
-        function pop(): T {
+        intrinsic function pop(): T {
             if (length == 0)
                 return undefined;
 
@@ -201,19 +206,22 @@ package
             return v;
         }
 
-        function push(...items): uint {
+        intrinsic function push(...items): uint
+            helper::push(items);
+
+        helper function push(items) {
             for ( let i=0, limit=items.length ; i < limit ; i++ )
                 this[length] = items[i];
             return length;
         }
 
-        function reverse(): Vector.<T> {
+        intrinsic function reverse(): Vector.<T> {
             for ( let i=0, j=length-1 ; i < j ; i++, j-- )
                 [this[i], this[j]] = [this[j], this[i]];
             return this;
         }
 
-        function shift(): T {
+        intrinsic function shift(): T {
             if (length == 0)
                 return undefined;
             let v = this[0];
@@ -223,16 +231,16 @@ package
             return v;
         }
 
-        function slice(start: Numeric=0, end: Numeric=Infinity): Vector.<T> {
-            let first = helper::clamp(start, length);
-            let limit = helper::clamp(end, length);
-            let result = new Vector.<T>(limit-first);
-            for ( let i=first, n=0 ; i < limit ; i++, n++ )
-                result[n] = this[i];
+        intrinsic function slice(start: Numeric=0, end: Numeric=Infinity): Vector.<T> {
+            let first = helper::clamp( start, length );
+            let limit = helper::clamp( end, length );
+            let result = new Vector.<T>;
+            for ( let i=first ; i < limit ; i++ )
+                result.push(this[i]);
             return result;
         }
 
-        function some(checker: Checker, thisObj: Object=null): boolean { 
+        intrinsic function some(checker: Checker, thisObj: Object=null): boolean { 
             for ( let i=0, limit=length ; i < limit ; i++ )
                 if (checker.call(thisObj, this[i], i, this))
                     return true;
@@ -241,25 +249,25 @@ package
 
         // FIXME: Is the signature of comparefn too constraining?
 
-        function sort(comparefn: function(T, T): Numeric): Vector.<T> {
+        intrinsic function sort(comparefn: function(T, T): Numeric): Vector.<T> {
             if (length > 0)
                 informative::sortEngine(this, 0, length-1, this.helper::sortCompare, comparefn);
             return this;
         }
 
-        helper function sortCompare(j: uint, k: uint, comparefn: Comparator): Numeric {
-            let x = this[j];
-            let y = this[k];
-            return comparefn(x, y);
-        }
+        helper function sortCompare(j: uint, k: uint, comparefn: Comparator): Numeric
+            comparefn(this[j], this[k]);
 
-        function splice(start: Numeric, deleteCount: Numeric, ...items): Vector.<T> {
-            let first  = helper::clamp(start, length);
-            let delcnt = helper::clamp( helper::toInteger(deleteCount), length-first );
+        intrinsic function splice(start: Numeric, deleteCount: Numeric, ...items): Vector.<T>
+            helper::splice(start, deleteCount, items);
+
+        helper function splice(start, deleteCount, items) {
+            let first  = helper::clamp( start, length );
+            let delcnt = helper::clamp( deleteCount, length-first );
 
             let result = new Vector.<T>;
             for ( let n=0, i=first ; n < delcnt ; n++, i++ )
-                result[n] = this[i];
+                result.push(this[i]);
 
             if (items.length < delcnt) {
                 let shift = delcnt - items.length;
@@ -272,13 +280,16 @@ package
                 for ( let n=shift-1, i=first+shift; n >= 0 ; n--, i-- )
                     this[i] = this[i-shift];
             }
-            for ( let n=0, i=first ; n < items.lenth ; n++, i++ )
+            for ( let n=0, i=first ; n < items.length ; n++, i++ )
                 this[i] = items[n];
 
             return result;
         }
 
-        function unshift(...items): uint {
+        intrinsic function unshift(...items): uint
+            helper::unshift(items);
+
+        helper function unshift(items) {
             let numitems = items.length;
             let oldlimit = length;
             let newlimit = oldlimit + numitems;
@@ -288,6 +299,106 @@ package
             for ( let i=0 ; i < numitems ; i++ )
                 this[i] = items[i];
             return newlength;
+        }
+
+        prototype function toString(this:Vector.<*>)
+            this.intrinsic::toString();
+
+        prototype function toLocaleString(this:Vector.<*>) 
+            this.intrinsic::toLocaleString();
+
+        prototype function concat(this:Vector.<*>, ...items)
+            this.helper::concat(items);
+
+        prototype function every(this:Vector.<*>, checker, thisObj=undefined)
+            this.intrinsic::every(checker, thisObj is Object ? thisObj : null);
+
+        prototype function filter(this:Vector.<*>, checker, thisObj=undefined)
+            this.intrinsic::filter(checker, thisObj is Object ? thisObj : null);
+
+        prototype function forEach(this:Vector.<*>, eacher, thisObj=undefined)
+            this.intrinsic::forEach(checker, thisObj is Object ? thisObj : null);
+
+        prototype function indexOf(this:Vector.<*>, value, from=undefined)
+            this.intrinsic::indexOf(value, Number(from));
+
+        prototype function join(this:Vector.<*>, separator=undefined)
+            this.intrinsic::indexOf(separator == undefined ? "," : string(separator));
+
+        prototype function lastIndexOf(this:Vector.<*>, value, from=undefined)
+            this.intrinsic::indexOf(value, from == undefined ? Infinity : Number(from));
+
+        prototype function map(this:Vector.<*>, mapper, thisObj=undefined)
+            this.intrinsic::map(mapper, thisObj is Object ? thisObj : null);
+
+        prototype function pop(this:Vector.<*>)
+            this.intrinsic::pop();
+
+        prototype function push(this:Vector.<*>, ...items)
+            this.helper::push(items);
+
+        prototype function reverse(this:Vector.<*>)
+            this.intrinsic::reverse();
+
+        prototype function shift(this:Vector.<*>)
+            this.intrinsic::shift();
+
+        prototype function slice(this:Vector.<*>, start=undefined, end=undefined)
+            this.intrinsic::slice(start == undefined ? 0 : Number(start), 
+                                  end == undefined ? Infinity : Number(end));
+
+        prototype function some(this:Vector.<*>, checker, thisObj=undefined)
+            this.intrinsic::some(checker, thisObj is Object ? thisObj : null);
+
+        prototype function sort(this:Vector.<*>, comparefn)
+            this.intrinsic::sort(comparefn);
+
+        prototype function splice(this:Vector.<*>, start, deleteCount, ...items)
+            this.helper::splice(Number(start), Number(deleteCount), items);
+
+        prototype function unshift(this:Vector.<*>, ...items)
+            this.helper::unshift(items);
+
+        iterator function get(deep: boolean = false) : iterator::IteratorType.<uint>
+            getKeys(deep);
+
+        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<uint> {
+            let i = 0;
+            let a = this;
+            return { 
+                next:
+                function () : uint {
+                    if (i === a.length)
+                        throw iterator::StopIteration;
+                    return i++;
+                }
+            }
+        }
+
+        iterator function getValues(deep: boolean = false) : iterator::IteratorType.<T> {
+            let i = 0;
+            let a = this;
+            return { 
+                next:
+                function () : T {
+                    if (i === a.length)
+                        throw iterator::StopIteration;
+                    return a[i++];
+                }
+            }
+        }
+
+        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[uint,V]> {
+            let i = 0;
+            let a = this;
+            return { 
+                next:
+                function () : T {
+                    if (i === a.length)
+                        throw iterator::StopIteration;
+                    return [i,a[i++]];  // Yes, that's well-defined
+                }
+            }
         }
 
         var fixed: boolean;

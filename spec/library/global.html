@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/global.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -10,14 +10,17 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<p>The global object does not have a [[Construct]] property; it is not
-possible to use the global object as a constructor with the new
-operator.
+<P> The global object is an instance of an implementation-dependent
+class.  In particular, its the name of this class and the contents of
+the class's prototype object are implementation-dependent.
 
-<p>The global object does not have a [[Call]] property; it is not
-possible to invoke the global object as a function.  The values of the
-[[Prototype]] and [[Class]] properties of the global object are
-implementation-dependent.
+<P> The class describing the global object does not have an accessible
+constructor function; it is not possible to use the global object as a
+constructor with the ''new'' operator.
+
+<p> The class describing the global object does not have a
+''meta::invoke'' method; it is not possible to call the global object
+as a function.
 
 == Synopsis ==
 
@@ -52,13 +55,16 @@ __ES4__ class decimal <LDOTS>
 __ES4__ class Name <LDOTS>
 __ES4__ class Namespace <LDOTS>
 __ES4__ class ByteArray <LDOTS>
-__ES4__ class Map <LDOTS>
-__ES4__ class IdentityMap <LDOTS>
-
-__ES4__ interface ObjectIdentity <LDOTS>
+__ES4__ class Map.<K,V> <LDOTS>
+__ES4__ class Vector.<T> <LDOTS>
+__ES4__ class EncodingError <LDOTS>
 
 __ES4__ type EnumerableId = <LDOTS>
 __ES4__ type Numeric = <LDOTS>
+__ES4__ type Strings = <LDOTS>
+__ES4__ type Booleans = <LDOTS>
+
+__ES4__ namespace intrinsic = <LDOTS>
 
 intrinsic interface Field <LDOTS>
 intrinsic interface FieldValue <LDOTS>
@@ -66,6 +72,9 @@ intrinsic interface Type <LDOTS>
 intrinsic interface NominalType <LDOTS>
 intrinsic interface InterfaceType <LDOTS>
 intrinsic interface ClassType <LDOTS>
+intrinsic interface AnyType <LDOTS>
+intrinsic interface NullType <LDOTS>
+intrinsic interface UndefinedType <LDOTS>
 intrinsic interface UnionType <LDOTS>
 intrinsic interface RecordType <LDOTS>
 intrinsic interface FunctionType <LDOTS>
@@ -75,6 +84,8 @@ intrinsic type FieldIterator = <LDOTS>
 intrinsic type FieldValueIterator = <LDOTS>
 intrinsic type TypeIterator = <LDOTS>
 intrinsic type InterfaceIterator = <LDOTS>
+
+intrinsic class ControlInspector.<T> <LDOTS>
 
 const NaN: double = <LDOTS>
 const Infinity: double = <LDOTS>
@@ -95,27 +106,6 @@ intrinsic function encodeURI(s: string): string <LDOTS>
 intrinsic function encodeURIComponent(s: string): string <LDOTS>
 intrinsic function hashcode(x): uint <LDOTS>
 
-intrinsic function +(a,b) <LDOTS>
-intrinsic function -(a,b) <LDOTS>
-intrinsic function *(a,b) <LDOTS>
-intrinsic function /(a,b) <LDOTS>
-intrinsic function %(a,b) <LDOTS>
-intrinsic function ^(a,b) <LDOTS>
-intrinsic function &(a,b) <LDOTS>
-intrinsic function |(a,b) <LDOTS>
-intrinsic function <<(a,b) <LDOTS>
-intrinsic function >>(a,b) <LDOTS>
-intrinsic function >>>(a,b) <LDOTS>
-intrinsic function ===(a,b) <LDOTS>
-intrinsic function !==(a,b) <LDOTS>
-intrinsic function ==(a,b) <LDOTS>
-intrinsic function !=(a,b) <LDOTS>
-intrinsic function <(a,b) <LDOTS>
-intrinsic function <=(a,b) <LDOTS>
-intrinsic function >(a,b) <LDOTS>
-intrinsic function >=(a,b) <LDOTS>
-intrinsic function ~(a) <LDOTS>
-
 function eval(x) <LDOTS>
 function parseInt(s, r=undefined) <LDOTS>
 function parseFloat(s) <LDOTS>
@@ -131,23 +121,22 @@ __ES4__ function hashcode(x) <LDOTS>
 
 == Namespace for types ==
 
-<p>All new classes and type definitions in the global object are
-defined in the namespace ''types''.  This namespace is automatically
+<p> All new classes and type definitions in the global object are
+defined in the namespace ''__ES4__''.  This namespace is automatically
 opened by the implementation for code that is to be treated as 4th
 Edition code, but not for code that is to be treated as 3rd Edition
 code.
 
-<NOTE>The risk of polluting the name space for 3rd Edition code with
-new names is deemed too great to always open the ''types'' name space.
+<NOTE> The risk of polluting the name space for 3rd Edition code with
+new names is deemed too great to always open the ''__ES4__'' name
+space.
 
-<FIXME>The name and behavior of this namespace has yet to be fully
-resolved by the committee.
+<p> The means by which an implementation determines whether to treat
+code according to 3rd Edition or 4th Edition is outside the scope of
+this Standard.
 
-<p>The means by which an implementation determines whether to treat code according to
-3rd Edition or 4th Edition is outside the scope of this Standard.
-
-<NOTE>This standard makes recommendations for how mime types should be
-used to tag script content in a web browser.  See <XREF
+<NOTE> This standard makes recommendations for how mime types should
+be used to tag script content in a web browser.  See <XREF
 target="appendix-mime-types">.
 
 
@@ -186,19 +175,18 @@ of the Standard, the value of ''__ECMASCRIPT_VERSION__'' is 4.
 
 ==== The ''eval'' operator ====
 
-<P> When the intrinsic and non-intrinsic ''eval'' functions are called
+<DESC> When the intrinsic and non-intrinsic ''eval'' functions are called
 directly by name (that is, by the explicit use of the name ''eval'' as
-an Identifier which is the MemberExpression in a CallExpression) they
-are treated like operators in the language.  See <XREF
-target="eval-operator">.
+an unqualified Identifier which is the MemberExpression in a
+CallExpression) they are treated like operators in the language.  See
+<XREF target="eval-operator">.
 
-<FIXME> It's possible we want just the unqualified use of ''eval'' here.
-
+<RETN> The ''eval'' operator returns an ECMAScript value.
 
 ==== intrinsic::eval (s) ====
 
-<DESC> When the intrinsic ''eval'' function is called as a methods on the
-global objects in whose scope it is closed then it evaluates its
+<DESC> When the intrinsic ''eval'' function is called as a method on
+the global objects in whose scope it is closed then it evaluates its
 argument as a program in the global scope that is the receiver object
 in the call.
 
@@ -210,17 +198,7 @@ argument as a program in a global scope that is the scope in which the
 <RETN> The intrinsic ''eval'' function returns the value computed by
 the program that's evaluated.
 
-<IMPL> The definitions for the two cases described above can be
-summarized as follows, where the call to ''eval'' in the body is an
-instance of the former ("operator") case:
-
-{{{
-intrinsic function eval(s: string)
-    eval(s);
-}}}
-
-<FIXME> That's not right, because ''s'' shadows any global ''s'' that
-should be visible to the evaluated program.
+<IMPL> The ''eval'' method is implementation-dependent.
 
 ==== eval (s) ====
 
@@ -229,9 +207,9 @@ on the global object in whose scope it is closed, or it can be called
 as an ordinary function under another name, just like the intrinsic
 ''eval'' function.
 
-<P> If the argument to ''eval'' is a ''String'' object, then the
-program represented by that string is evaluated.  Otherwise the
-argument is returned unchanged.
+<P> If the argument to ''eval'' is a string, then the program
+represented by that string is evaluated.  Otherwise the argument is
+returned unchanged.
 
 <INCLUDE file="Global.es" name="function eval">
 
@@ -443,8 +421,9 @@ uriMark</div>
 <div class="indented">''- _ . ! ~ * ' ( )''</div>
 </div>
 
-<FIXME>Upgrade to Unicode 5 in the following sections, and upgrade to
-handling the entire Unicode character set.
+<FIXME> (Ticket #170.)  Upgrade to Unicode 5 in the following
+sections, and upgrade to handling the entire (21-bit) Unicode
+character set.
 
 <p>When a character to be included in a URI is not listed above or is
 not intended to have the special meaning sometimes given to the
@@ -466,8 +445,6 @@ function ''encode'' taking two string arguments ''s'' and
 <p>The unescaping and decoding process is described by the helper
 function ''decode'' taking two string arguments ''s'' and
 ''reservedSet''.
-
-<FIXME>One feels regular expressions would be appropriate here...
 
 <INCLUDE file="Global.es" name="helper function decode">
 <INCLUDE file="Global.es" name="helper function decodeHexEscape">
@@ -683,12 +660,18 @@ addresses if possible, or at least use memory addresses subject to
 some cryptographically strong one-way transformation, or sequence
 numbers, cookies, or similar.
 
+<!--
+
 === Operator functions ===
 
-<FIXME> These are defined as implementing the primitive functionality
-of each operator, bypassing any user overloading.  They can be
-referenced by prefixing them with a namespace, eg ''intrinsic::===''.
+<P> These are defined as implementing the primitive functionality of each
+operator, bypassing any user overloading.  They can be referenced by
+prefixing them with a namespace, eg ''intrinsic::===''.
 
+<P> These may be obsolete now that we've killed the operator
+overloading proposal and not yet accepted the generic function proposal.
+
+-->
 
 == Class and Interface Properties of the Global Object ==
 
@@ -707,6 +690,7 @@ referenced by prefixing them with a namespace, eg ''intrinsic::===''.
   <li> The ''Map'' class is defined in section <XREF target="class Map">
   <li> The ''Vector'' class is defined in section <XREF target="class Vector">
   <li> The ''ByteArray'' class is defined in section <XREF target="class ByteArray">
+  <li> The ''ControlInspector'' class is defined in section <XREF target="class ControlInspector">
   <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in sections <XREF target="class Error">, <XREF target="class EvalError">, <XREF target="class RangeError">, <XREF target="class ReferenceError">,  <XREF target="class SyntaxError">, <XREF target="class TypeError">, and <XREF target="class URIError">, respectively.
 </ul>
 
@@ -750,13 +734,14 @@ structural types ''FieldIterator'', ''FieldValueIterator'',
 
 <P> See section <XREF target="math-object">.
 
-<FIXME> Currently we have a single ''const'' math object that has some
-intrinsic fixture methods and some nonintrinsic dynamic methods, as per
-E262-3.  When the user opens ''intrinsic'' the intrinsic methods will be
-perferred, but only because the implementation knows the type of the
-Math object in the global environment.  This type is not exposed in the
-spec.  Thus the math object can't be passed around as a strongly typed
-parameter (should we wish for it).
+<FIXME> (Ticket #171.) Currently we have a single ''const'' math
+object that has some intrinsic fixture methods and some nonintrinsic
+dynamic methods, as per E262-3.  When the user opens ''intrinsic'' the
+intrinsic methods will be perferred, but only because the
+implementation knows the type of the Math object in the global
+environment.  This type is not exposed in the spec.  Thus the math
+object can't be passed around as a strongly typed parameter (should we
+wish for it).
 
 <P class="fixme"> Alternative approaches are to (a) expose that type
 and (b) separate the intrinsic bindings from the nonintrinsic global

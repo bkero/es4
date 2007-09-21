@@ -57,6 +57,8 @@ package
     /* E262-3 15.11 */
     dynamic class Error
     {
+        static const length = 1;
+
         meta static function invoke(message)
             new Error(message);
 
@@ -73,7 +75,7 @@ package
         prototype var message = "Generic error";
 
         /* E262-3 15.11.4.4: toString */
-        prototype function toString()
+        prototype function toString(this:Error)
             this.intrinsic::toString();
 
         /* INFORMATIVE */

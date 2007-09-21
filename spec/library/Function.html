@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Function.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -76,9 +76,8 @@ defaulting to the empty string.
 
 <p> If the list of parameters is not parsable as a
 //FormalParameterList<sub>opt</sub>//, or if the body is not parsable
-as a //FunctionBody//, then a **SyntaxError** exception is thrown.
-
-<FIXME> Cross-reference to grammar here for those production names.
+as a //FunctionBody//, then a **SyntaxError** exception is thrown (see
+the grammar in section <XREF target="ECMAScript grammar">).
 
 <RETN> The ''Function'' constructor returns a new ''Function'' instance.
 
@@ -111,20 +110,21 @@ new Function("a, b, c", "return a+b+c")
 new Function("a,b", "c", "return a+b+c")
 }}}
 
-<FIXME> Type annotations?  The RI barfs (looks like an incomplete or
-incorrect set of namespaces is provided during construction).
+<FIXME> (Ticket #172.)  Type annotations?  The RI barfs (looks like an
+incomplete or incorrect set of namespaces is provided during
+construction).
 
-<FIXME> Return type annotations?  No way to specify this using the
+<p class="fixme"> Return type annotations?  No way to specify this using the
 current shape of the constructor.
 
-<FIXME> Default values?  The RI says yes.
+<p class="fixme"> Default values?  The RI says yes.
 
-<FIXME> Rest arguments?  The RI says yes.
+<p class="fixme"> Rest arguments?  The RI says yes.
 
-<FIXME> One possibility is to extend the syntax, s.t. the //pi//
-concatenated can form a syntactically valid parameter list bracketed
-by ''('' and '')''; this creates the possibility that a return type
-annotation can follow the '')''.
+<p class="fixme"> One possibility is to extend the syntax, s.t. the
+//p<SUB>i</SUB>// concatenated can form a syntactically valid
+parameter list bracketed by ''('' and '')''; this creates the
+possibility that a return type annotation can follow the '')''.
 
 
 <h3 id="Function: meta static invoke"> Function (p1, p2, <LDOTS> , pn, body) </h3>
@@ -139,7 +139,7 @@ new ''Function'' instance.
 
 <SHORTIMPL>
 
-<!-- FIXME: Faking it until we get the RI right -->
+<!-- Faking it until we get the RI right -->
 {{{
 meta static function invoke(...args)
     helper::createFunction(args)
@@ -208,11 +208,12 @@ defines the function being created.
 can add properties and methods but can't override the function calling
 behavior.
 
-<FIXME> While it is necessary that the ''invoke'' method is completely
-magic in ''Function'' instances, it's not clear it needs to be magic
-for instances of subclasses of ''Function'', because these can be
-treated like other objects that have ''invoke'' methods (and which
-already work just fine).  Therefore it should not be ''final''.
+<FIXME> (Ticket #173.)  While it is necessary that the ''invoke''
+method is completely magic in ''Function'' instances, it's not clear
+it needs to be magic for instances of subclasses of ''Function'',
+because these can be treated like other objects that have ''invoke''
+methods (and which already work just fine).  Therefore it should not
+be ''final''.
 
 <RETN> The meta method ''invoke'' returns the result of evaluating the
 executable code for the function represented by this ''Function''
@@ -227,10 +228,11 @@ the syntax of a //FunctionDeclaration//.  Note in particular that the
 use and placement of white space, line terminators, and semicolons
 within the representation string is implementation-dependent.
 
-<FIXME> It doesn't make a lot of sense for (function () {}).toString()
-to return something that looks like a //FunctionDeclaration//, since
-the function has no name, so we might at least specify what is
-produced in that case.
+<FIXME> (Ticket #174.) It doesn't make a lot of sense for (function ()
+{}).toString() to return something that looks like a
+//FunctionDeclaration//, since the function has no name, so we might
+at least specify what is produced in that case.  FF, Opera, and Safari
+print the above without printing any function name.
 
 <RETN> The intrinsic ''toString'' method returns a string.
 
@@ -267,6 +269,7 @@ with the current value of ''this'' as the first argument.
 <INCLUDE file="Function.es" name="intrinsic function call">
 
 
+<!--
 === %%[[HasInstance]]%% (V) ===
 
 <FIXME> Is this what we want?
@@ -281,6 +284,7 @@ a value //V// determines if //V// is an instance of the ''Function'' object.
 
 <p> The magic ''getPrototype'' function extracts the [[Prototype]] property
 from the object (see <XREF target="magic:getPrototype">).
+-->
 
 
 == Properties of ''Function'' instances ==

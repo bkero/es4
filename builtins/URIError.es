@@ -57,6 +57,8 @@ package
     /* E262-3 15.11.6.6; 15.11.7 */
     dynamic class URIError extends Error
     {
+        static const length = 1;
+
         meta static function invoke(message)
             new URIError(message);
 

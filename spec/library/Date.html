@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Date.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -43,6 +43,8 @@ dynamic class Date extends Object
     <SIGNATURE file="Date.es" name="static var parse">
     <SIGNATURE file="Date.es" name="static var UTC">
 
+    static const length: uint = 7;
+
     <SIGNATURE file="Date.es" name="override intrinsic function toString">
     <SIGNATURE file="Date.es" name="intrinsic function toDateString">
     <SIGNATURE file="Date.es" name="intrinsic function toTimeString">
@@ -51,6 +53,7 @@ dynamic class Date extends Object
     <SIGNATURE file="Date.es" name="intrinsic function toLocaleTimeString">
     <SIGNATURE file="Date.es" name="intrinsic function toUTCString">
     <SIGNATURE file="Date.es" name="intrinsic function toISOString">
+    <SIGNATURE file="Date.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Date.es" name="intrinsic function nanoAge">
     <SIGNATURE file="Date.es" name="intrinsic function getTime">
     <SIGNATURE file="Date.es" name="intrinsic function getYear">
@@ -142,6 +145,7 @@ time value is NaN.  It provides the following direct properties:
     toLocaleTimeString: function () <LDOTS> ,
     toUTCString:        function () <LDOTS> ,
     toISOString:        function () <LDOTS> ,
+    toJSONString:       function (pretty=false) <LDOTS> ,
     valueOf:            function () <LDOTS> ,
     getTime:            function () <LDOTS> ,
     getFullYear:        function () <LDOTS> ,
@@ -274,10 +278,10 @@ such that ''TimeFromYear(//y//) <LEQ> //t//''.
 informative static function YearFromTime(t: double): double <LDOTS>
 }}}
 
-<FIXME> Is there any good reason not to define how ''YearFromTime''
-should be computed?  The RI uses a non-iterative algorithm which I
-believe comes from SpiderMonkey.  I have seen iterative algorithms
-elsewhere.
+<FIXME> (Ticket #190.) Is there any good reason not to define how
+''YearFromTime'' should be computed?  The RI uses a non-iterative
+algorithm which I believe comes from SpiderMonkey.  I have seen
+iterative algorithms elsewhere.
 
 <P>The leap-year function ''InLeapYear'' is 1 for a time within a leap
 year and otherwise is zero:
@@ -339,7 +343,7 @@ informative function LocalTZA(): double <LDOTS>
 <P> The value ''LocalTZA'' does not vary with time but depends only on
 the geographic location.
 
-<FIXME> This is bogus because it assumes time zone boundaries are
+<FIXME> (Ticket #191.) This is bogus because it assumes time zone boundaries are
 fixed for all eternity.  Yet time zone (standard time) is political;
 changing political conditions can lead to adoption of a different
 standard time (analogous to the changes in daylight savings time
@@ -380,7 +384,7 @@ same starting week day for the year) for which the host environment
 provides daylight saving time information.  The only restriction is
 that all equivalent years should produce the same result.
 
-<FIXME> We've already agreed that the above is bogus; the
+<FIXME> (Ticket #191.) We've already agreed that the above is bogus; the
 implementation needs to make a "best effort" to find the correct
 adjustment for the time //t//, in the year of //t//.  More to come
 here.  Also see note above for ''LocalTZA''.
@@ -489,7 +493,7 @@ regular expression:
 
 <INCLUDE file="Date.es" name="helper const isoTimestamp">
 
-<FIXME> Replace the regexp by a proper grammar, eventually.
+<FIXME> (Ticket #192.) Replace the regexp by a proper grammar, eventually.
 
 
 == Methods on the Date class ==
@@ -748,6 +752,16 @@ UTC, denoted by a suffix ''Z''.
 <P> The helper functions ''removeTrailingZeroes'' and ''zeroFill'' are
 described in section <XREF target="Minor date helpers">.
 
+=== intrinsic::toJSONString ( pretty=false ) ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this date object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a string.
+
+<SHORTIMPL>
+<INCLUDE file="Date.es" name="override intrinsic function toJSONString">
+
 
 === intrinsic::nanoAge() ===
 
@@ -989,28 +1003,22 @@ and //ms// to be values in the local time zone.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setSeconds">
 
-<FIXME> Default arguments: is this the way we want it?
+<FIXME> (Ticket #193.) Default arguments: is this the way we want it?
 
-<BR><BR>
+<P class="fixme"> For this and the following methods the signature has
+the following impliciation: if a program subclasses Date and overrides
+the intrinsic ''getMilliseconds()'' method, the new method //will// be
+invoked if setSeconds is called with one argument.
 
-For this and the following methods the signature has the following
-impliciation: if a program subclasses Date and overrides the
-intrinsic ''getMilliseconds()'' method, the new method //will// be invoked if
-setSeconds is called with one argument.
+<P class="fixme"> There are various ways to avoid this, though I don't
+think it's really a problem that there is this dependence, except that
+it binds implementations in how they represent and handle dates.
 
-<BR><BR>
-
-There are various ways to avoid this, though I don't think it's really
-a problem that there is this dependence, except that it binds
-implementations in how they represent and handle dates.
-
-<BR><BR>
-
-3rd Edition has imprecise language here, it says that if ms is not
-provided by the caller then its value will be as if //ms// were
-specified with the value //getMilliseconds()//.  Whether that implies
-that that method is called (and that the user could override it) or
-not is not at all clear.
+<P class="fixme"> 3rd Edition has imprecise language here, it says
+that if ms is not provided by the caller then its value will be as if
+//ms// were specified with the value //getMilliseconds()//.  Whether
+that implies that that method is called (and that the user could
+override it) or not is not at all clear.
 
 
 === intrinisic::setUTCSeconds (sec, ms=<LDOTS> ) ===

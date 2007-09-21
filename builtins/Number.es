@@ -49,12 +49,14 @@ package
     use strict;
     import ECMAScript4_Internal.*;
 
+    intrinsic type Numbers = (int, uint, double, decimal, Number!);
+
     dynamic class Number
     {
-        // Implementation artifact:
-        // These need to be static getters rather than static consts,
-        // since 'Number' initializes before 'double'.
+        // IMPLEMENTATION ARTIFACT: A getter because Number is loaded before int.
+        static function get length() { return 1 }
 
+        // IMPLEMENTATION ARTIFACT:  Static getters because Number is loaded before double.
         static function get MAX_VALUE() : double         1.7976931348623157e+308;  /* INFORMATIVE */
         static function get MIN_VALUE() : double         5e-324;                   /* INFORMATIVE */
         static function get NaN() : double               0d / 0d;
@@ -83,6 +85,9 @@ package
         override intrinsic function toLocaleString() : string
             intrinsic::valueOf().intrinsic::toLocaleString();
 
+        override intrinsic function toJSONString(pretty: boolean=false) : string
+            intrinsic::valueOf().intrinsic::toJSONString(pretty);
+
         override intrinsic function valueOf(): (int,uint,double,decimal)
             double(this);
 
@@ -104,6 +109,9 @@ package
 
         prototype function toLocaleString(this: Numeric)
             this.intrinsic::toLocaleString();
+
+        prototype function toJSONString(this: Numeric, pretty=false)
+            this.intrinsic::toJSONString(pretty);
 
         prototype function valueOf(this: Numeric)
             this.intrinsic::valueOf();

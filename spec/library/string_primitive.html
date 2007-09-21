@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/string_primitive.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -88,15 +88,6 @@ final class string!
 
 == Static Methods on the ''string'' Class ==
 
-<FIXME> Should ''string'' methods be generic (ie unconstrained in
-their object argument), or only ''String'' methods?  The prototype
-methods on ''string'' have to be generic, for sure, but the static
-methods are new and we can choose.  If they are not generic then we
-push conversion machinery into the prototype methods and the intrinsic
-methods (in some cases), which confuses the spec slightly and makes
-the static methods somewhat less useful (less generic, in fact).  On
-the other hand we get better type checking behavior.
-
 === new string ( value=<LDOTS> ) ===
 
 <DESC> The ''string'' constructor initializes a new ''string'' object
@@ -117,8 +108,9 @@ string.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="meta static function invoke">
 
-<FIXME> The use of ''magic::newString'' is an optimization that
-confuses the spec; ''new string(x)'' would have been better.
+<FIXME> (Ticket #176.) The use of ''magic::newString'' is an
+optimization that confuses the spec; ''new string(x)'' would have been
+better.
 
 === fromCharCode ( ...codes ) ===
 
@@ -128,11 +120,11 @@ Each element of //codes// specifies the Unicode code point value of
 one character of the resulting string, with the first argument
 specifying the first character, and so on, from left to right.
 
-<FIXME> The code below assumes a 21-bit Unicode representation.  What
-happens in a system that only has 16-bit unicode?  We'd like to be
-backwards compatible.  If so, the upper bits are ignored.  This
-conflicts with how ''\u{...}'' is handled, though: it creates two code
-points.
+<FIXME> (Ticket #170.) The code below assumes a 21-bit Unicode
+representation.  What happens in a system that only has 16-bit
+unicode?  We'd like to be backwards compatible.  If so, the upper bits
+are ignored.  This conflicts with how ''\u{...}'' is handled, though:
+it creates two code points.
 
 <RETN> The static ''fromCharCode'' method returns the computed ''string''.
 
@@ -150,7 +142,7 @@ extracts the character at index //pos//.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function charAt">
 
-<FIXME> The use of ''magic::charCodeAt'' is an optimization that
+<FIXME> (Ticket #176.) The use of ''magic::charCodeAt'' is an optimization that
 complicates the spec; ''string.charCodeAt(x)'' would have been better.
 
 === charCodeAt (self, pos) ===
@@ -189,7 +181,7 @@ which a match was found, or -1 if there was no match.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function indexOf">
 
-<FIXME> The use of ''magic::charCodeAt'' is an optimization that
+<FIXME> (Ticket #176.) The use of ''magic::charCodeAt'' is an optimization that
 complicates the spec; using ''string.charCodeAt'' would have been
 better.
 
@@ -206,7 +198,7 @@ which a match was found, or -1 if there was no match.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function indexOf">
 
-<FIXME> The use of ''magic::charCodeAt'' is an optimization that
+<FIXME> (Ticket #176.) The use of ''magic::charCodeAt'' is an optimization that
 complicates the spec; using ''string.charCodeAt'' would have been
 better.
 
@@ -272,14 +264,23 @@ method returns an array of strings containing the substrings of
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function match">
 
-=== parseJSON( self, <LDOTS> ) ===
+=== parseJSON( self, filter=<LDOTS> ) ===
 
 <DESC> The static ''parseJSON'' method parses //self// (converted to
-''string'') as a JSON object.
+''string'') as a JSON object.  The argument ''filter'', if not
+**undefined**, should be a function that takes two arguments //key//
+and //value// and returns a possibly modified //value//.  It will be
+called for each element of objects and arrays.
 
-<RETN> TBD.
+<P> A **SyntaxError** exception will be thrown if //self// is not
+parseable as a JSON object.
 
-<IMPL> TBD.
+<FIXME> (Ticket #202.) It would seem more natural to use an
+**EncodingError** here, since JSON encoding uses that object.
+
+<RETN> The ''parseJSON'' method returns an ECMAScript value.
+
+<IMPL> The ''parseJSON'' method is implementation-dependent.
 
 === replace (self, searchValue, replaceValue) ===
 
@@ -330,9 +331,10 @@ order.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function replace">
 
-<FIXME> The code above needs to be factored into a top-level function
-with the auxiliary functions following it; values of names now free in
-the nested functions must be passed as parameters.
+<FIXME> (Ticket #177.) The code above needs to be factored into a
+top-level function with the auxiliary functions following it; values
+of names now free in the nested functions must be passed as
+parameters.
 
 === search (self, regexp) ===
 
@@ -412,8 +414,9 @@ holding the extracted substrings, in order.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function split">
 
-<FIXME> The exposition leaves something to be desired.  Should split
-''splitMatch'' out as a separate helper function, at least.
+<FIXME> (Ticket #178.) The exposition leaves something to be desired.
+Should split ''splitMatch'' out as a separate helper function, at
+least.
 
 <NOTE> The static ''split'' method ignores the value of
 //separator//''.global'' for separators that are ''RegExp'' objects.
@@ -447,11 +450,11 @@ that accompanies it in Unicode 2.1.8 and later).
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function toLowerCase">
 
-<FIXME> The use of ''magic::charCodeAt'' and ''magic::fromCharCode''
-is a confusing optimization.
+<FIXME> (Ticket #176.) The use of ''magic::charCodeAt'' and
+''magic::fromCharCode'' is a confusing optimization.
 
-<FIXME> Cross reference to the Unicode library somehow, or put the
-unicode stuff into the ''helper'' namespace.
+<FIXME> (Ticket #179.) Cross reference to the Unicode library somehow,
+or put the unicode stuff into the ''helper'' namespace.
 
 === toLocaleLowerCase ( self ) ===
 
@@ -524,7 +527,7 @@ whitespace characters at either end.
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function trim">
 
-<FIXME> Reference to Unicode library -- handle this somehow.
+<FIXME> (Ticket #179.) Reference to Unicode library -- handle this somehow.
 
 == Methods on ''string'' instances ==
 
@@ -533,6 +536,16 @@ whitespace characters at either end.
 <RETN> The intrinsic ''toString'' method returns this string value: the object itself.
 
 <INCLUDE file="string_primitive.es" name="override intrinsic function toString">
+
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this string object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="string_primitive.es" name="override intrinsic function toJSONString">
 
 === intrinsic::valueOf ===
 

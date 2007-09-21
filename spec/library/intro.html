@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/intro.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -10,24 +10,16 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<p>There are certain built-in objects available whenever an ECMAScript
-program begins execution. One, the global object, is in the scope
-chain of the executing program. Others are accessible as initial
-properties of the global object.
+<p> There are certain built-in objects available whenever an
+ECMAScript program begins execution.  One, the global object, is in
+the scope chain of the executing program.  Others are accessible as
+initial properties of the global object.
 
-<FIXME>There may be multiple global objects.
-
-<p>Unless specified otherwise, the [[Class]] property of a built-in
-object is ''"Class"'' if that object is defined as a class,
-''"Function"'' if that built-in object is not a class but has a
-[[Call]] property, or ''"Object"'' if that built-in object neither is
-a class nor has a [[Call]] property.
-
-<COMP>The 3rd Edition of this Standard did not provide classes, and
-all built-in objects provided as classes in 4th Edition were
-previously provided as functions.  The change from functions to
-classes is observable to programs that convert the built-in class
-objects to strings.
+<P> ECMAScript execution environments may provide multiple global
+objects, each of which may be accessible from the others.  Whether
+each of these global objects has separate intial values for the
+initial properties described in this section, or whether the values
+are shared, is implementation-defined.
 
 <p>Many built-in objects behave like functions: they can be invoked
 with arguments.  Some of them furthermore are constructors: they are
@@ -38,6 +30,12 @@ built-in class, this specification furthermore describes properties of
 the prototype object of that class and properties of specific object
 instances returned by a ''new'' expression that constucts instances of
 that class.
+
+<COMP>The 3rd Edition of this Standard did not provide classes, and
+all built-in objects provided as classes in 4th Edition were
+previously provided as functions.  The change from functions to
+classes is observable to programs that convert the built-in class
+objects to strings.
 
 <p>Built-in classes have four kinds of functions, collectively called
 methods: constructors, static methods, prototype methods, and
@@ -169,28 +167,25 @@ global ''encodeURI'' function:
 used, but are sometimes referenced from multiple sections in this
 Standard.
 
-<FIXME>We need a credible story for helper primitives like
-''ToString'' and ''ToNumeric''.  In the current code, they are just
-treated like global functions; more appropriate would be if they were
-in a namespace like ''helper'' or ''magic''.
-
 <p>Unless noted otherwise in the description of a particular class or
 function, the behavior of built-in objects is unaffected by
-definitions or assignments performed by the user program.  This is
-accomplished first by defining all built-in objects, classes,
-functions, and properties inside a package whose name is private to
-the implementation, second by always preferring intrinsic methods and
-functions to prototype methods and unqualified functions, and finally
-by importing the public names of the package containing the built-ins
-into the global environment of the user program.
+definitions or assignments performed by the user program.
 
-<FIXME>Does this provide us with the correct semantics?  If we do it
-as described, a user program can create a new binding for "Object"
-that shadows our "Object".  This is not a problem for the built-in; it
-may or may not be a benefit to the user program.  It may or may not be
-backwards compatible (what happens if the user program contains ''var
-isNaN'' -- does this redundantly state that there is a binding for
-''isNaN'' or does it create a new binding?)
+<NOTE> This can be accomplished first by defining all built-in
+objects, classes, functions, and properties inside a package whose
+name is private to the implementation, second by the built-in methods
+always preferring intrinsic methods and functions to prototype methods
+and unqualified functions, and finally by importing the public names
+of the package containing the built-ins into the global environment of
+the user program.
+
+<FIXME> (Ticket #169). Does the above provide us with the correct
+semantics?  If we do it as described, a user program can create a new
+binding for "Object" that shadows our "Object".  This is not a problem
+for the builtins; it may or may not be a benefit to the user program.
+It may or may not be backwards compatible (what happens if the user
+program contains ''var isNaN'' -- does this redundantly state that
+there is a binding for ''isNaN'' or does it create a new binding?)
 
 {{{
 package ...
@@ -201,6 +196,12 @@ package ...
     // All global definitions, see section <XREF target="global-object">
 }
 }}}
+
+<P> In some cases the built-in functions construct new error objects
+that are then thrown as exceptions.  For purposes of documentation an
+informative string is passed to the constructors of the error objects.
+These strings are never to be considered normative.
+
 
 = Assumptions and notational conveniences =
 

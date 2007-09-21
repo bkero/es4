@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Number.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -28,9 +28,9 @@ point numbers approximately in the range -1.7976931348623157 <TIMES>
 10<SUP>308</SUP> to +1.7976931348623157 <TIMES> 10<SUP>308</SUP>.
 
 <P> The class ''decimal'' represents 128-bit IEEE-format decimal
-floating point numbers in the range XXX to YYY.
-
-<FIXME> Compute the correct range for decimals.
+floating point numbers in the range
+<NOBR>-(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR> to
+<NOBR>(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR>.
 
 <COMP> The 3rd Edition of this Standard provided only one kind of
 primitive number value, represented as 64-bit IEEE-format binary
@@ -49,8 +49,8 @@ types in the language.
 
 <INCLUDE file="Numeric.es" name="intrinsic type Numeric">
 
-<FIXME> By analogy with the types ''Strings'' and ''Booleans'', the
-type ''Numeric'' should instead be called ''Numbers''.
+<FIXME> (Ticket #181.)  The type ''Numeric'' should instead be called
+''Numbers''.
 
 
 <H1 id="class Number"> The class ''Number'' </h1>
@@ -68,11 +68,6 @@ representing the number value stored in the class.
 
 <P> The intrinsic ''valueOf'' method is not constrained to return a
 ''double'' value, it can return any primitive number type.
-
-<FIXME> As for ''String'' and ''Boolean'' there is really no need for
-''Number'' to have any magic.  The value it contains could be a simple
-private property that holds a double.  This would cause far fewer issues
-for subclasses.
 
 == Synopsis ==
 
@@ -93,6 +88,7 @@ dynamic class Number
 
     <SIGNATURE file="Number.es" name="override intrinsic function toString">
     <SIGNATURE file="Number.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="Number.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Number.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="Number.es" name="intrinsic function toFixed">
@@ -106,6 +102,7 @@ dynamic class Number
 {{{
     toString:       function (this: Numeric, radix) <LDOTS>
     toLocaleString: function (this: Numeric) <LDOTS>
+    toJSONString:   function (this: Numeric, pretty=false) <LDOTS>
     valueOf:        function (this: Numeric) <LDOTS>
     toFixed:        function (this: Numeric, fractionDigits) <LDOTS>
     toExponential:  function (this: Numeric, fractionDigits) <LDOTS>
@@ -185,6 +182,17 @@ in a base given by //radix//.
 primitive number value, which it then converts to string by invoking
 the intrinsic ''toString'' method on the primitive value.
 
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this number object
+to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="Number.es" name="override intrinsic function toJSONString">
+
+
 === intrinsic::toLocaleString ( ) ===
 
 <DESC> The intrinsic ''toLocaleString'' method converts this number
@@ -244,6 +252,7 @@ their corresponding intrinsic methods return.
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="prototype function toString">
 <INCLUDE file="Number.es" name="prototype function toLocaleString">
+<INCLUDE file="Number.es" name="prototype function toJSONString">
 <INCLUDE file="Number.es" name="prototype function valueOf">
 <INCLUDE file="Number.es" name="prototype function toFixed">
 <INCLUDE file="Number.es" name="prototype function toExponential">

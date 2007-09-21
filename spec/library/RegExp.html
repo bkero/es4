@@ -1,8 +1,8 @@
-= The class ''RegExp'' =
+<H1 id="class RegExp"> The class ''RegExp'' </H1>
 
 <PRE>
 FILE:                       spec/library/RegExp.html
-DRAFT STATUS:               DRAFT 1 - VERY ROUGH - 2007-09-11
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -11,7 +11,7 @@ REVIEWED AGAINST CODE:      NO
 </PRE>
 
 
-<P> The class ''RegExp'' is a dynamic, nullable, non-final direct
+<P> The class ''RegExp'' is a dynamic, nullable, non-final, direct
 subclass of ''Object''.
 
 <P> A RegExp object contains a regular expression //pattern// and the
@@ -21,21 +21,38 @@ associated //flags//.
 after the regular expression facility in the Perl 5 programming
 language.
 
-<P> A regular expression is transformed into a //matcher// that can be
-used to test whether an input string has a certain form or contains
-substrings of a certain form, where the form is defined by the regular
-expression.
+<P> A regular expression is transformed ("compiled") into a
+//matcher// function that can be used to //match// an //input
+string//: to test whether the input string has a certain form or
+contains substrings of a certain form, where the form is defined by
+the regular expression.
 
-<P> Regular expressions patterns are written down using a compact and
+<P> The intrinsic ''exec'' method on a ''RegExp'' object drives the
+matching by invoking the matcher on a string and an offset within the
+string to determine whether the pattern would match starting at
+exactly that offset within the string, and, if it does match, what the
+values of the capturing parentheses would be.
+
+<P> Regular expression patterns are written down using a compact and
 rich source syntax that is separate from the syntax of the surrounding
 language.  A grammar for this syntax is presented below (<XREF
 target="RegExp grammar">).
 
+<P> The regular expression flags modify the meaning of the pattern in
+various ways, for example by specifying case-insensitivity, the
+meaning of white space, or how to perform the matching.
+
 <P> This Standard defines the meaning of regular expressions in two
 stages: declaratively as a mapping from surface syntax to abstract
 syntax trees, and then operationally (in ECMAScript itself) as an
-interpreter that matches input strings by interpreting those abstract
-syntax trees.
+interpreter that performs matching of input strings by interpreting
+those abstract syntax trees.
+
+<P> Compiling a pattern may throw a ''SyntaxError'' exception; on the
+other hand, once the pattern is successfully compiled, applying the
+compiled pattern to find a match in a string cannot throw an exception
+(except for any host-defined exceptions that can occur anywhere such
+as out-of-memory).
 
 <P> The abstract syntax trees for regular expressions are represented
 as trees of ECMAScript objects.  These objects are all instances of
@@ -55,8 +72,10 @@ dynamic class RegExp
     static const length: uint = 2
 
     <SIGNATURE file="RegExp.es" name="override intrinsic function toString">
+
     <SIGNATURE file="RegExp.es" name="intrinsic function exec">
     <SIGNATURE file="RegExp.es" name="intrinsic function test">
+
     <SIGNATURE file="RegExp.es" name="meta function invoke">
 
     const source: string = <LDOTS> 
@@ -70,7 +89,8 @@ dynamic class RegExp
 }
 }}}
 
-<P> The ''RegExp'' prototype object provides the following direct properties:
+<P> The ''RegExp'' prototype object provides the following direct
+dynamic properties:
 
 {{{
     exec:     function (s) <LDOTS> ,
@@ -78,177 +98,263 @@ dynamic class RegExp
     toString: function () <LDOTS>
 }}}
 
-<FIXME> The new requirement that regexes are function-like, along with
-the old/new requirement that the prototype object be a RegExp object,
-implies that the prototype has a "meta function invoke" too, I think.
-
 == Surface syntax and mapping to abstract syntax trees ==
 
 <h3 id="RegExp grammar"> Grammar </h3>
 
 <P> The ''RegExp'' constructor applies the following grammar to the
-input pattern string.  An error occurs if the grammar cannot interpret
-the string as an expansion of //Pattern//.
+pattern string.  A **SyntaxError** exception is thrown if the
+grammar cannot recognize the string as an expansion of the nonterminal
+//Pattern//.
 
-<P> The expansion of a nonterminal is a token sequence, where tokens
-can be nonterminal or terminal symbols.  To each token sequence there
-corresponds a transformation which is a constructor call (in boldface)
-for the abstract syntax tree node, with references to the tokens in
-the token sequence.
+<P> The grammar acts as a transformer from segments of the pattern
+string into abstract syntax (sub)trees.  A transformation computation
+of one of the following types is associated with each production in
+the grammar.
 
-<!-- FIXME: totally bogus markup, but how do we fix this? -->
-<PRE style="font-style: italic; page-break-before: always">
+<UL>
+
+  <LI> The construction of an abstract syntax tree node.  Construction
+  appears as the call to a factory function for the node, denoted by
+  an identifier in boldface with an initial capital letter.  The
+  factory functions map directly to the constructors for the
+  respective abstract syntax tree classes, described in section <XREF
+  target="RegExp.matching">.
+
+  <LI> The computation of a value, which may be a string, a number, or
+  an abstract syntax tree node.  Computation appears as the call to a
+  helper function, denoted by an identifier in boldface with an
+  initial lower-case letter.
+
+  <LI> The construction or destructuring of value tuples that carry
+  multiple values from a production to a surrounding production.
+  Tuple construction and destructuring use the ECMAScript syntax for
+  constructing and destructuring Array values.
+  
+  <LI> The extraction of a token value from the production.
+  Extraction appears as the use of the name of the token in the
+  computation.
+
+</UL>
+
+<P> The definition language also has side computations, side
+conditions, and error conditions.  These are suffixed to a
+transformation computation.
+
+<UL>
+
+  <LI> Side computations bind temporary names to values and are
+  introduced by ''where'' clauses.
+
+  <LI> Side conditions test the applicability of a production and are
+  introduced by ''provided'' clauses.
+
+  <LI> Error conditions throw a **SyntaxError** exception if they do
+  not hold and are introduced by ''requires'' clauses.
+
+</UL>
+
+<PRE style="font-style: italic; page-break-inside: avoid">
 Pattern ::
-    Disjunction                     => <b>RegExpMatcher</b>( Disjunction )
-
+    Disjunction                  => <b>RegExpMatcher</b>( Disjunction )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 Disjunction ::
-    Alternative                     => Alternative
-    Alternative ""|"" Disjunction        => <b>Disjunct</b>( Alternative, Disjunction )
-
+    Alternative                  => Alternative
+    Alternative ""|"" Disjunction    => <b>Disjunct</b>( Alternative, Disjunction )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 Alternative ::
-    [empty]                          => <b>Empty</b>()
-    Alternative Term                 => <b>Alternative</b>( Alternative, Term )
-
+    [empty]                      => <b>Empty</b>()
+    Alternative Term             => <b>Conjunct</b>( Alternative, Term )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 Term ::
-    Assertion                        => Assertion
-    Atom                             => Atom
-    Atom Quantifier                  => <b>Quantified</b>(startParenIndex,
-                                                   endParenIndex - startParenIndex,
-                                                   atom,
-                                                   min,
-                                                   max,
-                                                   greedy)
-                                        where [min, max, greedy] = Quantifier
-
+    Assertion                    => Assertion
+    Atom                         => Atom
+    Atom Quantifier              => <b>Quantified</b>(parenIndex,
+                                               parenCount,
+                                               atom,
+                                               min,
+                                               max,
+                                               greedy)
+                                    where [min, max, greedy] = Quantifier
+                                    requires min <LEQ> max
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 Assertion ::
-    ""^""                                => <b>AssertStartOfInput</b>()
-    ""$""                                => <b>AssertEndOfInput</b>()
-    ""\"" ""b""                              => <b>AssertWordBoundary</b>()
-    ""\"" ""B""                              => <b>AssertNotWordBounary</b>()
-
+    ""^""                            => <b>AssertStartOfInput</b>()
+    ""$""                            => <b>AssertEndOfInput</b>()
+    ""\"" ""b""                          => <b>AssertWordBoundary</b>()
+    ""\"" ""B""                          => <b>AssertNotWordBounary</b>()
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 Quantifier ::
-    QuantifierPrefix                 => [min, max, <b>false</b>] where [min, max] = QuantifierPrefix
-    QuantifierPrefix ""?""               => [min, max, <b>true</b>] where [min, max] = QuantifierPrefix
-
+    QuantifierPrefix             => [min, max, <b>true</b>] where [min, max] = QuantifierPrefix
+    QuantifierPrefix ""?""           => [min, max, <b>false</b>] where [min, max] = QuantifierPrefix
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 QuantifierPrefix ::
-    ""*""                                => [0, <b>Infinity</b>]
-    ""+""                                => [1, <b>Infinity</b>]
-    ""?""                                => [0, 1]
-    ""{"" DecimalDigits ""}""               => [DecimalDigits, DecimalDigits]
-    ""{"" DecimalDigits "","" ""}""              => [DecimalDigits, <b>Infinity</b>]
-    ""{"" DecimalDigits<sub>1</sub> "","" DecimalDigits<sub>2</sub> ""}"" => [DecimalDigits<sub>1</sub>, DecimalDigits<sub>2</sub>]
-                                       provided DecimalDigits<sub>1</sub> <LEQ> DecimalDigits<sub>2</sub>
-
+    ""*""                            => [0, <INFINITY>]
+    ""+""                            => [1, <INFINITY>]
+    ""?""                            => [0, 1]
+    ""{"" DecimalDigits ""}""            => [DecimalDigits, DecimalDigits]
+    ""{"" DecimalDigits "","" ""}""          => [DecimalDigits, <INFINITY>]
+    ""{"" DecimalDigits<sub>1</sub> "","" DecimalDigits<sub>2</sub> ""}""
+                                 => [DecimalDigits<sub>1</sub>, DecimalDigits<sub>2</sub>]
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 Atom ::
-    PatternCharacter                 => <b>CharsetMatcher</b>( <b>CharsetAdhoc</b>( PatternCharacter ) )
-    "".""                                => <b>CharsetMatcher</b>( <b>CharsetComplement</b>( charset_linebreak ) )
-    ""\"" DecimalEscape                  => <b>Backref</b>( DecimalEscape )
-    ""\"" CharacterEscape                => <b>CharsetMatcher</b>( <b>CharsetAdhoc</b>( CharacterEscape ) ) )
-    ""\"" CharacterClassEscape           => <b>CharsetMatcher</b>( CharacterClassEscape )
-    CharacterClass                   => <b>CharsetMatcher</b>( CharacterClass )
-    ""("" Disjunction "")""                  => <b>Capturing</b>( Disjunction, startParenIndex+1 )
-    ""("" ""?"" "":"" Disjunction "")""              => Disjunction
-    ""("" ""?"" ""="" Disjunction "")""              => <b>PositiveLookahead</b>( Disjunction )
-    ""("" ""?"" ""!"" Disjunction "")""              => <b>NegativeLookahead</b>( Disjunction )
-    ""("" ""?"" ""#"" <span style="font-size: smaller; font-style: normal">[sequence not containing {)}]</span> "")""    => <b>Empty</b>()
-    ""("" ""?"" ""P"" ""<"" Identifier "">"" Disjunction "")"" => <b>Capturing</b>( Disjunction, startParenIndex+1 )
-                                         where <b>capno</B>( Identifier ) = startParenIndex+1
-    ""("" ""?"" ""P"" ""="" Identifier "")""             => <b>Backref</b>( <b>capno</b>( Identifier ) )
-
+    PatternCharacter             => <b>CharacterSet</b>( <b>CharsetAdhoc</b>( PatternCharacter ) )
+    "".""                            => <b>CharacterSet</b>( <b>CharsetComplement</b>( charset_linebreak ) )
+    ""\"" DecimalEscape              => <b>Backref</b>( DecimalEscape )
+                                    requires that the regular expression as a whole has
+                                             at least DecimalEscape capturing parentheses
+    ""\"" CharacterEscape            => <b>CharacterSet</b>( <b>CharsetAdhoc</b>( CharacterEscape ) ) )
+    ""\"" CharacterClassEscape       => <b>CharacterSet</b>( CharacterClassEscape )
+    CharacterClass               => <b>CharacterSet</b>( CharacterClass )
+    ""("" Disjunction "")""              => <b>Capturing</b>( Disjunction, parenIndex+1 )
+    ""("" ""?"" "":"" Disjunction "")""          => Disjunction
+    ""("" ""?"" ""="" Disjunction "")""          => <b>PositiveLookahead</b>( Disjunction )
+    ""("" ""?"" ""!"" Disjunction "")""          => <b>NegativeLookahead</b>( Disjunction )
+    ""("" ""?"" ""#"" <span style="font-size: smaller; font-style: normal">[sequence matching [^)]*]</span> "")"" => <b>Empty</b>()
+    ""("" ""?"" ""P"" ""<"" Identifier "">"" Disjunction "")""
+                                 => <b>Capturing</b>( Disjunction, <b>capno</b>( Identifier ) )
+                                    where <b>capno</B>( Identifier ) is defined as parenIndex+1
+    ""("" ""?"" ""P"" ""="" Identifier "")""         => <b>Backref</b>( <b>capno</b>( Identifier ) )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 PatternCharacter ::
-    SourceCharacter                  => SourceCharacter
-       ""but not any of ^ $ \ . * + ? ( ) [ ] { } |""
-
+    SourceCharacter ""but not any of ^ $ \ . * + ? ( ) [ ] { } |""
+                                 => SourceCharacter
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 CharacterEscape ::
-    ControlEscape                    => ControlEscape
-    ""c"" ControlLetter                => <b>chr</b>(<b>ord</b>( ControlLetter ) / 32)
-    HexEscapeSequence                => HexEscapeSequence
-    UnicodeEscapeSequence            => UnicodeEscapeSequence
-    IdentityEscape                   => IdentityEscape
-</pre>
-
-<PRE style="font-style: italic; page-break-before: always; page-break-after: always">
+    ControlEscape                => ControlEscape
+    ""c"" ControlLetter              => <b>chr</b>(<b>ord</b>( ControlLetter ) / 32)
+    HexEscapeSequence            => HexEscapeSequence
+    UnicodeEscapeSequence        => UnicodeEscapeSequence
+    IdentityEscape               => IdentityEscape
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 ControlEscape ::
-    ""f""                               => ""'\u000C'""
-    ""n""                               => ""'\u000A'""
-    ""r""                               => ""'\u000D'""
-    ""t""                               => ""'\u0009'""
-    ""v""                               => ""'\u000B'""
-
+    ""f""                            => ""'\u000C'""
+    ""n""                            => ""'\u000A'""
+    ""r""                            => ""'\u000D'""
+    ""t""                            => ""'\u0009'""
+    ""v""                            => ""'\u000B'""
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 ControlLetter :: ""one of""
     ""a b c d e f g h i j k l m n o p q r s t u v w x y z""
     ""A B C D E F G H I J K L M N O P Q R S T U V W X Y Z""
-                                        => ControlLetter
-
+                                 => ControlLetter
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 IdentityEscape ::
-    SourceCharacter                     => SourceCharacter
-        ""but not"" IdentifierPart
-
+    SourceCharacter ""but not"" IdentifierPart
+                                 => SourceCharacter
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 DecimalEscape ::
-    DecimalIntegerLiteral [lookahead not element of DecimalDigit]  => <b>dec</b>(DecimalIntegerLiteral)
-
+    DecimalIntegerLiteral <span style="font-size: smaller; font-style: normal">[lookahead not in DecimalDigit]</span>
+                                 => <b>dec</b>( DecimalIntegerLiteral )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 CharacterClassEscape ::
-    ""d""                               => charset_digit
-    ""D""                               => <b>CharsetComplement</b>( charset_digit )
-    ""s""                               => charset_space
-    ""S""                               => <b>CharsetComplement</b>( charset_space )
-    ""w""                               => charset_word
-    ""W""                               => <b>CharsetComplement</b>( charset_word )
-    ""p"" ""{"" UnicodeClass ""}""              => <b>unicodeClass</b>( UnicodeClass )
-    ""P"" ""{"" UnicodeClass ""}""              => <b>CharsetComplement</b>( <b>unicodeClass</b>( UnicodeClass ) )
-
+    ""d""                           => charset_digit
+    ""D""                           => <b>CharsetComplement</b>( charset_digit )
+    ""s""                           => charset_space
+    ""S""                           => <b>CharsetComplement</b>( charset_space )
+    ""w""                           => charset_word
+    ""W""                           => <b>CharsetComplement</b>( charset_word )
+    ""p"" ""{"" UnicodeClass ""}""          => <b>unicodeClass</b>( UnicodeClass )
+    ""P"" ""{"" UnicodeClass ""}""          => <b>CharsetComplement</b>( <b>unicodeClass</b>( UnicodeClass ) )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 CharacterClass ::
-    ""["" CharacterClassBody ""]""              => <b>merge</b>( U, I )
-                                       where [U, I] = CharacterClassBody
-
+    ""["" CharacterClassBody ""]""      => <b>merge</b>( U, I )
+                                   where [U, I] = CharacterClassBody
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 CharacterClassBody ::
-    <span style="font-size: smaller; font-style: normal">[lookahead not in {^}]</span> ClassRanges        => ClassRanges
-    ""^"" ClassRanges                         => <b>CharsetComplement</b>( ClassRanges )
-
+    <span style="font-size: smaller; font-style: normal">[lookahead not in {^}]</span> ClassRanges
+                                => ClassRanges
+    ""^"" ClassRanges               => %%[%%[ <b>CharsetComplement</b>( merge( U, I ) ) ], []%%]%%
+                                   where [U, I] = ClassRanges
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 ClassRanges ::
-    [empty]                               => <b>CharsetEmpty</b>()
-    NonemptyClassranges                   => NonemptyClassRanges
-
+    [empty]                     => %%[%%[ <b>CharsetEmpty</b>() ], []%%]%%
+    NonemptyClassranges         => NonemptyClassRanges
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 NonemptyClassRanges ::
-    ClassRange                            => ClassRange
-    ClassRange NonemptyClassRanges        => [ [union<sub>1</sub>, union<sub>2</sub><LDOTS>], [intersection<sub>1</sub>, intersection<sub>2</sub><LDOTS>] ]
-                                              where [union<sub>1</sub>, intersection<sub>1</sub>] = ClassRange
-                                                and [union<sub>2</sub><LDOTS>, intersection<sub>2</sub><LDOTS>] = NonemptyClassRanges
-
+    ClassRange                  => ClassRange
+    ClassRange NonemptyClassRanges
+                                => %%[%%[union<sub>1</sub>, union<sub>2</sub><LDOTS>], [intersection<sub>1</sub>, intersection<sub>2</sub><LDOTS>]%%]%%
+                                   where [union<sub>1</sub>, intersection<sub>1</sub>] = ClassRange
+                                     and [union<sub>2</sub><LDOTS>, intersection<sub>2</sub><LDOTS>] = NonemptyClassRanges
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 ClassRange ::
-    ClassAtom                             => [ [ClassAtom],[] ]
-                                             provided the next production does not apply
-    ClassAtom<sub>1</sub> ""-"" ClassAtom<sub>2</sub>               => [ [<b>CharsetRange</b>(ClassAtom<sub>1</sub>, ClassAtom<sub>2</sub>)],[] ]
-                                             provided both ClassAtom<sub>1</sub> and ClassAtom<sub>2</sub> have one element each
-    ""&"" ""&"" ""["" CharacterClassBody ""]""            => [ [], [ <b>merge</b>( U, I ) ] ]
-                                        where [U, I] = CharacterClassBody
-
+    ClassAtom                   => %%[%%[ClassAtom],[]%%]%%
+                                   provided the next production does not apply
+    ClassAtom<sub>1</sub> ""-"" ClassAtom<sub>2</sub>      => %%[%%[<b>CharsetRange</b>(ClassAtom<sub>1</sub>, ClassAtom<sub>2</sub>)],[]%%]%%
+                                    requires that ClassAtom<sub>1</sub> and ClassAtom<sub>2</sub>
+                                             have one element each and that
+                                             the code point value of ClassAtom<sub>1</sub>
+                                             is <LEQ> the code point value of ClassAtom<sub>2</sub>
+    ""&"" ""&"" ""["" CharacterClassBody ""]""  => %%[%%[], [ <b>merge</b>( U, I ) ]%%]%%
+                                    where [U, I] = CharacterClassBody
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 ClassAtom ::
-    ""-""                                       => <b>CharsetAdhoc</b>(""'-'"")
-    ""\"" DecimalEscape                         => <b>CharsetAdhoc</b>( <b>chr</b>( DecimalEscape ) )
-    ""\"" ""b""                                     => <b>CharsetAdhoc</b>( ""'\u0008'"" )
-    ""\"" CharacterEscape                       => <b>CharsetAdhoc</b>( CharacterEscape )
-    ""\"" CharacterClassEscape                  => CharacterClassEscape
-    SourceCharacter ""but not one of \ ] -""    => <b>CharsetAdhoc</b>( SourceCharacter )
-
+    ""-""                            => <b>CharsetAdhoc</b>(""'-'"")
+    ""\"" DecimalEscape              => <b>CharsetAdhoc</b>( <b>chr</b>( DecimalEscape ) )
+    ""\"" ""b""                          => <b>CharsetAdhoc</b>( ""'\u0008'"" )
+    ""\"" CharacterEscape            => <b>CharsetAdhoc</b>( CharacterEscape )
+    ""\"" CharacterClassEscape       => CharacterClassEscape
+    SourceCharacter ""but not one of \ ] -""
+                                 => <b>CharsetAdhoc</b>( SourceCharacter )
+</PRE>
+<PRE style="font-style: italic; page-break-inside: avoid">
 UnicodeClass ::
-    Identifier                       => Identifier
-                                        provided Identifier spells one of these names:
-                                        ""C Cc Cf Cn Co Cs L Ll Lm Lo Lt Lu M Mc Me Mn N Nd Nl No""
-                                        ""P Pc Pd Pe Pf Pi Po Ps S Sc Sk Sm So Z Zl Zp Zs""
+    Identifier                   => Identifier
+                                    provided Identifier spells one of these names:
+                                    ""C Cc Cf Cn Co Cs L Ll Lm Lo Lt Lu M Mc Me Mn N Nd Nl No""
+                                    ""P Pc Pd Pe Pf Pi Po Ps S Sc Sk Sm So Z Zl Zp Zs""
 </PRE>
 
-<P> Various notes, which need to be edited further:
+<P> //SourceCharacter//, //HexEscapeSequence//, //UnicodeEscapeSequence//, and
+//IdentityEscape// are defined as part of the general ECMAScript
+grammar (<XREF target="language.grammar">) and all produce one-character
+strings.
 
-<P> To every production there belongs two variables,
-//startParenIndex// and //endParenIndex//, where the former is the
-number of left capturing parentheses seen before the tokens matching
-the production and the latter is the number of left capturing
-parentheses seen up to and including the last token matching the
-production.
+<P> To every expansion of a production there belongs two variables,
+//parenIndex// and //parenCount//.  //ParenIndex// represents the
+number of left capturing parentheses in the entire regular expression
+that occur to the left of the production expansion's initial token.
+//ParenCount// represents the number of left capturing parentheses in
+the expansion of the production.
 
-<P> The helper function ''chr'' converts a Unicode code point value
-into the corresponding Unicode character (a one-character string).
+<P> Character set unions and intersections are represented explicitly
+as data structures that reference the subsets that are the operands of
+the union or intersection operator, respectively; sets are not
+flattened.
+
+<P> There are four predefined character sets:
+<UL>
+  <LI> //charset_linebreak// contains the Unicode line terminator characters &lt;LF>, &lt;CR>, &lt;LS>, and &lt;PS>.
+  <LI> //charset_digit// contains the decimal digit characters ''0'' through ''9''
+  <LI> //charset_space// contains all the Unicode //WhiteSpace// (<XREF target="Unicode.whitespace">)
+  and //LineTerminator// (<XREF target="Unicode.lineterminator">) characters
+  <LI> //charset_word// contains the upper-case letters ''A'' through ''Z'',
+       the lower-case letters ''a'' through ''z'', the decimal digit characters ''0'' through ''9'', and the underscore ''_''.
+</UL>
+
+<P> The helper function ''chr'' converts a Unicode code point value into the
+corresponding Unicode character (a one-character string).
 
 <P> The helper function ''ord'' converts a one-character string into a
 Unicode code point value.
@@ -257,49 +363,42 @@ Unicode code point value.
 a nonnegative decimal integer into its integer value.
 
 <P> The helper function ''merge'' creates a single character set from
-two collections of sets //U// and //I//, where the complete set is the
-union of the sets of //U// intersected with the intersection of the
-sets of //I//.
+two collections of sets //U// and //I//, where the result set is the
+union of the sets of //U//, intersected with the intersection of the
+sets of //I// unless //I// is empty.
 
-<P> The function ''capno'' maps identifiers to capture numbers.
+<P> The helper function ''capno'' maps identifiers to capture numbers.
 
 <P> The helper function ''unicodeClass'' maps a one or two character
 Unicode class name to a character set containing the characters in
 that Unicode class.
 
-<P> There are four predefined character sets:
-<UL>
-  <LI> //charset_linebreak// contains the Unicode line terminator characters &lt;LF>, &lt;CR>, &lt;LS>, and &lt;PS>.
-  <LI> //charset_digit// contains the decimal digit characters ''0'' through ''9''
-  <LI> //charset_space// contains all the Unicode space characters
-  <LI> //charset_word// contains the upper-case letters ''A'' through ''Z'',
-       the lower-case letters ''a'' through ''z'', the decimal digit characters ''0'' through ''9'', and the underscore ''_''.
-</UL>
+<P> Even if the pattern ignores case, the case of the two ends of a
+range is significant in determining which characters belong to the
+range. Thus, for example, the pattern ''/[E-F]/i'' matches only the
+letters ''E'', ''F'', ''e'', and ''f'', while the pattern ''/[E-f]/i''
+matches all upper and lower-case ASCII letters as well as the symbols
+''['', ''\'', '']'', ''^'', ''_'', and ''`''.
 
-<FIXME> More explicit on spaces.
+<P> A //ClassAtom// can use any of the escape sequences that are
+allowed in the rest of the regular expression except for ''\b'',
+''\B'', and backreferences.  Inside a CharacterClass, ''\b'' means the
+backspace character, while ''\B'' and backreferences raise errors.
+Using a backreference inside a //ClassAtom// causes an error.
 
-<P> We assume //HexEscapeSequence// and //UnicodeEscapeSequence// and
-//IdentityEscape// all produce a one-character string.
+<P> //ClassRanges// can expand into single //ClassAtoms// and/or
+ranges of two //ClassAtoms// separated by dashes.  In the latter case
+the //ClassRanges// includes all characters between the first
+ClassAtom and the second //ClassAtom//, inclusive; an error occurs if
+either //ClassAtom// does not represent a single character (for
+example, if one is ''\w'') or if the first //ClassAtom//'s code point
+value is greater than the second //ClassAtom//'s code point value.
 
-<P> Informative comments: ClassRanges can expand into single ClassAtoms and/or ranges of two
-ClassAtoms separated by dashes. In the latter case the ClassRanges includes all characters between
-the first ClassAtom and the second ClassAtom, inclusive; an error occurs if either ClassAtom does not
-represent a single character (for example, if one is \w) or if the first ClassAtom's code point value is
-greater than the second ClassAtom's code point value.
+<P> A ''-'' character can be treated literally or it can denote a
+range.  It is treated literally if it is the first or last character
+of //ClassRanges//, the beginning or end limit of a range
+specification, or immediately follows a range specification.
 
-<P> Even if the pattern ignores case, the case of the two ends of a range is significant in determining
-which characters belong to the range. Thus, for example, the pattern /[E-F]/i matches only the
-letters E, F, e, and f, while the pattern /[E-f]/i matches all upper and lower-case ASCII letters as
-well as the symbols [, \, ], ^, _, and `.
-
-<P> A - character can be treated literally or it can denote a range. It is treated literally if it is the first or
-last character of ClassRanges, the beginning or end limit of a range specification, or immediately
-follows a range specification.
-
-<P> Informative comments: A ClassAtom can use any of the escape sequences that are allowed in the rest
-of the regular expression except for \b, \B, and backreferences. Inside a CharacterClass, \b means
-the backspace character, while \B and backreferences raise errors. Using a backreference inside a
-ClassAtom causes an error.
 
 === White space and line comments ===
 
@@ -315,381 +414,420 @@ not mean anything special -- it is just another //SourceCharacter//.
 number of contexts and the ''#'' character, outside the context of the
 ''(?#'' character sequence, starts a comment that ends when a line
 terminator character is seen (the line terminator is not part of the
-comment).
-
-<P> White space and line comments act as token separators but are
-otherwise completely ignored.  The multi-character tokens of the
+comment).  White space and line comments act as token separators but
+are otherwise completely ignored.  The multi-character tokens of the
 regular expression grammar inside which white space and line comments
 break the token are:
 
 <UL>
   <LI> the character sequences ''(?:'', ''(?='', ''(?!'', ''(?#'', ''(?P='', ''(?P<'', and ''&&[''
-  <LI> any sequence of characters starting with a backslash (''\'')
+  <LI> the character sequences starting with a backslash (''\''), except that white space and line
+  comments are allowed immediately following the backslash
   <LI> //DecimalDigits// and //Identifier//
 </UL>
+
+<FIXME> (Ticket #194.) The definition on where whitespace is ignored /
+not ignored needs to be stronger, particularly around backspace.  Eg,
+<NOBR>''\p{N}''</NOBR> is the same as <NOBR>''\p{ N }''</NOBR> but not
+the same as <NOBR>''\p {N}''</NOBR>.  We could go fascist and say that
+the middle of those three is not allowed, but that seems unnatural.
 
 
 == Abstract syntax trees ==
 
 <P> The abstract syntax trees for regular expressions are represented
-as trees of instances of ECMAScript classes.
+as trees of instances of the ECMAScript classes ''Disjunct'',
+''Conjunct'', ''AssertStartOfInput'', ''AssertEndOfInput'',
+''AssertWordBoundary'', ''AssertNotWordBoundary'', ''Quantified'',
+''Capturing'', ''Backref'', ''PositiveLookahead'',
+''NegativeLookahead'', ''CharacterSet'', and ''Empty''.
 
-Regular expression
-matching is performed by walking these trees.
-
-In the following, these classes
-are presented through a series of views that reveal their use as 
-
-<P> For the ASTs, the constuctor invariably takes as many parameters as there
-are properties on the class, and initializes those properties.
-
-<P> A //Matcher// is an object implementing the ''Matcher'' interface.
+<P> These abstract syntax tree classes all implement the ''Matcher''
+interface, which requires them to provide a ''match'' method that
+takes a matching context, a matching state, and a continuation, and
+returns a result:
 
 {{{
-    interface Matcher {
-        function match(<LDOTS>):<LDOTS>
-    }
+interface Matcher {
+    function match(ctx: Context, x: State, c: Continuation): MatchResult
+}
 }}}
 
-<P> All classes implementing ''Matcher'' provide a ''match'' method,
-which is not listed here for the sake of brevity (but which is show
-later for all classes).  The classes implementing ''Matcher'' are
-the following.
+<NOTE> The types ''Context'', ''State'', ''Continuation'', and
+''MatchResult'' are described later, along with the matching
+algorithm.
+
+<P> An additional set of classes, comprised of ''CharsetEmpty'',
+''CharsetUnion'', ''CharsetIntersection'', ''CharsetComplement'',
+''CharsetRange'', and ''CharsetAdhoc'', represents character sets and
+unions, intersections, and complements of characters sets.  Each of
+these implements the ''CharsetMatcher'' interface, which takes a
+matching context and a single-character string and returns a truth
+value:
 
 {{{
-    class Disjunct implements Matcher {
-        const m1: Matcher,
-              m2: Matcher
-    }
-    class Alternative implements Matcher {
-        const m1: Matcher,
-              m2: Matcher
-    }
-    class Assertion implements Matcher {
-        <LDOTS>
-    }
-    class Quantified implements Matcher {
-        const parenIndex: uint,
-              parenCount: uint,
-              m: Matcher,
-              min: uint,
-              max: uint,
-              greedy: boolean
-    }
-    class Capturing implements Matcher {
-        const m: Matcher,
-              parenIndex: uint
-    }
-    class Backref implements Matcher {
-         const capno: uint
-    }
-    class PositiveLookahead implements Matcher {
-         const m: Matcher
-    }
-    class NegativeLookahead implements Matcher {
-         const m: Matcher
-    }
-    class CharsetMatcher implements Matcher {
-         const cs: Charset
-    }
-    class Empty implements Matcher {
-    }
+interface CharsetMatcher {
+    function match(ctx: Context, s: string): boolean;
+}
 }}}
 
-<P> The ''Assertion'' matcher encodes its assertion through the use of subclasses:
+<P> All abstract syntax tree classes are described in detail below.
 
-{{{
-    class Assertion implements Matcher {
-        function testAssertion(<LDOTS>):<LDOTS>
-    }
-    class AssertStartOfInput extends Assertion {
-    }
-    class AssertEndOfInput extends Assertion {
-    }
-    class AssertWordBoundary extends Assertion {
-    }
-    class AssertNotWordBoundary extends Assertion {
-    }
-}}}
-
-<P> The ''CharsetMatcher'' matcher uses an auxiliary data structure to
-keep track of the character set that is to be matched.
-
-{{{
-    class Charset {
-        function match(<LDOTS>): <LDOTS>
-    }
-    class CharsetEmpty extends Charset {
-    }
-    class CharsetUnion extends Charset {
-         const m1: Charset,
-               m2: Charset
-    }
-    class CharsetIntersection extends Charset {
-         const m1: Charset,
-               m2: Charset
-    }
-    class CharsetComplement extends Charset {
-         const m: Charset
-    }
-    class CharsetRange extends Charset {
-         const lo: string,
-               hi: string
-    }
-    class CharsetAdhoc extends Charset {
-         const cs: [string]
-    }
-    class CharsetUnicodeClass extends Charset {
-         const tester: function(uint): boolean
-    }
-}}}
 
 == Matching ==
 
-=== Notation ===
+<P> The ''match'' method of the object that implements the ''Matcher''
+interface attempts to match a middle subpattern (determined by the
+type of matcher and its internal settings) of the pattern against the
+input string, starting at the intermediate state given by its
+''State'' argument.  The ''Continuation'' argument is a closure that
+matches the rest of the pattern.  After matching the subpattern of a
+pattern to obtain a new ''State'', the matcher then calls
+''Continuation'' on the new state to test if the rest of the pattern can
+match as well.  If it can, the matcher returns the state returned by
+the continuation; if not, the matcher may try different choices at its
+choice points, repeatedly calling the continuation until it either
+succeeds or all possibilities have been exhausted.
 
-<P>The descriptions below use the following variables:
+<P> The interface to this machinery is the class ''RegExpMatcher'',
+which takes as arguments an input, a start position, and some flags,
+and which constructs a matcher context, an internal state, and a final
+continuation and then invokes its internal matcher on these values,
+returning the result returned by the matcher.
 
-<UL>
-<LI> Input is the string being matched by the regular expression pattern. The notation input[n] means the
-nth character of input, where n can range between 0 (inclusive) and InputLength (exclusive).
-<LI> InputLength is the number of characters in the Input string.
-<LI> NCapturingParens is the total number of left capturing parentheses (i.e. the total number of times
-the Atom :: ( Disjunction ) production is expanded) in the pattern. A left capturing parenthesis is
-any ( pattern character that is matched by the ( terminal of the Atom :: ( Disjunction ) production.
-<LI> IgnoreCase is the setting of the RegExp object's ignoreCase property.
-<LI> Multiline is the setting of the RegExp object's multiline property.
-</UL>
-
-<P> Furthermore, the descriptions below use the following internal data structures:
-
-<UL>
-<LI> A CharSet is a mathematical set of characters.
-<LI> A State is an ordered pair (endIndex, captures) where endIndex is an integer and captures is an
-internal array of NCapturingParens values. States are used to represent partial match states in the
-regular expression matching algorithms. The endIndex is one plus the index of the last input
-character matched so far by the pattern, while captures holds the results of capturing parentheses.
-The nth element of captures is either a string that represents the value obtained by the nth set of
-capturing parentheses or undefined if the nth set of capturing parentheses hasn't been reached yet.
-Due to backtracking, many states may be in use at any time during the matching process.
-<LI> A MatchResult is either a State or the special token failure that indicates that the match failed.
-<LI> A Continuation function is an internal closure (i.e. an internal function with some arguments
-already bound to values) that takes one State argument and returns a MatchResult result. If an
-internal closure references variables bound in the function that creates the closure, the closure uses
-the values that these variables had at the time the closure was created. The continuation attempts to
-match the remaining portion (specified by the closure's already-bound arguments) of the pattern
-against the input string, starting at the intermediate state given by its State argument. If the match
-succeeds, the continuation returns the final State that it reached; if the match fails, the continuation
-returns failure.
-<LI> A Matcher function is an internal closure that takes two arguments -- a State and a Continuation --
-and returns a MatchResult result. The matcher attempts to match a middle subpattern (specified by
-the closure's already-bound arguments) of the pattern against the input string, starting at the
-intermediate state given by its State argument. The Continuation argument should be a closure that
-matches the rest of the pattern. After matching the subpattern of a pattern to obtain a new State, the
-matcher then calls Continuation on that state to test if the rest of the pattern can match as well. If it
-can, the matcher returns the state returned by the continuation; if not, the matcher may try different
-choices at its choice points, repeatedly calling Continuation until it either succeeds or all
-possibilities have been exhausted.
-<LI> An AssertionTester function is an internal closure that takes a State argument and returns a boolean
-result. The assertion tester tests a specific condition (specified by the closure's already-bound
-arguments) against the current place in the input string and returns true if the condition matched or
-false if not.
-</UL>
+<P> A ''Context'' object describes constant values used by all the
+matchers during the matching.
 
 {{{
-class State {
-    var endIndex: int,
-        cap: capArray
+class Context
+{
+    const input       : string,
+          inputLength : uint,
+          ignoreCase  : boolean,
+          multiline   : boolean
 }
 }}}
-<INCLUDE file="RegExpEvaluator.es" name="type Continuation">
-<INCLUDE file="RegExpEvaluator.es" name="type CapArray">
-<INCLUDE file="RegExpEvaluator.es" name="type MatchResult">
 
-=== Pattern ===
+<P> ''input'' is the string being matched by the regular
+expression pattern; ''inputLength'' is the number of characters in
+''input''; ''ignoreCase'' is **true** if the matching is
+case-insensitive; and ''multiline'' is **true** if the matching allows
+the ''^'' assertion to match at the beginning of a line and the ''$''
+assertion to match at the end of a line (and not just at the beginning
+and end of the input, respectively).
 
-<P> In the class ''RegExpMatcher'':
+<P> A ''State'' object represents partial match states in the regular
+expression matching algorithms.
+
+{{{
+class State
+{
+   const endIndex: uint,
+         captures: CapArray
+}
+
+type CapArray = [(string,undefined)]
+}}}
+
+
+<P> The ''endIndex'' is one plus the index of the last input character
+matched so far by the pattern, while ''captures'' holds the results of
+capturing parentheses. ''Captures'' is an array whose length is the
+number of left capturing parentheses in the //pattern//.  The //n//th
+element of ''captures'' is either a string that represents the value
+obtained by the //n//th set of capturing parentheses or **undefined**
+if the //n//th set of capturing parentheses hasn't been reached yet.
+Due to backtracking, many states may be in use at any time during the
+matching process.
+
+<P> A ''MatchResult'' is either a ''State'' or the special token
+**failure** that indicates that the match failed:
+
+{{{
+type MatchResult = (State, <LDOTS>)
+const failure = <LDOTS>
+}}}
+  
+<P> A Continuation function is a closure that takes a ''Context'' and
+a ''State'' and returns a ''MatchResult'':
+
+{{{
+type Continuation = function(Context, State): MatchResult;
+}}}
+
+<P> The continuation attempts to match the remaining portion
+(specified by the closure's already-bound arguments) of the pattern
+against the input string, starting at the intermediate state given by
+its ''State'' argument.  If the match succeeds, the continuation
+returns the final ''State'' that it reached; if the match fails, the
+continuation returns **failure**.
+
+
+=== RegExpMatcher ===
+
+<P> The class ''RegExpMatcher'' drives the matching.  When its ''match'' method is invoked
+it creates a ''Context'', a ''State'', a ''Continuation'', and then it invokes its matcher
+object---the result of compiling the //pattern//---on these values, returning the result
+returned by the matcher.
+
+{{{
+function RegExpMatcher(matcher, nCapturingParens)
+    : matcher = matcher
+    , nCapturingParens = nCapturingParens
+{
+}
+
+const matcher:          Matcher,
+      nCapturingParens: uint
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="function match" ctx="intrinsic class RegExpMatcher">
 
-<P> Informative comments: A //Pattern// evaluates ("compiles") to an internal function value.
-The intrinsic ''exec'' method can then apply this function to a string and an offset within the string
-to determine whether the pattern would match starting at exactly that offset within the string, and, if it
-does match, what the values of the capturing parentheses would be.  The algorithms in 15.10.2 are
-designed so that compiling a pattern may throw a ''SyntaxError'' exception; on the other hand, once the
-pattern is successfully compiled, applying its result function to find a match in a string cannot throw
-an exception (except for any host-defined exceptions that can occur anywhere such as out-of-memory).
+<P> Capture arrays are created by ''makeCapArray'' and copied and
+partly cleared by ''copyCapArray'':
 
+<INCLUDE file="RegExpEvaluator.es" name="function makeCapArray">
+<INCLUDE file="RegExpEvaluator.es" name="function copyCapArray">
 
-=== Disjunction ===
+=== Disjunct ===
 
-<P> In the class ''Disjunct'':
+<P> The class ''Disjunct'' represents a matcher that allows two alternatives:
+{{{
+function Disjunct(m1, m2) : m1=m1, m2=m2 {}
+
+const m1: Matcher,
+      m2: Matcher
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Disjunct">
 
-<P> Informative comments: The ''|'' regular expression operator separates two alternatives. The pattern
-first tries to match the left Alternative (followed by the sequel of the regular expression); if it fails, it
-tries to match the right Disjunction (followed by the sequel of the regular expression). If the left
-Alternative, the right Disjunction, and the sequel all have choice points, all choices in the sequel are
-tried before moving on to the next choice in the left Alternative. If choices in the left Alternative are
-exhausted, the right Disjunction is tried instead of the left Alternative. Any capturing parentheses
-inside a portion of the pattern skipped by ''|'' produce undefined values instead of strings. Thus, for
-example,
+<P> A ''Disjunct'' first tries to match the left alternative //m1//
+(followed by the sequel of the regular expression); if it fails, it
+tries to match the right alternative //m2// (followed by the sequel of
+the regular expression). If //m1//, //m2//, and the sequel all have
+choice points, all choices in the sequel are tried before moving on to
+the next choice in //m1//. If choices in //m1// are exhausted, //m2//
+is tried instead of //m1//.  Any capturing parentheses inside a
+portion of the pattern skipped by ''|'' produce undefined values
+instead of strings.  Thus, for example,
+
 {{{
     /a|ab/.exec("abc")
 }}}
+
 returns the result "a" and not "ab". Moreover,
+
 {{{
     /((a)|(ab))((c)|(bc))/.exec("abc")
 }}}
+
 returns the array
+
 {{{
     ["abc", "a", "a", undefined, "bc", undefined, "bc"]
 }}}
+
 and not
+
 {{{
     ["abc", "ab", undefined, "ab", "c", "c", undefined]
 }}}
 
-=== Alternative ===
 
-<P> In the class ''Alternative'':
-<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Alternative">
+=== Conjunct ===
 
-<P> Informative comments: Consecutive Terms try to simultaneously match consecutive portions of the
-input string. If the left Alternative, the right Term, and the sequel of the regular expression all have
-choice points, all choices in the sequel are tried before moving on to the next choice in the right Term,
-and all choices in the right Term are tried before moving on to the next choice in the left Alternative.
+<P> The class ''Conjunct'' represents a matcher that requires the
+matching of two consecutive terms:
 
-=== Assertion ===
+{{{
+function Conjunct(m1, m2) : m1=m1, m2=m2 {}
 
-<P> Assertions succeed without consuming input if the condition
-encoded by the assertion holds at the current location.
+const m1: Matcher,
+      m2: Matcher
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Conjunct">
 
-<P> Assertions are handled as a common ''match'' function delegating to a
-''testAssertion'' method overridden in subclasses.
-
-<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Assertion">
-
-<FIXME> That's fine for code, but for the spec it may well have been
-better to dispense with ''Assertion'' entirely and pushing ''match''
-into each of the subclasses, which would be implementing ''Matcher''
-directly.
+<P> A ''Conjunct'' tries simultaneoulsly to match the terms //m1// and
+//m2// on consecutive portions of the input string.  If //m1//,
+//m2//, and the sequel of the regular expression all have choice
+points, all choices in the sequel are tried before moving on to the
+next choice in //m2//, and all choices in //m2// are tried before
+moving on to the next choice in //m1//.
 
 ==== AssertStartOfInput ====
 
-<P> The Start-of-Input assertion holds if the current input
-position is the start of the input or if the match is multiline and
-the current position is the start of a line.
+<P> The Start-of-Input assertion succeeds without consuming input if
+the current input position is at the start of the input or if the
+match is multiline and the current position is at the start of a line.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function testAssertion" ctx="class AssertStartOfInput">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class AssertStartOfInput">
+
+<P> The helper function ''isTerminator'' takes a character //c// and
+returns **true** if //c// is one of the Unicode line terminator
+characters &lt;LF>, &lt;CR>, &lt;LS>, and &lt;PS>.
 
 ==== AssertEndOfInput ====
 
-<P> The End-of-Input assertion holds if the current input position is
-the end of the input or if the match is multiline and the current
-position is the end of a line.
+<P> The End-of-Input assertion succeeds without consuming input if the
+current input position is at the end of the input or if the match is
+multiline and the current position is at the end of a line.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function testAssertion" ctx="class AssertEndOfInput">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class AssertEndOfInput">
 
 ==== AssertWordBoundary ====
 
-<P> The Word-Boundary assertion holds if the current input
-position is inside a word and the previous position is outside a word, or vice versa.
+<P> The Word-Boundary assertion succeeds without consuming input if
+the current input position is inside a word and the previous position
+is outside a word, or vice versa.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function testAssertion" ctx="class AssertWordBoundary">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class AssertWordBoundary">
 
 <P> The test for word character also takes boundary conditions into consideration:
 
 <INCLUDE file="RegExpEvaluator.es" name="function isREWordChar">
 
+<P> The helper function ''isWordChar'' takes a character //c// and
+returns **true** if //c// is one of the upper-case ASCII letters ''A''
+through ''Z'', one of the lower-case ASCII letters ''a'' through
+''z'', one of the ASCII decimal digits ''0'' through ''9'', or the
+ASCII underbar ''_''.
 
 ==== AssertNotWordBoundary ====
 
-<P> The Not-Word-Boundary assertion holds if neither the current input
-position is inside a word and the previous position is outside a word,
-nor vice versa.
+<P> The Not-Word-Boundary assertion succeeds without consuming input
+if neither the current input position is inside a word and the
+previous position is outside a word, nor vice versa.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function testAssertion" ctx="class AssertNotWordBoundary">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class AssertNotWordBoundary">
 
 
 === Quantified ===
 
+<P> The class ''Quantified'' represents a matcher that succeeds if its
+submatch //m// matches the input a certain number of times.
+
+{{{
+function Quantified(parenIndex, parenCount, m, min, max, greedy)
+    : parenIndex=parenIndex
+    , parenCount=parenCount
+    , m=m
+    , min=min
+    , max=max
+    , greedy=greedy
+
+const parenIndex: uint,
+      parenCount: uint,
+      m: Matcher,
+      min: double,
+      max: double,
+      greedy: boolean
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Quantified">
 
-<P> Informative comments: An Atom followed by a Quantifier is repeated the number of times specified
-by the Quantifier. A quantifier can be non-greedy, in which case the Atom pattern is repeated as few
-times as possible while still matching the sequel, or it can be greedy, in which case the Atom pattern is
-repeated as many times as possible while still matching the sequel. The Atom pattern is repeated rather
-than the input string that it matches, so different repetitions of the Atom can match different input
+<P> A pattern term //m// followed by a quantifier is repeated the
+number of times specified by the quantifier.  A quantifier can be
+non-greedy, in which case //m// is repeated as few times as possible
+while still matching the sequel, or it can be greedy, in which case
+//m// is repeated as many times as possible while still matching the
+sequel.  //M// is repeated rather than the input string that it
+matches, so different repetitions of //m// can match different input
 substrings.
 
-<P> If the Atom and the sequel of the regular expression all have choice points, the Atom is first matched
-as many (or as few, if non-greedy) times as possible. All choices in the sequel are tried before moving
-on to the next choice in the last repetition of Atom. All choices in the last (nth) repetition of Atom are
-tried before moving on to the next choice in the next-to-last (n-1)st repetition of Atom; at which point
-it may turn out that more or fewer repetitions of Atom are now possible; these are exhausted (again,
-starting with either as few or as many as possible) before moving on to the next choice in the (n-1)st
-repetition of Atom and so on.
+<P> If //m// and the sequel of the regular expression all have choice
+points, //m// is first matched as many (or as few, if non-greedy)
+times as possible.  All choices in the sequel are tried before moving
+on to the next choice in the last repetition of //m//.  All choices in
+the last (nth) repetition of //m// are tried before moving on to the
+next choice in the next-to-last (n-1)st repetition of //m//; at which
+point it may turn out that more or fewer repetitions of //m// are now
+possible; these are exhausted (again, starting with either as few or
+as many as possible) before moving on to the next choice in the
+(n-1)st repetition of Atom and so on.
 
 <P>Compare
 {{{
     /a[a-z]{2,4}/.exec("abcdefghi")
 }}}
-which returns "abcde" with
+
+which returns ''"abcde"'' with
+
 {{{
     /a[a-z]{2,4}?/.exec("abcdefghi")
 }}}
-which returns "abc".
+
+which returns ''"abc"''.
 
 <P> Consider also
+
 {{{
     /(aa|aabaac|ba|b|c)*/.exec("aabaac")
 }}}
+
 which, by the choice point ordering above, returns the array
+
 {{{
     ["aaba", "ba"]
 }}}
+
 and not any of:
+
 {{{
     ["aabaac", "aabaac"]
     ["aabaac", "c"]
 }}}
 
-<P> The above ordering of choice points can be used to write a regular expression that calculates the
-greatest common divisor of two numbers (represented in unary notation). The following example
-calculates the gcd of 10 and 15:
+<P> The above ordering of choice points can be used to write a regular
+expression that calculates the greatest common divisor of two numbers
+(represented in unary notation). The following example calculates the
+//gcd// of 10 and 15:
+
 {{{
     "aaaaaaaaaa,aaaaaaaaaaaaaaa".replace(/^(a+)\1*,\1+$/,"$1")
 }}}
-which returns the gcd in unary notation "aaaaa".
 
-<P> Step 4 of the RepeatMatcher clears Atom's captures each time Atom is repeated. We can see its
-behaviour in the regular expression
+which returns the //gcd// in unary notation ''"aaaaa"''.
+
+<P> The helper function ''copyCapArray'' clears the portion of the
+captures array between //parenIndex+1// and //parenIndex+parenCount//
+inclusive each time //m// is repeated.  We can see its behaviour in the
+regular expression
+
 {{{
     /(z)((a+)?(b+)?(c))*/.exec("zaacbbbcac")
 }}}
+
 which returns the array
+
 {{{
    ["zaacbbbcac", "z", "ac", "a", undefined, "c"]
 }}}
+
 and not
+
 {{{
    ["zaacbbbcac", "z", "ac", "a", "bbb", "c"]
 }}}
-because each iteration of the outermost ''*'' clears all captured strings contained in the quantified Atom,
-which in this case includes capture strings numbered 2, 3, and 4.
 
-<P> Step 1 of the RepeatMatcher's closure d states that, once the minimum number of repetitions has been
-satisfied, any more expansions of Atom that match the empty string are not considered for further
-repetitions.  This prevents the regular expression engine from falling into an infinite loop on patterns
-such as:
+because each iteration of the outermost ''*'' clears all captured
+strings contained in //m//, which in this case includes capture
+strings numbered 2, 3, and 4.
+
+<P> The initial test of ''RepeatMatcher'''s closure ''d'' states that,
+once the minimum number of repetitions has been satisfied, any more
+expansions of //m// that match the empty string are not considered for
+further repetitions.  This prevents the regular expression engine from
+falling into an infinite loop on patterns such as:
+
 {{{
    /(a*)*/.exec("b")
 }}}
+
 or the slightly more complicated:
+
 {{{
    /(a*)b\1+/.exec("baaaac")
 }}}
+
 which returns the array
+
 {{{
    ["b", ""]
 }}}
@@ -699,38 +837,49 @@ which returns the array
 <P> The positive lookahead matcher succeeds without consuming input if
 its contained matcher can match the input at the current location:
 
+{{{
+function PositiveLookahead(m) : m=m {}
+
+const m: Matcher
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class PositiveLookahead">
 
-<P> The form ''(?= //Disjunction// )'' specifies a zero-width positive
-lookahead. In order for it to succeed, the pattern inside
-//Disjunction// must match at the current position, but the current
-position is not advanced before matching the sequel.  If
-//Disjunction// can match at the current position in several ways,
-only the first one is tried.  Unlike other regular expression
-operators, there is no backtracking into a ''(?='' form (this unusual
-behaviour is inherited from Perl).  This only matters when the
-//Disjunction// contains capturing parentheses and the sequel of the
-pattern contains backreferences to those captures.  For example,
+<P> If //m// can match at the current position in several ways, only
+the first one is tried.  Unlike other regular expression operators,
+there is no backtracking into a ''(?='' form (this unusual behaviour
+is inherited from Perl).  This only matters when the //m//
+contains capturing parentheses and the sequel of the pattern contains
+backreferences to those captures.  For example,
+
 {{{
     /(?=(a+))/.exec("baaabac")
 }}}
-matches the empty string immediately after the first b and therefore returns the array:
+
+matches the empty string immediately after the first ''b'' and therefore
+returns the array:
+
 {{{
     ["", "aaa"]
 }}}
 
 <P> To illustrate the lack of backtracking into the lookahead, consider:
+
 {{{
     /(?=(a+))a*b\1/.exec("baaabac")
 }}}
+
 This expression returns
+
 {{{
     ["aba", "a"]
 }}}
+
 and not:
+
 {{{
     ["aaaba", "a"]
 }}}
+
 
 === NegativeLookahead ===
 
@@ -738,108 +887,189 @@ and not:
 its contained matcher fails to match the input at the current
 location:
 
+{{{
+function NegativeLookahead(m) : m=m {}
+
+const m: Matcher
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class NegativeLookahead">
 
-<P> The form ''(?! //Disjunction// )'' specifies a zero-width negative lookahead. In order for it to succeed,
-the pattern inside //Disjunction// must fail to match at the current position. The current position is not
-advanced before matching the sequel.  //Disjunction// can contain capturing parentheses, but
-backreferences to them only make sense from within //Disjunction// itself.  Backreferences to these
-capturing parentheses from elsewhere in the pattern always return **undefined** because the negative
-lookahead must fail for the pattern to succeed. For example,
+<P> //M// can contain capturing parentheses, but backreferences to
+them only make sense from within //m// itself.  Backreferences to
+these capturing parentheses from elsewhere in the pattern always
+return **undefined** because the negative lookahead must fail for the
+pattern to succeed.  For example,
+
 {{{
     /(.*?)a(?!(a+)b\2c)\2(.*)/.exec("baaabaac")
 }}}
-looks for an ''a'' not immediately followed by some positive number //n// of ''a'''s, a ''b'', another n ''a'''s
-(specified by the first ''\2'') and a ''c''. The second ''\2'' is outside the negative lookahead, so it matches
-against undefined and therefore always succeeds. The whole expression returns the array:
+
+looks for an ''a'' not immediately followed by some positive number
+//n// of ''a'''s, a ''b'', another //n// ''a'''s (specified by the
+first ''\2'') and a ''c''. The second ''\2'' is outside the negative
+lookahead, so it matches against undefined and therefore always
+succeeds.  The whole expression returns the array:
+
 {{{
     ["baaabaac", "ba", undefined, "abaac"]
 }}}
 
 
-=== CharsetMatcher ===
+=== CharacterSet ===
 
-<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetMatcher">
+<P> A ''CharacterSet'' matches the input at the current location if
+the canonical representation of the character at the current location
+is a member of the character set.
+
+{{{
+function CharacterSet(cs)
+    : cs=cs {}
+
+const cs: CharsetMatcher;
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharacterSet">
+
+<P> The helper function ''Canonicalize'' converts a character to its
+canonical form.  In case-significant matches the canonical form is the
+character itself.  In case-insignificant matches all characters are
+converted to upper case immediately before they are compared.
 
 <INCLUDE file="RegExpEvaluator.es" name="function Canonicalize">
 
-<P> In case-insignificant matches all characters are implicitly converted to upper case immediately before
-they are compared.  However, if converting a character to upper case would expand that character into
-more than one character (such as converting "&#x00df;" (\u00DF) into "SS"), then the character is left as-is
-instead.  The character is also left as-is if it is not an ASCII character but converting it to upper case
-would make it into an ASCII character.  This prevents Unicode characters such as \u0131 and
-\u017F from matching regular expressions such as ''/[a-z]/i'', which are only intended to match
-ASCII letters.  Furthermore, if these conversions were allowed, then ''/[^\W]/i'' would match each of
-''a'', ''b'', <LDOTS>, ''h'', but not ''i'' or ''s''.
+<NOTE> If converting a character to upper case would expand that
+character into more than one character (such as converting "&#x00df;"
+(\u00DF) into "SS"), then the character is left as-is instead.  The
+character is also left as-is if it is not an ASCII character but
+converting it to upper case would make it into an ASCII character.
+This prevents Unicode characters such as \u0131 and \u017F from
+matching regular expressions such as ''/[a-z]/i'', which are only
+intended to match ASCII letters.  Furthermore, if these conversions
+were allowed, then ''/[^\W]/i'' would match each of ''a'', ''b'',
+<LDOTS>, ''h'', but not ''i'' or ''s''.
 
-==== Charset ====
 
-<P> A ''Charset'' is a base class with an abstract ''match'' method that is overridden by
-subclasses matching a character against various kinds of character sets.
+==== Character sets ====
 
-{{{
-function match(ctx: Context, c: string): boolean <LDOTS>
-}}}
+<P> A character set as passed to the ''CharacterSet'' constructor is a
+mathematical set of characters.  However, in this Standard the sets
+are provided with a concrete representation in order to present their
+semantics operationally.
+
+<P> A character set is represented as a tree of objects that represent
+unions, intersections, complements, ranges, and primitive sets
+containing some number of single characters.  These data types are
+presented in the following sections.
 
 ==== CharsetEmpty ====
 
-<P> The empty character set contains no characters, so matching always fails.
+<P> The empty character set contains no characters, so matching always
+fails.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function match" ctx="class CharsetEmpty">
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetEmpty">
 
 ==== CharsetUnion ====
 
 <P> The union of two sets contains a character if either set contains it.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function match" ctx="class CharsetUnion">
+{{{
+function CharsetUnion(m1,m2) : m1=m1, m2=m2 {}
+
+const m1: Charset,
+      m2: Charset
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetUnion">
 
 ==== CharsetIntersection ====
 
-<P> The intersection of two sets contain a character if both sets contain it.
+<P> The intersection of two sets contains a character if both sets contain it.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function match" ctx="class CharsetIntersection">
+{{{
+function CharsetIntersection(m1,m2) : m1=m1, m2=m2 {}
+
+const m1: Charset,
+      m2: Charset
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetIntersection">
 
 ==== CharsetComplement ====
 
-<P> A complemented set contains a character if the contained set does not contain the character.
+<P> A complemented character set contains a character if the contained set does
+not contain the character.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function match" ctx="class CharsetComplement">
+{{{
+function CharsetComplement(m) : m=m {}
+
+const m: Charset
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetComplement">
 
 ==== CharsetRange ====
 
 <P> A set representing a range contains a character if the character
 matches the canonicalized value of one of the characters in the range.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function match" ctx="class CharsetRange">
+{{{
+function CharsetRange(lo,hi) : lo=lo, hi=hi {}
+
+const lo: string,
+      hi: string
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetRange">
+
+<NOTE> The strings ''lo'' and ''hi'' both contain a single character.
 
 ==== CharsetAdhoc ====
 
-<P> An ad-hoc character set contains a character if the character
-matches the canonicalized value of one of the characters in the set.
+<P> An ad-hoc character set contains a character //c// if the //c// is
+equal to the canonicalized value of one of the characters in the set.
 
-<INCLUDECTX file="RegExpEvaluator.es" name="override function match" ctx="class CharsetAdhoc">
+{{{
+function CharsetAdhoc(cs) : cs=explodeString(cs) {}
+
+const cs: [string]
+}}}
+<INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class CharsetAdhoc">
+
+<P> The helper function ''explodeString'' converts a string into an
+array containing the individual characters in the string, each
+represented as a one-character string.
+
+<INCLUDE file="Unicode.es" name="public function explodeString">
 
 === Capturing ===
 
-<P> A capturing matcher succeeds if its contained matcher matches the
-input at the current location.  The string that is matched by the
-contained matcher is saved in the captures array at the index
-corresponding to this capture.
+<P> A capturing matcher succeeds if its contained matcher //m//
+matches the input at the current location.  The string that is matched
+by the contained matcher is saved in the captures array at index
+//parenIndex//.
 
+{{{
+function Capturing(m, parenIndex) : m=m, parenIndex=parenIndex {}
+
+const m: Matcher,
+      parenIndex: uint
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Capturing">
+
 
 === Backref ===
 
 <P> A back-referencing matcher succeeds if the input at the current location
-exactly matches the captured value referenced by the matcher.
+exactly matches the value in the captures array at index //capno//.
 
+{{{
+function Backref(capno) : capno=capno {}
+
+const capno: uint
+}}}
 <INCLUDECTX file="RegExpEvaluator.es" name="public function match" ctx="class Backref">
 
-<P> Informative comments: An escape sequence of the form \ followed by a nonzero decimal number n
-matches the result of the nth set of capturing parentheses (see 15.10.2.11). It is an error if the regular
-expression has fewer than n capturing parentheses. If the regular expression has n or more capturing
-parentheses but the nth one is undefined because it hasn't captured anything, then the backreference
-always succeeds.
+<NOTE> An escape sequence of the form ''\'' followed by a nonzero
+decimal number //n// matches the result of the //n//th set of
+capturing parentheses (see 15.10.2.11).  If the //n//th entry in the
+captures array is undefined because it hasn't captured anything, then
+the backreference always succeeds.
+
 
 === Empty ===
 
@@ -860,7 +1090,21 @@ source and flags for the new object is taken from //pattern//.
 <INCLUDE file="RegExp.es" name="function RegExp">
 
 <NOTE> If the characters of //src// do not have the form //Pattern//,
-then a SyntaxError exception will be thrown.
+then a **SyntaxError** exception will be thrown.
+
+<P> The class ''RegExp'' has two internal properties ''matcher'' and
+and ''names'':
+
+{{{
+private const matcher: Matcher,
+              names:   [string?]
+}}}
+
+<P> The ''matcher'' property holds the regular expression matcher
+object (the result of compiling the regular expression).  The
+''names'' property holds a string in position //i// if capturing
+submatch //i// in the pattern string was given a name; the string
+is that name.
 
 <NOTE> If pattern is a //StringLiteral//, the usual escape sequence
 substitutions are performed before the string is processed by
@@ -876,10 +1120,14 @@ based on //src//.
 
 === RegExp(pattern, flags) ===
 
-<DESC> If //pattern// is a ''RegExp'' object and //flags// is undefined, then return //pattern//
-unchanged.  Otherwise construct a new regular expression from //pattern// and //flags// and return that.
+<DESC> The ''RegExp'' class object invoked as a function converts
+//pattern// to ''RegExp''.
 
-<RETN>
+<P> If //pattern// is a ''RegExp'' object and //flags// is undefined,
+then return //pattern// unchanged.  Otherwise construct a new regular
+expression from //pattern// and //flags// and return that.
+
+<RETN> The ''RegExp'' function returns a ''RegExp'' object.
 
 <SHORTIMPL>
 <INCLUDE file="RegExp.es" name="meta static function invoke">
@@ -894,7 +1142,7 @@ unchanged.  Otherwise construct a new regular expression from //pattern// and //
 match of the string //s// against the regular expression.
 
 <RETN> The intrinsic ''exec'' method returns an ''Array'' object
-containing the results of the match, or null if the string did not
+containing the results of the match, or **null** if the string did not
 match.
 
 <SHORTIMPL>
@@ -944,43 +1192,55 @@ the entire result %%("/\//")%% of the ''toString'' call to have the form
 
 <IMPL> The intrinsic ''toString'' method is implementation-defined.
 
+=== meta::invoke ( s ) ===
+
+<RETN> When a ''RegExp'' object is called as a function, it invokes
+the ''exec'' method on its argument and returns what ''exec'' returns.
+
+<SHORTIMPL>
+<INCLUDE file="RegExp.es" name="meta function invoke">
 
 == Value properties on ''RegExp'' instances ==
 
 === source ===
 
-<P> The value of the ''source'' property is string in the form of a Pattern representing the current regular
-expression.
+<P> The value of the ''source'' property is ''string'' in the form of a
+Pattern representing the current regular expression.
 
 === global ===
 
-<P> The value of the ''global'' property is a Boolean value indicating whether the flags contained the
-character "g".
+<P> The value of the ''global'' property is a ''boolean'' value
+indicating whether the flags contained the character ''"g"''.
 
 === ignoreCase ===
 
-<P>The value of the ''ignoreCase'' property is a Boolean value indicating whether the flags contained the
-character "i".
+<P>The value of the ''ignoreCase'' property is a ''boolean'' value
+indicating whether the flags contained the character ''"i"''.
 
 === multiline ===
 
-<P> The value of the ''multiline'' property is a Boolean value indicating whether the flags contained the
-character "m".
+<P> The value of the ''multiline'' property is a ''boolean'' value
+indicating whether the flags contained the character ''"m"''.
 
 === extended ===
 
-<P> The value of the ''extended'' property is a Boolean value indicating whether the flags contained the
-character "x".
+<P> The value of the ''extended'' property is a ''boolean'' value
+indicating whether the flags contained the character ''"x"''.
 
 === sticky ===
 
-<P> The value of the ''sticky'' property is a Boolean value indicating whether the flags contained the
-character "y".
+<P> The value of the ''sticky'' property is a ''boolean'' value
+indicating whether the flags contained the character "y".
 
 === lastIndex ===
 
-<P> The value of the ''lastIndex'' property is an integer that specifies the string position at which to start
-the next match.
+<P> The value of the ''lastIndex'' property is an integer that
+specifies the string position at which to start the next match.
+
+<FIXME> (Ticket #195.) Is this a getter/setter?  Currently the
+property has no type constraits, and it's not obvious it should have
+them (backwards compatibility); anyhow, ''exec'' in ES3 performs
+conversion as necessary.
 
 
 == Methods on the ''RegExp'' prototype object ==

@@ -83,7 +83,7 @@ wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL|---)>")
 
 entities = { "INFINITY": "&#x221E;",
 	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
@@ -102,7 +102,8 @@ entities = { "INFINITY": "&#x221E;",
 	     "DESC": "<P class=\"section\"><b>Description</b> <P><span class=\"pcounter\"></span>",
 	     "RETN": "<P class=\"section\"><b>Returns</b> <P><span class=\"pcounter\"></span>",
 	     "IMPL": "<P class=\"implsection\"><b>Implementation</b> <P><span class=\"pcounter\"></span>",
-	     "SHORTIMPL": "<P class=\"implsection\"><b>Implementation</b>"
+	     "SHORTIMPL": "<P class=\"implsection\"><b>Implementation</b>",
+	     "---": "&#0151;"
 	     }
 
 currentlevel = 0

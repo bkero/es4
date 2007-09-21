@@ -47,12 +47,15 @@ package
     use namespace intrinsic;
     use strict;
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     // The [[Prototype]] of "int" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
     intrinsic final class int!
     {
+        static const length = 1;
+
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;
 
@@ -72,32 +75,36 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (typeof radix === "number" &&
-                     radix >= 2 &&
-                     radix <= 36 && helper::isIntegral(radix)) {
-                /* INFORMATIVE */
-                radix = int(radix);
-                let v = this;
-                let s = "";
-                var q = "";
-                if (v < 0) {
-                    s = "-";
-                    v = -v;
-                }
-                while (v != 0) {
-                    q = "0123456789abcdefABCDEFGHIJKLMNOPQRSTUVWXYZ"[v % radix] + q;
-                    v = (v - (v % radix)) / radix;
-                }
-                if (q == "")
-                    q = "0";
-                return s + q;
-            }
+            if (radix is Numeric &&
+                radix >= 2 && radix <= 36 && helper::isIntegral(radix)) 
+                return informative::toString(int(radix));
             throw new TypeError("Invalid radix argument to int.toString");
+        }
+
+        informative function toString(radix) {
+            let v = this;
+            let s = "";
+            var q = "";
+
+            if (v < 0) {
+                s = "-";
+                v = -v;
+            }
+            while (v != 0) {
+                q = "0123456789abcdefABCDEFGHIJKLMNOPQRSTUVWXYZ"[v % radix] + q;
+                v = (v - (v % radix)) / radix;
+            }
+            if (q == "")
+                q = "0";
+            return s + q;
         }
 
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
             intrinsic::toString();
+
+        override intrinsic function toJSONString(pretty: boolean=false) : string
+            JSON.formatNumber(this, pretty);
 
         override intrinsic function valueOf(): int
             this;

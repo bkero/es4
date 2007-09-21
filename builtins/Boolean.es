@@ -50,6 +50,9 @@ package
 
     dynamic class Boolean
     {
+        // IMPLEMENTATION ARTIFACT: A getter because Boolean is loaded before int.
+        static function get length() { return 1 }
+
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
             boolean(x);
@@ -62,6 +65,9 @@ package
         override intrinsic function toString() : string
             intrinsic::valueOf().intrinsic::toString();
 
+        override intrinsic function toJSONString(pretty: boolean=false) : string
+            intrinsic::valueOf().intrinsic::toJSONString();
+
         /* E262-4 early-binding variant. */
         override intrinsic function valueOf() : boolean
             boolean(this);
@@ -70,10 +76,13 @@ package
 
         /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
         prototype function toString(this: Booleans)
-            intrinsic::toString();
+            this.intrinsic::toString();
+
+        prototype function toJSONString(this: Booleans, pretty=false)
+            this.intrinsic::toJSONString(pretty);
 
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
         prototype function valueOf(this: Booleans)
-            intrinsic::valueOf();
+            this.intrinsic::valueOf();
     }
 }

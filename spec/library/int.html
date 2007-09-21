@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/int.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -34,6 +34,7 @@ final class int!
 
     <SIGNATURE file="int.es" name="override intrinsic function toString">
     <SIGNATURE file="int.es" name="override intrinsic function toLocaleString">
+    <SIGNATURE file="int.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="int.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="int.es" name="intrinsic function toFixed">
@@ -68,8 +69,8 @@ to 0) to ''int''.
 <SHORTIMPL>
 <INCLUDE file="int.es" name="meta static function invoke">
 
-<FIXME> It would be less confusing if the converter used ''new int''
-instead of ''newInt'' here.
+<FIXME> (Ticket #176.)  It would be less confusing if the converter
+used ''new int'' instead of ''newInt'' here.
 
 == Value properties on the ''int'' class object ==
 
@@ -83,10 +84,10 @@ represented by the ''int'' class.  Its value is 2<SUP>31</SUP>-1.
 <P> The value of ''MIN_VALUE'' is the smallest negative value
 represented by the ''int'' class.  Its value is -2<SUP>31</SUP>.
 
-<FIXME> int.MIN_VALUE is not symmetric with Number.MIN_VALUE, as the
-latter holds the smallest //positive// value represented by a double.
-Ditto, uint.MIN_VALUE is 0 (a bit silly) and decimal.MIN_VALUE will
-be a positive value as for double.
+<FIXME> (Ticket #182.)  int.MIN_VALUE is not symmetric with
+Number.MIN_VALUE, as the latter holds the smallest //positive// value
+represented by a double.  Ditto, uint.MIN_VALUE is 0 (a bit silly) and
+decimal.MIN_VALUE will be a positive value as for double.
 
 <P class="fixme"> It's not clear to me that the asymmetry is a problem,
 though.
@@ -110,8 +111,6 @@ implementation-dependent string
 <SHORTIMPL>
 <INCLUDE file="int.es" name="override intrinsic function toString">
 
-<FIXME> What's "informative" in the above?
-
 === intrinsic::toLocaleString ( ) ===
 
 <DESC> The intrinsic ''toLocaleString'' method converts this integer
@@ -130,6 +129,15 @@ for it to return the same thing as the intrinsic ''toString'' method.
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
 
+=== toJSONString ===
+
+<DESC> The intrinsic ''toJSONString'' method convert this ''int''
+object to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
+
+<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
+
+<SHORTIMPL>
+<INCLUDE file="int.es" name="override intrinsic function toJSONString">
 
 === intrinsic::valueOf ( ) ===
 

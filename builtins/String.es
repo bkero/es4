@@ -61,6 +61,7 @@ package
     use namespace intrinsic;
     use strict;
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     intrinsic type Strings = (string,String!);
 
@@ -69,6 +70,9 @@ package
      */
     dynamic class String
     {
+        // A getter because String is loaded before int
+        static function get length() { return 1 }
+
         /* E262-4 draft */
         /* OBSOLETE */
         meta static function convert(x)
@@ -90,6 +94,9 @@ package
 
         override intrinsic function toString() : string
             string(this);
+
+        override intrinsic function toJSONString(pretty:boolean=false) : string
+            JSON.formatString(string(this), pretty);
 
         override intrinsic function valueOf() : string
             intrinsic::toString();
@@ -267,11 +274,11 @@ package
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
-        static function parseJSON(self, ...args)
-            string.helper::parseJSON(self, args);
+        static function parseJSON(self, filter=undefined)
+            string.parseJSON(string(self), filter);
 
-        intrinsic function parseJSON(...args)
-            string.helper::parseJSON(this, args);
+        intrinsic function parseJSON(filter=undefined)
+            string.parseJSON(string(this), filter);
 
 
         /* E262-4 draft proposals:string.prototype.trim */
@@ -298,6 +305,9 @@ package
 
         prototype function toString(this: Strings)
             this.intrinsic::toString();
+
+        prototype function toJSONString(this: Strings, pretty=false)
+            this.intrinsic::toJSONString(pretty);
 
         prototype function valueOf(this: Strings)
             this.intrinsic::valueOf();
@@ -353,8 +363,8 @@ package
         prototype function toLocaleUpperCase()
             string.toLocaleUpperCase(this);
 
-        prototype function parseJSON(...args)
-            string.helper::parseJSON(this, args);
+        prototype function parseJSON(this:Strings, filter=undefined)
+            string.parseJSON(string(this), filter);
 
         prototype function trim()
             string.trim(this);

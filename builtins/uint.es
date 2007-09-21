@@ -47,12 +47,15 @@ package
     use namespace intrinsic;
     use strict;
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     // The [[Prototype]] of "int" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
     intrinsic final class uint!
     {
+        static const length = 1;
+
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 
@@ -94,6 +97,9 @@ package
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
             toString();
+
+        override intrinsic function toJSONString(pretty: boolean=false) : string
+            JSON.formatNumber(this, pretty);
 
         override intrinsic function valueOf(): uint
             this;

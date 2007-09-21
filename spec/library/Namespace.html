@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-14
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  NO
@@ -21,12 +21,16 @@ evaluation of the ''namespace'' pragma.
 {{{
 final class Namespace
 {
-    function toString();
+    intrinsic function toString();
 }
 }}}
 
-<P> The ''Namespace'' prototype object does not provide any new direct
-properties.
+<P> The ''Namespace'' prototype object provides the following direct
+properties:
+
+{{{
+    toString: function () <LDOTS>
+}}}
 
 == Methods on the ''Namespace'' class object ==
 
@@ -36,13 +40,26 @@ accessible constructor.
 
 == Methods on ''Namespace'' instances ==
 
-=== toString() ===
+=== intrinsic::toString() ===
 
-<DESC> The ''toString'' method converts the ''Namespace'' object to a
-string.  If the ''Namespace'' object was created with an explicit name
-then the string contains that name.
+<DESC> The intrinsic ''toString'' method converts the ''Namespace''
+object to a string.  If the ''Namespace'' object was created with an
+explicit name then the string contains that name as a substring.
 
 <RETN> The ''toString'' method returns an implementation-defined string.
 
 <IMPL> The ''toString'' method is implementation-defined.
 
+
+== Methods on the ''Namespace'' prototype object ==
+
+=== toString() ==
+
+<RETN> The ''toString'' method returns what the intrinsic ''toString''
+method returns.
+
+<SHORTIMPL>
+{{{
+prototype function toString(this:Namespace)
+    this.intrinsic::toString()
+}}}

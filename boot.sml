@@ -281,24 +281,25 @@ fun boot _ : Mach.REGS =
                        
                        "builtins/Name.es",
                                               
-                       "builtins/Error.es",
-                       "builtins/EvalError.es",
-                       "builtins/RangeError.es",
-                       "builtins/ReferenceError.es",
-                       "builtins/SyntaxError.es",
-                       "builtins/TypeError.es",
-                       "builtins/URIError.es",
-                       
                        "builtins/Boolean.es",
                        "builtins/boolean_primitive.es",
                        
                        "builtins/Number.es",
-                       "builtins/double.es",
                        "builtins/int.es",
                        "builtins/uint.es",
+                                    "builtins/double.es",
                        "builtins/decimal.es",
                        "builtins/Numeric.es",
                        
+                                    "builtins/Error.es",
+                                    "builtins/EncodingError.es",
+                                    "builtins/EvalError.es",
+                                    "builtins/RangeError.es",
+                                    "builtins/ReferenceError.es",
+                                    "builtins/SyntaxError.es",
+                                    "builtins/TypeError.es",
+                                    "builtins/URIError.es",
+
                        "builtins/Math.es",
                        "builtins/Global.es",
                        

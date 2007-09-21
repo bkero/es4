@@ -46,6 +46,7 @@
 package
 {
     import ECMAScript4_Internal.*;
+    import JSON.*;
 
     use default namespace public;
     use namespace helper;
@@ -57,6 +58,8 @@ package
     dynamic class Date
     {
         use default namespace public;
+
+        static const length = 7;
 
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         meta static function invoke(...args)   // args are ignored.
@@ -227,9 +230,15 @@ package
                     "Z");
         }
 
+        prototype function toJSONString(this:Date, pretty=false) 
+            this.intrinsic::toJSONString(pretty);
+
+        override intrinsic function toJSONString(pretty: boolean=false)
+            JSON.formatDate(this, pretty);
+
         /* E262-3 15.9.5.2: Date.prototype.toString */
         prototype function toString(this:Date)
-            this.toString();
+            this.intrinsic::toString();
 
         /* INFORMATIVE */
         override intrinsic function toString() : string {
@@ -828,7 +837,7 @@ package
     }
 
     informative function twoDigit(n : double)
-        (n + 100).toString().substring(1,3);
+        string(n + 100).substring(1,3);
 
     informative function signString(n : double)
         n < 0 ? "-" : "+";
@@ -1021,13 +1030,13 @@ package
         if (n >= 0 && n <= 9999)
             return zeroFill(int(n), 4);
         else
-            return n.toString();
+            return string(n);
     }
 
     helper function removeTrailingZeroes(n: int): string {
         while (n > 0 && n % 10 === 0)
             n /= 10;
-        return n.toString();
+        return string(n);
     }
 
     helper function zeroFill(n: int, k): string {

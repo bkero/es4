@@ -1,0 +1,97 @@
+<H1 id="class ControlInspector"> The optional class ''ControlInspector'' </H1>
+
+<PRE>
+FILE:                       spec/library/ControlInspector.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</PRE>
+
+
+<P> The class ''ControlInspector'' is a parameterized, non-dynamic,
+non-final, nullable, direct subclass of ''Object''.
+
+<P> ''ControlInspector'' is an optional facility: ECMAScript
+implementations may choose not to provide it.
+
+<P> Instances of ''ControlInspector'' are used to annotate points in
+the continuation ("the control stack") with arbitrary data, and to
+retrieve those data.  When a function //f// is entered, there is a
+continuation in effect for the call to //f//.  Calls from //f// to a
+control inspector's ''annotate'' method create annotations on that
+continuation (not on the activation record for //f// or on any other
+control data associated with the internal state of //f//).  Once //f//
+returns, any annotations it created are effectively erased.
+
+<NOTE> In the following, all classes and methods are defined in the
+''intrinsic'' namespace.
+
+== Synopsis ==
+
+<P> The class ''ControlInspector'' provides the following interface:
+
+{{{
+class ControlInspector.<T>
+{
+    final function annotate(val: T): void <LDOTS>
+    final function getCurrentAnnotation(): T? <LDOTS>
+    final function getAnnotations(): iterator::IteratorType.<T> <LDOTS>
+}
+}}}
+
+<NOTE> The methods on ''ControlInspector'' are ''final'' to give the
+ECMAScript implementations some flexibility in how to implement them.
+
+<P> The ''ControlInspector'' prototype object provides no new direct
+properties.
+
+
+== Methods on the ''ControlInspector'' class object ==
+
+=== new ControlInspector.&lt;T>() ===
+
+<DESC> The ''ControlInspector'' constructor initializes a new
+''ControlInspector'' instance for the base type //T//.
+
+<IMPL> The ''ControlInspector'' constructor is
+implementation-dependent.
+
+
+== Methods on ''ControlInspector'' instances ==
+
+=== annotate ( //value// ) ===
+
+<DESC> The ''annotate'' method annotates the continuation of the
+current function with a //value// of the base type //T//.  The value
+is associated with this ''ControlInspector'' instance.
+
+<NOTE> Two ''ControlInspectors'' with the same base type //T// can
+place independent annotations on the same continuation, and these
+annotations do not interfere with each other in any way.
+
+<IMPL> The ''annotate'' method is implementation-dependent.
+
+
+=== getCurrentAnnotation ( ) ===
+
+<RETN> The ''getCurrentAnnotation'' method returns the annotation
+associated with this annotator instance for the continuation of the
+current function, or **null** if there is no such annotation.
+
+<IMPL> The ''getCurrentAnnotation'' method is implementation-dependent.
+
+
+=== getAnnotations ( ) ===
+
+<RETN> The ''getAnnotations'' method returns an iterator that iterates
+over all annotations associated with this ''ControlInspector''
+instance for the entire continuation of the current function, arranged
+from most recent (top of the continuation) to least recent (bottom of
+the continuation).
+
+<IMPL> The ''getAnnotations'' method is implementation-dependent.
+
+<!-- End of ControlInspector.html -->

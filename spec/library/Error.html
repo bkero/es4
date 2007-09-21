@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Error.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-10
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -24,9 +24,9 @@ of that particular error class is thrown.
 
 <P> The class ''Error'' serves as the base class for all the classes
 describing standard errors thrown by the ECMAScript implementation:
-''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'',
+''EncodingError'', ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'',
 ''TypeError'', and ''URIError''.
-(See <XREF target="class EvalError">, <XREF target="class RangeError">,
+(See <XREF target="class EncodingError">, <XREF target="class EvalError">, <XREF target="class RangeError">,
 <XREF target="class ReferenceError">, <XREF target="class SyntaxError">,
 <XREF target="class TypeError">, <XREF target="class URIError">.)
 
@@ -122,6 +122,69 @@ to an implementation-defined string.
 
 <P> The initial value of the ''message'' prototype property is an
 implementation-defined string.
+
+
+<!----------------------------------------------------------------------->
+
+<H1 id="class EncodingError"> The class ''EncodingError'' </H1>
+
+<P> The implementation throws a new ''EncodingError'' instance when an
+attempt was made to encode or decode data that are self-referential
+with an encoder or decoder that does not allow such data.
+
+<FIXME> Clean up the section references when we reach final draft.
+
+== Synopsis ==
+
+<P> The ''EncodingError'' class provides this interface:
+
+{{{
+dynamic class EvalError extends Error
+{
+    <SIGNATURE file="EncodingError.es" name="function EncodingError">
+    <SIGNATURE file="EncodingError.es" name="meta static function invoke">
+    
+    static const length = 1
+}
+}}}
+
+<P> The ''EncodingError'' prototype object provides these direct properties:
+{{{
+    name:    "EncodingError" ,
+    message: <LDOTS> ,
+}}}
+
+== Methods on the ''EncodingError'' class ==
+
+=== new EncodingError (message) ===
+
+<DESC> When the ''EncodingError'' constructor is called as part of a
+''new&nbsp;EncodingError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
+
+<SHORTIMPL>
+<INCLUDE file="EncodingError.es" name="function EncodingError">
+
+
+=== EvalError (message) ===
+
+<DESC> When the ''EncodingError'' class object is called as a function, it
+creates and initialises a new ''EncodingError'' object by invoking the
+''EncodingError'' constructor.
+
+<RETN> The ''EncodingError'' class object called as a function returns a
+new ''EncodingError'' object.
+
+<SHORTIMPL>
+<INCLUDE file="EncodingError.es" name="meta static function invoke">
+
+
+== Value properties on the ''EncodingError'' prototype object ==
+
+=== message ===
+
+<P> The initial value of ''message'' prototype property is an implementation-defined string.
+
 
 
 <!----------------------------------------------------------------------->
