@@ -909,6 +909,12 @@ and resolveClassInheritance (env:ENV)
                 then ()
                 else error ["resolveClassInheritance: non-ground instance type"]
 
+        (* 
+         * FIXME: we ought to be binding type parameters as
+         * TypeVarFixtures into the instanceRib we use to resolve base types.
+         * At the moment you can't say class C.<X> extends B.<X> { ... }
+         *)
+
         val (extendsTy:Ast.TY option, 
              instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
 
@@ -932,6 +938,10 @@ and resolveClassInheritance (env:ENV)
                                             ty = (#ty it),
                                             conversionTy = (#conversionTy it),
                                             dynamic = (#dynamic it)}
+                val te = case typeParams of 
+                             [] => te
+                           | params => Ast.LamType { params = params, 
+                                                     body = te }
             in
                 Ast.Ty { expr = te,
                          frameId = fid,

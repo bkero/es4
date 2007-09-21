@@ -398,7 +398,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                         ty2norm prog (Ast.Ty { expr=body, frameId=frameId', topUnit=topUnit' }) (rib::locals)
                     end                
                   | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
-                  | _ => error ["applying bad type"]
+                  | _ => error ["applying bad type: ", LogErr.ty (AstQuery.typeExprOf base')]
             end
             
           | (Ast.UnionType tys) => 

@@ -2081,13 +2081,14 @@ and applyTypesToClass (regs:Mach.REGS)
                                        typeParams = (#typeParams c),
                                        nonnullable = (#nonnullable c),
                                        dynamic = (#dynamic c),
-                                       extends = Option.map applyArgs (#extends c),
-                                       implements = map applyArgs (#implements c),
+                                       (* FIXME: apply to base types when logic for this is present in defn. *)
+                                       extends = (#extends c), (* Option.map applyArgs (#extends c), *)
+                                       implements = (#implements c), (* map applyArgs (#implements c), *)
                                        classRib = (#classRib c),
                                        instanceRib = (#instanceRib c),
                                        instanceInits = (#instanceInits c),
                                        constructor = (#constructor c),
-                                       classType = applyArgs (#classType c),
+                                       classType = (#classType c),
                                        instanceType = applyArgs (#instanceType c) }
                 val newClosure = { cls = newCls,
                                    env = bindTypes regs (#typeParams c) typeArgs env }
