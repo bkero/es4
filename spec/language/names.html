@@ -1,13 +1,3 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Untitled Document</title>
-</head>
-
-<body>
-
-
 <h1>Names</h1>
 <p>
  A name consists of a string and a namespace. Names are introduced into a particular scope by a definition. Those definitions are referred to by names that result from expressions.
@@ -31,7 +21,7 @@ The visibility of an identifier is controlled by the set of open namespaces. The
 <p>
  The user opened namespaces are controlled by the use namespace directives that are in scope. For example,
 </p>
-<pre class="code javascript"><span class="kw2">namespace</span> mx = "http:<span class="co1">//macromedia.com/mx"</span>
+<pre class="code javascript"><span class="kw2">namespace</span> mx = "http:<span class="co1">%%//%%macromedia.com/mx"</span>
 <span class="kw2">use</span> <span class="kw2">namespace</span><span class="br0">&#40;</span>mx<span class="br0">&#41;</span>
 o.<span class="me1">m</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
 <p>
@@ -71,15 +61,15 @@ The terms namespace and qualifier are used interchangeably when talking about qu
 The following table shows the kinds of references that include qualified and unqualified, literal and expression names.
 </p>
 <table border="1" cellspacing="0" cellpadding="3" class="inline">
-	<tr>
-		<td class="rightalign">             </td><th class="leftalign"> Literal                </th><th class="leftalign"> Expression                     </th>
-	</tr>
-	<tr>
-		<th> Unqualified </th><td class="leftalign"><code>o.id</code>, <code>id</code>       </td><td class="leftalign"><code>o[expr]</code>                    </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> Qualified   </th><td><code>o.q::id</code>, <code>q::id</code></td><td><code>o.q::[expr]</code>, <code>q::[expr]</code></td>
-	</tr>
+        <tr>
+                <td class="rightalign">             </td><th class="leftalign"> Literal                </th><th class="leftalign"> Expression                     </th>
+        </tr>
+        <tr>
+                <th> Unqualified </th><td class="leftalign"><code>o.id</code>, <code>id</code>       </td><td class="leftalign"><code>o[expr]</code>                    </td>
+        </tr>
+        <tr>
+                <th class="leftalign"> Qualified   </th><td><code>o.q::id</code>, <code>q::id</code></td><td><code>o.q::[expr]</code>, <code>q::[expr]</code></td>
+        </tr>
 </table>
 <br />
 <ul>
@@ -109,15 +99,15 @@ Looking up a reference involves determining its ultimate qualified name (in the 
  Object references result from expressions involving the dot or bracket operators. They may be qualified or unqualified. The following table shows various forms of object references.  
 </p>
 <table border="1" cellspacing="0" cellpadding="3" class="inline">
-	<tr>
-		<td class="rightalign">             </td><th class="leftalign"> Literal     </th><th class="leftalign"> Expression      </th>
-	</tr>
-	<tr>
-		<th> Unqualified </th><td class="leftalign"><code>o.id</code>    </td><td class="leftalign"><code>o[expr]</code>     </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> Qualified   </th><td><code>o.q::id</code></td><td><code>o.q::[expr]</code></td>
-	</tr>
+        <tr>
+                <td class="rightalign">             </td><th class="leftalign"> Literal     </th><th class="leftalign"> Expression      </th>
+        </tr>
+        <tr>
+                <th> Unqualified </th><td class="leftalign"><code>o.id</code>    </td><td class="leftalign"><code>o[expr]</code>     </td>
+        </tr>
+        <tr>
+                <th class="leftalign"> Qualified   </th><td><code>o.q::id</code></td><td><code>o.q::[expr]</code></td>
+        </tr>
 </table>
 <br />
 <p>
@@ -305,6 +295,3 @@ References in the following syntactic contexts are resolved during verification:
 <p>
  All other references are resolved during evaluation.
 </p>
-
-</body>
-</html>
