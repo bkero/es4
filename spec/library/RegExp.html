@@ -85,7 +85,8 @@ dynamic class RegExp
     const extended: boolean = <LDOTS>
     const sticky: boolean = <LDOTS>
 
-    var lastIndex = <LDOTS>
+    <SIGNATURE file="RegExp.es" name="final function get lastIndex">
+    <SIGNATURE file="RegExp.es" name="final function set lastIndex">
 }
 }}}
 
@@ -1237,10 +1238,11 @@ indicating whether the flags contained the character "y".
 <P> The value of the ''lastIndex'' property is an integer that
 specifies the string position at which to start the next match.
 
-<FIXME> (Ticket #195.) Is this a getter/setter?  Currently the
-property has no type constraits, and it's not obvious it should have
-them (backwards compatibility); anyhow, ''exec'' in ES3 performs
-conversion as necessary.
+<P> The value is converted to integer on setting.
+
+<SHORTIMPL>
+<SIGNATURE file="RegExp.es" name="final function get lastIndex">
+<SIGNATURE file="RegExp.es" name="final function set lastIndex">
 
 
 == Methods on the ''RegExp'' prototype object ==
