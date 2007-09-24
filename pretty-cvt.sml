@@ -431,7 +431,7 @@ structure PrettyCvt = struct
      | cvtEXPR (BinaryTypeExpr(x879, x880, x881)) = PrettyRep.Ctor ("BinaryTypeExpr", 
           SOME (PrettyRep.Tuple [cvtBINTYPEOP x879, cvtEXPR x880, cvtTY x881]))
      | cvtEXPR (ExpectedTypeExpr(x885, x886)) = PrettyRep.Ctor ("ExpectedTypeExpr", 
-          SOME (PrettyRep.Tuple [cvtTY x885, cvtEXPR x886]))
+          SOME (PrettyRep.Tuple [cvtTYPE_EXPR x885, cvtEXPR x886]))
      | cvtEXPR (UnaryExpr(x890, x891)) = PrettyRep.Ctor ("UnaryExpr", SOME (PrettyRep.Tuple [cvtUNOP x890, 
           cvtEXPR x891]))
      | cvtEXPR (TypeExpr x895) = PrettyRep.Ctor ("TypeExpr", SOME (cvtTY x895))

@@ -50,8 +50,8 @@ fun findTraceOption (tname:string)
       | "name" => SOME (Multiname.doTrace)
       | "defn" => SOME (Defn.doTrace)
       | "defnsum" => SOME (Defn.doTraceSummary)
-      (* | "verify" => SOME (Verify.doTrace) *)
-      (* | "verified" => SOME (Verify.doTraceProg) *)
+      | "verify" => SOME (Verify.doTrace) 
+      | "verified" => SOME (Verify.doTraceFrag) 
       | "eval" => SOME (Eval.doTrace)
       | "mach" => SOME (Mach.doTrace)
       | "decimal" => SOME (DecimalParams.doTrace)
@@ -179,7 +179,7 @@ fun repl regs argvRest =
                             then
                                 let
                                     val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                                    (* val vd = Verify.verifyProgram d *)
+                                    val frag = Verify.verifyTopFragment prog true frag
                                 in
                                     regsCell := Eval.withProg regs prog;
                                     if (!doEval)
@@ -235,15 +235,19 @@ fun define prog argvRest =
     end
 
 fun verify prog argvRest =
-    define prog argvRest
-(*
     let
-        val defined = define argvRest
+        val (prog, frags) = define prog argvRest
+        fun f prog accum (frag::frags) = 
+            let 
+                val frag' = Verify.verifyTopFragment prog true frag
+            in
+                f prog (frag'::accum) frags
+            end
+          | f prog accum _ = (prog, List.rev accum)
     in
         TextIO.print "verifying ... \n";
-        List.map Verify.verifyProgram defined
+        f prog [] frags
     end
-*)
 
 fun eval regs argvRest =
     let

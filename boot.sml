@@ -166,16 +166,14 @@ fun loadFiles (prog:Fixture.PROGRAM)
         f prog [] fs
     end
 
-(*
 fun verifyFiles prog fs =
     let
         fun ver (file, frag) =
             (trace ["verifying boot file ", file];
-             (file, Verify.verifyFragment frag))
+             (file, Verify.verifyTopFragment prog true frag))
     in
         map ver fs
     end
-*)
 
 fun evalFiles (regs:Mach.REGS)
               (fs:(string * Ast.FRAGMENT) list)
@@ -268,11 +266,10 @@ fun boot _ : Mach.REGS =
         val (prog, funFrag) = loadFile prog "builtins/Function.es"
         val (prog, ifaceFrag) = loadFile prog "builtins/Interface.es"
 
-        (* FIXME: val objFrag = Verify.verifyProgram objProg *)
-
         val (prog, otherFrags) = 
             loadFiles prog 
-                      ["builtins/Namespace.es",
+                      ["builtins/Type.es",
+                       "builtins/Namespace.es",
                        "builtins/Magic.es",
                        "builtins/Internal.es",
                        "builtins/Conversions.es",
@@ -319,6 +316,8 @@ fun boot _ : Mach.REGS =
                        "builtins/JSON.es"
                  ]
 
+        val objFrag = Verify.verifyTopFragment prog true objFrag
+
         val glob = 
             let
                 val (_, objIty) = lookupRoot prog Name.nons_Object
@@ -345,15 +344,10 @@ fun boot _ : Mach.REGS =
 
         val _ = describeGlobal regs;
 
-       (* FIXME: 
-
-        val clsFrag = Verify.verifyProgram clsFrag
-        val funFrag = Verify.verifyProgram funFrag                      
-        val ifaceFrag = Verify.verifyProgram ifaceFrag
-        val otherProgs = verifyFiles otherProgs
-                         
-        *)
-
+        val clsFrag = Verify.verifyTopFragment prog true clsFrag
+        val funFrag = Verify.verifyTopFragment prog true funFrag                      
+        val ifaceFrag = Verify.verifyTopFragment prog true  ifaceFrag
+        val otherProgs = verifyFiles prog otherFrags
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;

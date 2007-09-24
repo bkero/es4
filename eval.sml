@@ -1861,7 +1861,7 @@ and getExpectedType (regs:Mach.REGS)
                     (expr:Ast.EXPR)
     : (Ast.TYPE_EXPR * Ast.EXPR) =
     case expr of
-        Ast.ExpectedTypeExpr (ty, e) => (evalTy regs ty, e)
+        Ast.ExpectedTypeExpr (te, e) => (te, e)
       | _ => (Ast.SpecialType Ast.Any, expr)
 
 and checkCompatible (regs:Mach.REGS)
@@ -1974,8 +1974,8 @@ and evalExpr (regs:Mach.REGS)
       | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) =>
         evalBinaryTypeOp regs typeOp expr tyExpr
 
-      | Ast.ExpectedTypeExpr (ty, e) =>
-        checkCompatible regs (evalTy regs ty) (evalExpr regs e)
+      | Ast.ExpectedTypeExpr (te, e) =>
+        checkCompatible regs te (evalExpr regs e)
 
       | Ast.GetParam n =>
         LogErr.unimplError ["unhandled GetParam expression"]

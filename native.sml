@@ -747,13 +747,12 @@ fun eval (regs:Mach.REGS)
                     val frag = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-                    val (prog, frag) = 
-                        (* (Verify.verifyFragment *)
-                        (Defn.defTopFragment (#prog regs) frag)
-                        (* ) *)
-                        handle
-                        LogErr.DefnError de => raise Eval.ThrowException (str de)
-                      | LogErr.VerifyError ve => raise Eval.ThrowException (str ve)
+                    val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
+                                        handle
+                                        LogErr.DefnError de => raise Eval.ThrowException (str de))
+                    val frag = (Verify.verifyTopFragment prog true frag
+                                handle
+                                LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
                     val regs = Eval.withProg regs prog
                 in
@@ -764,9 +763,6 @@ fun eval (regs:Mach.REGS)
                      * subset of definitions.
                      *)
                     
-                    (* FIXME: re-enable verify at some point! *)
-                    (* Eval.evalFragment regs (Verify.verifyFragment (Defn.defFragment frag)) *)
-
                     Eval.evalTopFragment regs frag
                     handle 
                     LogErr.NameError ne => raise Eval.ThrowException (str ne)

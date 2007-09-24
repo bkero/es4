@@ -1,17 +1,23 @@
-(*
+/* -*- mode: java; indent-tabs-mode: nil -*-
+ *
+ * ECMAScript 4 builtins - the "Type" object
+ *
+ * E262-4 proposals:meta_objects
+ * E262-4 not yet documented
+ *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -24,69 +30,18 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
- *)
+ *
+ */
 
-Library
-    structure LogErr
-    structure Main
-    structure Ast
-    structure Pretty
-    structure Token
-    structure Lexer
-    structure Parser
-    structure Multiname
-    structure Defn
-    signature FIXTURE
-    structure Fixture
-    structure Type
-    structure Verify
-    structure Eval
-    structure Mach 	
-    structure Native 
-    structure Boot
-    structure Decimal
-    structure Name
-    structure NameKey	
-    structure NameMap	
-    structure Ustring
-    structure SMLofNJEntry
-    structure AstQuery
-is
-    logerr.sml (lambdasplit: infinity)
-    main.sml
-    ast.sml (lambdasplit: infinity)
-    pretty.sml
-    pretty-cvt.sml
-    pretty-rep.sml
-    token.sml (lambdasplit: infinity)
-    lexer.sml (lambdasplit: infinity)
-    parser.sml
-    multiname.sml (lambdasplit: infinity)
-    defn.sml (lambdasplit: infinity)
-    fixture.sig
-    fixture.sml (lambdasplit: infinity)
-    type.sml (lambdasplit: infinity)
-    verify.sml (lambdasplit: infinity)
-    eval.sml (lambdasplit: infinity)
-    mach.sml (lambdasplit: infinity)
-    native.sml (lambdasplit: infinity)
-    boot.sml
-    decimal.sml (lambdasplit: infinity)
-    decimal-external.sml (lambdasplit: infinity)
-    decimal-params.sml (lambdasplit: infinity)
-    name.sml (lambdasplit: infinity)
-    namekey.sml (lambdasplit: infinity)
-    namemap.sml (lambdasplit: infinity)
-    ustring.sml
-    smlnj.sml (lambdasplit: infinity)
-    ast-query.sml (lambdasplit: infinity)
+package
+{
 
-    $/basis.cm
-    $/smlnj-lib.cm
-    $/pp-lib.cm
-    tools/backtrace.cm
+    intrinsic class Type 
+    {
+    }
+}
