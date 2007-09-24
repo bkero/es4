@@ -36,6 +36,8 @@ returns, any annotations it created are effectively erased.
 {{{
 class ControlInspector.<T>
 {
+    static const length = 0;
+
     final function annotate(val: T): void <LDOTS>
     final function getCurrentAnnotation(): T? <LDOTS>
     final function getAnnotations(): iterator::IteratorType.<T> <LDOTS>
