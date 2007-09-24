@@ -62,6 +62,8 @@ package
     {
         use strict;
 
+        static const length = 1;
+
         function ByteArray(length: uint = 0)
             : length = length
         {

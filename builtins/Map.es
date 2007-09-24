@@ -77,6 +77,8 @@ package
     // Should be __ES4__
     intrinsic class Map.<K,V>
     {
+        static const length = 2;
+
         /* Create the map.  Note that the equality and hashcode
          * predicates must always agree: if two objects are equal,
          * they must hash to the same value.

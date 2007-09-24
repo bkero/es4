@@ -44,6 +44,8 @@ package
 
     final class Vector.<T>
     {
+        static const length = 2;
+
         function Vector(length: uint=0, fixed: boolean=false) 
             : fixed = fixed
         {

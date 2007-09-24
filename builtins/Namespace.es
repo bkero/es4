@@ -43,6 +43,9 @@ package
 
     intrinsic class Namespace
     {
+        // No "length" because constructor is private, this may or may
+        // not be a general rule.
+
         // FIXME: we might need a static make-a-user-namespace
         // function here for dynamic namespaces. Not a ctor!
         //

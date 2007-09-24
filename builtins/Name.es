@@ -39,6 +39,8 @@ use namespace intrinsic;
 
 intrinsic final class Name extends String 
 {
+    static const length = 2;
+
     function Name(a, b=undefined) {
         if (a is Namespace && b is string) {
             qualifier = a;
