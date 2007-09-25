@@ -1,5 +1,13 @@
 <H1 id="class decimal"> The class ''decimal'' </h1>
 
+<!-- Constants taken from http://pi.lacim.uqam.ca/eng/table_en.html,
+     sometimes processed by math.sch in this directory.
+     Constants should have 34 significant digits, round to even.
+     Please leave a 35-digit (or better) constant inside an HTML 
+     comment with the defn in case we find a need to change the
+     rounding rule later.
+  -->
+
 <pre>
 FILE:                       spec/library/decimal.html
 DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
@@ -13,8 +21,10 @@ REVIEWED AGAINST CODE:      NO
 
 <P> The class ''decimal'' is a final, non-nullable, non-dynamic direct
 subclass of ''Object'' that represents 128-bit IEEE decimal floating
-point number values in the range XXX to YYY inclusive, plus the three
-special values -<INFINITY>, +<INFINITY>, and NaN.
+point number values in the range 
+<NOBR>-(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR> to
+<NOBR>(10<SUP>34</SUP>-1) <TIMES> 10<SUP>6111</SUP></NOBR> inclusive,
+plus the three special values -<INFINITY>, +<INFINITY>, and NaN.
 
 <COMP> The class ''decimal'' is new in the 4th Edition of this
 Standard.
@@ -115,42 +125,49 @@ represented by a ''decimal'' instance.
 === E ===
 
 <P> The value of ''E'' is the ''decimal'' value for //e//, the base of the
-natural logarithms, which is approximately 2.7182818284590452354.
+natural logarithms, which is approximately 2.718281828459045235360287471352662.
 
-<FIXME> (Ticket #187.) More precision here.
+<!-- source: http://pi.lacim.uqam.ca/piDATA/expof1.txt
+     exp(1) = 2.7182818284590452353602874713526624977572470936999595749669676277240766 -->
 
 === LN10 ===
 
 <P>The value of ''LN10'' is the ''decimal'' value for the natural
-logarithm of 10, which is approximately 2.302585092994046.
+logarithm of 10, which is approximately 2.302585092994045684017991454684364.
 
-<FIXME> (Ticket #187.) More precision here.
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/log10.txt
+     log(10) = 2.302585092994045684017991454684364207601101488628772976033327900967572609677352480235997205089 -->
 
 === LN2 ===
 
 <P>The value of ''LN2'' is the ''decimal'' value for the natural
-logarithm of 2, which is approximately 0.6931471805599453.
+logarithm of 2, which is approximately 0.6931471805599453094172321214581766.
 
-<FIXME> (Ticket #187.) More precision here.
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/1overlog2.txt
+     1/log(2) = 1.44269504088896340735992468100189213742664595415298593413544940693110,
+     1/1/log(2) = 0.6931471805599453094172321214581765680755001343602552541206800094933980
+     (as computed by math.sch in this directory) -->
 
 === LOG2E ===
 
 <P>The value of ''LOG2E'' is the ''decimal'' value for the base-2
 logarithm of //e//, the base of the natural logarithms; this value is
-approximately 1.4426950408889634.
-
-<FIXME> (Ticket #187.) More precision here.
+approximately 1.442695040888963407359924681001892.
 
 <NOTE> The value of ''decimal.LOG2E'' is approximately the reciprocal
 of the value of ''decimal.LN2''.
+
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/1overlog2.txt
+     1/log(2) = 1.44269504088896340735992468100189213742664595415298593413544940693110 -->
 
 === LOG10E ===
 
 <P>The value of ''LOG10E'' is the decimal value for the base-10
 logarithm of //e//, the base of the natural logarithms; this value is
-approximately 0.4342944819032518.
+approximately 0.4342944819032518276511289189166051.
 
-<FIXME> (Ticket #187.) More precision here.
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/1overlog10.txt
+     1/log(10) = 0.43429448190325182765112891891660508229439700580366656611445378316586464920887 -->
 
 <NOTE> The value of ''decimal.LOG10E'' is approximately the reciprocal
 of the value of ''decimal.LN10''.
@@ -159,26 +176,31 @@ of the value of ''decimal.LN10''.
 
 <P>The value of ''PI'' is the ''decimal'' value for <PI>, the ratio of
 the circumference of a circle to its diameter, which is approximately
-3.1415926535897932.
+3.141592653589793238462643383279503.
 
-<FIXME> (Ticket #187.) More precision here.
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/pi.html
+     pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862 -->
 
 === SQRT1_2 ===
 
 <P>The value of ''SQRT1_2'' is the ''decimal'' value for the square
-root of 1/2, which is approximately 0.7071067811865476.
-
-<FIXME> (Ticket #187.) More precision here.
+root of 1/2, which is approximately 0.7071067811865475244008443621048490.
 
 <NOTE> The value of ''decimal.SQRT1_2'' is approximately the reciprocal
 of the value of ''decimal.SQRT2''.
 
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/sqrt2.txt
+     sqrt(2) = 1.41421356237309504880168872420969807856967187537694807317667973799073247846210 -->
+     1/sqrt(2) = 0.7071067811865475244008443621048490392848359376884740365883398689953674
+     as computed by math.sch -->
+
 === SQRT2 ===
 
 <P>The value of ''SQRT2'' is the ''decimal'' value for the square root
-of 2, which is approximately 1.4142135623730951.
+of 2, which is approximately 1.414213562373095048801688724209698.
 
-<FIXME> (Ticket #187.) More precision here.
+<!-- Source: http://pi.lacim.uqam.ca/piDATA/sqrt2.txt
+     sqrt(2) = 1.41421356237309504880168872420969807856967187537694807317667973799073247846210 -->
 
 == Methods on ''decimal'' instances ==
 
