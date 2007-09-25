@@ -35,37 +35,147 @@
 
 package JSON
 {
-    use default namespace public;
+    use namespace intrinsic;
 
-    function formatObject(object, pretty): string {
-        // FIXME
-        return "formatObject not implemented";
+    public function formatObject(object, pretty=false): string {
+        pp = pretty;
+        return fmtObject(object);
     }
 
-    function formatArray(array, pretty): string {
-        // FIXME
-        return "formatArray not implemented";
+    public function formatArray(array, pretty=false): string {
+        pp = pretty;
+        return fmtArray(array);
     }
 
-    function formatDate(date, pretty): string
+    public function formatDate(date, pretty=false): string
         '"' + date.intrinsic::toISOString() + '"';
 
-    function formatString(s, pretty): string {
+    public function formatString(s, pretty=false): string {
         // FIXME
-        return "formatString not implemented";
+        return "\"" + s + "\"";
     }
 
-    function formatNumber(n, pretty): string {
+    public function formatNumber(n, pretty=false): string {
         if (isNaN(n) || !isFinite(n))
             return "null";
         return string(n);
     }
 
-    function formatBoolean(bool, pretty): string
+    public function formatBoolean(bool, pretty=false): string
         bool ? "true" : "false";
 
-    function parse(s: string, filter) {
+    public function parse(s: string, filter) {
         // FIXME
         return {};
+    }
+
+    var pp = false;    // true for pretty-printing
+    var level = 0;    // indentation level
+    var active = new ObjectMap;
+
+    // The only way to ask if something is of a specific type (and not
+    // one of the subtypes) is through the use of the meta-objects
+    // system, and then only if you're able to create at least one
+    // dummy instance of the type from which to obtain a Type object.
+
+    var objectType = intrinsic::typeOf({});  // Type object for Object
+
+    function isObject(v)
+        objectType.intrinsic::isSubtypeOf(intrinsic::typeOf(v));
+
+    function isEncodableValue(v) {
+        return ((v is Strings) ||
+                (v is Booleans) ||
+                (v is Numbers) ||
+                (v is null) ||
+                (v is Date) ||
+                (v is Array) ||
+                isObject(v));
+    }
+
+    function isEncodableName(n) {
+        return (n is uint || 
+                n is string || 
+                n is Name && n.qualifier == null);
+    }
+
+    function fmtObject(obj)
+        indent + "{" + newline + fmtFields(obj, level+1) + newline + indent + "}";
+
+    function fmtFields(obj, newlevel) {
+        let oldlevel = level;
+        try {
+            let s = "";
+            level = newlevel;
+            active.activate(obj);
+            let first = true;
+            for ( let prop in obj ) {
+                if (isEncodableName(prop) && obj.hasOwnProperty(prop)) {
+                    let value = obj[prop];
+                    if (isEncodableValue(value)) {
+                        if (!first)
+                            s += comma;
+                        first = false;
+                        s += (indent + "\"" + prop + "\"" + colon + 
+                              value.public::toJSONString(pp));
+                    }
+                }
+            }
+            return s;
+        }
+        finally {
+            level = oldlevel;
+            active.deactivate(obj);
+        }
+    }
+
+    function fmtArray(obj)
+        indent + "[" + newline + fmtElements(obj, level+1) + newline + indent + "]";
+
+    function fmtElements(obj, newlevel) {
+        let oldlevel = level;
+        try {
+            let s = "";
+            let first = true;
+            level = newlevel;
+            active.activate(obj);
+            for ( let i=0, limit=Number(obj.length) ; i < limit ; i++ ) {
+                let value = obj[i];
+                if (isEncodableValue(value)) {
+                    if (!first)
+                        s += comma;
+                    first = false;
+                    s += (indent + value.public::toJSONString(pp));
+                }
+            }
+        }
+        finally {
+            level = oldlevel;
+            active.deactivate(obj);
+        }
+    }
+
+    function get colon() pp ? ": " : ":";
+    function get comma() pp ? ",\n" : ",";
+    function get newline() pp ? "\n" : "";
+    function get indent() pp ? (new Array(level*4 + 1)).join(" ") : "";
+
+    // This could be a Map.<*,null>, say
+    class ObjectMap
+    {
+        var active = [];   // list of active objects (circularity detection) (could be a Map)
+
+        function activate(obj) {
+            if (Array.indexOf(active, obj) != -1)
+                throw new EncodingError("Circular structure can't be JSON encoded");
+            active.push(obj);
+        }
+
+        function deactivate(obj) {
+            let probe = Array.indexOf(active, obj);
+            if (probe == -1)
+                throw new Error("Internal error: object not in active list!");
+            active.slice(probe, 1);
+        }
     }
 }

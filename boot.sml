@@ -289,6 +289,7 @@ fun boot _ =
                                     "builtins/RegExp.es",
 
                                     "builtins/Date.es",
+                                    "builtins/MetaObjects.es", (* before JSON *)
                                     "builtins/JSON.es"
                                    ]
 
