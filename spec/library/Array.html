@@ -408,13 +408,13 @@ returns a true value, otherwise returns **false** if all the calls to
 criterion.
 
 <P>The sort is not necessarily stable (that is, elements that compare
-equal do not necessarily remain in their original order). If
+equal do not necessarily remain in their original order).  If
 //comparefn// is not **undefined**, it should be a function that
 accepts two arguments //x// and //y// and returns a negative value if
 //x <LT> y//, zero if //x = y//, or a positive value if //x <GT> y//.
 
 <p>If //comparefn// is not **undefined** and is not a consistent
-comparison function for the array elements of //object// (see below),
+comparison function for the array elements of //object// (see <XREF target="sorting-logic">),
 the behaviour of ''sort'' is implementation-defined.  Let //len// be
 ''uint(object.length)''.  If there exist integers //i// and //j//
 and an object //P// such that all of the conditions below are
@@ -428,21 +428,40 @@ satisfied then the behaviour of ''sort'' is implementation-defined:
 <li> //P// has a property with name ''string(//j//)''
 </ol>
 
-<p>Otherwise the following steps are taken.
+<P> If the behavior of ''sort'' is not implementation-defined then
+the array is sorted as described in section <XREF target="sorting-logic">.
 
-<OL>
+<RETN> The static ''sort'' method returns //object//.
 
-<LI> Let //M// be the result of calling the [[Get]] method of
-//object// with argument ''"length"''.
+<IMPL>
+The static ''sort'' method calls on the generic sorting engine,
+passing a function to compare elements of //object//.
 
-<LI> Let //L// be the result of ''uint(//M//)''.
+<INCLUDE file="Array.es" name="static function sort">
 
-<LI> Perform an implementation-dependent sequence of calls to the
-[[Get]], [[Put]], and [[Delete]] methods of //object// and to
-//SortCompare// (described below), where the first argument for each
-call to [[Get]], [[Put]], or [[Delete]] is a nonnegative integer less
-than //L// and where the arguments for calls to //SortCompare// are
-results of previous calls to the [[Get]] method.
+<NOTE> Because non-existent property values always compare greater
+than **undefined** property values, and **undefined** always compares
+greater than any other value, **undefined** property values always
+sort to the end of the result, followed by non-existent property
+values.
+
+<h4 id="sorting-logic"> The sorting engine </h4>
+
+<P> The sorting engine sorts the numerically named properties of an
+object between two indices ''low'' and ''high'' inclusive, using a
+sort-specific function ''sortCompare'' to compare elements at two
+indices:
+
+{{{
+informative function sortEngine(object, low, high, sortCompare) <LDOTS>
+}}}
+
+<P> The sorting engine perform an implementation-dependent sequence of
+calls to the [[Get]], [[Put]], and [[Delete]] methods of //object//
+and to //sortCompare//, where the first argument for each call to
+[[Get]], [[Put]], or [[Delete]], and both arguments to
+//sortCompare//, are nonnegative integers greater than or equal to
+//low// and less than or equal to //high//.
 
 </OL>
 
@@ -451,15 +470,14 @@ have the following two properties.
 
 <ol>
   <li> There must be some mathematical permutation <PI> of the
-nonnegative integers less than //L//, such that for every nonnegative
-integer //j// less than //L//, if property //old[j]// existed, then
+nonnegative integers in the range //low// to //high// inclusive, such that for every nonnegative
+integer //j// in that range, if property //old[j]// existed, then
 //new[<PI>(j)]// is exactly the same value as //old[j]//, but if
 property //old[j]// did not exist, then //new[<PI>(j)]// does not
 exist.
 
-  <li> Then for all nonnegative integers //j// and //k//, each
-less than //L//, if //SortCompare(j,k) < 0// (see //SortCompare//
-below), then //<PI>(j) < <PI>(k)//.
+  <li> Then for all nonnegative integers //j// and //k// in that
+range, if //sortCompare(j,k) &lt; 0//, then //<PI>(j) &lt; <PI>(k)//.
 </ol>
 
 <P>Here the notation //old[j]// is used to refer to the hypothetical
@@ -499,23 +517,6 @@ and //b//.
 <NOTE> The above conditions are necessary and sufficient to ensure
 that //comparefn// divides the set //S// into equivalence classes and
 that these equivalence classes are totally ordered.
-
-<RETN> The static ''sort'' method returns //object//.
-
-<IMPL>
-<P> The interface to the ''sort'' method can be described as follows:
-<SIGNATURE file="Array.es" name="static function sort">
-
-<P>When the //SortCompare// operator is called with two arguments
-//j// and //k//, the following steps are taken:
-
-<INCLUDE file="Array.es" name="helper function sortCompare">
-
-<NOTE> Because non-existent property values always compare greater
-than **undefined** property values, and **undefined** always compares
-greater than any other value, **undefined** property values always
-sort to the end of the result, followed by non-existent property
-values.
 
 
 === splice ( object, start, deleteCount, ...items ) ===
