@@ -330,40 +330,39 @@ package
 
         // FIXME #155: type system bug
         static function sort(object/*: Object!*/, comparefn) {
-            let len = uint(object.length);
 
-            if (len > 0)
-                informative::sortEngine(object, 0, len-1, this.helper::sortCompare, comparefn);
+            function compare(j, k) {
+                if (!(j in object) && !(k in object))
+                    return 0;
+                if (!(j in object))
+                    return 1;
+                if (!(k in object))
+                    return -1;
+                    
+                let x = object[j];
+                let y = object[k];
+                    
+                if (x === undefined && y === undefined)
+                    return 0;
+                if (x === undefined)
+                    return 1;
+                if (y === undefined)
+                    return -1;
+                    
+                if (comparefn !== undefined)
+                    return comparefn(x, y);
 
-            return object;
-        }
-
-        helper function sortCompare(j:uint, k:uint, comparefn:Comparator): Numeric {
-            if (!(j in this) && !(k in this))
-                return 0;
-            if (!(j in this))
-                return 1;
-            if (!(k in this))
-                return -1;
-
-            let x = this[j];
-            let y = this[k];
-
-            if (x === undefined && y === undefined)
-                return 0;
-            if (x === undefined)
-                return 1;
-            if (y === undefined)
-                return -1;
-
-            if (comparefn === undefined) {
                 x = x.toString();
                 y = y.toString();
                 if (x < y) return -1;
                 if (x > y) return 1;
                 return 0;
             }
-            return comparefn(x, y);
+
+            let len = uint(object.length);
+            if (len > 0)
+                informative::sortEngine(object, 0, len-1, compare);
+            return object;
         }
 
         prototype function sort(comparefn)
@@ -700,19 +699,20 @@ package
     // typically faces mostly-ordered inputs.  It is also not a stable
     // sort, which may be desirable but is not required by the spec
 
-    informative function sortEngine(v, lo: uint, hi: uint, sortCompare, comparefn): void {
+    informative function sortEngine(v, lo: uint, hi: uint, sortCompare): void {
+
         function qsort(lo, hi) {
             if (lo >= hi)
                 return;
 
             let size  = (hi - lo) + 1;
-            let pivot = lo + (size / 2);
+            let pivot = lo + Math.floor(size / 2);
             let i     = lo;
             let j     = hi;
             while (i <= j) {
-                while (sortCompare(i, pivot, comparefn) < 0)
+                while (sortCompare(i, pivot) < 0)
                     ++i;
-                while (sortCompare(j, pivot, comparefn) > 0)
+                while (sortCompare(j, pivot) > 0)
                     --j;
                 if (i <= j) {
                     [v[i], v[j]] = [v[j], v[i]];
@@ -726,6 +726,7 @@ package
             if (i < hi)
                 qsort(i, hi);
         }
+
         qsort( lo, hi );
     }
 }
