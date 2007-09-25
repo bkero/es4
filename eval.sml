@@ -3397,11 +3397,12 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
     : Mach.VAL =
     let
         val { func, this, env, allTypesBound } = closure
-        val Ast.Func { name, block, param=Ast.Head (paramFixtures, paramInits), ... } = func
+        val Ast.Func { name, block, param=Ast.Head (paramFixtures, paramInits), ty={params,...}, defaults, ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", Int.toString (getObjId callerThis)]; t)
                      | NONE => (trace ["using caller 'this' #", Int.toString (getObjId callerThis)]; callerThis)
         val regs = { this = this, scope = env }
+        val minArgs = (length params) - (length defaults)
     in
         if not allTypesBound
         then error ["invoking function with unbound type variables"]
@@ -3663,6 +3664,11 @@ and bindArgs (regs:Mach.REGS)
                        ", a=", Int.toString a,
                        ", i=", Int.toString i,
                        ", hasRest=", Bool.toString hasRest]
+
+        val Ast.Func {name,...} = func
+        val _ = if (p-d) > a orelse (not hasRest andalso a > p)
+                then LogErr.log ["arg mismatch calling ", Ustring.toAscii (#ident name), ", expecting ",Int.toString (p-d), " found ", Int.toString a]
+                else (); 
 
         val argTemps = getScopeTemps argScope
         fun bindArg _ [] = ()

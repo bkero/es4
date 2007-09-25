@@ -102,10 +102,10 @@
     function cgTernaryExpr(ctx, { e1: test, e2: consequent, e3: alternate }) {
         let asm = ctx.asm;
         cgExpr(ctx, test);
-        let L0 = asm.I_iffalse();
+        let L0 = asm.I_iffalse(undefined);
         cgExpr(ctx, consequent);
         asm.I_coerce_a();
-        let L1 = asm.I_jump();
+        let L1 = asm.I_jump(undefined);
         asm.I_label(L0);
         cgExpr(ctx, alternate);
         asm.I_coerce_a();
@@ -118,7 +118,7 @@
             cgExpr(ctx, e.e1);
             asm.I_convert_b();
             asm.I_dup();
-            let L0 = asm.I_iffalse();
+            let L0 = asm.I_iffalse(undefined);
             asm.I_pop();
             cgExpr(ctx, e.e2);
             asm.I_convert_b();
@@ -128,7 +128,7 @@
             cgExpr(ctx, e.e2);
             asm.I_convert_b();
             asm.I_dup();
-            let L0 = asm.I_iftrue();
+            let L0 = asm.I_iftrue(undefined);
             asm.I_pop();
             cgExpr(ctx, e.e2);
             asm.I_convert_b();
@@ -178,11 +178,11 @@
             asm.I_getproperty(ctx.emitter.meta_convert_name);
             asm.I_pushundefined();
             asm.I_strictequals();
-            var L1 = asm.I_iftrue();
+            var L1 = asm.I_iftrue(undefined);
             // not undefined
             asm.I_swap();
             asm.I_callproperty(ctx.emitter.meta_convert_name, 1);
-            var L2 = asm.I_jump();
+            var L2 = asm.I_jump(undefined);
             asm.I_label(L1);
             // undefined
             asm.I_coerce();
@@ -283,9 +283,9 @@
                 asm.I_dup();
                 asm.I_pushnull();
                 asm.I_strictequals();
-                let L0 = asm.I_iffalse();
+                let L0 = asm.I_iffalse(undefined);
                 asm.I_pushstring(ctx.cp.stringUtf8("null"));
-                let L1 = asm.I_jump();
+                let L1 = asm.I_jump(undefined);
                 asm.I_label(L0);
                 asm.I_typeof();
                 asm.I_label(L1);
@@ -410,7 +410,7 @@
         if (e.op is AssignLogicalAnd) {
             asm.I_dup();
             asm.I_getproperty(cgIdentExpr(ctx, name));
-            let L0 = asm.I_iffalse();
+            let L0 = asm.I_iffalse(undefined);
             asm.I_pop();
             cgExpr(ctx, e.re);
             asm.I_label(L0);
@@ -419,7 +419,7 @@
         else if (e.op is AssignLogicalOr) {
             asm.I_dup();
             asm.I_getproperty(cgIdentExpr(ctx, name));
-            let L0 = asm.I_iftrue();
+            let L0 = asm.I_iftrue(undefined);
             asm.I_pop();
             cgExpr(ctx, e.re);
             asm.I_label(L0);
@@ -480,7 +480,7 @@
                 baseOnStk = true;
             }
         }
-        cgInits(ctx, e.inits, baseOnStk, true);
+        cgInits(ctx, e.inits, baseOnStk);
     	asm.I_pushundefined(); // exprs need to leave something on the stack
         // FIXME: should this be the value of the last init?
     }
@@ -611,7 +611,7 @@
                     case( lr:LexicalRef ) {
                         // Hack to deal with namespaces for now...
                         // later we will have to implement a namespace lookup to resolve qualified typenames
-                        return emitter.qname({ns:new PublicNamespace(lr.ident.ident), id:qi.ident})
+                        return emitter.qname({ns:new PublicNamespace(lr.ident.ident), id:qi.ident},false)
                     }
                     case( e:* ) {
                         /// cgExpr(ctx, qi.qual);

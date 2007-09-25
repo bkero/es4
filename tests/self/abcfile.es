@@ -62,7 +62,7 @@ namespace Abc;
         public const minor_version = 16;
 
         public function getBytes(): * /* same type as ABCByteStream.getBytes() */ {
-            function emitArray(a, len=true) {
+            function emitArray(a, len) {
                 if (len)
                     bytes.uint30(a.length);
                 for ( var i=0 ; i < a.length ; i++ )
@@ -77,23 +77,23 @@ namespace Abc;
             Util::assert(bodies.length != 0);
             Util::assert(classes.length == instances.length);
 
-print ("emitting magic");
+            // print ("emitting magic");
             bytes.uint16(minor_version);
             bytes.uint16(major_version);
-print ("emitting constants");
+            // print ("emitting constants");
             constants.serialize(bytes);
-print ("emitting methods");
-            emitArray(methods);
-print ("emitting metadatas");
-            emitArray(metadatas);
-print ("emitting instances");
-            emitArray(instances);
-print ("emitting classes");
+            // print ("emitting methods");
+            emitArray(methods,true);
+            // print ("emitting metadatas");
+            emitArray(metadatas,true);
+            // print ("emitting instances");
+            emitArray(instances,true);
+            // print ("emitting classes");
             emitArray(classes, false);
-print ("emitting scripts");
-            emitArray(scripts);
-print ("emitting bodies");
-            emitArray(bodies);
+            // print ("emitting scripts");
+            emitArray(scripts,true);
+            // print ("emitting bodies");
+            emitArray(bodies,true);
             return bytes.getBytes();
         }
 
@@ -227,7 +227,7 @@ print ("emitting bodies");
                               temp_func );
         }
 
-        public function QName(ns/*: uint*/, name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function QName(ns/*: uint*/, name/*: uint*/, is_attr: Boolean /*FIXME ES4: boolean*/) {
             function temp_func(x) {
               multiname_bytes.uint8(x.kind);
               multiname_bytes.uint30(x.ns);
@@ -239,7 +239,7 @@ print ("emitting bodies");
                               temp_func );
         }
 
-        public function RTQName(name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function RTQName(name/*: uint*/, is_attr: Boolean /*FIXME ES4: boolean*/) {
             function temp_func(x) {
               multiname_bytes.uint8(x.kind);
               multiname_bytes.uint30(x.name); 
@@ -250,7 +250,7 @@ print ("emitting bodies");
                               temp_func );
         }
 
-        public function RTQNameL(is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function RTQNameL(is_attr: Boolean /*FIXME ES4: boolean*/) {
             function temp_func (x) { multiname_bytes.uint8(x.kind) } 
             return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameLA : CONSTANT_RTQNameL },
                               multiname_pool,
@@ -258,7 +258,7 @@ print ("emitting bodies");
                               temp_func);
         }
 
-        public function Multiname(nsset/*: uint*/, name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/ ) {
+        public function Multiname(nsset/*: uint*/, name/*: uint*/, is_attr: Boolean /*FIXME ES4: boolean*/ ) {
             function temp_func(x) {
                   multiname_bytes.uint8(x.kind);
                   multiname_bytes.uint30(x.name);
@@ -270,7 +270,7 @@ print ("emitting bodies");
                               temp_func);
         }
 
-        public function MultinameL(nsset/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function MultinameL(nsset/*: uint*/, is_attr: Boolean /*FIXME ES4: boolean*/) {
             function temp_func (x) {
               multiname_bytes.uint8(x.kind);
               multiname_bytes.uint30(x.ns); 
@@ -362,8 +362,8 @@ print ("emitting bodies");
          * \param options      [{val:uint, kind:uint}], if present.
          * \param param_names  array of param_info structures, if present.
          */
-        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/=0,
-                               options:Array=null, param_names:Array=null) {
+        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/,
+                               options:Array, param_names:Array) {
             this.name = name;
             this.param_types = param_types;
             this.return_type = return_type;
@@ -513,7 +513,7 @@ print ("emitting bodies");
 
     public class ABCSlotTrait extends ABCTrait
     {
-        function ABCSlotTrait(name, attrs, is_const = false, slot_id=0, type_name=0, vindex=0, vkind=0) {
+        function ABCSlotTrait(name, attrs, is_const, slot_id, type_name, vindex, vkind) {
             /*FIXME #101: super not implemented*/
             //super(name, (attrs << 4) | TRAIT_Slot);
             this.name = name;
@@ -584,7 +584,7 @@ print ("emitting bodies");
 
     public class ABCScriptInfo
     {
-        function ABCScriptInfo(init=undefined) {
+        function ABCScriptInfo(init) {
             this.init = init;
         }
 
@@ -652,7 +652,7 @@ print ("emitting bodies");
 
     public class ABCException
     {
-        function ABCException(first_pc, last_pc, target_pc, exc_type=0, var_name=0) {
+        function ABCException(first_pc, last_pc, target_pc, exc_type, var_name) {
             this.first_pc = first_pc;
             this.last_pc = last_pc;
             this.target_pc = target_pc;

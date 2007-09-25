@@ -164,7 +164,7 @@ use namespace intrinsic;
         {
             enter("Parser::directive ", ts);
 
-            printLn(ts);
+            // printLn(ts);
 
             switch (hd(ts)) {
             case Token::SemiColon:
