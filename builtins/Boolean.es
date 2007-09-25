@@ -54,11 +54,11 @@ package
         static function get length() { return 1 }
 
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        meta static function invoke(x=null) : boolean
+        meta static function invoke(x=false) : boolean
             boolean(x);
 
         /* E262-3 15.6.2: The Boolean Constructor. */
-        function Boolean(x=null)
+        function Boolean(x=false)
             magic::bindBoolean(this, x);
 
         /* E262-4 early-binding variant. */
