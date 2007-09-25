@@ -97,10 +97,10 @@
     function cgIfStmt(ctx, {expr:test, then:consequent, elseOpt:alternate}) {
         let asm = ctx.asm;
         cgExpr(ctx, test);
-        let L0 = asm.I_iffalse();
+        let L0 = asm.I_iffalse(undefined);
         cgStmt(ctx, consequent);
         if (alternate != null) {
-            let L1 = asm.I_jump();
+            let L1 = asm.I_jump(undefined);
             asm.I_label(L0);
             cgStmt(ctx, alternate);
             asm.I_label(L1);
@@ -114,8 +114,8 @@
     function cgWhileStmt(ctx, {stmt: stmt, labels: labels, expr: expr}) {
         let asm    = ctx.asm;
         let Lbreak = asm.newLabel();
-        let Lcont  = asm.I_jump();
-        let Ltop   = asm.I_label();
+        let Lcont  = asm.I_jump(undefined);
+        let Ltop   = asm.I_label(undefined);
         cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         cgExpr(ctx, expr);
@@ -129,7 +129,7 @@
         let asm    = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont  = asm.newLabel();
-        let Ltop   = asm.I_label();
+        let Ltop   = asm.I_label(undefined);
         cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         cgExpr(ctx, expr);
@@ -148,7 +148,7 @@
             cgExpr(ctx, init);
             asm.I_pop();
         }
-        let Ltop = asm.I_label();
+        let Ltop = asm.I_label(undefined);
         if (cond != null) {
             cgExpr(ctx, cond);
             asm.I_iffalse(Lbreak);
@@ -229,7 +229,7 @@
 
             if (c.expr == null) {
                 assert (Ldefault==null);
-                Ldefault = asm.I_label();    // label default pos
+                Ldefault = asm.I_label(undefined);    // label default pos
             }
 
             if (Lnext !== null) {
@@ -241,7 +241,7 @@
                 cgExpr(nctx, c.expr);        // check for match
                 asm.I_getlocal(t);
                 asm.I_strictequals();
-                Lnext = asm.I_iffalse();  // if no match jump to next label
+                Lnext = asm.I_iffalse(undefined);  // if no match jump to next label
             }
 
             if (Lfall !== null) {         // label fall through pos
@@ -254,7 +254,7 @@
                 cgStmt(nctx, stmts[j] );
             }
 
-            Lfall = asm.I_jump ();         // fall through
+            Lfall = asm.I_jump (undefined);         // fall through
         }
         if (Lnext !== null)
             asm.I_label(Lnext);

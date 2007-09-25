@@ -138,7 +138,7 @@ namespace Asm;
 
     public class AVM2Assembler
     {
-        const listify = true;
+        const listify = false;
         const indent = "        ";
 
         function AVM2Assembler(constants, numberOfFormals, initScopeDepth) {
@@ -403,7 +403,7 @@ namespace Asm;
             return L;
         }
 
-        public function I_label(L = undefined) {
+        public function I_label(L) {
             var here = code.length;
             var define = false;
             if (L === undefined) {
@@ -424,23 +424,23 @@ namespace Asm;
             return L;
         }
 
-        public function I_ifeq(L=undefined) { return jmp(-2, "ifeq", 0x13, L) }
-        public function I_ifge(L=undefined) { return jmp(-2, "ifge", 0x18, L) }
-        public function I_ifgt(L=undefined) { return jmp(-2, "ifgt", 0x17, L) }
-        public function I_ifle(L=undefined) { return jmp(-2, "ifle", 0x16, L) }
-        public function I_iflt(L=undefined) { return jmp(-2, "iflt", 0x15, L) }
-        public function I_ifne(L=undefined) { return jmp(-2, "ifne", 0x14, L) }
-        public function I_ifnge(L=undefined) { return jmp(-2, "ifnge", 0x0F, L) }
-        public function I_ifngt(L=undefined) { return jmp(-2, "ifngt", 0x0E, L) }
-        public function I_ifnle(L=undefined) { return jmp(-2, "ifnle", 0x0D, L) }
-        public function I_ifnlt(L=undefined) { return jmp(-2, "ifnlt", 0x0C, L) }
-        public function I_ifstricteq(L=undefined) { return jmp(-2, "ifstricteq", 0x19, L) }
-        public function I_ifstrictne(L=undefined) { return jmp(-2, "ifstrictne", 0x1A, L) }
+        public function I_ifeq(L) { return jmp(-2, "ifeq", 0x13, L) }
+        public function I_ifge(L) { return jmp(-2, "ifge", 0x18, L) }
+        public function I_ifgt(L) { return jmp(-2, "ifgt", 0x17, L) }
+        public function I_ifle(L) { return jmp(-2, "ifle", 0x16, L) }
+        public function I_iflt(L) { return jmp(-2, "iflt", 0x15, L) }
+        public function I_ifne(L) { return jmp(-2, "ifne", 0x14, L) }
+        public function I_ifnge(L) { return jmp(-2, "ifnge", 0x0F, L) }
+        public function I_ifngt(L) { return jmp(-2, "ifngt", 0x0E, L) }
+        public function I_ifnle(L) { return jmp(-2, "ifnle", 0x0D, L) }
+        public function I_ifnlt(L) { return jmp(-2, "ifnlt", 0x0C, L) }
+        public function I_ifstricteq(L) { return jmp(-2, "ifstricteq", 0x19, L) }
+        public function I_ifstrictne(L) { return jmp(-2, "ifstrictne", 0x1A, L) }
 
-        public function I_iffalse(L=undefined) { return jmp(-1, "iffalse", 0x12, L) }
-        public function I_iftrue(L=undefined) { return jmp(-1, "iftrue", 0x11, L) }
+        public function I_iffalse(L) { return jmp(-1, "iffalse", 0x12, L) }
+        public function I_iftrue(L) { return jmp(-1, "iftrue", 0x11, L) }
 
-        public function I_jump(L=undefined) { return jmp(0, "jump", 0x10, L) }
+        public function I_jump(L) { return jmp(0, "jump", 0x10, L) }
 
         // Here, case_labels must be an array with a "length" property
         // that denotes the number of case labels in the array.
@@ -517,7 +517,7 @@ namespace Asm;
         public function I_callmethod(index, nargs) { callIDX("callmethod", 0x43, index, nargs) }
         public function I_callstatic(index, nargs) { callIDX("callstatic", 0x44, index, nargs) }
 
-        /*private*/ function callMN(name, opcode, index, nargs, isVoid=false) {
+        /*private*/ function callMN(name, opcode, index, nargs, isVoid) {
             /* pop receiver/NS?/Name?/args; push result? */
             var hasRTNS = constants.hasRTNS(index);
             var hasRTName = constants.hasRTName(index);
@@ -528,10 +528,10 @@ namespace Asm;
             code.uint30(nargs);
         }
 
-        public function I_callsuper(index, nargs) { callMN("callsuper", 0x45, index, nargs) }
-        public function I_callproperty(index, nargs) { callMN("callproperty", 0x46, index, nargs) }
-        public function I_constructprop(index, nargs) { callMN("constructprop", 0x4A, index, nargs) }
-        public function I_callproplex(index, nargs) { callMN("callproplex", 0x4C, index, nargs) }
+        public function I_callsuper(index, nargs) { callMN("callsuper", 0x45, index, nargs, false) }
+        public function I_callproperty(index, nargs) { callMN("callproperty", 0x46, index, nargs, false) }
+        public function I_constructprop(index, nargs) { callMN("constructprop", 0x4A, index, nargs, false) }
+        public function I_callproplex(index, nargs) { callMN("callproplex", 0x4C, index, nargs, false) }
         public function I_callsupervoid(index, nargs) { callMN("callsupervoid", 0x4E, index, nargs, true) }
         public function I_callpropvoid(index, nargs) { callMN("callpropvoid", 0x4F, index, nargs, true) }
 
