@@ -137,6 +137,7 @@ val dummyVal = Mach.Null
 val dummyObj = Mach.newObj Mach.NoTag Mach.Null NONE
 val dummyRef = (dummyObj, Name.nons_global)
 val dummyTypeExpr = Ast.SpecialType Ast.Any
+val dummyNs = Name.noNS
 
 
 (* Handy operator for subtype checks *)
@@ -693,16 +694,19 @@ and getValueOrVirtual (regs:Mach.REGS)
             SOME prop =>
             (case (#state prop) of
                  Mach.TypeProp =>
-                 error regs ["getValue on a type property: ",
-                             LogErr.name name]
+                 (throwTypeErr regs ["getValue on a type property: ",
+                                     LogErr.name name]; 
+                  dummyVal)
 
                | Mach.TypeVarProp =>
-                 error regs ["getValue on a type variable property: ",
-                             LogErr.name name]
+                 (throwTypeErr regs ["getValue on a type variable property: ",
+                                     LogErr.name name];
+                  dummyVal)
 
                | Mach.UninitProp =>
-                 error regs ["getValue on an uninitialized property: ",
-                             LogErr.name name]
+                 (throwTypeErr regs ["getValue on an uninitialized property: ",
+                                     LogErr.name name];
+                  dummyVal)
 
                | Mach.VirtualValProp { getter, ... } =>
                  if doVirtual
@@ -846,34 +850,35 @@ and setValueOrVirtual (regs:Mach.REGS)
             in
                 case (#state existingProp) of
                     Mach.UninitProp =>
-                    error regs ["setValue on uninitialized property",
-                                LogErr.name name]
+                    throwTypeErr regs ["setValue on uninitialized property",
+                                       LogErr.name name]
+                
 
                   | Mach.TypeVarProp =>
-                    error regs ["setValue on type variable property:",
-                                LogErr.name name]
+                    throwTypeErr regs ["setValue on type variable property:",
+                                       LogErr.name name]
 
                   | Mach.TypeProp =>
-                    error regs ["setValue on type property: ",
-                                LogErr.name name]
+                    throwTypeErr regs ["setValue on type property: ",
+                                       LogErr.name name]
 
                   | Mach.NamespaceProp _ =>
-                    error regs ["setValue on namespace property: ",
-                                LogErr.name name]
+                    throwTypeErr regs ["setValue on namespace property: ",
+                                       LogErr.name name]
 
                   | Mach.NativeFunctionProp _ =>
-                    error regs ["setValue on native function property: ",
-                                LogErr.name name]
+                    throwTypeErr regs ["setValue on native function property: ",
+                                       LogErr.name name]
 
                   | Mach.MethodProp _ =>
                     if (#readOnly existingAttrs)
-                    then error regs ["setValue on method property: ",
-                                     LogErr.name name]
+                    then throwTypeErr regs ["setValue on read-only method property: ",
+                                            LogErr.name name]
                     else write ()  (* ES3 style mutable fun props are readOnly *)
 
                   | Mach.ValListProp _ =>
-                    error regs ["setValue on value-list property: ",
-                                LogErr.name name]
+                    throwTypeErr regs ["setValue on value-list property: ",
+                                       LogErr.name name]
 
                   | Mach.VirtualValProp { setter = SOME s, ... } =>
                     if doVirtual
@@ -1024,16 +1029,12 @@ and throwExn (regs:Mach.REGS)
 and throwTypeErr (regs:Mach.REGS)
                  (args:string list)
     : unit =
-    if Mach.isBooting regs
-    then error regs ("trapped TypeError during boot: " :: args)
-    else throwExn regs Name.nons_TypeError args
+    throwExn regs Name.nons_TypeError args
 
 and throwRefErr (regs:Mach.REGS)
                 (args:string list)
     : unit =
-    if Mach.isBooting regs
-    then error regs ("trapped ReferenceError during boot: " :: args)
-    else throwExn regs Name.nons_ReferenceError args
+    throwExn regs Name.nons_ReferenceError args
 
 and needNamespace (regs:Mach.REGS)
                   (v:Mach.VAL)
@@ -1042,8 +1043,8 @@ and needNamespace (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => error regs ["need namespace"])
-      | _ => error regs ["need namespace"]
+           | _ => (throwTypeErr regs ["need namespace"]; dummyNs))
+      | _ => (throwTypeErr regs ["need namespace"]; dummyNs)
 
 and needNamespaceOrNull (regs:Mach.REGS)
                         (v:Mach.VAL)
@@ -1052,9 +1053,9 @@ and needNamespaceOrNull (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => error regs ["need namespace"])
+           | _ => (throwTypeErr regs ["need namespace"]; dummyNs))
       | Mach.Null => Name.noNS
-      | _ => error regs ["need namespace"]
+      | _ => (throwTypeErr regs ["need namespace"]; dummyNs)
 
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
@@ -1382,6 +1383,7 @@ and newFunctionFromFunc (regs:Mach.REGS)
                         (f:Ast.FUNC)
     : Mach.VAL =
     newFunctionFromClosure regs (newFunClosure scope f NONE)
+
 
 and newNativeFunction (regs:Mach.REGS)
                       (f:Mach.NATIVE_FUNCTION) =
@@ -4701,16 +4703,16 @@ and evalForInStmt (regs:Mach.REGS)
             val forInRegs = evalHead regs (Ast.Head (valOf rib, []))
 
             (*
-             The following code is ugly but it needs to handle the cases
-                                                                   when there is a binding on the lhs of 'in' and not. If there
-                                                                                                                       is no binding on the lhs, then the parser uses a LetExpr to
-                                                                                                                                                          allocate a temporary fixture for the iteration value and
-                                                                                                                                                      possibly some for desugaring. The associated inits (i) are
-                                                                                                                                                               separated out as 'nextInits' for execution after the iteration
-                                                                                                                                                               value is set each time around the loop.
-
-                                                                                                                                                               FIXME: maybe unify 'next' as a new kind of expr. This would
-                                                                                                                                                                                                                trade redundancy for clarity. Not sure it's worth it.
+             * The following code is ugly but it needs to handle the cases
+             * when there is a binding on the lhs of 'in' and not. If there
+             * is no binding on the lhs, then the parser uses a LetExpr to
+             * allocate a temporary fixture for the iteration value and
+             * possibly some for desugaring. The associated inits (i) are
+             * separated out as 'nextInits' for execution after the iteration
+             * value is set each time around the loop.
+             * 
+             * FIXME: maybe unify 'next' as a new kind of expr. This would
+             * trade redundancy for clarity. Not sure it's worth it.
              *)
             val (nextTarget, nextHead, nextInits, nextExpr) =
                 case next of
@@ -4726,10 +4728,10 @@ and evalForInStmt (regs:Mach.REGS)
                           | _ => LogErr.internalError ["evalForInStmt: invalid expr structure"]
                     end
                   | _ => LogErr.internalError ["evalForInStmt: invalid stmt structure"]
-
+                         
             (*
-             A binding init on the lhs of 'in' will be included in nextHead
-and evaluated once when the tempRegs is created here
+             * A binding init on the lhs of 'in' will be included in nextHead
+             * and evaluated once when the tempRegs is created here
              *)
 
             val tempRegs = evalHead forInRegs nextHead
@@ -4836,17 +4838,18 @@ and evalReturnStmt (regs:Mach.REGS)
 and evalThrowStmt (regs:Mach.REGS)
                   (e:Ast.EXPR)
     : Mach.VAL =
-    ( (* Pretty.ppExpr e ; *)
-     raise (ThrowException (evalExpr regs e)) )
+    raise (ThrowException (evalExpr regs e))
 
 
 and evalBreakStmt (regs:Mach.REGS)
                   (lbl:Ast.IDENT option)
     : Mach.VAL =
-    (trace ["raising BreakException ",case lbl of NONE => "empty" | SOME id => Ustring.toAscii id];
+    (trace ["raising BreakException ",
+            case lbl of NONE => "empty" 
+                      | SOME id => Ustring.toAscii id];
      raise (BreakException lbl))
 
-
+    
 and evalContinueStmt (regs:Mach.REGS)
                      (lbl:Ast.IDENT option)
     : Mach.VAL =
@@ -4933,25 +4936,6 @@ and evalFragment (regs:Mach.REGS)
                LogErr.setLoc loc;
                error regs ["uncaught exception: ", Ustring.toAscii (toUstring regs v)]
            end
-
-(*
-and collectFragRibs (regs:Mach.REGS)
-                    (frag:Ast.FRAGMENT)
-    : Ast.RIB = 
-    let
-        fun mergeRibs ((oldRib:Ast.RIB), (newRib:Ast.RIB)) = 
-            List.foldl (Fixture.mergeFixtures (Type.equals (#prog regs))) oldRib newRib
-            
-        fun collectRib (Ast.Package { fragments, ... }) = mapReduceRibs fragments
-          | collectRib (Ast.Unit { fragments, ... }) = mapReduceRibs fragments
-          | collectRib (Ast.Anon (Ast.Block { head=NONE, ... })) = []
-          | collectRib (Ast.Anon (Ast.Block { head=SOME (Ast.Head (rib,_)), ...})) = rib
-            
-        and mapReduceRibs fs = List.foldl mergeRibs [] (map collectRib fs)
-    in
-        collectRib frag
-    end
-*)    
 
 and evalTopFragment (regs:Mach.REGS)
                     (frag:Ast.FRAGMENT)
