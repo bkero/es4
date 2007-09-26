@@ -62,7 +62,7 @@ public namespace Lex
             , colCoord = 0
             , lnCoord = 0
         {
-            print("scanning: ",src);
+            // print("scanning: ",src);
         }
 
         function next ()
@@ -102,7 +102,7 @@ public namespace Lex
         function tokenList (lexPrefix)
             //            : [[int],[[int,int]]]
         {
-            print ("scanning");
+            // print ("scanning");
             function pushToken (token)
             {
                 if (token == Token::Eol) {

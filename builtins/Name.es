@@ -39,6 +39,9 @@ use namespace intrinsic;
 
 intrinsic final class Name extends String 
 {
+    // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
+    static function get length() { return 2 }
+
     function Name(a, b=undefined) {
         if (a is Namespace && b is string) {
             qualifier = a;

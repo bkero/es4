@@ -149,43 +149,43 @@ namespace Emit;
             } 
             return new_nss;
         }
-        public function multiname({ nss:nss, ident:ident }, is_attr=false) {
+        public function multiname({ nss:nss, ident:ident }, is_attr) {
             return constants.Multiname(constants.namespaceset(flattenNamespaceSet(nss)), constants.stringUtf8(ident), is_attr);
         }
-        public function qname({ns:ns, id:id}, is_attr=false ) {
+        public function qname({ns:ns, id:id}, is_attr ) {
             return constants.QName(namespace(ns), constants.stringUtf8(id), is_attr);
         }
         public function nameFromIdent(id) {
             return constants.QName(constants.namespace(CONSTANT_PackageNamespace, constants.stringUtf8("")),
-                                   constants.stringUtf8(id));
+                                   constants.stringUtf8(id),false);
         }
 
-        public function multinameL({nss:nss}, is_attr=false) {
+        public function multinameL({nss:nss}, is_attr) {
             return constants.MultinameL(constants.namespaceset(flattenNamespaceSet(nss)), is_attr);
         }
 
         public function nameFromIdentExpr(e) {
             use namespace Ast;
             switch type (e) {
-            case (id:Identifier) { return multiname(id) }
+            case (id:Identifier) { return multiname(id,false) }
             case (qi:QualifiedIdentifier) { 
                 switch type(qi.qual) {
                     case( lr:LexicalRef ) {
                         // Hack to deal with namespaces for now...
                         // later we will have to implement a namespace lookup to resolve qualified typenames
-                        return qname({ns:new AnonymousNamespace(lr.ident.ident), id:qi.ident})
+                        return qname({ns:new AnonymousNamespace(lr.ident.ident), id:qi.ident}, false)
                     }
                     case( e:* ) {
                         throw ("Unimplemented: nameFromIdentExpr " + e);
                     }
                 }
-                return multiname(id) 
+                return multiname(id,false) 
             }
             case (x:*) { throw ("Unimplemented: nameFromIdentExpr " + e) }
             }
         }
         
-        public function rtqname({ident:ident}, is_attr=false) {
+        public function rtqname({ident:ident}, is_attr) {
             return constants.RTQName(constants.stringUtf8(ident), is_attr);
         }
 
@@ -248,10 +248,10 @@ namespace Emit;
         public function fixtureNameToName(fn) {
             switch type (fn) {
             case (pn:PropName) {
-                return qname(pn.name);
+                return qname(pn.name, false);
             }
             case (tn:TempName) {
-		return qname ({ns:Ast::noNS,id:"$t"+tn.index});  // FIXME allocate and access actual temps
+		return qname ({ns:Ast::noNS,id:"$t"+tn.index},false);  // FIXME allocate and access actual temps
             }
             case (x:*) { throw "Internal error: not a valid fixture name" }
             }
@@ -337,7 +337,7 @@ namespace Emit;
 
         function Script(e:ABCEmitter) {
             this.e = e;
-            this.init = new Method(e,[], 0);
+            this.init = new Method(e,[], 0, "", null);
         }
 
         public function newClass(name, basename) {
@@ -347,7 +347,7 @@ namespace Emit;
         /* All functions are in some sense global because the
            methodinfo and methodbody are both global. */
         public function newFunction(formals,initScopeDepth) {
-            return new Method(e, formals, initScopeDepth);
+            return new Method(e, formals, initScopeDepth, null, null);
         }
 
         public function addException(e) {
@@ -392,13 +392,13 @@ namespace Emit;
 
         public function getCInit() {
             if(cinit == null )
-                cinit = new Method(s.e, [], 0, "$cinit");
+                cinit = new Method(s.e, [], 0, "$cinit", null);
             return cinit;
         }
 
 /*
-        public function newIInit(formals, name=null) {
-            var iinit = new Method(s.e, formals, 2, name);
+        public function newIInit(formals, name) {
+            var iinit = new Method(s.e, formals, 2, name, null);
             iinit.I_getlocal(0);
             iinit.I_constructsuper(0);
             return iinit;
@@ -468,7 +468,7 @@ namespace Emit;
     {
         public var e, formals, name, asm, traits = [], finalized=false, defaults = null, exceptions=[];
 	var initScopeDepth;
-        function Method(e:ABCEmitter, formals:Array, initScopeDepth, name=null, standardPrologue=true) {
+        function Method(e:ABCEmitter, formals:Array, initScopeDepth, name, standardPrologue) {
             asm = new AVM2Assembler(e.constants, formals.length, initScopeDepth);
             //super(e.constants, formals.length);
             this.formals = formals;
@@ -505,7 +505,7 @@ namespace Emit;
             // Standard epilogue for lazy clients.
             asm.I_returnvoid();
 
-            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, asm.flags, defaults));
+            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, asm.flags, defaults,null));
             var body = new ABCMethodBodyInfo(meth);
             body.setMaxStack(asm.maxStack);
             body.setLocalCount(asm.maxLocal);

@@ -113,7 +113,7 @@ package
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
         intrinsic function exec(s : string) : Array {
             let length = s.length;
-            let i = helper::toInteger(lastIndex);
+            let i = lastIndex;
             if (!global)
                 i = 0;
             let res = failure;
@@ -167,7 +167,14 @@ package
         var extended   : boolean; // E262-4 proposals:extend_regexps
         var sticky     : boolean; // E262-4 proposals:extend_regexps
         var source     : string;
-        var lastIndex  : double;
+
+        final function get lastIndex() 
+            private::lastIndex;
+
+        final function set lastIndex(x) 
+            private::lastIndex = helper::toInteger(x);
+
+        private var lastIndex : double;
 
         /* E262-4 - [[Match]] may not *have* to be public, but String
          * uses it, and if we want to model the language in the

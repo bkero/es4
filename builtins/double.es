@@ -161,7 +161,6 @@ package
         }
 
         /* The E262-3 number primitive consumes all additional [[set]] operations. */
-        // FIXME: why is this here?
         meta function set(n,v) : void
         {
         }

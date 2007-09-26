@@ -128,7 +128,7 @@ namespace Gen;
             /// case (fx:ValFixture) {
             if (fx is ValFixture) {
                 if( !hasTrait(target.traits, name, TRAIT_Slot) )
-                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(fx.type))); 
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(fx.type), 0, 0)); 
 					// FIXME when we have more general support for type annos
             }
             /// case (fx:MethodFixture) {
@@ -138,7 +138,7 @@ namespace Gen;
                 /// switch type (target) {
                 /// case (m:Method) {
                 if (target is Method) {
-                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0, 0, 0)); 
                     asm.I_findpropstrict(name);
                     asm.I_newfunction(methidx);
                     asm.I_setproperty(name);
@@ -170,7 +170,7 @@ namespace Gen;
             }
             /// case (fx:NamespaceFixture) {
             else if (fx is NamespaceFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"}), emitter.namespace(fx.ns), CONSTANT_Namespace));
+                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"},false), emitter.namespace(fx.ns), CONSTANT_Namespace));
             }
             /// case (fx:TypeFixture) {
             else if (fx is TypeFixture) {
@@ -234,8 +234,8 @@ namespace Gen;
         
         let {asm:asm, emitter:emitter, script:script} = ctx;
         
-        let classname = emitter.qname(c.name);
-        let basename = c.baseName != null ? emitter.qname(c.baseName) : 0;
+        let classname = emitter.qname(c.name,false);
+        let basename = c.baseName != null ? emitter.qname(c.baseName,false) : 0;
         
         let cls = script.newClass(classname, basename);
 /*        
@@ -253,7 +253,7 @@ namespace Gen;
         inst.setIInit(cgCtor(i_ctx, c.constructor, {fixtures:[],exprs:c.instanceHead.exprs}));
         
         var clsidx = cls.finalize();
-        var Object_name = emitter.qname({ns:new PublicNamespace(""), id:"Object"});
+        var Object_name = emitter.qname({ns:new PublicNamespace(""), id:"Object"},false);
 
         asm.I_findpropstrict(Object_name);
         asm.I_getproperty(Object_name);
@@ -424,7 +424,7 @@ namespace Gen;
         }
     }
     
-    function cgInits(ctx, inits, baseOnStk=false){
+    function cgInits(ctx, inits, baseOnStk){
         let {asm:asm, emitter:emitter} = ctx;
 
         let t = -1;

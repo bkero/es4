@@ -1022,7 +1022,7 @@ public namespace Ast
     class ValFixture {
         const type : TYPE_EXPR;
         const isReadOnly : Boolean;
-        function ValFixture(ty, isReadOnly=false) : type=ty, isReadOnly=isReadOnly {}}
+        function ValFixture(ty, isReadOnly) : type=ty, isReadOnly=isReadOnly {}}
     
 
     class VirtualValFixture {

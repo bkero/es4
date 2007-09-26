@@ -314,7 +314,7 @@ package
 
             R.lastIndex = 0;
             while (true) {
-                let oldLastIndex = Number(R.lastIndex);
+                let oldLastIndex = R.lastIndex;
                 let res = R.exec(S);
 
                 if (res === null)

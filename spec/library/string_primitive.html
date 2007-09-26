@@ -272,11 +272,8 @@ method returns an array of strings containing the substrings of
 and //value// and returns a possibly modified //value//.  It will be
 called for each element of objects and arrays.
 
-<P> A **SyntaxError** exception will be thrown if //self// is not
+<P> An **EncodingError** exception will be thrown if //self// is not
 parseable as a JSON object.
-
-<FIXME> (Ticket #202.) It would seem more natural to use an
-**EncodingError** here, since JSON encoding uses that object.
 
 <RETN> The ''parseJSON'' method returns an ECMAScript value.
 

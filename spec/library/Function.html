@@ -224,15 +224,10 @@ object.
 
 <DESC> The intrinsic ''toString'' method converts the executable code
 of the function to a string representation.  This representation has
-the syntax of a //FunctionDeclaration//.  Note in particular that the
-use and placement of white space, line terminators, and semicolons
-within the representation string is implementation-dependent.
-
-<FIXME> (Ticket #174.) It doesn't make a lot of sense for (function ()
-{}).toString() to return something that looks like a
-//FunctionDeclaration//, since the function has no name, so we might
-at least specify what is produced in that case.  FF, Opera, and Safari
-print the above without printing any function name.
+the syntax of a //FunctionDeclaration// or //FunctionExpression//.
+Note in particular that the use and placement of white space, line
+terminators, and semicolons within the representation string is
+implementation-dependent.
 
 <RETN> The intrinsic ''toString'' method returns a string.
 

@@ -313,6 +313,7 @@ fun boot _ : Mach.REGS =
                        "builtins/RegExpEvaluator.es",
                        "builtins/RegExp.es",
                        "builtins/Date.es",
+                                    "builtins/MetaObjects.es", (* before JSON *)
                        "builtins/JSON.es"
                  ]
 

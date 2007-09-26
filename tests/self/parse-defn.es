@@ -822,7 +822,7 @@ use namespace intrinsic;
         {
             enter("Parser::parameterInit ", ts);
 
-            var [ts1,nd1] = parameter (ts,n);
+            var [ts1,nd1] = parameter (ts);
             switch (hd (ts1)) {
             case Token::Assign:
                 ts1 = eat (ts1, Token::Assign);
@@ -852,7 +852,7 @@ use namespace intrinsic;
 
         */
 
-        function parameter (ts: TOKENS, n)
+        function parameter (ts: TOKENS)
             : [TOKENS, [Ast::VAR_DEFN_TAG, [PATTERN, Ast::TYPE_EXPR]]]
         {
             enter("Parser::parameter ", ts);

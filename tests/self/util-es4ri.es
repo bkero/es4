@@ -29,4 +29,18 @@
     intrinsic native function pushByte (b:uint);
     intrinsic native function writeBytes(filename:string);
 
+    function dumpABCFile(abcfile, filename) {
+        var bytes = abcfile.getBytes();
+        Util::assert( bytes.push );  /*FIXME ES4: really "bytes is Array" */
+
+        let s = ""
+        let len = bytes.length;
+	beginBytes();
+        for (let i = 0; i<len; ++i) {
+	    pushByte (uint(bytes[i]));
+        }
+
+        print (filename, ", writing ",len," bytes");        
+        writeBytes(filename);
+    }
 }

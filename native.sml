@@ -1036,37 +1036,6 @@ fun writeFile (regs:Mach.REGS)
         Mach.Undef
     end
 
-val bytes : Word8.word list ref = ref []; (*: Word8Array.array ref = ref (Word8Array.fromList []) *)
-
-fun beginBytes (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    (bytes := [ ];
-     Mach.Undef)
-
-fun pushByte (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    let
-        val u = nthAsUInt vals 0
-        val b = Word8.fromLarge u
-    in
-        bytes := b :: (!bytes);
-        Mach.Undef
-    end
-
-fun writeBytes (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    let 
-        val filename = Ustring.toFilename (nthAsUstr vals 0)
-        val out      = BinIO.openOut filename
-    in
-        BinIO.output(out, Word8Vector.fromList (rev (!bytes)));
-        BinIO.closeOut out;
-        Mach.Undef
-    end
-
 fun assert (regs:Mach.REGS)
            (vals:Mach.VAL list)
     : Mach.VAL =
@@ -1242,10 +1211,6 @@ fun registerNatives _ =
         addFn 1 Name.intrinsic_load load;
         addFn 1 Name.intrinsic_readFile readFile;
         addFn 2 Name.intrinsic_writeFile writeFile;
-
-        addFn 0 Name.intrinsic_beginBytes beginBytes;
-        addFn 1 Name.intrinsic_pushByte pushByte;
-        addFn 1 Name.intrinsic_writeBytes writeBytes;
 
         addFn 1 Name.intrinsic_explodeDouble explodeDouble;
         addFn 1 Name.intrinsic_assert assert;

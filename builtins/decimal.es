@@ -56,24 +56,22 @@ package
     {
         static const length = 1;
 
-        // FIXME
-        static const MAX_VALUE         = 1.7976931348623157e+308m;
-        static const MIN_VALUE         = 5e-324m;
-        static const NaN               = 0.0m / 0.0m;  // ???
-        static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
-        static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
+        static const MAX_VALUE         = 999999999999999999999999999999999999999e+6111m;
+        static const MIN_VALUE         = 10e-6143m;
+        static const NaN               = 0.0m / 0.0m;
+        static const NEGATIVE_INFINITY = -1.0m / 0.0m;
+        static const POSITIVE_INFINITY = 1.0m / 0.0m;
 
         // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
-        // FIXME: we can be more precise here, these are just the double values
-        // copied over.
-        static const E: decimal = 2.7182818284590452354m;   /* Approximately */
-        static const LN10: decimal = 2.302585092994046m;    /* Approximately */
-        static const LN2: decimal = 0.6931471805599453m;    /* Approximately */
-        static const LOG2E: decimal = 1.4426950408889634m;  /* Approximately */
-        static const LOG10E: decimal = 0.4342944819032518m; /* Approximately */
-        static const PI: decimal = 3.1415926535897932m;     /* Approximately */
-        static const SQRT1_2: decimal = 0.7071067811865476m;/* Approximately */
-        static const SQRT2: decimal = 1.4142135623730951m;  /* Approximately */
+
+        static const E: decimal = 2.718281828459045235360287471352662m;   /* Approximately */
+        static const LN10: decimal = 2.302585092994045684017991454684364m;    /* Approximately */
+        static const LN2: decimal = 0.6931471805599453094172321214581766m;    /* Approximately */
+        static const LOG2E: decimal = 1.442695040888963407359924681001892m;  /* Approximately */
+        static const LOG10E: decimal = 0.4342944819032518276511289189166051m; /* Approximately */
+        static const PI: decimal = 3.141592653589793238462643383279503m;     /* Approximately */
+        static const SQRT1_2: decimal = 0.7071067811865475244008443621048490m;/* Approximately */
+        static const SQRT2: decimal = 1.414213562373095048801688724209698m;  /* Approximately */
 
         /* Obsolete, needed for the moment because the RI does not yet handle
            interconversion of numbers */
@@ -125,7 +123,6 @@ package
             double(this).intrinsic::toPrecision(precision);
 
         /* The E262-3 number primitive consumes all additional [[set]] operations. */
-        // FIXME: why is this here?
         meta function set(n,v) : void
         {
         }

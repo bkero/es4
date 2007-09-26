@@ -15,12 +15,6 @@
         var b = ByteArray.readFile(filename);
         return b.readUTFBytes(b.length);
     }
-
-    public function assert(b) {
-        if( !b )
-            throw "assert failed";
-        return;
-    }
 }
 
 {
@@ -41,5 +35,4 @@
         print (filename, ", writing ",len," bytes");        
         b.writeFile(filename);
     }
-    
 }

@@ -44,6 +44,8 @@ package
 
     final class Vector.<T>
     {
+        static const length = 2;
+
         function Vector(length: uint=0, fixed: boolean=false) 
             : fixed = fixed
         {
@@ -250,13 +252,15 @@ package
         // FIXME: Is the signature of comparefn too constraining?
 
         intrinsic function sort(comparefn: function(T, T): Numeric): Vector.<T> {
-            if (length > 0)
-                informative::sortEngine(this, 0, length-1, this.helper::sortCompare, comparefn);
+            if (length > 0) {
+                let object = this;
+                informative::sortEngine(this, 
+                                        0, 
+                                        length-1, 
+                                        (function (j, k)
+                                             comparefn(object[j], object[k])));
             return this;
         }
-
-        helper function sortCompare(j: uint, k: uint, comparefn: Comparator): Numeric
-            comparefn(this[j], this[k]);
 
         intrinsic function splice(start: Numeric, deleteCount: Numeric, ...items): Vector.<T>
             helper::splice(start, deleteCount, items);

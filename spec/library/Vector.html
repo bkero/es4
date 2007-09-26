@@ -91,6 +91,8 @@ final class Vector.<T>
     <SIGNATURE file="Vector.es" name="function Vector">
     <SIGNATURE file="Vector.es" name="meta static function invoke">
 
+    static const length = 2;
+
     <SIGNATURE file="Vector.es" name="intrinsic function toString">
     <SIGNATURE file="Vector.es" name="intrinsic function toLocaleString">
     <SIGNATURE file="Vector.es" name="intrinsic function concat">
@@ -435,14 +437,10 @@ true value, otherwise returns **false** if all the calls to
 
 <P> The sort is not necessarily stable (that is, elements that compare
 equal do not necessarily remain in their original order).
-//Comparefn// must be a consistent (see below) function that accepts
-two arguments //x// and //y// of the base type of ''this'' and returns
-a negative value if //x <LT> y//, zero if //x = y//, or a positive
-value if //x <GT> y//.
-
-<FIXME> (Ticket #198.) More here, but not too much more.  We should
-factor Array.sort so that the good bits can reasonably be referenced
-from here.
+//Comparefn// must be a consistent (see <XREF target="sorting-logic">)
+function that accepts two arguments //x// and //y// of the base type
+of ''this'' and returns a negative value if //x <LT> y//, zero if //x
+= y//, or a positive value if //x <GT> y//.
 
 <COMP> Unlike the case for ''Array'', the //comparefn// is a required argument.
 
@@ -450,12 +448,14 @@ from here.
 
 <RETN> The ''sort'' method returns ''this''.
 
-<SHORTIMPL>
+<IMPL>
+The ''sort'' method calls on the generic sorting engine, passing a
+function to compare elements of //this//.
+
 <INCLUDE file="Vector.es" name="intrinsic function sort">
-<INCLUDE file="Vector.es" name="helper function sortCompare">
 
 <NOTE> For a description of the informative ''sortEngine'' method, see
-<XREF target="sortEngine">.
+<XREF target="sorting-logic">.
 
 === intrinsic::splice ( start, deleteCount, ...items ) ===
 
