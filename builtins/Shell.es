@@ -44,6 +44,7 @@ package
     intrinsic native function inspect(x, depth);
     intrinsic native function dumpFunc(x:Function);
     intrinsic native function proto(x);
+    intrinsic native function id(x);
 
     public const print = intrinsic::print;
     public var gVersion = 0;

@@ -67,6 +67,12 @@ fun locstr ss =
 	NONE => String.concat ss
       | SOME l => String.concat (ss @ [" (near ", (locToString l), ")"])
 
+fun join sep ss =
+    case ss of
+        [] => ""
+      | [x] => x
+      | x :: xs => x ^ sep ^ (join sep xs)
+
 fun error ss = case !loc of
 		   NONE => log ("**ERROR** (unknown location)" :: ss)
 		 | SOME l => log ("**ERROR** (near " :: (locToString l) :: ") " :: ss)
@@ -98,17 +104,51 @@ fun multiname (mn:Ast.MULTINAME) =
 		  (List.map (List.map (fn ns => name {ns = ns, id = (#id mn)})) (#nss mn)) @
 		  ["}"]))
 
-fun join sep ss =
-    case ss of
-        [] => ""
-      | [x] => x
-      | x :: xs => x ^ sep ^ (join sep xs)
+fun ty t =
+    let
+        fun nsExprToString e =
+            case e of
+                Ast.LiteralExpr (Ast.LiteralNamespace ns) => namespace ns
+              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
+              | _ => (error ["unexpected expression in type namespace context"]; "")
+        fun nssToString nss =
+            join ", " (map namespace nss)
+        fun nsssToString nsss =
+            join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
+        fun typeList tys =
+            join ", " (map ty tys)
+        fun fieldToString {name, ty=fieldType} = (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
+        fun fieldList fields =
+            join ", " (map fieldToString fields)
+        fun identList fields =
+            join ", " (map Ustring.toAscii fields)
+    in
+        case t of
+            Ast.SpecialType Ast.Any => "*"
+          | Ast.SpecialType Ast.Null => "null"
+          | Ast.SpecialType Ast.Undefined => "undefined"
+          | Ast.SpecialType Ast.VoidType => "<VoidType>"
+          | Ast.UnionType tys => "(" ^ (typeList tys) ^ ")"
+          | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => "<TypeName: {" ^ (nsssToString openNamespaces) ^ "}::" ^ (Ustring.toAscii ident) ^ ">"
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => "<TypeName: " ^ (nsExprToString qual) ^ "::" ^ (Ustring.toAscii ident) ^ ">"
+          | Ast.TypeName _ => "<TypeName: ...>"
+          | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
+          | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
+          | Ast.FunctionType {params, result, ...} => "<function (" ^ (typeList params) ^ ") : " ^ (ty result) ^ ">"
+          | Ast.ObjectType fields => "{" ^ fieldList fields ^ "}"
+          | Ast.AppType {base, args} => (ty base) ^ ".<" ^ (typeList args) ^ ">"
+          | Ast.NullableType { expr, nullable } => (ty expr) ^ (if nullable then "?" else "!")
+          | Ast.InstanceType { name=n, ... } => name n
+	  | Ast.LamType { params, body } => "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
+    end
 
 exception LexError of string
 exception ParseError of string
 exception NameError of string
 exception DefnError of string
 exception FixtureError of string
+exception AstError of string
 exception TypeError of string
 exception VerifyError of string
 exception EvalError of string
@@ -143,6 +183,9 @@ fun evalError ss =
 
 fun machError ss =
      raise MachError (locstr ss)
+
+fun astError ss =
+     raise AstError (locstr ss)
 
 fun hostError ss =
      raise HostError (locstr ss)

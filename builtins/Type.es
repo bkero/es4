@@ -1,6 +1,9 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "Name" object
+ * ECMAScript 4 builtins - the "Type" object
+ *
+ * E262-4 proposals:meta_objects
+ * E262-4 not yet documented
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
@@ -35,52 +38,10 @@
  *
  */
 
-use namespace intrinsic;
-
-intrinsic final class Name extends String 
+package
 {
-    // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
-    static function get length() { return 2 }
 
-    function Name(a, b=undefined) {
-        if (a is Namespace && b is string) {
-            qualifier = a;
-            identifier = b;
-
-        }
-        if (a is Name && b is undefined) {
-            qualifier = a.qualifier;
-            identifier = a.identifier;
-        }
-        if (a is string && b is undefined) {
-            identifier = a;
-        }
-        throw new TypeError();
+    intrinsic class Type 
+    {
     }
-
-    meta static function invoke(a, b=undefined): Name
-        new Name(a, b);
-
-    // OBSOLETE
-    meta static function convert(v : (Namespace, string))
-        new Name(v);
-
-    prototype function toString(this : Name)
-        this.intrinsic::toString();
-
-    override intrinsic function toString() : string {
-        if (qualifier === null)
-            return identifier;
-        return string(qualifier) + "::" + identifier;
-    }
-
-    prototype function valueOf(this : Name)
-        this.intrinsic::valueOf();
-
-    override intrinsic function valueOf() : string
-        intrinsic::toString();
-
-    // FIXME #42: use const again when it works
-    public var   qualifier  : Namespace,
-                 identifier : string;
 }
