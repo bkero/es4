@@ -352,6 +352,26 @@ and ty2norm (prog:Fixture.PROGRAM)
             error ["dynamic name in type expression: ", LogErr.ty expr]
                               
           | Ast.InstanceType it => 
+            simple expr (not (#nonnullable it))
+            (* 
+             * NB: We used to go up through the supertypes and into all the subterms
+             * normalizing as we went. This was both very painful at runtime *and* 
+             * at least *somewhat* pointless, since the definer ensures all these
+             * types are ground  before it *creates* an InstanceType in the first place.
+             * 
+             * Keep that in mind! You can't just throw together an InstanceType with 
+             * non-ground terms and expect "some later stage" of the system to catch it.
+             * 
+             * It won't. 
+             * 
+             * Possibly in the future we'll consider making ground terms a special type of
+             * type expressions (though it will require some interconversions), such that 
+             * this is semantically impossible. For now it's just something you will have 
+             * to ensure manually.
+             * 
+             * Old code follows:
+             *)
+            (* 
             let
                 val t0 = ty
                 val { name, typeArgs, superTypes, ty, 
@@ -373,6 +393,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                                   dynamic = dynamic }) (not nonnullable)
                   | _ => repackage t0
             end
+             *)
                                    
           | Ast.AppType { base, args } => 
             let

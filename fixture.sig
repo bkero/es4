@@ -123,6 +123,7 @@ signature FIXTURE = sig
     val getTopBlocks : PROGRAM -> Ast.BLOCK list
     val getPackageNames : PROGRAM -> Ast.IDENT list list
     val getCurrFullRibs : PROGRAM -> Ast.RIBS -> Ast.RIBS
+    val processTopRib : PROGRAM -> (Ast.RIB -> Ast.RIB) -> PROGRAM
     val getFullRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)
 
     val instanceTy : PROGRAM -> Ast.NAME -> Ast.TY

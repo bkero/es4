@@ -200,6 +200,22 @@ type PROGRAM = { fixtureCache: (Ast.FIXTURE NmMap.map) ref, (* mirrors the top r
                  packageNames: (Ast.IDENT list) list,
                  unitRibs: (Ast.RIB StrVecMap.map) }
 
+fun processTopRib (prog:PROGRAM) 
+                  (f:Ast.RIB -> Ast.RIB)
+    : PROGRAM = 
+    let
+        val { fixtureCache, instanceOfCache, cacheSize, 
+              topRib, topBlocks, packageNames, unitRibs } = prog
+    in
+        { fixtureCache = ref NmMap.empty,
+          instanceOfCache = ref StrVecMap.empty,
+          cacheSize = 1024,
+          topRib = f topRib,
+          topBlocks = topBlocks,
+          packageNames = packageNames,
+          unitRibs = StrVecMap.map f unitRibs  }
+    end
+
 fun mkProgram (topRib:Ast.RIB)
     : PROGRAM =
     { fixtureCache = ref NmMap.empty,
@@ -268,7 +284,7 @@ fun extendTopRib (prog:PROGRAM)
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
               topRib, topBlocks, packageNames, unitRibs } = prog
-        val newTopRib = List.foldl (mergeFixtures tyeq) topRib additions
+        val newTopRib = List.rev (List.foldl (mergeFixtures tyeq) topRib additions)
     in
         { cacheSize = cacheSize, 
           (* flush caches *)

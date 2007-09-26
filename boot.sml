@@ -348,6 +348,8 @@ fun boot _ : Mach.REGS =
         val funFrag = Verify.verifyTopFragment prog true funFrag                      
         val ifaceFrag = Verify.verifyTopFragment prog true  ifaceFrag
         val otherProgs = verifyFiles prog otherFrags
+
+        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;

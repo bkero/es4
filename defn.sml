@@ -143,13 +143,12 @@ fun makeTy (e:ENV)
     in
         (* 
          * FIXME: controversial? This attempts to normalize each type term the first 
-         * time we see it. This will make things *much* faster at runtime since we 
-         * can stop looking up typenames as we go; but it also means that we might
-         * report something as a type error, even if it's in code that never runs;
-         * something we said we would only do in strict mode. Maybe make a flag in 
-         * Fixture.PROGRAM to control exactly how strict we are?
+         * time we see it. We ignore type errors since it's not technically
+         * our job to try this here; if someone wants early typechecking they can
+         * use the verifier.
          *)        
         Type.normalize (#program e) [] ty
+        handle LogErr.TypeError _ => ty
     end
 
         
@@ -382,9 +381,21 @@ fun extendProgramTopRib (env:ENV)
 
 
 fun mergeRibs (program:Fixture.PROGRAM)
-              (oldRib:Ast.RIB) 
-              (newRib:Ast.RIB) = 
-    List.foldl (Fixture.mergeFixtures (Type.equals program [])) oldRib newRib
+              (oldRib:Ast.RIB)
+              (newRib:Ast.RIB)
+    : Ast.RIB = 
+    let
+        (* 
+         * MergeFixtures actually accumulates new fixtures on the *front* of the old rib it's 
+         * working with -- this performs better -- but we really want them to be added at
+         * the *end* of the old rib. So we reverse the old rib first, attach them to the front
+         * of the reversed rib, and then reverse the result.
+         *)
+        val oldRib = List.rev oldRib
+        val res = List.foldl (Fixture.mergeFixtures (Type.equals program [])) oldRib newRib
+    in
+        List.rev res
+    end
 
 fun updateRib (env:ENV) (rib:Ast.RIB)
     : ENV =
@@ -398,7 +409,12 @@ fun updateRib (env:ENV) (rib:Ast.RIB)
         val rib = hd nonTopRibs
         val _ = case getFrameId env of 
                     NONE => ()
-                  | SOME fid => Fixture.saveFrame fid rib
+                  | SOME fid => 
+                    (if (!doTrace) 
+                     then ( trace ["saving frame #", Int.toString fid];
+                            Fixture.printRib rib)
+                     else ();
+                     Fixture.saveFrame fid rib)
     in
         { nonTopRibs = nonTopRibs,
           frameIds = frameIds,
@@ -2858,9 +2874,9 @@ and defDefn (env:ENV)
 
       | Ast.TypeDefn td =>
         let
-            val hoisted = defType env td
+            val unhoisted = defType env td
         in
-            ([], hoisted, [])
+            (unhoisted, [], [])
         end
 
       | _ => LogErr.unimplError ["defDefn"]
@@ -2876,10 +2892,10 @@ and defNonTopDefns (env:ENV)
                    (defns:Ast.DEFN list)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let
+        val _ = trace([">> defNonTopDefns"])
         val (unhoisted, hoisted, inits) = unzip3 (map (defDefn env false) defns)
-        fun reduce (oldRib::newRib::rest) = reduce ((mergeRibs (#program env) oldRib newRib) :: rest)
-          | reduce (x::[]) = x
-          | reduce [] = []
+        val reduce = List.foldl (fn (new,old) => mergeRibs (#program env) old new) []
+        val _ = trace(["<< defNonTopDefns"])
     in
         (reduce unhoisted, reduce hoisted, List.concat inits)
     end
@@ -2927,9 +2943,10 @@ and defBlock (env:ENV)
     let
         val Ast.Block { pragmas, defns, body, loc, ... } = b
         val _ = LogErr.setLoc loc
+        val env = extendEnvironment env []
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defNonTopDefns env defns
-        val env = updateRib env (mergeRibs (#program env) unhoisted_defn_fxtrs hoisted_defn_fxtrs)
+        val env = updateRib env (mergeRibs (#program env) unhoisted_pragma_fxtrs unhoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
         val hoisted = mergeRibs (#program env) hoisted_defn_fxtrs hoisted_body_fxtrs
     in

@@ -228,9 +228,9 @@ fun verifyType (env:ENV)
                (ty:Ast.TY)
     : (Ast.TY * Ast.TYPE_EXPR) =
 (* 
- * Verification, if it runs, is obliged to come up with a best guess for every type
- * it sees. It does this because it performs some static reasoning and
- * leaves behind a bunch of runtime checks.
+ * Verification, if it runs, is obliged to come up with a best guess
+ * ground type expression for every type it sees. It does this because it performs 
+ * some static reasoning and leaves behind a bunch of runtime checks.
  * 
  * As such, when we hit a TY, we try to reduce it to a TYPE_EXPR. If we get a non-ground
  * type, we produce the special TYPE_EXPR "anyType", representing *, because it's
@@ -949,7 +949,7 @@ and verifyFixture (env:ENV)
     end
 
 and verifyRib (env:ENV)
-                   (rib:Ast.RIB)
+              (rib:Ast.RIB)
     : Ast.RIB =
     let
         val env = withRib env rib
@@ -961,7 +961,7 @@ and verifyRib (env:ENV)
     end
 
 and verifyRibOption (env:ENV)
-		                 (fs:Ast.RIB option)
+		            (fs:Ast.RIB option)
     : Ast.RIB =
     case fs of
         SOME rib => verifyRib env rib
@@ -986,7 +986,16 @@ and verifyFragment (env:ENV)
         
       | Ast.Anon block => 
         Ast.Anon (verifyBlock env block)
-    
+
+and verifyTopRib (prog:Fixture.PROGRAM)
+                 (strict:bool)
+                 (rib:Ast.RIB)
+    : Ast.RIB =
+    let
+        val env = newEnv prog strict
+    in
+        verifyRib env rib
+    end
 
 and verifyTopFragment (prog:Fixture.PROGRAM)
                       (strict:bool) 
@@ -994,11 +1003,6 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
   : Ast.FRAGMENT = 
     let 
         val env = newEnv prog strict
-        (* 
-         * FIXME: re-running verification of the whole system for 
-         * each new fragment will *hurt*. Cache something in PROGRAM.
-         *)
-        val _ = verifyRib env (Fixture.getTopRib prog)
         val res = verifyFragment env frag
     in
         trace ["verification complete"];
