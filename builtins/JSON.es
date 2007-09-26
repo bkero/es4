@@ -81,7 +81,7 @@ package JSON
     var objectType = intrinsic::typeOf({});  // Type object for Object
 
     function isObject(v)
-        objectType.intrinsic::isSubtypeOf(intrinsic::typeOf(v));
+        objectType.isSubtypeOf(intrinsic::typeOf(v));
 
     function isEncodableValue(v) {
         return ((v is Strings) ||

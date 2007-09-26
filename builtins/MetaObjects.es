@@ -53,20 +53,30 @@ package
         helper function noconversion(t)
             false;
 
-        helper function registerMetaObject(cls, metaobj) {
-            classtypes.push({cls: cls, metaobj: metaobj});
+        helper function registerMetaObject(typeobj, metaobj, types) {
+            types.push({typeobj: typeobj, metaobj: metaobj});
         }
 
-        helper function getMetaObject(cls) {
+        helper function getClassMetaObject(typeobj) {
             for ( let i=0, limit=classtypes.length ; i < limit ; i++ )
-                if (classtypes[i].cls === cls)
+                if (classtypes[i].typeobj === typeobj)
                     return classtypes[i].metaobj;
-            // FIXME: different code for interfaces... interfaces result here
-            // from the hierarchy walk...
-            let metaobj = new ClassTypeImpl(cls, noconversion);
-            registerMetaObject(cls, metaobj);
+
+            let metaobj = new ClassTypeImpl(typeobj, noconversion);
+            registerMetaObject(typeobj, metaobj, classtypes);
             return metaobj;
         }
+
+        helper function getInterfaceMetaObject(typeobj) {
+            for ( let i=0, limit=interfacetypes.length ; i < limit ; i++ )
+                if (interfacetypes[i].typeobj === typeobj)
+                    return interfacetypes[i].metaobj;
+
+            let metaobj = new InterfaceTypeImpl(typeobj);
+            registerMetaObject(typeobj, metaobj, interfacetypes);
+            return metaobj;
+        }
+
 
         type ClassTypeIterator = *;   // FIXME: iterator::IteratorType.<ClassType>
         type NominalTypeIterator = *; // FIXME: iterator::IteratorType.<NominalType>
@@ -85,7 +95,7 @@ package
                 return nulltype;
             if (v is undefined)
                 return undefinedtype;
-            return getMetaObject(magic::getClassOfObject(v));
+            return getClassMetaObject(magic::getClassOfObject(v));
         }
 
         intrinsic interface NullType extends Type
@@ -110,9 +120,8 @@ package
             public function canConvertTo(t: Type): boolean
                 false;
 
-            public function isSubtypeOf(t: Type): boolean {
-                return t === undefinedtype;
-            }
+            public function isSubtypeOf(t: Type): boolean
+                t === undefinedtype;
         }
 
         intrinsic interface NominalType extends Type
@@ -128,61 +137,48 @@ package
             //function construct(typeArgs: TypeIterator, valArgs: ValueIterator): Object;
         }
 
-        helper class ClassTypeImpl implements ClassType {
+        helper class NominalTypeMixin
+        {
+            var convertsTo;
+            var supers = null;
 
-            // FIXME: It's a security problem that this is public
-            function ClassTypeImpl(cls, convertsTo)
-                : cls = cls
-                , convertsTo = convertsTo
+            function NominalTypeMixin(convertsTo) 
+                : convertsTo = convertsTo 
             {
             }
 
-            private var cls;
-            private var convertsTo;
-            private var supers = [];
-            private var supersComputed = false;
+            function computeSupers() { throw "ABSTRACT" }
 
-            // Compute the complete list of superclasses and superinterfaces
-            private function computeSupers() {
-
-                function superClass(cls) {
-                    if (cls !== null) {
-                        supers.push(getMetaObject(cls));
-                        superClass(magic::getSuperClass(cls));
-                    }
+            function pushClass(cls) {
+                if (cls !== null) {
+                    supers.push(getClassMetaObject(cls));
+                    pushClass(magic::getSuperClass(cls));
                 }
+            }
 
-                function superInterface(iface) {
-                    supers.push(getMetaObject(iface));
-                    let i = 0;
-                    while (true) {
-                        let iface2 = magic::getSuperInterface(iface, uint(i));
-                        if (iface2 == null)
-                            break;
-                        superInterface(iface2);
-                        i++;
-                    }
+            function pushSuperInterfaces(iface) {
+                let i = 0;
+                while (true) {
+                    let iface2 = magic::getSuperInterface(iface, uint(i));
+                    if (iface2 == null)
+                        break;
+                    supers.push(getInterfaceMetaObject(iface2));
+                    pushSuperInterfaces(iface2);
+                    i++;
                 }
+            }
 
-                if (supersComputed)
-                    return;
-
-                superClass(magic::getSuperClass(cls));
-
+            function pushImplementedInterfaces(cls) {
                 let i = 0;
                 while (true) {
                     let iface = magic::getImplementedInterface(cls, uint(i));
                     if (iface == null)
                         break;
-                    superInterface(iface);
+                    supers.push(getInterfaceMetaObject(iface));
+                    pushSuperInterfaces(iface);
                     i++;
                 }
-
-                supersComputed = true;
             }
-
-            public function name(): Name
-                new Name("unknown");
 
             public function superTypes(): NominalTypeIterator {
                 computeSupers();
@@ -229,10 +225,54 @@ package
             }
         }
 
+        helper class ClassTypeImpl extends NominalTypeMixin implements ClassType 
+        {
+            function ClassTypeImpl(cls, convertsTo)
+                : cls = cls
+                , super(convertsTo)
+            {
+            }
+
+            var cls;
+
+            public function name(): Name
+                new Name("unknown");
+
+            override function computeSupers() {
+                if (supers !== null)
+                    return;
+
+                supers = [];
+                pushClass(magic::getSuperClass(cls));
+                pushImplementedInterfaces(cls);
+            }
+        }
+
         intrinsic interface InterfaceType extends NominalType
         {
             // Another security leak
             //function implementedBy(): ClassTypeIterator
+        }
+
+        helper class InterfaceTypeImpl extends NominalTypeMixin implements InterfaceType
+        {
+            function InterfaceTypeImpl(iface) 
+                : iface = iface
+                , super(noconversion)
+            {
+            }
+
+            var iface;
+
+            public function name(): Name
+                new Name("unknown");
+
+            override function computeSupers() {
+                if (supers !== null)
+                    return;
+                supers = [];
+                pushSuperInterfaces(iface);
+            }
         }
 
         intrinsic interface Field
@@ -261,16 +301,17 @@ package
         helper const stringtypes = [stringtype, Stringtype];
 
         helper const classtypes = [];
+        helper const interfacetypes = [];
 
-        registerMetaObject(int, inttype);
-        registerMetaObject(uint, uinttype);
-        registerMetaObject(double, doubletype);
-        registerMetaObject(decimal, decimaltype);
-        registerMetaObject(Number, Numbertype);
-        registerMetaObject(string, stringtype);
-        registerMetaObject(String, Stringtype);
-        registerMetaObject(boolean, booleantype);
-        registerMetaObject(Boolean, Booleantype);
+        registerMetaObject(int, inttype, classtypes);
+        registerMetaObject(uint, uinttype, classtypes);
+        registerMetaObject(double, doubletype, classtypes);
+        registerMetaObject(decimal, decimaltype, classtypes);
+        registerMetaObject(Number, Numbertype, classtypes);
+        registerMetaObject(string, stringtype, classtypes);
+        registerMetaObject(String, Stringtype, classtypes);
+        registerMetaObject(boolean, booleantype, classtypes);
+        registerMetaObject(Boolean, Booleantype, classtypes);
     }
 }
 
