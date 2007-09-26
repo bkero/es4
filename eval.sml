@@ -132,8 +132,16 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
-infix 4 <:;
+(* Dummy values to permit raising exceptions in non-unit type contexts. *)
+val dummyVal = Mach.Null
+val dummyObj = Mach.newObj Mach.NoTag Mach.Null NONE
+val dummyRef = (dummyObj, Name.nons_global)
+val dummyTypeExpr = Ast.SpecialType Ast.Any
 
+
+(* Handy operator for subtype checks *)
+
+infix 4 <:;
 fun ((tsub:Ast.TYPE_EXPR) <: (tsup:Ast.TYPE_EXPR)) =
     Type.groundIsSubtype tsub tsup
     
@@ -750,11 +758,11 @@ and getValue (regs:Mach.REGS)
                   | _ =>
                     if isDynamic regs obj
                     then Mach.Undef
-                    else throwTypeErr 
-                             regs 
-                             ["attempting to get nonexistent property ",
-                              LogErr.name name,
-                              "from non-dynamic object"]
+                    else (throwTypeErr 
+                              regs 
+                              ["attempting to get nonexistent property ",
+                               LogErr.name name,
+                               "from non-dynamic object"]; dummyVal)
             end
     in
         getValueOrVirtual regs obj name true propNotFound
@@ -765,7 +773,7 @@ and typeOpFailure (regs:Mach.REGS)
                   (prefix:string)
                   (v:Mach.VAL)
                   (tyExpr:Ast.TYPE_EXPR)
-    : Mach.VAL =
+    : unit =
     throwTypeErr regs [prefix, ": val=", Mach.approx v,
                        " type=", LogErr.ty (typeOfVal regs v),
                        " wanted=", LogErr.ty tyExpr]
@@ -784,7 +792,7 @@ and checkAndConvert (regs:Mach.REGS)
                 val (classType:Ast.TYPE_EXPR) =
                     case Type.groundFindConversion (typeOfVal regs v) tyExpr of
                         NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
-                                 Ast.SpecialType Ast.Any)
+                                 dummyTypeExpr)
                       | SOME n => n
                 val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
@@ -793,7 +801,7 @@ and checkAndConvert (regs:Mach.REGS)
             in
                 if isCompatible regs converted tyExpr
                 then converted
-                else typeOpFailure regs "converter returned incompatible value" converted tyExpr
+                else (typeOpFailure regs "converter returned incompatible value" converted tyExpr; dummyVal)
             end
     end
 
@@ -895,7 +903,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                     in
                         if isDynamic regs obj
                         then Mach.addProp props name prop
-                        else throwTypeErr1 regs ["attempting to add property to non-dynamic object"]
+                        else throwTypeErr regs ["attempting to add property to non-dynamic object"]
                     end
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
@@ -1004,89 +1012,25 @@ and instantiateGlobalClass (regs:Mach.REGS)
 and throwExn (regs:Mach.REGS)
              (name:Ast.NAME) 
              (args:string list)
-    : Mach.VAL =
-    if Mach.isBooting regs
-    then error regs ["trapped ThrowException during boot: ", 
-                     LogErr.name name, "(", LogErr.join ", " args, ")"]
-    else raise ThrowException 
-                   (instantiateGlobalClass 
-                        regs name 
-                        [((newString regs) o Ustring.fromString o String.concat) args])
-
-and throwExn0 (regs:Mach.REGS)
-              (name:Ast.NAME) 
-              (args:string list)
-    : REF =
-    if Mach.isBooting regs
-    then error regs ["trapped ThrowException during boot: ", 
-                     LogErr.name name, "(", LogErr.join ", " args, ")"]
-    else raise ThrowException 
-                   (instantiateGlobalClass 
-                        regs name 
-                        [((newString regs) o Ustring.fromString o String.concat) args])
-
-and throwExn1 (regs:Mach.REGS)
-              (name:Ast.NAME) 
-              (args:string list)
-    : Mach.OBJ =
-    if Mach.isBooting regs
-    then error regs ["trapped ThrowException during boot: ", 
-                     LogErr.name name, "(", LogErr.join ", " args, ")"]
-    else raise ThrowException 
-                   (instantiateGlobalClass 
-                        regs name 
-                        [((newString regs) o Ustring.fromString o String.concat) args])
-
-and throwExn2 (regs:Mach.REGS)
-              (name:Ast.NAME) 
-              (args:string list)
     : unit =
     if Mach.isBooting regs
     then error regs ["trapped ThrowException during boot: ", 
                      LogErr.name name, "(", LogErr.join ", " args, ")"]
-    else raise ThrowException
+    else raise ThrowException 
                    (instantiateGlobalClass 
                         regs name 
                         [((newString regs) o Ustring.fromString o String.concat) args])
 
 and throwTypeErr (regs:Mach.REGS)
                  (args:string list)
-    : Mach.VAL =
+    : unit =
     if Mach.isBooting regs
     then error regs ("trapped TypeError during boot: " :: args)
     else throwExn regs Name.nons_TypeError args
 
-and throwTypeErr0 (regs:Mach.REGS)
-                  (args:string list)
-    : Mach.OBJ =
-    if Mach.isBooting regs
-    then error regs ("trapped TypeError during boot: " :: args)
-    else throwExn1 regs Name.nons_TypeError args
-
-and throwTypeErr1 (regs:Mach.REGS)
-                  (args:string list)
-    : unit =
-    if Mach.isBooting regs
-    then error regs ("trapped TypeError during boot: " :: args)
-    else throwExn2 regs Name.nons_TypeError args
-
 and throwRefErr (regs:Mach.REGS)
                 (args:string list)
-    : REF =
-    if Mach.isBooting regs
-    then error regs ("trapped ReferenceError during boot: " :: args)
-    else throwExn0 regs Name.nons_ReferenceError args
-
-and throwRefErr0 (regs:Mach.REGS)
-                 (args:string list)
-    : Mach.OBJ =
-    if Mach.isBooting regs
-    then error regs ("trapped ReferenceError during boot: " :: args)
-    else throwExn1 regs Name.nons_ReferenceError args
-
-and throwRefErr1 (regs:Mach.REGS)
-                 (args:string list)
-    : Mach.VAL =
+    : unit =
     if Mach.isBooting regs
     then error regs ("trapped ReferenceError during boot: " :: args)
     else throwExn regs Name.nons_ReferenceError args
@@ -1134,7 +1078,7 @@ and needObj (regs:Mach.REGS)
     : Mach.OBJ =
     case v of
         Mach.Object ob => ob
-      | _ => throwTypeErr0 regs ["need object"]
+      | _ => (throwTypeErr regs ["need object"]; dummyObj)
 
 and newObject (regs:Mach.REGS) =
     instantiateGlobalClass 
@@ -1516,7 +1460,7 @@ and defaultValue (regs:Mach.REGS)
     in
         if isPrimitive vb
         then vb
-        else throwTypeErr regs ["defaultValue"]
+        else (throwTypeErr regs ["defaultValue"]; dummyVal)
     end
 
 and isPrimitive (v:Mach.VAL)
@@ -1944,7 +1888,7 @@ and evalExpr (regs:Mach.REGS)
                     in
                         case f of
                             Mach.Object ob => evalCallExpr regs ob (args ())
-                          | _ => throwTypeErr regs ["not a function"]
+                          | _ => (throwTypeErr regs ["not a function"]; dummyVal)
                     end
         in
             checkCompatible regs resultTy result
@@ -1957,7 +1901,7 @@ and evalExpr (regs:Mach.REGS)
         in
             case rhs of
                 Mach.Object ob => evalNewExpr regs ob (args())
-              | _ => throwTypeErr regs ["not a constructor"]
+              | _ => (throwTypeErr regs ["not a constructor"]; dummyVal)
         end
 
       | Ast.GetTemp n =>
@@ -2252,8 +2196,8 @@ and evalApplyTypeExpr (regs:Mach.REGS)
                     if Mach.isType v
                     then applyTypesToType regs v args
                     else 
-                        throwTypeErr regs ["applying types to unknown base value: ",
-                                           Mach.approx v]
+                        (throwTypeErr regs ["applying types to unknown base value: ",
+                                            Mach.approx v]; dummyVal)
     end
 
 
@@ -2445,7 +2389,7 @@ and evalNewExpr (regs:Mach.REGS)
         case (!magic) of
             SOME (Mach.Class c) => constructClassInstance regs obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction regs obj f args
-          | _ => throwTypeErr regs ["operator 'new' applied to unknown object"]
+          | _ => (throwTypeErr regs ["operator 'new' applied to unknown object"]; dummyVal)
 
 
 and callGlobal (regs:Mach.REGS)
@@ -3301,7 +3245,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             Ast.Cast =>
             if isCompatible regs v (evalTy regs ty)
             then v
-            else typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty)
+            else (typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty); dummyVal)
           | Ast.To => checkAndConvert regs v ty
           | Ast.Is => newBoolean regs ((typeOfVal regs v) <: (evalTy regs ty))
     end
@@ -3341,7 +3285,7 @@ and evalBinaryOp (regs:Mach.REGS)
             case b of
                 Mach.Object (ob) =>
                 newBoolean regs true (* FIXME: (hasInstance ob b) *)
-              | _ => throwTypeErr regs ["operator 'instanceof' applied to non-object"]
+              | _ => (throwTypeErr regs ["operator 'instanceof' applied to non-object"]; dummyVal)
         end
 
       | Ast.In =>
@@ -3353,7 +3297,7 @@ and evalBinaryOp (regs:Mach.REGS)
             case b of
                 Mach.Object obj =>
                 newBoolean regs (hasValue obj aname)
-              | _ => throwTypeErr regs ["operator 'in' applied to non-object"]
+              | _ => (throwTypeErr regs ["operator 'in' applied to non-object"]; dummyVal)
         end
 
       | _ => performBinop regs bop
@@ -3479,7 +3423,7 @@ and evalRefExprFull (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME r => r
                           | NONE => if errIfNotFound
-                                    then throwRefErr regs ["unresolved lexical reference ", nomnToStr nomn]
+                                    then (throwRefErr regs ["unresolved lexical reference ", nomnToStr nomn]; dummyRef)
                                     else defaultRef (#global regs) nomn
             in
                 ((#this regs), r)
@@ -3494,15 +3438,15 @@ and evalRefExprFull (regs:Mach.REGS)
                 val _ = LogErr.setLoc loc
                 val ob = case v of
                              Mach.Object ob => ob
-                           | Mach.Null => throwRefErr0 regs ["object reference on null value"]
-                           | Mach.Undef => throwRefErr0 regs ["object reference on undefined value"]
+                           | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
+                           | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
                 val _ = LogErr.setLoc loc
                 val refOpt = resolveName ob nomn
                 val _ = LogErr.setLoc loc
                 val r = case refOpt of
                             SOME ro => ro
                           | NONE => if errIfNotFound
-                                    then throwRefErr regs ["unresolved object reference ", nomnToStr nomn]
+                                    then (throwRefErr regs ["unresolved object reference ", nomnToStr nomn]; dummyRef)
                                     else defaultRef ob nomn
                 val _ = LogErr.setLoc loc
                 val (holder, n) = r

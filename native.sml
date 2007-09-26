@@ -791,7 +791,8 @@ fun get (regs:Mach.REGS)
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
         fun propNotFound (curr:Mach.OBJ) : Mach.VAL =
-            Eval.throwRefErr1 regs ["getting nonexistent property ", LogErr.name name]
+            (Eval.throwRefErr regs ["getting nonexistent property ", LogErr.name name]; 
+             Eval.dummyVal)
     in
         Eval.getValueOrVirtual regs obj name false propNotFound
     end
