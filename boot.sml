@@ -268,8 +268,7 @@ fun boot _ : Mach.REGS =
 
         val (prog, otherFrags) = 
             loadFiles prog 
-                      ["builtins/Type.es",
-                       "builtins/Namespace.es",
+                      ["builtins/Namespace.es",
                        "builtins/Magic.es",
                        "builtins/Internal.es",
                        "builtins/Conversions.es",
@@ -313,7 +312,7 @@ fun boot _ : Mach.REGS =
                        "builtins/RegExpEvaluator.es",
                        "builtins/RegExp.es",
                        "builtins/Date.es",
-                                    "builtins/MetaObjects.es", (* before JSON *)
+                       "builtins/MetaObjects.es", (* before JSON *)
                        "builtins/JSON.es"
                  ]
 

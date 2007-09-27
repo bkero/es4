@@ -95,6 +95,7 @@ type ENV =
        labels: LABEL list,
        packageNames: Ast.IDENT list list,
        className: Ast.IDENT,
+       atTopLevel: bool,
        packageName: Ast.IDENT list,
        topUnitName: Ast.IDENT list option,
        defaultNamespace: Ast.NAMESPACE,
@@ -328,7 +329,7 @@ fun extendEnvironment (env:ENV)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel, 
               packageName, defaultNamespace, topUnitName, program } = env
         val newFrameIds = (Fixture.allocFrame (getFrameId env)) :: frameIds
     in
@@ -340,6 +341,7 @@ fun extendEnvironment (env:ENV)
           labels = labels,
           packageNames = packageNames,
           className = className,
+          atTopLevel = atTopLevel,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
@@ -351,7 +353,7 @@ fun withProgram (env:ENV)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
@@ -362,6 +364,7 @@ fun withProgram (env:ENV)
           labels = labels,
           packageNames = packageNames,
           className = className,
+          atTopLevel = atTopLevel,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
@@ -373,7 +376,7 @@ fun extendProgramTopRib (env:ENV)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         withProgram env (Fixture.extendTopRib program rib (Type.equals program []))
@@ -397,24 +400,35 @@ fun mergeRibs (program:Fixture.PROGRAM)
         List.rev res
     end
 
+fun saveRib (env:ENV) 
+    : unit = 
+    let
+        val { nonTopRibs, ... } = env
+    in
+        case nonTopRibs of
+            [] => error ["saveRib on empty ribs"]
+          | rib::_ => 
+            (case getFrameId env of 
+                 NONE => ()
+               | SOME fid => 
+                 (if (!doTrace) 
+                  then ( trace ["saving frame #", Int.toString fid];
+                         Fixture.printRib rib;
+                         trace ["saved"])
+                  else ();
+                  Fixture.saveFrame fid rib))
+    end        
+
 fun updateRib (env:ENV) (rib:Ast.RIB)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
         val nonTopRibs = case nonTopRibs of 
                              head :: tail => (mergeRibs program head rib) :: tail
                            | [] => [rib]
         val rib = hd nonTopRibs
-        val _ = case getFrameId env of 
-                    NONE => ()
-                  | SOME fid => 
-                    (if (!doTrace) 
-                     then ( trace ["saving frame #", Int.toString fid];
-                            Fixture.printRib rib)
-                     else ();
-                     Fixture.saveFrame fid rib)
     in
         { nonTopRibs = nonTopRibs,
           frameIds = frameIds,
@@ -424,6 +438,7 @@ fun updateRib (env:ENV) (rib:Ast.RIB)
           labels = labels,
           packageNames = packageNames,
           className = className,
+          atTopLevel = atTopLevel,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
@@ -434,7 +449,7 @@ fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
@@ -445,6 +460,7 @@ fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
           labels = labels,
           packageNames = newPkgName::packageNames,
           className = className,
+          atTopLevel = atTopLevel,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
@@ -455,7 +471,7 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
@@ -466,6 +482,7 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
           labels = labels,
           packageNames = packageNames,
           className = className,
+          atTopLevel = atTopLevel,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
@@ -476,7 +493,7 @@ fun clearPackageName (env:ENV)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         { nonTopRibs = nonTopRibs,
@@ -487,7 +504,30 @@ fun clearPackageName (env:ENV)
           labels = labels,
           packageNames = packageNames,
           className = className,
+          atTopLevel = atTopLevel,
           packageName = [],
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName,
+          program = program }
+    end
+
+fun enterNonTopLevel (env:ENV)
+    : ENV =
+    let
+        val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, className, atTopLevel,
+              packageName, defaultNamespace, topUnitName, program } = env
+    in
+        { nonTopRibs = nonTopRibs,
+          frameIds = frameIds,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          numericMode = numericMode,
+          labels = labels,
+          packageNames = packageNames,
+          className = className,
+          atTopLevel = false,
+          packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
           program = program }
@@ -497,7 +537,7 @@ fun enterClass (env:ENV) (newClassName:Ast.NAME)
     : ENV =
     let
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
         val className = Name.mangle newClassName
     in
@@ -509,6 +549,7 @@ fun enterClass (env:ENV) (newClassName:Ast.NAME)
           labels = labels,
           packageNames = packageNames,
           className = className,
+          atTopLevel = false,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
           topUnitName = topUnitName,
@@ -534,7 +575,7 @@ fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
             val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-                  labels, packageNames, className,
+                  labels, packageNames, className, atTopLevel,
                   packageName, defaultNamespace, topUnitName, program } = env
             val (labelId,labelKnd) = label
         in
@@ -553,6 +594,7 @@ fun addLabel ((label:LABEL),(env:ENV))
               labels = label::labels,
               packageNames = packageNames,
               className = className,
+              atTopLevel = atTopLevel,              
               packageName = packageName,
               defaultNamespace = defaultNamespace,
               topUnitName = topUnitName,
@@ -659,7 +701,7 @@ and defInterface (env: ENV)
         val env = enterClass env name
 
         (* Define the current rib *)
-        val (unhoisted,instanceRib,_) = defNonTopDefns env instanceDefns
+        val (unhoisted,instanceRib,_) = defDefns env instanceDefns
 
         (* Inherit rib and check overrides *)
         val instanceRib:Ast.RIB = inheritRib inheritedRib instanceRib
@@ -1104,7 +1146,9 @@ and resolveInterfaces (env: ENV)
       | _ =>
         let
             val mnames:Ast.MULTINAME list = map ((identExprToMultiname env) o extractIdentExprFromTypeName) exprs
-            val (_, ifaces) = ListPair.unzip (map (resolveMultinameToFixture env) mnames)
+            val fixs = (map (resolveMultinameToFixture env) mnames)
+            (* val _ = List.map (fn (n,f) => Fixture.printFixture (Ast.PropName n, f)) fixs *)
+            val (_, ifaces) = ListPair.unzip fixs
             val ifaceInstanceTypes:Ast.TY list = map interfaceInstanceType ifaces
             val superIfaceTypes:Ast.TY list = List.concat (map interfaceExtends ifaces)
             val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
@@ -1140,13 +1184,13 @@ and analyzeClassBody (env:ENV)
         val env = enterClass env name
         val _ = trace ["defining class ", LogErr.name name]
 
-        val (unhoisted,classRib,classInits) = defNonTopDefns env classDefns
+        val (unhoisted,classRib,classInits) = defDefns env classDefns
         val classRib = (mergeRibs (#program env) unhoisted classRib)
         val staticEnv = extendEnvironment env classRib
 
         (* namespace and type definitions aren't normally hoisted *)
 
-        val (unhoisted,instanceRib,_) = defNonTopDefns staticEnv instanceDefns
+        val (unhoisted,instanceRib,_) = defDefns staticEnv instanceDefns
         val instanceEnv = extendEnvironment staticEnv instanceRib
 
         val ctor:Ast.CTOR option =
@@ -1799,6 +1843,7 @@ and defPragmas (env:ENV)
                labels = (#labels env),
                packageNames = !packageNames,
                className = (#className env),
+               atTopLevel = (#atTopLevel env),
                packageName = (#packageName env),
                topUnitName = (#topUnitName env),
                defaultNamespace = !defaultNamespace,
@@ -2410,7 +2455,7 @@ and defStmt (env:ENV)
             let
                 fun defVarDefnOpt vd =
                     case vd of
-                        SOME vd => defDefn env false (Ast.VariableDefn vd)
+                        SOME vd => defDefn (enterNonTopLevel env) (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
             in
             case fe of
@@ -2419,6 +2464,7 @@ and defStmt (env:ENV)
                     val newObj =  defExpr env obj
                     val (ur1,hr1,i1) = defVarDefnOpt defn
                     val env = updateRib env ur1
+                    val _ = saveRib env
                     val (newBody,hoisted) = defStmt env [] body
                     val tempEnv = updateTempOffset env 1   (* alloc temp for iteration value *)
                     val (newNext,_) = defStmt tempEnv [] next
@@ -2460,10 +2506,11 @@ and defStmt (env:ENV)
             let
                 fun defVarDefnOpt vd =
                     case vd of
-                        SOME vd => defDefn env false (Ast.VariableDefn vd)
+                        SOME vd => defDefn (enterNonTopLevel env) (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (ur,hr,_) = defVarDefnOpt defn
                 val env' = updateRib env (mergeRibs (#program env) ur hr)
+                val _ = saveRib env'
                 val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
@@ -2755,6 +2802,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                    need to update the environment in that case *)
 
                 val env' = updateRib env f1
+                val _ = saveRib env'
                 val (s2,f2) = defStmts env' stmts
             in
                 (s1::s2,(mergeRibs (#program env) f1 f2))
@@ -2819,7 +2867,6 @@ and defType (env:ENV)
 
 
 and defDefn (env:ENV)
-            (isTopLevel:bool)
             (defn:Ast.DEFN)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     case defn of
@@ -2858,7 +2905,9 @@ and defDefn (env:ENV)
       | Ast.ClassDefn cd =>
             let
                 val _ = trace ["defClass"]
-                val _ = if isTopLevel then () else error ["ClassDefn at non-top level"]
+                val _ = if (#atTopLevel env) 
+                        then () 
+                        else error ["ClassDefn at non-top level"]
                 val (hoisted,def) = defClass env cd
             in
                 ([],hoisted,[])
@@ -2866,7 +2915,9 @@ and defDefn (env:ENV)
 
       | Ast.InterfaceDefn cd =>
             let
-                val _ = if isTopLevel then () else error ["InterfaceDefn at non-top level"]
+                val _ = if (#atTopLevel env) 
+                        then () 
+                        else error ["InterfaceDefn at non-top level"]
                 val (hoisted,def) = defInterface env cd
             in
                 ([],hoisted,[])
@@ -2888,41 +2939,77 @@ and defDefn (env:ENV)
 *)
 
 
-and defNonTopDefns (env:ENV)
-                   (defns:Ast.DEFN list)
+and defDefns (env0:ENV)
+             (defns:Ast.DEFN list)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let
-        val _ = trace([">> defNonTopDefns"])
-        val (unhoisted, hoisted, inits) = unzip3 (map (defDefn env false) defns)
-        val reduce = List.foldl (fn (new,old) => mergeRibs (#program env) old new) []
-        val _ = trace(["<< defNonTopDefns"])
+        fun loop (env:ENV)
+                 (defns:Ast.DEFN list)
+                 (unhoisted:Ast.RIB)
+                 (hoisted:Ast.RIB)
+                 (inits:Ast.INITS)
+            : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
+            case defns of 
+                [] => (unhoisted, hoisted, inits)
+              | d::ds => 
+                let
+                    val { program, atTopLevel, ... } = env
+                    val (unhoisted', hoisted', inits') = defDefn env d
+                 (* 
+                    val _ = if (!doTrace) 
+                            then (trace ["defDefns: unhoisted: "]; Fixture.printRib unhoisted;
+                                  trace ["defDefns: hoisted: "]; Fixture.printRib hoisted;
+                                  trace ["defDefns: unhoisted': "]; Fixture.printRib unhoisted';
+                                  trace ["defDefns: hoisted': "]; Fixture.printRib hoisted';
+                                  trace ["defDefns: env rib: "]; Fixture.printRib (case (#nonTopRibs env) of 
+                                                                                       [] => []
+                                                                                     | x::_ => x))
+                            else ()
+                  *)
+
+                    val _ = trace(["defDefns: combining unhoisted ribs"]);                            
+                    val combinedUnhoisted = mergeRibs program unhoisted unhoisted'
+                    val _ = trace(["defDefns: combining hoisted ribs"])
+                    val combinedHoisted = mergeRibs program hoisted hoisted'
+                    val _ = trace(["defDefns: combining inits"])
+                    val combinedInits = inits @ inits'
+                    val _ = trace(["defDefns: saving rib"])
+
+                    (* 
+                     * NB: we write the unhoisted parts back to the original env0 rib, but 
+                     * optionally combine hoisted *and* unhoisted into the environment we feed 
+                     * forward in the accumulation loop, depending on whether we're at top level. 
+                     *)
+
+                    val _ = saveRib (updateRib env0 unhoisted')
+                    val env = if atTopLevel
+                              then updateRib env hoisted'
+                              else env
+                    val env = updateRib env unhoisted'
+                in
+                    loop env ds combinedUnhoisted combinedHoisted combinedInits
+                end
+        val _ = trace([">> defDefns"])
+        val res = loop env0 defns [] [] []
+        val _ = trace(["<< defDefns"])
     in
-        (reduce unhoisted, reduce hoisted, List.concat inits)
-    end
-    
+        res
+    end    
 
 and defTopDefns (env:ENV)
                 (defns:Ast.DEFN list)
-                (rib:Ast.RIB)
-                (inits:Ast.INITS)
     : (ENV * Ast.RIB * Ast.INITS) = (* env, unhoisted, inits *)
     let
         val _ = trace([">> defTopDefns"])
+        val (unhoisted, hoisted, inits) = defDefns env defns
+        val combinedRib = mergeRibs (#program env) hoisted unhoisted
+        val env = updateRib env combinedRib
+        val _ = saveRib env
+        val _ = trace(["<< defTopDefns"])
     in 
-        case defns of
-            [] => (trace(["<< defTopDefns"]); (env, rib, inits))
-          | d::ds =>
-            let
-                val (unhoisted', hoisted', inits') = defDefn env true d
-                val combinedRib = mergeRibs (#program env) hoisted' unhoisted'
-                val env = updateRib env combinedRib
-           in
-                defTopDefns env ds
-                            (mergeRibs (#program env) combinedRib rib)
-                            (inits@inits') 
-           end
+        (env, combinedRib, inits)
     end
-
+        
 (*
     BLOCK
 
@@ -2945,7 +3032,7 @@ and defBlock (env:ENV)
         val _ = LogErr.setLoc loc
         val env = extendEnvironment env []
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
-        val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defNonTopDefns env defns
+        val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env defns
         val env = updateRib env (mergeRibs (#program env) unhoisted_pragma_fxtrs unhoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
         val hoisted = mergeRibs (#program env) hoisted_defn_fxtrs hoisted_body_fxtrs
@@ -2985,7 +3072,7 @@ and defFragment (env:ENV)
             end
 
         val { nonTopRibs, frameIds, tempOffset, numericMode, openNamespaces, 
-              labels, packageNames, className,
+              labels, packageNames, className, atTopLevel,
               packageName, defaultNamespace, topUnitName, program } = env
     in
         case frag of 
@@ -3003,6 +3090,7 @@ and defFragment (env:ENV)
                             labels = labels,
                             packageNames = packageNames,
                             className = className,
+                            atTopLevel = atTopLevel,
                             packageName = packageName,
                             defaultNamespace = defaultNamespace,
                             topUnitName = newTopUnitName,
@@ -3035,6 +3123,7 @@ and defFragment (env:ENV)
                             labels = labels,
                             packageNames = name :: packageNames,
                             className = className,
+                            atTopLevel = atTopLevel,
                             packageName = name,
                             defaultNamespace = Ast.Internal packageIdent,
                             topUnitName = topUnitName,
@@ -3067,7 +3156,7 @@ and defFragment (env:ENV)
                 (* 
                  * top Defns merge the hoisted and unhoisted rib into a single one.
                  *)
-                val (env, all_top_defn_fixtures, inits) = defTopDefns env defns [] []
+                val (env, all_top_defn_fixtures, inits) = defTopDefns env defns
 
                 (* 
                  * statements, like pragmas, don't produce any hosited fixtures.
@@ -3102,6 +3191,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       labels = [],
       packageNames = Fixture.getPackageNames prog,
       className = Ustring.fromString "",
+      atTopLevel = true,
       packageName = [],
       defaultNamespace = Name.noNS,
       topUnitName = NONE,
