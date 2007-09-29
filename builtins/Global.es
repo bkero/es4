@@ -307,7 +307,7 @@ package
         if (v <= 0x7FF)
             return [0xC0 | ((v >> 6) & 0x3F), 
                     0x80 | (v & 0x3F)];
-        if (v <= 0xD7FF | v >= 0xE000 && v <= 0xFFFF)
+        if (v <= 0xD7FF || v >= 0xE000 && v <= 0xFFFF)
             return [0xE0 | ((v >> 12) & 0x0F),
                     0x80 | ((v >> 6) & 0x3F),
                     0x80 | (v & 0x3F)];
