@@ -135,6 +135,7 @@ exception InternalError
 (* Dummy values to permit raising exceptions in non-unit type contexts. *)
 val dummyVal = Mach.Null
 val dummyObj = Mach.newObj Mach.NoTag Mach.Null NONE
+val dummyObjId = 0
 val dummyRef = (dummyObj, Name.nons_global)
 val dummyTypeExpr = Ast.SpecialType Ast.Any
 val dummyNs = Name.noNS
@@ -3165,35 +3166,6 @@ and doubleEquals (regs:Mach.REGS)
     toBoolean (performBinop regs (Ast.Equals mode) a b)
 
 
-(*
- and hasInstance (ob:OBJ)
-                 (v:VAL)
-     : bool =
-     let
-         val Obj { magic, ... } = ob
-         fun functionHasInstance _ =
-             case v of
-                 Object ob =>
-                 if hasValue ob Name.nons_prototype
-                 else
-                     let
-                         val proto = getValue regs ob Name.nons_prototype
-                     in
-                         if Mach.isObject proto
-                         then tripleEquals ...
-
-                         if not isObject v
-                         then false
-                         else
-     in
-         case !magic of
-             Function => isFunction v orelse isNativeFunction v
-           | NativeFunction => isFunction v orelse isNativeFunction v
-           | _ => false
-                     end
-
- *)
-
 and typeOfVal (regs:Mach.REGS)
               (v:Mach.VAL)
     : Ast.TYPE_EXPR =
@@ -3252,6 +3224,32 @@ and evalBinaryTypeOp (regs:Mach.REGS)
           | Ast.Is => newBoolean regs ((typeOfVal regs v) <: (evalTy regs ty))
     end
 
+and hasInstance (regs:Mach.REGS)
+                (obj:Mach.OBJ)
+                (v:Mach.VAL)
+    : bool = 
+    let
+        val proto = getValue regs obj Name.nons_prototype
+        val targId = case proto of 
+                         (Mach.Object (Mach.Obj { ident, ... })) => ident
+                       | _ => (throwTypeErr regs ["no 'prototype' property found in [[hasInstance]]"]; dummyObjId)
+        fun tryVal v' = 
+            case v' of 
+                Mach.Null => false
+              | Mach.Undef => false
+              | Mach.Object ob =>
+                if getObjId ob = targId
+                then true
+                else 
+                    let
+                        val Mach.Obj { proto, ... } = ob
+                    in
+                        tryVal (!proto)
+                    end
+    in
+        tryVal v
+    end
+
 and evalBinaryOp (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (aexpr:Ast.EXPR)
@@ -3285,8 +3283,15 @@ and evalBinaryOp (regs:Mach.REGS)
             val b = evalExpr regs bexpr
         in
             case b of
-                Mach.Object (ob) =>
-                newBoolean regs true (* FIXME: (hasInstance ob b) *)
+                Mach.Object ob => 
+                newBoolean 
+                    regs 
+                    (case Mach.getObjMagic ob of 
+                         SOME (Mach.Class _) => hasInstance regs ob a
+                       | SOME (Mach.Interface _) => hasInstance regs ob a
+                       | SOME (Mach.Function _) => hasInstance regs ob a
+                       | SOME (Mach.NativeFunction _) => hasInstance regs ob a
+                       | _ => (throwTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"]; false))
               | _ => (throwTypeErr regs ["operator 'instanceof' applied to non-object"]; dummyVal)
         end
 
