@@ -37,7 +37,7 @@ fun locToString {file, span, post_newline} =
     let
         val ({line=line1, col=col1}, {line=line2, col=col2}) = span
     in
-        "\n" ^ file ^ ":" ^
+        file ^ ":" ^
         (Int.toString line1) ^ ":" ^ (Int.toString col1) ^ "-" ^
         (Int.toString line2) ^ "." ^ (Int.toString col2)
     end

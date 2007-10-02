@@ -122,8 +122,8 @@ package
            the default for all library methods or (b) is pointless.
            Take your pick.
         */
-        static var parse = function parse(string, reference:double=0.0) {
-            return Date.parse(string(string), reference);
+        static var parse = function parse(str, reference:double=0.0) {
+            return Date.parse(string(str), reference);
         }
 
         static intrinsic function parse(s:string, reference:double=0.0) : double {
