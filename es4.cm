@@ -44,7 +44,7 @@ Library
     signature FIXTURE
     structure Fixture
     structure Type
-    structure Verify 
+    structure Verify
     structure Eval
     structure Mach 	
     structure Native 
@@ -55,6 +55,7 @@ Library
     structure NameMap	
     structure Ustring
     structure SMLofNJEntry
+    structure AstQuery
 is
     logerr.sml (lambdasplit: infinity)
     main.sml
@@ -83,6 +84,7 @@ is
     namemap.sml (lambdasplit: infinity)
     ustring.sml
     smlnj.sml (lambdasplit: infinity)
+    ast-query.sml (lambdasplit: infinity)
 
     $/basis.cm
     $/smlnj-lib.cm

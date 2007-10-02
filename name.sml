@@ -158,12 +158,14 @@ val nons_Function = nons Ustring.Function_
 
 (* From Boolean.es *)
 val nons_Boolean = nons Ustring.Boolean_
+val intrinsic_Booleans = intrinsic Ustring.Booleans_
 
 (* From boolean_primitive.es *)
 val intrinsic_boolean = intrinsic Ustring.boolean_
 
 (* From Number.es *)
 val nons_Number = nons Ustring.Number_
+val intrinsic_Numbers = intrinsic Ustring.Numbers_
 
 (* From double.es *)
 val intrinsic_double = intrinsic Ustring.double_
@@ -182,6 +184,7 @@ val intrinsic_Numeric = intrinsic Ustring.Numeric_
 
 (* From String.es *)
 val nons_String = nons Ustring.String_
+val intrinsic_Strings = intrinsic Ustring.Strings_
 
 (* From string_primitive.es *)
 val intrinsic_string = intrinsic Ustring.string_
@@ -207,6 +210,7 @@ val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
  * Natives
  *)
 
+val intrinsic_id = intrinsic Ustring.id_
 val intrinsic_proto = intrinsic Ustring.proto_
 val intrinsic_dumpFunc = intrinsic Ustring.dumpFunc_
 val intrinsic_inspect = intrinsic Ustring.inspect_
