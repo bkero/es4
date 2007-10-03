@@ -4572,7 +4572,7 @@ and evalWithStmt (regs:Mach.REGS)
     : Mach.VAL =
     let
         val v = evalExpr regs obj
-        val ob = needObj regs (callGlobal regs Name.intrinsic_ToObject [v])
+        val ob = needObj regs v
         val s = extendScope (#scope regs) ob Mach.WithScope
         val regs = withScope regs s
         val regs = withThis regs ob

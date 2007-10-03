@@ -64,33 +64,6 @@ fun fmtType t = if !doTrace
 
 type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
 
-(*  A normalized type is one of
-
-type TYPE_EXPR =
-         SpecialType of SPECIAL_TY
-       | UnionType of TYPE_EXPR list
-       | ArrayType of TYPE_EXPR list
-       | FunctionType of FUNC_TYPE
-       | ObjectType of FIELD_TYPE list
-       | AppType of
-           { base: TYPE_EXPR,  -- not a function type
-             args: TYPE_EXPR list }
-       | NullableType of
-           { expr:TYPE_EXPR,
-             nullable:bool }
-       | InstanceType of
-           { name: NAME,
-             typeParams: IDENT list,
-             ty: TYPE_EXPR,
-             dynamic: bool }
-       | NominalType of NAME
-
-and excludes
-       | TypeName of IDENT_EXPR
-       | ElementTypeRef of (TYPE_EXPR * int)
-       | FieldTypeRef of (TYPE_EXPR * IDENT)
-*)
-
 fun findNamespace (env:Ast.RIBS)
                   (expr:Ast.EXPR)
     : Ast.NAMESPACE option =
@@ -371,6 +344,7 @@ and ty2norm (prog:Fixture.PROGRAM)
              * 
              * Old code follows:
              *)
+
             (* 
             let
                 val t0 = ty
