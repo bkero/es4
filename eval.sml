@@ -4903,51 +4903,57 @@ and evalAnonFragment (regs:Mach.REGS)
 and evalFragment (regs:Mach.REGS)
                  (frag:Ast.FRAGMENT)
     : Mach.VAL =
-    (case frag of 
-         Ast.Unit { fragments, ... } => 
-         List.last (map (evalFragment regs ) fragments)
-       | Ast.Package { name, fragments } => 
-         let
-             val n = LogErr.join "." (map Ustring.toAscii name)
-             val _ = trace ["entering package fragment: ", n]
-             val res = List.last (map (evalFragment regs ) fragments)
-             val _ = trace ["leaving package fragment: ", n]
-         in
-             res
-         end
-       | Ast.Anon (Ast.Block {head=NONE, ...}) => 
-         error regs ["top-level block with no head"]
-       | Ast.Anon (Ast.Block {head=SOME (Ast.Head (rib, inits)), body, loc, ...}) => 
-         (* 
-          * NB: do *not* do evalBlock here. It's not a "normal" block. The ribs 
-          * and inits are not intended for a temporary scope, but rather the 
-          * scope that you'd search for as a hoisting target (either the activation 
-          * scope enclosing an eval, or the global scope)
-          *)
-         let
-             val { scope, ... } = regs
-             val Mach.Scope { temps, ...} = scope
-             val obj = findTargetObj regs scope Ast.Hoisted
-             val Mach.Obj { ident, ... } = obj
-         in
-             trace ["resolved anonymous fragment target to obj #", Int.toString ident];
-             LogErr.setLoc loc;
-             allocObjRib regs obj NONE rib;
-             LogErr.setLoc loc;
-             trace ["allocating anonymous fragment inits on obj #", Int.toString ident];
-             evalInits regs obj temps;
-             LogErr.setLoc loc;
-             trace ["running anonymous fragment stmts"];
-             evalStmts regs body
-         end)
-    handle ThrowException v =>
-           let
-               val loc = !LogErr.loc
-               val exnStr = Ustring.toAscii (toUstring regs v)
-           in
-               LogErr.setLoc loc;
-               error regs ["uncaught exception: ", Ustring.toAscii (toUstring regs v)]
-           end
+    let
+        fun lastVal [] = Mach.Undef
+          | lastVal x = List.last x
+    in
+        (case frag of 
+             Ast.Unit { fragments, ... } => 
+             lastVal (map (evalFragment regs ) fragments)
+           | Ast.Package { name, fragments } => 
+             let
+                 val n = LogErr.join "." (map Ustring.toAscii name)
+                 val _ = trace ["entering package fragment: ", n]
+                 val res = lastVal (map (evalFragment regs ) fragments)
+                 val _ = trace ["leaving package fragment: ", n]
+             in
+                 res
+             end
+           | Ast.Anon (Ast.Block {head=NONE, ...}) => 
+             error regs ["top-level block with no head"]
+           | Ast.Anon (Ast.Block {head=SOME (Ast.Head (rib, inits)), body, loc, ...}) => 
+             (* 
+              * NB: do *not* do evalBlock here. It's not a "normal" block. The ribs 
+              * and inits are not intended for a temporary scope, but rather the 
+              * scope that you'd search for as a hoisting target (either the activation 
+              * scope enclosing an eval, or the global scope)
+              *)
+             let
+                 val _ = trace ["entering anon unit block"]
+                 val { scope, ... } = regs
+                 val Mach.Scope { temps, ...} = scope
+                 val obj = findTargetObj regs scope Ast.Hoisted
+                 val Mach.Obj { ident, ... } = obj
+             in
+                 trace ["resolved anonymous fragment target to obj #", Int.toString ident];
+                 LogErr.setLoc loc;
+                 allocObjRib regs obj NONE rib;
+                 LogErr.setLoc loc;
+                 trace ["allocating anonymous fragment inits on obj #", Int.toString ident];
+                 evalInits regs obj temps;
+                 LogErr.setLoc loc;
+                 trace ["running anonymous fragment stmts"];
+                 evalStmts regs body
+             end)
+        handle ThrowException v =>
+               let
+                   val loc = !LogErr.loc
+                   val exnStr = Ustring.toAscii (toUstring regs v)
+               in
+                   LogErr.setLoc loc;
+                   error regs ["uncaught exception: ", Ustring.toAscii (toUstring regs v)]
+               end
+    end
 
 and evalTopFragment (regs:Mach.REGS)
                     (frag:Ast.FRAGMENT)
