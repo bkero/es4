@@ -120,9 +120,18 @@ datatype VAL = Object of OBJ
           objectClass : (OBJ option) ref,
           arrayClass : (OBJ option) ref,
           functionClass : (OBJ option) ref,
+
           stringClass : (OBJ option) ref,
+          publicStringClass : (OBJ option) ref,
+
           numberClass : (OBJ option) ref,
+          intClass : (OBJ option) ref,
+          uintClass : (OBJ option) ref,
+          doubleClass : (OBJ option) ref,
+          decimalClass : (OBJ option) ref,
+
           booleanClass : (OBJ option) ref,
+          publicBooleanClass : (OBJ option) ref,
 
           booleanTrue : (VAL option) ref,
           booleanFalse : (VAL option) ref,
@@ -1050,8 +1059,17 @@ fun getObjectClassSlot (regs:REGS) = (#objectClass (getSpecials regs))
 fun getArrayClassSlot (regs:REGS) = (#arrayClass (getSpecials regs))
 fun getFunctionClassSlot (regs:REGS) = (#functionClass (getSpecials regs))
 fun getStringClassSlot (regs:REGS) = (#stringClass (getSpecials regs))
+fun getPublicStringClassSlot (regs:REGS) = (#publicStringClass (getSpecials regs))
+
 fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
+fun getIntClassSlot (regs:REGS) = (#intClass (getSpecials regs))
+fun getUintClassSlot (regs:REGS) = (#uintClass (getSpecials regs))
+fun getDoubleClassSlot (regs:REGS) = (#doubleClass (getSpecials regs))
+fun getDecimalClassSlot (regs:REGS) = (#decimalClass (getSpecials regs))
+
 fun getBooleanClassSlot (regs:REGS) = (#booleanClass (getSpecials regs)) 
+fun getPublicBooleanClassSlot (regs:REGS) = (#publicBooleanClass (getSpecials regs)) 
+
 fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs)) 
 fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
 fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs)) 
@@ -1134,8 +1152,14 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          arrayClass = ref NONE,
                          functionClass = ref NONE,
                          stringClass = ref NONE,
+                         publicStringClass = ref NONE,
                          numberClass = ref NONE,
+                         intClass = ref NONE,
+                         uintClass = ref NONE,
+                         doubleClass = ref NONE,
+                         decimalClass = ref NONE,
                          booleanClass = ref NONE,
+                         publicBooleanClass = ref NONE,
 
                          booleanTrue = ref NONE,
                          booleanFalse = ref NONE,

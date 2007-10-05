@@ -1218,7 +1218,7 @@ and newUInt (regs:Mach.REGS)
 and newPublicString (regs:Mach.REGS)
                     (s:Ustring.STRING)
     : Mach.VAL =
-    newBuiltin regs Name.intrinsic_string (SOME (Mach.String s))
+    newBuiltin regs Name.nons_String (SOME (Mach.String s))
 
 and newString (regs:Mach.REGS)
               (s:Ustring.STRING)
@@ -4353,25 +4353,63 @@ in a global property. All that remains is to initialise it by executing
                                                                         its body.
  *)
 
-and constructSpecialPrototype (regs:Mach.REGS)
-                              (id:Mach.OBJ_IDENT)
-    : Mach.VAL option =
-    let
-    in
-        if id = slotObjId regs Mach.getStringClassSlot
-        then SOME (newPublicString regs Ustring.empty)
-        else
-            if id = slotObjId regs Mach.getNumberClassSlot
-            then SOME (newPublicNumber regs 0.0)
-            else
-                if id = slotObjId regs Mach.getBooleanClassSlot
-                then SOME (newPublicBoolean regs false)
-                else
-                    if id = slotObjId regs Mach.getArrayClassSlot
-                    then SOME (newArray regs [])
-                    else NONE
-    end
-
+and getSpecialPrototype (regs:Mach.REGS)
+                        (id:Mach.OBJ_IDENT)
+    : (Mach.VAL * bool) option =
+    if not (Mach.isBooting regs)
+    then NONE
+    else 
+        let
+            fun getExistingProto (q:Mach.REGS -> (Mach.OBJ option) ref)
+                : (Mach.VAL * bool) option =
+                let
+                    val objOptRef = q regs 
+                    fun propNotFound _ = Mach.Null
+                in
+                    case !objOptRef of 
+                        NONE => NONE
+                      | SOME obj => 
+                        SOME ((getValueOrVirtual 
+                                   regs obj Name.nons_prototype 
+                                   false propNotFound), false)
+                end
+                            
+            fun findSpecial [] = NONE
+              | findSpecial ((q,f)::xs) = 
+                let
+                    val ident = slotObjId regs q
+                in
+                    if ident = id
+                    then f ()
+                    else findSpecial xs
+                end
+        in
+            findSpecial 
+                [
+                 (Mach.getPublicStringClassSlot,
+                  (fn _ => SOME (newPublicString regs Ustring.empty, true))),
+                 (Mach.getStringClassSlot, 
+                  (fn _ => getExistingProto Mach.getPublicStringClassSlot)),
+                 
+                 (Mach.getNumberClassSlot, 
+                  (fn _ => SOME (newPublicNumber regs 0.0, true))),
+                 (Mach.getIntClassSlot, 
+                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                 (Mach.getUintClassSlot,
+                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                 (Mach.getDoubleClassSlot,
+                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                 (Mach.getDecimalClassSlot,
+                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                 
+                 (Mach.getPublicBooleanClassSlot,
+                  (fn _ => SOME (newPublicBoolean regs false, true))),
+                 
+                 (Mach.getArrayClassSlot,
+                  (fn _ => SOME (newArray regs [], true)))
+                ]
+        end
+        
 and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ)
     : unit =
@@ -4394,14 +4432,19 @@ and initClassPrototype (regs:Mach.REGS)
                         else Mach.Null
                     end
             val _ = trace ["constructing prototype"]
-            val newPrototype = case constructSpecialPrototype regs ident of
-                                   SOME p => needObj regs p
-                                 | NONE => newObj regs
+            val (newPrototype, setConstructor) = 
+                case getSpecialPrototype regs ident of
+                    SOME (p,b) => (needObj regs p, b)
+                  | NONE => (newObj regs, true)
             val newPrototype = Mach.setProto newPrototype baseProtoVal
         in
             defValue regs classObj Name.nons_prototype (Mach.Object newPrototype);
             Mach.setPropDontEnum props Name.nons_prototype true;
-            setValue regs newPrototype Name.nons_constructor (Mach.Object classObj);
+            if setConstructor
+            then 
+                setValue regs newPrototype Name.nons_constructor (Mach.Object classObj)
+            else 
+                ();
             trace ["finished initialising class prototype"]
         end
 
@@ -4422,9 +4465,18 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
                 (Name.nons_Object, Mach.getObjectClassSlot),
                 (Name.nons_Array, Mach.getArrayClassSlot),
                 (Name.nons_Function, Mach.getFunctionClassSlot),
+
+                (Name.nons_String, Mach.getPublicStringClassSlot),
                 (Name.intrinsic_string, Mach.getStringClassSlot),
+
                 (Name.nons_Number, Mach.getNumberClassSlot),
-                (Name.nons_Boolean, Mach.getBooleanClassSlot)
+                (Name.intrinsic_int, Mach.getIntClassSlot),
+                (Name.intrinsic_uint, Mach.getUintClassSlot),
+                (Name.intrinsic_double, Mach.getDoubleClassSlot),
+                (Name.intrinsic_decimal, Mach.getDecimalClassSlot),
+
+                (Name.intrinsic_boolean, Mach.getBooleanClassSlot),
+                (Name.nons_Boolean, Mach.getPublicBooleanClassSlot)
             ]
             fun f (n,id) = Mach.nameEq name n
         in
