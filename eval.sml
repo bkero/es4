@@ -3831,13 +3831,6 @@ and bindArgs (regs:Mach.REGS)
                        ", i=", Int.toString i,
                        ", hasRest=", Bool.toString hasRest]
 
-(*
-        val Ast.Func {name,...} = func
-        val _ = if (p-d) > a orelse (not hasRest andalso a > p)
-                then LogErr.log ["arg mismatch calling ", Ustring.toAscii (#ident name), ", expecting ",Int.toString (p-d), " found ", Int.toString a]
-                else (); 
-*)
-
         val argTemps = getScopeTemps argScope
         fun bindArg _ [] = ()
           | bindArg (n:int) ((arg:Mach.VAL)::args) =
