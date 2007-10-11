@@ -10,4 +10,34 @@ Various things to worry about in the spec:
   * &&= and ||= must short-circuit (no evaluation of RHS if LHS is
     false or true, respectively), for compatibility with ActionScript.
 
+  * OO protocol issues.  Consider eg String.prototype.replace.  It
+    converts its argument to "string" and delegates to string.replace.
+    This means string.replace can use eg .substring on its argument
+    without concern for whether that object might have overridden that
+    method; in turn this guarantees that implementations can optimize
+    a lot more than the spec does.  But it also means that the
+    original function, "String.prototype.replace", does *not* honor OO
+    protocols on the original receiver object which is some String or
+    a new subclass of String.  So if the user has implemented a new
+    kind of String representation he must implement a lot of machinery
+    to operate on that representation.  This seems wrong, in that
+    there is no particular reaosn we could not spec
+    String.prototype.replace to work on whatever the String class is,
+    calling any overridden substring method etc.
 
+    What we really have is a situation where "string" is the special
+    case and could have an optimized implementation, but where the
+    language as a whole would benefit from "String" being more open
+    and OOP-ish.
+
+    On the other hand, we convert to "string" most places anyhow, so
+    the problem is everywhere, and resolving it seems unclear.
+
+    Why is there "string" at all?  Was it only because we wanted a
+    non-nullable string class that was initialized to the empty
+    string?  Or was it also because the container class must be
+    mutable but the primitive class really ought not be?  The latter
+    is for optimization reasons -- a compact representation, reuse of
+    constants.
+
+    

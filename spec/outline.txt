@@ -52,27 +52,7 @@ TBD.
 
 = III.  The built-in libraries =
 
-== Subsections so far ==
-
-  - Intro / overview
-  - The global object
-  - "Object"
-  - "Function"
-  - "Array", "vector" (if we have it)
-  - "String", "string"
-  - "Boolean", "boolean"
-  - "Number", "int", "uint", "double", "decimal", "Numeric" (if we have it)
-  - "Math"
-  - "Date"
-  - "RegExp"
-  - "Error"
-  - "Class", "Interface", and other type objects
-  - "ByteArray"
-  - "Dict"
-  - "Name"
-  - "Namespace"
-  - meta-object proposal
-  - stack-mark proposal
+    (See spec/library.pdf for the actual layout of this section.)
 
 
 = Appendices =
