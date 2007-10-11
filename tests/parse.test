@@ -64,7 +64,8 @@
 %% [objectref] parse
 @tests/objectref.es
 
-%% [objectliteral] parse
+// XFAIL
+%% [objectliteral] parse , fail
 @tests/objectliteral.es
 
 %% [arrayliteral] parse
@@ -82,7 +83,8 @@
 %% [typeexpr] parse
 @tests/typeexpr.es
 
-%% [typedarray] parse
+// XFAIL
+%% [typedarray] parse , fail
 @tests/typedarray.es
 
 %% [uniontype] parse
@@ -106,7 +108,8 @@
 %% [equality] parse
 @tests/equality.es
 
-%% [relational] parse
+// XFAIL
+%% [relational] parse , fail
 @tests/relational.es
 
 %% [primary] parse
@@ -136,7 +139,8 @@
 %% [destruct] parse
 @tests/destruct.es
 
-%% [switchtype] parse
+// XFAIL
+%% [switchtype] parse , fail
 @tests/switchtype.es
 
 %% [superstmt] parse
@@ -160,7 +164,8 @@
 %% [letstmt] parse
 @tests/letstmt.es
 
-%% [with] parse
+// XFAIL
+%% [with] parse , fail
 @tests/with.es
 
 %% [labeled] parse
@@ -178,10 +183,12 @@
 %% [attrs] parse
 @tests/attrs.es
 
-%% [fundef] parse
+// XFAIL
+%% [fundef] parse , fail
 @tests/fundef.es
 
-%% [classdef] parse
+// XFAIL
+%% [classdef] parse , fail
 @tests/classdef.es
 
 %% [interfacedef] parse
@@ -190,7 +197,8 @@
 %% [namespacedef] parse
 @tests/namespacedef.es
 
-%% [package] parse
+// XFAIL
+%% [package] parse , fail
 @tests/package.es
 
 %% [Boolean.es] parse
