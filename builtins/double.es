@@ -114,7 +114,6 @@ package
             this;
 
         intrinsic function toFixed(fractionDigits=0) : string {
-            print("here");
             let x = this;
             let f = helper::toInteger(fractionDigits);
             if (f < 0 || f > 20)
@@ -140,7 +139,7 @@ package
                 m = "00000000000000000000".substring(0,f+1-k) + m;
                 k = f+1;
             }
-            return "-" + m.substring(0,k-f) + "." + m.substring(k-f);
+            return s + m.substring(0,k-f) + "." + m.substring(k-f);
         }
 
         /* Step 10 of the toFixed algorithm in E262-3 15.7.4.5: return

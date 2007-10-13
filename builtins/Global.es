@@ -288,10 +288,12 @@ package
         case (x: null)      { return 0u }
         case (x: undefined) { return 0u }
         case (x: boolean)   { return uint(x) }
+        case (x: Boolean)   { return uint(x) }
         case (x: int)       { return x < 0 ? -x : x }
         case (x: uint)      { return x }
         case (x: double)    { return isNaN(x) ? 0u : uint(x) }
         case (x: decimal)   { return isNaN(x) ? 0u : uint(x) }
+        case (x: Number)    { return isNaN(x) ? 0u : uint(x) }
         case (x: string)    { return informative::stringHash(string(x)) }
         case (x: String)    { return informative::stringHash(string(x)) }
         case (x: *)         { return informative::objectHash(x) }
@@ -342,7 +344,7 @@ package
         while (k != s.length) {
             let C = s[k];
 
-            if (unescapedSet.indexOf(C) != 1) {
+            if (unescapedSet.indexOf(C) != -1) {
                 R = R + C;
                 k = k + 1;
                 continue;
