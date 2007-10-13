@@ -38,11 +38,27 @@ fun log ss = LogErr.log ("[fixture] " :: ss)
 fun error ss = LogErr.fixtureError ss
 fun trace ss = if (!doTrace) then log ss else ()
 
-structure NmKey = struct 
-type ord_key = Ast.NAME 
-val compare = NameKey.compare 
+fun cmpMname (a:Ast.MULTINAME, b:Ast.MULTINAME) 
+    : order = 
+    case Ustring.compare (#id a) (#id b) of
+	    LESS => LESS
+      | GREATER => GREATER
+      | EQUAL => (NameKey.collate (NameKey.collate NameKey.cmpNS)) ((#nss a), (#nss b))
+                     
+
+structure FixtureKey = struct 
+type ord_key = (Ast.FRAME_ID option * Ast.MULTINAME)
+fun compare (a,b) = 
+    case (a,b) of 
+        ((NONE, an), (NONE, bn)) => cmpMname (an, bn)
+      | ((NONE, an), ((SOME bi), bn)) => LESS
+      | (((SOME ai), an), (NONE, bn)) => GREATER
+      | (((SOME ai), an), ((SOME bi), bn)) => 
+        if ai = bi
+        then cmpMname (an, bn)
+        else Int.compare (ai,bi)
 end
-structure NmMap = SplayMapFn (NmKey);
+structure FixtureMap = SplayMapFn (FixtureKey);
 
 structure StrVecKey = struct 
 type ord_key = (Ustring.STRING vector) 
@@ -192,7 +208,7 @@ fun printRib (rib:Ast.RIB) =
  * Operations on PROGRAM
  * ----------------------------------------------------------------------------- *)
                 
-type PROGRAM = { fixtureCache: (Ast.FIXTURE NmMap.map) ref, (* mirrors the top rib *)
+type PROGRAM = { fixtureCache: (Ast.FIXTURE FixtureMap.map) ref, (* mirrors the ribs *)
                  instanceOfCache: (bool StrVecMap.map) ref,
                  cacheSize: int,
                  topRib: Ast.RIB,
@@ -207,7 +223,7 @@ fun processTopRib (prog:PROGRAM)
         val { fixtureCache, instanceOfCache, cacheSize, 
               topRib, topBlocks, packageNames, unitRibs } = prog
     in
-        { fixtureCache = ref NmMap.empty,
+        { fixtureCache = ref FixtureMap.empty,
           instanceOfCache = ref StrVecMap.empty,
           cacheSize = 1024,
           topRib = f topRib,
@@ -218,7 +234,7 @@ fun processTopRib (prog:PROGRAM)
 
 fun mkProgram (topRib:Ast.RIB)
     : PROGRAM =
-    { fixtureCache = ref NmMap.empty,
+    { fixtureCache = ref FixtureMap.empty,
       instanceOfCache = ref StrVecMap.empty,
       cacheSize = 1024,
       topRib = topRib,
@@ -288,7 +304,7 @@ fun extendTopRib (prog:PROGRAM)
     in
         { cacheSize = cacheSize, 
           (* flush caches *)
-          fixtureCache = ref NmMap.empty,
+          fixtureCache = ref FixtureMap.empty,
           instanceOfCache = ref StrVecMap.empty,
           (* replace updated immutable parts *)
           topRib = newTopRib,
@@ -324,7 +340,7 @@ fun closeTopFragment (prog:PROGRAM)
     in        
         { cacheSize = cacheSize, 
           (* flush caches *)
-          fixtureCache = ref NmMap.empty,
+          fixtureCache = ref FixtureMap.empty,
           instanceOfCache = ref StrVecMap.empty,
           (* replace updated immutable parts *)
           topRib = topRib,
@@ -334,23 +350,66 @@ fun closeTopFragment (prog:PROGRAM)
     end
 
 
+fun resolveToRibs (frameId:Ast.FRAME_ID) 
+    : Ast.RIBS = 
+    let
+        val frame = getFrame frameId 
+        val parents = case (#parent frame) of 
+                          NONE => []
+                        | SOME pid => resolveToRibs pid
+    in
+        (#rib frame) :: parents
+    end
+
+
 fun getTopFixture (prog:PROGRAM)
                   (n:Ast.NAME)
     : Ast.FIXTURE =
     let
         val { fixtureCache, cacheSize, topRib, ... } = prog
         val c = !fixtureCache
+        val k = (NONE,{id=(#id n), nss=[[(#ns n)]]})
     in
-        case NmMap.find (c, n) of
-            NONE => 
-            let
+        case FixtureMap.find (c, k) of
+            SOME v => v
+          | NONE => 
+            let 
                 val v = getFixture topRib (Ast.PropName n)
             in
-                if (NmMap.numItems c) < cacheSize
-                then (fixtureCache := NmMap.insert (c, n, v); v)
+                if (FixtureMap.numItems c) < cacheSize
+                then (fixtureCache := FixtureMap.insert (c, k, v); v)
                 else v
             end
-          | SOME v => v
+    end
+
+fun resolveToFixture (prog:PROGRAM)
+                     (mn:Ast.MULTINAME)
+                     (fid:Ast.FRAME_ID option)
+    : (Ast.FIXTURE option) =
+    let
+        val { fixtureCache, cacheSize, topRib, ... } = prog
+        val c = !fixtureCache
+        val k = (fid,mn)
+    in
+        case FixtureMap.find (c, k) of
+            SOME v => SOME v
+          | NONE => 
+            let
+                val ribs = case fid of 
+                               SOME f => (resolveToRibs f) @ [topRib]
+                             | NONE => [topRib]
+            in
+                case Multiname.resolveInRibs mn ribs of 
+                    NONE => NONE
+                  | SOME (ribs, n) => 
+                    let 
+                        val (fix:Ast.FIXTURE) = getFixture (List.hd ribs) (Ast.PropName n)
+                    in
+                        if (FixtureMap.numItems c) < cacheSize
+                        then (fixtureCache := FixtureMap.insert (c, k, fix); SOME fix)
+                        else SOME fix
+                    end
+            end
     end
 
 val (getTopRib:PROGRAM -> Ast.RIB) = #topRib
@@ -368,17 +427,6 @@ fun getCurrFullRibs (prog:PROGRAM)
                     (nonTopRibs:Ast.RIBS)
     : Ast.RIBS = 
     nonTopRibs @ [getTopRib prog]
-
-fun resolveToRibs (frameId:Ast.FRAME_ID) 
-    : Ast.RIBS = 
-    let
-        val frame = getFrame frameId 
-        val parents = case (#parent frame) of 
-                          NONE => []
-                        | SOME pid => resolveToRibs pid
-    in
-        (#rib frame) :: parents
-    end
 
 fun getFullRibsForTy (prog:PROGRAM) 
                      (ty:Ast.TY)                
@@ -405,6 +453,7 @@ fun getFullRibsForTy (prog:PROGRAM)
         (fullRibs, closed)
     end
 
+
 (* -----------------------------------------------------------------------------
  * Class operations on PROGRAMs
  * ----------------------------------------------------------------------------- *)
@@ -415,7 +464,7 @@ fun getFullRibsForTy (prog:PROGRAM)
 
 fun instanceTy (prog:PROGRAM)
                (n:Ast.NAME)
-    : Ast.TY =    
+    : Ast.TY =
     case getTopFixture prog n of
         Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)

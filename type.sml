@@ -194,37 +194,80 @@ and repackage (t:Ast.TY)
           frameId = frameId,
           topUnit = topUnit }
     end
-                
+
+
+and fix2norm (prog:Fixture.PROGRAM)
+             (originalt:Ast.TY)
+             (mname:Ast.MULTINAME)
+             (fixOpt:Ast.FIXTURE option)
+    : TY_NORM = 
+    let
+        val _ = trace ["examined type multiname ", fmtMname mname]
+        val Ast.Ty { frameId, topUnit, expr } = originalt
+
+        (* FIXME: this is an ugly way of asking if a frame is closed *)
+        val closed = case topUnit of 
+                         NONE => false
+                       | SOME tu => (case Fixture.getTopRibForUnit prog tu of 
+                                         NONE => false
+                                       | SOME closed => true)
+    in
+        case fixOpt of 
+            NONE => (trace ["failed to resolve"];
+                     if closed 
+                     then error ["type multiname ", fmtMname mname, 
+                                 " failed to resolve in closed unit "]
+                     else repackage originalt)
+          | SOME fix => 
+            let 
+                val _ = trace ["resolved"]
+                val (defn:Ast.TY) = 
+                    case fix of
+                        Ast.TypeFixture ty => ty
+                      | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
+                      | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
+                      | _ => error ["expected type fixture for: ", fmtMname mname]
+            in
+                ty2norm prog defn []
+            end            
+    end
+
+    
+and maybeNamedSlow (prog:Fixture.PROGRAM)
+                   (originalt:Ast.TY) 
+                   (locals:Ast.RIBS)
+                   (mname:Ast.MULTINAME) 
+    : TY_NORM =
+    let
+        val (fullRibs, closed) = Fixture.getFullRibsForTy prog originalt 
+        val fullRibs = locals @ fullRibs
+    in       
+        case Multiname.resolveInRibs mname fullRibs of 
+            NONE => fix2norm prog originalt mname NONE
+          | SOME (ribs, n) => 
+            let 
+                val fix = Fixture.getFixture (List.hd ribs) (Ast.PropName n)
+            in
+                fix2norm prog originalt mname (SOME fix)
+            end
+    end
+
+
 and maybeNamed (prog:Fixture.PROGRAM)
                (originalt:Ast.TY) 
                (locals:Ast.RIBS)
                (mname:Ast.MULTINAME) 
     : TY_NORM =
-    let
-        val _ = trace ["resolving type multiname ", fmtMname mname]
-        val (fullRibs, closed) = Fixture.getFullRibsForTy prog originalt 
-        val fullRibs = locals @ fullRibs
-    in
-        case Multiname.resolveInRibs mname fullRibs of 
-            NONE => 
-            (trace ["failed to resolve"];
-             if closed 
-             then error ["type multiname ", fmtMname mname, 
-                         " failed to resolve in closed unit "]
-             else repackage originalt)
-          | SOME (ribs, n) => 
-            let 
-                val _ = trace ["resolved to ", fmtName n]
-                val (defn:Ast.TY) = 
-                    case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
-                        Ast.TypeFixture ty => ty
-                      | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
-                      | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-                      | _ => error ["expected type fixture for: ", fmtName n]
-            in
-                ty2norm prog defn []
-            end
-    end
+    case locals of 
+        x::xs => maybeNamedSlow prog originalt locals mname
+      | [] => 
+        let
+            val Ast.Ty { frameId, topUnit, expr } = originalt
+            val fixOpt = Fixture.resolveToFixture prog mname frameId 
+        in
+            fix2norm prog originalt mname fixOpt
+        end
+
 
 and norm2ty (norm:TY_NORM) 
     : Ast.TY = 

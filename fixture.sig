@@ -116,7 +116,8 @@ signature FIXTURE = sig
     type PROGRAM
     val mkProgram : Ast.RIB -> PROGRAM
     val closeTopFragment : PROGRAM -> Ast.FRAGMENT -> TYEQ -> PROGRAM
-    val getTopFixture : PROGRAM -> Ast.NAME -> Ast.FIXTURE 
+    val getTopFixture : PROGRAM -> Ast.NAME -> Ast.FIXTURE
+    val resolveToFixture : PROGRAM -> Ast.MULTINAME -> (Ast.FRAME_ID option) -> Ast.FIXTURE option
     val getTopRib : PROGRAM -> Ast.RIB
     val extendTopRib : PROGRAM -> Ast.RIB -> TYEQ -> PROGRAM
     val getTopRibForUnit : PROGRAM -> Ast.UNIT_NAME -> Ast.RIB option
