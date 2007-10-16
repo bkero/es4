@@ -3186,7 +3186,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
     { nonTopRibs = [],
       frameIds = [],
       tempOffset = 0,
-      openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty], [Ast.Intrinsic]],
+      openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty]],
       numericMode = defaultNumericMode,
       labels = [],
       packageNames = Fixture.getPackageNames prog,

@@ -655,102 +655,6 @@ package MathInternals
         public const SQRT2: double = double.SQRT2;
 
         function Math() {
-            // 15.8.2 Function Properties of the Math Object.  These
-            // are {DE} only.
-            //
-            // FIXME: these properties need to be set to DontEnum, but
-            // that's not yet possible because propertyIsEnumerable
-            // does not work and (maybe) because one can't construct
-            // Name objects in the public namespace.  See tickets #89
-            // and #90.
-
-            var Math = this;
-
-            Math.public::abs = 
-                function (x) intrinsic::abs(x);
-
-            Math.public::acos = 
-                function (x) intrinsic::acos(helper::toAnyNumber(x));
-
-            Math.public::asin = 
-                function (x) intrinsic::asin(helper::toAnyNumber(x));
-
-            Math.public::atan = 
-                function (x) intrinsic::atan(helper::toAnyNumber(x));
-
-            Math.public::atan2 = 
-                function (y,x) 
-                    intrinsic::atan2(helper::toAnyNumber(y), helper::toAnyNumber(x));
-
-            Math.public::ceil =
-                function (x) intrinsic::ceil(helper::toAnyNumber(x));
-
-            Math.public::cos = 
-                function (x) intrinsic::cos(helper::toAnyNumber(x));
-
-            Math.public::exp = 
-                function (x) intrinsic::exp(helper::toAnyNumber(x));
-
-            Math.public::floor = 
-                function (x) intrinsic::floor(helper::toAnyNumber(x));
-
-            Math.public::log = 
-                function (x) intrinsic::log(helper::toAnyNumber(x));
-
-            // Do note that letting result start at -Infinity and having the loop
-            // run from 0 to xs.length produces a different result if there is
-            // one argument that is -decimal.Infinity, unless intrinsic::max
-            // always prefers one type over another.  (It doesn't.)
-            Math.public::max = 
-                function max(...xs) {
-                    if (xs.length == 0) 
-                        return -Infinity;
-                    let result = helper::toAnyNumber(xs[0]);
-                    for ( let i=1 ; i < xs.length; ++i ) {
-                        result = intrinsic::max(result, helper::toAnyNumber(xs[i]));
-                        if (isNaN(result))
-                            break;
-                    }
-                    return result;
-                };
-
-            // Do note that letting result start at Infinity and having the loop
-            // run from 0 to xs.length produces a different result if there is
-            // one argument that is decimal.Infinity, unless intrinsic::min
-            // always prefers one type over another.  (It doesn't.)
-            Math.public::min = 
-                function min(...xs) {
-                    if (xs.length == 0) 
-                        return Infinity;
-                    let result = helper::toAnyNumber(xs[0]);
-                    for ( let i=1 ; i < xs.length; ++i ) {
-                        result = intrinsic::min(result, helper::toAnyNumber(xs[i]));
-                        if (isNaN(result))
-                            break;
-                    }
-                    return result;
-                };
-
-            Math.public::pow = 
-                function (x, y) 
-                    intrinsic::pow(helper::toAnyNumber(x), helper::toAnyNumber(y));
-
-            Math.public::random =
-                function () intrinsic::random();  // Since intrinsic::random() is bound
-
-            Math.public::round = 
-                function (x) intrinsic::round(helper::toAnyNumber(x));
-
-            Math.public::sin = 
-                function (x) intrinsic::sin(helper::toAnyNumber(x));
-
-            Math.public::sqrt = 
-                function (x) intrinsic::sqrt(helper::toAnyNumber(x));
-
-            Math.public::tan = 
-                function (x) intrinsic::tan(helper::toAnyNumber(x));
-
-            /*Don't remove me*/
         }
 
         // E262 specifies that length=2 for these.
@@ -762,11 +666,120 @@ package MathInternals
 
 package
 {
-    import MathInternals.*;
+    // A curious note: 'import helper = ECMAScript4_Internal.helper'
+    // should also work, but presently does not. A bug!
+    //
+    // Also strange/disquieting aspect of the language design: such an
+    // aliased import causes the establishment of a new permanent
+    // public alias-fixture (currently implemented with getters and
+    // setters) named 'helper', whereas 'import
+    // ECMAScript4_Internal.*' merely opens the package namespace for
+    // us to use in multiname lookup here.
+    //
+    // What I *want* is to say "I'd like to use the namespace helper
+    // from ECMAScript4_Internal, and call it helper, just here".
+    //
+    // As far as I know there's no way to say that in the current language,
+    // which is pretty bad. It's similar to the problem of not being able to
+    // denote the public namespace in a different package.
 
-    /* FIXME #82: some imported types can't be used as annotations */
+    import MathInternals.Math;
+    import ECMAScript4_Internal.*;
 
-    //    intrinsic const math /* : MathInternals.Math */ = new MathInternals.Math();
+    intrinsic const Math : MathInternals.Math = new MathInternals.Math();
 
-    public var Math = new MathInternals.Math();
+    // 15.8.2 Public function Properties of the Math Object.  These
+    // are {DE} only.
+    //
+    // FIXME: these properties need to be set to DontEnum, but
+    // that's not yet possible because propertyIsEnumerable
+    // does not work and (maybe) because one can't construct
+    // Name objects in the public namespace.  See tickets #89
+    // and #90.
+    
+    public var Math = intrinsic::Math;
+    
+    Math.public::abs = 
+        function (x) intrinsic::Math.intrinsic::abs(x);
+    
+    Math.public::acos = 
+        function (x) intrinsic::Math.intrinsic::acos(helper::toAnyNumber(x));
+    
+    Math.public::asin = 
+        function (x) intrinsic::Math.intrinsic::asin(helper::toAnyNumber(x));
+    
+    Math.public::atan = 
+        function (x) intrinsic::Math.intrinsic::atan(helper::toAnyNumber(x));
+    
+    Math.public::atan2 = 
+        function (y,x) 
+        intrinsic::Math.intrinsic::atan2(helper::toAnyNumber(y), helper::toAnyNumber(x));
+    
+    Math.public::ceil =
+        function (x) intrinsic::Math.intrinsic::ceil(helper::toAnyNumber(x));
+    
+    Math.public::cos = 
+        function (x) intrinsic::Math.intrinsic::cos(helper::toAnyNumber(x));
+    
+    Math.public::exp = 
+        function (x) intrinsic::Math.intrinsic::exp(helper::toAnyNumber(x));
+    
+    Math.public::floor = 
+        function (x) intrinsic::Math.intrinsic::floor(helper::toAnyNumber(x));
+    
+    Math.public::log = 
+        function (x) intrinsic::Math.intrinsic::log(helper::toAnyNumber(x));
+    
+    // Do note that letting result start at -Infinity and having the loop
+    // run from 0 to xs.length produces a different result if there is
+    // one argument that is -decimal.Infinity, unless intrinsic::max
+    // always prefers one type over another.  (It doesn't.)
+    Math.public::max = 
+        function max(...xs) {
+            if (xs.length == 0) 
+            return -Infinity;
+            let result = helper::toAnyNumber(xs[0]);
+            for ( let i=1 ; i < xs.length; ++i ) {
+                result = intrinsic::Math.intrinsic::max(result, helper::toAnyNumber(xs[i]));
+                if (isNaN(result))
+                    break;
+            }
+            return result;
+        };
+    
+    // Do note that letting result start at Infinity and having the loop
+    // run from 0 to xs.length produces a different result if there is
+    // one argument that is decimal.Infinity, unless intrinsic::min
+    // always prefers one type over another.  (It doesn't.)
+    Math.public::min = 
+        function min(...xs) {
+            if (xs.length == 0) 
+            return Infinity;
+            let result = helper::toAnyNumber(xs[0]);
+            for ( let i=1 ; i < xs.length; ++i ) {
+                result = intrinsic::Math.intrinsic::min(result, helper::toAnyNumber(xs[i]));
+                if (isNaN(result))
+                    break;
+            }
+            return result;
+        };
+    
+    Math.public::pow = 
+        function (x, y) 
+        intrinsic::Math.intrinsic::pow(helper::toAnyNumber(x), helper::toAnyNumber(y));
+    
+    Math.public::random =
+        function () intrinsic::Math.intrinsic::random();
+    
+    Math.public::round = 
+        function (x) intrinsic::Math.intrinsic::round(helper::toAnyNumber(x));
+
+    Math.public::sin = 
+        function (x) intrinsic::Math.intrinsic::sin(helper::toAnyNumber(x));
+    
+    Math.public::sqrt = 
+        function (x) intrinsic::Math.intrinsic::sqrt(helper::toAnyNumber(x));
+    
+    Math.public::tan = 
+        function (x) intrinsic::Math.intrinsic::tan(helper::toAnyNumber(x));
 }

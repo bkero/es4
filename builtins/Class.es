@@ -41,6 +41,7 @@
 package
 {
     use default namespace public;
+    use namespace intrinsic;
 
     intrinsic class Class
     {
