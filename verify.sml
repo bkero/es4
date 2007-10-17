@@ -38,16 +38,17 @@ structure Verify = struct
  *)
 
 type STD_TYPES = { 
-     NumbersType: Ast.TYPE_EXPR,
+     AnyNumberType: Ast.TYPE_EXPR,
      doubleType: Ast.TYPE_EXPR,
      decimalType: Ast.TYPE_EXPR,
      intType: Ast.TYPE_EXPR,
      uintType: Ast.TYPE_EXPR,
+     byteType: Ast.TYPE_EXPR,
 
-     StringsType: Ast.TYPE_EXPR,
+     AnyStringType: Ast.TYPE_EXPR,
      stringType: Ast.TYPE_EXPR,
 
-     BooleansType: Ast.TYPE_EXPR,
+     AnyBooleanType: Ast.TYPE_EXPR,
      booleanType: Ast.TYPE_EXPR,
 
      RegExpType: Ast.TYPE_EXPR,
@@ -79,7 +80,8 @@ fun withRib { returnType, strict, prog, ribs, stdTypes} extn =
 
 val doTrace = ref false
 val doTraceFrag = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[verify] " :: ss) else ()
+fun log ss = LogErr.log ("[verify] " :: ss)
+fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.verifyError ss
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
@@ -145,21 +147,23 @@ fun newEnv (prog:Fixture.PROGRAM)
 
      stdTypes = 
      {      
-      NumbersType = getNamedGroundType prog Name.intrinsic_Numbers,
-      doubleType = getNamedGroundType prog Name.intrinsic_double,
-      decimalType = getNamedGroundType prog Name.intrinsic_decimal,
-      intType = getNamedGroundType prog Name.intrinsic_int,
-      uintType = getNamedGroundType prog Name.intrinsic_uint,
+      AnyNumberType = getNamedGroundType prog Name.ES4_AnyNumber,
+      doubleType = getNamedGroundType prog Name.ES4_double,
+      decimalType = getNamedGroundType prog Name.ES4_decimal,
+      intType = getNamedGroundType prog Name.ES4_int,
+      uintType = getNamedGroundType prog Name.ES4_uint,
+      byteType = getNamedGroundType prog Name.ES4_byte,
 
-      StringsType = getNamedGroundType prog Name.intrinsic_Strings,
-      stringType = getNamedGroundType prog Name.intrinsic_string,
+      AnyStringType = getNamedGroundType prog Name.ES4_AnyString,
+      stringType = getNamedGroundType prog Name.ES4_string,
 
-      BooleansType = getNamedGroundType prog Name.intrinsic_Booleans,      
-      booleanType = getNamedGroundType prog Name.intrinsic_boolean,
+      AnyBooleanType = getNamedGroundType prog Name.ES4_AnyBoolean,
+      booleanType = getNamedGroundType prog Name.ES4_boolean,
 
       RegExpType = getNamedGroundType prog Name.nons_RegExp,
 
-      NamespaceType = getNamedGroundType prog Name.intrinsic_Namespace,
+      NamespaceType = getNamedGroundType prog Name.ES4_Namespace,
+
       TypeType = getNamedGroundType prog Name.intrinsic_Type
      }
     }
@@ -303,16 +307,17 @@ and verifyExpr (env:ENV)
         val { prog, 
               strict, 
               stdTypes = 
-              { NumbersType, 
+              { AnyNumberType, 
                 doubleType,
                 decimalType,
                 intType,
                 uintType,
+                byteType,
 
-                StringsType,
+                AnyStringType,
                 stringType,
 
-                BooleansType, 
+                AnyBooleanType, 
                 booleanType, 
 
                 RegExpType,
@@ -362,16 +367,16 @@ and verifyExpr (env:ENV)
                 val (expectedType1, expectedType2, resultType) =
                     case b of
                          Ast.Plus mode => (AdditionType, AdditionType, AdditionType)
-                       | Ast.Minus mode => (NumbersType, NumbersType, NumbersType)
-                       | Ast.Times mode => (NumbersType, NumbersType, NumbersType)
-                       | Ast.Divide mode => (NumbersType, NumbersType, NumbersType)
-                       | Ast.Remainder mode => (NumbersType, NumbersType, NumbersType)
-                       | Ast.LeftShift => (NumbersType, NumbersType, NumbersType)
-                       | Ast.RightShift => (NumbersType, NumbersType, NumbersType)
-                       | Ast.RightShiftUnsigned => (NumbersType, NumbersType, NumbersType)
-                       | Ast.BitwiseAnd => (NumbersType, NumbersType, NumbersType)
-                       | Ast.BitwiseOr => (NumbersType, NumbersType, NumbersType)
-                       | Ast.BitwiseXor => (NumbersType, NumbersType, NumbersType)
+                       | Ast.Minus mode => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Times mode => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Divide mode => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Remainder mode => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.LeftShift => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.RightShift => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.RightShiftUnsigned => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.BitwiseAnd => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.BitwiseOr => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.BitwiseXor => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.LogicalAnd => (booleanType, booleanType, booleanType)
                        | Ast.LogicalOr => (booleanType, booleanType, booleanType)
                        | Ast.InstanceOf => (anyType, anyType, booleanType)
@@ -425,13 +430,13 @@ and verifyExpr (env:ENV)
                                       Ast.Delete => booleanType
                                     | Ast.Void => undefinedType
                                     | Ast.Typeof => stringType
-                                    | Ast.PreIncrement mode => NumbersType
-                                    | Ast.PreDecrement mode => NumbersType
-                                    | Ast.PostIncrement mode => NumbersType
-                                    | Ast.PostDecrement mode => NumbersType
-                                    | Ast.UnaryPlus mode => NumbersType
-                                    | Ast.UnaryMinus mode => NumbersType
-                                    | Ast.BitwiseNot => NumbersType
+                                    | Ast.PreIncrement mode => AnyNumberType
+                                    | Ast.PreDecrement mode => AnyNumberType
+                                    | Ast.PostIncrement mode => AnyNumberType
+                                    | Ast.PostDecrement mode => AnyNumberType
+                                    | Ast.UnaryPlus mode => AnyNumberType
+                                    | Ast.UnaryMinus mode => AnyNumberType
+                                    | Ast.BitwiseNot => AnyNumberType
                                     | Ast.LogicalNot => booleanType
                                     (* TODO: isn't this supposed to be the prefix of a type expression? *)
                                     | Ast.Type => TypeType
@@ -440,13 +445,13 @@ and verifyExpr (env:ENV)
                                case u of
                                     (* FIXME: these are probably wrong *)
                                     Ast.Delete => ()
-                                  | Ast.PreIncrement mode => checkCompatible t NumbersType
-                                  | Ast.PostIncrement mode => checkCompatible t NumbersType
-                                  | Ast.PreDecrement mode => checkCompatible t NumbersType
-                                  | Ast.PostDecrement mode => checkCompatible t NumbersType
-                                  | Ast.UnaryPlus mode => checkCompatible t NumbersType
-                                  | Ast.UnaryMinus mode => checkCompatible t NumbersType
-                                  | Ast.BitwiseNot => checkCompatible t NumbersType
+                                  | Ast.PreIncrement mode => checkCompatible t AnyNumberType
+                                  | Ast.PostIncrement mode => checkCompatible t AnyNumberType
+                                  | Ast.PreDecrement mode => checkCompatible t AnyNumberType
+                                  | Ast.PostDecrement mode => checkCompatible t AnyNumberType
+                                  | Ast.UnaryPlus mode => checkCompatible t AnyNumberType
+                                  | Ast.UnaryMinus mode => checkCompatible t AnyNumberType
+                                  | Ast.BitwiseNot => checkCompatible t AnyNumberType
                                   | Ast.LogicalNot => checkConvertible t booleanType
                                   (* TODO: Ast.Type? *)
                                   | _ => ());
@@ -687,16 +692,17 @@ and verifyStmt (env:ENV)
               strict, 
               returnType,
               stdTypes = 
-              { NumbersType, 
+              { AnyNumberType, 
                 doubleType,
                 decimalType,
                 intType,
                 uintType,
+                byteType,
 
-                StringsType,
+                AnyStringType,
                 stringType,
 
-                BooleansType, 
+                AnyBooleanType, 
                 booleanType, 
 
                 RegExpType,

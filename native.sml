@@ -164,15 +164,15 @@ fun nthAsBool (vals:Mach.VAL list)
           | _ => error ["Wanted Boolean, got other"]
     end
 
-fun nthAsByteArray (vals:Mach.VAL list)
-                   (n:int)
-    : Word8Array.array =
+fun nthAsByte (vals:Mach.VAL list)
+              (n:int)
+    : Word8.word =
     let
         val Mach.Obj { magic, ... } = nthAsObj vals n
     in
         case !magic of
-            SOME (Mach.ByteArray b) => b
-          | _ => error ["Wanted ByteArray, got other"]
+            SOME (Mach.Byte b) => b
+          | _ => error ["Wanted Byte, got other"]
     end
 
 
@@ -507,6 +507,7 @@ fun convertAndBindMagic (vals:Mach.VAL list)
  *
  * magic native function bindInt(target : Object!, value : * );
  * magic native function bindUInt(target : Object!, value : * );
+ * magic native function bindByte(target : Object!, value : * );
  * magic native function bindBoolean(target : Object!, value : * );
  * magic native function bindDouble(target : Object!, value : * );
  * magic native function bindDecimal(target : Object!, value : * );
@@ -516,6 +517,11 @@ fun bindUInt (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
     convertAndBindMagic vals (Eval.toUInt32 regs) (Mach.UInt)
+
+fun bindByte (regs:Mach.REGS)
+             (vals:Mach.VAL list)
+    : Mach.VAL =
+    convertAndBindMagic vals (Eval.toByte regs) (Mach.Byte)
 
 fun bindInt (regs:Mach.REGS)
             (vals:Mach.VAL list)
@@ -565,6 +571,11 @@ fun newUInt (regs:Mach.REGS)
             (vals:Mach.VAL list)
     : Mach.VAL =
     Eval.newUInt regs (Eval.toUInt32 regs (rawNth vals 0))
+
+fun newByte (regs:Mach.REGS)
+            (vals:Mach.VAL list)
+    : Mach.VAL =
+    Eval.newByte regs (Eval.toByte regs (rawNth vals 0))
 
 fun newDouble (regs:Mach.REGS)
               (vals:Mach.VAL list)
@@ -677,46 +688,6 @@ fun stringAppend (regs:Mach.REGS)
     in
         Eval.newString regs (Ustring.stringAppend a b)
     end
-
-
-(*
- * Get the byte at index idx.  Unspecified behavior if that index
- * does not have data (it's OK to crash the system).
- *
- * magic native function getByteArrayByte(ba : ByteArray!, idx : uint) : uint;
- *)
-fun getByteArrayByte (regs:Mach.REGS)
-                     (vals:Mach.VAL list)
-    : Mach.VAL =
-    let
-        val b = nthAsByteArray vals 0
-        val i = nthAsUInt vals 1
-    in
-        Eval.newUInt regs 
-                     (Word32.fromInt 
-                          (Word8.toInt 
-                               (Word8Array.sub 
-                                    (b, (Word32.toInt i)))))
-    end
-
-(*
- * Set the byte at index idx to val, which will be truncated to
- * the low 8 bits before being stored.
- *
- * magic native function setByteArrayByte(ba : ByteArray!, idx : uint, val : uint) : void;
- *)
-fun setByteArrayByte (regs:Mach.REGS)
-                     (vals:Mach.VAL list)
-    : Mach.VAL =
-    let
-        val b = nthAsByteArray vals 0
-        val i = nthAsUInt vals 1
-        val v = nthAsUInt vals 2
-    in
-        Word8Array.update(b, Word32.toInt i, Word8.fromInt (Word32.toInt v));
-        Mach.Undef
-    end
-
 
 (*
  * 15.1.2.1
@@ -1057,7 +1028,7 @@ fun typename (regs:Mach.REGS)
            | SOME (Mach.Int _) => Ustring.int_
            | SOME (Mach.Double _) => Ustring.double_
            | SOME (Mach.Decimal _) => Ustring.decimal_
-           | SOME (Mach.ByteArray _) => Ustring.bytearray_
+           | SOME (Mach.Byte _) => Ustring.byte_
            | SOME (Mach.String _) => Ustring.string_
            | SOME (Mach.Boolean _) => Ustring.bool_
            | SOME (Mach.Namespace _) => Ustring.namespace_
@@ -1142,11 +1113,13 @@ fun registerNatives _ =
         addFn 2 Name.magic_bindDecimal bindDecimal;
         addFn 2 Name.magic_bindBoolean bindBoolean;
         addFn 2 Name.magic_bindString bindString;
+        addFn 2 Name.magic_bindByte bindByte;
 
         addFn 1 Name.magic_newBoolean newBoolean;
         addFn 1 Name.magic_newString newString;
         addFn 1 Name.magic_newInt newInt;
         addFn 1 Name.magic_newUInt newUInt;
+        addFn 1 Name.magic_newByte newByte;
         addFn 1 Name.magic_newDouble newDouble;
 
         addFn 3 Name.magic_apply apply;
@@ -1156,8 +1129,6 @@ fun registerNatives _ =
         addFn 1 Name.magic_fromCharCode fromCharCode;
         addFn 1 Name.magic_stringLength stringLength;
         addFn 2 Name.magic_stringAppend stringAppend;
-        addFn 2 Name.magic_getByteArrayByte getByteArrayByte;
-        addFn 3 Name.magic_setByteArrayByte setByteArrayByte;
 
         addFn 1 Name.intrinsic_eval eval;
         addFn 1 Name.intrinsic_parseFloat parseFloat;
@@ -1172,8 +1143,8 @@ fun registerNatives _ =
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn 0 Name.intrinsic_now now;
-        addFn 0 Name.nons_LocalTZA (fn regs => fn _ => Eval.newDouble regs 0.0);
-        addFn 0 Name.nons_DaylightSavingsTA (fn regs => fn _ => Eval.newDouble regs 0.0);
+        addFn 0 Name.intrinsic_LocalTZA (fn regs => fn _ => Eval.newDouble regs 0.0);
+        addFn 0 Name.intrinsic_DaylightSavingsTA (fn regs => fn _ => Eval.newDouble regs 0.0);
 
         (* Math.es natives *)
         addFn 1 Name.informative_acosDouble acosDouble;

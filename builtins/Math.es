@@ -44,7 +44,9 @@
 package MathInternals
 {
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
 
     type AnyNumber = (int,uint,double,decimal);

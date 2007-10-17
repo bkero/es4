@@ -34,7 +34,8 @@
 structure Type = struct
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[type] " :: ss) else ()
+fun log ss = LogErr.log ("[type] " :: ss) 
+fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.typeError ss
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
@@ -215,7 +216,7 @@ and fix2norm (prog:Fixture.PROGRAM)
         case fixOpt of 
             NONE => (trace ["failed to resolve"];
                      if closed 
-                     then error ["type multiname ", fmtMname mname, 
+                     then error ["type multiname ", LogErr.multiname mname, 
                                  " failed to resolve in closed unit "]
                      else repackage originalt)
           | SOME fix => 
@@ -226,7 +227,7 @@ and fix2norm (prog:Fixture.PROGRAM)
                         Ast.TypeFixture ty => ty
                       | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
                       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-                      | _ => error ["expected type fixture for: ", fmtMname mname]
+                      | _ => error ["expected type fixture for: ", LogErr.multiname mname]
             in
                 ty2norm prog defn []
             end            

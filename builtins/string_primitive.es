@@ -69,13 +69,15 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import Unicode.*
     import RegExpInternals.*
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    intrinsic final class string!
+    __ES4__ final class string!
     {
         // A getter because string is loaded before int
         static function get length() { return 1 }

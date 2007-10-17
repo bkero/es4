@@ -1,8 +1,7 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "int" object
+ * ECMAScript 4 builtins - the "byte" object
  *
- * E262-3 15.7
  * E262-4 proposals:numbers
  * Tamarin code
  *
@@ -51,64 +50,59 @@ package
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    // The [[Prototype]] of "int" is Number.[[Prototype]]
+    // The [[Prototype]] of "byte" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
-    __ES4__ final class int!
+    __ES4__ final class byte!
     {
         static const length = 1;
 
-        static const MAX_VALUE : int = 0x7FFFFFFFi;
-        static const MIN_VALUE : int = -0x80000000i;
+        static const MAX_VALUE : byte = 0xFFu;
+        static const MIN_VALUE : byte = 0;
 
         /* Obsolete, needed for the moment because the RI does not yet handle
            interconversion of numbers */
         meta static function convert(x)
-            int(x);
+            byte(x);
 
-        /* E262-4 draft: The int Constructor Called as a Function */
-        meta static function invoke(x=0)
-            x is int ? x : magic::newInt(x);
+        /* E262-4 draft: The byte Constructor Called as a Function */
+        meta static function invoke(x=0u)
+            x is byte ? x : magic::newByte(x);
 
-        /* E262-4 draft: The int constructor */
-        function int(x=0i)
-            magic::bindInt(this, x);
+        /* E262-4 draft: The byte constructor */
+        function byte(x=0u)
+            magic::bindByte(this, x);
 
-        override intrinsic function toString(radix = 10) : string {
+        override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (radix is AnyNumber &&
-                radix >= 2 && radix <= 36 && helper::isIntegral(radix)) 
-                return informative::toString(int(radix));
-            throw new TypeError("Invalid radix argument to int.toString");
-        }
-
-        informative function toString(radix) {
-            let v = this;
-            let s = "";
-            var q = "";
-
-            if (v < 0) {
-                s = "-";
-                v = -v;
+            if (typeof radix === "number" && 
+                radix >= 2 && 
+                radix <= 36 && 
+                helper::isIntegral(radix)) 
+            {
+                radix = int(radix);
+                let v = this;
+                var q = "";
+                while (v != 0) {
+                    q = "0123456789abcdefABCDEFGHIJKLMNOPQRSTUVWXYZ"[v % radix] + q;
+                    v = (v - (v % radix)) / radix;
+                }
+                if (q == "")
+                    q = "0";
+                return q;
             }
-            while (v != 0) {
-                q = "0123456789abcdefABCDEFGHIJKLMNOPQRSTUVWXYZ"[v % radix] + q;
-                v = (v - (v % radix)) / radix;
-            }
-            if (q == "")
-                q = "0";
-            return s + q;
+            throw new TypeError("Invalid radix argument to byte.toString");
         }
 
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
-            intrinsic::toString();
+            toString();
 
         override intrinsic function toJSONString(pretty: boolean=false) : string
             JSON.formatNumber(this, pretty);
 
-        override intrinsic function valueOf(): int
+        override intrinsic function valueOf(): byte
             this;
 
         intrinsic function toFixed(fractionDigits=0) : string

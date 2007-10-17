@@ -1,4 +1,5 @@
-/*
+/* -*- mode: java; indent-tabs-mode: nil -*-
+ *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
  *
@@ -55,8 +56,9 @@
 
 package Unicode
 {
-    use strict;
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     function makeTable(data) {
         var t = [];

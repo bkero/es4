@@ -41,7 +41,8 @@ fun newAnonNS _ =
 val metaNS = newAnonNS ()
 val magicNS = newAnonNS ()
 val informativeNS = newAnonNS ()
-val noNS = Ast.Public (Ustring.empty)
+val noNS = Ast.Public Ustring.empty
+val ES4NS = Ast.Public Ustring.ES4_
 val intrinsicNS = Ast.Intrinsic
 
 (*
@@ -61,6 +62,7 @@ fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
 fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
 fun public (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Public (mangle cls) }
 fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
+fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
 
 (*
  * To reference a name as a type expression, you need
@@ -78,20 +80,20 @@ fun typename (n:Ast.NAME) =
  * once we finish booting.
  *)
 
-(* From Type.es *)
+(* From MetaObjects.es *)
 val intrinsic_Type = intrinsic Ustring.Type_
 
-(* From Interface.es *)
+(* From Interface.es -- going away. *)
 val intrinsic_Interface = intrinsic Ustring.Interface_
 
-(* From Class.es *)
+(* From Class.es -- going away. *)
 val intrinsic_Class = intrinsic Ustring.Class_
 
 (* From Namespace.es *)
-val intrinsic_Namespace = intrinsic Ustring.Namespace_
+val ES4_Namespace = ES4 Ustring.Namespace_
 
 (* From Name.es *)
-val intrinsic_Name = intrinsic Ustring.Name_
+val ES4_Name = ES4 Ustring.Name_
 val nons_qualifier = nons Ustring.qualifier_
 val nons_identifier = nons Ustring.identifier_
 
@@ -108,15 +110,6 @@ val nons_TypeError = nons Ustring.TypeError_
 
 (* From Conversions.es *)
 val intrinsic_ToPrimitive = intrinsic Ustring.ToPrimitive_
-val intrinsic_ToBoolean = intrinsic Ustring.ToBoolean_
-val intrinsic_ToInteger = intrinsic Ustring.ToInteger_
-val intrinsic_ToInt = intrinsic Ustring.ToInt_
-val intrinsic_ToUint = intrinsic Ustring.ToUint_
-val intrinsic_ToDouble = intrinsic Ustring.ToDouble_
-val intrinsic_ToDecimal = intrinsic Ustring.ToDecimal_
-val intrinsic_ToString = intrinsic Ustring.ToString_
-val intrinsic_ToObject = intrinsic Ustring.ToObject_
-val intrinsic_ToNumeric = intrinsic Ustring.ToNumeric_
 
 (* From Global.es *)
 val intrinsic_NaN = intrinsic Ustring.NaN_
@@ -158,42 +151,39 @@ val nons_Function = nons Ustring.Function_
 
 (* From Boolean.es *)
 val nons_Boolean = nons Ustring.Boolean_
-val intrinsic_Booleans = intrinsic Ustring.Booleans_
+val ES4_AnyBoolean = ES4 Ustring.AnyBoolean_
 
 (* From boolean_primitive.es *)
-val intrinsic_boolean = intrinsic Ustring.boolean_
+val ES4_boolean = ES4 Ustring.boolean_
 
 (* From Number.es *)
 val nons_Number = nons Ustring.Number_
-val intrinsic_Numbers = intrinsic Ustring.Numbers_
+val ES4_AnyNumber = ES4 Ustring.AnyNumber_
 
 (* From double.es *)
-val intrinsic_double = intrinsic Ustring.double_
+val ES4_double = ES4 Ustring.double_
 
 (* From int.es *)
-val intrinsic_int = intrinsic Ustring.int_
+val ES4_int = ES4 Ustring.int_
 
 (* From uint.es *)
-val intrinsic_uint = intrinsic Ustring.uint_
+val ES4_uint = ES4 Ustring.uint_
+
+(* From byte.es *)
+val ES4_byte = ES4 Ustring.byte_
 
 (* From decimal.es *)
-val intrinsic_decimal = intrinsic Ustring.decimal_
-
-(* From Numeric.es *)
-val intrinsic_Numeric = intrinsic Ustring.Numeric_
+val ES4_decimal = ES4 Ustring.decimal_
 
 (* From String.es *)
 val nons_String = nons Ustring.String_
-val intrinsic_Strings = intrinsic Ustring.Strings_
+val ES4_AnyString = ES4 Ustring.AnyString_
 
 (* From string_primitive.es *)
-val intrinsic_string = intrinsic Ustring.string_
+val ES4_string = ES4 Ustring.string_
 
 (* From Array.es *)
 val nons_Array = nons Ustring.Array_
-
-(* From ByteArray.es *)
-val intrinsic_ByteArray = intrinsic Ustring.ByteArray_
 
 (* From Date.es *)
 val nons_Date = nons Ustring.Date_
@@ -250,11 +240,9 @@ val intrinsic_toFixedStep10 = intrinsic Ustring.toFixedStep10_
 val intrinsic_set = intrinsic Ustring.set_
 val intrinsic_get = intrinsic Ustring.get_
 
-val nons_DaylightSavingsTA = nons Ustring.DaylightSavingsTA_
-val nons_LocalTZA = nons Ustring.LocalTZA_
+val intrinsic_DaylightSavingsTA = intrinsic Ustring.DaylightSavingsTA_
+val intrinsic_LocalTZA = intrinsic Ustring.LocalTZA_
 
-val magic_setByteArrayByte = magic Ustring.setByteArrayByte_
-val magic_getByteArrayByte = magic Ustring.getByteArrayByte_
 val magic_stringAppend = magic Ustring.stringAppend_
 val magic_stringLength = magic Ustring.stringLength_
 val magic_fromCharCode = magic Ustring.fromCharCode_
@@ -267,11 +255,13 @@ val magic_bindDecimal = magic Ustring.bindDecimal_
 val magic_bindDouble = magic Ustring.bindDouble_
 val magic_bindUInt = magic Ustring.bindUInt_
 val magic_bindInt = magic Ustring.bindInt_
+val magic_bindByte = magic Ustring.bindByte_
 
 val magic_newString = magic Ustring.newString_
 val magic_newBoolean = magic Ustring.newBoolean_
 val magic_newInt = magic Ustring.newInt_
 val magic_newUInt = magic Ustring.newUInt_
+val magic_newByte = magic Ustring.newByte_
 val magic_newDouble = magic Ustring.newDouble_
 
 val magic_toPrimitive = magic Ustring.toPrimitive_
@@ -316,5 +306,6 @@ val empty = nons Ustring.empty
 val meta_ = nons Ustring.meta_
 val magic_ = nons Ustring.magic_
 val informative_ = nons Ustring.informative_
+val ES4_ = nons Ustring.ES4_
 
 end

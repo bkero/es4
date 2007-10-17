@@ -36,10 +36,11 @@
 package
 {
     import ECMAScript4_Internal.*;
-
     {
-        use namespace intrinsic;
         use namespace helper;
+        use namespace intrinsic;
+        use namespace __ES4__;
+        use strict;
 
         helper function numberconversion(t)
             numbertypes.indexOf(t) != -1;
@@ -78,11 +79,11 @@ package
         }
 
 
-        type ClassTypeIterator = *;   // FIXME: iterator::IteratorType.<ClassType>
-        type NominalTypeIterator = *; // FIXME: iterator::IteratorType.<NominalType>
-        type FieldIterator = *;       // FIXME: iterator::IteratorType.<Field>
-        type TypeIterator = *;        // FIXME: iterator::IteratorType.<Type>;
-        type ValueIterator = *;       // FIXME: iterator::IteratorType.<*>;
+        intrinsic type ClassTypeIterator = *;   // FIXME: iterator::IteratorType.<ClassType>
+        intrinsic type NominalTypeIterator = *; // FIXME: iterator::IteratorType.<NominalType>
+        intrinsic type FieldIterator = *;       // FIXME: iterator::IteratorType.<Field>
+        intrinsic type TypeIterator = *;        // FIXME: iterator::IteratorType.<Type>;
+        intrinsic type ValueIterator = *;       // FIXME: iterator::IteratorType.<*>;
 
         intrinsic interface Type 
         {
@@ -90,7 +91,7 @@ package
             function isSubtypeOf(t: Type): boolean;
         }
 
-        intrinsic function typeOf(v): Type {
+        intrinsic const function typeOf(v): Type {
             if (v is null)
                 return nulltype;
             if (v is undefined)

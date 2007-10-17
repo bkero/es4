@@ -145,7 +145,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
 		   | Ast.TypeVarFixture => "[typeVar]"
-		   | Ast.TypeFixture _ => "[type]"
+		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty (AstQuery.typeExprOf t))
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
@@ -214,25 +214,31 @@ type PROGRAM = { fixtureCache: (Ast.FIXTURE FixtureMap.map) ref, (* mirrors the 
                  topRib: Ast.RIB,
                  topBlocks: Ast.BLOCK list,
                  packageNames: (Ast.IDENT list) list,
-                 unitRibs: (Ast.RIB StrVecMap.map) }
+                 unitRibs: (Ast.RIB StrVecMap.map),
+                 langEd: int }
 
 fun processTopRib (prog:PROGRAM) 
                   (f:Ast.RIB -> Ast.RIB)
     : PROGRAM = 
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
-              topRib, topBlocks, packageNames, unitRibs } = prog
+              topRib, topBlocks, packageNames, unitRibs, langEd } = prog
     in
+        frameMap := IntMap.map (fn v => ({ curr = (#curr v),
+                                           parent = (#parent v),
+                                           rib = f (#rib v) } )) (!frameMap);
         { fixtureCache = ref FixtureMap.empty,
           instanceOfCache = ref StrVecMap.empty,
           cacheSize = 1024,
           topRib = f topRib,
           topBlocks = topBlocks,
           packageNames = packageNames,
-          unitRibs = StrVecMap.map f unitRibs  }
+          unitRibs = StrVecMap.map f unitRibs,
+          langEd = langEd }
     end
 
-fun mkProgram (topRib:Ast.RIB)
+fun mkProgram (langEd:int) 
+              (topRib:Ast.RIB)
     : PROGRAM =
     { fixtureCache = ref FixtureMap.empty,
       instanceOfCache = ref StrVecMap.empty,
@@ -240,7 +246,30 @@ fun mkProgram (topRib:Ast.RIB)
       topRib = topRib,
       topBlocks = [],
       packageNames = [],
-      unitRibs = StrVecMap.empty }
+      unitRibs = StrVecMap.empty,
+      langEd = langEd }
+
+fun updateLangEd (langEd:int)
+                 (prog:PROGRAM)
+    : PROGRAM = 
+    let
+        val { fixtureCache, instanceOfCache, cacheSize, topRib,
+              topBlocks, packageNames, unitRibs, ... } = prog
+    in
+        { fixtureCache = fixtureCache,
+          instanceOfCache = instanceOfCache, 
+          cacheSize = cacheSize, 
+          topRib = topRib,
+          topBlocks = topBlocks, 
+          packageNames = packageNames, 
+          unitRibs = unitRibs, 
+          langEd = langEd }
+    end
+
+fun langEd (prog:PROGRAM)
+    : int = 
+    (#langEd prog)
+
 
 fun mergeVirtuals (tyeq:Ast.TY -> Ast.TY -> bool)
                   (fName:Ast.FIXTURE_NAME)
@@ -299,7 +328,7 @@ fun extendTopRib (prog:PROGRAM)
     : PROGRAM = 
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
-              topRib, topBlocks, packageNames, unitRibs } = prog
+              topRib, topBlocks, packageNames, unitRibs, langEd } = prog
         val newTopRib = List.rev (List.foldl (mergeFixtures tyeq) topRib additions)
     in
         { cacheSize = cacheSize, 
@@ -310,7 +339,8 @@ fun extendTopRib (prog:PROGRAM)
           topRib = newTopRib,
           topBlocks = topBlocks,
           packageNames = packageNames,
-          unitRibs = unitRibs }
+          unitRibs = unitRibs,
+          langEd = langEd  }
     end
 
 fun closeTopFragment (prog:PROGRAM)
@@ -319,7 +349,7 @@ fun closeTopFragment (prog:PROGRAM)
     : PROGRAM = 
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
-              topRib, topBlocks, packageNames, unitRibs } = prog
+              topRib, topBlocks, packageNames, unitRibs, langEd } = prog
         val newUnitRibs = 
             case frag of 
                 Ast.Unit { name=SOME nm, ... } => 
@@ -346,7 +376,8 @@ fun closeTopFragment (prog:PROGRAM)
           topRib = topRib,
           topBlocks = topBlocks @ (fragBlocks frag),
           packageNames = packageNames @ (fragPackages frag),
-          unitRibs = newUnitRibs }
+          unitRibs = newUnitRibs,
+          langEd = langEd  }
     end
 
 
@@ -518,7 +549,8 @@ fun instanceOf (prog:PROGRAM)
         val k = Vector.fromList (init @ [sep] @ targ)
     in
         case StrVecMap.find (c, k) of
-            NONE => 
+            SOME v => v
+          | NONE => 
             let
                 val v = searchFrom t0
             in
@@ -526,7 +558,6 @@ fun instanceOf (prog:PROGRAM)
                 then (instanceOfCache := StrVecMap.insert (c, k, v); v)
                 else v
             end
-          | SOME v => v
     end
 
 end

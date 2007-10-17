@@ -246,7 +246,8 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
 fun boot _ : Mach.REGS =
     let
         val _ = Native.registerNatives ();
-        val prog = Fixture.mkProgram Defn.initRib
+        val langEd = 4
+        val prog = Fixture.mkProgram langEd Defn.initRib
 
         (*
          * We have to do a small bit of delicate work here because we have to 
@@ -283,9 +284,9 @@ fun boot _ : Mach.REGS =
                        "builtins/Number.es",
                        "builtins/int.es",
                        "builtins/uint.es",
+                       "builtins/byte.es",
                        "builtins/double.es",
                        "builtins/decimal.es",
-                       "builtins/Numeric.es",
                        
                        "builtins/Error.es",
                        "builtins/EncodingError.es",
@@ -300,9 +301,7 @@ fun boot _ : Mach.REGS =
                        "builtins/Global.es",
                        
                        "builtins/Array.es",  (* before Date *)
-                       
-                       "builtins/ByteArray.es",
-                       
+
                        "builtins/Shell.es",   (* before RegExp, for debugging *)
                        "builtins/UnicodeClasses.es",
                        "builtins/UnicodeCasemapping.es",
@@ -314,6 +313,12 @@ fun boot _ : Mach.REGS =
                        "builtins/Date.es",
                        "builtins/MetaObjects.es", (* before JSON *)
                        "builtins/JSON.es"
+
+                           (*                            
+                            "builtins/Map.es",
+                            "builtins/Vector.es"
+                            *)
+
                  ]
 
         val objFrag = Verify.verifyTopFragment prog true objFrag
@@ -325,6 +330,16 @@ fun boot _ : Mach.REGS =
             in
                 Mach.newObj objTag Mach.Null NONE
             end
+
+        val clsFrag = Verify.verifyTopFragment prog true clsFrag
+        val funFrag = Verify.verifyTopFragment prog true funFrag
+        val ifaceFrag = Verify.verifyTopFragment prog true ifaceFrag
+        val otherProgs = verifyFiles prog otherFrags
+
+        (* 3 passes tends to get early-binding through to the majority of dependencies. *)
+        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
+        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
+        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
 
         val regs = Mach.makeInitialRegs prog glob
         val _ = Mach.setBooting regs true
@@ -343,13 +358,6 @@ fun boot _ : Mach.REGS =
         val _ = trace ["allocated ribs for initial rib"]
 
         val _ = describeGlobal regs;
-
-        val clsFrag = Verify.verifyTopFragment prog true clsFrag
-        val funFrag = Verify.verifyTopFragment prog true funFrag                      
-        val ifaceFrag = Verify.verifyTopFragment prog true  ifaceFrag
-        val otherProgs = verifyFiles prog otherFrags
-
-        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;

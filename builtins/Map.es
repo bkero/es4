@@ -71,8 +71,10 @@
 
 package
 {
-    use namespace intrinsic;
     use default namespace public;
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     // Should be __ES4__
     intrinsic class Map.<K,V>

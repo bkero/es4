@@ -41,6 +41,19 @@
 structure Main = struct
 
 val interactive = ref true
+val langEd = ref 4
+
+fun updateLangEd (regs:Mach.REGS)
+    : Mach.REGS =
+    let 
+        val { scope, this, global, prog, aux } = regs
+    in
+       { scope = scope,
+         this = this,
+         global = global,
+         prog = Fixture.updateLangEd (!langEd) prog,
+         aux = aux }
+    end
 
 fun findTraceOption (tname:string)
     : (bool ref) option =
@@ -63,20 +76,21 @@ fun findTraceOption (tname:string)
       | _ => NONE
 
 fun consumeOption (opt:string) : bool =
-    case explode opt of
-        (#"-" :: #"T" :: rest) =>
-        (case findTraceOption (String.implode rest) of
-             SOME r => (r := true; false)
-           | NONE => true)
-      | ([#"-", #"I"]) =>
-        (interactive := false; false)
-(*
+    case explode opt of                                  
+        ([#"-", #"3"]) => (langEd := 3; false)
+      | ([#"-", #"4"]) => (langEd := 4; false)
+      | ([#"-", #"I"]) => (interactive := false; false)
+      | (#"-" :: #"T" :: rest) => (case findTraceOption (String.implode rest) of
+                                       SOME r => (r := true; false)
+                                     | NONE => true)
+      (*
       | (#"-" :: #"P" :: rest) =>
         (case Int.fromString (String.implode rest) of
-            NONE => false
-          | SOME 0 => false
-          | SOME n => (Eval.doProfile := SOME n; false))
-*)
+             NONE => false
+           | SOME 0 => false
+           | SOME n => (Eval.doProfile := SOME n; false))
+       *)
+
       | _ => true
 
 exception quitException
@@ -143,12 +157,14 @@ fun repl regs argvRest =
             in
                 case toks of
                     [":quit"] => raise quitException
+                  | [":3"] => (langEd := 3; regsCell := (updateLangEd (!regsCell)))
+                  | [":4"] => (langEd := 4; regsCell := (updateLangEd (!regsCell)))
                   | [":q"] => raise quitException
                   | [":h"] => help ()
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot(); doLine ())
+                  | [":reboot"] => (regsCell := (updateLangEd (Boot.boot())); doLine ())
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
@@ -262,6 +278,8 @@ fun eval regs argvRest =
 fun usage () =
     (List.app TextIO.print
               ["usage: es4 [-h|-r|-p file ...|-d file ...|-v file ...|-e file ...] [-Pn] [-Tmod] ...\n",
+               "    -3            process input files in 3rd edition mode\n",
+               "(*) -4            process input files in 4th edition mode\n",
                "    -h            display this help message and exit\n",
                "(*) -r            start the interactive read-eval-print loop\n",
                "    -p            run given files through parse phase and exit\n",

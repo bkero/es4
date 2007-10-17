@@ -46,6 +46,8 @@ package
 
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity
@@ -54,7 +56,7 @@ package
     intrinsic const Infinity = 1.0/0.0;
     intrinsic const undefined = void(0);
 
-    intrinsic const global = this;
+    __ES4__ const global = this;
 
     namespace iterator;
 
@@ -82,7 +84,7 @@ package
     intrinsic native function eval(s: string);
 
     function eval(x) {
-        if (!(x is Strings))
+        if (!(x is AnyString))
             return x;
         return intrinsic::eval(string(x));
     }
@@ -94,7 +96,7 @@ package
      * to 8, but instead to default to radix 10 in all cases
      * except when the string starts with '0x' or '0X'.
      */
-    intrinsic function parseInt(s: string, r: int=0): Numeric {
+    intrinsic function parseInt(s: string, r: int=0): AnyNumber {
         let i;
 
         for ( i=0 ; i < s.length && Unicode.isTrimmableSpace(s[i]) ; i++ )
@@ -180,7 +182,7 @@ package
 
 
     // 15.1.2.4 isNaN (v)
-    intrinsic function isNaN(n: Numeric): boolean
+    intrinsic function isNaN(n: AnyNumber): boolean
         (!(n === n));
 
     function isNaN(number)
@@ -192,7 +194,7 @@ package
     // reduced to an expression; however, the function works if
     // typed at the repl even in its simplified form, so something
     // is definitely very wrong.
-    intrinsic function isFinite(n: Numeric): boolean {
+    intrinsic function isFinite(n: AnyNumber): boolean {
         return !isNaN(n) && n != -Infinity && n != Infinity;
     }
 
@@ -230,7 +232,7 @@ package
         (k is (double,decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
     
     // Note, this rounds toward zero
-    helper function toInteger(value): Numeric {
+    helper function toInteger(value): AnyNumber {
         value = Number(value);
         if (isNaN(value))
             return 0;
@@ -283,7 +285,7 @@ package
         return h;
     }
 
-    intrinsic function hashcode(o): uint {
+    __ES4__ const function hashcode(o): uint {
         switch type (o) {
         case (x: null)      { return 0u }
         case (x: undefined) { return 0u }

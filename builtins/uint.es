@@ -45,14 +45,16 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    // The [[Prototype]] of "int" is Number.[[Prototype]]
+    // The [[Prototype]] of "uint" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
-    intrinsic final class uint!
+    __ES4__ final class uint!
     {
         static const length = 1;
 

@@ -50,14 +50,16 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    // The [[Prototype]] of "int" is Number.[[Prototype]]
+    // The [[Prototype]] of "double" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
-    intrinsic final class double!
+    __ES4__ final class double!
     {
         static const length = 1;
 
@@ -92,7 +94,7 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (radix is Numeric && 
+            if (radix is AnyNumber && 
                 radix >= 2 && radix <= 36 && helper::isIntegral(radix))
                 return informative::toString(int(radix));
             throw new TypeError("Invalid radix argument to double.toString");

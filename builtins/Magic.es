@@ -58,6 +58,9 @@
 package
 {
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
+
     /* --------------------------------------------------------------
 
        CLASS INSTANTIATION.  */
@@ -120,6 +123,7 @@ package
      */
 
     magic native function bindInt(target:Object!, value:*) : void;
+    magic native function bindByte(target:Object!, value:*) : void;
     magic native function bindUInt(target:Object!, value:*) : void;
     magic native function bindDouble(target:Object!, value:*) : void;
     magic native function bindDecimal(target:Object!, value:*) : void;
@@ -135,6 +139,7 @@ package
     magic native function newBoolean(value:*) : boolean;
     magic native function newInt(value:*) : int;
     magic native function newUInt(value:*) : uint;
+    magic native function newByte(value:*) : byte;
     magic native function newDouble(value:*) : double;
 
 
@@ -173,20 +178,5 @@ package
        containing the characters from A followed by the characters
        from B.  */
     magic native function stringAppend(a : string, b : string) : string;
-
-    /* ----------------------------------------------------------------
-
-       BYTEARRAY MANIPULATION.  ByteArrays contain byte data in some
-       unspecified way - there is no representation of byte data in
-       the language.  The following magic functions access and set
-       those byte data.  */
-
-    /* Get the byte at index idx.  Unspecified behavior if that index
-       does not have data (it's OK to crash the system).  */
-    magic native function getByteArrayByte(ba : ByteArray!, idx : uint) : uint;
-
-    /* Set the byte at index idx to val, which will be truncated to
-       the low 8 bits before being stored. */
-    magic native function setByteArrayByte(ba : ByteArray!, idx : uint, val : uint) : void;
 }
 

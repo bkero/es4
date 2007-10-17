@@ -46,10 +46,12 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
 
-    intrinsic type Numbers = (int, uint, double, decimal, Number!);
+    __ES4__ type AnyNumber = (byte, int, uint, double, decimal, Number!);
 
     dynamic class Number
     {
@@ -104,25 +106,25 @@ package
          * of these functions may assume they operate on a "Number".
          */
 
-        prototype function toString(this: Numeric, radix=10)
+        prototype function toString(this: AnyNumber, radix=10)
             this.intrinsic::toString(radix);
 
-        prototype function toLocaleString(this: Numeric)
+        prototype function toLocaleString(this: AnyNumber)
             this.intrinsic::toLocaleString();
 
-        prototype function toJSONString(this: Numeric, pretty=false)
+        prototype function toJSONString(this: AnyNumber, pretty=false)
             this.intrinsic::toJSONString(pretty);
 
-        prototype function valueOf(this: Numeric)
+        prototype function valueOf(this: AnyNumber)
             this.intrinsic::valueOf();
 
-        prototype function toFixed(this:Numeric, fractionDigits)
+        prototype function toFixed(this:AnyNumber, fractionDigits)
             this.intrinsic::toFixed(fractionDigits);
 
-        prototype function toExponential(this: Numeric, fractionDigits)
+        prototype function toExponential(this: AnyNumber, fractionDigits)
             this.intrinsic::toExponential(fractionDigits);
 
-        prototype function toPrecision(this: Numeric, precision)
+        prototype function toPrecision(this: AnyNumber, precision)
             this.intrinsic::toPrecision(precision);
     }
 }

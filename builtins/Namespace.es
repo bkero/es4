@@ -40,8 +40,11 @@
 package
 {
     use default namespace public;
-
-    intrinsic class Namespace
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
+    
+    __ES4__ final class Namespace
     {
         // No "length" because constructor is private, this may or may
         // not be a general rule.

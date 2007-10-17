@@ -62,6 +62,9 @@ structure Real64Map = SplayMapFn (Real64Key);
 structure Word32Key = struct type ord_key = Word32.word val compare = Word32.compare end
 structure Word32Map = SplayMapFn (Word32Key);
 
+structure Word8Key = struct type ord_key = Word8.word val compare = Word8.compare end
+structure Word8Map = SplayMapFn (Word8Key);
+
 structure Int32Key = struct type ord_key = Int32.int val compare = Int32.compare end
 structure Int32Map = SplayMapFn (Int32Key);
           
@@ -101,6 +104,7 @@ datatype VAL = Object of OBJ
          {
           real64Cache: (VAL Real64Map.map) ref, (* ref Real64Map.empty *)
           word32Cache: (VAL Word32Map.map) ref, (* ref Word32Map.empty *)                                              
+          word8Cache: (VAL Word8Map.map) ref, (* ref Word8Map.empty *)                                              
           int32Cache: (VAL Int32Map.map) ref, (* ref Int32Map.empty *)
           nsCache: (VAL NsMap.map) ref, (* ref NsMap.empty *)
           nmCache: (VAL NmMap.map) ref, (* ref NmMap.empty *)
@@ -127,6 +131,7 @@ datatype VAL = Object of OBJ
           numberClass : (OBJ option) ref,
           intClass : (OBJ option) ref,
           uintClass : (OBJ option) ref,
+          byteClass : (OBJ option) ref,
           doubleClass : (OBJ option) ref,
           decimalClass : (OBJ option) ref,
 
@@ -147,13 +152,13 @@ datatype VAL = Object of OBJ
  *)
 
      and MAGIC =
-         UInt of Word32.word
+         Boolean of bool
+       | Byte of Word8.word
+       | UInt of Word32.word
        | Int of Int32.int
        | Double of Real64.real
        | Decimal of Decimal.DEC
-       | ByteArray of Word8Array.array
        | String of Ustring.STRING
-       | Boolean of bool
        | Namespace of Ast.NAMESPACE
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
@@ -292,6 +297,15 @@ fun isUInt (v:VAL) : bool =
         Object (Obj ob) =>
         (case !(#magic ob) of
              SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isByte (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
+             SOME (Byte _) => true
            | _ => false)
       | _ => false
 
@@ -613,6 +627,7 @@ fun magicToUstring (magic:MAGIC)
       | Decimal d => Ustring.fromString (Decimal.toString d)
       | Int i => Ustring.fromInt32 i
       | UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
+      | Byte b => Ustring.fromString (LargeInt.toString (Word8.toLargeInt b))
       | String s => s
       | Boolean true => Ustring.true_
       | Boolean false => Ustring.false_
@@ -621,7 +636,6 @@ fun magicToUstring (magic:MAGIC)
       | Interface _ => Ustring.fromString "[interface Interface]"
       | Function _ => Ustring.fromString "[function Function]"
       | Type _ => Ustring.fromString "[type Type]"
-      | ByteArray _ => Ustring.fromString "[ByteArray]"
       | NativeFunction _ => Ustring.fromString "[function Function]"
 
 
@@ -1064,6 +1078,7 @@ fun getPublicStringClassSlot (regs:REGS) = (#publicStringClass (getSpecials regs
 fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
 fun getIntClassSlot (regs:REGS) = (#intClass (getSpecials regs))
 fun getUintClassSlot (regs:REGS) = (#uintClass (getSpecials regs))
+fun getByteClassSlot (regs:REGS) = (#byteClass (getSpecials regs))
 fun getDoubleClassSlot (regs:REGS) = (#doubleClass (getSpecials regs))
 fun getDecimalClassSlot (regs:REGS) = (#decimalClass (getSpecials regs))
 
@@ -1106,6 +1121,7 @@ fun updateCache cacheGetter
 
 fun getReal64Cache (regs:REGS) = (#real64Cache (getCaches regs)) 
 fun getWord32Cache (regs:REGS) = (#word32Cache (getCaches regs)) 
+fun getWord8Cache (regs:REGS) = (#word8Cache (getCaches regs)) 
 fun getInt32Cache (regs:REGS) = (#int32Cache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
@@ -1113,6 +1129,7 @@ fun getStrCache (regs:REGS) = (#strCache (getCaches regs))
 
 val findInReal64Cache = findInCache getReal64Cache Real64Map.find
 val findInWord32Cache = findInCache getWord32Cache Word32Map.find
+val findInWord8Cache = findInCache getWord8Cache Word8Map.find
 val findInInt32Cache = findInCache getInt32Cache Int32Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
@@ -1120,6 +1137,7 @@ val findInStrCache = findInCache getStrCache StrMap.find
 
 val updateReal64Cache = updateCache getReal64Cache Real64Map.numItems Real64Map.insert
 val updateWord32Cache = updateCache getWord32Cache Word32Map.numItems Word32Map.insert
+val updateWord8Cache = updateCache getWord8Cache Word8Map.numItems Word8Map.insert
 val updateInt32Cache = updateCache getInt32Cache Int32Map.numItems Int32Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
@@ -1143,6 +1161,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         val vcache = ValCache 
                      { real64Cache = ref Real64Map.empty,
                        word32Cache = ref Word32Map.empty,                       
+                       word8Cache = ref Word8Map.empty,
                        int32Cache = ref Int32Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
@@ -1156,6 +1175,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          numberClass = ref NONE,
                          intClass = ref NONE,
                          uintClass = ref NONE,
+                         byteClass = ref NONE,
                          doubleClass = ref NONE,
                          decimalClass = ref NONE,
                          booleanClass = ref NONE,

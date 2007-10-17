@@ -65,6 +65,7 @@ datatype NUMBER_TYPE =
        | Double
        | Int
        | UInt
+       | Byte
        | Number
 
 type NUMERIC_MODE =

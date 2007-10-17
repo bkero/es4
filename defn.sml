@@ -131,7 +131,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 
 val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
                           (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
-                          (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS) ]
+                          (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS),
+                          (Ast.PropName Name.ES4_, Ast.NamespaceFixture Name.ES4NS)]
 
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 
@@ -1691,7 +1692,7 @@ and makeAliasFixture (env:ENV)
             case targetFixture of
                 Ast.ValFixture {ty,...} => ty
               | Ast.NamespaceFixture _ => 
-                makeTy env (Name.typename Name.intrinsic_Namespace)
+                makeTy env (Name.typename Name.ES4_Namespace)
               | Ast.ClassFixture _ => 
                 makeTy env (Name.typename Name.intrinsic_Class)
               (* ISSUE: this is the base type of the class object *)
@@ -3186,7 +3187,9 @@ and mkTopEnv (prog:Fixture.PROGRAM)
     { nonTopRibs = [],
       frameIds = [],
       tempOffset = 0,
-      openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty]],
+      openNamespaces = (if (Fixture.langEd prog > 3)
+                        then [[Name.noNS, Ast.Internal Ustring.empty], [Name.ES4NS]]
+                        else [[Name.noNS, Ast.Internal Ustring.empty]]),
       numericMode = defaultNumericMode,
       labels = [],
       packageNames = Fixture.getPackageNames prog,
@@ -3195,7 +3198,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       packageName = [],
       defaultNamespace = Name.noNS,
       topUnitName = NONE,
-      program = prog }     
+      program = prog }
 
 and summarizeFragment (Ast.Unit { name, fragments }) = 
     let
