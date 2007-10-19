@@ -59,7 +59,6 @@ package
 
     dynamic class Date
     {
-        use default namespace public;
 
         static const length = 7;
 

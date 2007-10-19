@@ -44,16 +44,8 @@ val interactive = ref true
 val langEd = ref 4
 
 fun updateLangEd (regs:Mach.REGS)
-    : Mach.REGS =
-    let 
-        val { scope, this, global, prog, aux } = regs
-    in
-       { scope = scope,
-         this = this,
-         global = global,
-         prog = Fixture.updateLangEd (!langEd) prog,
-         aux = aux }
-    end
+    : unit =
+    Fixture.updateLangEd (#prog regs) (!langEd)
 
 fun findTraceOption (tname:string)
     : (bool ref) option =
@@ -157,14 +149,14 @@ fun repl regs argvRest =
             in
                 case toks of
                     [":quit"] => raise quitException
-                  | [":3"] => (langEd := 3; regsCell := (updateLangEd (!regsCell)))
-                  | [":4"] => (langEd := 4; regsCell := (updateLangEd (!regsCell)))
+                  | [":3"] => (langEd := 3; updateLangEd (!regsCell))
+                  | [":4"] => (langEd := 4; updateLangEd (!regsCell))
                   | [":q"] => raise quitException
                   | [":h"] => help ()
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (regsCell := (updateLangEd (Boot.boot())); doLine ())
+                  | [":reboot"] => (regsCell := Boot.boot(); updateLangEd (!regsCell); doLine ())
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval

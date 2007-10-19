@@ -47,7 +47,7 @@ fun lookupRoot (prog:Fixture.PROGRAM)
     : (Ast.CLS * Ast.INSTANCE_TYPE) = 
     let
         val _ = trace ["fetching ", LogErr.name n, " class definition"];
-        val rib = Fixture.getTopRib prog
+        val rib = Fixture.getRootRib prog
         val fix = Fixture.getFixture rib (Ast.PropName n)
         val cls = case fix of
                       Ast.ClassFixture cls => cls
@@ -89,7 +89,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.Ty { expr=Ast.InstanceType cty, frameId=NONE, topUnit=NONE },
+                           { ty = Ast.Ty { expr=Ast.InstanceType cty, ribId=NONE },
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
                                        dontEnum = true,
@@ -210,7 +210,7 @@ fun describeGlobal (regs:Mach.REGS) =
         (trace ["contents of global object:"];
          Mach.inspect (Mach.Object (#global regs)) 1;
          trace ["contents of top rib:"];
-         Fixture.printRib (Fixture.getTopRib (#prog regs)))
+         Fixture.printRib (Fixture.getRootRib (#prog regs)))
     else 
         ()
 
@@ -335,11 +335,6 @@ fun boot _ : Mach.REGS =
         val funFrag = Verify.verifyTopFragment prog true funFrag
         val ifaceFrag = Verify.verifyTopFragment prog true ifaceFrag
         val otherProgs = verifyFiles prog otherFrags
-
-        (* 3 passes tends to get early-binding through to the majority of dependencies. *)
-        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
-        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
-        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
 
         val regs = Mach.makeInitialRegs prog glob
         val _ = Mach.setBooting regs true

@@ -36,284 +36,283 @@
 package
 {
     import ECMAScript4_Internal.*;
+
+    use namespace helper;
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
+    
+    helper function numberconversion(t)
+        numbertypes.indexOf(t) != -1;
+    
+    helper function stringconversion(t)
+        stringtypes.indexOf(t) != -1;
+    
+    helper function anyconversion(t)
+        true;
+
+    helper function noconversion(t)
+        false;
+
+    helper function registerMetaObject(typeobj, metaobj, types) {
+        types.push({typeobj: typeobj, metaobj: metaobj});
+    }
+
+    helper function getClassMetaObject(typeobj) {
+        for ( let i=0, limit=classtypes.length ; i < limit ; i++ )
+            if (classtypes[i].typeobj === typeobj)
+                return classtypes[i].metaobj;
+
+        let metaobj = new ClassTypeImpl(typeobj, noconversion);
+        registerMetaObject(typeobj, metaobj, classtypes);
+        return metaobj;
+    }
+
+    helper function getInterfaceMetaObject(typeobj) {
+        for ( let i=0, limit=interfacetypes.length ; i < limit ; i++ )
+            if (interfacetypes[i].typeobj === typeobj)
+                return interfacetypes[i].metaobj;
+
+        let metaobj = new InterfaceTypeImpl(typeobj);
+        registerMetaObject(typeobj, metaobj, interfacetypes);
+        return metaobj;
+    }
+
+
+    intrinsic type ClassTypeIterator = *;   // FIXME: iterator::IteratorType.<ClassType>
+    intrinsic type NominalTypeIterator = *; // FIXME: iterator::IteratorType.<NominalType>
+    intrinsic type FieldIterator = *;       // FIXME: iterator::IteratorType.<Field>
+    intrinsic type TypeIterator = *;        // FIXME: iterator::IteratorType.<Type>;
+    intrinsic type ValueIterator = *;       // FIXME: iterator::IteratorType.<*>;
+
+    intrinsic interface Type 
     {
-        use namespace helper;
-        use namespace intrinsic;
-        use namespace __ES4__;
-        use strict;
+        function canConvertTo(t: Type): boolean;
+        function isSubtypeOf(t: Type): boolean;
+    }
 
-        helper function numberconversion(t)
-            numbertypes.indexOf(t) != -1;
+    intrinsic const function typeOf(v): Type {
+        if (v is null)
+            return nulltype;
+        if (v is undefined)
+            return undefinedtype;
+        return getClassMetaObject(magic::getClassOfObject(v));
+    }
 
-        helper function stringconversion(t)
-            stringtypes.indexOf(t) != -1;
+    intrinsic interface NullType extends Type
+    {
+    }
 
-        helper function anyconversion(t)
-            true;
+    helper class NullTypeImpl implements NullType
+    {
+        public function canConvertTo(t: Type): boolean
+            t !== undefinedtype;
 
-        helper function noconversion(t)
+        public function isSubtypeOf(t: Type): boolean
+            t === nulltype;
+    }
+
+    intrinsic interface UndefinedType extends Type
+    {
+    }
+
+    helper class UndefinedTypeImpl implements UndefinedType
+    {
+        public function canConvertTo(t: Type): boolean
             false;
 
-        helper function registerMetaObject(typeobj, metaobj, types) {
-            types.push({typeobj: typeobj, metaobj: metaobj});
-        }
-
-        helper function getClassMetaObject(typeobj) {
-            for ( let i=0, limit=classtypes.length ; i < limit ; i++ )
-                if (classtypes[i].typeobj === typeobj)
-                    return classtypes[i].metaobj;
-
-            let metaobj = new ClassTypeImpl(typeobj, noconversion);
-            registerMetaObject(typeobj, metaobj, classtypes);
-            return metaobj;
-        }
-
-        helper function getInterfaceMetaObject(typeobj) {
-            for ( let i=0, limit=interfacetypes.length ; i < limit ; i++ )
-                if (interfacetypes[i].typeobj === typeobj)
-                    return interfacetypes[i].metaobj;
-
-            let metaobj = new InterfaceTypeImpl(typeobj);
-            registerMetaObject(typeobj, metaobj, interfacetypes);
-            return metaobj;
-        }
-
-
-        intrinsic type ClassTypeIterator = *;   // FIXME: iterator::IteratorType.<ClassType>
-        intrinsic type NominalTypeIterator = *; // FIXME: iterator::IteratorType.<NominalType>
-        intrinsic type FieldIterator = *;       // FIXME: iterator::IteratorType.<Field>
-        intrinsic type TypeIterator = *;        // FIXME: iterator::IteratorType.<Type>;
-        intrinsic type ValueIterator = *;       // FIXME: iterator::IteratorType.<*>;
-
-        intrinsic interface Type 
-        {
-            function canConvertTo(t: Type): boolean;
-            function isSubtypeOf(t: Type): boolean;
-        }
-
-        intrinsic const function typeOf(v): Type {
-            if (v is null)
-                return nulltype;
-            if (v is undefined)
-                return undefinedtype;
-            return getClassMetaObject(magic::getClassOfObject(v));
-        }
-
-        intrinsic interface NullType extends Type
-        {
-        }
-
-        helper class NullTypeImpl implements NullType
-        {
-            public function canConvertTo(t: Type): boolean
-                t !== undefinedtype;
-
-            public function isSubtypeOf(t: Type): boolean
-                t === nulltype;
-        }
-
-        intrinsic interface UndefinedType extends Type
-        {
-        }
-
-        helper class UndefinedTypeImpl implements UndefinedType
-        {
-            public function canConvertTo(t: Type): boolean
-                false;
-
-            public function isSubtypeOf(t: Type): boolean
-                t === undefinedtype;
-        }
-
-        intrinsic interface NominalType extends Type
-        {
-            function name(): Name;
-            function superTypes(): NominalTypeIterator;
-            function publicMembers(): FieldIterator;
-            function publicStaticMembers(): FieldIterator;
-        }
-
-        intrinsic interface ClassType extends NominalType
-        {
-            //function construct(typeArgs: TypeIterator, valArgs: ValueIterator): Object;
-        }
-
-        helper class NominalTypeMixin
-        {
-            var convertsTo;
-            var supers = null;
-
-            function NominalTypeMixin(convertsTo) 
-                : convertsTo = convertsTo 
-            {
-            }
-
-            function computeSupers() { throw "ABSTRACT" }
-
-            function pushClass(cls) {
-                if (cls !== null) {
-                    supers.push(getClassMetaObject(cls));
-                    pushClass(magic::getSuperClass(cls));
-                }
-            }
-
-            function pushSuperInterfaces(iface) {
-                let i = 0;
-                while (true) {
-                    let iface2 = magic::getSuperInterface(iface, uint(i));
-                    if (iface2 == null)
-                        break;
-                    supers.push(getInterfaceMetaObject(iface2));
-                    pushSuperInterfaces(iface2);
-                    i++;
-                }
-            }
-
-            function pushImplementedInterfaces(cls) {
-                let i = 0;
-                while (true) {
-                    let iface = magic::getImplementedInterface(cls, uint(i));
-                    if (iface == null)
-                        break;
-                    supers.push(getInterfaceMetaObject(iface));
-                    pushSuperInterfaces(iface);
-                    i++;
-                }
-            }
-
-            public function superTypes(): NominalTypeIterator {
-                computeSupers();
-                let i = 0;
-                return { 
-                    next: 
-                    function (): NominalType {
-                        if (i == supers.length)
-                            throw iterator::StopIteration;
-                        return supers[i++];
-                    }
-                };
-            }
-
-            public function publicMembers(): FieldIterator {
-                return {
-                    next:
-                    function (): Field {
-                        throw iterator::StopIteration;
-                    }
-                };
-            }
-
-            public function publicStaticMembers(): FieldIterator {
-                return {
-                    next:
-                    function (): Field {
-                        throw iterator::StopIteration;
-                    }
-                };
-            }
-
-            public function canConvertTo(t: Type): boolean {
-                if (isSubtypeOf(t))
-                    return true;
-                return convertsTo(t);
-            }
-
-            public function isSubtypeOf(t: Type): boolean {
-                if (t === this)
-                    return true;
-                computeSupers();
-                return supers.indexOf(t) != -1;
-            }
-        }
-
-        helper class ClassTypeImpl extends NominalTypeMixin implements ClassType 
-        {
-            function ClassTypeImpl(cls, convertsTo)
-                : cls = cls
-                , super(convertsTo)
-            {
-            }
-
-            var cls;
-
-            public function name(): Name
-                new Name("unknown");
-
-            override function computeSupers() {
-                if (supers !== null)
-                    return;
-
-                supers = [];
-                pushClass(magic::getSuperClass(cls));
-                pushImplementedInterfaces(cls);
-            }
-        }
-
-        intrinsic interface InterfaceType extends NominalType
-        {
-            // Another security leak
-            //function implementedBy(): ClassTypeIterator
-        }
-
-        helper class InterfaceTypeImpl extends NominalTypeMixin implements InterfaceType
-        {
-            function InterfaceTypeImpl(iface) 
-                : iface = iface
-                , super(noconversion)
-            {
-            }
-
-            var iface;
-
-            public function name(): Name
-                new Name("unknown");
-
-            override function computeSupers() {
-                if (supers !== null)
-                    return;
-                supers = [];
-                pushSuperInterfaces(iface);
-            }
-        }
-
-        intrinsic interface Field
-        {
-            function name(): Name;
-            function type(): Type;
-        }
-
-        // These must come after the classes.  That seems like a bug.
-        // Class definitions should be done "early" along with function
-        // definitions.
-
-        helper const nulltype = new NullTypeImpl;
-        helper const undefinedtype = new UndefinedTypeImpl;
-        helper const inttype = new ClassTypeImpl(int, numberconversion);
-        helper const uinttype = new ClassTypeImpl(uint, numberconversion);
-        helper const doubletype = new ClassTypeImpl(double, numberconversion);
-        helper const decimaltype = new ClassTypeImpl(decimal, numberconversion);
-        helper const Numbertype = new ClassTypeImpl(Number, numberconversion);
-        helper const stringtype = new ClassTypeImpl(string, stringconversion);
-        helper const Stringtype = new ClassTypeImpl(String, stringconversion);
-        helper const booleantype = new ClassTypeImpl(boolean, anyconversion);
-        helper const Booleantype = new ClassTypeImpl(Boolean, anyconversion);
-
-        helper const numbertypes = [inttype, uinttype, doubletype, decimaltype, Numbertype];
-        helper const stringtypes = [stringtype, Stringtype];
-
-        helper const classtypes = [];
-        helper const interfacetypes = [];
-
-        registerMetaObject(int, inttype, classtypes);
-        registerMetaObject(uint, uinttype, classtypes);
-        registerMetaObject(double, doubletype, classtypes);
-        registerMetaObject(decimal, decimaltype, classtypes);
-        registerMetaObject(Number, Numbertype, classtypes);
-        registerMetaObject(string, stringtype, classtypes);
-        registerMetaObject(String, Stringtype, classtypes);
-        registerMetaObject(boolean, booleantype, classtypes);
-        registerMetaObject(Boolean, Booleantype, classtypes);
+        public function isSubtypeOf(t: Type): boolean
+            t === undefinedtype;
     }
+
+    intrinsic interface NominalType extends Type
+    {
+        function name(): Name;
+        function superTypes(): NominalTypeIterator;
+        function publicMembers(): FieldIterator;
+        function publicStaticMembers(): FieldIterator;
+    }
+
+    intrinsic interface ClassType extends NominalType
+    {
+        //function construct(typeArgs: TypeIterator, valArgs: ValueIterator): Object;
+    }
+
+    helper class NominalTypeMixin
+    {
+        var convertsTo;
+        var supers = null;
+
+        function NominalTypeMixin(convertsTo) 
+            : convertsTo = convertsTo 
+        {
+        }
+
+        function computeSupers() { throw "ABSTRACT" }
+
+        function pushClass(cls) {
+            if (cls !== null) {
+                supers.push(getClassMetaObject(cls));
+                pushClass(magic::getSuperClass(cls));
+            }
+        }
+
+        function pushSuperInterfaces(iface) {
+            let i = 0;
+            while (true) {
+                let iface2 = magic::getSuperInterface(iface, uint(i));
+                if (iface2 == null)
+                    break;
+                supers.push(getInterfaceMetaObject(iface2));
+                pushSuperInterfaces(iface2);
+                i++;
+            }
+        }
+
+        function pushImplementedInterfaces(cls) {
+            let i = 0;
+            while (true) {
+                let iface = magic::getImplementedInterface(cls, uint(i));
+                if (iface == null)
+                    break;
+                supers.push(getInterfaceMetaObject(iface));
+                pushSuperInterfaces(iface);
+                i++;
+            }
+        }
+
+        public function superTypes(): NominalTypeIterator {
+            computeSupers();
+            let i = 0;
+            return { 
+                next: 
+                function (): NominalType {
+                    if (i == supers.length)
+                        throw iterator::StopIteration;
+                    return supers[i++];
+                }
+            };
+        }
+
+        public function publicMembers(): FieldIterator {
+            return {
+                next:
+                function (): Field {
+                    throw iterator::StopIteration;
+                }
+            };
+        }
+
+        public function publicStaticMembers(): FieldIterator {
+            return {
+                next:
+                function (): Field {
+                    throw iterator::StopIteration;
+                }
+            };
+        }
+
+        public function canConvertTo(t: Type): boolean {
+            if (isSubtypeOf(t))
+                return true;
+            return convertsTo(t);
+        }
+
+        public function isSubtypeOf(t: Type): boolean {
+            if (t === this)
+                return true;
+            computeSupers();
+            return supers.indexOf(t) != -1;
+        }
+    }
+
+    helper class ClassTypeImpl extends NominalTypeMixin implements ClassType 
+    {
+        function ClassTypeImpl(cls, convertsTo)
+            : cls = cls
+            , super(convertsTo)
+        {
+        }
+
+        var cls;
+
+        public function name(): Name
+            new Name("unknown");
+
+        override function computeSupers() {
+            if (supers !== null)
+                return;
+
+            supers = [];
+            pushClass(magic::getSuperClass(cls));
+            pushImplementedInterfaces(cls);
+        }
+    }
+
+    intrinsic interface InterfaceType extends NominalType
+    {
+        // Another security leak
+        //function implementedBy(): ClassTypeIterator
+    }
+
+    helper class InterfaceTypeImpl extends NominalTypeMixin implements InterfaceType
+    {
+        function InterfaceTypeImpl(iface) 
+            : iface = iface
+            , super(noconversion)
+        {
+        }
+
+        var iface;
+
+        public function name(): Name
+            new Name("unknown");
+
+        override function computeSupers() {
+            if (supers !== null)
+                return;
+            supers = [];
+            pushSuperInterfaces(iface);
+        }
+    }
+
+    intrinsic interface Field
+    {
+        function name(): Name;
+        function type(): Type;
+    }
+
+    // These must come after the classes.  That seems like a bug.
+    // Class definitions should be done "early" along with function
+    // definitions.
+
+    helper const nulltype = new NullTypeImpl;
+    helper const undefinedtype = new UndefinedTypeImpl;
+    helper const inttype = new ClassTypeImpl(int, numberconversion);
+    helper const uinttype = new ClassTypeImpl(uint, numberconversion);
+    helper const doubletype = new ClassTypeImpl(double, numberconversion);
+    helper const decimaltype = new ClassTypeImpl(decimal, numberconversion);
+    helper const Numbertype = new ClassTypeImpl(Number, numberconversion);
+    helper const stringtype = new ClassTypeImpl(string, stringconversion);
+    helper const Stringtype = new ClassTypeImpl(String, stringconversion);
+    helper const booleantype = new ClassTypeImpl(boolean, anyconversion);
+    helper const Booleantype = new ClassTypeImpl(Boolean, anyconversion);
+
+    helper const numbertypes = [inttype, uinttype, doubletype, decimaltype, Numbertype];
+    helper const stringtypes = [stringtype, Stringtype];
+
+    helper const classtypes = [];
+    helper const interfacetypes = [];
+
+    registerMetaObject(int, inttype, classtypes);
+    registerMetaObject(uint, uinttype, classtypes);
+    registerMetaObject(double, doubletype, classtypes);
+    registerMetaObject(decimal, decimaltype, classtypes);
+    registerMetaObject(Number, Numbertype, classtypes);
+    registerMetaObject(string, stringtype, classtypes);
+    registerMetaObject(String, Stringtype, classtypes);
+    registerMetaObject(boolean, booleantype, classtypes);
+    registerMetaObject(Boolean, Booleantype, classtypes);
 }
 
     /*

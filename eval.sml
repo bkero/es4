@@ -59,9 +59,8 @@ fun makeTy (tyExpr:Ast.TYPE_EXPR)
      * ground TYPE_EXPR values in empty environments are a semantic
      * subset (though not an ML-type-theoretic subset) of TY values.
      *)
-    Ast.Ty { frameId = NONE,
-             topUnit = NONE,
-             expr = tyExpr }
+    Ast.Ty { expr = tyExpr,
+             ribId = NONE }
 
 
 fun extractRuntimeTypeRibs (regs:Mach.REGS)
@@ -343,7 +342,7 @@ fun allocRib (regs:Mach.REGS)
              * Mach.UninitProp state. *)
 
             let
-                val Ast.Ty { expr, frameId, topUnit } = ty 
+                val Ast.Ty { expr, ribId } = ty 
             in            
                 case expr of
                     Ast.SpecialType (Ast.Any) =>
@@ -372,7 +371,7 @@ fun allocRib (regs:Mach.REGS)
                     Mach.ValProp (Mach.Null)
                     
                   | Ast.AppType {base, ...} =>
-                    valAllocState (Ast.Ty { expr=base, frameId=frameId, topUnit=topUnit })
+                    valAllocState (Ast.Ty { expr=base, ribId=ribId })
                 
                   | Ast.NullableType { expr, nullable=true } =>
                     Mach.ValProp (Mach.Null)
@@ -1978,7 +1977,7 @@ and instanceType (regs:Mach.REGS)
                  (args:Ast.TYPE_EXPR list)
     : Ast.TYPE_EXPR = 
     let
-        val instanceTy = Fixture.instanceTy (#prog regs) name
+        val instanceTy = Type.instanceTy (#prog regs) name
     in
         applyTypes regs instanceTy args
     end

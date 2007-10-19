@@ -943,7 +943,7 @@ fun load (regs:Mach.REGS)
     : Mach.VAL =
     let
         val fname = Ustring.toFilename (nthAsUstr vals 0)
-        val (prog, frag) = 
+        val frag = 
             (* (Verify.verifyProgram *) 
             Defn.defFragment 
                 (Defn.mkTopEnv (#prog regs)) 
@@ -952,14 +952,14 @@ fun load (regs:Mach.REGS)
             handle x => 
                    raise Eval.ThrowException 
                              (Eval.newString regs
-                                  (Ustring.fromString "error while loading"))
+                                             (Ustring.fromString "error while loading"))
     in
         (* 
          * FIXME: This is a bit odd. In eval(), we probably -- possibly? -- don't
          * want the eval'ed string extending the program fixtures. But possibly
          * we want load() to do so. Or not? Need to discuss.
          *)
-        Eval.evalFragment (Eval.withProg regs prog) frag
+        Eval.evalFragment (Eval.withProg regs (#prog regs)) frag
             handle x => 
                    raise Eval.ThrowException 
                              (Eval.newString regs

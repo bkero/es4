@@ -65,19 +65,18 @@ fun fmtType t = if !doTrace
 
 type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
 
-fun findNamespace (env:Ast.RIBS)
+fun findNamespace (prog:Fixture.PROGRAM)
+                  (ribId:Ast.RIB_ID option)
                   (expr:Ast.EXPR)
     : Ast.NAMESPACE option =
     let
         fun withMname (mname:Ast.MULTINAME) 
             : Ast.NAMESPACE option = 
-            case Multiname.resolveInRibs mname env of 
+            case Fixture.resolveToFixture prog mname ribId of
                 NONE => NONE
-              | SOME (ribs, n) => 
-                (case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
-                     Ast.NamespaceFixture ns => SOME ns
-                   | _ => error ["namespace expression resolved ",
-                                 "to non-namespace fixture"])
+              | SOME (n, Ast.NamespaceFixture ns) => SOME ns
+              | _ => error ["namespace expression resolved ",
+                            "to non-namespace fixture"]
     in    
         case expr of
             Ast.LiteralExpr (Ast.LiteralNamespace ns) => SOME ns
@@ -88,12 +87,12 @@ fun findNamespace (env:Ast.RIBS)
 
           | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
             (LogErr.setLoc loc;
-             case findNamespace env qual of
+             case findNamespace prog ribId qual of
                  NONE => NONE
                | SOME ns => withMname {id = ident, nss = [[ns]]})
 
           | Ast.LexicalRef _ => error ["dynamic name in namespace"]
-
+                                
           | _ => error ["dynamic expr in namespace"]
     end
 
@@ -177,8 +176,7 @@ fun groundExpr (ty:Ast.TY)
 
 type TY_NORM = { exprs: Ast.TYPE_EXPR list,
                  nullable: bool,
-                 frameId: Ast.FRAME_ID option,
-                 topUnit: Ast.UNIT_NAME option }
+                 ribId: Ast.RIB_ID option }
 
 fun normalize (prog:Fixture.PROGRAM) 
               (locals:Ast.RIBS)
@@ -188,38 +186,30 @@ fun normalize (prog:Fixture.PROGRAM)
 and repackage (t:Ast.TY) 
     : TY_NORM = 
     let
-        val Ast.Ty { expr, frameId, topUnit } = t
+        val Ast.Ty { expr, ribId } = t
     in
         { exprs = [expr],
           nullable = false,
-          frameId = frameId,
-          topUnit = topUnit }
+          ribId = ribId }
     end
 
 
 and fix2norm (prog:Fixture.PROGRAM)
              (originalt:Ast.TY)
              (mname:Ast.MULTINAME)
-             (fixOpt:Ast.FIXTURE option)
+             (fixOpt:(Ast.NAME * Ast.FIXTURE) option)
     : TY_NORM = 
     let
         val _ = trace ["examined type multiname ", fmtMname mname]
-        val Ast.Ty { frameId, topUnit, expr } = originalt
-
-        (* FIXME: this is an ugly way of asking if a frame is closed *)
-        val closed = case topUnit of 
-                         NONE => false
-                       | SOME tu => (case Fixture.getTopRibForUnit prog tu of 
-                                         NONE => false
-                                       | SOME closed => true)
+        val Ast.Ty { expr, ribId } = originalt
     in
         case fixOpt of 
             NONE => (trace ["failed to resolve"];
-                     if closed 
+                     if Fixture.ribIsClosed prog ribId
                      then error ["type multiname ", LogErr.multiname mname, 
                                  " failed to resolve in closed unit "]
                      else repackage originalt)
-          | SOME fix => 
+          | SOME (n, fix) => 
             let 
                 val _ = trace ["resolved"]
                 val (defn:Ast.TY) = 
@@ -240,16 +230,16 @@ and maybeNamedSlow (prog:Fixture.PROGRAM)
                    (mname:Ast.MULTINAME) 
     : TY_NORM =
     let
-        val (fullRibs, closed) = Fixture.getFullRibsForTy prog originalt 
-        val fullRibs = locals @ fullRibs
+        val (ribs, closed) = Fixture.getRibsForTy prog originalt 
+        val fullRibs = locals @ ribs
     in       
         case Multiname.resolveInRibs mname fullRibs of 
             NONE => fix2norm prog originalt mname NONE
-          | SOME (ribs, n) => 
+          | SOME (ribs, n) =>
             let 
                 val fix = Fixture.getFixture (List.hd ribs) (Ast.PropName n)
             in
-                fix2norm prog originalt mname (SOME fix)
+                fix2norm prog originalt mname (SOME (n, fix))
             end
     end
 
@@ -263,17 +253,31 @@ and maybeNamed (prog:Fixture.PROGRAM)
         x::xs => maybeNamedSlow prog originalt locals mname
       | [] => 
         let
-            val Ast.Ty { frameId, topUnit, expr } = originalt
-            val fixOpt = Fixture.resolveToFixture prog mname frameId 
+            val Ast.Ty { ribId, expr } = originalt
+            val fixOpt = Fixture.resolveToFixture prog mname ribId 
+            val norm = fix2norm prog originalt mname fixOpt
+            val ty = norm2ty norm
         in
-            fix2norm prog originalt mname fixOpt
+            (* 
+             * Optionally: if the name resolved to a *type abbreviation*,
+             * write back through to the fixture cache to save the 
+             * normalized form. This will cause future normalization
+             * of the same type name to accelerate.
+             *)
+            case fixOpt of
+                SOME (n, Ast.TypeFixture _) =>
+                if (isGroundTy ty)                   
+                then Fixture.updateFixtureCache prog ribId mname n (Ast.TypeFixture ty)
+                else ()
+              | _ => ();
+            norm
         end
 
 
 and norm2ty (norm:TY_NORM) 
     : Ast.TY = 
     let
-        val { exprs, nullable, frameId, topUnit } = norm 
+        val { exprs, nullable, ribId } = norm 
         val null = Ast.SpecialType Ast.Null
         val expr = case exprs of 
                        [] => if nullable
@@ -287,8 +291,7 @@ and norm2ty (norm:TY_NORM)
                                 else Ast.UnionType union
     in
         Ast.Ty { expr = expr,
-                 topUnit = topUnit,
-                 frameId = frameId }
+                 ribId = ribId }
     end
 
 and ty2norm (prog:Fixture.PROGRAM) 
@@ -296,14 +299,14 @@ and ty2norm (prog:Fixture.PROGRAM)
             (locals:Ast.RIBS) (* Local bindings that extend the frame referenced in ty. *)
     : TY_NORM =
     let
-        val Ast.Ty { frameId, topUnit, expr } = ty
+        val Ast.Ty { ribId, expr } = ty
 
         (* Package up a 1-term type in the current TY environment. *)
         fun simple (e:Ast.TYPE_EXPR)
                    (nullable:bool)
             : TY_NORM = 
             if isGroundType e 
-            then { exprs = [e], nullable = nullable, frameId = frameId, topUnit = topUnit }
+            then { exprs = [e], nullable = nullable, ribId = ribId }
             else error ["internal error: non-ground term is not simple"]
                  
 
@@ -311,7 +314,7 @@ and ty2norm (prog:Fixture.PROGRAM)
          * as the current TY, and get back a new TY_NORM. *)
         fun subTerm2Norm (e:Ast.TYPE_EXPR) 
             : TY_NORM = 
-            ty2norm prog (Ast.Ty { expr = e, frameId = frameId, topUnit = topUnit }) locals
+            ty2norm prog (Ast.Ty { expr = e, ribId = ribId }) locals
 
         (* 
          * Use 'subTerm' to evaluate a TYPE_EXPR in the same environment
@@ -354,13 +357,9 @@ and ty2norm (prog:Fixture.PROGRAM)
             maybeNamed prog ty locals { id = ident, nss = openNamespaces }
             
           | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
-            let 
-                val (fullRibs, closed) = Fixture.getFullRibsForTy prog ty
-            in
-                case findNamespace fullRibs qual of
-                    SOME ns => maybeNamed prog ty locals { nss = [[ns]], id = ident }
-                  | NONE => repackage ty
-            end
+            (case findNamespace prog ribId qual of
+                 SOME ns => maybeNamed prog ty locals { nss = [[ns]], id = ident }
+               | NONE => repackage ty)
             
           | Ast.TypeName Ast.WildcardIdentifier => 
             subTerm2Norm (Ast.SpecialType Ast.Any)
@@ -420,7 +419,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                 val (args':Ast.TY list) = map sub args
             in
                 case base' of 
-                    Ast.Ty {expr=Ast.LamType {params, body}, frameId=frameId', topUnit=topUnit'} => 
+                    Ast.Ty {expr=Ast.LamType {params, body}, ribId=ribId' } => 
                     let
                         val _ = if length params = length args'
                                 then ()
@@ -434,7 +433,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                         fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
                         val rib = List.foldl bind [] bindings
                     in
-                        ty2norm prog (Ast.Ty { expr=body, frameId=frameId', topUnit=topUnit' }) (rib::locals)
+                        ty2norm prog (Ast.Ty { expr=body, ribId=ribId' }) (rib::locals)
                     end                
                   | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
                   | _ => error ["applying bad type: ", LogErr.ty (AstQuery.typeExprOf base')]
@@ -442,17 +441,17 @@ and ty2norm (prog:Fixture.PROGRAM)
             
           | (Ast.UnionType tys) => 
             let 
-                fun extract {exprs, nullable, topUnit, frameId} = (exprs, nullable) 
+                fun extract {exprs, nullable, ribId} = (exprs, nullable) 
                 val sub = extract o subTerm2Norm
                 val (listOfLists, listOfNulls) = ListPair.unzip (map sub tys)
                 val exprs' = List.concat listOfLists
                 val nullable = List.exists (fn x => x) listOfNulls
             in
-                {exprs=exprs', nullable=nullable, frameId=frameId, topUnit=topUnit}
+                {exprs=exprs', nullable=nullable, ribId=ribId }
             end
             
           | (Ast.SpecialType Ast.Null) => 
-            {exprs=[], nullable=true, frameId=frameId, topUnit=topUnit}
+            {exprs=[], nullable=true, ribId=ribId }
             
           | (Ast.ArrayType []) => 
             simple (Ast.ArrayType [Ast.SpecialType Ast.Any]) false
@@ -495,9 +494,9 @@ and ty2norm (prog:Fixture.PROGRAM)
             
           | Ast.NullableType { expr, nullable } => 
             let
-                val {exprs, frameId=frameId', topUnit=topUnit', ...} = subTerm2Norm expr
+                val {exprs, ribId=ribId', ...} = subTerm2Norm expr
             in
-                { exprs=exprs, frameId=frameId', topUnit=topUnit', nullable=nullable }
+                { exprs=exprs, ribId=ribId', nullable=nullable }
             end
             
           | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 
@@ -856,5 +855,19 @@ fun groundFindConversion (tyExpr1:Ast.TYPE_EXPR)
     end
 
 val findConversion = normalizingPredicate groundFindConversion NONE
+
+
+(* 
+ * Small helper for finding instance types by name.
+ *)
+
+fun instanceTy (prog:Fixture.PROGRAM)
+               (n:Ast.NAME)
+    : Ast.TY =
+    case Fixture.resolveToFixture prog { nss = [[(#ns n)]], id=(#id n) } NONE of
+        SOME (_, Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
+      | SOME (_, Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
+      | _ => error [LogErr.name n, " does not resolve to an instance type"]
+             
 
 end

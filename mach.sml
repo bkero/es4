@@ -498,8 +498,7 @@ fun matchProps (fixedProps:bool)
 fun makeTy (te:Ast.TYPE_EXPR) 
     : Ast.TY = 
     Ast.Ty { expr = te,
-             frameId = NONE,
-             topUnit = NONE }
+             ribId = NONE }
 
 fun getProp (b:PROP_BINDINGS)
             (n:Ast.NAME)

@@ -114,9 +114,8 @@ fun normalize (prog:Fixture.PROGRAM)
                                 
 fun makeTy (tyExpr:Ast.TYPE_EXPR) 
     : Ast.TY =
-    Ast.Ty { frameId = NONE,
-             topUnit = NONE,
-             expr = tyExpr }
+    Ast.Ty { expr = tyExpr,
+             ribId = NONE }
 
 fun groundType (prog:Fixture.PROGRAM)
                (ty:Ast.TY) 
@@ -143,7 +142,7 @@ fun newEnv (prog:Fixture.PROGRAM)
      returnType = NONE,
      strict = strict,
      prog = prog, 
-     ribs = [Fixture.getTopRib prog],
+     ribs = [Fixture.getRootRib prog],
 
      stdTypes = 
      {      
