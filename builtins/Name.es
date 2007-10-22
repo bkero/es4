@@ -66,10 +66,6 @@ package
         meta static function invoke(a, b=undefined): Name
             new Name(a, b);
         
-        // OBSOLETE
-        meta static function convert(v : (Namespace, string))
-            new Name(v);
-        
         prototype function toString(this : Name)
             this.intrinsic::toString();
         

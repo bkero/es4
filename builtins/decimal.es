@@ -75,11 +75,6 @@ package
         static const SQRT1_2: decimal = 0.7071067811865475244008443621048490m;/* Approximately */
         static const SQRT2: decimal = 1.414213562373095048801688724209698m;  /* Approximately */
 
-        /* Obsolete, needed for the moment because the RI does not yet handle
-           interconversion of numbers */
-        meta static function convert(x)
-            decimal(x);
-
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
         meta static function invoke(x=0m)
             x is decimal ? x : new decimal(x);

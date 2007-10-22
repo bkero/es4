@@ -60,11 +60,6 @@ package
         static const MAX_VALUE : byte = 0xFFu;
         static const MIN_VALUE : byte = 0;
 
-        /* Obsolete, needed for the moment because the RI does not yet handle
-           interconversion of numbers */
-        meta static function convert(x)
-            byte(x);
-
         /* E262-4 draft: The byte Constructor Called as a Function */
         meta static function invoke(x=0u)
             x is byte ? x : magic::newByte(x);

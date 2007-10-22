@@ -392,20 +392,18 @@ and ty2norm (prog:Fixture.PROGRAM)
             let
                 val t0 = ty
                 val { name, typeArgs, superTypes, ty, 
-                      conversionTy, nonnullable, dynamic } = it
+                      nonnullable, dynamic } = it
                 val typeArgs' = subTerms typeArgs
                 val superTypes' = subTerms superTypes
                 val ty' = subTerm ty
-                val conversionTy' = subTermOption conversionTy
             in
-                case (typeArgs', superTypes', ty', conversionTy') of
-                    (SOME ta, SOME st, SOME t, SOME c) => 
+                case (typeArgs', superTypes', ty') of
+                    (SOME ta, SOME st, SOME t) => 
                     simple (Ast.InstanceType 
                                 { name = name,
                                   typeArgs = ta,
                                   superTypes = st,
                                   ty = t,
-                                  conversionTy = c,
                                   nonnullable = nonnullable,
                                   dynamic = dynamic }) (not nonnullable)
                   | _ => repackage t0
@@ -827,34 +825,169 @@ val isCompatible = normalizingPredicate groundIsCompatible false
  * Convertibility
  * ----------------------------------------------------------------------------- *)
 
+fun groundType (prog:Fixture.PROGRAM)
+               (ty:Ast.TY) 
+    : Ast.TYPE_EXPR = 
+    let
+        val norm = normalize prog [] ty
+        val expr = AstQuery.typeExprOf norm
+    in
+        if isGroundTy norm
+        then expr
+        else error ["Unable to ground type closure for ", 
+                    LogErr.ty expr]
+    end    
+
+fun makeTy (tyExpr:Ast.TYPE_EXPR) 
+    : Ast.TY =
+    Ast.Ty { expr = tyExpr,
+             ribId = NONE }
+
+fun getNamedGroundType (prog:Fixture.PROGRAM)
+                       (name:Ast.NAME)
+    : Ast.TYPE_EXPR = 
+    groundType prog (makeTy (Name.typename name))
+
+
 (*
  * When investigating ty1 ~~> ty2, call this.
- * It returns the name of the class of ty2 containing
- * meta static function convert(x:pt) where ty1 ~: pt,
- * or NONE if there is no such converter.
+ *
+ * It checks a matrix of predefined conversions and returns an instanceType
+ * expression if one exists for a defined target conversion form of ty2.
+ * 
+ * The return value *should* be a type you can look up, find a class C for,
+ * and call C.meta::invoke(x:ty1).
+ *
+ * If no such conversion exists, it returns NONE.      
  *)
 
-fun groundFindConversion (tyExpr1:Ast.TYPE_EXPR)
+fun groundFindConversion (prog:Fixture.PROGRAM)
+                         (tyExpr1:Ast.TYPE_EXPR)
                          (tyExpr2:Ast.TYPE_EXPR) 
     : Ast.TYPE_EXPR option = 
     let
-        fun tryToConvertTo (target:Ast.TYPE_EXPR) =
-            case target of
-                Ast.InstanceType { conversionTy=SOME c, ... } =>
-                if groundIsCompatible tyExpr1 c
-                then SOME target
-                else NONE
-              | Ast.UnionType [] => NONE
-              | (Ast.UnionType (t::ts)) =>
-                (case tryToConvertTo t of
-                     NONE => tryToConvertTo (Ast.UnionType ts)
-                   | found => found)
-              | _ => NONE
+        (* 
+         * FIXME: push this up to fixture and initialize it only once.
+         * The verifier these types too, after all!
+         *)
+        val AnyNumberType = getNamedGroundType prog Name.ES4_AnyNumber
+        val AnyStringType = getNamedGroundType prog Name.ES4_AnyString
+        val AnyBooleanType = getNamedGroundType prog Name.ES4_AnyBoolean
+
+        val AnyType = Ast.SpecialType Ast.Any
+        val undefinedType = Ast.SpecialType Ast.Undefined
+        val nullType = Ast.SpecialType Ast.Null
+
+        val decimalType = getNamedGroundType prog Name.ES4_decimal
+        val doubleType = getNamedGroundType prog Name.ES4_double
+        val intType = getNamedGroundType prog Name.ES4_int
+        val uintType = getNamedGroundType prog Name.ES4_uint
+        val byteType = getNamedGroundType prog Name.ES4_byte
+        val NumberType = getNamedGroundType prog Name.nons_Number
+
+        val stringType = getNamedGroundType prog Name.ES4_string
+        val StringType = getNamedGroundType prog Name.nons_String
+
+        val booleanType = getNamedGroundType prog Name.ES4_boolean
+        val BooleanType = getNamedGroundType prog Name.nons_Boolean
+
+        fun flattenUnion (Ast.UnionType tys) = List.concat (map flattenUnion tys)
+          | flattenUnion t = [t]
+
+    (* 
+     * We have a matrix of pairs-of-conversion-paths that work, for
+     * example, any kind of number can be converted to any kind of string.
+     *
+     * First we flatten the tyExpr2 (possible) union into a list of
+     * possible target conversion types.
+     * 
+     * For each type target in the flattened target list, we check to see
+     * if there's a (src,dst) pair in the conversion matrix where dst = target
+     * and tyExpr1 ~: src.
+     * 
+     * If we find zero, there is no conversion.
+     * 
+     * If we find one or more, we return the dst of the first pair we
+     * find. The caller then looks up this type and calls it via
+     * meta::invoke.
+     *
+     * NB: the order of this matrix is a *priority order* for conversions.
+     * It returns the first matching pair.
+     * 
+     * Also keep in mind that if you're trying to convert to a target
+     * union type, you are going to get the first *union member* that
+     * matches *any* dst in the matrix, not necessarily the first
+     * matrix-entry. The priority scheme is only 1-dimensional.
+     *
+     * So it's best to do one of two things: sort your union by
+     * best-to-worst in the first place, or simply don't try to
+     * convert into a union, as it's likely to surprise you!
+     *)
+
+        val matrix = [ (AnyNumberType, decimalType),
+                       (AnyNumberType, doubleType),
+                       (AnyNumberType, intType),
+                       (AnyNumberType, uintType),
+                       (AnyNumberType, byteType),
+
+                       (AnyBooleanType, booleanType),
+                       (AnyBooleanType, BooleanType),                       
+
+                       (AnyType, stringType),
+                       (AnyType, StringType),
+
+                       (undefinedType, decimalType),
+                       (undefinedType, doubleType),
+                       (undefinedType, intType),
+                       (undefinedType, uintType),
+                       (undefinedType, byteType),
+                       (undefinedType, booleanType),
+
+                       (* 
+                        * Questionable: this means "var x : int = null;" works.
+                        * In a sense that undermines nullability, but in a sense
+                        * it does not: you will never actually *read* a null from 
+                        * an int slot. The slot converts it to 0. Is this good?
+                        *)
+
+                       (nullType, decimalType),
+                       (nullType, doubleType),
+                       (nullType, intType),
+                       (nullType, uintType),
+                       (nullType, byteType),                       
+                       (nullType, booleanType)]
+
+        fun pairMatches target (src,dst) = (groundEquals target dst andalso
+                                            groundIsCompatible tyExpr1 src)
+        fun searchTargs [] = NONE
+          | searchTargs (t::ts) = 
+            case List.find (pairMatches t) matrix of
+                SOME (src,dst) => SOME dst
+              | NONE => searchTargs ts
+        
+        val res = searchTargs (flattenUnion tyExpr2)         
     in
-        tryToConvertTo tyExpr2
+        case res of 
+            NONE => trace ["determined that ", fmtType tyExpr1, 
+                           " does not convert to ", fmtType tyExpr2]
+          | SOME t2 => 
+            (* 
+             * FIXME: possibly insert a sanity check here that the 
+             * meta::invoke of this instance type has a single-arg 
+             * form that's tyExpr1 is compatible with?
+             *)
+            trace ["determined that ", fmtType tyExpr1, 
+                   " does convert to ", fmtType tyExpr2, 
+                   ", specifically to ", fmtType t2];
+        
+        res
     end
 
-val findConversion = normalizingPredicate groundFindConversion NONE
+fun findConversion (prog:Fixture.PROGRAM)
+                   (locals:Ast.RIBS)
+                   (t1:Ast.TY)
+                   (t2:Ast.TY) = 
+    normalizingPredicate (groundFindConversion prog) NONE prog locals t1 t2
 
 
 (* 

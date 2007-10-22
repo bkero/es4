@@ -82,10 +82,6 @@ package
         // A getter because string is loaded before int
         static function get length() { return 1 }
 
-        /* E262-4 draft */
-        meta static function convert(x)
-            string(x);
-
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(value="")
             value is string ? value : magic::newString(value);

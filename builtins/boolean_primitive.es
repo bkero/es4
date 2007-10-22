@@ -62,10 +62,6 @@ package
         // IMPLEMENTATION ARTIFACT: A getter because boolean is loaded before int.
         static function get length() { return 1 }
 
-        // Obsolete, but RI needs to be extended first
-        meta static function convert(x) : boolean
-            boolean(x);
-
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
             x is boolean ? x : new boolean(x);

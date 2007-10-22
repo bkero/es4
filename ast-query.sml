@@ -171,7 +171,6 @@ and liftOpt (q:('a -> Ast.TYPE_EXPR option))
                            ribId = ribId })
     end
     
-val conversionTyOfInstanceTy = liftOpt (#conversionTy) extractInstanceType
 val resultTyOfFuncTy = lift (#result) extractFuncType
 val resultTypeOfFuncTy = typeExprOf o resultTyOfFuncTy
 fun minArgsOfFuncTy (ty:Ast.TY) 

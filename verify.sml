@@ -117,24 +117,6 @@ fun makeTy (tyExpr:Ast.TYPE_EXPR)
     Ast.Ty { expr = tyExpr,
              ribId = NONE }
 
-fun groundType (prog:Fixture.PROGRAM)
-               (ty:Ast.TY) 
-    : Ast.TYPE_EXPR = 
-    let
-        val norm = normalize prog true ty
-        val expr = AstQuery.typeExprOf norm
-    in
-        if Type.isGroundTy norm
-        then expr
-        else error ["Unable to ground type closure for ", 
-                    LogErr.ty expr]
-    end    
-
-fun getNamedGroundType (prog:Fixture.PROGRAM)
-                       (name:Ast.NAME)
-    : Ast.TYPE_EXPR = 
-    groundType prog (makeTy (Name.typename name))
-
 fun newEnv (prog:Fixture.PROGRAM) 
            (strict:bool) 
     : ENV = 
@@ -146,24 +128,24 @@ fun newEnv (prog:Fixture.PROGRAM)
 
      stdTypes = 
      {      
-      AnyNumberType = getNamedGroundType prog Name.ES4_AnyNumber,
-      doubleType = getNamedGroundType prog Name.ES4_double,
-      decimalType = getNamedGroundType prog Name.ES4_decimal,
-      intType = getNamedGroundType prog Name.ES4_int,
-      uintType = getNamedGroundType prog Name.ES4_uint,
-      byteType = getNamedGroundType prog Name.ES4_byte,
+      AnyNumberType = Type.getNamedGroundType prog Name.ES4_AnyNumber,
+      doubleType = Type.getNamedGroundType prog Name.ES4_double,
+      decimalType = Type.getNamedGroundType prog Name.ES4_decimal,
+      intType = Type.getNamedGroundType prog Name.ES4_int,
+      uintType = Type.getNamedGroundType prog Name.ES4_uint,
+      byteType = Type.getNamedGroundType prog Name.ES4_byte,
 
-      AnyStringType = getNamedGroundType prog Name.ES4_AnyString,
-      stringType = getNamedGroundType prog Name.ES4_string,
+      AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
+      stringType = Type.getNamedGroundType prog Name.ES4_string,
 
-      AnyBooleanType = getNamedGroundType prog Name.ES4_AnyBoolean,
-      booleanType = getNamedGroundType prog Name.ES4_boolean,
+      AnyBooleanType = Type.getNamedGroundType prog Name.ES4_AnyBoolean,
+      booleanType = Type.getNamedGroundType prog Name.ES4_boolean,
 
-      RegExpType = getNamedGroundType prog Name.nons_RegExp,
+      RegExpType = Type.getNamedGroundType prog Name.nons_RegExp,
 
-      NamespaceType = getNamedGroundType prog Name.ES4_Namespace,
+      NamespaceType = Type.getNamedGroundType prog Name.ES4_Namespace,
 
-      TypeType = getNamedGroundType prog Name.intrinsic_Type
+      TypeType = Type.getNamedGroundType prog Name.intrinsic_Type
      }
     }
 

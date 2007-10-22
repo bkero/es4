@@ -398,8 +398,8 @@ fun allocRib (regs:Mach.REGS)
                         if (not (Mach.isBooting regs)) orelse 
                            Mach.isClass (getValue regs (#global regs) (#name n))
                         then
-                            case Type.groundFindConversion (Ast.SpecialType Ast.Undefined) expr of
-                                SOME _ => Mach.ValProp (checkAndConvert regs Mach.Undef ty)
+                            case Type.groundFindConversion (#prog regs) (Ast.SpecialType Ast.Undefined) expr of
+                                SOME t => Mach.ValProp (checkAndConvert regs Mach.Undef (makeTy t))
                               | NONE => Mach.UninitProp
                         else
                             Mach.UninitProp
@@ -794,18 +794,18 @@ and checkAndConvert (regs:Mach.REGS)
         else
             let
                 val (classType:Ast.TYPE_EXPR) =
-                    case Type.groundFindConversion (typeOfVal regs v) tyExpr of
-                        NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; 
+                    case Type.groundFindConversion (#prog regs) (typeOfVal regs v) tyExpr of
+                        NONE => (typeOpFailure regs "incompatible types w/o conversion" v tyExpr; 
                                  dummyTypeExpr)
                       | SOME n => n
                 val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
-                val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_convert) [v]
+                val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_invoke) [v]
             in
                 if isCompatible regs converted tyExpr
                 then converted
-                else (typeOpFailure regs "converter returned incompatible value" converted tyExpr; dummyVal)
+                else (typeOpFailure regs "conversion returned incompatible value" converted tyExpr; dummyVal)
             end
     end
 

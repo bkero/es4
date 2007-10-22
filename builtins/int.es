@@ -61,11 +61,6 @@ package
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;
 
-        /* Obsolete, needed for the moment because the RI does not yet handle
-           interconversion of numbers */
-        meta static function convert(x)
-            int(x);
-
         /* E262-4 draft: The int Constructor Called as a Function */
         meta static function invoke(x=0)
             x is int ? x : magic::newInt(x);

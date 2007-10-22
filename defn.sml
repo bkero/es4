@@ -583,7 +583,6 @@ and defInterface (env: ENV)
                               typeArgs=[],
                               superTypes=groundSuperInterfaceExprs,
                               ty=Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
-                              conversionTy=NONE,
                               dynamic=false}) (* interfaces are never dynamic *)
                         
         val iface:Ast.IFACE = 
@@ -863,7 +862,6 @@ and resolveClassInheritance (env:ENV)
                                             nonnullable = (#nonnullable it),
                                             superTypes = superTypes,
                                             ty = (#ty it),
-                                            conversionTy = (#conversionTy it),
                                             dynamic = (#dynamic it)}
                 val te = case typeParams of 
                              [] => te
@@ -1067,23 +1065,6 @@ and analyzeClassBody (env:ENV)
               | SOME c => SOME (defCtor instanceEnv c)
 
         val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
-
-        val conversionTy:Ast.TYPE_EXPR option =
-            let
-                val fname = Ast.PropName Name.meta_convert
-            in
-                if Fixture.hasFixture classRib fname
-                then
-                    case Fixture.getFixture classRib fname of
-                        Ast.MethodFixture { ty, ... } => 
-                        let
-                            val pty = AstQuery.singleParamTyOfFuncTy ty
-                        in 
-                            SOME (Type.groundExpr (Type.normalize (#program env) [] pty))
-                        end
-                      | _ => NONE
-                else NONE
-            end
             
         (*
          * The parser separates variable definitions into defns and stmts. The only stmts
@@ -1107,7 +1088,6 @@ and analyzeClassBody (env:ENV)
                               typeArgs = [],
                               superTypes = [], (* set in resolveClassInheritence *)
                               ty = Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
-                              conversionTy = conversionTy,
                               dynamic = dynamic})
     in
         Ast.Cls { name=name,

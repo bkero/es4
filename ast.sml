@@ -454,7 +454,6 @@ withtype
              nonnullable: bool,
              superTypes: TYPE_EXPR list,
              ty: TYPE_EXPR,
-             conversionTy: TYPE_EXPR option,
              dynamic: bool }
 
      and FIELD =

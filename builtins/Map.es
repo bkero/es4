@@ -92,9 +92,7 @@ package
         {
         }
 
-        /* Create a Map from an Object */
-        // OBSOLETE
-        meta static function convert(x : Object!) {
+        meta static function invoke(x : Object!) {
             let d = new Map.<EnumerableId,V>;
             for ( let n in x )
                 if (x.hasOwnProperty(n))

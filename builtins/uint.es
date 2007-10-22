@@ -61,11 +61,6 @@ package
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 
-        /* Obsolete, needed for the moment because the RI does not yet handle
-           interconversion of numbers */
-        meta static function convert(x)
-            uint(x);
-
         /* E262-4 draft: The uint Constructor Called as a Function */
         meta static function invoke(x=0u)
             x is uint ? x : magic::newUInt(x);
