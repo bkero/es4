@@ -43,7 +43,7 @@ type IDENT = Ustring.STRING
 
 type UNIT_NAME = IDENT list
 
-type FRAME_ID = int
+type RIB_ID = int
 
 datatype NAMESPACE =
          Intrinsic
@@ -65,6 +65,7 @@ datatype NUMBER_TYPE =
        | Double
        | Int
        | UInt
+       | Byte
        | Number
 
 type NUMERIC_MODE =
@@ -169,8 +170,7 @@ datatype PRAGMA =
      and TY = 
          Ty of 
          { expr: TYPE_EXPR,
-           frameId: FRAME_ID option,
-           topUnit: UNIT_NAME option }
+           ribId: RIB_ID option }
          
      and CLS =
          Cls of
@@ -454,7 +454,6 @@ withtype
              nonnullable: bool,
              superTypes: TYPE_EXPR list,
              ty: TYPE_EXPR,
-             conversionTy: TYPE_EXPR option,
              dynamic: bool }
 
      and FIELD =

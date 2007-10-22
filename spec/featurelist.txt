@@ -1,0 +1,254 @@
+Complete ECMAScript 4 feature list
+2007-10-02 / lhansen@adobe.com
+
+
+EXPRESSIONS
+
+  ES4
+    "this"
+    "this function"
+    "this generator"
+    "namespaces"
+    "private"
+    "public"
+    "protected"
+    "internal"
+    triple-quote string literal
+    suffixed number literals: i u d m (and maybe b?)
+    \u{...} syntax in strings, regular expressions
+    [ expr, ... ] : type
+    { name: expr, ... } : type
+    function body can be an expression
+    function parameters can be annotated
+    function can be annotated
+    new typename args
+    expr <op> expr, op in "wrap" "is" "cast" 
+    expr <op> expr, op in &&= ||=
+    [ for ... ]
+    expr [ e1 : e2 : e3 ]
+    "yield" e
+    [ pattern ... ] = expr
+    { n:pattern ... } = expr
+    <global>.eval
+    eval by different name
+    <ns>::ident
+
+  ES3
+    identifier
+    true
+    false
+    null
+    string literal
+    number literal
+    ( expr )
+    [ expr, ... ]
+    { name: expr, ... }             // ES4: trailing comma allowed
+    "function" ident params body
+    "function" params body
+    expr [ expr ]
+    expr . ident
+    new expr args
+    expr ( expr, ... )
+    expr++, expr--, ++expr, --expr
+    delete expr
+    void expr
+    typeof expr                     // ES4: typeof null is "null"
+    <op> expr, op in + - ~ !
+    expr <op> expr, op in + - * / % | & ^ && || << >> >>> "in" "instanceof" < <= > >= == != === !==
+    expr ? expr : expr
+    expr <op> expr, op in = += -= *= /= %= &= |= ^= <<= >>= >>>=
+    expr , expr
+
+STATEMENTS
+
+  ES4
+    "const"
+    "let"
+    "let const"
+    "switch type" ... { "case" (e:t) { ... } ... }
+    "for each"-"in"
+    "with" (e : t) ...
+    "try" - "catch" - "catch" - "catch" - ... - "finally"
+    "for" ( "let" v ... )
+    "var" v : t ...
+    "var" [ d ... ] = 
+    "var" { d ... } = 
+    "return" [linebreak ok here] expr
+    "yield" e
+
+  ES3
+    block
+    var
+    empty
+    expression
+    if
+    for
+    for-in
+    do
+    while
+    continue
+    break
+    return
+    with
+    labelled
+    switch
+    throw
+    try - catch - finally
+
+FUNCTION DEFINITIONS
+
+  ES4
+    generic function ident params ...
+    function ident typarams params body
+    const function typarams ident params body
+    let function typarams ident params body
+    let const function typarams ident params body (???)
+
+     where in all cases
+          typarams are an optional .<T,...> phrase
+          params can have type annotations,
+          the function can have a return annotation
+          body can be just an expression
+
+
+  ES3
+    function ident params body
+
+OBJECT/CLASS DEFINITIONS
+
+  ES4
+    getter and setter methods
+    catchall methods
+    meta-level methods ("invoke", "static invoke")
+
+PROGRAM STRUCTURE
+
+  ES4
+    units
+      unit definition
+      unit reference
+    packages
+      package definition
+      local packages
+      import
+    namespace
+      namespace definition
+      use namespace
+      use default namespace
+      namespace qualification in names
+
+TYPE EXPRESSIONS
+
+  ES4
+    *
+    "null"
+    "undefined"
+    ( t1, ... )
+    { name1: t1, ... }
+    [ t ]
+    [ t1, ... ]
+    t !
+    t ?
+    ident
+    "like" t
+
+TYPE ANNOTATIONS
+
+  ES4
+    optional type annotations
+      : type-expr
+      : wrap type-expr
+    optional static type checking ("strict mode")
+
+TYPE DEFINITIONS
+
+  ES4
+    class C { ... }
+    class C.<T,...> { ... }
+    class C! { ... }
+    class C.<T,...>! { ... }
+    interface I { ... }
+    interface I.<T,...> { ... }
+    type U = ...
+    type U.<T,..> = ...
+
+BUILTIN TYPES
+
+  ES4
+    Classes
+      string
+      boolean
+      byte
+      int
+      uint
+      double
+      decimal
+      Name
+      Namespace
+      NamespaceSet
+      NamespaceSetList
+      Map.<K,V>
+      Vector.<T>
+      ControlInspector.<T>
+      EncodingError
+    Types
+      Strings
+      Booleans
+      Numbers
+      EnumerableId
+    Types (intrinsic)
+      FieldIterator
+      FieldValueIterator
+      ... and more
+    Interfaces (intrinsic)
+      Field
+      FieldValue
+      Type
+      NominalType
+      InterfaceType
+      ClassType
+      AnyType
+      NullType
+      UndefinedType
+      RecordType
+      ArrayType
+      FunctionType
+      ... and more
+    Upgrades
+      Additional methods on ES3 classes (toJSONString)
+      Early-bindable methods on all classes
+      Changes to "length" in numerous methods
+
+  ES3
+    Object
+    Function
+    Array
+    String
+    Boolean
+    Number
+    Date
+    RegExp
+    Error, EvalError, RangeError, ReferenceError, SyntaxError, TypeError, URIError
+
+BUILTIN OBJECTS
+
+  ES4
+    new global functions
+    RegExp
+      new flags
+      named submatches
+      Unicode character classes
+
+  ES3
+    global object
+    Math object
+
+
+COMPUTATION
+
+  ES4
+    for-in and for-each defined in terms of iterators
+    proper tail calls
+    annotation check on assignment
+
+

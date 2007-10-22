@@ -71,8 +71,10 @@
 
 package
 {
-    use namespace intrinsic;
     use default namespace public;
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     // Should be __ES4__
     intrinsic class Map.<K,V>
@@ -90,9 +92,7 @@ package
         {
         }
 
-        /* Create a Map from an Object */
-        // OBSOLETE
-        meta static function convert(x : Object!) {
+        meta static function invoke(x : Object!) {
             let d = new Map.<EnumerableId,V>;
             for ( let n in x )
                 if (x.hasOwnProperty(n))

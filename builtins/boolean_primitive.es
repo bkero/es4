@@ -43,6 +43,9 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
+
     import JSON.*;
 
     /*
@@ -54,14 +57,10 @@ package
      *
      * The literals true and false denote instances of this class.
      */
-    intrinsic final class boolean!
+    __ES4__ final class boolean!
     {
         // IMPLEMENTATION ARTIFACT: A getter because boolean is loaded before int.
         static function get length() { return 1 }
-
-        // Obsolete, but RI needs to be extended first
-        meta static function convert(x) : boolean
-            boolean(x);
 
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean

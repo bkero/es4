@@ -35,52 +35,54 @@
  *
  */
 
-use namespace intrinsic;
-
-intrinsic final class Name extends String 
+package 
 {
-    // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
-    static function get length() { return 2 }
-
-    function Name(a, b=undefined) {
-        if (a is Namespace && b is string) {
-            qualifier = a;
-            identifier = b;
-
+    use default namespace public;
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
+    
+    __ES4__ final class Name extends String 
+    {
+        
+        // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
+        static function get length() { return 2 }
+        
+        function Name(a, b=undefined) {
+            if (a is Namespace && b is string) {
+                qualifier = a;
+                identifier = b;                
+            }
+            if (a is Name && b is undefined) {
+                qualifier = a.qualifier;
+                identifier = a.identifier;
+            }
+            if (a is string && b is undefined) {
+                identifier = a;
+            }
+            throw new TypeError();
         }
-        if (a is Name && b is undefined) {
-            qualifier = a.qualifier;
-            identifier = a.identifier;
+        
+        meta static function invoke(a, b=undefined): Name
+            new Name(a, b);
+        
+        prototype function toString(this : Name)
+            this.intrinsic::toString();
+        
+        override intrinsic function toString() : string {
+            if (qualifier === null)
+                return identifier;
+            return string(qualifier) + "::" + identifier;
         }
-        if (a is string && b is undefined) {
-            identifier = a;
-        }
-        throw new TypeError();
+        
+        prototype function valueOf(this : Name)
+            this.intrinsic::valueOf();
+        
+        override intrinsic function valueOf() : string
+            intrinsic::toString();
+        
+        // FIXME #42: use const again when it works
+        public var qualifier  : Namespace,
+                   identifier : string;
     }
-
-    meta static function invoke(a, b=undefined): Name
-        new Name(a, b);
-
-    // OBSOLETE
-    meta static function convert(v : (Namespace, string))
-        new Name(v);
-
-    prototype function toString(this : Name)
-        this.intrinsic::toString();
-
-    override intrinsic function toString() : string {
-        if (qualifier === null)
-            return identifier;
-        return string(qualifier) + "::" + identifier;
-    }
-
-    prototype function valueOf(this : Name)
-        this.intrinsic::valueOf();
-
-    override intrinsic function valueOf() : string
-        intrinsic::toString();
-
-    // FIXME #42: use const again when it works
-    public var   qualifier  : Namespace,
-                 identifier : string;
 }

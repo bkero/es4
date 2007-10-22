@@ -46,10 +46,12 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
 
-    intrinsic type Numbers = (int, uint, double, decimal, Number!);
+    __ES4__ type AnyNumber = (byte, int, uint, double, decimal, Number!);
 
     dynamic class Number
     {
@@ -63,14 +65,9 @@ package
         static function get NEGATIVE_INFINITY() : double -1d / 0d;
         static function get POSITIVE_INFINITY() : double 1d / 0d;
 
-        /* Obsolete, needed for the moment because the RI does not yet handle
-           interconversion of numbers */
-        meta static function convert(x)
-            x is Number ? x : new Number(x);
-
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
         meta static function invoke(value=0d) {
-            if (value is (int,uint,double,decimal))
+            if (value is (int,uint,double,decimal,Number))
                 return value;
             return double(value);
         }
@@ -104,25 +101,25 @@ package
          * of these functions may assume they operate on a "Number".
          */
 
-        prototype function toString(this: Numeric, radix=10)
+        prototype function toString(this: AnyNumber, radix=10)
             this.intrinsic::toString(radix);
 
-        prototype function toLocaleString(this: Numeric)
+        prototype function toLocaleString(this: AnyNumber)
             this.intrinsic::toLocaleString();
 
-        prototype function toJSONString(this: Numeric, pretty=false)
+        prototype function toJSONString(this: AnyNumber, pretty=false)
             this.intrinsic::toJSONString(pretty);
 
-        prototype function valueOf(this: Numeric)
+        prototype function valueOf(this: AnyNumber)
             this.intrinsic::valueOf();
 
-        prototype function toFixed(this:Numeric, fractionDigits)
+        prototype function toFixed(this:AnyNumber, fractionDigits)
             this.intrinsic::toFixed(fractionDigits);
 
-        prototype function toExponential(this: Numeric, fractionDigits)
+        prototype function toExponential(this: AnyNumber, fractionDigits)
             this.intrinsic::toExponential(fractionDigits);
 
-        prototype function toPrecision(this: Numeric, precision)
+        prototype function toPrecision(this: AnyNumber, precision)
             this.intrinsic::toPrecision(precision);
     }
 }

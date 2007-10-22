@@ -59,11 +59,13 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    intrinsic type Strings = (string,String!);
+    __ES4__ type AnyString = (string, String!);
 
     /* The January 2007 meeting resolved that String is open and
      * dynamic.
@@ -72,11 +74,6 @@ package
     {
         // A getter because String is loaded before int
         static function get length() { return 1 }
-
-        /* E262-4 draft */
-        /* OBSOLETE */
-        meta static function convert(x)
-            string(x);
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(value="")
@@ -138,7 +135,7 @@ package
         static function indexOf(self, searchString, position): double
             string.indexOf(self, searchString, position);
 
-        intrinsic function indexOf(searchString: Strings, position: double = 0.0) : double
+        intrinsic function indexOf(searchString: AnyString, position: double = 0.0) : double
             string.indexOf(this, searchString, position);
 
 
@@ -149,7 +146,7 @@ package
         static function lastIndexOf(self, searchString, position) : double
             string.lastIndexOf(self, searchString, position);
 
-        intrinsic function lastIndexOf(searchString: Strings, position: double) : double
+        intrinsic function lastIndexOf(searchString: AnyString, position: double) : double
             string.lastIndexOf(this, searchString, position);
 
 
@@ -159,7 +156,7 @@ package
         static function localeCompare(self, that) : double
             string.localeCompare(self, that);
 
-        intrinsic function localeCompare(that: Strings) : double
+        intrinsic function localeCompare(that: AnyString) : double
             string.localeCompare(this, that);
 
 
@@ -179,7 +176,7 @@ package
         static function replace(self, searchValue, replaceValue) : string
             string.replace(self, searchValue, replaceValue);
 
-        intrinsic function replace(s: (RegExp!,Strings), r: (Strings,function(...):Strings)) : string
+        intrinsic function replace(s: (RegExp!,AnyString), r: (AnyString,function(...):AnyString)) : string
             string.replace(this, searchValue, replaceValue);
 
 
@@ -209,7 +206,7 @@ package
         static function split(self, separator, limit): Array!
             string.split(self, separator, limit);
 
-        intrinsic function split(separator:(Strings,RegExp!), limit: uint = uint.MAX_VALUE) : Array!
+        intrinsic function split(separator:(AnyString,RegExp!), limit: uint = uint.MAX_VALUE) : Array!
             string.split(this, separator, limit);
 
 
@@ -303,13 +300,13 @@ package
         }
 
 
-        prototype function toString(this: Strings)
+        prototype function toString(this: AnyString)
             this.intrinsic::toString();
 
-        prototype function toJSONString(this: Strings, pretty=false)
+        prototype function toJSONString(this: AnyString, pretty=false)
             this.intrinsic::toJSONString(pretty);
 
-        prototype function valueOf(this: Strings)
+        prototype function valueOf(this: AnyString)
             this.intrinsic::valueOf();
 
         prototype function charAt(pos)
@@ -363,7 +360,7 @@ package
         prototype function toLocaleUpperCase()
             string.toLocaleUpperCase(this);
 
-        prototype function parseJSON(this:Strings, filter=undefined)
+        prototype function parseJSON(this:AnyString, filter=undefined)
             string.parseJSON(string(this), filter);
 
         prototype function trim()

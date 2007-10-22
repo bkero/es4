@@ -1,8 +1,7 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "uint" object
+ * ECMAScript 4 builtins - the "byte" object
  *
- * E262-3 15.7
  * E262-4 proposals:numbers
  * Tamarin code
  *
@@ -51,23 +50,23 @@ package
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    // The [[Prototype]] of "uint" is Number.[[Prototype]]
+    // The [[Prototype]] of "byte" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
-    __ES4__ final class uint!
+    __ES4__ final class byte!
     {
         static const length = 1;
 
-        static const MAX_VALUE : uint = 0xFFFFFFFFu;
-        static const MIN_VALUE : uint = 0;
+        static const MAX_VALUE : byte = 0xFFu;
+        static const MIN_VALUE : byte = 0;
 
-        /* E262-4 draft: The uint Constructor Called as a Function */
+        /* E262-4 draft: The byte Constructor Called as a Function */
         meta static function invoke(x=0u)
-            x is uint ? x : magic::newUInt(x);
+            x is byte ? x : magic::newByte(x);
 
-        /* E262-4 draft: The uint constructor */
-        function uint(x=0u)
-            magic::bindUInt(this, x);
+        /* E262-4 draft: The byte constructor */
+        function byte(x=0u)
+            magic::bindByte(this, x);
 
         override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
@@ -88,7 +87,7 @@ package
                     q = "0";
                 return q;
             }
-            throw new TypeError("Invalid radix argument to uint.toString");
+            throw new TypeError("Invalid radix argument to byte.toString");
         }
 
         /* INFORMATIVE */
@@ -98,7 +97,7 @@ package
         override intrinsic function toJSONString(pretty: boolean=false) : string
             JSON.formatNumber(this, pretty);
 
-        override intrinsic function valueOf(): uint
+        override intrinsic function valueOf(): byte
             this;
 
         intrinsic function toFixed(fractionDigits=0) : string

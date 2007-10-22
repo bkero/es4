@@ -51,13 +51,14 @@ package
     use default namespace public;
     use namespace helper;
     use namespace informative;
-    use namespace intrinsic;  // Override with "public::" when necessary
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     const NOARG = {};
 
     dynamic class Date
     {
-        use default namespace public;
 
         static const length = 7;
 
@@ -1023,8 +1024,8 @@ package
         return y;
     }
 
-    native function LocalTZA() : double;
-    native function DaylightSavingsTA(t : double) : double;
+    intrinsic native function LocalTZA() : double;
+    intrinsic native function DaylightSavingsTA(t : double) : double;
 
     helper function formatYears(n: double): string {
         if (n >= 0 && n <= 9999)

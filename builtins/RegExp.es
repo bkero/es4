@@ -44,11 +44,13 @@
 
 package
 {
+    use default namespace public;
+    use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
+
     import Unicode.*;
     import RegExpInternals.*;
-    use namespace intrinsic;
-    use default namespace public;
-    use strict;
     import ECMAScript4_Internal.*;
 
     /* E262-3 15.10: Regular expression object */

@@ -118,38 +118,37 @@ fun funcTypeParams (func:Ast.FUNC)
     end
 
 fun extractType (ty:Ast.TY) 
-    : (Ast.TYPE_EXPR * (Ast.FRAME_ID option) * Ast.UNIT_NAME option) = 
+    : (Ast.TYPE_EXPR * (Ast.RIB_ID option)) = 
     case ty of 
-        Ast.Ty {expr, frameId, topUnit} => (expr, frameId, topUnit)
+        Ast.Ty {expr, ribId} => (expr, ribId)
                                               
 fun extractFuncType (ty:Ast.TY) 
-    : (Ast.FUNC_TYPE * (Ast.FRAME_ID option) * Ast.UNIT_NAME option) = 
+    : (Ast.FUNC_TYPE * (Ast.RIB_ID option)) = 
     let
-        val Ast.Ty {expr, frameId, topUnit} = ty
+        val Ast.Ty {expr, ribId} = ty
     in
-        (needFunctionType expr, frameId, topUnit)
+        (needFunctionType expr, ribId)
     end
 
 
 fun extractInstanceType (ty:Ast.TY) 
-    : (Ast.INSTANCE_TYPE * (Ast.FRAME_ID option) * Ast.UNIT_NAME option) = 
+    : (Ast.INSTANCE_TYPE * (Ast.RIB_ID option)) =
     let
-        val Ast.Ty {expr, frameId, topUnit} = ty
+        val Ast.Ty {expr, ribId} = ty
     in
-        (needInstanceType expr, frameId, topUnit)
+        (needInstanceType expr, ribId)
     end
 
 
 fun lift (q:('a -> Ast.TYPE_EXPR))
-         (x:(Ast.TY -> ('a * (Ast.FRAME_ID option) * (Ast.UNIT_NAME option))))
+         (x:(Ast.TY -> ('a * (Ast.RIB_ID option))))
          (ty:Ast.TY) 
     : (Ast.TY) =
     let 
-        val (a, frameId, topUnit) = x ty
+        val (a, ribId) = x ty
     in
         Ast.Ty { expr = (q a),
-                 frameId = frameId,
-                 topUnit = topUnit }
+                 ribId = ribId }
     end
 
 fun inject (q:Ast.TYPE_EXPR -> Ast.TYPE_EXPR) 
@@ -159,27 +158,25 @@ fun inject (q:Ast.TYPE_EXPR -> Ast.TYPE_EXPR)
     
 
 and liftOpt (q:('a -> Ast.TYPE_EXPR option))
-            (x:(Ast.TY -> ('a * (Ast.FRAME_ID option) * (Ast.UNIT_NAME option))))
+            (x:(Ast.TY -> ('a * (Ast.RIB_ID option))))
             (ty:Ast.TY) 
     : (Ast.TY option) =
     let
-        val (a, frameId, topUnit) = x ty
+        val (a, ribId) = x ty
     in
         case q a of 
             NONE => NONE
           | SOME expr => 
             SOME (Ast.Ty { expr = expr,
-                           frameId = frameId,
-                           topUnit = topUnit })
+                           ribId = ribId })
     end
     
-val conversionTyOfInstanceTy = liftOpt (#conversionTy) extractInstanceType
 val resultTyOfFuncTy = lift (#result) extractFuncType
 val resultTypeOfFuncTy = typeExprOf o resultTyOfFuncTy
 fun minArgsOfFuncTy (ty:Ast.TY) 
     : int =
     let 
-        val (fty, nonTopRibs, topUnit) = extractFuncType ty
+        val (fty, ribId) = extractFuncType ty
     in
         (#minArgs fty)
     end
@@ -188,7 +185,7 @@ fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a)
                 (funcTy:Ast.TY)                 
     : 'a =
     let
-        val (fty, _, _) = extractFuncType funcTy
+        val (fty, _) = extractFuncType funcTy
     in
         q fty
     end
@@ -200,12 +197,11 @@ val funcTyHasRest = queryFuncTy (#hasRest)
 fun singleParamTyOfFuncTy (ty:Ast.TY) 
     : Ast.TY = 
     let
-        val (funcTy, frameId, topUnit) = extractFuncType ty
+        val (funcTy, ribId) = extractFuncType ty
     in 
         case (#params funcTy) of
             [t] => Ast.Ty { expr=t,
-                            frameId = frameId,
-                            topUnit=topUnit }
+                            ribId = ribId }
           | _ => error ["singleParamTyOfFuncTy: non-unique parameter"]
     end    
                  

@@ -288,7 +288,7 @@ fun parseScript (filename : string) : TEST_CASE list =
         handle e => (closeIn input; raise e)
     end
 
-fun parse (source : INPUT_SOURCE) : Ast.PROGRAM =
+fun parse (source : INPUT_SOURCE) : Ast.FRAGMENT =
     case source of
          Raw s => Parser.parseLines s
        | File f => Parser.parseFile f
@@ -297,53 +297,49 @@ fun parse (source : INPUT_SOURCE) : Ast.PROGRAM =
  * TEST RUNNER
  * ********************************************************************************************** *)
 
-fun runTestCase (test : TEST_CASE) : TEST_RESULT =
+fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
 (
     logTestCase (#name test);
-(*
-	print "booting ...\n";
-	Boot.boot ();
-	print "booted\n";
-
-*)
     case test of
-         { name, stage=Parse, arg=true, source } =>
-         (
-             (Defn.defProgram (parse source); (test, true))
-             handle e => (unexpectedExn e; (test, false))
-         )
-       | { name, stage=Parse, arg=false, source } =>
-         (
-             (Defn.defProgram (parse source); (test, false))
-             handle Parser.ParseError _ => (test, true)
-                  | e => (unexpectedExn e; (test, false))
-         )
-       | { name, stage=Verify, arg=true, source } =>
-         (
-             print "Verify true\n";
-	     (Verify.verifyProgram (parse source); (test, true))
-             handle e => (unexpectedExn e; (test, false))
-         )
-       | { name, stage=Verify, arg=false, source } =>
-         (
-             (Verify.verifyProgram (parse source); (test, false))
-             handle LogErr.VerifyError _ => (test, true)
-                  | e => (unexpectedExn e; (test, false))
-         )
 
-       | { name, stage=Eval, arg=true, source } =>
-         (
-             (Eval.evalTopProgram (Verify.verifyProgram (Defn.defProgram (parse source))); (test, true))
-             handle e => (unexpectedExn e; (test, false))
-         )
+	{ name, stage=Parse, arg, source } =>
+	 (let
+	      val frag = parse source
+	  in
+	      (test, if arg then true else false)
+	  end
+	  handle LogErr.ParseError _ => (test, if arg then false else true) 
+	       | e => (unexpectedExn e; (test, false)))
+
+       | { name, stage=Verify, arg, source } =>
+	 (let
+	      val frag = parse source
+	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag
+	      val frag = Verify.verifyTopFragment prog true frag
+	  in
+	      (test, if arg then true else false)
+	  end
+	  handle LogErr.VerifyError _ => (test, if arg then false else true) 
+	       | e => (unexpectedExn e; (test, false)))
+
+       | { name, stage=Eval, arg, source } =>
+	 (let
+	      val frag = parse source
+	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag
+	      val frag = Verify.verifyTopFragment prog true frag
+	      val res = Eval.evalTopFragment regs frag
+	  in
+	      (test, if arg then true else false)
+	  end
+	  handle LogErr.EvalError _ => (test, if arg then false else true) 
+	       | e => (unexpectedExn e; (test, false)))
 )
 
 fun run (filename : string) : TEST_RESULT list =
-    let in
-	print "booting ...\n";
-	Boot.boot ();
-	print "booted\n";
-	map runTestCase (parseScript filename)
+    let
+	val regs = Boot.boot ()
+    in
+	map (runTestCase regs) (parseScript filename)
 	handle e as (BadTestParameter (s, lineNum)) =>
                (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
 		raise e)
@@ -368,7 +364,6 @@ fun consumeTraceOption (opt:string) : bool =
       | "-Tdecimal" => (Decimal.doTrace := true; false)
       | "-Tnative" => (Native.doTrace := true; false)
       | "-Tboot" => (Boot.doTrace := true; false)
-      | "-Tstack" => (Eval.traceStack := true; false)
       | _ => true
 
 fun main (arg0 : string, args : string list) : int =
