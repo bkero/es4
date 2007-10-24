@@ -43,10 +43,12 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     // RI bug: the "this" constraint on methods can't use union types,
     // but the parser allows type names...
-    intrinsic type Booleans = (boolean,Boolean!);
+    __ES4__ type AnyBoolean = (boolean,Boolean!);
 
     dynamic class Boolean
     {
@@ -75,14 +77,14 @@ package
         // The boolean class uses the Boolean class's prototype too.
 
         /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-        prototype function toString(this: Booleans)
+        prototype function toString(this: AnyBoolean)
             this.intrinsic::toString();
 
-        prototype function toJSONString(this: Booleans, pretty=false)
+        prototype function toJSONString(this: AnyBoolean, pretty=false)
             this.intrinsic::toJSONString(pretty);
 
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-        prototype function valueOf(this: Booleans)
+        prototype function valueOf(this: AnyBoolean)
             this.intrinsic::valueOf();
     }
 }

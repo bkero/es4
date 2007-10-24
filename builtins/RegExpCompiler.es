@@ -50,9 +50,11 @@
 
 package RegExpInternals
 {
-    import Unicode.*;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
+    import Unicode.*;
 
     intrinsic class RegExpCompiler
     {

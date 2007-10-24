@@ -42,10 +42,12 @@
 
 package RegExpInternals
 {
-    import Unicode.*;
-    use namespace intrinsic;
     use default namespace public;
+    use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
+    import Unicode.*;
 
     /* Encapsulation of compiled regular expression as returned by the
        compiler.

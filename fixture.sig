@@ -34,18 +34,17 @@
 
 signature FIXTURE = sig
 
-    (* FRAME_ID management code *)
-
-    val allocFrame : (Ast.FRAME_ID option) -> Ast.FRAME_ID
-    val saveFrame : Ast.FRAME_ID -> Ast.RIB -> unit
-
     (* Basic FIXTURE / RIB operations *)
 
-    val printFixture : Ast.FIXTURE_NAME * Ast.FIXTURE -> unit
     val getFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE
     val hasFixture : Ast.RIB -> Ast.FIXTURE_NAME -> bool
     val replaceFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE -> Ast.RIB
+    val printFixture : Ast.FIXTURE_NAME * Ast.FIXTURE -> unit
     val printRib : Ast.RIB -> unit
+
+    (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
+    type TYEQ = (Ast.TY -> Ast.TY -> bool)
+    val mergeRibs : TYEQ -> Ast.RIB -> Ast.RIB -> Ast.RIB
 
 (* 
  * An ES4 program is an endless sequence of fragments. Fragments come in 3 flavours:
@@ -58,9 +57,9 @@ signature FIXTURE = sig
  *    This is important: it means that a unit of a given name has a place where
  *    it "ends", inside a program.
  *
- * Units nest. Conceptually, the program can be considered "a unit that never closes". 
- * Or "the level 0" unit. Just beneath the program, there are special "top level" (level 1) 
- * units, that do close.
+ * Units nest. Conceptually, the program can be considered "a unit that never closes", or 
+ * "the level 0" unit; it contains a root RIB. Just beneath the program, there are special 
+ * "top level" (level 1) units, that do close.
  * 
  * Top level units are important because they are what the verifier acts on. When a top
  * level unit closes, the verifier may check that unit. The verifier will try to resolve
@@ -77,29 +76,28 @@ signature FIXTURE = sig
  * When defined, a fragment produces a hoisted rib.
  *
  * The fragment and rib are added to the program. Adding a fragment and its rib causes
- * the fragment's rib to merge into the top rib, and the fragment's blocks to be appended
+ * the fragment's rib to merge into the root rib, and the fragment's blocks to be appended
  * to the top block list.
  *
  * If the added fragment is a unit and the interpreter is running in strict mode,
  * it may run the verifier. It should only verify the new fixtures in the fragment's
  * rib (to avoid redundant verification), and it should verify them as a group, and it
- * should verify them in an environment under the (merged) top rib, including all 
+ * should verify them in an environment under the (merged) root rib, including all 
  * fixtures from units that came before the fragment.
  *
- * Ast.TY values close over an environment. That environment contains ribs but it
- * also implicitly contains a link to the extensible "outer" environment: the top
- * rib, that may be extended with new types at any time, as new fragments arrive. 
+ * Ast.TY values close over an environment. That environment refers to a RIB by ID. The
+ * RIB it refers to -- and the parents of that RIB -- may be extended during definition 
+ * time. If the TY is not in a closed top-level unit, the outermost enclosing RIB may
+ * even be extended at runtime by dynamic evaluation constructs.
  * 
  * One might think this means that "failure to resolve a type name" can never be 
  * seen as a hard error, but this is not true. When we form an Ast.TY closure inside
- * a unit, we record the top unit name in the Ast.TY. When performing a type judgment,
- * we look at the TY:
+ * a unit, the parent RIB_ID chain winds its way up to the root. When
+ * performing a type judgment, we look at the TY:
  * 
- *  - *IF* the TY has an associated top-level unit name (#unit of Ast.TY)
- *  - *AND* the PROGRAM has a top rib associated with that unit name, meaning that
- *          the unit has closed and we have a definite maximum amount of knowledge
- *          to use for judging type expressions in one of its sub-units.
- *  - *THEN* failure to resolve type names in the TY, under that top rib, is an error
+ *  - *IF* the TY occurs within a closed top-level unit (meaning we have received the
+      maximum amount of information we're going to get about the names in this unit).
+ *  - *THEN* failure to resolve type names in the TY, under that top rib, is an error.
  *  - *ELSE* failure to resolve type names in the TY represents a possibly-transient
  *           error, and we need to back off and wait unless we're at the last possible
  *           moment (eg. trying to find a class for a 'new' expression or something).
@@ -107,35 +105,29 @@ signature FIXTURE = sig
  * 
  *)
 
-    (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
-    type TYEQ = (Ast.TY -> Ast.TY -> bool)
-    val mergeFixtures : TYEQ -> 
-                        ((Ast.FIXTURE_NAME * Ast.FIXTURE) * Ast.RIB) -> 
-                        Ast.RIB
 
     type PROGRAM
-    val mkProgram : Ast.RIB -> PROGRAM
-    val closeTopFragment : PROGRAM -> Ast.FRAGMENT -> TYEQ -> PROGRAM
-    val getTopFixture : PROGRAM -> Ast.NAME -> Ast.FIXTURE
-    val resolveToFixture : PROGRAM -> Ast.MULTINAME -> (Ast.FRAME_ID option) -> Ast.FIXTURE option
-    val getTopRib : PROGRAM -> Ast.RIB
-    val extendTopRib : PROGRAM -> Ast.RIB -> TYEQ -> PROGRAM
-    val getTopRibForUnit : PROGRAM -> Ast.UNIT_NAME -> Ast.RIB option
-    val getTopBlocks : PROGRAM -> Ast.BLOCK list
-    val getPackageNames : PROGRAM -> Ast.IDENT list list
-    val getCurrFullRibs : PROGRAM -> Ast.RIBS -> Ast.RIBS
-    val processTopRib : PROGRAM -> (Ast.RIB -> Ast.RIB) -> PROGRAM
-    val getFullRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)
+    val mkProgram : int -> Ast.RIB -> PROGRAM
+    val updateLangEd : PROGRAM -> int -> unit
+    val getLangEd : PROGRAM -> int
 
-    val instanceTy : PROGRAM -> Ast.NAME -> Ast.TY
-    val isClass : PROGRAM -> Ast.NAME -> bool
-    val getClass : PROGRAM -> Ast.NAME -> Ast.CLS
-    val instanceOf : PROGRAM -> 
-                     Ast.TYPE_EXPR -> 
-                     Ast.TYPE_EXPR -> 
-                     (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool) -> 
-                     (Ast.TYPE_EXPR -> Ustring.STRING list) -> 
-                     (Ustring.STRING) -> 
-                     bool
+    val resolveToFixture : PROGRAM -> Ast.MULTINAME -> (Ast.RIB_ID option) -> ((Ast.NAME * Ast.FIXTURE) option)
+    val updateFixtureCache : PROGRAM -> (Ast.RIB_ID option) -> Ast.MULTINAME -> Ast.NAME -> Ast.FIXTURE -> unit
+
+    val inGeneralRib : PROGRAM -> (Ast.RIB_ID option) -> bool
+    val inTopUnitRib : PROGRAM -> (Ast.RIB_ID option) -> bool
+
+    val allocGeneralRib : PROGRAM -> (Ast.RIB_ID option) -> Ast.RIB_ID
+    val allocTopUnitRib : PROGRAM -> Ast.RIB_ID
+    val getRibs : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIBS * bool)
+    val ribIsClosed : PROGRAM -> (Ast.RIB_ID option) -> bool
+    val saveRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> unit
+    val extendRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> TYEQ -> unit
+    val closeFragment : PROGRAM -> Ast.FRAGMENT -> (Ast.RIB_ID option) -> unit
+    val getRootRib : PROGRAM -> Ast.RIB
+    val getTopBlocks : PROGRAM -> Ast.BLOCK list
+    val addPackageName : PROGRAM -> Ast.IDENT list -> unit
+    val getPackageNames : PROGRAM -> Ast.IDENT list list
+    val getRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)
 
 end

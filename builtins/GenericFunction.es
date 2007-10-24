@@ -75,14 +75,14 @@
 
    Then methods scattered throughout the program, like these:
 
-       generic function f(a: int, b: boolean, c: Numeric, ...rest) {
+       generic function f(a: int, b: boolean, c: AnyNumber, ...rest) {
            return a+b
        }
 
    are turned into calls to addMethod:
 
-       f.addMethod([int, boolean, Numeric], 
-                   function (nextMethod, a:int, b:boolean, c:Numeric, ...rest) { return a+b })
+       f.addMethod([int, boolean, AnyNumber], 
+                   function (nextMethod, a:int, b:boolean, c:AnyNumber, ...rest) { return a+b })
 
    Generally few errors are signalled when a method is added, most of
    the interesting work happens when f is called.
