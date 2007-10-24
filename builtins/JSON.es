@@ -36,6 +36,8 @@
 package JSON
 {
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     public function formatObject(object, pretty=false): string {
         pp = pretty;
@@ -84,9 +86,9 @@ package JSON
         objectType.isSubtypeOf(intrinsic::typeOf(v));
 
     function isEncodableValue(v) {
-        return ((v is Strings) ||
-                (v is Booleans) ||
-                (v is Numbers) ||
+        return ((v is AnyString) ||
+                (v is AnyBoolean) ||
+                (v is AnyNumber) ||
                 (v is null) ||
                 (v is Date) ||
                 (v is Array) ||

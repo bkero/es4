@@ -36,6 +36,8 @@
 package Unicode
 {
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     /* Unicode line break characters */
     public const linebreaks = "\u000A\u000D\u0085\u2028\u2029";

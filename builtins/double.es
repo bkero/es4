@@ -50,14 +50,16 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    // The [[Prototype]] of "int" is Number.[[Prototype]]
+    // The [[Prototype]] of "double" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
 
-    intrinsic final class double!
+    __ES4__ final class double!
     {
         static const length = 1;
 
@@ -76,11 +78,6 @@ package
         static const SQRT1_2: double = 0.7071067811865476;/* Approximately */
         static const SQRT2: double = 1.4142135623730951;  /* Approximately */
 
-        /* Obsolete, needed for the moment because the RI does not yet handle
-           interconversion of numbers */
-        meta static function convert(x)
-            double(x);
-
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
         meta static function invoke(x=0d)
             x is double ? x : magic::newDouble(x);
@@ -92,7 +89,7 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (radix is Numeric && 
+            if (radix is AnyNumber && 
                 radix >= 2 && radix <= 36 && helper::isIntegral(radix))
                 return informative::toString(int(radix));
             throw new TypeError("Invalid radix argument to double.toString");

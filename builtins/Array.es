@@ -42,7 +42,9 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
     use strict;
+
     import ECMAScript4_Internal.*;
     import JSON.*;
 
@@ -56,7 +58,7 @@ package
 
     // INFORMATIVE: this is an implementation that meets the spec, but the spec
     // allows for different sort implementations (quicksort is not required)
-    type Comparator = (function (*,*):Numeric, undefined);
+    type Comparator = (function (*,*):AnyNumber, undefined);
 
     dynamic class Array
     {
@@ -83,7 +85,7 @@ package
         function Array(...items) {
             if (items.length === 1) {
                 let item = items[0];
-                if (item is Numeric) {
+                if (item is AnyNumber) {
                     if (uint(item) === item)
                         this.length = uint(item);
                     else
@@ -303,7 +305,7 @@ package
 
         // 15.4.4.10 Array.prototype.slice (start, end)
         // FIXME #155: type system bug
-        static function slice(object/*: Object!*/, start: Numeric=0, end: Numeric=Infinity) {
+        static function slice(object/*: Object!*/, start: AnyNumber=0, end: AnyNumber=Infinity) {
             let len = uint(object.length);
 
             // If a param is passed then the first one is start.
@@ -325,7 +327,7 @@ package
                         start === undefined ? 0 : Number(start), 
                         end === undefined ? Infinity : Number(end));
 
-        intrinsic function slice(start: Numeric=0, end: Numeric=Infinity): Array
+        intrinsic function slice(start: AnyNumber=0, end: AnyNumber=Infinity): Array
             Array.slice(this, start, end);
 
         // FIXME #155: type system bug
@@ -374,7 +376,7 @@ package
 
         // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , ... ] ] ] )
         // FIXME #155: type system bug
-        helper static function splice(object/*: Object!*/, start: Numeric, deleteCount: Numeric, items: Array) {
+        helper static function splice(object/*: Object!*/, start: AnyNumber, deleteCount: AnyNumber, items: Array) {
             let out = new Array();
             let len = uint(object.length);
 
@@ -420,13 +422,13 @@ package
         }
 
         // FIXME #155: type system bug
-        static function splice(object/*: Object!*/, start: Numeric, deleteCount: Numeric, ...items): Array
+        static function splice(object/*: Object!*/, start: AnyNumber, deleteCount: AnyNumber, ...items): Array
             Array.helper::splice(object, start, deleteCount, items);
 
         prototype function splice(start, deleteCount, ...items)
             Array.helper::splice(this, Number(start), Number(deleteCount), items);
 
-        intrinsic function splice(start: Numeric, deleteCount: Numeric, ...items): Array
+        intrinsic function splice(start: AnyNumber, deleteCount: AnyNumber, ...items): Array
             Array.helper::splice(this, start, deleteCount, items);
 
         // FIXME #155: type system bug
@@ -595,7 +597,7 @@ package
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
         // ES4 draft: static intrinsics
 
-        static function indexOf(object/*:Object!*/, value, from:Numeric=0): Numeric {
+        static function indexOf(object/*:Object!*/, value, from:AnyNumber=0): AnyNumber {
             let len = object.length;
 
             from = from < 0 ? Math.ceil(from) : Math.floor(from);
@@ -614,14 +616,14 @@ package
         prototype function indexOf(value, from=0)
             Array.indexOf(this, value, Number(from));
 
-        intrinsic function indexOf(value, from:Numeric=0): Numeric
+        intrinsic function indexOf(value, from:AnyNumber=0): AnyNumber
             Array.indexOf(this, value, from);
 
 
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:lastIndexOf
         // ES4 draft: static intrinsics
 
-        static function lastIndexOf(object/*:Object!*/, value, from:Numeric=NaN): Numeric {
+        static function lastIndexOf(object/*:Object!*/, value, from:AnyNumber=NaN): AnyNumber {
             let len = object.length;
 
             if (isNaN(from))
@@ -646,7 +648,7 @@ package
         prototype function lastIndexOf(value, from=NaN)
             Array.lastIndexOf(this, value, Number(from));
 
-        intrinsic function lastIndexOf(value, from:Numeric=NaN): Numeric
+        intrinsic function lastIndexOf(value, from:AnyNumber=NaN): AnyNumber
             Array.lastIndexOf(this, value, from);
 
 
@@ -686,7 +688,7 @@ package
     // Then clamp it between 0 and len inclusive, and cast it to uint.
     //
     // Also used by Vector.es
-    helper function clamp(val: Numeric, len: uint): uint {
+    helper function clamp(val: AnyNumber, len: uint): uint {
         val = helper::toInteger(val);
         if (val < 0)
             val += len;

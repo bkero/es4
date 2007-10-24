@@ -86,9 +86,9 @@ for ECMA in $ROOT/ecma*
         echo $FILE
 	if [ $NOEXEC = 0 ]; then
   	  if [ -s $SECTION/shell.js ]; then
-	    make run-dumped FILE="$ECMA/shell.js $SECTION/shell.js $FILE" 1>&6 2>&6
+	    make run-dumped FLAGS=-3 FILE="$ECMA/shell.js $SECTION/shell.js $FILE" 1>&6 2>&6
 	  else
-	    make run-dumped FILE="$ECMA/shell.js $FILE" 1>&6 2>&6
+	    make run-dumped FLAGS=-3 FILE="$ECMA/shell.js $FILE" 1>&6 2>&6
 	  fi
         fi
       fi

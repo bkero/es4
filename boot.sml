@@ -47,7 +47,7 @@ fun lookupRoot (prog:Fixture.PROGRAM)
     : (Ast.CLS * Ast.INSTANCE_TYPE) = 
     let
         val _ = trace ["fetching ", LogErr.name n, " class definition"];
-        val rib = Fixture.getTopRib prog
+        val rib = Fixture.getRootRib prog
         val fix = Fixture.getFixture rib (Ast.PropName n)
         val cls = case fix of
                       Ast.ClassFixture cls => cls
@@ -89,7 +89,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.Ty { expr=Ast.InstanceType cty, frameId=NONE, topUnit=NONE },
+                           { ty = Ast.Ty { expr=Ast.InstanceType cty, ribId=NONE },
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
                                        dontEnum = true,
@@ -210,7 +210,7 @@ fun describeGlobal (regs:Mach.REGS) =
         (trace ["contents of global object:"];
          Mach.inspect (Mach.Object (#global regs)) 1;
          trace ["contents of top rib:"];
-         Fixture.printRib (Fixture.getTopRib (#prog regs)))
+         Fixture.printRib (Fixture.getRootRib (#prog regs)))
     else 
         ()
 
@@ -246,7 +246,8 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
 fun boot _ : Mach.REGS =
     let
         val _ = Native.registerNatives ();
-        val prog = Fixture.mkProgram Defn.initRib
+        val langEd = 4
+        val prog = Fixture.mkProgram langEd Defn.initRib
 
         (*
          * We have to do a small bit of delicate work here because we have to 
@@ -283,9 +284,9 @@ fun boot _ : Mach.REGS =
                        "builtins/Number.es",
                        "builtins/int.es",
                        "builtins/uint.es",
+                       "builtins/byte.es",
                        "builtins/double.es",
                        "builtins/decimal.es",
-                       "builtins/Numeric.es",
                        
                        "builtins/Error.es",
                        "builtins/EncodingError.es",
@@ -300,9 +301,7 @@ fun boot _ : Mach.REGS =
                        "builtins/Global.es",
                        
                        "builtins/Array.es",  (* before Date *)
-                       
-                       "builtins/ByteArray.es",
-                       
+
                        "builtins/Shell.es",   (* before RegExp, for debugging *)
                        "builtins/UnicodeClasses.es",
                        "builtins/UnicodeCasemapping.es",
@@ -314,6 +313,12 @@ fun boot _ : Mach.REGS =
                        "builtins/Date.es",
                        "builtins/MetaObjects.es", (* before JSON *)
                        "builtins/JSON.es"
+
+                           (*                            
+                            "builtins/Map.es",
+                            "builtins/Vector.es"
+                            *)
+
                  ]
 
         val objFrag = Verify.verifyTopFragment prog true objFrag
@@ -325,6 +330,11 @@ fun boot _ : Mach.REGS =
             in
                 Mach.newObj objTag Mach.Null NONE
             end
+
+        val clsFrag = Verify.verifyTopFragment prog true clsFrag
+        val funFrag = Verify.verifyTopFragment prog true funFrag
+        val ifaceFrag = Verify.verifyTopFragment prog true ifaceFrag
+        val otherProgs = verifyFiles prog otherFrags
 
         val regs = Mach.makeInitialRegs prog glob
         val _ = Mach.setBooting regs true
@@ -343,13 +353,6 @@ fun boot _ : Mach.REGS =
         val _ = trace ["allocated ribs for initial rib"]
 
         val _ = describeGlobal regs;
-
-        val clsFrag = Verify.verifyTopFragment prog true clsFrag
-        val funFrag = Verify.verifyTopFragment prog true funFrag                      
-        val ifaceFrag = Verify.verifyTopFragment prog true  ifaceFrag
-        val otherProgs = verifyFiles prog otherFrags
-
-        val prog = Fixture.processTopRib prog (fn rib => Verify.verifyTopRib prog true rib)
     in
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;

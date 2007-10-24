@@ -50,12 +50,11 @@ package
 {
     use default namespace public;
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
     dynamic class Function
     {
-        use namespace intrinsic;
-        use strict;
-
         // IMPLEMENTATION ARTIFACT: A getter because Function is loaded before int.
         static function get length() { return 1 }
 

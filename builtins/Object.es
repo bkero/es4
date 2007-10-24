@@ -44,19 +44,18 @@
 package
 {
     use default namespace public;
-    import JSON.*;
-
     // FIXME: this needs to be here to open the intrinsic namespace in the class.
     // There is a bug in the definer.
     use namespace intrinsic;
+    use namespace __ES4__;
+    use strict;
 
+    import JSON.*;
+    
     type EnumerableId = (int, uint, string /*, Name*/);  // FIXME: circularity
-
+    
     dynamic class Object
     {
-        use namespace intrinsic;
-        use strict;
-
         // IMPLEMENTATION ARTIFACT: A getter because Object is loaded before int.
         static function get length() { return 1 }
 

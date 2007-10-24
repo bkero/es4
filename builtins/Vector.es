@@ -63,7 +63,7 @@ package
         function get length()
             informative::getLength();
 
-        function set length(len: Numeric) {
+        function set length(len: AnyNumber) {
             if (fixed)
                 throw new RangeError();
             if (!helper::isIntegral(len) ||
@@ -74,7 +74,7 @@ package
         }
 
         meta function get(name): T {
-            if (name is Numeric) {
+            if (name is AnyNumber) {
                 let idx = name;
                 if (!helper::isIntegral(idx) || idx < 0 || idx >= length)
                     throw new RangeError();
@@ -85,7 +85,7 @@ package
         }
 
         meta function set(name, v) {
-            if (name is Numeric) {
+            if (name is AnyNumber) {
                 let idx = name;
                 let value: T = v;  // Note, effectful
                 if (!helper::isIntegral(idx) || 
@@ -160,7 +160,7 @@ package
                 eacher.call(thisObj, this[i], i, this);
         }
 
-        intrinsic function indexOf(value: T, from: Numeric=0): Numeric {
+        intrinsic function indexOf(value: T, from: AnyNumber=0): AnyNumber {
             let start = helper::clamp( from, length );
             for ( let i=start, limit=length ; i < limit ; i++ )
                 if (this[i] === value)
@@ -184,7 +184,7 @@ package
             return s;
         }
 
-        intrinsic function lastIndexOf(value: T, from: Numeric=Infinity): Numeric { 
+        intrinsic function lastIndexOf(value: T, from: AnyNumber=Infinity): AnyNumber { 
             let start = helper::clamp( from, length );
             for ( let i=start ; i >= 0 ; i-- )
                 if (this[i] === value)
@@ -233,7 +233,7 @@ package
             return v;
         }
 
-        intrinsic function slice(start: Numeric=0, end: Numeric=Infinity): Vector.<T> {
+        intrinsic function slice(start: AnyNumber=0, end: AnyNumber=Infinity): Vector.<T> {
             let first = helper::clamp( start, length );
             let limit = helper::clamp( end, length );
             let result = new Vector.<T>;
@@ -251,7 +251,7 @@ package
 
         // FIXME: Is the signature of comparefn too constraining?
 
-        intrinsic function sort(comparefn: function(T, T): Numeric): Vector.<T> {
+        intrinsic function sort(comparefn: function(T, T): AnyNumber): Vector.<T> {
             if (length > 0) {
                 let object = this;
                 informative::sortEngine(this, 
@@ -262,7 +262,7 @@ package
             return this;
         }
 
-        intrinsic function splice(start: Numeric, deleteCount: Numeric, ...items): Vector.<T>
+        intrinsic function splice(start: AnyNumber, deleteCount: AnyNumber, ...items): Vector.<T>
             helper::splice(start, deleteCount, items);
 
         helper function splice(start, deleteCount, items) {

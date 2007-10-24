@@ -82,8 +82,7 @@ type TOKENS = (TOKEN * Ast.LOC) list
 fun makeTy (typeExpr:Ast.TYPE_EXPR) 
     : Ast.TY = 
     Ast.Ty { expr = typeExpr,
-             frameId = NONE,
-             topUnit = NONE }
+             ribId = NONE }
 
 fun unwrapTy (ty:Ast.TY) 
     : Ast.TYPE_EXPR = 
