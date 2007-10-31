@@ -1,0 +1,27 @@
+ECMAScript Edition 4 Reference Implementation
+
+======================================================================
+Installation Instructions
+======================================================================
+
+We are actively working on improving and documenting the installation
+process. Currently the high-level overview is:
+
+Building with SML/NJ (recommended)
+--------------------
+
+Install SML/NJ version 110.62 or later
+% ./configure --with-smlnj
+% make repl
+
+Building with MLton
+-------------------
+
+Install MLton version 20070826 or later
+% ./configure --with-mlton
+% make compile
+
+Building with SML.NET
+---------------------
+
+Not yet supported.
