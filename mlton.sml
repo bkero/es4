@@ -38,17 +38,22 @@
 
 open MLton.World;
 
-fun main () =
-    case Main.main (CommandLine.name(), CommandLine.arguments()) of
+fun main regs =
+    case Main.main (regs, CommandLine.name(), CommandLine.arguments()) of
         0 => OS.Process.exit OS.Process.success
       | _ => OS.Process.exit OS.Process.failure;
 
 val _ =
-    (case Main.startup true (CommandLine.arguments()) of
-         ["-dump", filename] => (case save filename of
-                                     Original => ()
-                                   | Clone => main ())
-       | _ => main ())
+    let
+        val regs = Boot.boot()
+    in
+        case Main.startup (CommandLine.arguments()) of
+            ["-dump", filename] => 
+            (case save filename of
+                 Original => ()
+               | Clone => main regs)
+          | _ => main regs
+    end
 
 (*
 val _ = (case Main.main (name, args) of
