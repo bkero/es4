@@ -12,14 +12,14 @@ Building with SML/NJ (recommended)
 
 Install SML/NJ version 110.62 or later
 % ./configure --with-smlnj
-% make repl
+% make compile dump
 
 Building with MLton
 -------------------
 
 Install MLton version 20070826 or later
 % ./configure --with-mlton
-% make compile
+% make compile dump
 
 Building with SML.NET
 ---------------------
