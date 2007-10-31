@@ -38,25 +38,31 @@
 
 open MLton.World;
 
-fun main regs =
-    case Main.main (regs, CommandLine.name(), CommandLine.arguments()) of
+fun main regs name args =
+    case Main.main (regs, name, args) of
         0 => OS.Process.exit OS.Process.success
       | _ => OS.Process.exit OS.Process.failure;
 
+fun resume world =
+    if OS.FileSys.access (world, [OS.FileSys.A_READ])
+    then load world
+    else (TextIO.print ("error: " ^ world ^ " not found\n");
+          OS.Process.exit OS.Process.failure);
+
+val defaultWorld = "es4.world";
+
 val _ =
     let
-        val regs = Boot.boot()
+        val argvRest = Main.startup (CommandLine.arguments())
     in
-        case Main.startup (CommandLine.arguments()) of
-            ["-dump", filename] => 
-            (case save filename of
-                 Original => ()
-               | Clone => main regs)
-          | _ => main regs
-    end
-
-(*
-val _ = (case Main.main (name, args) of
-             0 => OS.Process.exit OS.Process.success
-           | 1 => OS.Process.exit OS.Process.failure);
-*)
+        case argvRest of
+            ["-dump", filename] =>
+                let
+                    val regs = Boot.boot()
+                in
+                    case save filename of
+                        Original => ()
+                      | Clone => main regs (CommandLine.name()) argvRest
+                end
+          | _ => resume defaultWorld
+    end;
