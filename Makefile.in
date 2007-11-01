@@ -62,7 +62,7 @@ ifneq ($(DEBUG),no)
 MLTONOPTS:=-const 'Exn.keepHistory true'
 endif
 MLTONCC:=-cc-opt -Idecimal/decNumber
-EXE:=es4
+EXE:=es4@EXEEXT@
 DUMP:=es4.world
 RUN:=./$(EXE)
 RUN_DUMPED:=./$(EXE) @MLton load-world $(DUMP) --
@@ -135,10 +135,7 @@ es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 $(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
 	$(SMLNJ) @SMLload=es4-init.heap -dump es4-dump.heap
 
-# TODO: abstract out the common parts into clean-dist and dist-tarball
-dist/es4.tar.gz: dump decimal
-	rm -rf dist/es4
-	mkdir -p dist/es4
+dist/es4.tar.gz: dump decimal clean-dist
 	cp bin/decimal dist/es4/
 ifeq ($(HEAP2EXEC),false)
 	cp bin/run-cygwin.sh dist/es4/es4
@@ -146,9 +143,6 @@ ifeq ($(HEAP2EXEC),false)
 else
 	$(HEAP2EXEC) $(DUMP) dist/es4/es4
 endif
-	chmod -R u=rwx,go=rx dist/es4
-	cd dist && tar cf es4.tar es4
-	gzip -v9 dist/es4.tar
 
 # ------------------------------------------------------------------------------
 # MLton targets
@@ -164,15 +158,12 @@ $(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES)
 $(DUMP): $(EXE)
 	./$(EXE) -dump $(DUMP)
 
-# TODO: abstract out the common parts into clean-dist and dist-tarball
-dist/es4.tar.gz: dump
-	rm -rf dist/es4
-	mkdir -p dist/es4
-	cp $(EXE) dist/es4/
+dist/es4.tar.gz: dump clean-dist
+	cp $(EXE) dist/es4/run.exe
 	cp $(DUMP) dist/es4/
-	chmod -R u=rwx,go=rx dist/es4
-	cd dist && tar cf es4.tar es4
-	gzip -v9 dist/es4.tar
+	cp bin/es4.bat dist/es4/
+	(which libgmp-3.dll >/dev/null 2>&1 && cp `which libgmp-3.dll` dist/es4/) || true
+	cp bin/run-mlton.sh dist/es4/es4
 
 endif
 
@@ -204,7 +195,18 @@ clean:
 
 dump: $(DUMP)
 
+clean-dist:
+	rm -rf dist/es4 dist/es4.tar dist/es4.tar.gz
+	mkdir -p dist/es4
+
 dist: dist/es4.tar.gz
+	chmod -R u=rwx,go=rx dist/es4
+	cp README INSTALL LICENSE dist/es4
+	cp bin/LGPL.txt dist/es4/LICENSE.GNUMP
+	cp bin/ICUL.txt dist/es4/LICENSE.DECIMAL
+	chmod 644 dist/es4/README dist/es4/INSTALL dist/es4/LICENSE dist/es4/LICENSE.GNUMP dist/es4/LICENSE.DECIMAL
+	cd dist && tar cf es4.tar es4
+	gzip -v9 dist/es4.tar
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && $(SMLNJ) @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
