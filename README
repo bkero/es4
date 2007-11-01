@@ -1,0 +1,31 @@
+The ECMAScript Edition 4 Reference Implementation
+
+Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
+Software ASA, and others.
+
+See the file LICENSE for terms and conditions.
+
+See the file INSTALL for installation instructions.
+
+======================================================================
+Quick start
+======================================================================
+
+On Cygwin, Linux, and MacOS X, run the `es4' script. On Windows
+without Cygwin, run the `es4.bat' batch file. Type :help at the ES4
+prompt for information about the interpreter.
+
+
+----------------------------------------------------------------------
+
+Versions of this software built with the MLton compiler dynamically link
+to the GNU MP Library.
+
+The GNU MP Library - http://gmplib.org/
+Copyright 1991, 1996, 1999, 2000, 2007 Free Software Foundation, Inc.
+
+The GNU MP Library is covered under the terms of the GNU Lesser General
+Public License, Version 3.
+
+You should have received a copy of the GNU Lesser General Public License
+along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.
