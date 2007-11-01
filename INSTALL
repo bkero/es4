@@ -14,9 +14,27 @@ The binary release consists of a single directory es4/ with several
 files. As long as you keep all these files together in one directory,
 you may move that directory anywhere (and/or rename it).
 
-On Windows, run the interpreter with the es4.bat script.
+Cygwin
+------
 
-On Unix, Mac OS X, or Cygwin, run the interpreter with the es4 script.
+Run the interpreter with the es4 script.
+
+Windows
+-------
+
+On Windows without Cygwin, run the es4.bat batch file.
+
+Linux
+-----
+
+Run the interpreter with the es4 script. Your system must contain an
+accessible installation of libgmp.so.3 (which it probably does) and
+GNU LIBC 2.3.
+
+MacOS X
+-------
+
+Run the interpreter with the es4 script.
 
 
 ======================================================================
