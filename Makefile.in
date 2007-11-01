@@ -162,7 +162,7 @@ dist/es4.tar.gz: dump clean-dist
 	cp $(EXE) dist/es4/run.exe
 	cp $(DUMP) dist/es4/
 	cp bin/es4.bat dist/es4/
-	which libgmp-3.dll >/dev/null 2>&1 && cp `which libgmp-3.dll` dist/es4/
+	(which libgmp-3.dll >/dev/null 2>&1 && cp `which libgmp-3.dll` dist/es4/) || true
 	cp bin/run-mlton.sh dist/es4/es4
 
 endif
