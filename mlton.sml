@@ -43,10 +43,13 @@ fun main regs name args =
         0 => OS.Process.exit OS.Process.success
       | _ => OS.Process.exit OS.Process.failure;
 
+fun error s =
+    (TextIO.output (TextIO.stdErr, "error: " ^ s); TextIO.flushOut TextIO.stdErr);
+
 fun resume world =
     if OS.FileSys.access (world, [OS.FileSys.A_READ])
     then load world
-    else (TextIO.print ("error: " ^ world ^ " not found\n");
+    else (error (world ^ " not found\n");
           OS.Process.exit OS.Process.failure);
 
 fun sibling path1 file =
