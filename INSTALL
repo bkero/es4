@@ -19,10 +19,14 @@ Cygwin
 
 Run the interpreter with the es4 script.
 
+Type :help at the ES4 prompt for information about the interpreter.
+
 Windows
 -------
 
 On Windows without Cygwin, run the es4.bat batch file.
+
+Type :help at the ES4 prompt for information about the interpreter.
 
 Linux
 -----
@@ -31,10 +35,14 @@ Run the interpreter with the es4 script. Your system must contain an
 accessible installation of libgmp.so.3 (which it probably does) and
 GNU LIBC 2.3.
 
+Type :help at the ES4 prompt for information about the interpreter.
+
 MacOS X
 -------
 
 Run the interpreter with the es4 script.
+
+Type :help at the ES4 prompt for information about the interpreter.
 
 
 ======================================================================
