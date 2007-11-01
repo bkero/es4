@@ -49,10 +49,16 @@ fun resume world =
     else (TextIO.print ("error: " ^ world ^ " not found\n");
           OS.Process.exit OS.Process.failure);
 
-val defaultWorld = "es4.world";
+fun sibling path1 file =
+    let
+        val {dir, ...} = OS.Path.splitDirFile path1
+    in
+        OS.Path.joinDirFile {dir = dir, file = file}
+    end;
 
 val _ =
     let
+        val exe = CommandLine.name()
         val argvRest = Main.startup (CommandLine.arguments())
     in
         case argvRest of
@@ -62,7 +68,7 @@ val _ =
                 in
                     case save filename of
                         Original => ()
-                      | Clone => main regs (CommandLine.name()) argvRest
+                      | Clone => main regs exe argvRest
                 end
-          | _ => resume defaultWorld
+          | _ => resume (sibling exe "es4.world")
     end;
