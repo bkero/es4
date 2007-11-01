@@ -56,17 +56,17 @@ Building with SML/NJ (recommended)
 --------------------
 
 Install SML/NJ version 110.62 or later
-% ./configure --with-smlnj
+% ./configure --with-dialect=smlnj
 % make compile dump
 
 Building with MLton
 -------------------
 
 Install MLton version 20070826 or later
-% ./configure --with-mlton
+% ./configure --with-dialect=mlton
 % make compile dump
 
 Building with SML.NET
 ---------------------
 
-Not yet supported.
+Not currently supported.
