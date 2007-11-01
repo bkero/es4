@@ -62,7 +62,7 @@ ifneq ($(DEBUG),no)
 MLTONOPTS:=-const 'Exn.keepHistory true'
 endif
 MLTONCC:=-cc-opt -Idecimal/decNumber
-EXE:=es4
+EXE:=es4@EXEEXT@
 DUMP:=es4.world
 RUN:=./$(EXE)
 RUN_DUMPED:=./$(EXE) @MLton load-world $(DUMP) --
@@ -159,8 +159,11 @@ $(DUMP): $(EXE)
 	./$(EXE) -dump $(DUMP)
 
 dist/es4.tar.gz: dump clean-dist
-	cp $(EXE) dist/es4/
+	cp $(EXE) dist/es4/run.exe
 	cp $(DUMP) dist/es4/
+	cp bin/es4.bat dist/es4/
+	which libgmp-3.dll >/dev/null 2>&1 && cp `which libgmp-3.dll` dist/es4/
+	cp bin/run-mlton.sh dist/es4/es4
 
 endif
 
@@ -198,8 +201,9 @@ clean-dist:
 
 dist: dist/es4.tar.gz
 	chmod -R u=rwx,go=rx dist/es4
-	cp LICENSE dist/es4
-	chmod 644 dist/es4/LICENSE
+	cp README INSTALL LICENSE dist/es4
+	cp bin/LGPL.txt dist/es4/LICENSE.GNUMP
+	chmod 644 dist/es4/LICENSE dist/es4/INSTALL dist/es4/LICENSE dist/es4/LICENSE.GNUMP
 	cd dist && tar cf es4.tar es4
 	gzip -v9 dist/es4.tar
 

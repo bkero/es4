@@ -1,6 +1,6 @@
 AC_INIT([es4],
         [0.0m0],
-        [bugs@ecmascript-lang.org],
+        [bugs@ecmascript.org],
         [ECMAScript Edition 4 Reference Implementation])
 
 AC_COPYRIGHT([
@@ -122,6 +122,10 @@ if test "${ES4_SML_DIALECT}" = "mlton"; then
 else
     ES4_MLTON=false
 fi
+
+# 4. Platform-specific executable suffix
+AC_PROG_CC
+AC_EXEEXT
 
 dnl COMMON_SOURCES=`ls -1 *.sml | grep -v mlton | grep -v smlnj | grep -v decimal-external | xargs echo`
 dnl AC_SUBST([COMMON_SOURCES])
