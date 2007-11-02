@@ -38,51 +38,9 @@
 
 open MLton.World;
 
-(*
-fun main regs name args =
-    case Main.main (regs, name, args) of
-        0 => OS.Process.exit OS.Process.success
-      | _ => OS.Process.exit OS.Process.failure;
-
-fun error s =
-    (TextIO.output (TextIO.stdErr, "error: " ^ s); TextIO.flushOut TextIO.stdErr);
-
-fun resume world =
-    if OS.FileSys.access (world, [OS.FileSys.A_READ])
-    then load world
-    else (error (world ^ " not found\n");
-          OS.Process.exit OS.Process.failure);
-
-fun sibling path1 file =
-    let
-        val {dir, ...} = OS.Path.splitDirFile path1
-    in
-        OS.Path.joinDirFile {dir = dir, file = file}
-    end;
-*)
-
 fun dump (s:string) : bool =
     (case save s of
          Original => false
        | Clone => true)
 
 val _ = Main.main' dump;
-
-(*
-val _ =
-    let
-        val exe = CommandLine.name()
-        val argvRest = Main.startup (CommandLine.arguments())
-    in
-        case argvRest of
-            ["-dump", filename] =>
-                let
-                    val regs = Boot.boot()
-                in
-                    case save filename of
-                        Original => ()
-                      | Clone => main regs exe argvRest
-                end
-          | _ => resume (sibling exe "es4.world")
-    end;
-*)
