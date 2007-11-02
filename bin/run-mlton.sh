@@ -32,5 +32,25 @@
 # Software ASA, and others.
 
 _here=`dirname "$0"`
+_image="$_here/es4.image"
+_run="$_here/run.exe"
 
-exec "$_here/run.exe" @MLton load-world "$_here/es4.world" -- $*
+if [ -r $_image ]; then
+    _mlton="@MLton load-world $_image --"
+else
+    _mlton=
+fi
+
+# Search the command-line arguments for the -b option.
+# If it's there we don't want to load the image file.
+
+for arg
+do
+    case "$arg" in
+        '-b')
+            _mlton=
+            ;;
+    esac
+done
+
+exec $_run $_mlton $*
