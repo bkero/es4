@@ -53,4 +53,7 @@ do
     esac
 done
 
+PATH="$PATH":"$_here"
+export PATH
+
 exec $_run $_smlnj $*

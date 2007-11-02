@@ -21,10 +21,10 @@ AC_DEFUN([CHECK_EXECUTABLE],
          [UNLESS_EXECUTABLE([$1], [$2], [AC_MSG_ERROR([cannot execute $2])])])
 
 AC_DEFUN([EXEC_SMLNJ],
-         [echo -e '$1;' | (${ES4_SMLNJ} >/dev/null) 2>&1])
+         [echo '$1;' | (${ES4_SMLNJ} >/dev/null) 2>&1])
 
 AC_DEFUN([EVAL_SMLNJ_STRING],
-         [$1=`echo -e 'TextIO.output (TextIO.stdErr, $2);' | (${ES4_SMLNJ} >/dev/null) 2>&1`])
+         [$1=`echo 'TextIO.output (TextIO.stdErr, $2);' | (${ES4_SMLNJ} >/dev/null) 2>&1`])
 
 AC_DEFUN([GET_SMLNJ_HEAP_SUFFIX],
          [EVAL_SMLNJ_STRING($1, [SMLofNJ.SysInfo.getHeapSuffix()])])
