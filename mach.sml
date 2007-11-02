@@ -170,6 +170,7 @@ datatype VAL = Object of OBJ
          Scope of { object: OBJ,
                     parent: SCOPE option,
                     temps: TEMPS,
+                    decimal: DECIMAL_CONTEXT,
                     kind: SCOPE_KIND }
 
      and SCOPE_KIND =
@@ -238,6 +239,10 @@ withtype FUN_CLOSURE =
      and IFACE_CLOSURE =
          { iface: Ast.IFACE,
            env: SCOPE }
+
+     and DECIMAL_CONTEXT = 
+         { precision: int,
+           mode: DecimalParams.ROUNDING_MODE }
 
      and REGS = 
          { 
@@ -892,6 +897,15 @@ fun needType (v:VAL)
       | _ => (inspect v 1; 
               error ["require type object"])
 
+fun fitsInByte (x:LargeInt.int)
+    : bool =
+    let
+        val byteMax = IntInf.pow(2, 8) - 1
+        val byteMin = IntInf.fromInt 0
+    in
+        byteMin <= x andalso x <= byteMax
+    end
+
 fun fitsInUInt (x:LargeInt.int)
     : bool =
     let
@@ -1142,12 +1156,16 @@ val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
 
+val defaultDecimalContext = 
+	{ precision = 34,
+	  mode = DecimalParams.HalfEven } 
 
 fun makeGlobalScopeWith (global:OBJ) 
     : SCOPE =
     Scope { object = global,
             parent = NONE,
             temps = ref [],
+            decimal = defaultDecimalContext,
             kind = GlobalScope }
 
 fun makeInitialRegs (prog:Fixture.PROGRAM)
