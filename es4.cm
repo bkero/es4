@@ -83,7 +83,6 @@ is
     namekey.sml (lambdasplit: infinity)
     namemap.sml (lambdasplit: infinity)
     ustring.sml
-    entry.sig
     smlnj.sml (lambdasplit: infinity)
     ast-query.sml (lambdasplit: infinity)
 
