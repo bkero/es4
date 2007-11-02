@@ -43,4 +43,4 @@ fun dump (s:string) : bool =
          Original => false
        | Clone => true)
 
-val _ = Main.main' dump;
+val _ = Main.main dump;

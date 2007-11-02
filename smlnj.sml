@@ -40,6 +40,6 @@ structure SMLofNJEntry = struct
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor
-        (fn () => Main.main' SMLofNJ.exportML)
+        (fn () => Main.main SMLofNJ.exportML)
 
 end

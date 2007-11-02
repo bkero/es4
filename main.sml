@@ -169,124 +169,9 @@ fun processOptions (argvRest:string list)
        | ("-dump"::argvRest) => ResetCommand
        | _ => ReplCommand)
 
-fun startup (argvRest:string list)
-    : (string list) =
-    List.filter consumeOption argvRest
-
-fun repl regs argvRest =
-    let
-        val argvRest = startup argvRest
-        val regsCell = ref regs
-
-        val doParse = ref true
-        val doDefn = ref true
-        val doEval = ref true
-        val beStrict = ref false
-
-        fun toggleRef (n:string) (r:bool ref) =
-            (r := not (!r);
-             print ("set " ^ n ^ " = " ^ (Bool.toString (!r)) ^ "\n"))
-
-        fun doLine _ =
-            let
-                val _ = if !interactive then print ">> " else print "<SMLREADY>\n"
-                val line = case TextIO.inputLine TextIO.stdIn of
-                               NONE => raise quitException
-                             | SOME s => s
-                val toks = String.tokens Char.isSpace line
-                fun help _ = (List.app print
-                                       [
-                                        ":quit          - quit repl\n",
-                                        ":trace <T>     - toggle tracing of <T>\n",
-                                        ":help          - this message\n",
-                                        ":reboot        - reload the boot environment\n",
-                                        ":parse         - toggle parse stage\n",
-                                        ":defn          - toggle defn stage\n",
-                                        ":strict        - toggle strict verification\n",
-                                        ":eval          - toggle evaluation stage\n",
-                                        ":profile <N>   - toggle profiling at depth <N>\n"
-                                       ];
-                              doLine())
-            in
-                case toks of
-                    [":quit"] => raise quitException
-                  | [":3"] => (langEd := 3; updateLangEd (!regsCell))
-                  | [":4"] => (langEd := 4; updateLangEd (!regsCell))
-                  | [":q"] => raise quitException
-                  | [":h"] => help ()
-                  | [":help"] => help ()
-                  | [":?"] => help ()
-                  | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell); doLine ())
-                  | [":parse"] => toggleRef "parse" doParse
-                  | [":defn"] => toggleRef "defn" doDefn
-                  | [":eval"] => toggleRef "eval" doEval
-                  | [":strict"] => toggleRef "strict" beStrict
-                  | [":trace", t] =>
-                    ((case findTraceOption t of
-                          NONE =>
-                          (print ("unknown trace option " ^ t ^ "\n"))
-                        | SOME r => toggleRef ("trace option " ^ t) r);
-                     doLine())
-(*
-                  | [":profile", n] =>
-                    ((case Int.fromString n of
-                          NONE => Eval.doProfile := NONE
-                        | SOME 0 => Eval.doProfile := NONE
-                        | SOME n => Eval.doProfile := SOME n);
-                     doLine())
-*)
-
-                  | [] => doLine ()
-                  | _ =>
-                    if (!doParse)
-                    then
-                        let
-                            val frag = Parser.parseLines [Ustring.fromSource line]
-                        in
-                            if (!doDefn)
-                            then
-                                let
-                                    val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                                    val frag = Verify.verifyTopFragment prog true frag
-                                in
-                                    regsCell := Eval.withProg regs prog;
-                                    if (!doEval)
-                                    then
-                                        let
-                                            val res = Eval.evalTopFragment (!regsCell) frag
-                                        in
-                                            (case res of
-                                                 Mach.Undef => ()
-                                               | _ => print (Ustring.toAscii 
-                                                                 (Eval.toUstring (!regsCell) res) ^ "\n"));
-                                            doLine ()
-                                        end
-                                    else
-                                        doLine ()
-                                end
-                            else
-                                doLine ()
-                        end
-                    else
-                        doLine ()
-            end
-
-        fun runUntilQuit _ =
-            (withEofHandler (fn () => withHandlers doLine);
-             runUntilQuit ())
-    in
-        runUntilQuit ()
-        handle quitException => print "bye\n"
-    end
-
 fun parse argvRest =
-    let
-        val argvRest = startup argvRest
-    in
-        TextIO.print "parsing ... \n";
-        List.map Parser.parseFile argvRest
-    end
+    (TextIO.print "parsing ... \n";
+     List.map Parser.parseFile argvRest)
 
 fun define prog argvRest =
     let
@@ -328,21 +213,6 @@ fun eval regs argvRest =
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
     end
 
-fun main (regs:Mach.REGS, argv0:string, argvRest:string list) =
-    withEofHandler
-        (fn () =>
-            withHandlers
-                (fn () =>
-                    (* FIXME: need error checking for invalid combinations of options *)
-                    (case argvRest of
-                         ("-h"::argvRest) => (usage (); 0)
-                       | ("-r"::argvRest) => (repl regs argvRest; 0)
-                       | ("-p"::argvRest) => (parse argvRest; 0)
-                       | ("-d"::argvRest) => (define (#prog regs) argvRest; 0)
-                       | ("-v"::argvRest) => (verify (#prog regs) argvRest; 0)
-                       | ("-e"::argvRest) => (eval regs argvRest)
-                       | _ => (repl regs argvRest; 0))))
-
 fun getProgDir() =
     let
         val name = CommandLine.name()
@@ -355,7 +225,7 @@ fun getProgDir() =
             dir
     end
 
-fun repl' (regs:Mach.REGS) (dump:string -> bool) : unit =
+fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
     let
         val regsCell = ref regs
 
@@ -461,7 +331,7 @@ fun repl' (regs:Mach.REGS) (dump:string -> bool) : unit =
         handle quitException => print "bye\n"
     end
 
-and main' (dump:string -> bool) : 'a =
+and main (dump:string -> bool) : 'a =
     let
         fun resume (regs:Mach.REGS option) =
             let
@@ -487,7 +357,7 @@ and main' (dump:string -> bool) : 'a =
                 progDir := SOME dir;
                 case processOptions (CommandLine.arguments()) of
                     HelpCommand => (usage (); success)
-                  | ReplCommand => (repl' (getRegs()) dump; success)
+                  | ReplCommand => (repl (getRegs()) dump; success)
                   | ParseCommand files => (parse files; success)
                   | DefineCommand files => (define (#prog (getRegs())) files; success)
                   | VerifyCommand files => (verify (#prog (getRegs())) files; success)
