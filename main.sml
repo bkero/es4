@@ -41,6 +41,7 @@
 structure Main = struct
 
 val interactive = ref true
+val quiet = ref false
 val langEd = ref 4
 val progDir : string option ref = ref NONE
 
@@ -50,6 +51,7 @@ fun usage () =
                "    -3            process input files in 3rd edition mode\n",
                "(*) -4            process input files in 4th edition mode\n",
                "    -b            boot standard library from scratch (ignore image file)\n",
+               "    -q            quiet (suppress startup banner)\n",
                "\n",
                "    -h            display this help message and exit\n",
                "(*) -r            start the interactive read-eval-print loop\n",
@@ -106,6 +108,7 @@ fun consumeOption (opt:string) : bool =
         ([#"-", #"3"]) => (langEd := 3; false)
       | ([#"-", #"4"]) => (langEd := 4; false)
       | ([#"-", #"I"]) => (interactive := false; false)
+      | ([#"-", #"q"]) => (quiet := true; false)
       | (#"-" :: #"T" :: rest) => (case findTraceOption (String.implode rest) of
                                        SOME r => (r := true; false)
                                      | NONE => true)
@@ -327,6 +330,8 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
             (withEofHandler (fn () => withHandlers doLine);
              runUntilQuit ())
     in
+        if (!quiet) then () else
+            TextIO.print (Version.banner ^ "\n");
         runUntilQuit ()
         handle quitException => print "bye\n"
     end
@@ -364,6 +369,7 @@ and main (dump:string -> bool) : 'a =
                   | EvalCommand files => (eval (getRegs()) files; success)
                   | ResetCommand =>
                     let
+                        val _ = TextIO.print "Building image...\n"
                         val regs = Boot.boot dir
                     in
                         if dump (OS.Path.joinDirFile {dir = dir, file = "es4.image"}) then

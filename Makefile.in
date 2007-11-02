@@ -129,7 +129,7 @@ profile:
 decimal:
 	cd decimal && $(MAKE) decimal && cp decimal ../bin/
 
-es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
+es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml version.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm SMLofNJEntry.main es4-init.heap
 
 $(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
@@ -153,7 +153,7 @@ else
 
 compile: $(EXE)
 
-$(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES)
+$(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES) version.sml
 	$(MLTON) $(MLTONOPTS) $(MLTONCC) es4.mlb $(DECIMAL_SOURCES)
 
 $(DUMP): $(EXE)
@@ -211,6 +211,9 @@ dist: dist/es4.tar.gz
 	cp builtins/*.es dist/es4/builtins/
 	cd dist && tar cf es4.tar es4
 	gzip -v9 dist/es4.tar
+
+version.sml: VERSION TITLE version.template
+	sed -e "s/%TITLE%/`cat TITLE`/" -e "s/%VERSION%/`cat VERSION`/" version.template > version.sml
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && $(SMLNJ) @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
