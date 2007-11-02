@@ -31,7 +31,7 @@ REM
 REM Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
 REM Software ASA, and others.
 
-SET ThisDir=%~p0
+SET ThisDir=%~dp0
 SET Exe=%ThisDir%run.exe
 SET Image=%ThisDir%es4.image
 SET MLton=
