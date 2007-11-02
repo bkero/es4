@@ -38,6 +38,7 @@
 
 open MLton.World;
 
+(*
 fun main regs name args =
     case Main.main (regs, name, args) of
         0 => OS.Process.exit OS.Process.success
@@ -58,7 +59,16 @@ fun sibling path1 file =
     in
         OS.Path.joinDirFile {dir = dir, file = file}
     end;
+*)
 
+fun dump (s:string) : bool =
+    (case save s of
+         Original => false
+       | Clone => true)
+
+val _ = Main.main' dump;
+
+(*
 val _ =
     let
         val exe = CommandLine.name()
@@ -75,3 +85,4 @@ val _ =
                 end
           | _ => resume (sibling exe "es4.world")
     end;
+*)

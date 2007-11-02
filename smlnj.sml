@@ -38,11 +38,27 @@
 
 structure SMLofNJEntry = struct
 
+val dump = SMLofNJ.exportML
+
+(*
+fun restore (s : string) : 'a =
+    let
+        val cmd = CommandLine.name()
+        val suffix = "." ^ SMLofNJ.SysInfo.getHeapSuffix()
+        val args = [cmd, "@SMLload=" ^ s ^ suffix]
+        val env = []
+    in
+        (* assumes the cwd hasn't changed since startup *)
+        Posix.Process.exece (cmd, args, [])
+    end;
+*)
+
 exception noboot
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor
-        (fn () =>
+        (fn () => Main.main' dump)
+(*
             let
                 val argvRest = Main.startup argvRest
                 val regs = Boot.boot ()
@@ -68,4 +84,5 @@ fun main (argv0:string, argvRest:string list) =
                     ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
                   | _ => main' (argv0, argvRest)
             end)
+*)
 end
