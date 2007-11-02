@@ -51,7 +51,7 @@ endif
 
 # Standard ML of New Jersey
 ifeq ($(DIALECT),smlnj)
-DUMP:=es4-dump.heap.$(HEAP_SUFFIX)
+DUMP:=es4.image.$(HEAP_SUFFIX)
 RUN:=$(SMLNJ) @SMLload=es4-init.heap.$(HEAP_SUFFIX)
 RUN_DUMPED:=$(SMLNJ) @SMLload=$(DUMP)
 
@@ -63,7 +63,7 @@ MLTONOPTS:=-const 'Exn.keepHistory true'
 endif
 MLTONCC:=-cc-opt -Idecimal/decNumber
 EXE:=es4@EXEEXT@
-DUMP:=es4.world
+DUMP:=es4.image
 RUN:=./$(EXE)
 RUN_DUMPED:=./$(EXE) @MLton load-world $(DUMP) --
 endif
@@ -133,15 +133,16 @@ es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm SMLofNJEntry.main es4-init.heap
 
 $(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
-	$(SMLNJ) @SMLload=es4-init.heap -dump es4-dump.heap
+	$(SMLNJ) @SMLload=es4-init.heap -dump
 
 dist/es4.tar.gz: dump decimal clean-dist
 	cp bin/decimal dist/es4/
+	cp $(DUMP) dist/es4/es4.image.$(HEAP_SUFFIX)
 ifeq ($(HEAP2EXEC),false)
 	cp bin/run-cygwin.sh dist/es4/es4
-	cp $(DUMP) dist/es4/es4.heap.$(HEAP_SUFFIX)
 else
-	$(HEAP2EXEC) $(DUMP) dist/es4/es4
+	cp bin/run-smlnj.sh dist/es4/es4
+	$(HEAP2EXEC) $(DUMP) dist/es4/run
 endif
 
 # ------------------------------------------------------------------------------
@@ -156,7 +157,7 @@ $(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES)
 	$(MLTON) $(MLTONOPTS) $(MLTONCC) es4.mlb $(DECIMAL_SOURCES)
 
 $(DUMP): $(EXE)
-	./$(EXE) -dump $(DUMP)
+	./$(EXE) -dump
 
 dist/es4.tar.gz: dump clean-dist
 	cp $(EXE) dist/es4/run.exe
@@ -198,13 +199,16 @@ dump: $(DUMP)
 clean-dist:
 	rm -rf dist/es4 dist/es4.tar dist/es4.tar.gz
 	mkdir -p dist/es4
+	mkdir -p dist/es4/builtins
 
 dist: dist/es4.tar.gz
 	chmod -R u=rwx,go=rx dist/es4
 	cp README INSTALL LICENSE dist/es4
 	cp bin/LGPL.txt dist/es4/LICENSE.GNUMP
 	cp bin/ICUL.txt dist/es4/LICENSE.DECIMAL
-	chmod 644 dist/es4/README dist/es4/INSTALL dist/es4/LICENSE dist/es4/LICENSE.GNUMP dist/es4/LICENSE.DECIMAL
+	cp unicode/Copyright.txt dist/es4/LICENSE.UNICODE
+	chmod 644 dist/es4/README dist/es4/INSTALL dist/es4/LICENSE dist/es4/LICENSE.GNUMP dist/es4/LICENSE.DECIMAL dist/es4/LICENSE.UNICODE
+	cp builtins/*.es dist/es4/builtins/
 	cd dist && tar cf es4.tar es4
 	gzip -v9 dist/es4.tar
 

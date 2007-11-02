@@ -35,6 +35,18 @@ information.
 
 ----------------------------------------------------------------------
 
+This software incorporates data from Unicode, Inc.
+
+Unicode Data - http://www.unicode.org
+Copyright © 1991-2007 Unicode, Inc. All rights
+reserved. Distributed under the Terms of Use in
+http://www.unicode.org/copyright.html.
+
+You should have received a copy of the Unicode license along with this
+software. If not, please see http://www.unicode.org/copyright.html.
+
+----------------------------------------------------------------------
+
 Versions of this software built with the MLton compiler dynamically link
 to the GNU MP Library.
 

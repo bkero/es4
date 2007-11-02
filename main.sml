@@ -42,6 +42,40 @@ structure Main = struct
 
 val interactive = ref true
 val langEd = ref 4
+val progDir : string option ref = ref NONE
+
+fun usage () =
+    (List.app TextIO.print
+              ["usage: es4 [-3|-4] [-b] [-h|-r|(-p|-d|-v|-e) file ...] [-Pn] [-Tmod] ...\n",
+               "    -3            process input files in 3rd edition mode\n",
+               "(*) -4            process input files in 4th edition mode\n",
+               "    -b            boot standard library from scratch (ignore image file)\n",
+               "\n",
+               "    -h            display this help message and exit\n",
+               "(*) -r            start the interactive read-eval-print loop\n",
+               "    -p            run given files through parse phase and exit\n",
+               "    -d            run given files through definition phase and exit\n",
+               "    -v            run given files through verification phase and exit\n",
+               "    -e            evaluate given files and exit\n",
+               "\n",
+               "(*) default\n",
+               "\n",
+               "    -Pn           turn on profiling for stack depth {n}\n",
+               "    -Tmod         turn on tracing for module {mod}\n",
+               "\n",
+               "    mod:\n",
+               "        lex       lexing\n",
+               "        parse     parsing\n",
+               "        name      name resolution\n",
+               "        defn      definition phase\n",
+               "        verify    verification phase\n",
+               "        verified  show post-verification AST alone\n",
+               "        eval      evaluator\n",
+               "        mach      abstract machine operations\n",
+               "        decimal   decimal arithmetic\n",
+               "        native    native operations\n",
+               "        boot      standard library boot sequence\n",
+               "        stack     stack operations\n"])
 
 fun updateLangEd (regs:Mach.REGS)
     : unit =
@@ -75,6 +109,7 @@ fun consumeOption (opt:string) : bool =
       | (#"-" :: #"T" :: rest) => (case findTraceOption (String.implode rest) of
                                        SOME r => (r := true; false)
                                      | NONE => true)
+      | ([#"-", #"b"]) => false
       (*
       | (#"-" :: #"P" :: rest) =>
         (case Int.fromString (String.implode rest) of
@@ -86,6 +121,11 @@ fun consumeOption (opt:string) : bool =
       | _ => true
 
 exception quitException
+exception noboot
+
+val exit = OS.Process.exit
+val success = OS.Process.success
+val failure = OS.Process.failure
 
 (* FIXME: should use more portable OS.Process.exit *)
 fun withEofHandler thunk =
@@ -108,13 +148,85 @@ fun withHandlers thunk =
   | LogErr.AstError e => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
   | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
-fun startup (argvRest:string list)
-    : (string list) =
-    List.filter consumeOption argvRest
+datatype COMMAND =
+    HelpCommand
+  | ReplCommand
+  | ParseCommand of string list
+  | DefineCommand of string list
+  | VerifyCommand of string list
+  | EvalCommand of string list
+  | ResetCommand
 
-fun repl regs argvRest =
+fun processOptions (argvRest:string list)
+    : COMMAND =
+    (case List.filter consumeOption argvRest of
+         ("-h"::argvRest) => HelpCommand
+       | ("-r"::argvRest) => ReplCommand
+       | ("-p"::argvRest) => ParseCommand argvRest
+       | ("-d"::argvRest) => DefineCommand argvRest
+       | ("-v"::argvRest) => VerifyCommand argvRest
+       | ("-e"::argvRest) => EvalCommand argvRest
+       | ("-dump"::argvRest) => ResetCommand
+       | _ => ReplCommand)
+
+fun parse argvRest =
+    (TextIO.print "parsing ... \n";
+     List.map Parser.parseFile argvRest)
+
+fun define prog argvRest =
     let
-        val argvRest = startup argvRest
+        val frags = parse argvRest
+        fun f prog accum (frag::frags) = 
+            let 
+                val (prog', frag') = Defn.defTopFragment prog frag
+            in
+                f prog' (frag'::accum) frags
+            end
+          | f prog accum _ = (prog, List.rev accum)
+    in
+        TextIO.print "defining ... \n";
+        f prog [] frags
+    end
+
+fun verify prog argvRest =
+    let
+        val (prog, frags) = define prog argvRest
+        fun f prog accum (frag::frags) = 
+            let 
+                val frag' = Verify.verifyTopFragment prog true frag
+            in
+                f prog (frag'::accum) frags
+            end
+          | f prog accum _ = (prog, List.rev accum)
+    in
+        TextIO.print "verifying ... \n";
+        f prog [] frags
+    end
+
+fun eval regs argvRest =
+    let
+        val (prog, frags) = verify (#prog regs) argvRest
+        val regs = Eval.withProg regs prog
+    in
+        Posix.Process.alarm (Time.fromReal 300.0);
+	    TextIO.print "evaluating ... \n";
+        withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
+    end
+
+fun getProgDir() =
+    let
+        val name = CommandLine.name()
+        val {dir, ...} = OS.Path.splitDirFile (CommandLine.name())
+    in
+        (* FIXME: total hack for telling whether we're running in the SML/NJ REPL *)
+        if String.isSuffix "sml" name then
+            OS.FileSys.getDir()
+        else
+            dir
+    end
+
+fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
+    let
         val regsCell = ref regs
 
         val doParse = ref true
@@ -156,7 +268,7 @@ fun repl regs argvRest =
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot(); updateLangEd (!regsCell); doLine ())
+                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell); doLine ())
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
@@ -219,97 +331,53 @@ fun repl regs argvRest =
         handle quitException => print "bye\n"
     end
 
-fun parse argvRest =
+and main (dump:string -> bool) : 'a =
     let
-        val argvRest = startup argvRest
-    in
-        TextIO.print "parsing ... \n";
-        List.map Parser.parseFile argvRest
-    end
+        fun resume (regs:Mach.REGS option) =
+            let
+                val dir = getProgDir()
 
-fun define prog argvRest =
-    let
-        val frags = parse argvRest
-        fun f prog accum (frag::frags) = 
-            let 
-                val (prog', frag') = Defn.defTopFragment prog frag
+                fun getRegs() = (case regs of
+                                     NONE => (Boot.boot dir
+                                              handle
+                                              LogErr.LexError e => (print ("**BOOT ERROR** LexError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.ParseError e => (print ("**BOOT ERROR** ParseError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.NameError e => (print ("**BOOT ERROR** NameError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.TypeError e => (print ("**BOOT ERROR** TypeError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.FixtureError e => (print ("**BOOT ERROR** FixtureError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.DefnError e => (print ("**BOOT ERROR** DefnError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.EvalError e => (print ("**BOOT ERROR** EvalError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.MachError e => (print ("**BOOT ERROR** MachError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.VerifyError e => (print ("**BOOT ERROR** VerifyError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.HostError e => (print ("**BOOT ERROR** HostError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.AstError e => (print ("**BOOT ERROR** AstError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.UnimplError e => (print ("**BOOT ERROR** UnimplError: " ^ e ^ "\n"); raise noboot))
+                                   | SOME regs => regs)
             in
-                f prog' (frag'::accum) frags
+                progDir := SOME dir;
+                case processOptions (CommandLine.arguments()) of
+                    HelpCommand => (usage (); success)
+                  | ReplCommand => (repl (getRegs()) dump; success)
+                  | ParseCommand files => (parse files; success)
+                  | DefineCommand files => (define (#prog (getRegs())) files; success)
+                  | VerifyCommand files => (verify (#prog (getRegs())) files; success)
+                  | EvalCommand files => (eval (getRegs()) files; success)
+                  | ResetCommand =>
+                    let
+                        val regs = Boot.boot dir
+                    in
+                        if dump (OS.Path.joinDirFile {dir = dir, file = "es4.image"}) then
+                            resume (SOME regs)
+                        else
+                            success
+                    end
             end
-          | f prog accum _ = (prog, List.rev accum)
     in
-        TextIO.print "defining ... \n";
-        f prog [] frags
+        exit (withEofHandler
+                  (fn () =>
+                      withHandlers
+                          (fn () =>
+                              resume NONE)))
     end
-
-fun verify prog argvRest =
-    let
-        val (prog, frags) = define prog argvRest
-        fun f prog accum (frag::frags) = 
-            let 
-                val frag' = Verify.verifyTopFragment prog true frag
-            in
-                f prog (frag'::accum) frags
-            end
-          | f prog accum _ = (prog, List.rev accum)
-    in
-        TextIO.print "verifying ... \n";
-        f prog [] frags
-    end
-
-fun eval regs argvRest =
-    let
-        val (prog, frags) = verify (#prog regs) argvRest
-        val regs = Eval.withProg regs prog
-    in
-        Posix.Process.alarm (Time.fromReal 300.0);
-	    TextIO.print "evaluating ... \n";
-        withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
-    end
-
-fun usage () =
-    (List.app TextIO.print
-              ["usage: es4 [-h|-r|-p file ...|-d file ...|-v file ...|-e file ...] [-Pn] [-Tmod] ...\n",
-               "    -3            process input files in 3rd edition mode\n",
-               "(*) -4            process input files in 4th edition mode\n",
-               "    -h            display this help message and exit\n",
-               "(*) -r            start the interactive read-eval-print loop\n",
-               "    -p            run given files through parse phase and exit\n",
-               "    -d            run given files through definition phase and exit\n",
-               "    -v            run given files through verification phase and exit\n",
-               "    -e            evaluate given files and exit\n",
-               "\n",
-               "(*) default\n",
-               "\n",
-               "    -Pn           turn on profiling for stack depth {n}\n",
-               "    -Tmod         turn on tracing for module {mod}\n",
-               "\n",
-               "    mod:\n",
-               "        lex       lexing\n",
-               "        parse     parsing\n",
-               "        name      name resolution\n",
-               "        defn      definition phase\n",
-               "        verify    verification phase\n",
-               "        verified  show post-verification AST alone\n",
-               "        eval      evaluator\n",
-               "        mach      abstract machine operations\n",
-               "        decimal   decimal arithmetic\n",
-               "        native    native operations\n",
-               "        boot      standard library boot sequence\n",
-               "        stack     stack operations\n"])
-
-fun main (regs:Mach.REGS, argv0:string, argvRest:string list) =
-    withEofHandler
-        (fn () =>
-            withHandlers
-                (fn () =>
-                    (case argvRest of
-                         ("-h"::argvRest) => (usage (); 0)
-                       | ("-r"::argvRest) => (repl regs argvRest; 0)
-                       | ("-p"::argvRest) => (parse argvRest; 0)
-                       | ("-d"::argvRest) => (define (#prog regs) argvRest; 0)
-                       | ("-v"::argvRest) => (verify (#prog regs) argvRest; 0)
-                       | ("-e"::argvRest) => (eval regs argvRest)
-                       | _ => (repl regs argvRest; 0))))
 
 end

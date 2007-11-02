@@ -38,34 +38,8 @@
 
 structure SMLofNJEntry = struct
 
-exception noboot
-
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor
-        (fn () =>
-            let
-                val argvRest = Main.startup argvRest
-                val regs = Boot.boot ()
-                    handle
-                    LogErr.LexError e => (print ("**BOOT ERROR** LexError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.ParseError e => (print ("**BOOT ERROR** ParseError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.NameError e => (print ("**BOOT ERROR** NameError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.TypeError e => (print ("**BOOT ERROR** TypeError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.FixtureError e => (print ("**BOOT ERROR** FixtureError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.DefnError e => (print ("**BOOT ERROR** DefnError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.EvalError e => (print ("**BOOT ERROR** EvalError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.MachError e => (print ("**BOOT ERROR** MachError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.VerifyError e => (print ("**BOOT ERROR** VerifyError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.HostError e => (print ("**BOOT ERROR** HostError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.AstError e => (print ("**BOOT ERROR** AstError: " ^ e ^ "\n"); raise noboot)
-                  | LogErr.UnimplError e => (print ("**BOOT ERROR** UnimplError: " ^ e ^ "\n"); raise noboot)
-                                            
-                fun main' (argv0:string, argvRest:string list) =
-                    BackTrace.monitor
-                        (fn () => Main.main (regs, argv0, argvRest))
-            in
-                case argvRest of
-                    ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
-                  | _ => main' (argv0, argvRest)
-            end)
+        (fn () => Main.main SMLofNJ.exportML)
+
 end

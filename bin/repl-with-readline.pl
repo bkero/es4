@@ -24,7 +24,7 @@ use IPC::Open2;
 my $term = new Term::ReadLine 'ES4 repl';
 my $prompt = ">> ";
 my ($sml_response, $sml_call);
-my $sml_pid = open2($sml_response, $sml_call, 'sml', '@SMLload=es4-dump.heap', '-r', '-I');
+my $sml_pid = open2($sml_response, $sml_call, 'sml', '@SMLload=es4.image', '-r', '-I');
 my $input = "", $response = "";
 
 while (1) {

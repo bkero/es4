@@ -33,6 +33,15 @@ REM Software ASA, and others.
 
 SET ThisDir=%~p0
 SET Exe=%ThisDir%run.exe
-SET World=%ThisDir%es4.world
+SET Image=%ThisDir%es4.image
+SET MLton=
 
-CALL "%Exe%" @MLton load-world "%World%" -- %*
+FOR %%A IN (%*) DO (
+    IF [%%A]==[-b] GOTO Boot
+)
+
+SET MLton=@MLton load-world "%Image%" --
+
+:Boot
+
+CALL "%Exe%" %MLton% %*
