@@ -287,6 +287,57 @@ fun getGlobalScope (regs:Mach.REGS)
 
 type REF = (Mach.OBJ * Ast.NAME)
 
+datatype NUMBER_TYPE = ByteNum | IntNum | UIntNum | DoubleNum | DecimalNum 
+
+fun numTypeOf (regs:Mach.REGS) 
+              (v:Mach.VAL) 
+    : NUMBER_TYPE = 
+    case (Mach.needMagic v) of 
+        Mach.Byte _ => ByteNum
+      | Mach.Int _ => IntNum
+      | Mach.UInt _ => UIntNum
+      | Mach.Double _ => DoubleNum
+      | Mach.Decimal _ => DecimalNum
+      | other => error regs ["unexpected magic type in numTypeOf: ", 
+                             Ustring.toAscii (Mach.magicToUstring other)]
+                          
+fun numLE (a:NUMBER_TYPE)
+          (b:NUMBER_TYPE) =
+    if a = b
+    then true
+    else 
+        case (a,b) of
+            (ByteNum, UIntNum) => true
+          | (ByteNum, DoubleNum) => true
+          | (ByteNum, DecimalNum) => true
+          | (UIntNum, DoubleNum) => true
+          | (UIntNum, DecimalNum) => true
+          | (IntNum, DoubleNum) => true
+          | (IntNum, DecimalNum) => true
+          | (DoubleNum, DecimalNum) => true
+          | _ => false
+                 
+fun promoteToCommon (regs:Mach.REGS) 
+                    (a:NUMBER_TYPE) 
+                    (b:NUMBER_TYPE)
+    : NUMBER_TYPE =
+    if a = b
+    then a
+    else 
+        case if numLE a b then (a,b) else (b,a) of 
+            (ByteNum, UIntNum) => UIntNum
+          | (ByteNum, DoubleNum) => DoubleNum
+          | (ByteNum, DecimalNum) => DecimalNum
+          | (UIntNum, DoubleNum) => DoubleNum
+          | (UIntNum, DecimalNum) => DecimalNum
+          | (IntNum, DoubleNum) => DoubleNum
+          | (IntNum, DecimalNum) => DecimalNum
+          | (DoubleNum, DecimalNum) => DecimalNum
+          (* These two may be a little contentious: they're unordered! *)
+          | (IntNum, UIntNum) => DoubleNum
+          | (UIntNum, IntNum) => DoubleNum
+          | _ => error regs ["unexpected number combination in promoteToCommon"]
+                 
 (*
  * Ident exprs evaluate to either either explicitly qualified names or implicitly qualified
  * mutinames. We differentiate these cases with a discriminated union.
@@ -2763,6 +2814,7 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
+
 and performBinop (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (va:Mach.VAL)
@@ -2773,66 +2825,76 @@ and performBinop (regs:Mach.REGS)
         val ctxt = decimalCtxt regs
         val { precision, mode } = ctxt
 
-        fun stringConcat _ =
-            newString regs (Ustring.stringAppend (toUstring regs va) (toUstring regs vb))
+        fun simpleNumeric decimalOp doubleOp a b =
+            (* 
+             * First we perform promotions until we get a common representation.
+             * The promotion lattice is a little odd:
+             * 
+             *    byte -> uint
+             *    uint -> double
+             *    int -> double
+             *    double -> decimal
+             * 
+             * Then we perform the operation in either double or decimal and 
+             * see if the result is integral. If it is -- and the common input 
+             * representation was integral -- then we attempt to store the result 
+             * in the common integral form but will promote if necessary to 
+             * preserve precision. 
+             * 
+             *)
+            let                     
+                val commonNumType = promoteToCommon regs 
+                                                    (numTypeOf regs a) 
+                                                    (numTypeOf regs b)
+            in
+                case commonNumType of 
+                    DecimalNum => 
+                    newDecimal regs (decimalOp precision mode
+                                               (toDecimal ctxt a) 
+                                               (toDecimal ctxt b))
 
-        fun dispatch a b
-                     decimalOp doubleOp intOp uintOp byteOp largeOp
-                     (stayIntegralIfPossible:bool) =
-                (*
-                 * Ast.Number implies magic operand-based dispatch.
-                 * FIXME: Refactor this if you can figure out how.
-                 *)
+                  | _ => 
+                    let 
+                        val d = doubleOp ((toDouble a), (toDouble b))
+                        val isIntegral = 
+                            if Real64.isFinite d
+                            then Real64.==(Real64.realTrunc d, d)
+                            else false
+                    in
+                        if isIntegral
+                        then 
+                            let 
+                                val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
+                            in
+                                case commonNumType of
+                                    ByteNum => if Mach.fitsInByte lg
+                                               then newByte regs (Word8.fromLargeInt lg)
+                                               else 
+                                                   if Mach.fitsInUInt lg
+                                                   then newUInt regs (Word32.fromLargeInt lg)
+                                                   else newDouble regs d
+                                  | UIntNum => if Mach.fitsInUInt lg
+                                               then newUInt regs (Word32.fromLargeInt lg)
+                                               else newDouble regs d
+                                  | IntNum =>  if Mach.fitsInInt lg
+                                               then newInt regs (Int32.fromLarge lg)
+                                               else newDouble regs d
+                                  | _ => newDouble regs d
+                            end
+                        else 
+                            newDouble regs d
+                    end
+            end
 
-                if Mach.isDecimal a orelse 
-                   Mach.isDecimal b
-                then decimalOp (toDecimal ctxt a) (toDecimal ctxt b)
-                else
-                    (if Mach.isDouble a orelse 
-                        Mach.isDouble b
-                     then
-                          doubleOp (toDouble a) (toDouble b)
-                     else
-                         let
-                             fun isIntegral x = Mach.isUInt x orelse 
-                                                Mach.isInt x orelse
-                                                Mach.isByte x
-                             fun enlarge x = if Mach.isUInt x
-                                             then Word32.toLargeInt (toUInt32 regs x)
-                                             else 
-                                                 if Mach.isByte x
-                                                 then Word8.toLargeInt (toByte regs x)
-                                                 else Int32.toLarge (toInt32 regs x)
-                         in
-                             if stayIntegralIfPossible
-                                andalso isIntegral a
-                                andalso isIntegral b
-                             then
-                                  largeOp (enlarge a) (enlarge b)
-                             else
-                                  doubleOp (toDouble a) (toDouble b)
-                         end)
-
-        fun reorder (ord:order) : IEEEReal.real_order =
+        fun reorder (ord:IEEEReal.real_order) 
+            : order =
             case ord of
-                EQUAL => IEEEReal.EQUAL
-              | LESS => IEEEReal.LESS
-              | GREATER => IEEEReal.GREATER
+                IEEEReal.EQUAL => EQUAL
+              | IEEEReal.LESS => LESS
+              | IEEEReal.GREATER => GREATER
 
-        fun dispatchComparison cmp =
+        fun dispatchComparison cmp =            
             let
-                fun decimalOp da db =
-                    newBoolean regs (cmp (reorder (Decimal.compare precision mode da db)))
-                fun doubleOp da db =
-                    newBoolean regs (cmp (Real64.compareReal (da, db)))
-                fun intOp ia ib =
-                    newBoolean regs (cmp (reorder (Int32.compare (ia, ib))))
-                fun uintOp ua ub =
-                    newBoolean regs (cmp (reorder (Word32.compare (ua, ub))))
-                fun byteOp ba bb =
-                    newBoolean regs (cmp (reorder (Word8.compare (ba, bb))))
-                fun largeOp la lb =
-                    newBoolean regs (cmp (reorder (LargeInt.compare (la, lb))))
                 val va = toPrimitiveWithNumberHint regs va
                 val vb = toPrimitiveWithNumberHint regs vb
             in
@@ -2840,49 +2902,50 @@ and performBinop (regs:Mach.REGS)
                  * ES-262-3 11.8.5 Abstract Relational Comparison Algorithm
                  *)
                 if Mach.isString va andalso Mach.isString vb
-                then newBoolean regs (cmp (reorder (Ustring.compare (toUstring regs va)
-                                                                    (toUstring regs vb))))
+                then newBoolean 
+                         regs 
+                         (cmp (Ustring.compare 
+                                   (toUstring regs va)
+                                   (toUstring regs vb)))
                 else
                     let
                         val va = toNumeric regs va
                         val vb = toNumeric regs vb
+                        val commonNumType = promoteToCommon regs 
+                                                            (numTypeOf regs va) 
+                                                            (numTypeOf regs vb)
                     in
                         if isNaN va orelse 
                            isNaN vb
                         then newBoolean regs false
-                        else dispatch va vb decimalOp doubleOp intOp uintOp byteOp largeOp true
-                    end
-            end
+                        else newBoolean regs 
+                             (case commonNumType of 
+                                  ByteNum => 
+                                  cmp (Word8.compare 
+                                           ((toByte regs va),
+                                            (toByte regs vb)))
 
-        fun dispatchNumeric decimalFn doubleFn intFn uintFn byteFn largeFn
-                            (stayIntegralIfPossible:bool) =
-            let
-                fun decimalOp da db =
-                    newDecimal regs (decimalFn precision mode da db)
-                fun doubleOp da db =
-                    newDouble regs (doubleFn (da, db))
-                fun intOp ia ib =
-                    newInt regs (intFn (ia, ib))
-                fun uintOp ua ub =
-                    newUInt regs (uintFn (ua, ub))
-                fun byteOp ua ub =
-                    newByte regs (byteFn (ua, ub))
-                fun largeOp la lb =
-                    let
-                        val x = largeFn (la, lb)
-                    in
-                        if Mach.fitsInInt x
-                        then newInt regs (Int32.fromLarge x)
-                        else (if Mach.fitsInUInt x
-                              then newUInt regs (Word32.fromLargeInt x)
-                              else (case Real64.fromString (LargeInt.toString x) of
-                                        SOME d => newDouble regs d
-                                      | NONE => (case Decimal.fromStringDefault (LargeInt.toString x) of
-                                                     SOME d => newDecimal regs d
-                                                   | NONE => error regs ["arithmetic overflow"])))
+                                | IntNum => 
+                                  cmp (Int32.compare 
+                                           ((toInt32 regs va),
+                                            (toInt32 regs vb)))
+                                | UIntNum => 
+                                  cmp (Word32.compare 
+                                           ((toUInt32 regs va),
+                                            (toUInt32 regs vb)))
+                                  
+                                | DoubleNum => 
+                                  cmp (reorder
+                                           (Real64.compareReal 
+                                                ((toDouble va),
+                                                 (toDouble vb))))
+                                  
+                                | DecimalNum => 
+                                  cmp (Decimal.compare 
+                                           precision mode 
+                                           (toDecimal ctxt va) 
+                                           (toDecimal ctxt vb)))
                     end
-            in
-                dispatch va vb decimalOp doubleOp intOp uintOp byteOp largeOp stayIntegralIfPossible
             end
 
         fun masku5 (x:Word32.word) : Word.word =
@@ -2918,7 +2981,7 @@ and performBinop (regs:Mach.REGS)
                     then if isNaN va orelse 
                             isNaN vb
                          then newBoolean regs false
-                         else dispatchComparison (fn x => x = IEEEReal.EQUAL)
+                         else dispatchComparison (fn x => x = EQUAL)
                     else
                         if Mach.isString va
                         then case Ustring.compare (toUstring regs va) (toUstring regs vb) of
@@ -3009,45 +3072,38 @@ and performBinop (regs:Mach.REGS)
               | Ast.GreaterOrEqual => ">="
               | Ast.Comma => ","
         val res =
-            case bop of
-                Ast.Plus =>
-                if Mach.isString va orelse
-                   Mach.isString vb
-                then stringConcat ()
-                else dispatchNumeric ( Decimal.add )
-                                     ( Real64.+ )
-                                     ( Int32.+ )
-                                     ( Word32.+ )
-                                     ( Word8.+ )
-                                     ( LargeInt.+ )
-                                     true
 
-              | Ast.Minus =>
-                dispatchNumeric ( Decimal.subtract )
-                                ( Real64.- )
-                                ( Int32.- )
-                                ( Word32.- )
-                                ( Word8.- )
-                                ( LargeInt.- )
-                                true
+            case bop of 
 
-              | Ast.Times =>
-                dispatchNumeric ( Decimal.multiply )
-                                ( Real64.* )
-                                ( Int32.* )
-                                ( Word32.* )
-                                ( Word8.* )
-                                ( LargeInt.* )
-                                true
-
-              | Ast.Divide =>
-                dispatchNumeric ( Decimal.divide )
-                                ( Real64./ )
-                                ( Int32.div )
-                                ( Word32.div )
-                                ( Word8.div )
-                                ( LargeInt.div )
-                                false
+                Ast.Plus => (* ES3 11.6.1 The Addition operator (+) *)
+                let
+                    val a = toPrimitiveWithNoHint regs va
+                    val b = toPrimitiveWithNoHint regs vb
+                in
+                    if Mach.isString a orelse Mach.isString b
+                    then newString regs (Ustring.stringAppend 
+                                             (toUstring regs va) 
+                                             (toUstring regs vb))
+                    else
+                        simpleNumeric ( Decimal.add )
+                                      ( Real64.+ )
+                                      (toNumeric regs a) (toNumeric regs b)
+                end
+                
+              | Ast.Minus => (* ES3 11.6.2 The Subtraction operator (-) *)
+                simpleNumeric ( Decimal.subtract )
+                              ( Real64.- )
+                              (toNumeric regs va) (toNumeric regs vb)
+                
+              | Ast.Times => 
+                simpleNumeric ( Decimal.multiply )
+                              ( Real64.* )
+                              (toNumeric regs va) (toNumeric regs vb)
+                
+              | Ast.Divide => 
+                simpleNumeric ( Decimal.divide )
+                              ( Real64./ )
+                              (toNumeric regs va) (toNumeric regs vb)
 
               | Ast.Remainder =>
                 let
@@ -3062,13 +3118,9 @@ and performBinop (regs:Mach.REGS)
                             x - ( n * y)
                         end
                 in
-                    dispatchNumeric ( Decimal.remainder )
-                                    ( realRem )
-                                    ( Int32.mod )
-                                    ( Word32.mod )
-                                    ( Word8.mod )
-                                    ( LargeInt.mod )
-                                    false
+                    simpleNumeric ( Decimal.remainder )
+                                  ( realRem )
+                                  (toNumeric regs va) (toNumeric regs vb)                    
                 end
 
               | Ast.LeftShift =>
@@ -3101,19 +3153,19 @@ and performBinop (regs:Mach.REGS)
 
               | Ast.Less =>
                 dispatchComparison 
-                    (fn x => x = IEEEReal.LESS)
+                    (fn x => x = LESS)
 
               | Ast.LessOrEqual =>
                 dispatchComparison 
-                    (fn x => (x = IEEEReal.LESS) orelse (x = IEEEReal.EQUAL))
+                    (fn x => (x = LESS) orelse (x = EQUAL))
 
               | Ast.Greater =>
                 dispatchComparison 
-                    (fn x => x = IEEEReal.GREATER)
+                    (fn x => x = GREATER)
 
               | Ast.GreaterOrEqual =>
                 dispatchComparison 
-                    (fn x => (x = IEEEReal.GREATER) orelse (x = IEEEReal.EQUAL))
+                    (fn x => (x = GREATER) orelse (x = EQUAL))
 
               | _ => error regs ["unexpected binary operator in performBinOp"]
     in

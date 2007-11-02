@@ -891,6 +891,12 @@ fun groundFindConversion (prog:Fixture.PROGRAM)
         val booleanType = getNamedGroundType prog Name.ES4_boolean
         val BooleanType = getNamedGroundType prog Name.nons_Boolean
 
+        val AnyScalarType = Ast.UnionType [ AnyNumberType, 
+                                            AnyStringType, 
+                                            AnyBooleanType,
+                                            undefinedType, 
+                                            nullType ]
+
         fun flattenUnion (Ast.UnionType tys) = List.concat (map flattenUnion tys)
           | flattenUnion t = [t]
 
@@ -924,38 +930,17 @@ fun groundFindConversion (prog:Fixture.PROGRAM)
      * convert into a union, as it's likely to surprise you!
      *)
 
-        val matrix = [ (AnyNumberType, decimalType),
-                       (AnyNumberType, doubleType),
-                       (AnyNumberType, intType),
-                       (AnyNumberType, uintType),
-                       (AnyNumberType, byteType),
+        val matrix = [ (AnyScalarType, decimalType),
+                       (AnyScalarType, doubleType),
+                       (AnyScalarType, intType),
+                       (AnyScalarType, uintType),
+                       (AnyScalarType, byteType),
 
-                       (AnyBooleanType, booleanType),
-                       (AnyBooleanType, BooleanType),                       
+                       (AnyScalarType, booleanType),
+                       (AnyScalarType, BooleanType),                       
 
-                       (AnyType, stringType),
-                       (AnyType, StringType),
-
-                       (undefinedType, decimalType),
-                       (undefinedType, doubleType),
-                       (undefinedType, intType),
-                       (undefinedType, uintType),
-                       (undefinedType, byteType),
-                       (undefinedType, booleanType),
-
-                       (* 
-                        * Questionable: this means "var x : int = null;" works.
-                        * In a sense that undermines nullability, but in a sense
-                        * it does not: you will never actually *read* a null from 
-                        * an int slot. The slot converts it to 0. Is this good?
-                        *)
-
-                       (nullType, decimalType),
-                       (nullType, doubleType),
-                       (nullType, intType),
-                       (nullType, uintType),
-                       (nullType, byteType),                       
-                       (nullType, booleanType)]
+                       (AnyScalarType, stringType),
+                       (AnyScalarType, StringType) ]
 
         fun pairMatches target (src,dst) = (groundEquals target dst andalso
                                             groundIsCompatible tyExpr1 src)
