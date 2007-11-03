@@ -337,7 +337,7 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
 
 fun run (filename : string) : TEST_RESULT list =
     let
-	val regs = Boot.boot ()
+	val regs = Boot.boot (OS.FileSys.getDir())
     in
 	map (runTestCase regs) (parseScript filename)
 	handle e as (BadTestParameter (s, lineNum)) =>
