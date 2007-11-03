@@ -124,6 +124,7 @@ fun consumeOption (opt:string) : bool =
       | _ => true
 
 exception quitException
+exception continueException of Ustring.SOURCE list
 exception noboot
 
 val exit = OS.Process.exit
@@ -241,9 +242,11 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
             (r := not (!r);
              print ("set " ^ n ^ " = " ^ (Bool.toString (!r)) ^ "\n"))
 
-        fun doLine _ =
+        fun doLine (accum:Ustring.SOURCE list) : unit =
             let
-                val _ = if !interactive then print ">> " else print "<SMLREADY>\n"
+                val _ = (case accum of
+                             [] =>  if !interactive then print ">> " else print "<SMLREADY>\n"
+                           | _ => ())
                 val line = case TextIO.inputLine TextIO.stdIn of
                                NONE => raise quitException
                              | SOME s => s
@@ -259,8 +262,7 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
                                         ":strict        - toggle strict verification\n",
                                         ":eval          - toggle evaluation stage\n",
                                         ":profile <N>   - toggle profiling at depth <N>\n"
-                                       ];
-                              doLine())
+                                       ])
             in
                 case toks of
                     [":quit"] => raise quitException
@@ -271,68 +273,59 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell); doLine ())
+                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell))
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
                   | [":strict"] => toggleRef "strict" beStrict
                   | [":trace", t] =>
-                    ((case findTraceOption t of
-                          NONE =>
-                          (print ("unknown trace option " ^ t ^ "\n"))
-                        | SOME r => toggleRef ("trace option " ^ t) r);
-                     doLine())
+                    (case findTraceOption t of
+                         NONE =>
+                         (print ("unknown trace option " ^ t ^ "\n"))
+                       | SOME r => toggleRef ("trace option " ^ t) r)
+
 (*
                   | [":profile", n] =>
-                    ((case Int.fromString n of
-                          NONE => Eval.doProfile := NONE
-                        | SOME 0 => Eval.doProfile := NONE
-                        | SOME n => Eval.doProfile := SOME n);
-                     doLine())
+                    (case Int.fromString n of
+                         NONE => Eval.doProfile := NONE
+                       | SOME 0 => Eval.doProfile := NONE
+                       | SOME n => Eval.doProfile := SOME n)
 *)
 
-                  | [] => doLine ()
+                  | [] => ()
                   | _ =>
-                    if (!doParse)
-                    then
+                    if not (!doParse) then () else
                         let
-                            val frag = Parser.parseLines [Ustring.fromSource line]
+                            val lines = (Ustring.fromSource line) :: accum
+                            val frag = Parser.parseLines (List.rev lines)
+                                       handle LogErr.EofError => raise continueException lines
                         in
-                            if (!doDefn)
-                            then
+                            if not (!doDefn) then () else
                                 let
                                     val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
                                     val frag = Verify.verifyTopFragment prog true frag
                                 in
                                     regsCell := Eval.withProg regs prog;
-                                    if (!doEval)
-                                    then
+                                    if not (!doEval) then () else
                                         let
                                             val res = Eval.evalTopFragment (!regsCell) frag
                                         in
-                                            (case res of
-                                                 Mach.Undef => ()
-                                               | _ => print (Ustring.toAscii 
-                                                                 (Eval.toUstring (!regsCell) res) ^ "\n"));
-                                            doLine ()
+                                            case res of
+                                                Mach.Undef => ()
+                                              | _ => print (Ustring.toAscii 
+                                                                (Eval.toUstring (!regsCell) res) ^ "\n")
                                         end
-                                    else
-                                        doLine ()
                                 end
-                            else
-                                doLine ()
                         end
-                    else
-                        doLine ()
             end
 
-        fun runUntilQuit _ =
-            (withEofHandler (fn () => withHandlers doLine);
-             runUntilQuit ())
+        fun runUntilQuit accum =
+            runUntilQuit ((withHandler (fn () => doLine accum); [])
+                          handle continueException accum' => accum')
     in
         if (!quiet) then () else
             TextIO.print (Version.banner ^ "\n");
-        runUntilQuit ()
+        (runUntilQuit [])
         handle quitException => print "bye\n"
     end
 
