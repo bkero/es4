@@ -2710,41 +2710,7 @@ and evalUnaryOp (regs:Mach.REGS)
             toNumeric regs (evalExpr regs expr)
 
           | Ast.UnaryMinus =>
-            let
-                val v = evalExpr regs expr
-            in
-                case Mach.needMagic (toNumeric regs v) of
-                    Mach.Decimal dv => 
-                    let
-                        val ctxt = decimalCtxt regs
-                        val { precision, mode } = ctxt
-                    in
-                        newDecimal regs (Decimal.minus precision mode dv)
-                    end
-
-                  | Mach.Double vd => 
-                    newDouble regs (Real64.~ vd)
-
-                    (*
-                     * FIXME: The "numbers" proposal says that when there's no pragma in effect,
-                     * unary minus on int and uint stays in the representation if it can be
-                     * performed without loss of precision, else it's converted to double.
-                     *
-                     * It's not clear to me what "loss of precision" means on unary minus applied
-                     * to twos complement numbers, since negation is just "flip bits and add 1".
-                     * Maybe it has to do with overflow? Until this is clarified I'll leave it
-                     * as "preserve the representation" in all cases.
-                     *)
-
-                  | Mach.Int vi=> 
-                    newInt regs (Int32.~ vi)
-                    
-                  | Mach.UInt vu => 
-                    newUInt regs (Word32.~ vu)
-
-                  | Mach.Byte vb => 
-                    newByte regs (Word8.~ vb)
-            end
+	    performBinop regs Ast.Minus (newInt regs 0) (evalExpr regs expr)
 
           | Ast.Void => Mach.Undef
 
