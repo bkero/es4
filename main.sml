@@ -320,7 +320,7 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
             end
 
         fun runUntilQuit accum =
-            runUntilQuit ((withHandler (fn () => doLine accum); [])
+            runUntilQuit ((withHandlers (fn () => doLine accum); [])
                           handle continueException accum' => accum')
     in
         if (!quiet) then () else
