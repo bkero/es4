@@ -794,10 +794,14 @@ and getValueOrVirtual (regs:Mach.REGS)
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
                     (evalCallMethodByRef (withThis regs obj) (obj, Name.meta_get) [newString regs (#id name)])
             in
-                case Mach.findProp props Name.meta_get of
-                    SOME { state = Mach.MethodProp _, ... } => catchAll ()
-                  | SOME { state = Mach.NativeFunctionProp _, ... } => catchAll ()
-                  | _ => propNotFound obj
+                if doVirtual
+                then 
+                    case Mach.findProp props Name.meta_get of
+                        SOME { state = Mach.MethodProp _, ... } => catchAll ()
+                      | SOME { state = Mach.NativeFunctionProp _, ... } => catchAll ()
+                      | _ => propNotFound obj
+                else 
+                    propNotFound obj
             end
     end
 
