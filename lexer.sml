@@ -378,7 +378,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 {DecIntLit} i
                 {HexIntLit} i
                 {DecIntLit}
-                {HexIntLit}
 
               DoubleLiteral
                 {DecIntLit} d
@@ -388,6 +387,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               UIntLiteral
                 {DecIntLit} u
                 {HexIntLit} u
+                {HexIntLit}
 
               DecimalLiteral
                 {DecIntLit} m
@@ -511,9 +511,11 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 		(case Word32.fromString numberAscii of
                      SOME i => push (tokLen+1) (UIntLiteral i)
                    | NONE   => error ["LexError:  LEXER BUG in lexing HexIntLit(u)"])
-		
+
 	      | (HexIntLit, _) => 
-		push tokLen (implicitRep true numberAscii)
+		(case Word32.fromString numberAscii of
+                     SOME i => push (tokLen) (UIntLiteral i)
+                   | NONE   => error ["LexError:  LEXER BUG in lexing HexIntLit(u)"])
 
 
 
