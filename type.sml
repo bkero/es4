@@ -735,7 +735,8 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                           (#name it2) = Name.nons_Object
 
                         | (Ast.FunctionType _, Ast.InstanceType it2) =>
-                          (#name it2) = Name.nons_Function
+                          (#name it2) = Name.nons_Function orelse
+                          (#name it2) = Name.nons_Object
 
                         | (Ast.InstanceType it1, Ast.InstanceType it2) =>
                           List.exists (fn sup => groundIsSubtype sup t2) 
