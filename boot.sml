@@ -275,21 +275,38 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "Magic.es",
                        builtin "Internal.es",
                        builtin "Conversions.es",
-                       builtin "String.es",
-                       builtin "string_primitive.es",
-                       
-                       builtin "Name.es",
-                                              
-                       builtin "Boolean.es",
+
+                       (* 
+                        * boolean before Boolean because the latter
+                        * takes the prototype object set up by the
+                        * former.
+                        *)
                        builtin "boolean_primitive.es",
+                       builtin "Boolean.es",                                              
                        
-                       builtin "Number.es",
+                       (* 
+                        * Likewise the number primitive types and the
+                        * Number type all use int's prototype
+                        * (which should be made first), and the String
+                        * type uses string's prototype.
+                        *)
+
                        builtin "int.es",
                        builtin "uint.es",
                        builtin "byte.es",
-                       builtin "double.es",
                        builtin "decimal.es",
+                       builtin "double.es",
+                       builtin "Number.es",
+
+                       builtin "string_primitive.es",
+                       builtin "String.es",
+
+                       builtin "Math.es",
+                       builtin "Global.es",
                        
+                       
+                       builtin "Name.es",
+
                        builtin "Error.es",
                        builtin "EncodingError.es",
                        builtin "EvalError.es",
@@ -298,10 +315,7 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "SyntaxError.es",
                        builtin "TypeError.es",
                        builtin "URIError.es",
-                       
-                       builtin "Math.es",
-                       builtin "Global.es",
-                       
+
                        builtin "Array.es",  (* before Date *)
 
                        builtin "Shell.es",   (* before RegExp, for debugging *)

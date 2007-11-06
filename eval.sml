@@ -792,7 +792,13 @@ and getValueOrVirtual (regs:Mach.REGS)
             let
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
-                    (evalCallMethodByRef (withThis regs obj) (obj, Name.meta_get) [newString regs (#id name)])
+                    (trace ["running meta::get(\"", 
+                            (Ustring.toAscii (#id name)), 
+                            "\") catchall on obj #", 
+                            Int.toString (getObjId obj)];
+                     (evalCallMethodByRef (withThis regs obj) 
+                                          (obj, Name.meta_get) 
+                                          [newString regs (#id name)]))
             in
                 if doVirtual
                 then 
@@ -972,7 +978,15 @@ and setValueOrVirtual (regs:Mach.REGS)
                     end
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
-                    (evalCallMethodByRef (withThis regs obj) (obj, Name.meta_set) [newString regs (#id name), v]; ())
+                    (trace ["running meta::set(\"", 
+                            (Ustring.toAscii (#id name)), 
+                            "\", ", Mach.approx v,
+                            ") catchall on obj #", 
+                            Int.toString (getObjId obj)];
+                     (evalCallMethodByRef (withThis regs obj) 
+                                          (obj, Name.meta_set) 
+                                          [newString regs (#id name), v]; 
+                      ()))
             in
                 if doVirtual
                 then
@@ -1437,8 +1451,8 @@ and newFunctionFromClosure (regs:Mach.REGS)
 
     in
         Mach.setMagic obj (SOME (Mach.Function closure));
-        setValue regs obj Name.nons_prototype newProto;
-        setValue regs newProtoObj Name.nons_constructor (Mach.Object obj);
+        setValueOrVirtual regs obj Name.nons_prototype newProto false;
+        setValueOrVirtual regs newProtoObj Name.nons_constructor (Mach.Object obj) false;
         Mach.Object obj
     end
 
@@ -4375,24 +4389,26 @@ and getSpecialPrototype (regs:Mach.REGS)
         in
             findSpecial 
                 [
-                 (Mach.getPublicStringClassSlot,
-                  (fn _ => SOME (newPublicString regs Ustring.empty, true))),
                  (Mach.getStringClassSlot, 
-                  (fn _ => getExistingProto Mach.getPublicStringClassSlot)),
+                  (fn _ => SOME (newObject regs, true))),
+                 (Mach.getPublicStringClassSlot,
+                  (fn _ => getExistingProto Mach.getStringClassSlot)),
                  
-                 (Mach.getNumberClassSlot, 
-                  (fn _ => SOME (newPublicNumber regs 0.0, true))),
                  (Mach.getIntClassSlot, 
-                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                  (fn _ => SOME (newObject regs, true))),
                  (Mach.getUintClassSlot,
-                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
-                 (Mach.getDoubleClassSlot,
-                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
                  (Mach.getDecimalClassSlot,
-                  (fn _ => getExistingProto Mach.getNumberClassSlot)),
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                 (Mach.getDoubleClassSlot,
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                 (Mach.getNumberClassSlot, 
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
                  
+                 (Mach.getBooleanClassSlot,
+                  (fn _ => SOME (newObject regs, true))),
                  (Mach.getPublicBooleanClassSlot,
-                  (fn _ => SOME (newPublicBoolean regs false, true))),
+                  (fn _ => getExistingProto Mach.getBooleanClassSlot)),
                  
                  (Mach.getArrayClassSlot,
                   (fn _ => SOME (newArray regs [], true)))
@@ -4431,7 +4447,7 @@ and initClassPrototype (regs:Mach.REGS)
             Mach.setPropDontEnum props Name.nons_prototype true;
             if setConstructor
             then 
-                setValue regs newPrototype Name.nons_constructor (Mach.Object classObj)
+                setValueOrVirtual regs newPrototype Name.nons_constructor (Mach.Object classObj) false
             else 
                 ();
             trace ["finished initialising class prototype"]
