@@ -541,64 +541,6 @@ and ty2norm (prog:Fixture.PROGRAM)
             
           | _ => repackage ty
     end
-                 
-fun serializeGroundType (a:Ast.TYPE_EXPR) 
-    : Ustring.STRING list =
-    let 
-        val fromBool = Ustring.fromString o Bool.toString
-        val cc = Ustring.fromCharCode
-        fun prefixList ls = 
-            (cc 1) ::
-            (Ustring.fromInt (length ls)) ::
-            (Ustring.fromString ":") :: ls
-        fun serializeGroundTypeList tys = 
-            prefixList (List.concat (map serializeGroundType tys))
-        fun serializeGroundTypeOption tyo = 
-            case tyo of
-                NONE => [cc 2]
-              | SOME ty => (cc 3) :: (serializeGroundType ty)
-    in
-        case a of 
-            Ast.SpecialType Ast.Any => [cc 4]
-          | Ast.SpecialType Ast.Null => [cc 5]
-          | Ast.SpecialType Ast.Undefined => [cc 6]
-          | Ast.SpecialType Ast.VoidType => [cc 7]
-                                            
-          | Ast.UnionType tys => 
-            (cc 8) :: (serializeGroundTypeList tys)
-
-          | Ast.ArrayType tys => 
-            (cc 9) :: (serializeGroundTypeList tys)
-
-          | Ast.FunctionType { params, result, thisType, hasRest, minArgs } => 
-            (cc 10) :: 
-            ((serializeGroundTypeList params) @
-             [cc 11] @ (serializeGroundType result) @
-             [cc 12] @ (serializeGroundTypeOption thisType) @
-             [cc 13] @ (serializeGroundTypeOption thisType) @
-             [cc 14] @ [fromBool hasRest] @ [Ustring.fromInt minArgs])
-
-          | Ast.ObjectType fields => 
-            let
-                fun serializeField {name, ty} = 
-                    ((cc 15) :: name :: 
-                     (cc 16) :: (serializeGroundType ty))
-                val fields' = List.concat (map serializeField fields)
-            in
-                (cc 17) :: (prefixList fields')
-            end
-
-          | Ast.NullableType { expr, nullable } => 
-            (cc 18) :: (fromBool nullable) ::
-            (cc 19) :: (serializeGroundType expr)
-            
-          | Ast.InstanceType { name, typeArgs, ... } => 
-            (cc 22) :: (#id name) :: 
-            (cc 23) :: ((NameKey.decomposeNS (#ns name)) @
-                        [cc 24] @ (serializeGroundTypeList typeArgs))
-
-          | _ => error ["serializing non-ground type"]
-    end
 
 (* -----------------------------------------------------------------------------
  * Equality
