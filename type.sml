@@ -181,7 +181,7 @@ type TY_NORM = { exprs: Ast.TYPE_EXPR list,
 fun normalize (prog:Fixture.PROGRAM) 
               (locals:Ast.RIBS)
               (t:Ast.TY) 
-    : Ast.TY = (norm2ty (ty2norm prog t locals))
+    : Ast.TY = (norm2ty (ty2norm prog t locals []))
 
 and repackage (t:Ast.TY) 
     : TY_NORM = 
@@ -198,6 +198,7 @@ and fix2norm (prog:Fixture.PROGRAM)
              (originalt:Ast.TY)
              (mname:Ast.MULTINAME)
              (fixOpt:(Ast.NAME * Ast.FIXTURE) option)
+             (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
     : TY_NORM = 
     let
         val _ = trace ["examined type multiname ", fmtMname mname]
@@ -219,7 +220,7 @@ and fix2norm (prog:Fixture.PROGRAM)
                       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
                       | _ => error ["expected type fixture for: ", LogErr.multiname mname]
             in
-                ty2norm prog defn []
+                ty2norm prog defn [] seen
             end            
     end
 
@@ -228,18 +229,19 @@ and maybeNamedSlow (prog:Fixture.PROGRAM)
                    (originalt:Ast.TY) 
                    (locals:Ast.RIBS)
                    (mname:Ast.MULTINAME) 
+                   (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
     : TY_NORM =
     let
         val (ribs, closed) = Fixture.getRibsForTy prog originalt 
         val fullRibs = locals @ ribs
     in       
         case Multiname.resolveInRibs mname fullRibs of 
-            NONE => fix2norm prog originalt mname NONE
+            NONE => fix2norm prog originalt mname NONE seen
           | SOME (ribs, n) =>
             let 
                 val fix = Fixture.getFixture (List.hd ribs) (Ast.PropName n)
             in
-                fix2norm prog originalt mname (SOME (n, fix))
+                fix2norm prog originalt mname (SOME (n, fix)) seen
             end
     end
 
@@ -248,31 +250,38 @@ and maybeNamed (prog:Fixture.PROGRAM)
                (originalt:Ast.TY) 
                (locals:Ast.RIBS)
                (mname:Ast.MULTINAME) 
+               (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
     : TY_NORM =
-    case locals of 
-        x::xs => maybeNamedSlow prog originalt locals mname
-      | [] => 
-        let
-            val Ast.Ty { ribId, expr } = originalt
-            val fixOpt = Fixture.resolveToFixture prog mname ribId 
-            val norm = fix2norm prog originalt mname fixOpt
-            val ty = norm2ty norm
-        in
-            (* 
-             * Optionally: if the name resolved to a *type abbreviation*,
-             * write back through to the fixture cache to save the 
-             * normalized form. This will cause future normalization
-             * of the same type name to accelerate.
-             *)
-            case fixOpt of
-                SOME (n, Ast.TypeFixture _) =>
-                if (isGroundTy ty)                   
-                then Fixture.updateFixtureCache prog ribId mname n (Ast.TypeFixture ty)
-                else ()
-              | _ => ();
-            norm
-        end
-
+    let
+        val Ast.Ty { ribId, expr } = originalt
+        val newSeen = if List.exists (fn x => x = (ribId, mname)) seen
+                      then (error ["Cyclical type term detected in ", LogErr.ty expr]; [])
+                      else (ribId, mname) :: seen
+    in
+        case locals of 
+            x::xs => maybeNamedSlow prog originalt locals mname newSeen
+          | [] => 
+            let
+                val Ast.Ty { ribId, expr } = originalt
+                val fixOpt = Fixture.resolveToFixture prog mname ribId 
+                val norm = fix2norm prog originalt mname fixOpt newSeen
+                val ty = norm2ty norm
+            in
+                (* 
+                 * Optionally: if the name resolved to a *type abbreviation*,
+                 * write back through to the fixture cache to save the 
+                 * normalized form. This will cause future normalization
+                 * of the same type name to accelerate.
+                 *)
+                case fixOpt of
+                    SOME (n, Ast.TypeFixture _) =>
+                    if (isGroundTy ty)                   
+                    then Fixture.updateFixtureCache prog ribId mname n (Ast.TypeFixture ty)
+                    else ()
+                  | _ => ();
+                norm
+            end
+    end
 
 and norm2ty (norm:TY_NORM) 
     : Ast.TY = 
@@ -297,6 +306,7 @@ and norm2ty (norm:TY_NORM)
 and ty2norm (prog:Fixture.PROGRAM) 
             (ty:Ast.TY) 
             (locals:Ast.RIBS) (* Local bindings that extend the frame referenced in ty. *)
+            (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
     : TY_NORM =
     let
         val Ast.Ty { ribId, expr } = ty
@@ -314,7 +324,7 @@ and ty2norm (prog:Fixture.PROGRAM)
          * as the current TY, and get back a new TY_NORM. *)
         fun subTerm2Norm (e:Ast.TYPE_EXPR) 
             : TY_NORM = 
-            ty2norm prog (Ast.Ty { expr = e, ribId = ribId }) locals
+            ty2norm prog (Ast.Ty { expr = e, ribId = ribId }) locals seen
 
         (* 
          * Use 'subTerm' to evaluate a TYPE_EXPR in the same environment
@@ -354,11 +364,11 @@ and ty2norm (prog:Fixture.PROGRAM)
     in
         case expr of              
             Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
-            maybeNamed prog ty locals { id = ident, nss = openNamespaces }
+            maybeNamed prog ty locals { id = ident, nss = openNamespaces } seen
             
           | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
             (case findNamespace prog ribId qual of
-                 SOME ns => maybeNamed prog ty locals { nss = [[ns]], id = ident }
+                 SOME ns => maybeNamed prog ty locals { nss = [[ns]], id = ident } seen
                | NONE => repackage ty)
             
           | Ast.TypeName Ast.WildcardIdentifier => 
@@ -431,7 +441,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                         fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
                         val rib = List.foldl bind [] bindings
                     in
-                        ty2norm prog (Ast.Ty { expr=body, ribId=ribId' }) (rib::locals)
+                        ty2norm prog (Ast.Ty { expr=body, ribId=ribId' }) (rib::locals) seen
                     end                
                   | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
                   | _ => error ["applying bad type: ", LogErr.ty (AstQuery.typeExprOf base')]
