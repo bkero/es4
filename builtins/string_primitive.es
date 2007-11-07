@@ -686,7 +686,7 @@ package
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function toLocaleLowerCase(self): string
-            string.toLowerCase();
+            string.toLowerCase(self);
 
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase
