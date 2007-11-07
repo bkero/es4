@@ -636,24 +636,31 @@ fun groundEquals (t1:Ast.TYPE_EXPR)
                 then error ["groundEquals on non-ground terms"]
                 else ()
 
-        fun pairEqual (t1, t2) = groundEquals t1 t2
+                     
+        fun allEqual [] [] = true
+          | allEqual (x::xs) (y::ys) = groundEquals x y 
+                                       andalso  allEqual xs ys
+          | allEqual _ _ = false
 
-        fun allEqual ts1 ts2 = List.all pairEqual (ListPair.zip (ts1, ts2))
+
+        fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
+            Ustring.stringEquals name (#name field) 
+            
+        fun extractFieldType (name:Ast.IDENT) 
+                             (fields:Ast.FIELD_TYPE list)
+            : (Ast.TYPE_EXPR * Ast.FIELD_TYPE list) option = 
+            case List.partition (isNamedField name) fields of
+                ([field], rest) => SOME ((#ty field), rest)
+              | _ => NONE
 
         fun fieldTypesEqual [] [] = true
-          | fieldTypesEqual ({ name=id1, ty=t1 }::ts1) ts2 =
-            (case (List.partition (fn ({ name=id, ty }) => Ustring.stringEquals id id1) ts2) of
-                 ([{ ty=ty2, name }], ts2) => (groundEquals t1 t2) andalso fieldTypesEqual ts1 ts2
-               | _ => false)
+          | fieldTypesEqual ({ name, ty }::ts1) ts2 =
+            (case extractFieldType name ts2 of
+                 NONE => false
+               | SOME (ty2, rest) => groundEquals ty ty2
+                                     andalso fieldTypesEqual ts1 rest)
           | fieldTypesEqual _ _ = false
-
-        fun namedEqual [] [] = true
-          | namedEqual ((id1,t1)::ts1) ts2 =
-            (case (List.partition (fn (id,_) => Ustring.stringEquals id id1) ts2) of
-                 ([(_,t2)], ts2) => (groundEquals t1 t2) andalso namedEqual ts1 ts2
-               | _ => false)
-          | namedEqual _ _ = false
-
+                                      
         fun optionEqual NONE NONE = true
           | optionEqual (SOME t1) (SOME t2) = groundEquals t1 t2
           | optionEqual _ _ = false
