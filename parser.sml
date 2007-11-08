@@ -701,32 +701,8 @@ and qualifiedIdentifier (ts:TOKENS) =
       | _ => nonAttributeQualifiedIdentifier(ts)
     end
 
-(*
-    TypeIdentifier
-        SimpleTypeIdentifier
-        SimpleTypeIdentifier  .<  TypeExpressionList  >
-*)
-
 and propertyIdentifier (ts:TOKENS) = 
     nonAttributeQualifiedIdentifier ts
-(*
-    let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
-    in case ts1 of
-        (LeftDotAngle, _) :: _ =>
-            let
-                val (ts2,nd2) = typeExpressionList (tl ts1)
-            in case ts2 of
-                (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
-                    (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]);
-                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
-              | _ => error ["unknown final token of parametric type expression"]
-            end
-      | _ =>
-            (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);
-            (ts1, nd1))
-    end
-*)
     
 and primaryIdentifier (ts:TOKENS) =
     let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))])
@@ -3554,9 +3530,19 @@ and typeExpression (ts:TOKENS)
       | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
       | _ =>
             let
-                val (ts1,nd1) = primaryIdentifier ts
+                val (ts1,nd1) = primaryIdentifier ts                                
             in
-                (ts1,makeTy (needType(nd1,NONE)))
+                case ts1 of 
+                    (LeftDotAngle, _) :: _ => 
+                    let
+                        val (ts2,nd2) = typeExpressionList (tl ts1)
+                    in case ts2 of
+                           (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
+                           (tl ts2, makeTy (Ast.AppType { base = needType(nd1,NONE),
+                                                          args = (map AstQuery.typeExprOf nd2) }))
+                         | _ => error ["unknown final token of AppType type expression"]
+                    end
+                  | _ => (ts1,makeTy (needType(nd1,NONE)))
             end
     end
 

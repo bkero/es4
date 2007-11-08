@@ -2114,6 +2114,13 @@ and defTypeExpr (env:ENV)
       | Ast.FieldTypeRef (ty, ident) =>
         Ast.FieldTypeRef (defTypeExpr env ty, ident)
 
+      | Ast.AppType { base, args } => 
+        Ast.AppType { base = defTypeExpr env base,
+                      args = map (defTypeExpr env) args }
+      | Ast.LamType { params, body } => 
+        Ast.LamType { params = params,
+                      body = defTypeExpr env body }
+
       (* FIXME *)
       | t => t
 
