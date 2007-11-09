@@ -721,9 +721,9 @@ fun eval (regs:Mach.REGS)
                     val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
                                         handle
                                         LogErr.DefnError de => raise Eval.ThrowException (str de))
-                    val frag = (Verify.verifyTopFragment prog true frag
-                                handle
-                                LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
+                    val _ = (Verify.verifyTopFragment prog true frag
+                             handle
+                             LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
                     val regs = Eval.withProg regs prog
                 in

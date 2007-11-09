@@ -1,32 +1,19 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 
-
 /*
   For option 9 - 3aug07 - Cormac.
+  Updated Nov 8 with a notion of units.
 
   This is a small language implementation to explore the like and wrap types in a simple context,
   and may also help to shake out bugs in the type system earlier.
-  Now re-implemented in ES4 to gain experience with ES4.
-
-  Conclusions:
-  
-  - It appears that function(int):int <: function(*):*
-    in analogy to {f:int} <: {*}
-
-  - Wrap types are recursive
-
-  - No unwrap option (yet)
-
-  - No strict mode (yet)
-
-  - All checks done dynamically, no optimizations explored.
    
 */
 
 type Ident = String;
 type Label = String;
 
-/*** Types ***/
+/*** Types  T ::= * | int | T->T | like T | {l:T, ...}
+ */
 {
     class Type {} 
 
@@ -105,7 +92,9 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
     throw "Field "+f+" not found.";
 }
 
-/*** Expressions ***/
+/*** Expressions 
+ *   e ::= n | x | fun(x:T):T {e} | e(e) | let x=e in e | {l:e,...} | e.l | e.l:=e | e wrap T
+ */
 {
     type Expr =
         ( int, 
@@ -172,6 +161,13 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
     }
 }
 
+/** A unit is a list of variable-expression bindings, essentially a letrec.
+ *  A program is a sequence of units.
+ */
+
+type unit = [[Ident,Expr]];
+type program = [unit];
+
 /*** Environments ***/
 {
     class Env {
@@ -207,6 +203,14 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
     }
 
     const emptyEnv : Env = new EmptyEnv();
+
+    var topLevelEnv : Env = emptyEnv;
+
+    class TopLevelEnv extends Env {
+        function lookup(x:Ident) : * {
+            return topLevelEnv.lookup(x);
+        }
+    }
 }
 
 /********** Gensym, for alpha renaming **********/

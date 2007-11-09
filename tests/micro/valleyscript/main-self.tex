@@ -113,6 +113,7 @@
 
 \title{ValleyScript: Its Like Static Typing
 }
+\author{Cormac Flanagan}
 
 %\date{\today}
 \maketitle
@@ -548,6 +549,18 @@ The following section presents a type system with stronger guarantees that are s
 	}{
 		\judge{E}{\objget{e}{l}}{\dynamic}
 	}
+\trule{T-Call1}{
+		\judge{E}{e}{T} \qquad
+		T=\objty{l:\lamt{\self}{S},\dots}  
+		%k\in\setz{\likety{},\wrapty{},\epsilon}
+	}{
+		\judge{E}{\objcall{e}{l}}{S[\self^+:=T,\self^-:=..T..]}
+	}
+\trule{T-Call2}{
+		\judge{E}{e}{\dynamic}
+	}{
+		\judge{E}{\objcall{e}{l}}{\dynamic}
+	}
 \trule{T-Set1}{
 		\judge{E}{e_1}{T} \qquad
 		T=\objty{l:S,\dots} \qquad
@@ -702,6 +715,18 @@ If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stu
 		\judges{E}{e}{S}
 	}{
 		\judges{E}{\objget{e}{l}}{\dynamic}
+	}
+\trule{O-Call-Safe}{
+		\judges{E}{e}{T} \qquad
+		T=\objty{l:\lamt{\self}{S},\dots} 
+		%k\in\setz{\likety{},\wrapty{},\epsilon}
+	}{
+		\judges{E}{\safe{\objcall{e}{l}}}{S[\self^+:=T,\self^-:=\bot]}
+	}
+\trule{O-Call-Unsafe}{
+		\judges{E}{e}{S}
+	}{
+		\judges{E}{\objcall{e}{l}}{\dynamic}
 	}
 \trule{O-Set-Safe}{
 		\judges{E}{e_1}{T} \qquad

@@ -63,7 +63,9 @@ fun fmtType t = if !doTrace
  * Normalized types
  * ----------------------------------------------------------------------------- *)
 
+(* Unused
 type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
+*)
 
 fun findNamespace (prog:Fixture.PROGRAM)
                   (ribId:Ast.RIB_ID option)

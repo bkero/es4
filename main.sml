@@ -187,7 +187,7 @@ fun repl regs argvRest =
                             then
                                 let
                                     val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                                    val frag = Verify.verifyTopFragment prog true frag
+                                    val _ = Verify.verifyTopFragment prog true frag
                                 in
                                     regsCell := Eval.withProg regs prog;
                                     if (!doEval)
@@ -247,9 +247,10 @@ fun verify prog argvRest =
         val (prog, frags) = define prog argvRest
         fun f prog accum (frag::frags) = 
             let 
-                val frag' = Verify.verifyTopFragment prog true frag
+                val _ = Verify.verifyTopFragment prog true frag
             in
-                f prog (frag'::accum) frags
+                (* FIXME - do we need the accumulator? *)
+                f prog (frag::accum) frags
             end
           | f prog accum _ = (prog, List.rev accum)
     in
