@@ -6719,14 +6719,19 @@ and typeDefinition (ts:TOKENS, attrs:ATTRS)
         (Type, _) :: _ =>
             let
                 val (ts1,nd1) = identifier (tl ts)
-                val (ts2,nd2) = typeInitialisation ts1
+                val (ts2,nd2) = typeParameters ts1                                    
+                val (ts3,nd3) = typeInitialisation ts2
+                val t = case nd2 of 
+                            [] => nd3
+                          | _ => Ast.LamType { params = nd2,
+                                               body = nd3 }
             in
-                trace(["<< typeDefinition with next=", tokenname(hd ts2)]);
-                (ts2,{pragmas=[],
+                trace(["<< typeDefinition with next=", tokenname(hd ts3)]);
+                (ts3,{pragmas=[],
                       body=[],
                       defns=[Ast.TypeDefn {ns=ns,
                                            ident=nd1,
-                                           init=nd2}],
+                                           init=t}],
                       head=NONE,
                       loc=locOf ts})
             end
