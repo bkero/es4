@@ -243,8 +243,10 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
                                   loc = loc })
     end
 
-fun boot _ : Mach.REGS =
+fun boot (baseDir:string) : Mach.REGS =
     let
+        val dir = OS.Path.joinDirFile {dir = baseDir, file = "builtins"}
+        fun builtin file = OS.Path.joinDirFile {dir = dir, file = file}
         val _ = Native.registerNatives ();
         val langEd = 4
         val prog = Fixture.mkProgram langEd Defn.initRib
@@ -262,61 +264,75 @@ fun boot _ : Mach.REGS =
          * Class and Function.
          *)
 
-        val (prog, objFrag) = loadFile prog "builtins/Object.es"
-        val (prog, clsFrag) = loadFile prog "builtins/Class.es"
-        val (prog, funFrag) = loadFile prog "builtins/Function.es"
-        val (prog, ifaceFrag) = loadFile prog "builtins/Interface.es"
+        val (prog, objFrag) = loadFile prog (builtin "Object.es")
+        val (prog, clsFrag) = loadFile prog (builtin "Class.es")
+        val (prog, funFrag) = loadFile prog (builtin "Function.es")
+        val (prog, ifaceFrag) = loadFile prog (builtin "Interface.es")
 
         val (prog, otherFrags) = 
             loadFiles prog 
-                      ["builtins/Namespace.es",
-                       "builtins/Magic.es",
-                       "builtins/Internal.es",
-                       "builtins/Conversions.es",
-                       "builtins/String.es",
-                       "builtins/string_primitive.es",
-                       
-                       "builtins/Name.es",
-                                              
-                       "builtins/Boolean.es",
-                       "builtins/boolean_primitive.es",
-                       
-                       "builtins/Number.es",
-                       "builtins/int.es",
-                       "builtins/uint.es",
-                       "builtins/byte.es",
-                       "builtins/double.es",
-                       "builtins/decimal.es",
-                       
-                       "builtins/Error.es",
-                       "builtins/EncodingError.es",
-                       "builtins/EvalError.es",
-                       "builtins/RangeError.es",
-                       "builtins/ReferenceError.es",
-                       "builtins/SyntaxError.es",
-                       "builtins/TypeError.es",
-                       "builtins/URIError.es",
-                       
-                       "builtins/Math.es",
-                       "builtins/Global.es",
-                       
-                       "builtins/Array.es",  (* before Date *)
+                      [builtin "Namespace.es",
+                       builtin "Magic.es",
+                       builtin "Internal.es",
+                       builtin "Conversions.es",
 
-                       "builtins/Shell.es",   (* before RegExp, for debugging *)
-                       "builtins/UnicodeClasses.es",
-                       "builtins/UnicodeCasemapping.es",
-                       "builtins/UnicodeTbl.es",
-                       "builtins/Unicode.es",
-                       "builtins/RegExpCompiler.es",
-                       "builtins/RegExpEvaluator.es",
-                       "builtins/RegExp.es",
-                       "builtins/Date.es",
-                       "builtins/MetaObjects.es", (* before JSON *)
-                       "builtins/JSON.es"
+                       (* 
+                        * boolean before Boolean because the latter
+                        * takes the prototype object set up by the
+                        * former.
+                        *)
+                       builtin "boolean_primitive.es",
+                       builtin "Boolean.es",                                              
+                       
+                       (* 
+                        * Likewise the number primitive types and the
+                        * Number type all use int's prototype
+                        * (which should be made first), and the String
+                        * type uses string's prototype.
+                        *)
+
+                       builtin "int.es",
+                       builtin "uint.es",
+                       builtin "byte.es",
+                       builtin "decimal.es",
+                       builtin "double.es",
+                       builtin "Number.es",
+
+                       builtin "string_primitive.es",
+                       builtin "String.es",
+
+                       builtin "Math.es",
+                       builtin "Global.es",
+                       
+                       
+                       builtin "Name.es",
+
+                       builtin "Error.es",
+                       builtin "EncodingError.es",
+                       builtin "EvalError.es",
+                       builtin "RangeError.es",
+                       builtin "ReferenceError.es",
+                       builtin "SyntaxError.es",
+                       builtin "TypeError.es",
+                       builtin "URIError.es",
+
+                       builtin "Array.es",  (* before Date *)
+
+                       builtin "Shell.es",   (* before RegExp, for debugging *)
+                       builtin "UnicodeClasses.es",
+                       builtin "UnicodeCasemapping.es",
+                       builtin "UnicodeTbl.es",
+                       builtin "Unicode.es",
+                       builtin "RegExpCompiler.es",
+                       builtin "RegExpEvaluator.es",
+                       builtin "RegExp.es",
+                       builtin "Date.es",
+                       builtin "MetaObjects.es", (* before JSON *)
+                       builtin "JSON.es"
 
                            (*                            
-                            "builtins/Map.es",
-                            "builtins/Vector.es"
+                            builtin "Map.es",
+                            builtin "Vector.es"
                             *)
 
                  ]

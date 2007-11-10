@@ -543,8 +543,8 @@ fun bindDecimal (regs:Mach.REGS)
     : Mach.VAL =
     convertAndBindMagic vals 
                         (Eval.toDecimal
-                             Decimal.defaultPrecision
-                             Decimal.defaultRoundingMode) 
+                             {precision = Decimal.defaultPrecision,
+                              mode = Decimal.defaultRoundingMode}) 
                         (Mach.Decimal)
     
 fun bindString (regs:Mach.REGS)
@@ -761,9 +761,23 @@ fun get (regs:Mach.REGS)
     let
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
-        fun propNotFound (curr:Mach.OBJ) : Mach.VAL =
-            (Eval.throwRefErr regs ["getting nonexistent property ", LogErr.name name]; 
-             Eval.dummyVal)
+        fun propNotFound (curr:Mach.OBJ)
+            : Mach.VAL =
+            let
+                val Mach.Obj { proto, ... } = curr
+            in
+                case !proto of
+                    Mach.Object ob => 
+                    Eval.getValueOrVirtual regs ob name false propNotFound
+                  | _ =>
+                    if Eval.isDynamic regs obj
+                    then Mach.Undef
+                    else (Eval.throwTypeErr 
+                              regs 
+                              ["attempting to get nonexistent property ",
+                               LogErr.name name,
+                               "from non-dynamic object"]; Eval.dummyVal)
+            end
     in
         Eval.getValueOrVirtual regs obj name false propNotFound
     end
@@ -814,7 +828,10 @@ fun unaryDecimalFn (f:(Decimal.DEC -> Decimal.DEC)) :
     fn regs =>
     fn vals => if length vals = 0
                then Eval.newDecimal regs Decimal.NaN
-               else Eval.newDecimal regs (f (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)))
+               else Eval.newDecimal regs (f (Eval.toDecimal 
+                                                 {precision = Decimal.defaultPrecision,
+                                                  mode = Decimal.defaultRoundingMode}
+                                                 (rawNth vals 0)))
 
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
@@ -829,8 +846,13 @@ fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
     fn regs =>
     fn vals => if length vals = 0 orelse length vals = 1
                then Eval.newDecimal regs Decimal.NaN
-               else Eval.newDecimal regs (f ((Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 0)),
-                                        (Eval.toDecimal Decimal.defaultPrecision Decimal.defaultRoundingMode (rawNth vals 1))))
+               else Eval.newDecimal regs (f ((Eval.toDecimal 
+                                                  {precision = Decimal.defaultPrecision,
+                                                  mode = Decimal.defaultRoundingMode}
+                                                  (rawNth vals 0)),
+                                             (Eval.toDecimal {precision = Decimal.defaultPrecision,
+                                                              mode = Decimal.defaultRoundingMode}
+                                                             (rawNth vals 1))))
 
 val ceilDouble = unaryDoubleFn Real64.realCeil
 val ceilDecimal = unaryDecimalFn Decimal.ceil

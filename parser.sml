@@ -701,32 +701,8 @@ and qualifiedIdentifier (ts:TOKENS) =
       | _ => nonAttributeQualifiedIdentifier(ts)
     end
 
-(*
-    TypeIdentifier
-        SimpleTypeIdentifier
-        SimpleTypeIdentifier  .<  TypeExpressionList  >
-*)
-
 and propertyIdentifier (ts:TOKENS) = 
     nonAttributeQualifiedIdentifier ts
-(*
-    let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
-    in case ts1 of
-        (LeftDotAngle, _) :: _ =>
-            let
-                val (ts2,nd2) = typeExpressionList (tl ts1)
-            in case ts2 of
-                (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
-                    (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]);
-                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
-              | _ => error ["unknown final token of parametric type expression"]
-            end
-      | _ =>
-            (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);
-            (ts1, nd1))
-    end
-*)
     
 and primaryIdentifier (ts:TOKENS) =
     let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))])
@@ -1539,15 +1515,22 @@ and fieldName (ts:TOKENS)
     in case ts of
         (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[]})
 
-      | (DecimalLiteral n, _) :: ts1 =>
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualDecimal n)),
+      | (DecimalLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralDecimal n)),
                                          openNamespaces = []})
-      | (DecimalIntegerLiteral n, _) :: ts1 =>
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n)),
-                                         openNamespaces = [] })
-      | (HexIntegerLiteral n, _) :: ts1 =>
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualHexInteger n)),
+
+      | (DoubleLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralDouble n)),
                                          openNamespaces = []})
+
+      | (IntLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralInt n)),
+                                         openNamespaces = []})
+
+      | (UIntLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralUInt n)),
+                                         openNamespaces = []})
+
       | _ =>
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -1700,14 +1683,10 @@ and primaryExpression (ts:TOKENS, a:ALPHA, b:BETA)
       | (True, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralBoolean true))
       | (False, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralBoolean false))
 
-      | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimal n))
-      | (DecimalIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n))
-      | (HexIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualHexInteger n))
-
-      | (ExplicitDecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDecimal n))
-      | (ExplicitDoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDouble n))
-      | (ExplicitIntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralInt n))
-      | (ExplicitUIntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralUInt n))
+      | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDecimal n))
+      | (DoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDouble n))
+      | (IntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralInt n))
+      | (UIntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralUInt n))
 
       | (StringLiteral s,_) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralString s))
       | (This, _) :: ts1 => (ts1, Ast.ThisExpr)
@@ -2191,8 +2170,8 @@ and postfixExpression (ts:TOKENS, a:ALPHA, b:BETA)
     let val _ = trace([">> postfixExpression with next=",tokenname(hd(ts))])
         val (ts1,nd1) = leftHandSideExpression(ts,a,b)
     in case ts1 of
-        (PlusPlus, _) :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostIncrement NONE,nd1))
-      | (MinusMinus, _) :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostDecrement NONE,nd1))
+        (PlusPlus, _) :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostIncrement,nd1))
+      | (MinusMinus, _) :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostDecrement,nd1))
       | _ => (trace(["<< postfixExpression"]);(ts1,nd1))
     end
 
@@ -2237,25 +2216,25 @@ and unaryExpression (ts:TOKENS, a:ALPHA, b:BETA)
             let
                 val (ts2,nd2) = postfixExpression (ts1,a,b)
             in
-                (ts2,Ast.UnaryExpr(Ast.PreIncrement NONE,nd2))
+                (ts2,Ast.UnaryExpr(Ast.PreIncrement,nd2))
             end
       | (MinusMinus, _) :: ts1 =>
             let
                 val (ts2,nd2) = postfixExpression (ts1,a,b)
             in
-                (ts2,Ast.UnaryExpr(Ast.PreDecrement NONE,nd2))
+                (ts2,Ast.UnaryExpr(Ast.PreDecrement,nd2))
             end
       | (Plus, _) :: ts1 =>
             let
                 val (ts2,nd2) = unaryExpression (ts1,a,b)
             in
-                (ts2,Ast.UnaryExpr(Ast.UnaryPlus NONE,nd2))
+                (ts2,Ast.UnaryExpr(Ast.UnaryPlus,nd2))
             end
       | (Minus, _) :: ts1 =>
             let
                 val (ts2,nd2) = unaryExpression (ts1,a,b)
             in
-                (ts2,Ast.UnaryExpr(Ast.UnaryMinus NONE,nd2))
+                (ts2,Ast.UnaryExpr(Ast.UnaryMinus,nd2))
             end
       | (BitwiseNot, _) :: ts1 =>
             let
@@ -2335,7 +2314,7 @@ and multiplicativeExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts3,nd3) = unaryExpression (ts2,a,b)
                     in
-                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Times NONE,nd1,nd3),a,b)
+                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Times,nd1,nd3),a,b)
                     end
 
               | (LexBreakDiv x,_) :: _ =>
@@ -2346,7 +2325,7 @@ and multiplicativeExpression (ts:TOKENS, a:ALPHA, b:BETA)
                             let
                                 val (ts3,nd3) = unaryExpression (ts2,a,b)
                             in
-                                multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide NONE,nd1,nd3),a,b)
+                                multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide,nd1,nd3),a,b)
                             end
                       | (DivAssign, divAssignLoc) :: ts2 =>
                             (trace(["<< multiplicative"]);((DivAssign, divAssignLoc) :: ts2, nd1))
@@ -2357,7 +2336,7 @@ and multiplicativeExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts3,nd3) = unaryExpression (ts2,a,b)
                     in
-                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Remainder NONE,nd1,nd3),a,b)
+                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Remainder,nd1,nd3),a,b)
                     end
               | _ => (trace(["<< multiplicative"]);(ts1,nd1))
     in
@@ -2383,13 +2362,13 @@ and additiveExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts3,nd3) = multiplicativeExpression (ts2,a,b)
                     in
-                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Plus NONE,nd1,nd3),a,b)
+                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Plus,nd1,nd3),a,b)
                     end
               | (Minus, _) :: ts2 =>
                     let
                         val (ts3,nd3) = multiplicativeExpression (ts2,a,b)
                     in
-                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Minus NONE,nd1,nd3),a,b)
+                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Minus,nd1,nd3),a,b)
                     end
               | _ =>
                     (trace(["<< additiveExpression"]);
@@ -2477,7 +2456,7 @@ and relationalExpression (ts:TOKENS, a:ALPHA, b:BETA)
                             let
                                 val (ts3,nd3) = shiftExpression (ts2,a,b)
                             in
-                                relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less NONE,nd1,nd3),a,AllowIn)
+                                relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less,nd1,nd3),a,AllowIn)
                             end
                       | _ => error ["unknown token in relationalExpression"]
                     end
@@ -2486,25 +2465,25 @@ and relationalExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts3,nd3) = shiftExpression (ts2,a,b)
                     in
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less NONE,nd1,nd3),a,AllowIn)
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less,nd1,nd3),a,AllowIn)
                     end
               | ((GreaterThan, _) :: ts2,_) =>
                     let
                         val (ts3,nd3) = shiftExpression (ts2,a,b)
                     in
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.Greater NONE,nd1,nd3),a,AllowIn)
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.Greater,nd1,nd3),a,AllowIn)
                     end
               | ((LessThanOrEquals, _) :: ts2, _) =>
                     let
                         val (ts3,nd3) = shiftExpression (ts2,a,b)
                     in
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.LessOrEqual NONE,nd1,nd3),a,AllowIn)
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.LessOrEqual,nd1,nd3),a,AllowIn)
                     end
               | ((GreaterThanOrEquals, _) :: ts2, _) =>
                     let
                         val (ts3,nd3) = shiftExpression (ts2,a,b)
                     in
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.GreaterOrEqual NONE,nd1,nd3),a,AllowIn)
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.GreaterOrEqual,nd1,nd3),a,AllowIn)
                     end
               | ((In, _) :: ts2, AllowIn) =>
                     let
@@ -2564,25 +2543,25 @@ and equalityExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     let
                         val (ts3,nd3) = relationalExpression (ts2,a,b)
                     in
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.Equals NONE,nd1,nd3))
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.Equals,nd1,nd3))
                     end
               | (NotEquals, _) :: ts2 =>
                     let
                         val (ts3,nd3) = relationalExpression (ts2,a,b)
                     in
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.NotEquals NONE,nd1,nd3))
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.NotEquals,nd1,nd3))
                     end
               | (StrictEquals, _) :: ts2 =>
                     let
                         val (ts3,nd3) = relationalExpression (ts2,a,b)
                     in
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictEquals NONE,nd1,nd3))
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictEquals,nd1,nd3))
                     end
               | (StrictNotEquals, _) :: ts2 =>
                     let
                         val (ts3,nd3) = relationalExpression (ts2,a,b)
                     in
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictNotEquals NONE,nd1,nd3))
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictNotEquals,nd1,nd3))
                     end
               | _ =>
                     (trace(["<< equalityExpression"]);(ts1,nd1))
@@ -3073,19 +3052,19 @@ and assignmentExpression (ts:TOKENS, a:ALPHA, b:BETA)
 
     and compoundAssignmentOperator ts =
         case ts of
-            (ModulusAssign, _) :: _                 => (tl ts,Ast.AssignRemainder NONE)
+            (ModulusAssign, _) :: _                 => (tl ts,Ast.AssignRemainder)
           | (LogicalAndAssign, _) :: _             => (tl ts,Ast.AssignLogicalAnd)
           | (BitwiseAndAssign, _) :: _             => (tl ts,Ast.AssignBitwiseAnd)
-          | (DivAssign, _) :: _                     => (tl ts,Ast.AssignDivide NONE)
+          | (DivAssign, _) :: _                     => (tl ts,Ast.AssignDivide)
           | (BitwiseXorAssign, _) :: _             => (tl ts,Ast.AssignBitwiseXor)
           | (LogicalOrAssign, _) :: _             => (tl ts,Ast.AssignLogicalOr)
           | (BitwiseOrAssign, _) :: _             => (tl ts,Ast.AssignBitwiseOr)
-          | (PlusAssign, _) :: _                 => (tl ts,Ast.AssignPlus NONE)
+          | (PlusAssign, _) :: _                 => (tl ts,Ast.AssignPlus)
           | (LeftShiftAssign, _) :: _             => (tl ts,Ast.AssignLeftShift)
-          | (MinusAssign, _) :: _                 => (tl ts,Ast.AssignMinus NONE)
+          | (MinusAssign, _) :: _                 => (tl ts,Ast.AssignMinus)
           | (RightShiftAssign, _) :: _               => (tl ts,Ast.AssignRightShift)
           | (UnsignedRightShiftAssign, _) :: _     => (tl ts,Ast.AssignRightShiftUnsigned)
-          | (MultAssign, _) :: _                   => (tl ts,Ast.AssignTimes NONE)
+          | (MultAssign, _) :: _                   => (tl ts,Ast.AssignTimes)
           | _ => error ["unknown token in assignmentExpression"]
 
 (*
@@ -3551,9 +3530,19 @@ and typeExpression (ts:TOKENS)
       | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
       | _ =>
             let
-                val (ts1,nd1) = primaryIdentifier ts
+                val (ts1,nd1) = primaryIdentifier ts                                
             in
-                (ts1,makeTy (needType(nd1,NONE)))
+                case ts1 of 
+                    (LeftDotAngle, _) :: _ => 
+                    let
+                        val (ts2,nd2) = typeExpressionList (tl ts1)
+                    in case ts2 of
+                           (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
+                           (tl ts2, makeTy (Ast.AppType { base = needType(nd1,NONE),
+                                                          args = (map AstQuery.typeExprOf nd2) }))
+                         | _ => error ["unknown final token of AppType type expression"]
+                    end
+                  | _ => (ts1,makeTy (needType(nd1,NONE)))
             end
     end
 
@@ -4127,7 +4116,7 @@ and switchStatement (ts:TOKENS)
                     let
                         val (ts2,nd2) = caseElements (tl ts1)
                     in case ts2 of
-                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchStmt{mode=NONE,cond=nd1,cases=nd2,labels=[]})
+                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchStmt{cond=nd1,cases=nd2,labels=[]})
                       | _ => error ["unknown token in switchStatement"]
                     end
               | _ => error ["unknown token in switchStatement"]
@@ -6730,14 +6719,19 @@ and typeDefinition (ts:TOKENS, attrs:ATTRS)
         (Type, _) :: _ =>
             let
                 val (ts1,nd1) = identifier (tl ts)
-                val (ts2,nd2) = typeInitialisation ts1
+                val (ts2,nd2) = typeParameters ts1                                    
+                val (ts3,nd3) = typeInitialisation ts2
+                val t = case nd2 of 
+                            [] => nd3
+                          | _ => Ast.LamType { params = nd2,
+                                               body = nd3 }
             in
-                trace(["<< typeDefinition with next=", tokenname(hd ts2)]);
-                (ts2,{pragmas=[],
+                trace(["<< typeDefinition with next=", tokenname(hd ts3)]);
+                (ts3,{pragmas=[],
                       body=[],
                       defns=[Ast.TypeDefn {ns=ns,
                                            ident=nd1,
-                                           init=nd2}],
+                                           init=t}],
                       head=NONE,
                       loc=locOf ts})
             end
@@ -6861,12 +6855,6 @@ and pragmaItems (ts:TOKENS)
 (*
     PragmaItem
         decimal
-        double
-        int
-        Number
-        uint
-        precision NumberLiteral
-        rounding Identifier
         standard
         strict
         default namespace SimpleTypeIdentifier
@@ -6883,24 +6871,11 @@ and pragmaItem (ts:TOKENS)
                 (ts1, Ast.UseDefaultNamespace (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
             end
     in case ts of
-        (Decimal, _) :: _ => (tl ts,Ast.UseNumber Ast.Decimal)
-      | (Double, _) :: _ => (tl ts,Ast.UseNumber Ast.Double)
-      | (Int, _) :: _ => (tl ts,Ast.UseNumber Ast.Int)
-      | (Number, _) :: _ => (tl ts,Ast.UseNumber Ast.Number)
-      | (UInt, _) :: _ => (tl ts,Ast.UseNumber Ast.UInt)
-      | (Precision, _) :: (DecimalIntegerLiteral n, _) :: _ =>
+        (Decimal, _) :: _ => 
             let
-                val i = case (Int.fromString n) of
-                            SOME i => i
-                          | NONE => error ["non-integral number literal in 'use precision' pragma"]
-            in
-                (tl (tl ts), Ast.UsePrecision i)
-            end
-      | (Rounding, _) :: (Identifier s, _) :: _ =>
-            let
-                val m = Decimal.HalfUp
-            in
-                (tl (tl ts), Ast.UseRounding m)
+                val (ts1,nd1) = primaryExpression ((tl ts), NoList, NoIn)
+	    in
+                (ts1, Ast.UseDecimalContext nd1)
             end
       | (Standard, _) :: _ => (tl ts,Ast.UseStandard)
       | (Strict, _) :: _ => (tl ts,Ast.UseStrict)

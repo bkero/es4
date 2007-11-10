@@ -79,7 +79,6 @@ type ENV =
      { ribId: Ast.RIB_ID option,
        tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list,
-       numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
        className: Ast.IDENT,
        packageName: Ast.IDENT list,
@@ -98,12 +97,6 @@ fun dumpEnv (e:ENV) : unit =
     else ()
 
     
-val defaultNumericMode : Ast.NUMERIC_MODE =
-    { numberType = Ast.Number,
-      roundingMode = Decimal.defaultRoundingMode,
-      precision = Decimal.defaultPrecision }
-
-
 val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
                           (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
                           (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS),
@@ -285,7 +278,7 @@ fun enterFragment (env:ENV)
                   (frag:Ast.FRAGMENT)
     : ENV =     
     let
-        val { ribId, tempOffset, numericMode, openNamespaces, 
+        val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program } = env                                           
         val newRibId = 
@@ -311,7 +304,6 @@ fun enterFragment (env:ENV)
         { ribId = newRibId, 
           tempOffset = tempOffset,
           openNamespaces = newOpenNss,
-          numericMode = numericMode,
           labels = labels,
           className = className,
           packageName = newPkgName,
@@ -324,7 +316,7 @@ fun extendEnvironment (env:ENV)
                       (rib:Ast.RIB)
     : ENV =
     let
-        val { ribId, tempOffset, numericMode, openNamespaces, 
+        val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program } = env
         val newRibId = SOME (Fixture.allocGeneralRib program (#ribId env))
@@ -333,7 +325,6 @@ fun extendEnvironment (env:ENV)
         { ribId = newRibId, 
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
-          numericMode = numericMode,
           labels = labels,
           className = className,
           packageName = packageName,
@@ -370,14 +361,13 @@ fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
 fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
-        val { ribId, tempOffset, numericMode, openNamespaces, 
+        val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program } = env
     in
         { ribId = ribId,
           tempOffset = newTempOffset,
           openNamespaces = openNamespaces,
-          numericMode = numericMode,
           labels = labels,
           className = className,
           packageName = packageName,
@@ -389,14 +379,13 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
 fun clearPackageName (env:ENV)
     : ENV =
     let
-        val { ribId, tempOffset, numericMode, openNamespaces, 
+        val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program } = env
     in
         { ribId = ribId,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
-          numericMode = numericMode,
           labels = labels,
           className = className,
           packageName = [],
@@ -408,7 +397,7 @@ fun clearPackageName (env:ENV)
 fun enterClass (env:ENV) (newClassName:Ast.NAME)
     : ENV =
     let
-        val { ribId, tempOffset, numericMode, openNamespaces, 
+        val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program } = env
         val className = Name.mangle newClassName
@@ -416,7 +405,6 @@ fun enterClass (env:ENV) (newClassName:Ast.NAME)
         { ribId = ribId,
           tempOffset = tempOffset,
           openNamespaces = [Ast.Private className]::openNamespaces,
-          numericMode = numericMode,
           labels = labels,
           className = className,
           packageName = packageName,
@@ -443,7 +431,7 @@ fun dumpPath path =
 fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
-            val { ribId, tempOffset, numericMode, openNamespaces, 
+            val { ribId, tempOffset, openNamespaces, 
                   labels, className, packageName, 
                   defaultNamespace, program } = env
             val (labelId,labelKnd) = label
@@ -458,7 +446,6 @@ fun addLabel ((label:LABEL),(env:ENV))
             { ribId = ribId,
               tempOffset = tempOffset,
               openNamespaces = openNamespaces,
-              numericMode = numericMode,
               labels = label::labels,
               className = className,
               packageName = packageName,
@@ -1654,9 +1641,8 @@ and makeAliasFixture (env:ENV)
 (*
     PRAGMA list
 
-    Numeric mode flags and open namespaces are propagated to
-    the expressions they modify via a Context value. Interpret
-    each pragma and initialise a new env using the results
+    Some effects of pragmas are propagated to the expressions they modify via a
+    Context value. Interpret each pragma and initialise a new env using the results
 *)
 
 and defPragmas (env:ENV)
@@ -1665,10 +1651,6 @@ and defPragmas (env:ENV)
     let
         val program = #program env
         val ribId  = #ribId env
-        val mode = #numericMode env
-        val numType = ref (#numberType mode)
-        val rounding = ref (#roundingMode mode)
-        val precision = ref (#precision mode)
         val defaultNamespace = ref (#defaultNamespace env)
         val opennss = ref []
         val rib = ref []
@@ -1680,9 +1662,6 @@ and defPragmas (env:ENV)
               openNamespaces = (case !opennss of
                                     [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
                                   | _  => !opennss :: (#openNamespaces env)),
-              numericMode = { numberType = !numType,
-                              roundingMode = !rounding,
-                              precision = !precision },
               labels = (#labels env),
               className = (#className env),
               packageName = (#packageName env),
@@ -1691,9 +1670,7 @@ and defPragmas (env:ENV)
 
         fun defPragma x =
             case x of
-                Ast.UseNumber n => numType := n
-              | Ast.UseRounding m => rounding := m
-              | Ast.UsePrecision p => precision := p
+                Ast.UseDecimalContext e => ()
               | Ast.UseNamespace ns =>
                     let
                         val namespace = resolveExprToNamespace (modifiedEnv()) ns
@@ -1787,80 +1764,6 @@ and defIdentExpr (env:ENV)
 
     end
 
-and defContextualNumberLiteral (env:ENV)
-                               (n:string)
-                               (isIntegral:bool)
-                               (isHex:bool)
-    : Ast.LITERAL =
-    let
-        val {numberType, roundingMode, precision} = (#numericMode env)
-        fun asDecimal _ =
-            Ast.LiteralDecimal (case Decimal.fromString precision roundingMode n of
-                                    NONE => error ["failure converting '", n,
-                                                   "' to decimal literal "]
-                                  | SOME d => d)
-        fun asDouble _ =
-            Ast.LiteralDouble (case Real64.fromString n of
-                                   NONE => error ["failure converting '", n,
-                                                  "' to double literal "]
-                                 | SOME d => d)
-        fun asInt _ =
-            Ast.LiteralInt (case Int32.fromString n of
-                                NONE => error ["failure converting '", n,
-                                               "' to int literal "]
-                              | SOME d => d)
-        fun asUInt _ =
-            Ast.LiteralUInt (if isHex
-                             then
-                                 (case Word32.fromString n of
-                                      NONE => error ["failure converting '", n,
-                                                     "' to uint literal "]
-                                    | SOME x => x)
-                             else
-                                 (case LargeInt.fromString n of
-                                      NONE => error ["failure converting '", n,
-                                                     "' to uint literal "]
-                                    | SOME d => Word32.fromLargeInt d))
-    in
-        if isHex andalso (not isIntegral)
-        then error ["non-integral hex literal"]
-        else
-            case numberType of
-                Ast.Decimal => asDecimal ()
-              | Ast.Double => asDouble ()
-
-              (*
-               * FIXME: The language in the draft spec describes
-               * what happens to "integer literals" in the
-               * "use int" or "use uint" context. It says nothing
-               * about non-integral literals. What should we do
-               * in those cases?
-               *)
-
-              | Ast.Int => asInt ()
-              | Ast.UInt => asUInt ()
-
-              (* This part is for ES3 backward-compatibility. *)
-              | Ast.Number =>
-                if isIntegral
-                then
-                    let
-                        fun v _ = valOf (LargeInt.fromString n)
-                    in
-                        if isHex
-                        then asUInt ()
-                        else
-                            (if Mach.fitsInInt (v())
-                             then asInt ()
-                             else
-                                 (if Mach.fitsInUInt (v())
-                                  then asUInt ()
-                                  else asDouble ()))
-                    end
-                else
-                    asDouble ()
-    end
-
 
 and defLiteral (env:ENV)
                (lit:Ast.LITERAL)
@@ -1875,14 +1778,6 @@ and defLiteral (env:ENV)
             in
                 Ast.LiteralFunction func
             end
-          | Ast.LiteralContextualDecimalInteger n =>
-            defContextualNumberLiteral env n true false
-
-          | Ast.LiteralContextualDecimal n =>
-            defContextualNumberLiteral env n false false
-
-          | Ast.LiteralContextualHexInteger n =>
-            defContextualNumberLiteral env n true true
 
           | Ast.LiteralArray {exprs, ty} =>
             Ast.LiteralArray {exprs = defExprs env exprs,
@@ -2041,44 +1936,13 @@ and defExpr (env:ENV)
             Ast.TernaryExpr (sub e1, sub e2, sub e3)
 
           | Ast.BinaryExpr (b, e1, e2) =>
-            let
-                val m = (SOME (#numericMode env))
-                val b' = (case b of
-                               Ast.Plus _ => Ast.Plus m
-                             | Ast.Minus _ => Ast.Minus m
-                             | Ast.Times _ => Ast.Times m
-                             | Ast.Divide _ => Ast.Divide m
-                             | Ast.Remainder _ => Ast.Remainder m
-                             | Ast.Equals _ => Ast.Equals m
-                             | Ast.NotEquals _ => Ast.NotEquals m
-                             | Ast.StrictEquals _ => Ast.StrictEquals m
-                             | Ast.StrictNotEquals _ => Ast.StrictNotEquals m
-                             | Ast.Less _ => Ast.Less m
-                             | Ast.LessOrEqual _ => Ast.LessOrEqual m
-                             | Ast.Greater _ => Ast.Greater m
-                             | Ast.GreaterOrEqual _ => Ast.GreaterOrEqual m
-                             | _ => b)
-            in
-                Ast.BinaryExpr (b', sub e1, sub e2)
-            end
+            Ast.BinaryExpr (b, sub e1, sub e2)
 
           | Ast.BinaryTypeExpr (b, e, ty) =>
             Ast.BinaryTypeExpr (b, sub e, defTyFromTy env ty)
 
           | Ast.UnaryExpr (u, e) =>
-            let
-                val m = (SOME (#numericMode env))
-                val u' = (case u of
-                               Ast.PreIncrement _ => Ast.PreIncrement m
-                             | Ast.PreDecrement _ => Ast.PreDecrement m
-                             | Ast.PostIncrement _ => Ast.PostIncrement m
-                             | Ast.PostDecrement _ => Ast.PostDecrement m
-                             | Ast.UnaryPlus _ => Ast.UnaryPlus m
-                             | Ast.UnaryMinus _ => Ast.UnaryMinus m
-                             | _ => u)
-            in
-                Ast.UnaryExpr (u', sub e)
-            end
+            Ast.UnaryExpr (u, sub e)
 
           | Ast.TypeExpr t =>
             Ast.TypeExpr (defTyFromTy env t)
@@ -2155,18 +2019,7 @@ and defExpr (env:ENV)
             end
 
           | Ast.SetExpr (a, le, re) =>
-            let
-                val def = (SOME (#numericMode env))
-                val a' = case a of
-                             Ast.AssignPlus _ => Ast.AssignPlus def
-                           | Ast.AssignMinus _ => Ast.AssignMinus def
-                           | Ast.AssignTimes _ => Ast.AssignTimes def
-                           | Ast.AssignDivide _ => Ast.AssignDivide def
-                           | Ast.AssignRemainder _ => Ast.AssignRemainder def
-                           | x => x
-            in
-                Ast.SetExpr (a', (sub le), (sub re))
-            end
+            Ast.SetExpr (a, (sub le), (sub re))
 
           | Ast.GetTemp n =>
             let
@@ -2260,6 +2113,13 @@ and defTypeExpr (env:ENV)
 
       | Ast.FieldTypeRef (ty, ident) =>
         Ast.FieldTypeRef (defTypeExpr env ty, ident)
+
+      | Ast.AppType { base, args } => 
+        Ast.AppType { base = defTypeExpr env base,
+                      args = map (defTypeExpr env) args }
+      | Ast.LamType { params, body } => 
+        Ast.LamType { params = params,
+                      body = defTypeExpr env body }
 
       (* FIXME *)
       | t => t
@@ -2624,8 +2484,7 @@ and defStmt (env:ENV)
                 val env'' = addLabel ((makeSwitchLabel Ustring.empty), env')
                 val (cases,hoisted) = ListPair.unzip (map (defCase env'') cases)
             in
-                (Ast.SwitchStmt { mode = SOME (#numericMode env),
-                                  cond = defExpr env cond,
+                (Ast.SwitchStmt { cond = defExpr env cond,
                                   cases = cases,
                                   labels=Ustring.empty::labelIds}, List.concat hoisted)
             end
@@ -2917,7 +2776,6 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       openNamespaces = (if (Fixture.getLangEd prog > 3)
                         then [[Name.noNS, Ast.Internal Ustring.empty], [Name.ES4NS]]
                         else [[Name.noNS, Ast.Internal Ustring.empty]]),
-      numericMode = defaultNumericMode,
       labels = [],
       className = Ustring.fromString "",
       packageName = [],

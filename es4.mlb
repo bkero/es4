@@ -11,26 +11,28 @@ local
     end
     decimal.sml
     ast.sml
+    pretty-rep.sml
+    pretty-cvt.sml
+    pretty.sml
     logerr.sml
+    ast-query.sml
     name.sml
     namekey.sml
     namemap.sml
     multiname.sml
-    pretty-rep.sml
-    pretty-cvt.sml
-    pretty.sml
+    fixture.sig
+    fixture.sml
+    mach.sml
+    type.sml
     token.sml
     lexer.sml
     parser.sml
-    mach.sml
-    fixture.sig
-    fixture.sml
-    type.sml
     defn.sml
     verify.sml
     eval.sml
     native.sml
     boot.sml
+    version.sml
     main.sml
     mlton.sml
 in

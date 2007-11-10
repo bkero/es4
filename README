@@ -1,49 +1,60 @@
-CODING CONVENTIONS
-==================
+The ECMAScript Edition 4 Reference Implementation
 
-* Naming conventions
+Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
+Software ASA, and others.
 
-type names:        FOO_BAR
-constructor names: FooBar
-local/field names: fooBar
+See the file LICENSE for terms and conditions.
 
-* Non-exhaustive matches
+See the file INSTALL for installation instructions.
 
-During implementation, non-exhaustive match warnings are fine (they
-help us keep track of what hasn't been implemented). But completed
-code should not have non-exhaustive matches.
+======================================================================
+Quick start
+======================================================================
 
-If a particular case should never happen, the right-hand side of the
-match case should raise a Fail exception with a string indicating what
-invariant was violated.
+On Cygwin, Linux, and MacOS X, run the `es4' script. On Windows
+without Cygwin, run the `es4.bat' batch file. Type :help at the ES4
+prompt for information about the interpreter.
 
-* Explicit type annotations
 
-Top-level functions must be annotated explicitly.
+----------------------------------------------------------------------
 
-* Line widths
+This software incorporates the Decimal Number Arithmetic Module by
+Mike Cowlishaw of the IBM Corporation.
 
-Lines must not exceed 100 columns.
+Decimal Number Arithmetic Module - http://www2.hursley.ibm.com/decimal
+mfc@uk.ibm.com
+Mike Cowlishaw, IBM Fellow
+IBM UK, PO Box 31, Birmingham Road, Warwick CV34 5JL, UK
 
-* Indentation
+The Decimal Number Arithmetic Module is covered under the terms of the
+ICU License -- ICU 1.8.1 and later.
 
-[TODO]
+You should have received a copy of the ICU License along with this
+software. If not, please contact the IBM Corporation for more
+information.
 
-* Tabs
+----------------------------------------------------------------------
 
-Hard tabs are disallowed.
+This software incorporates data from Unicode, Inc.
 
-* Internal errors
+Unicode Data - http://www.unicode.org
+Copyright © 1991-2007 Unicode, Inc. All rights
+reserved. Distributed under the Terms of Use in
+http://www.unicode.org/copyright.html.
 
-The exception HostError represents *internal evaluator errors*, that
-is, errors that are not the fault of the user but instead a problem
-with the evaluator.
+You should have received a copy of the Unicode license along with this
+software. If not, please see http://www.unicode.org/copyright.html.
 
-There is a global invariant that for any ES4 program, HostError can
-never be raised. If a HostError is raised, this invariant has been
-violated, i.e. there's an internal inconsistency in the evaluator.
+----------------------------------------------------------------------
 
-HostError should be the only exception used to represent internal
-evaluator errors.
+Versions of this software built with the MLton compiler dynamically link
+to the GNU MP Library.
 
-HostError is defined in logerr.sml.
+The GNU MP Library - http://gmplib.org/
+Copyright 1991, 1996, 1999, 2000, 2007 Free Software Foundation, Inc.
+
+The GNU MP Library is covered under the terms of the GNU Lesser General
+Public License, Version 3.
+
+You should have received a copy of the GNU Lesser General Public License
+along with the GNU MP Library.  If not, see http://www.gnu.org/licenses/.

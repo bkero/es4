@@ -347,11 +347,11 @@ and verifyExpr (env:ENV)
                 (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
                     case b of
-                         Ast.Plus mode => (AdditionType, AdditionType, AdditionType)
-                       | Ast.Minus mode => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.Times mode => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.Divide mode => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.Remainder mode => (AnyNumberType, AnyNumberType, AnyNumberType)
+                         Ast.Plus => (AdditionType, AdditionType, AdditionType)
+                       | Ast.Minus => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Times => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Divide => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Remainder => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.LeftShift => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.RightShift => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.RightShiftUnsigned => (AnyNumberType, AnyNumberType, AnyNumberType)
@@ -362,14 +362,14 @@ and verifyExpr (env:ENV)
                        | Ast.LogicalOr => (booleanType, booleanType, booleanType)
                        | Ast.InstanceOf => (anyType, anyType, booleanType)
                        | Ast.In => (anyType, anyType, booleanType)
-                       | Ast.Equals mode => (anyType, anyType, booleanType)
-                       | Ast.NotEquals mode => (anyType, anyType, booleanType)
-                       | Ast.StrictEquals mode => (anyType, anyType, booleanType)
-                       | Ast.StrictNotEquals mode => (anyType, anyType, booleanType)
-                       | Ast.Less mode => (CompareType, CompareType, booleanType)
-                       | Ast.LessOrEqual mode => (CompareType, CompareType, booleanType)
-                       | Ast.Greater mode => (CompareType, CompareType, booleanType)
-                       | Ast.GreaterOrEqual mode => (CompareType, CompareType, booleanType)
+                       | Ast.Equals => (anyType, anyType, booleanType)
+                       | Ast.NotEquals => (anyType, anyType, booleanType)
+                       | Ast.StrictEquals => (anyType, anyType, booleanType)
+                       | Ast.StrictNotEquals => (anyType, anyType, booleanType)
+                       | Ast.Less => (CompareType, CompareType, booleanType)
+                       | Ast.LessOrEqual => (CompareType, CompareType, booleanType)
+                       | Ast.Greater => (CompareType, CompareType, booleanType)
+                       | Ast.GreaterOrEqual => (CompareType, CompareType, booleanType)
                        | Ast.Comma => (anyType, anyType, t2)
             in
                 whenStrict (fn () =>
@@ -411,12 +411,12 @@ and verifyExpr (env:ENV)
                                       Ast.Delete => booleanType
                                     | Ast.Void => undefinedType
                                     | Ast.Typeof => stringType
-                                    | Ast.PreIncrement mode => AnyNumberType
-                                    | Ast.PreDecrement mode => AnyNumberType
-                                    | Ast.PostIncrement mode => AnyNumberType
-                                    | Ast.PostDecrement mode => AnyNumberType
-                                    | Ast.UnaryPlus mode => AnyNumberType
-                                    | Ast.UnaryMinus mode => AnyNumberType
+                                    | Ast.PreIncrement => AnyNumberType
+                                    | Ast.PreDecrement => AnyNumberType
+                                    | Ast.PostIncrement => AnyNumberType
+                                    | Ast.PostDecrement => AnyNumberType
+                                    | Ast.UnaryPlus => AnyNumberType
+                                    | Ast.UnaryMinus => AnyNumberType
                                     | Ast.BitwiseNot => AnyNumberType
                                     | Ast.LogicalNot => booleanType
                                     (* TODO: isn't this supposed to be the prefix of a type expression? *)
@@ -426,12 +426,12 @@ and verifyExpr (env:ENV)
                                case u of
                                     (* FIXME: these are probably wrong *)
                                     Ast.Delete => ()
-                                  | Ast.PreIncrement mode => checkCompatible t AnyNumberType
-                                  | Ast.PostIncrement mode => checkCompatible t AnyNumberType
-                                  | Ast.PreDecrement mode => checkCompatible t AnyNumberType
-                                  | Ast.PostDecrement mode => checkCompatible t AnyNumberType
-                                  | Ast.UnaryPlus mode => checkCompatible t AnyNumberType
-                                  | Ast.UnaryMinus mode => checkCompatible t AnyNumberType
+                                  | Ast.PreIncrement => checkCompatible t AnyNumberType
+                                  | Ast.PostIncrement => checkCompatible t AnyNumberType
+                                  | Ast.PreDecrement => checkCompatible t AnyNumberType
+                                  | Ast.PostDecrement => checkCompatible t AnyNumberType
+                                  | Ast.UnaryPlus => checkCompatible t AnyNumberType
+                                  | Ast.UnaryMinus => checkCompatible t AnyNumberType
                                   | Ast.BitwiseNot => checkCompatible t AnyNumberType
                                   | Ast.LogicalNot => checkConvertible t booleanType
                                   (* TODO: Ast.Type? *)
@@ -484,7 +484,6 @@ and verifyExpr (env:ENV)
                                     | Ast.LiteralObject { ty=NONE, ... } => anyType
                                     | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyTypeExpr env ty
                                     | Ast.LiteralRegExp _ => RegExpType
-                                    | _ => LogErr.internalError ["unprocessed literal returned by Defn"]
                 fun verifyField { kind, name, init } =
                     { kind = kind,
                       name = name,
@@ -792,7 +791,7 @@ and verifyStmt (env:ENV)
                          catches=List.map (verifyCatchClause env) catches,
                          finally=Option.map (verifyBlock env) finally }
 
-          | Ast.SwitchStmt {cond, cases, mode, labels} =>
+          | Ast.SwitchStmt {cond, cases, labels} =>
             let
                 fun verifyCase { label, inits, body } =
                     { label = Option.map (verifyExprOnly env) label,
@@ -801,7 +800,6 @@ and verifyStmt (env:ENV)
             in
                 Ast.SwitchStmt {cond = verifyExprOnly env cond,
                                 cases = map verifyCase cases,
-                                mode = mode,
                                 labels = labels}
             end
 

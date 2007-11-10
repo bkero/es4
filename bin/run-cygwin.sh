@@ -46,4 +46,4 @@ _here=`dirname $0`
 # help the evaluator find the "decimal" executable
 export PATH="$PATH":$_here
 
-exec sml @SMLload=$_here/es4.heap $*
+exec sml @SMLload=$_here/es4.image $*
