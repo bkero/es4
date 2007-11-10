@@ -203,14 +203,6 @@ type program = [unit];
     }
 
     const emptyEnv : Env = new EmptyEnv();
-
-    var topLevelEnv : Env = emptyEnv;
-
-    class TopLevelEnv extends Env {
-        function lookup(x:Ident) : * {
-            return topLevelEnv.lookup(x);
-        }
-    }
 }
 
 /********** Gensym, for alpha renaming **********/
@@ -225,7 +217,6 @@ type program = [unit];
 
 /********** Subtyping, compatibility **********/
 
-// FIXME: not complete yet!
 function compatibleType (t1:Type, t2:Type) : Boolean {
     print ("compatibleType "+t1+" and "+t2);
     
@@ -274,7 +265,6 @@ function bicompatibleType (t1:Type, t2:Type) : Boolean {
            compatibleType( t2, t1 );
 }
 
-// FIXME: not complete yet
 function subType (t1:Type, t2:Type) : Boolean {
     print ("subtype "+t1+" and "+t2+"    t1=anytype is "+(t1==anyType));
     
@@ -282,14 +272,7 @@ function subType (t1:Type, t2:Type) : Boolean {
     
     switch type(t2) {
         case (t2: LikeType) {
-            switch type(t1) {
-                case (t1: LikeType) {
-                    return subType( t1.arg, t2.arg );
-                }
-                case (t1: Type) {
-                    return compatibleType( t1, t2.arg );
-                }
-                }
+            return compatibleType( t1, t2.arg );
         }
         
         case (t2: *) {
@@ -556,6 +539,27 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                         eval( n, e.e2 ));
         }
         }   
+}
+
+function evalProg(p:program) {
+
+    var topLevelEnv : Env = emptyEnv;
+
+    class TopLevelEnv extends Env {
+        override function lookup(x:Ident) : * {
+            return topLevelEnv.lookup(x);
+        }
+    }
+
+    let e : Env = ;
+
+    for (u:unit in p) {
+      for (b in u) {
+	let [x,e] = b;
+	let v : Val = eval(e, new TopLevelEnv());
+	topLevelEnv = topLevelEnv.extend(x,v);
+      }
+    }
 }
 
 /************ Optional Verifier **************/
