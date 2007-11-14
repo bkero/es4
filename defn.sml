@@ -43,6 +43,26 @@ fun error ss = LogErr.defnError ss
 fun trace ss = if (!doTrace) then log ss else ()
 fun trace2 (s, us) = if (!doTrace) then log [s, (Ustring.toAscii us)] else ()
 
+(* 
+ * We use a globally unique numbering of type variables, assigned once when
+ * we walk the AST during definition. They are inserted in any ribs formed
+ * under a type binder. This includes the activation rib of any type-parametric
+ * function, the instance rib of any type-parametric interface or class, and
+ * -- depending on how we resolve the interaction of type parameters and 
+ * class objects -- possibly the class rib of any type-parametric class.
+ * 
+ * We do not insetrt them anywhere in type terms, because those have no ribs.
+ *)
+
+val typeVarCounter = ref 0
+fun mkTypeVarFixture _ = 
+    (typeVarCounter := (!typeVarCounter) + 1;
+     Ast.TypeVarFixture (!typeVarCounter))
+
+fun mkParamRib (idents:Ast.IDENT list)
+  : Ast.RIB = 
+    map (fn id => (Ast.PropName (Name.nons id), (mkTypeVarFixture()))) idents
+
 (*
  * The goal of the definition phase is to put together the ribs
  * of the program, as well as insert class, function and interface
@@ -556,6 +576,10 @@ and defInterface (env: ENV)
 
         val env = enterClass env name
 
+        val instanceEnv = extendEnvironment env []
+        val (typeParamRib:Ast.RIB) = mkParamRib params
+        val _ = addToRib instanceEnv typeParamRib
+
         (* Define the current rib *)
         val (unhoisted,instanceRib,_) = defDefns env instanceDefns
 
@@ -567,6 +591,7 @@ and defInterface (env: ENV)
             makeTy env (Ast.InstanceType 
                             { name=name,
                               nonnullable=nonnullable,
+                              typeParams=params,
                               typeArgs=[],
                               superTypes=groundSuperInterfaceExprs,
                               ty=Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
@@ -812,21 +837,7 @@ and resolveClassInheritance (env:ENV)
                            constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
-        val _ = trace ["analyzing class block for ", LogErr.name name]
-
-        val _ = if Type.isGroundTy classType
-                then ()
-                else error ["resolveClassInheritance: non-ground class type"]
-
-        val _ = if Type.isGroundTy instanceType
-                then ()
-                else error ["resolveClassInheritance: non-ground instance type"]
-
-        (* 
-         * FIXME: we ought to be binding type parameters as
-         * TypeVarFixtures into the instanceRib we use to resolve base types.
-         * At the moment you can't say class C.<X> extends B.<X> { ... }
-         *)
+        val _ = trace ["analyzing inheritance for ", LogErr.name name]
 
         val (extendsTy:Ast.TY option, 
              instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
@@ -845,6 +856,7 @@ and resolveClassInheritance (env:ENV)
                 val prog = (#program env)
                 val superTypes = map (Type.groundExpr o (Type.normalize prog [])) superTypes
                 val te = Ast.InstanceType { name = (#name it),
+                                            typeParams = (#typeParams it),
                                             typeArgs = (#typeArgs it),
                                             nonnullable = (#nonnullable it),
                                             superTypes = superTypes,
@@ -1044,6 +1056,13 @@ and analyzeClassBody (env:ENV)
         (* namespace and type definitions aren't normally hoisted *)
 
         val instanceEnv = extendEnvironment staticEnv []
+
+        (* FIXME: there is some debate about whether type parameters live in the 
+         * instance rib or the class rib. This needs to be resolved. 
+         *)
+        val (typeParamRib:Ast.RIB) = mkParamRib params
+        val _ = addToRib instanceEnv typeParamRib
+
         val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
 
         val ctor:Ast.CTOR option =
@@ -1072,6 +1091,7 @@ and analyzeClassBody (env:ENV)
             makeTy env (Ast.InstanceType 
                             { name = name,
                               nonnullable = nonnullable,
+                              typeParams = params,
                               typeArgs = [],
                               superTypes = [], (* set in resolveClassInheritence *)
                               ty = Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
@@ -1382,7 +1402,6 @@ and defFunc (env:ENV)
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
         val Ast.Ty { expr, ... } = ty 
-        fun mkParamRib idents = map (fn id => (Ast.PropName (Name.nons id), Ast.TypeVarFixture)) idents
         fun findFuncType env e = 
             case e of 
                 Ast.LamType { params, body } => 

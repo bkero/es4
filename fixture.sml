@@ -214,7 +214,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		     Ast.NamespaceFixture _ => "[namespace]"
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
-		   | Ast.TypeVarFixture => "[typeVar]"
+		   | Ast.TypeVarFixture _ => "[typeVar]"
 		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty (AstQuery.typeExprOf t))
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
