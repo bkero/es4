@@ -2686,8 +2686,7 @@ and defDefns (env:ENV)
                             then (trace ["defDefns: unhoisted: "]; Fixture.printRib unhoisted;
                                   trace ["defDefns: hoisted: "]; Fixture.printRib hoisted;
                                   trace ["defDefns: unhoisted': "]; Fixture.printRib unhoisted';
-                                  trace ["defDefns: hoisted': "]; Fixture.printRib hoisted';
-                                  trace ["defDefns: env: "]; dumpEnv env)
+                                  trace ["defDefns: hoisted': "]; Fixture.printRib hoisted')
                             else ()
 
                     val _ = trace(["defDefns: combining unhoisted ribs"]);                    
