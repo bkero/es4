@@ -964,29 +964,24 @@ fun load (regs:Mach.REGS)
          (vals:Mach.VAL list)
     : Mach.VAL =
     let
+        fun str s = Eval.newString regs (Ustring.fromString s)
         val fname = Ustring.toFilename (nthAsUstr vals 0)
-        val frag = 
-            (* (Verify.verifyProgram *) 
-            Defn.defFragment 
-                (Defn.mkTopEnv (#prog regs)) 
-                (Parser.parseFile fname)
-            (* ) *)
-            handle x => 
-                   raise Eval.ThrowException 
-                             (Eval.newString regs
-                                             (Ustring.fromString "error while loading"))
+        val frag = Parser.parseFile fname
+            handle LogErr.LexError le => raise Eval.ThrowException (str le)
+                 | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
+        val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
+                            handle
+                            LogErr.DefnError de => raise Eval.ThrowException (str de))
+        val _ = (Verify.verifyTopFragment prog true frag
+                 handle
+                 LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
+        val regs = Eval.withProg regs prog
     in
-        (* 
-         * FIXME: This is a bit odd. In eval(), we probably -- possibly? -- don't
-         * want the eval'ed string extending the program fixtures. But possibly
-         * we want load() to do so. Or not? Need to discuss.
-         *)
-        Eval.evalFragment (Eval.withProg regs (#prog regs)) frag
-            handle x => 
-                   raise Eval.ThrowException 
-                             (Eval.newString regs
-                                             (Ustring.fromString "error while loading"));
-        Mach.Undef
+        
+        Eval.evalTopFragment regs frag
+        handle 
+        LogErr.NameError ne => raise Eval.ThrowException (str ne)
+      | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
     end
 
 fun readFile (regs:Mach.REGS)
