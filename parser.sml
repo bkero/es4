@@ -916,9 +916,8 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = primaryIdentifier (tl (tl (tl ts1)))
+                val (ts2,nd2) = typeExpression (tl (tl (tl ts1)))
                 val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
-                                    (* FIXME: what is the type of this? *)
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
@@ -927,12 +926,11 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
                            (RightParen, _) :: _ =>
                                let
                                    val (ts4,nd4) = resultType (tl ts3)
-                                   val thisType = SOME (needType (nd2,SOME false))
                                in
                                 trace(["<< functionSignature with next=",tokenname(hd ts4)]);
                                 (ts4,Ast.FunctionSignature
                                      {typeParams=nd1,
-                                      thisType=thisType,
+                                      thisType=SOME (unwrapTy nd2),
                                       params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
@@ -949,7 +947,7 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
                        (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
-                                  thisType=SOME (needType (nd2,SOME false)),
+                                  thisType=SOME (unwrapTy nd2),
                                   params=([],[]),
                                   paramTypes=[],
                                   defaults=[],
