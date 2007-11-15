@@ -72,12 +72,12 @@
 package
 {
     use default namespace public;
+    import ECMAScript4_Internal.*;
     use namespace intrinsic;
     use namespace __ES4__;
     use strict;
 
-    // Should be __ES4__
-    intrinsic class Map.<K,V>
+    __ES4__ class Map.<K,V>
     {
         static const length = 2;
 
@@ -85,7 +85,12 @@ package
          * predicates must always agree: if two objects are equal,
          * they must hash to the same value.
          */
-        function Map(equals=intrinsic::===, hashcode=intrinsic::hashcode) 
+        function Map(equals=function(x,y) { return x === y; } 
+		     /* 
+		      * FIXME: '===' is not an identifier token as far as the parser is concerned,
+		      * =intrinsic::=== 
+		      */, 
+		     hashcode=hashcode) 
             : equals = equals
             , hashcode = hashcode
             , element_count = 0
@@ -233,8 +238,8 @@ package
                     fn(p.key, p.value);
         }
 
-        informative static function newTbl(limit: uint) : [Box.<K,V>] {
-            let a = [] : [Box.<K,V>];
+        informative static function newTbl.<K,V>(limit: uint) : [internal::Box.<K,V>] {
+            let a = [] : [internal::Box.<K,V>];
             a.limit = limit;
             return a;
         }
@@ -252,7 +257,12 @@ package
         private const REHASH_DOWN = 1/3;              /* rehash if element_count < REHASH_DOWN*limit */
 
         private var limit: uint = 10;                 /* number of buckets in the table */
-        private var tbl: [Box.<K,V>] = newTbl(limit); /* hash table */
+
+	/*
+	 * hash table : FIXME: should be "limit" but fixture is not visible during init (?)
+	 *               Also might want to fiddle with the static/instance scope of type params.
+	 */
+        private var tbl: [internal::Box.<K,V>] = Map.informative::newTbl.<K,V>(10);    
     }
 
     internal class Box.<K,V> 

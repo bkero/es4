@@ -796,6 +796,20 @@ fun set (regs:Mach.REGS)
          false;
      Mach.Undef)
 
+(* 
+ * informative native function objectHash ( ob:Object! ) : uint;
+ *)
+
+
+fun objectHash (regs:Mach.REGS)
+               (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val Mach.Obj { ident, ... } = nthAsObj vals 0
+    in
+       Eval.newUInt regs (Word32.fromInt ident)
+    end
+                    
 (*
  * Return the current time in milliseconds since January 1 1970 00:00:00 UTC.
  *
@@ -1152,6 +1166,8 @@ fun registerNatives _ =
 
         addFn 2 Name.intrinsic_get get;
         addFn 3 Name.intrinsic_set set;
+
+        addFn 1 Name.informative_objectHash objectHash;
 
         (* FIXME: stubs to get double loading. Implement. *)
         addFn 1 Name.intrinsic_toFixedStep10 (fn regs => fn _ => Eval.newString regs Ustring.empty);
