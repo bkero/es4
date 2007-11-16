@@ -238,7 +238,6 @@ fun printRib (rib:Ast.RIB) =
 type PROGRAM = { rootRib: Ast.RIB ref,
                  nextRibId: Ast.RIB_ID ref,
                  ribs: (RIB_RECORD IntMap.map) ref,
-                 topBlocks: (Ast.BLOCK list) ref,
                  packageNames: ((Ast.IDENT list) list) ref,
                  langEd: int ref,
                  
@@ -253,7 +252,6 @@ fun mkProgram (langEd:int)
     { rootRib = ref topRib, 
       nextRibId = ref 0,
       ribs = ref IntMap.empty,
-      topBlocks = ref [],
       packageNames = ref [],
       langEd = ref langEd,
       
@@ -468,12 +466,11 @@ fun closeFragment (prog:PROGRAM)
                   (ribId:Ast.RIB_ID option)
     : unit = 
     let
-        val { topBlocks, packageNames, ... } = prog
+        val { packageNames, ... } = prog
     in
         case frag of
             Ast.Package { name, ... } => ()
-          | Ast.Anon block => 
-            topBlocks := (!topBlocks) @ [block]
+          | Ast.Anon block => ()
           | Ast.Unit _ => 
             (case ribId of 
                  NONE => ()
@@ -486,11 +483,6 @@ fun closeFragment (prog:PROGRAM)
 fun getRootRib (prog:PROGRAM)
     : Ast.RIB = 
     !(#rootRib prog)
-
-
-fun getTopBlocks (prog:PROGRAM)
-    : Ast.BLOCK list = 
-    !(#topBlocks prog)
 
 
 fun addPackageName (prog:PROGRAM)
