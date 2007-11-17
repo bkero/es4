@@ -125,7 +125,6 @@ signature FIXTURE = sig
     val extendRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> TYEQ -> unit
     val closeFragment : PROGRAM -> Ast.FRAGMENT -> (Ast.RIB_ID option) -> unit
     val getRootRib : PROGRAM -> Ast.RIB
-    val getTopBlocks : PROGRAM -> Ast.BLOCK list
     val addPackageName : PROGRAM -> Ast.IDENT list -> unit
     val getPackageNames : PROGRAM -> Ast.IDENT list list
     val getRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)

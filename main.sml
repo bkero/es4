@@ -295,28 +295,45 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
                   | [] => ()
                   | _ =>
                     if not (!doParse) then () else
+                    let
+                        val lines = (Ustring.fromSource line) :: accum
+                        val frag = Parser.parseLines (List.rev lines)
+                            handle LogErr.EofError => raise continueException lines
+			            fun tidyUp _ = 
+				            let
+				                val stk = Mach.stackOf (!regsCell)
+				                val ss = Mach.stackString stk
+				                val _ = Mach.resetStack (!regsCell)
+				            in
+				                print ("Uncaught exception at: " ^ ss ^ "\n")
+				            end
+                    in
+                        if not (!doDefn) then () else
                         let
-                            val lines = (Ustring.fromSource line) :: accum
-                            val frag = Parser.parseLines (List.rev lines)
-                                       handle LogErr.EofError => raise continueException lines
+                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
+                            val frag = Verify.verifyTopFragment prog true frag
                         in
-                            if not (!doDefn) then () else
-                                let
-                                    val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                                    val frag = Verify.verifyTopFragment prog true frag
-                                in
-                                    regsCell := Eval.withProg regs prog;
-                                    if not (!doEval) then () else
-                                        let
-                                            val res = Eval.evalTopFragment (!regsCell) frag
-                                        in
-                                            case res of
-                                                Mach.Undef => ()
-                                              | _ => print (Ustring.toAscii 
-                                                                (Eval.toUstring (!regsCell) res) ^ "\n")
-                                        end
-                                end
+                            regsCell := Eval.withProg regs prog;
+                            if not (!doEval) then () else
+                            let
+					            val _ = Mach.resetStack (!regsCell)
+                                val res = (Eval.evalTopFragment (!regsCell) frag)
+						            handle Eval.ThrowException v => (tidyUp (); v)
+                            in
+                                case res of
+                                    Mach.Undef => ()
+                                  | _ => 
+						            print (Ustring.toAscii 
+                                               (Eval.toUstring (!regsCell) res) ^ "\n")
+						            handle Eval.ThrowException v => 
+						                   (tidyUp();
+							                print (Ustring.toAscii 
+								                       (Eval.toUstring (!regsCell) v) ^ "\n")
+							                handle Eval.ThrowException _ => 
+							                       tidyUp() (* oh forget it... *))
+                            end
                         end
+                    end
             end
 
         fun runUntilQuit accum =

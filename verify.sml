@@ -905,8 +905,8 @@ and verifyFixture (env:ENV)
                                         instanceRib=instanceRib, instanceInits=instanceInits,                                        
                                         constructor=constructor, classType=classType, instanceType=instanceType })
          end
-       | Ast.TypeVarFixture =>
-         Ast.TypeVarFixture
+       | Ast.TypeVarFixture x =>
+         Ast.TypeVarFixture x
        | Ast.TypeFixture ty =>
          Ast.TypeFixture (verifyTy env ty)
        | Ast.ValFixture {ty, readOnly} =>
@@ -996,7 +996,7 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
          else ());
         res
     end
-
+ 
 
 end
 

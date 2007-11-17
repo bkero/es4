@@ -701,32 +701,8 @@ and qualifiedIdentifier (ts:TOKENS) =
       | _ => nonAttributeQualifiedIdentifier(ts)
     end
 
-(*
-    TypeIdentifier
-        SimpleTypeIdentifier
-        SimpleTypeIdentifier  .<  TypeExpressionList  >
-*)
-
 and propertyIdentifier (ts:TOKENS) = 
     nonAttributeQualifiedIdentifier ts
-(*
-    let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
-    in case ts1 of
-        (LeftDotAngle, _) :: _ =>
-            let
-                val (ts2,nd2) = typeExpressionList (tl ts1)
-            in case ts2 of
-                (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
-                    (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]);
-                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
-              | _ => error ["unknown final token of parametric type expression"]
-            end
-      | _ =>
-            (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);
-            (ts1, nd1))
-    end
-*)
     
 and primaryIdentifier (ts:TOKENS) =
     let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))])
@@ -940,9 +916,8 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = primaryIdentifier (tl (tl (tl ts1)))
+                val (ts2,nd2) = typeExpression (tl (tl (tl ts1)))
                 val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
-                                    (* FIXME: what is the type of this? *)
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
@@ -951,12 +926,11 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
                            (RightParen, _) :: _ =>
                                let
                                    val (ts4,nd4) = resultType (tl ts3)
-                                   val thisType = SOME (needType (nd2,SOME false))
                                in
                                 trace(["<< functionSignature with next=",tokenname(hd ts4)]);
                                 (ts4,Ast.FunctionSignature
                                      {typeParams=nd1,
-                                      thisType=thisType,
+                                      thisType=SOME (unwrapTy nd2),
                                       params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
@@ -973,7 +947,7 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
                        (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
-                                  thisType=SOME (needType (nd2,SOME false)),
+                                  thisType=SOME (unwrapTy nd2),
                                   params=([],[]),
                                   paramTypes=[],
                                   defaults=[],
@@ -3554,9 +3528,19 @@ and typeExpression (ts:TOKENS)
       | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
       | _ =>
             let
-                val (ts1,nd1) = primaryIdentifier ts
+                val (ts1,nd1) = primaryIdentifier ts                                
             in
-                (ts1,makeTy (needType(nd1,NONE)))
+                case ts1 of 
+                    (LeftDotAngle, _) :: _ => 
+                    let
+                        val (ts2,nd2) = typeExpressionList (tl ts1)
+                    in case ts2 of
+                           (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
+                           (tl ts2, makeTy (Ast.AppType { base = needType(nd1,NONE),
+                                                          args = (map AstQuery.typeExprOf nd2) }))
+                         | _ => error ["unknown final token of AppType type expression"]
+                    end
+                  | _ => (ts1,makeTy (needType(nd1,NONE)))
             end
     end
 
@@ -6733,14 +6717,19 @@ and typeDefinition (ts:TOKENS, attrs:ATTRS)
         (Type, _) :: _ =>
             let
                 val (ts1,nd1) = identifier (tl ts)
-                val (ts2,nd2) = typeInitialisation ts1
+                val (ts2,nd2) = typeParameters ts1                                    
+                val (ts3,nd3) = typeInitialisation ts2
+                val t = case nd2 of 
+                            [] => nd3
+                          | _ => Ast.LamType { params = nd2,
+                                               body = nd3 }
             in
-                trace(["<< typeDefinition with next=", tokenname(hd ts2)]);
-                (ts2,{pragmas=[],
+                trace(["<< typeDefinition with next=", tokenname(hd ts3)]);
+                (ts3,{pragmas=[],
                       body=[],
                       defns=[Ast.TypeDefn {ns=ns,
                                            ident=nd1,
-                                           init=nd2}],
+                                           init=t}],
                       head=NONE,
                       loc=locOf ts})
             end

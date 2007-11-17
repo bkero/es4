@@ -52,6 +52,8 @@ package
 
     dynamic class Boolean
     {
+        private var val : boolean;
+
         // IMPLEMENTATION ARTIFACT: A getter because Boolean is loaded before int.
         static function get length() { return 1 }
 
@@ -60,8 +62,7 @@ package
             boolean(x);
 
         /* E262-3 15.6.2: The Boolean Constructor. */
-        function Boolean(x=false)
-            magic::bindBoolean(this, x);
+        function Boolean(x=false) : val = boolean(x) {}
 
         /* E262-4 early-binding variant. */
         override intrinsic function toString() : string
@@ -72,7 +73,7 @@ package
 
         /* E262-4 early-binding variant. */
         override intrinsic function valueOf() : boolean
-            boolean(this);
+            val;
 
         // The boolean class uses the Boolean class's prototype too.
 

@@ -721,9 +721,9 @@ fun eval (regs:Mach.REGS)
                     val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
                                         handle
                                         LogErr.DefnError de => raise Eval.ThrowException (str de))
-                    val frag = (Verify.verifyTopFragment prog true frag
-                                handle
-                                LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
+                    val _ = (Verify.verifyTopFragment prog true frag
+                             handle
+                             LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
                     val regs = Eval.withProg regs prog
                 in
@@ -761,9 +761,23 @@ fun get (regs:Mach.REGS)
     let
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
-        fun propNotFound (curr:Mach.OBJ) : Mach.VAL =
-            (Eval.throwRefErr regs ["getting nonexistent property ", LogErr.name name]; 
-             Eval.dummyVal)
+        fun propNotFound (curr:Mach.OBJ)
+            : Mach.VAL =
+            let
+                val Mach.Obj { proto, ... } = curr
+            in
+                case !proto of
+                    Mach.Object ob => 
+                    Eval.getValueOrVirtual regs ob name false propNotFound
+                  | _ =>
+                    if Eval.isDynamic regs obj
+                    then Mach.Undef
+                    else (Eval.throwTypeErr 
+                              regs 
+                              ["attempting to get nonexistent property ",
+                               LogErr.name name,
+                               "from non-dynamic object"]; Eval.dummyVal)
+            end
     in
         Eval.getValueOrVirtual regs obj name false propNotFound
     end
@@ -782,6 +796,20 @@ fun set (regs:Mach.REGS)
          false;
      Mach.Undef)
 
+(* 
+ * informative native function objectHash ( ob:Object! ) : uint;
+ *)
+
+
+fun objectHash (regs:Mach.REGS)
+               (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val Mach.Obj { ident, ... } = nthAsObj vals 0
+    in
+       Eval.newUInt regs (Word32.fromInt ident)
+    end
+                    
 (*
  * Return the current time in milliseconds since January 1 1970 00:00:00 UTC.
  *
@@ -950,29 +978,24 @@ fun load (regs:Mach.REGS)
          (vals:Mach.VAL list)
     : Mach.VAL =
     let
+        fun str s = Eval.newString regs (Ustring.fromString s)
         val fname = Ustring.toFilename (nthAsUstr vals 0)
-        val frag = 
-            (* (Verify.verifyProgram *) 
-            Defn.defFragment 
-                (Defn.mkTopEnv (#prog regs)) 
-                (Parser.parseFile fname)
-            (* ) *)
-            handle x => 
-                   raise Eval.ThrowException 
-                             (Eval.newString regs
-                                             (Ustring.fromString "error while loading"))
+        val frag = Parser.parseFile fname
+            handle LogErr.LexError le => raise Eval.ThrowException (str le)
+                 | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
+        val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
+                            handle
+                            LogErr.DefnError de => raise Eval.ThrowException (str de))
+        val _ = (Verify.verifyTopFragment prog true frag
+                 handle
+                 LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
+        val regs = Eval.withProg regs prog
     in
-        (* 
-         * FIXME: This is a bit odd. In eval(), we probably -- possibly? -- don't
-         * want the eval'ed string extending the program fixtures. But possibly
-         * we want load() to do so. Or not? Need to discuss.
-         *)
-        Eval.evalFragment (Eval.withProg regs (#prog regs)) frag
-            handle x => 
-                   raise Eval.ThrowException 
-                             (Eval.newString regs
-                                             (Ustring.fromString "error while loading"));
-        Mach.Undef
+        
+        Eval.evalTopFragment regs frag
+        handle 
+        LogErr.NameError ne => raise Eval.ThrowException (str ne)
+      | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
     end
 
 fun readFile (regs:Mach.REGS)
@@ -1143,6 +1166,8 @@ fun registerNatives _ =
 
         addFn 2 Name.intrinsic_get get;
         addFn 3 Name.intrinsic_set set;
+
+        addFn 1 Name.informative_objectHash objectHash;
 
         (* FIXME: stubs to get double loading. Implement. *)
         addFn 1 Name.intrinsic_toFixedStep10 (fn regs => fn _ => Eval.newString regs Ustring.empty);

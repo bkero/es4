@@ -233,6 +233,7 @@ val informative_sqrtDouble = informative Ustring.sqrtDouble_
 val informative_sqrtDecimal = informative Ustring.sqrtDecimal_
 val informative_tanDouble = informative Ustring.tanDouble_
 val informative_tanDecimal = informative Ustring.tanDecimal_
+val informative_objectHash = informative Ustring.objectHash_
 val intrinsic_now = intrinsic Ustring.now_
 val intrinsic_toPrecision = intrinsic Ustring.toPrecision_
 val intrinsic_toExponential = intrinsic Ustring.toExponential_

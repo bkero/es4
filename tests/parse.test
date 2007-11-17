@@ -83,8 +83,7 @@
 %% [typeexpr] parse
 @tests/typeexpr.es
 
-// XFAIL
-%% [typedarray] parse , fail
+%% [typedarray] parse
 @tests/typedarray.es
 
 %% [uniontype] parse
@@ -108,8 +107,7 @@
 %% [equality] parse
 @tests/equality.es
 
-// XFAIL
-%% [relational] parse , fail
+%% [relational] parse
 @tests/relational.es
 
 %% [primary] parse
@@ -187,8 +185,7 @@
 %% [fundef] parse , fail
 @tests/fundef.es
 
-// XFAIL
-%% [classdef] parse , fail
+%% [classdef] parse
 @tests/classdef.es
 
 %% [interfacedef] parse

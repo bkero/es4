@@ -49,7 +49,7 @@ package
         function Vector(length: uint=0, fixed: boolean=false) 
             : fixed = fixed
         {
-            setLength(length);
+            informative::setLength(length);
         }
 
         meta static function invoke(object) {
@@ -74,19 +74,19 @@ package
         }
 
         meta function get(name): T {
-            if (name is AnyNumber) {
-                let idx = name;
+            let idx : double = double(name);
+            if (!intrinsic::isNaN(idx)) {
                 if (!helper::isIntegral(idx) || idx < 0 || idx >= length)
                     throw new RangeError();
                 return informative::getValue(uint(idx));
             }
             else 
-                this.intrinsic::get(name);
+                intrinsic::get(this,name);
         }
 
         meta function set(name, v) {
-            if (name is AnyNumber) {
-                let idx = name;
+            let idx : double = double(name);
+            if (!intrinsic::isNaN(idx)) {
                 let value: T = v;  // Note, effectful
                 if (!helper::isIntegral(idx) || 
                     idx < 0 || 
@@ -96,13 +96,13 @@ package
                 informative::setValue(uint(idx), value);
             }
             else
-                this.intrinsic::set(name, v);
+                intrinsic::set(this, name, v);
         }
 
-        intrinsic function toString()
+        override intrinsic function toString()
             join();
 
-        intrinsic function toLocaleString() {
+        override intrinsic function toLocaleString() {
             let limit = length;
             let separator = informative::localeSpecificSeparatorString;
             let s = "";
@@ -259,7 +259,8 @@ package
                                         length-1, 
                                         (function (j, k)
                                              comparefn(object[j], object[k])));
-            return this;
+                return this;
+            }
         }
 
         intrinsic function splice(start: AnyNumber, deleteCount: AnyNumber, ...items): Vector.<T>
@@ -427,7 +428,7 @@ package
         informative function setValue(idx: uint, val: T)
             storage[idx] = val;
 
-        private const storage: T = new [T];
+        private const storage = new Array();
     }
 }
 

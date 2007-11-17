@@ -55,6 +55,8 @@ package
 
     dynamic class Number
     {
+        private var val : double;
+        
         // IMPLEMENTATION ARTIFACT: A getter because Number is loaded before int.
         static function get length() { return 1 }
 
@@ -73,8 +75,7 @@ package
         }
 
         /* E262-3 15.7.2.1: The Number constructor */
-        function Number(value=0d)
-            magic::bindDouble(this, value);
+        function Number(value=0d) : val = double(value) {}
 
         override intrinsic function toString(radix = 10) : string
             intrinsic::valueOf().intrinsic::toString(radix);
@@ -86,7 +87,7 @@ package
             intrinsic::valueOf().intrinsic::toJSONString(pretty);
 
         override intrinsic function valueOf(): (int,uint,double,decimal)
-            double(this);
+            val;
 
         intrinsic function toFixed(fractionDigits=0): string
             intrinsic::valueOf().intrinsic::toFixed(fractionDigits);

@@ -266,24 +266,7 @@ package
     informative var objectIdentities = null;
     informative var nextHash: uint = 0;
 
-    informative function objectHash(x): uint {
-        use namespace informative;
-
-        // Late initialization because Arrays have not been loaded when the
-        // global level is initialized.
-        if (objectIdentities == null)
-            objectIdentities = [];
-
-        for ( let i=0 ; i < objectIdentities.length ; i++ ) {
-            let probe = objectIdentities[i];
-            if (probe.object === x)
-                return probe.hashcode;
-        }
-        let h = nextHash;
-        nextHash = (nextHash + 1) & 0xFFFFFFFF;
-        objectIdentities.push({object: x, hashcode: h});
-        return h;
-    }
+    informative native function objectHash(x:Object!): uint;
 
     __ES4__ const function hashcode(o): uint {
         switch type (o) {
