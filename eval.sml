@@ -622,7 +622,7 @@ fun allocRib (regs:Mach.REGS)
                                               readOnly = true,
                                               isFixed = true } }
 
-                      | Ast.TypeVarFixture =>
+                      | Ast.TypeVarFixture _ =>
                         allocProp "type variable"
                                   { ty = makeTy (Name.typename Name.intrinsic_Type),
                                     state = Mach.TypeVarProp,

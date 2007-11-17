@@ -328,13 +328,9 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "RegExp.es",
                        builtin "Date.es",
                        builtin "MetaObjects.es", (* before JSON *)
-                       builtin "JSON.es"
-
-                           (*                            
-                            builtin "Map.es",
-                            builtin "Vector.es"
-                            *)
-
+                       builtin "JSON.es",
+                       builtin "Vector.es",
+                       builtin "Map.es"
                  ]
 
         val objFrag = Verify.verifyTopFragment prog true objFrag

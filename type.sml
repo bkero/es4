@@ -138,7 +138,8 @@ fun isGroundType (t:Ast.TYPE_EXPR)
     in
         case t of 
             Ast.SpecialType _ => true
-          | Ast.InstanceType _ => true
+          | Ast.InstanceType it => 
+            (length (#typeParams it) = length (#typeArgs it))
 
           | Ast.TypeName _ => false
           | Ast.ElementTypeRef _ => false
@@ -213,17 +214,13 @@ and fix2norm (prog:Fixture.PROGRAM)
                                  " failed to resolve in closed unit "]
                      else repackage originalt)
           | SOME (n, fix) => 
-            let 
-                val _ = trace ["resolved"]
-                val (defn:Ast.TY) = 
-                    case fix of
-                        Ast.TypeFixture ty => ty
-                      | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
-                      | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-                      | _ => error ["expected type fixture for: ", LogErr.multiname mname]
-            in
-                ty2norm prog defn [] seen
-            end            
+            (trace ["resolved"];
+             case fix of
+                 Ast.TypeFixture ty => ty2norm prog ty [] seen
+               | Ast.ClassFixture (Ast.Cls cls) => ty2norm prog (#instanceType cls) [] seen
+               | Ast.InterfaceFixture (Ast.Iface iface) => ty2norm prog (#instanceType iface) [] seen
+               | Ast.TypeVarFixture _ => repackage originalt
+               | _ => error ["expected type fixture for: ", LogErr.multiname mname])
     end
 
     
@@ -380,7 +377,29 @@ and ty2norm (prog:Fixture.PROGRAM)
             error ["dynamic name in type expression: ", LogErr.ty expr]
                               
           | Ast.InstanceType it => 
-            simple expr (not (#nonnullable it))
+            (* 
+             * We want to bind any typeargs at this point, if we can resolve them.
+             * 
+             * If we do not, we will not be able to compare parametric instance types.
+             *)
+            let
+                val { typeParams, typeArgs, ... } = it
+                fun withArgs args = Ast.InstanceType { name = (#name it),
+                                                       typeParams = typeParams,
+                                                       typeArgs = args,
+                                                       nonnullable = (#nonnullable it),
+                                                       superTypes = (#superTypes it),
+                                                       ty = (#ty it),
+                                                       dynamic = (#dynamic it) }                                                       
+            in
+                if (length typeParams) = (length typeArgs)
+                then simple expr (not (#nonnullable it))
+                else 
+                    case (subTerms (map (fn id => Name.typename (Name.nons id)) typeParams)) of 
+                        NONE => simple expr (not (#nonnullable it))
+                      | SOME args => simple (withArgs args) (not (#nonnullable it))
+            end
+
             (* 
              * NB: We used to go up through the supertypes and into all the subterms
              * normalizing as we went. This was both very painful at runtime *and* 
@@ -434,17 +453,32 @@ and ty2norm (prog:Fixture.PROGRAM)
                         val _ = if length params = length args'
                                 then ()
                                 else error ["applying wrong number of type arguments"]
-                        val _ = if List.all isGroundTy args'
-                                then () 
-                                else error ["passing non-ground type arguments"]
-                        (* FIXME: need some extra power here to detect recursion. *)
-                        val names = List.map Name.nons params
-                        val bindings = ListPair.zip (names, args')
-                        fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
-                        val rib = List.foldl bind [] bindings
                     in
-                        ty2norm prog (Ast.Ty { expr=body, ribId=ribId' }) (rib::locals) seen
-                    end                
+                        (* 
+                         * FIXME: we may wish to have non-ground terms -- say, type variable fixtures -- 
+                         * propagate through lambdas. For now we do not: we simply suspend normalization
+                         * any time we lack ground terms. 
+                         *
+                         * Probably the thing to do here is to consider a separate concept -- "closed" --
+                         * which differs from ground in that a typename in an env where the typename resolves
+                         * to a typeVarFixture is closed, but not ground. In those cases, after all, we can 
+                         * propagate the binding through transparent ty lams. We just can't instantiate the
+                         * resulting type.
+                         *
+                         * Maybe. Revisit.
+                         *)
+                        if not (List.all isGroundTy args')
+                        then repackage ty
+                        else 
+                            let
+                                val names = List.map Name.nons params
+                                val bindings = ListPair.zip (names, args')
+                                fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
+                                val rib = List.foldl bind [] bindings
+                            in
+                                ty2norm prog (Ast.Ty { expr=body, ribId=ribId' }) (rib::locals) seen
+                            end               
+                    end 
                   | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
                   | _ => error ["applying bad type: ", LogErr.ty (AstQuery.typeExprOf base')]
             end

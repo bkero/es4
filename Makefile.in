@@ -129,10 +129,10 @@ profile:
 decimal:
 	cd decimal && $(MAKE) decimal && cp decimal ../bin/
 
-es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml version.sml
+es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml version.sml Makefile
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm SMLofNJEntry.main es4-init.heap
 
-$(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
+$(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es) 
 	$(SMLNJ) @SMLload=es4-init.heap -dump
 
 dist/es4.tar.gz: dump decimal clean-dist
@@ -153,13 +153,13 @@ else
 
 compile: $(EXE)
 
-$(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES) version.sml
+$(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES) version.sml Makefile
 	$(MLTON) $(MLTONOPTS) $(MLTONCC) es4.mlb $(DECIMAL_SOURCES)
 
 $(DUMP): $(EXE)
 	./$(EXE) -dump
 
-dist/es4.tar.gz: dump clean-dist
+dist/es4.tar.gz: dump clean-dist 
 	cp $(EXE) dist/es4/run.exe
 	cp $(DUMP) dist/es4/
 	cp bin/es4.bat dist/es4/
@@ -179,6 +179,33 @@ smoketest: $(DUMP)
 	$(RUN_DUMPED) -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/LexicalConventions/7.6.js
 	$(RUN_DUMPED) -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Statements/12.6.3-4.js
 	$(RUN_DUMPED) -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
+
+# Spidermonkey test support
+
+SM_CWD:=$(PWD)
+SM_REL=$(patsubst $(SM_CWD)/%,%,$(1))
+SM_CMD=$(call SM_REL,$(RUN_DUMPED) -3 -e $(realpath $(dir $(1))../shell.js $(dir $(1))shell.js) $(1))
+SPIDERMONKEY_TESTS:=$(call SM_REL,$(sort $(filter-out %/shell.js, $(wildcard tests/spidermonkey/ecma*/*/*.js))))
+SPIDERMONKEY_OUTPUTS:=$(patsubst %.js,%.sm-out,$(SPIDERMONKEY_TESTS))
+SPIDERMONKEY_LOG=spidermonkey-test.log
+
+$(SPIDERMONKEY_LOG): $(SPIDERMONKEY_OUTPUTS)
+	@echo collecting logs into $@
+	@cat $^ >$@
+
+%.sm-out: %.js $(DUMP) Makefile
+	@echo "checking $< > $@"
+	@echo $(call SM_CMD,$<) >$@
+	@$(call SM_CMD,$<) >>$@ 2>&1 || true
+
+checksm: $(SPIDERMONKEY_LOG)
+	perl analyze-spidermonkey-log.pl $<
+
+cleansm:
+	@for i in $(wildcard $(SPIDERMONKEY_OUTPUTS) $(SPIDERMONKEY_LOG)); \
+          do echo rm $$i; \
+          rm $$i; \
+        done
 
 # Obsolete now?
 run: 

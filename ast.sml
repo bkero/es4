@@ -45,6 +45,8 @@ type UNIT_NAME = IDENT list
 
 type RIB_ID = int
 
+type TYPEVAR_NONCE = int
+
 datatype NAMESPACE =
          Intrinsic
        | OperatorNamespace
@@ -400,7 +402,7 @@ datatype PRAGMA =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
-       | TypeVarFixture
+       | TypeVarFixture of TYPEVAR_NONCE
        | TypeFixture of TY
        | MethodFixture of
            { func: FUNC,
@@ -431,6 +433,7 @@ withtype
 
      and INSTANCE_TYPE =
           {  name: NAME,
+             typeParams: IDENT list,
              typeArgs: TYPE_EXPR list,
              nonnullable: bool,
              superTypes: TYPE_EXPR list,
