@@ -228,6 +228,139 @@ We include generic function definition, generic function application, and the as
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
+\section{Type Relations}
+
+
+\begin{displayfigure}{th}{Type Relations}
+\begin{trules}
+\headtrule{$\subtype{S}{T}$}{Subtyping}
+\trule{Sub-Refl}{
+	}{
+		\subtype{T}{T}
+	}
+\trule{Sub-Arrow}{
+		\subtype{T_1}{S_1}\qquad
+		\subtype{S_2}{T_2}
+	}{
+		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{Sub-Generic}{
+		\subtype{S}{T}  %\qquad\mbox{(yes, $X$ is in env)}
+	}{
+		\subtype{(\Lamt{X}{S})}{(\Lamt{X}{T})}
+	}
+\trule{Sub-Obj}{
+		\subtype{T_i}{S_i}\qquad
+		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{Sub-Dyn}{
+	}{
+		\subtype{T}{\dynamic}
+	}
+%\trule{Sub-DynObj}{
+%	}{
+%		\subtype{\objty{\dots}}{\dynobjty}
+%	}
+\trule{Sub-Like}{
+		\compatible{S}{T}
+	}{
+		\subtype{{S}}{\likety{T}} \\
+	}
+%\trule{S-Like-Covariant}{
+%		\subtype{S}{T}
+%	}{
+%		\subtype{\likety{S}}{\likety{T}} \\
+%	}
+\headtrule{$\compatible{S}{T}$}{Compatible Types}
+\mbox{Includes the above subtyping rules (with $\!\!\!\!\subtype{}{}\!\!\!\!$ replaced by $\!\compatible{}{}$), and also:}\\
+\trule{Com-Dyn}{
+	}{
+		\compatible{\dynamic}{T}
+	}
+%\trule{C-DynObj}{%
+%	}{
+%		\compatible{\dynobjty}{\objty{\dots}}
+%	}
+\trule{Com-Like}{
+		\compatible{S}{T}
+	}{
+		\compatible{\likety S}T
+	}
+\headtrule{$\convertible{S}{T}$}{Convertible Types}
+\trule{Con-Sub}{
+		\subtype S T
+	}{
+		\convertible{S}{T}
+	}
+\trule{Con-IntBool}{
+	}{
+		\convertible{\Int}{\Bool}
+	}
+\trule{Con-Wrap}{
+		\compatible S T
+	}{
+		\convertible{S}{\wrapty T}
+	}
+\end{trules}
+\end{displayfigure}
+
+The judgement $\subtype{S}{T}$ (\emph{$S$ is a subtype of $T$}) checks if every value of type $S$ 
+can be assigned to a variable of type $T$ (some caveats for \t{like} types are needed here).
+The type $\dynamic$ is a top type, and we have width-subtyping on opjects.
+Although the subtyping judgement does not include an explicit environment, the rule \rel{S-Generic} means that the types may include free type variables. This rule applies implicit alpha-renaming so that the same type variable can be interpreted as the same on both sides.
+
+
+The judgement $\compatible{S}{T}$  (\emph{$S$ is compatible with $T$}) 
+extends the subtype relation with a more flexible interpretation of dynamic types; 
+in particular, the type $\dynamic$ is compatible with any type.
+The compatibility judgement is not transitively closed.
+In particular, we have that   $\compatible{\Int}{\dynamic}$ and
+$\compatible{\dynamic}{\Bool}$, but the judgement $\compatible{\Int}{\Bool}$ does not hold. 
+The rule~\rel{Sub-Like} for \t{like} types switches from checking subtyping to checking compatibility.
+
+The \t{like} type constructor is convariant, in that the following rule is admissable:
+\[
+	\frac{
+		\compatible S T
+	}{
+		\subtype{\likety S}{\likety T}
+	}
+\]
+
+\begin{lemma}
+The subtyping judgement is transitively closed.
+\end{lemma}
+Proof: TBW
+
+The constructor \t{like} is ``idempotent'', in that we have that $({\likety{\likety{T}}}) \sword ({\likety{T}}) \sword ({\likety{\likety{T}}})$.
+
+\[
+	\frac{
+		\frac{
+			\frac{
+				 	\compatible T T 
+				}{				
+					\compatible {\likety T} T
+				}
+			}{
+				\compatible {\likety {\likety T}} T
+			}
+		}{
+			\subtype {\likety {\likety T}} {\likety T}
+		}
+		\qquad\qquad\qquad\qquad
+	\frac{
+			\compatible {\likety T} {\likety T}
+		}{
+			\subtype {\likety T} {\likety {\likety T}}
+		}
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
 \section{Evaluation}
 
 We next describe the evaluation semantics of the language. 
@@ -287,44 +420,11 @@ Thus, the necessary object type could always be locally inferred from the object
 Several rules refer to the judgement $\istype{v}{T}$, which checks if the value $v$ matches the type $T$: 
 see  Figure ~\ref{fig:convert}. This judgement relies on two subtype-like relations on types.
 
-The judgement $\subtype{S}{T}$ (\emph{$S$ is a subtype of $T$}) checks if every value of type $S$ 
-can be assigned to a variable of type $T$.
-The type $\dynamic$ is a top type. Although the subtyping judgement does not include an explicit environment, the rule \rel{S-Generic} means that the types may include free type variables. This rule applies implicit alpha-renaming so that the same type variable can be interpreted as the same on both sides.
-
-\begin{lemma}
-The subtyping judgement is reflexively-transitively closed.
-\end{lemma}
-
-The judgement $\compatible{S}{T}$  (\emph{$S$ is compatible with $T$}) 
-extends the assignable relation with a more flexible interpretation of dynamic types; 
-in particular, the type $\dynamic$ is compatible with any type.
-The compatibility judgement is not transitively closed.
-In particular, we have that   $\compatible{\Int}{\dynamic}$ and
-$\compatible{\dynamic}{\Bool}$, but the judgement $\compatible{\Int}{\Bool}$ does not hold. 
-The rule~\rel{S-Like} for \t{like} types switches from checking subtyping to checking compatibility.
-
-The \t{like} type constructor is convariant, in that the following rule is admissable:
-\[
-	\frac{
-		\subtype S T
-	}{
-		\subtype{\likety S}{\likety T}
-	}
-\]
-
 \begin{lemma}[Preservation under subtyping]
 If $\istype v S$ and $\subtype S T$ then $\istype v T$.
 \end{lemma}
-TBP.
+{\bf Does not hold, as  $\t{true}  \istype{}{} \dynamic \sword \likety \Int$}.
 
-We have that $\subtype{\likety{\likety{T}}}{\likety{T}}$ and hence $\compatible{\likety{\likety{T}}}{\likety{T}}$,
-and we also have that $\compatible{\likety{T}}{\likety{\likety{T}}}$, but
- $\subtype{\likety{T}}{\likety{\likety{T}}}$ does not hold.
-
-
-Two types are \emph{indistinguishable} if they are indistinguishable under the subtyping,  compatibility, and \t{is} relations.
-
-Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable.
 
 \begin{displayfigure}{th}{Evaluation Rules}
 \label{fig:eval} 
@@ -442,82 +542,6 @@ Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable
 		\istype{v}{\likety T}
 	}
 }
-\end{trules}
-\end{displayfigure}
-
-\begin{displayfigure}{th}{Type Relations}
-\begin{trules}
-\headtrule{$\subtype{S}{T}$}{Subtyping}
-\trule{S-Refl}{
-	}{
-		\subtype{T}{T}
-	}
-\trule{S-Arrow}{
-		\subtype{T_1}{S_1}\qquad
-		\subtype{S_2}{T_2}
-	}{
-		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
-	}
-\trule{S-Generic}{
-		\subtype{S}{T}  %\qquad\mbox{(yes, $X$ is in env)}
-	}{
-		\subtype{(\Lamt{X}{S})}{(\Lamt{X}{T})}
-	}
-\trule{S-Obj}{
-		\subtype{T_i}{S_i}\qquad
-		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
-	}{
-		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
-				{\objty{l_i:T_i^{i\in 1..n}}}
-	}
-\trule{S-Dyn}{
-	}{
-		\subtype{T}{\dynamic}
-	}
-%\trule{S-DynObj}{
-%	}{
-%		\subtype{\objty{\dots}}{\dynobjty}
-%	}
-\trule{S-Like}{
-		\compatible{S}{T}
-	}{
-		\subtype{{S}}{\likety{T}} \\
-	}
-%\trule{S-Like-Covariant}{
-%		\subtype{S}{T}
-%	}{
-%		\subtype{\likety{S}}{\likety{T}} \\
-%	}
-\headtrule{$\compatible{S}{T}$}{Compatible Types}
-\mbox{Includes the above subtyping rules (with $\!\!\!\!\subtype{}{}\!\!\!\!$ replaced by $\!\compatible{}{}$), and also:}\\
-\trule{Com-Dyn}{
-	}{
-		\compatible{\dynamic}{T}
-	}
-%\trule{C-DynObj}{%
-%	}{
-%		\compatible{\dynobjty}{\objty{\dots}}
-%	}
-\trule{Com-Like}{
-		\subtype{S}{T}
-	}{
-		\compatible{\likety S}T
-	}
-\headtrule{$\convertible{S}{T}$}{Convertible Types}
-\trule{Con-Sub}{
-		\subtype S T
-	}{
-		\convertible{S}{T}
-	}
-\trule{Con-IntBool}{
-	}{
-		\convertible{\Int}{\Bool}
-	}
-\trule{Con-Wrap}{
-		\compatible S T
-	}{
-		\convertible{S}{\wrapty T}
-	}
 \end{trules}
 \end{displayfigure}
 
