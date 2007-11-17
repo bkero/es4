@@ -159,11 +159,11 @@ class WrapExpr extends ExprC {
     function toString() { return "("+e+" wrap "+t+")"; }
 }
 
-/** A unit is a list of variable-expression bindings, essentially a letrec.
+/** A unit is a list of variable-type-expression bindings, essentially a letrec.
  *  A program is a sequence of units.
  */
 
-type unit = [[Ident,Expr]];
+type unit = [[Ident,Type,Expr]];
 type program = [unit];
 
 /*** Environments ***/
@@ -526,7 +526,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                         // write barrier
                         if (isInFields( o.ty.tfields, l )) {
                             let tyf = findInFields( o.ty.tfields, l );
-			    checkValIsType( to, tyf );
+                            checkValIsType( to, tyf );
                         }
                         setInFields( o.vfields, l, to);
                         return to; // FIXME: which return type:
@@ -562,15 +562,14 @@ function evalProg (p:program) : * {
     for (let i in p) {
 	print("Evaluating unit: "+p[i]);
 	for (let j in p[i]) {
-            let [x,e] = p[i][j];
-	    print("Evaluating "+x+"="+e);
+        let [x,ty,e] = p[i][j];
+        print("Evaluating "+x+"="+e);
             let v : Val = eval(new TopLevelEnv(), e);
-	    print("Binding "+x+" to "+v);
-            topLevelEnv = topLevelEnv.extend(x,v);
+	    checkValIsType( v, ty );
+        print("Binding "+x+" to "+v);
+        topLevelEnv = topLevelEnv.extend(x,v);
 	}
     }
-    
-
 }
 
 /************ Optional Verifier **************/
@@ -707,14 +706,6 @@ function verify (n:TypeEnv, e:Expr) : NonLikeType {
 
 /*********** Tests **********/
 
-function go (e:Expr) {
-    print ("Evaluating: ");
-    print ("Evaluating: "+e);
-    let r = eval( emptyEnv, e);
-    print ("Result    : "+r);
-
-}
-
 let idint : Expr = new FunExpr("x", intType, intType, "x");
 let idany : Expr = new FunExpr("x", anyType, anyType, "x");
 let idbad : Expr = new FunExpr("x", anyType, intType, "x");
@@ -723,16 +714,12 @@ let idbad2: Expr = new FunExpr("x", intType, anyType, "x");
 let intintfn : Type = new FunType( intType, intType );
 let anyanyfn : Type = new FunType( anyType, anyType );
 
-go (3);
-go (idint);
-go (new AppExpr(idint,3));
-
-go (idany);
-go (idbad);
-go (idbad2);
+evalProg( [[["x",intType,1]]] );
+evalProg( [[["x",anyType,1],["y",intType,"x"]]] );
 
 function testCall( fn, fnty ) {
-    go(new LetExpr("f", fnty, fn, new AppExpr ("f",4 )));
+    evalProg( [[["f", fnty, fn], ["dummy", anyType, new AppExpr ("f",4 )]]] );
+    // go(new LetExpr("f", fnty, fn, new AppExpr ("f",4 )));
 }
 
 testCall( idint, intintfn );
@@ -765,13 +752,18 @@ let fint : Type = new ObjType([["f",intType]]);
 let feint : Type = new ObjType([["f",intType],["extra",intType]]);
 
 function testGet( tyo, tyv ) {
-    go(new LetExpr("x",
+    evalProg( [[["x", tyv, new ObjExpr([["f", 4], ["extra", 20]], tyo)],
+                ["dummy1", intType, new SetExpr("x", "f", 5)],
+                ["dummy2", anyType, new GetExpr("x", "f")]]] );
+    /*
+ go(new LetExpr("x",
                    tyv,
                    new ObjExpr([["f", 4], ["extra", 20]], tyo),
                    new LetExpr("dummy", 
                                intType,
                                new SetExpr("x", "f", 5),
                                new GetExpr("x", "f") )));
+    */
 }
 
 testGet( mtObjType, mtObjType );
@@ -789,9 +781,6 @@ testGet( mtObjType, new LikeType(mtObjType));
 testGet( fint,      new LikeType(fint));
 testGet( fint,      new LikeType(mtObjType));
 testGet( mtObjType, new LikeType(fint));
-
-evalProg( [[["x",1]]] );
-evalProg( [[["x",1],["y","x"]]] );
 
 /*
 testGet( mtObjType, new WrapType(mtObjType));
