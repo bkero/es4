@@ -681,7 +681,7 @@ and asArrayIndex (v:Mach.VAL)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Int i) => if i >= 0 then
-                                      Word32.fromInt (Int32.toInt i)
+                                      Word32.fromLargeInt (Int32.toLarge i)
                                   else
                                       0wxFFFFFFFF
            | SOME (Mach.UInt u) => u
@@ -2554,11 +2554,11 @@ and evalUnaryOp (regs:Mach.REGS)
             Ast.Delete =>
             let
                 val (_, expr) = getExpectedType regs expr
-                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr false
+                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr true
             in
                 if (#dontDelete (#attrs (Mach.getProp props name)))
                 then newBoolean regs false
-                else (Mach.delProp props name; newBoolean regs true)
+                else (Mach.delProp props name; newBoolean regs true)		    
             end
 
           | Ast.PreIncrement => crement (Decimal.add)
@@ -4071,7 +4071,7 @@ and specialArrayConstructor (regs:Mach.REGS)
           | [k] => let val idx = asArrayIndex k
                    in
                        if not (idx = 0wxFFFFFFFF) then
-                           setValue regs instanceObj Name.nons_length k
+                           setValueOrVirtual regs instanceObj Name.nons_length k false
                        else
                            bindVal 0 args
                    end
