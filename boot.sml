@@ -72,6 +72,7 @@ fun instantiateRootClass (regs:Mach.REGS)
       val _ = trace ["allocating class ", LogErr.name fullName];
       val closure = Eval.newClsClosure (#scope regs) cls
       val obj = Mach.newObj (Mach.ClassTag cty) Mach.Null (SOME (Mach.Class closure))
+
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
       val Ast.Cls { classRib, ... } = cls
@@ -95,6 +96,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                                        dontEnum = true,
                                        readOnly = true,
                                        isFixed = true } }
+      val _ = Eval.bindAnySpecialIdentity regs obj
   in
       (cls, closure, obj)
   end

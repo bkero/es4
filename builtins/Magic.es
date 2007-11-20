@@ -115,34 +115,6 @@ package
     magic native function toPrimitive(v:*, hint:string) : *;
     magic native function defaultValue(ob:Object!, hint:string) : *;
 
-    /*
-     * Given a target object and a value, select a magic
-     * representation for the value, of the type implied by the
-     * function name, and set the target's magic slot to that
-     * representation.
-     */
-
-    magic native function bindInt(target:Object!, value:*) : void;
-    magic native function bindByte(target:Object!, value:*) : void;
-    magic native function bindUInt(target:Object!, value:*) : void;
-    magic native function bindDouble(target:Object!, value:*) : void;
-    magic native function bindDecimal(target:Object!, value:*) : void;
-    magic native function bindBoolean(target:Object!, value:*) : void;
-    magic native function bindString(target:Object!, value:*) : void;
-
-    /*
-     * Construction functions that access internal object caches in
-     * the runtime. This is not at all normative, it's just an
-     * important speed optimization.
-     */
-    magic native function newString(value:*) : string;
-    magic native function newBoolean(value:*) : boolean;
-    magic native function newInt(value:*) : int;
-    magic native function newUInt(value:*) : uint;
-    magic native function newByte(value:*) : byte;
-    magic native function newDouble(value:*) : double;
-
-
     /* ----------------------------------------------------------------
 
        FUNCTION MANIPULATION.  */

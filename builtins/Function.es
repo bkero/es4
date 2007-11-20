@@ -62,14 +62,6 @@ package
         meta static function invoke(...args)
             magic::construct(Function, args);
 
-        // FIXME: there seems to be little possibility of writing the
-        // Function ctor in ES4: it has to bottom out in a no-arg
-        // magic-setting variant in a very early bootstrap environment
-        // that has no ints, arrays, strings, or other amusements to
-        // supply a sensible definition with. So for the time being we
-        // will special-case anyone calling "new Function(...)" in
-        // the runtime.
-
         /* The following is for the benefit of the specification, don't remove it.
 
         function Function(...args)

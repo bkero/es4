@@ -1164,30 +1164,6 @@ and newObj (regs:Mach.REGS) =
             (instantiateGlobalClass 
                  regs Name.nons_Object [])
     
-and newRootBuiltin (regs:Mach.REGS) 
-                   (n:Ast.NAME) 
-                   (m:Mach.MAGIC)
-    : Mach.VAL =
-    (*
-     * Five of our builtin types require special handling when it comes
-     * to constructing them: we wish to run the builtin ctors with no
-     * arguments at all, then clobber the magic slot in the resulting
-     * object. All other builtins we can pass a tagless "ur-Objects" into the
-     * builtin ctor and let it modify its own magic slot using magic::setValue.
-     *
-     * For these cases (Function, Class, Namespace, Boolean and boolean) we
-     * cannot rely on the builtin ctor calling magic::setValue, as they need
-     * to exist in order to *execute* a call to magic::setValue (or execute
-     * the tiny amount of surrounding control flow that is used to bottom our
-     * of the conversion functions in Conversion.es).
-     *)
-    let
-        val obj = needObj regs (instantiateGlobalClass regs n [])
-        val _ = trace ["finished building root builtin ", fmtName n]
-    in
-        Mach.Object (Mach.setMagic obj (SOME m))
-    end
-
 and newArray (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
@@ -1225,70 +1201,36 @@ and newBuiltin (regs:Mach.REGS)
         regs n 
         [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
 
-and newPublicNumber (regs:Mach.REGS) 
-                    (n:Real64.real)
-    : Mach.VAL =
-    newBuiltin regs Name.nons_Number (SOME (Mach.Double n))
-
-and newDouble (regs:Mach.REGS) 
-              (n:Real64.real)
-    : Mach.VAL =
-    let
-        fun build _ = newBuiltin 
-                          regs Name.ES4_double 
-                          (SOME (Mach.Double n))
-    in
-        if Real64.isNan n
-        then
-            let
-                val dn = Mach.getDoubleNaNSlot regs
-            in
-                case !dn of
-                    NONE =>
-                    let
-                        val v = build ()
-                    in
-                        dn := SOME v;
-                        v
-                    end                    
-                  | SOME v => v
-            end
-        else
-            case Mach.findInReal64Cache regs n of
-                SOME v => v
-              | NONE => Mach.updateReal64Cache regs (n, build ())
-    end
-
 and newDecimal (regs:Mach.REGS) 
                (n:Decimal.DEC)
     : Mach.VAL =
     newBuiltin regs Name.ES4_decimal (SOME (Mach.Decimal n))
 
+and newDouble (regs:Mach.REGS) 
+              (n:Real64.real)
+    : Mach.VAL =
+    if Real64.isNan n
+    then newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
+    else
+	case Mach.findInReal64Cache regs n of
+	    SOME obj => Mach.Object obj
+	  | NONE => newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
+
 and newInt (regs:Mach.REGS) 
            (n:Int32.int)
-    : Mach.VAL =
+    : Mach.VAL =    
     case Mach.findInInt32Cache regs n of
-        SOME v => v
-      | NONE => 
-        let 
-            val v = newBuiltin regs Name.ES4_int (SOME (Mach.Int n))
-        in 
-            Mach.updateInt32Cache regs (n, v)
-        end
+	SOME obj => Mach.Object obj
+      | NONE => newBuiltin regs Name.ES4_int (SOME (Mach.Int n))
 
 and newUInt (regs:Mach.REGS) 
             (n:Word32.word)
     : Mach.VAL =
     case Mach.findInWord32Cache regs n of
-        SOME v => v
-      | NONE => 
-        let 
-            val v = newBuiltin regs Name.ES4_uint (SOME (Mach.UInt n))
-        in 
-            Mach.updateWord32Cache regs (n, v)
-        end
+        SOME obj => Mach.Object obj
+      | NONE => newBuiltin regs Name.ES4_uint (SOME (Mach.UInt n))
 
-and newPublicString (regs:Mach.REGS)
+and newStringWrapper (regs:Mach.REGS)
                     (s:Ustring.STRING)
     : Mach.VAL =
     newBuiltin regs Name.nons_String (SOME (Mach.String s))
@@ -1297,32 +1239,20 @@ and newString (regs:Mach.REGS)
               (s:Ustring.STRING)
     : Mach.VAL =
     case Mach.findInStrCache regs s of
-        SOME v => v
-      | NONE => 
-        let 
-            val v = newBuiltin regs Name.ES4_string (SOME (Mach.String s))
-        in 
-            Mach.updateStrCache regs (s, v)
-        end
+        SOME obj => Mach.Object obj
+      | NONE => newBuiltin regs Name.ES4_string (SOME (Mach.String s))
 
 and newByte (regs:Mach.REGS)
             (b:Word8.word)
     : Mach.VAL =
     case Mach.findInWord8Cache regs b of
-        SOME v => v
-      | NONE => 
-        let 
-            val v = newBuiltin regs Name.ES4_byte (SOME (Mach.Byte b))
-        in 
-            Mach.updateWord8Cache regs (b, v)
-        end
+        SOME obj => Mach.Object obj
+      | NONE => newBuiltin regs Name.ES4_byte (SOME (Mach.Byte b))
 
-and newPublicBoolean (regs:Mach.REGS)
+and newBooleanWrapper (regs:Mach.REGS)
                      (b:bool)
     : Mach.VAL =
-    newBuiltin 
-        regs Name.nons_Boolean 
-        (SOME (Mach.Boolean b))
+    newBuiltin regs Name.nons_Boolean (SOME (Mach.Boolean b))
 
 and newBoolean (regs:Mach.REGS)
                (b:bool)
@@ -1334,35 +1264,24 @@ and newBoolean (regs:Mach.REGS)
             else Mach.getBooleanFalseSlot regs
     in
         case !cell of
-            SOME v => v
-          | NONE =>
-            let
-                val v = newBuiltin 
-                            regs Name.ES4_boolean 
-                            (SOME (Mach.Boolean b))
-            in
-                cell := SOME v;
-                v
-            end
+            SOME obj => Mach.Object obj
+          | NONE => newBuiltin 
+                        regs Name.ES4_boolean 
+                        (SOME (Mach.Boolean b))
     end
 
 and newNamespace (regs:Mach.REGS)
                  (n:Ast.NAMESPACE)
     : Mach.VAL =
     case Mach.findInNsCache regs n of
-        SOME v => v
-      | NONE => 
-        let 
-            val v = newRootBuiltin regs Name.ES4_Namespace (Mach.Namespace n)
-        in 
-            Mach.updateNsCache regs (n, v)
-        end
+        SOME obj => Mach.Object obj
+      | NONE => newBuiltin regs Name.ES4_Namespace (SOME (Mach.Namespace n))
 
 and newName (regs:Mach.REGS)
             (n:Ast.NAME)
     : Mach.VAL =
     case Mach.findInNmCache regs n of
-        SOME v => v
+        SOME obj => Mach.Object obj
       | NONE => 
         let 
             val nsmag = Mach.Namespace (#ns n)
@@ -1373,7 +1292,7 @@ and newName (regs:Mach.REGS)
                         regs Name.ES4_Name 
                         [nsval, idval]
         in 
-            Mach.updateNmCache regs (n, v)
+            Mach.Object (Mach.updateNmCache regs (n, needObj regs v))
         end
 
 and newClsClosure (env:Mach.SCOPE)
@@ -1388,9 +1307,7 @@ and newClass (regs:Mach.REGS)
     let
         val closure = newClsClosure e cls
     in
-        newRootBuiltin 
-            regs Name.intrinsic_Class 
-            (Mach.Class closure)
+	newBuiltin regs Name.intrinsic_Class (SOME (Mach.Class closure))
     end
 
 and newIfaceClosure (env:Mach.SCOPE)
@@ -1405,8 +1322,7 @@ and newInterface (regs:Mach.REGS)
     let
         val closure = newIfaceClosure e iface
     in
-        newRootBuiltin 
-            regs Name.intrinsic_Interface (Mach.Interface closure)
+	newBuiltin regs Name.intrinsic_Interface (SOME (Mach.Interface closure))
     end
 
 and newFunClosure (e:Mach.SCOPE)
@@ -1466,8 +1382,15 @@ and newFunctionFromFunc (regs:Mach.REGS)
 
 and newNativeFunction (regs:Mach.REGS)
                       (f:Mach.NATIVE_FUNCTION) =
-    newRootBuiltin 
-        regs Name.nons_Function (Mach.NativeFunction f)
+    let 
+	val obj = needObj regs (instantiateGlobalClass 
+				    regs 
+				    Name.nons_Function 
+				    [newString regs Ustring.empty])
+    in
+	Mach.setMagic obj (SOME (Mach.NativeFunction f));
+	Mach.Object obj
+    end
 
 (*
  * ES-262-3 9.8 ToString.
@@ -2126,10 +2049,9 @@ and applyTypesToClass (regs:Mach.REGS)
                                        constructor = (#constructor c),
                                        classType = (#classType c),
                                        instanceType = applyArgs (#instanceType c) }
-                val newClosure = { cls = newCls,
-                                   env = bindTypes regs (#typeParams c) typeArgs env }
+		val newEnv = bindTypes regs (#typeParams c) typeArgs env
             in
-                newRootBuiltin regs Name.intrinsic_Class (Mach.Class newClosure)
+		newClass regs newEnv newCls
             end
     end
 
@@ -2155,10 +2077,9 @@ and applyTypesToInterface (regs:Mach.REGS)
                                            extends = map applyArgs (#extends i),
                                            instanceRib = (#instanceRib i),
                                            instanceType = applyArgs (#instanceType i) }
-                val newClosure = { iface = newIface,
-                                   env = bindTypes regs (#typeParams i) typeArgs env }
+		val newEnv = bindTypes regs (#typeParams i) typeArgs env
             in
-                newRootBuiltin regs Name.intrinsic_Interface (Mach.Interface newClosure)
+		newInterface regs newEnv newIface
             end
     end
 
@@ -2194,49 +2115,6 @@ and applyTypesToFunction (regs:Mach.REGS)
                 newFunctionFromClosure regs newClosure
             end
     end
-
-
-and applyTypesToType (regs:Mach.REGS)
-                     (typeVal:Mach.VAL)
-                     (typeArgs:Ast.TYPE_EXPR list)
-    : Mach.VAL = 
-    let
-        (* 
-         * NB: Our restrictions on type normalization are such that, while it is legal to 
-         * write something like this:
-         * 
-         *   type P.<t> = Q.<t>
-         *   val v = type P
-         *   val v2 = v.<int>
-         *
-         * That is to say, you can capture a type closure into a VAL and pass it around
-         * dynamically, and finally apply the val to some concrete types. But it is 
-         * decidedly *not* legal to say something like this:
-         * 
-         *   type P.<t> = Q.<t>
-         *   type R.<x> = P
-         *   val v = type R
-         *   val v2 = v.<int>
-         *
-         * That is to say, you can't do partial applications or recursive types or anything:
-         * any type application may *take* a TY, but it must normalize to a ground TY -- 
-         * a raw TYPE_EXPR -- even if we repackage it as a TY in the empty environment. This
-         * is a *general* restriction on the parametric type system.
-         *  
-         * This is sort of a corner case anyways: there's not a lot you can really do with a
-         * type boxed as a value. You can't use it in annotations or anything. You can perform
-         * runtime tests with it, and possibly query back up to a metaobject representing
-         * an associated nominal type (class or interface), but nothing more. It's not 
-         * super useful.
-         * 
-         *)
-        val ty = Mach.needType typeVal
-        val newTypeExpr = applyTypes regs ty typeArgs
-        val newTy = makeTy newTypeExpr
-    in
-        newRootBuiltin regs Name.intrinsic_Type (Mach.Type newTy)
-    end
-
 
 
 and instanceTypeRepresentative (regs:Mach.REGS)
@@ -2285,11 +2163,8 @@ and evalApplyTypeExpr (regs:Mach.REGS)
                 if Mach.isInterface v
                 then applyTypesToInterface regs v args
                 else 
-                    if Mach.isType v
-                    then applyTypesToType regs v args
-                    else 
-                        (throwTypeErr regs ["applying types to unknown base value: ",
-                                            Mach.approx v]; dummyVal)
+                    (throwTypeErr regs ["applying types to unknown base value: ",
+                                        Mach.approx v]; dummyVal)
     end
 
 
@@ -4162,7 +4037,7 @@ and specialFunctionConstructor (regs:Mach.REGS)
                                (classObj:Mach.OBJ)
                                (classClosure:Mach.CLS_CLOSURE)
                                (args:Mach.VAL list)
-    : Mach.VAL =
+    : Mach.OBJ =
     let
         val (source, funcExpr) = parseFunctionFromArgs regs args
         val sname = Name.nons_source
@@ -4171,9 +4046,10 @@ and specialFunctionConstructor (regs:Mach.REGS)
                      Ast.LiteralExpr (Ast.LiteralFunction f) =>
                      newFunctionFromFunc regs (getGlobalScope regs) f
                    | _ => error regs ["function did not parse"];
+	val fo = needObj regs fv
     in
-        setValue regs (needObj regs fv) sname sval;
-        fv
+        setValue regs fo sname sval;
+        fo
     end
 
 
@@ -4181,7 +4057,7 @@ and specialArrayConstructor (regs:Mach.REGS)
                             (classObj:Mach.OBJ)
                             (classClosure:Mach.CLS_CLOSURE)
                             (args:Mach.VAL list) :
-    Mach.VAL =
+    Mach.OBJ =
     let
         val instanceObj = constructStandard regs classObj classClosure args
         val Mach.Obj { props, ... } = instanceObj
@@ -4202,61 +4078,439 @@ and specialArrayConstructor (regs:Mach.REGS)
           | _ => bindVal 0 args;
         Mach.setPropDontEnum props Name.nons_length true;
         Mach.setPropDontEnum props Name.private_Array__length true;
-        Mach.Object instanceObj
+        instanceObj
     end
 
 (*
  * ES-262-3 15.2.2.1 The Object Constructor
  *)
 
+and specialMagicCopyingConstructor (regs:Mach.REGS)
+				   (classObj:Mach.OBJ)
+				   (classClosure:Mach.CLS_CLOSURE)
+				   (args:Mach.VAL list)
+    : Mach.OBJ =
+    let
+	val magic = 
+	    case args of 
+		[] => error regs ["called special magic-copying constructor with no args"]
+	      | v :: _ => Mach.needMagic v
+        val obj = constructStandard regs classObj classClosure []
+    in
+	Mach.setMagic obj (SOME magic)
+    end
+
 and specialObjectConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
                              (args:Mach.VAL list)
-    : Mach.VAL =
+    : Mach.OBJ =
     let
         fun instantiate _ = constructStandard regs classObj classClosure args
     in
-        Mach.Object
-            (case args of
-                 [] => instantiate ()
-               | (Mach.Null :: _) => instantiate ()
-               | (Mach.Undef :: _) => instantiate ()
-               | (Mach.Object obj :: _) =>
-                 case Mach.getObjMagic obj of
-                     NONE => obj
-                   | SOME m =>
-                     let
-                         (*
-                          * FIXME: This part is dubioius. ES-262-3 says to call ToObject
-                          * on non-Object primitives. We do not do so here: rather, ToObject
-                          * implements its lower half (primitive values) by calling into *here*,
-                          * so here is where we do any cloning and magic-copying.
-                          *)
-                         val nobj = instantiate ()
-                     in
-                         Mach.setMagic nobj (Mach.getObjMagic obj);
-                         nobj
-                     end)
+        case args of
+            [] => instantiate ()
+          | (Mach.Null :: _) => instantiate ()
+          | (Mach.Undef :: _) => instantiate ()
+          | (Mach.Object obj :: _) =>
+            case Mach.getObjMagic obj of
+                NONE => obj
+              | SOME m =>
+                let
+                    (*
+                     * FIXME: This part is dubioius. ES-262-3 says to call ToObject
+                     * on non-Object primitives. We do not do so here: rather, ToObject
+                     * implements its lower half (primitive values) by calling into *here*,
+                     * so here is where we do any cloning and magic-copying.
+                     *)
+                    val nobj = instantiate ()
+                in
+                    Mach.setMagic nobj (Mach.getObjMagic obj);
+                    nobj
+                end
     end
+
+
+and specialBooleanConstructor (regs:Mach.REGS)
+                              (classObj:Mach.OBJ)
+                              (classClosure:Mach.CLS_CLOSURE)
+                              (args:Mach.VAL list)
+    : Mach.OBJ =
+    let
+	val b = case args of 
+		    [] => false
+		  | v :: _ => toBoolean v
+	val cell = 
+	    if b 
+            then Mach.getBooleanTrueSlot regs 
+            else Mach.getBooleanFalseSlot regs
+    in
+	case !cell of 
+	    SOME obj => obj
+	  | NONE => 
+            let 
+		val obj = constructStandard regs classObj classClosure []
+            in 
+		Mach.setMagic obj (SOME (Mach.Boolean b));
+		cell := SOME obj;
+		obj
+            end
+    end
+
+
+and specialDoubleConstructor (regs:Mach.REGS)
+                             (classObj:Mach.OBJ)
+                             (classClosure:Mach.CLS_CLOSURE)
+                             (args:Mach.VAL list)
+    : Mach.OBJ =
+    let
+	val n = case args of 
+		    [] => 0.0
+		  | v :: _ => toDouble v
+	fun build _ = 
+	    let
+		val obj = constructStandard regs classObj classClosure []
+	    in
+		Mach.setMagic obj (SOME (Mach.Double n));
+		obj
+	    end
+    in
+	if Real64.isNan n 
+	then 
+	    let
+		val dn = Mach.getDoubleNaNSlot regs
+	    in
+		case !dn of
+		    NONE => 
+		    let 
+			val obj = build ()
+		    in
+			dn := SOME obj;
+			obj
+		    end
+		  | SOME obj => obj
+	    end
+	else 
+	    case Mach.findInReal64Cache regs n of
+		SOME obj => obj
+	      | NONE => 
+		let 
+		    val obj = build ()
+		in 
+		    Mach.updateReal64Cache regs (n, obj);
+		    obj
+		end
+    end
+
+
+and specialDecimalConstructor (regs:Mach.REGS)
+                              (classObj:Mach.OBJ)
+                              (classClosure:Mach.CLS_CLOSURE)
+                              (args:Mach.VAL list)
+    : Mach.OBJ =
+    let
+	val n = case args of 
+		    [] => toDecimal (decimalCtxt regs) (newInt regs 0)
+		  | v :: _ => toDecimal (decimalCtxt regs) v
+	val obj = constructStandard regs classObj classClosure []
+    in
+	Mach.setMagic obj (SOME (Mach.Decimal n));
+	obj
+    end
+
+
+and specialIntConstructor (regs:Mach.REGS)
+                          (classObj:Mach.OBJ)
+                          (classClosure:Mach.CLS_CLOSURE)
+                          (args:Mach.VAL list)
+    : Mach.OBJ =
+    let
+	val i = case args of 
+		    [] => 0
+		  | v :: _ => toInt32 regs v
+    in
+	case Mach.findInInt32Cache regs i of
+	    SOME obj => obj
+	  | NONE => 
+	    let 
+		val obj = constructStandard regs classObj classClosure []
+	    in 
+		Mach.setMagic obj (SOME (Mach.Int i));
+		Mach.updateInt32Cache regs (i, obj);
+		obj
+	    end
+    end
+    
+
+and specialUIntConstructor (regs:Mach.REGS)
+                           (classObj:Mach.OBJ)
+                           (classClosure:Mach.CLS_CLOSURE)
+                           (args:Mach.VAL list)
+    : Mach.OBJ = 
+    let 
+	val u = case args of 
+		    [] => Word32.fromInt 0
+		  | v :: _ => toUInt32 regs v
+    in
+	case Mach.findInWord32Cache regs u of
+	    SOME obj => obj
+	  | NONE => 
+	    let 
+		val obj = constructStandard regs classObj classClosure []
+	    in 
+		Mach.setMagic obj (SOME (Mach.UInt u));
+		Mach.updateWord32Cache regs (u, obj);
+		obj
+	    end
+    end
+
+
+and specialByteConstructor (regs:Mach.REGS)
+                           (classObj:Mach.OBJ)
+                           (classClosure:Mach.CLS_CLOSURE)
+                           (args:Mach.VAL list)
+    : Mach.OBJ =
+    let 
+	val b = case args of 
+		    [] => Word8.fromInt 0
+		  | v :: _ => toByte regs v
+    in
+	case Mach.findInWord8Cache regs b of
+	    SOME obj => obj
+	  | NONE => 
+	    let 
+		val obj = constructStandard regs classObj classClosure []
+	    in 
+		Mach.setMagic obj (SOME (Mach.Byte b));
+		Mach.updateWord8Cache regs (b, obj);
+		obj
+	    end
+    end
+
+
+and specialStringConstructor (regs:Mach.REGS)
+                             (classObj:Mach.OBJ)
+                             (classClosure:Mach.CLS_CLOSURE)
+                             (args:Mach.VAL list)
+    : Mach.OBJ =
+    let 
+	val s = case args of 
+		    [] => Ustring.empty
+		  | v :: _ => toUstring regs v
+    in
+	case Mach.findInStrCache regs s of
+	    SOME obj => obj
+	  | NONE => 
+	    let 
+		val obj = constructStandard regs classObj classClosure []
+	    in 
+		Mach.setMagic obj (SOME (Mach.String s));
+		Mach.updateStrCache regs (s, obj);
+		obj
+	    end
+    end
+    
 
 and constructSpecial (regs:Mach.REGS)
                      (id:Mach.OBJ_IDENT)
                      (classObj:Mach.OBJ)
                      (classClosure:Mach.CLS_CLOSURE)
                      (args:Mach.VAL list) :
-    Mach.VAL option =
-    (trace ["checking for special case constructors with value ", Int.toString id];
-     if id = slotObjId regs Mach.getObjectClassSlot 
-     then SOME (specialObjectConstructor regs classObj classClosure args)
-     else
-         if id = slotObjId regs Mach.getFunctionClassSlot 
-         then SOME (specialFunctionConstructor regs classObj classClosure args)
-         else
-             if id = slotObjId regs Mach.getArrayClassSlot 
-             then SOME (specialArrayConstructor regs classObj classClosure args)
-             else NONE)
+    Mach.OBJ option =
+    let
+	val { cls = Ast.Cls { name, ... }, ... } = classClosure
+							 
+        fun findSpecial [] = NONE
+          | findSpecial ((q,f)::rest) = 
+            let
+                val ident = slotObjId regs q
+            in
+                if ident = id 
+                then 
+		    (trace ["running special ctor for instance of class #", 
+			    Int.toString id, " = ", fmtName name];
+		     SOME (f regs classObj classClosure args))
+                else 
+		    findSpecial rest
+	    end
+    in
+        findSpecial 
+            [
+             (Mach.getClassClassSlot, specialMagicCopyingConstructor),
+             (Mach.getInterfaceClassSlot, specialMagicCopyingConstructor),
+             (Mach.getNamespaceClassSlot, specialMagicCopyingConstructor),
 
+             (Mach.getObjectClassSlot, specialObjectConstructor),
+             (Mach.getFunctionClassSlot, specialFunctionConstructor),
+             (Mach.getArrayClassSlot, specialArrayConstructor),
+
+             (Mach.getBooleanClassSlot, specialBooleanConstructor),
+             (Mach.getDoubleClassSlot, specialDoubleConstructor),
+             (Mach.getDecimalClassSlot, specialDecimalConstructor),
+
+             (Mach.getIntClassSlot, specialIntConstructor),
+             (Mach.getUintClassSlot, specialUIntConstructor),
+             (Mach.getByteClassSlot, specialByteConstructor),
+             (Mach.getStringClassSlot, specialStringConstructor)
+	    ]
+    end
+
+
+and bindAnySpecialIdentity (regs:Mach.REGS)
+                           (obj:Mach.OBJ) =
+    if not (Mach.isBooting regs)
+    then ()
+    else
+        let
+            val Mach.Obj { ident, magic, ... } = obj
+	in
+	    case (!magic) of 
+		NONE => ()
+	      | SOME (Mach.Class { cls = Ast.Cls { name, ... }, ... }) =>
+		let
+		    val bindings = [
+			(Name.intrinsic_Class, Mach.getClassClassSlot),
+			(Name.intrinsic_Interface, Mach.getInterfaceClassSlot),
+			(Name.ES4_Namespace, Mach.getNamespaceClassSlot),
+			
+			(Name.nons_Object, Mach.getObjectClassSlot),
+			(Name.nons_Array, Mach.getArrayClassSlot),
+			(Name.nons_Function, Mach.getFunctionClassSlot),
+			
+			(Name.nons_String, Mach.getStringWrapperClassSlot),
+			(Name.ES4_string, Mach.getStringClassSlot),
+			
+			(Name.nons_Number, Mach.getNumberClassSlot),
+			(Name.ES4_int, Mach.getIntClassSlot),
+			(Name.ES4_uint, Mach.getUintClassSlot),
+			(Name.ES4_double, Mach.getDoubleClassSlot),
+			(Name.ES4_decimal, Mach.getDecimalClassSlot),
+			
+			(Name.ES4_boolean, Mach.getBooleanClassSlot),
+			(Name.nons_Boolean, Mach.getBooleanWrapperClassSlot)
+		    ]
+		    fun f (n,id) = Mach.nameEq name n
+		in
+		    case List.find f bindings of
+			NONE => ()
+		      | SOME (_,func) => 
+			let
+			    val _ = trace ["binding special identity for class ", fmtName name]
+			    val cell = func regs
+			in
+			    cell := SOME obj
+			end
+		end
+	      | _ => ()
+	end
+	
+and getSpecialPrototype (regs:Mach.REGS)
+                        (id:Mach.OBJ_IDENT)
+    : (Mach.VAL * bool) option =
+    if not (Mach.isBooting regs)
+    then NONE
+    else 
+        let
+            fun getExistingProto (q:Mach.REGS -> (Mach.OBJ option) ref)
+                : (Mach.VAL * bool) option =
+                let
+		    val _ = trace ["fetching existing proto"]
+                    val objOptRef = q regs 
+                    fun propNotFound _ = Mach.Null
+                in
+                    case !objOptRef of 
+                        NONE => NONE
+                      | SOME obj => 
+                        SOME ((getValueOrVirtual 
+                                   regs obj Name.nons_prototype 
+                                   false propNotFound), false)
+                end
+                            
+            fun findSpecial [] = NONE
+              | findSpecial ((q,f)::xs) = 
+                let
+                    val ident = slotObjId regs q
+                in
+                    if ident = id
+                    then f ()
+                    else findSpecial xs
+                end
+        in
+            findSpecial 
+                [
+                 (Mach.getStringClassSlot, 
+                  (fn _ => SOME (newObject regs, true))),
+                 (Mach.getStringWrapperClassSlot,
+                  (fn _ => getExistingProto Mach.getStringClassSlot)),
+                 
+                 (Mach.getIntClassSlot, 
+                  (fn _ => SOME (newObject regs, true))),
+                 (Mach.getUintClassSlot,
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                 (Mach.getDecimalClassSlot,
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                 (Mach.getDoubleClassSlot,
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                 (Mach.getNumberClassSlot, 
+                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                 
+                 (Mach.getBooleanClassSlot,
+                  (fn _ => SOME (newObject regs, true))),
+                 (Mach.getBooleanWrapperClassSlot,
+                  (fn _ => getExistingProto Mach.getBooleanClassSlot)),
+                 
+                 (Mach.getArrayClassSlot,
+                  (fn _ => SOME (newObject regs, true)))
+                ]
+        end
+
+and initClassPrototype (regs:Mach.REGS)
+                       (obj:Mach.OBJ)
+    : unit =
+    let
+	val Mach.Obj { ident, props, magic, ... } = obj
+    in
+	case !magic of 
+	    SOME (Mach.Class {cls=Ast.Cls {name, extends,...},...}) => 
+	    let
+		val baseProtoVal =
+		    case extends of
+			NONE => Mach.Null
+		      | SOME baseClassTy =>
+			let
+			    val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
+			    val ob = instanceClass regs ty
+			in                        
+			    if hasOwnValue ob Name.nons_prototype
+			    then getValue regs ob Name.nons_prototype
+			    else Mach.Null
+			end
+		val _ = trace ["initializing prototype"]
+		val (newPrototype, setConstructor) = 
+		    case getSpecialPrototype regs ident of
+			SOME (p,b) => (needObj regs p, b)
+		      | NONE => (newObj regs, true)
+		val newPrototype = Mach.setProto newPrototype baseProtoVal
+	    in
+		trace ["setting proto on ",
+		       fmtName name,
+		       ": (obj #", Int.toString ident, ").prototype = ", 
+		       "(obj #", Int.toString (getObjId newPrototype), ")"];
+		defValue regs obj Name.nons_prototype (Mach.Object newPrototype);
+		Mach.setPropDontEnum props Name.nons_prototype true;
+		if setConstructor
+		then 
+		    setValueOrVirtual regs newPrototype 
+				      Name.nons_constructor 
+				      (Mach.Object obj) 
+				      false
+		else 
+		    ();
+		trace ["finished initialising class prototype"]
+	    end
+	  | _ => ()
+    end
+    
 and constructClassInstance (regs:Mach.REGS)
                            (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE)
@@ -4266,17 +4520,15 @@ and constructClassInstance (regs:Mach.REGS)
         val Mach.Obj { ident, ... } = classObj
         val {cls = Ast.Cls { name, ...}, ...} = classClosure
         val _ = Mach.push regs ("new " ^ (Ustring.toAscii (#id name))) args
+	val obj = 
+	    case constructSpecial regs ident classObj classClosure args of
+		SOME ob => ob
+              | NONE => constructStandard regs classObj classClosure args			
     in
-
-        case constructSpecial regs ident classObj classClosure args of
-            SOME v => (Mach.pop regs; v)
-          | NONE =>
-            let
-                val obj = constructStandard regs classObj classClosure args
-            in
-                Mach.pop regs;
-                Mach.Object obj
-            end
+        bindAnySpecialIdentity regs obj;
+	initClassPrototype regs obj;
+	Mach.pop regs;
+	Mach.Object obj
     end
 
 
@@ -4344,165 +4596,14 @@ and evalBlock (regs:Mach.REGS)
     end
 
 
-
-(*
- Initialise Class Prototype
-
-            Initialise a class object. A class object has been allocated and stored
-in a global property. All that remains is to initialise it by executing
-     the class sttatement.
-
-     The class statement sets static and prototype properties while executing
-                                                                        its body.
- *)
-
-and getSpecialPrototype (regs:Mach.REGS)
-                        (id:Mach.OBJ_IDENT)
-    : (Mach.VAL * bool) option =
-    if not (Mach.isBooting regs)
-    then NONE
-    else 
-        let
-            fun getExistingProto (q:Mach.REGS -> (Mach.OBJ option) ref)
-                : (Mach.VAL * bool) option =
-                let
-                    val objOptRef = q regs 
-                    fun propNotFound _ = Mach.Null
-                in
-                    case !objOptRef of 
-                        NONE => NONE
-                      | SOME obj => 
-                        SOME ((getValueOrVirtual 
-                                   regs obj Name.nons_prototype 
-                                   false propNotFound), false)
-                end
-                            
-            fun findSpecial [] = NONE
-              | findSpecial ((q,f)::xs) = 
-                let
-                    val ident = slotObjId regs q
-                in
-                    if ident = id
-                    then f ()
-                    else findSpecial xs
-                end
-        in
-            findSpecial 
-                [
-                 (Mach.getStringClassSlot, 
-                  (fn _ => SOME (newObject regs, true))),
-                 (Mach.getPublicStringClassSlot,
-                  (fn _ => getExistingProto Mach.getStringClassSlot)),
-                 
-                 (Mach.getIntClassSlot, 
-                  (fn _ => SOME (newObject regs, true))),
-                 (Mach.getUintClassSlot,
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
-                 (Mach.getDecimalClassSlot,
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
-                 (Mach.getDoubleClassSlot,
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
-                 (Mach.getNumberClassSlot, 
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
-                 
-                 (Mach.getBooleanClassSlot,
-                  (fn _ => SOME (newObject regs, true))),
-                 (Mach.getPublicBooleanClassSlot,
-                  (fn _ => getExistingProto Mach.getBooleanClassSlot)),
-                 
-                 (Mach.getArrayClassSlot,
-                  (fn _ => SOME (newArray regs [], true)))
-                ]
-        end
-        
-and initClassPrototype (regs:Mach.REGS)
-                       (classObj:Mach.OBJ)
-    : unit =
-    case getValue regs classObj Name.nons_prototype of
-        Mach.Object _ => ()
-      | _ =>
-        let
-            val Mach.Obj { ident, props, magic, ... } = classObj
-            val SOME (Mach.Class {cls=Ast.Cls {extends,...},...}) = !magic
-            val baseProtoVal =
-                case extends of
-                    NONE => Mach.Null
-                  | SOME baseClassTy =>
-                    let
-                        val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
-                        val ob = instanceClass regs ty
-                    in                        
-                        if hasOwnValue ob Name.nons_prototype
-                        then getValue regs ob Name.nons_prototype
-                        else Mach.Null
-                    end
-            val _ = trace ["constructing prototype"]
-            val (newPrototype, setConstructor) = 
-                case getSpecialPrototype regs ident of
-                    SOME (p,b) => (needObj regs p, b)
-                  | NONE => (newObj regs, true)
-            val newPrototype = Mach.setProto newPrototype baseProtoVal
-        in
-            defValue regs classObj Name.nons_prototype (Mach.Object newPrototype);
-            Mach.setPropDontEnum props Name.nons_prototype true;
-            if setConstructor
-            then 
-                setValueOrVirtual regs newPrototype Name.nons_constructor (Mach.Object classObj) false
-            else 
-                ();
-            trace ["finished initialising class prototype"]
-        end
-
-(*
- ClassBlock classBlock
-
- *)
-
-and bindAnySpecialIdentity (regs:Mach.REGS)
-                           (name:Ast.NAME)
-                           (classObj:Mach.OBJ) =
-    if not (Mach.isBooting regs)
-    then ()
-    else
-        let
-            val Mach.Obj { ident, ... } = classObj
-            val bindings = [
-                (Name.nons_Object, Mach.getObjectClassSlot),
-                (Name.nons_Array, Mach.getArrayClassSlot),
-                (Name.nons_Function, Mach.getFunctionClassSlot),
-
-                (Name.nons_String, Mach.getPublicStringClassSlot),
-                (Name.ES4_string, Mach.getStringClassSlot),
-
-                (Name.nons_Number, Mach.getNumberClassSlot),
-                (Name.ES4_int, Mach.getIntClassSlot),
-                (Name.ES4_uint, Mach.getUintClassSlot),
-                (Name.ES4_double, Mach.getDoubleClassSlot),
-                (Name.ES4_decimal, Mach.getDecimalClassSlot),
-
-                (Name.ES4_boolean, Mach.getBooleanClassSlot),
-                (Name.nons_Boolean, Mach.getPublicBooleanClassSlot)
-            ]
-            fun f (n,id) = Mach.nameEq name n
-        in
-            case List.find f bindings of
-                NONE => ()
-              | SOME (_,func) => 
-                let
-                    val cell = func regs
-                in
-                    cell := SOME classObj
-                end
-        end
-
 and evalClassBlock (regs:Mach.REGS)
                    (classBlock)
     : Mach.VAL =
 
-    (*
-     The property that holds the class object was allocated when the
-         rib of the outer scope were allocated. Still to do is
-                                                                initialising the class object, including creating its prototype
+    (* 
+     * The property that holds the class object was allocated when the
+     * rib of the outer scope were allocated. Still to do is
+     * initialising the properties *of* the class object.
      *)
 
     let
@@ -4514,9 +4615,6 @@ and evalClassBlock (regs:Mach.REGS)
 
         val classObj = needObj regs (findVal regs scope name)
 
-        val _ = bindAnySpecialIdentity regs name classObj
-        val _ = initClassPrototype regs classObj
-
         (* FIXME: might have 'this' binding wrong in class scope *)
         val _ = trace ["extending scope for class block of ", fmtName name]
         val classRegs = extendScopeReg regs classObj Mach.InstanceScope
@@ -4525,9 +4623,6 @@ and evalClassBlock (regs:Mach.REGS)
         evalBlock classRegs block
     end
 
-(*
-
- *)
 
 and evalIfStmt (regs:Mach.REGS)
                (cnd:Ast.EXPR)

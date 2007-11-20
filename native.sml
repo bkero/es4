@@ -500,87 +500,6 @@ fun convertAndBindMagic (vals:Mach.VAL list)
         Mach.Undef
     end
 
-(*
- * Given a target object and a value, select a magic representation for
- * the value, of the type implied by the function name, and set the
- * target's magic slot to that representation.
- *
- * magic native function bindInt(target : Object!, value : * );
- * magic native function bindUInt(target : Object!, value : * );
- * magic native function bindByte(target : Object!, value : * );
- * magic native function bindBoolean(target : Object!, value : * );
- * magic native function bindDouble(target : Object!, value : * );
- * magic native function bindDecimal(target : Object!, value : * );
- * magic native function bindString(target : Object!, value : * );
- *)
-fun bindUInt (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toUInt32 regs) (Mach.UInt)
-
-fun bindByte (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toByte regs) (Mach.Byte)
-
-fun bindInt (regs:Mach.REGS)
-            (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toInt32 regs) (Mach.Int)
-
-fun bindBoolean (regs:Mach.REGS)
-                (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toBoolean) (Mach.Boolean)
-
-fun bindDouble (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toDouble) (Mach.Double)
-
-fun bindDecimal (regs:Mach.REGS)
-                (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals 
-                        (Eval.toDecimal
-                             {precision = Decimal.defaultPrecision,
-                              mode = Decimal.defaultRoundingMode}) 
-                        (Mach.Decimal)
-    
-fun bindString (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toUstring regs) Mach.String
-
-fun newBoolean (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newBoolean regs (Eval.toBoolean (rawNth vals 0))
-
-fun newString (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newString regs (Eval.toUstring regs (rawNth vals 0))
-
-fun newInt (regs:Mach.REGS)
-           (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newInt regs (Eval.toInt32 regs (rawNth vals 0))
-
-fun newUInt (regs:Mach.REGS)
-            (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newUInt regs (Eval.toUInt32 regs (rawNth vals 0))
-
-fun newByte (regs:Mach.REGS)
-            (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newByte regs (Eval.toByte regs (rawNth vals 0))
-
-fun newDouble (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newDouble regs (Eval.toDouble (rawNth vals 0))
 
 (*
  * Given a function object, a this object, and an array of argument
@@ -1137,21 +1056,6 @@ fun registerNatives _ =
         addFn 2 Name.magic_toPrimitive toPrimitive;
         addFn 1 Name.magic_isPrimitive isPrimitive;
         addFn 2 Name.magic_defaultValue defaultValue;
-
-        addFn 2 Name.magic_bindInt bindInt;
-        addFn 2 Name.magic_bindUInt bindUInt;
-        addFn 2 Name.magic_bindDouble bindDouble;
-        addFn 2 Name.magic_bindDecimal bindDecimal;
-        addFn 2 Name.magic_bindBoolean bindBoolean;
-        addFn 2 Name.magic_bindString bindString;
-        addFn 2 Name.magic_bindByte bindByte;
-
-        addFn 1 Name.magic_newBoolean newBoolean;
-        addFn 1 Name.magic_newString newString;
-        addFn 1 Name.magic_newInt newInt;
-        addFn 1 Name.magic_newUInt newUInt;
-        addFn 1 Name.magic_newByte newByte;
-        addFn 1 Name.magic_newDouble newDouble;
 
         addFn 3 Name.magic_apply apply;
         addFn 1 Name.magic_fnLength fnLength;

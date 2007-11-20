@@ -250,20 +250,6 @@ val magic_fromCharCode = magic Ustring.fromCharCode_
 val magic_charCodeAt = magic Ustring.charCodeAt_
 val magic_fnLength = magic Ustring.fnLength_
 val magic_apply = magic Ustring.apply_
-val magic_bindString = magic Ustring.bindString_
-val magic_bindBoolean = magic Ustring.bindBoolean_
-val magic_bindDecimal = magic Ustring.bindDecimal_
-val magic_bindDouble = magic Ustring.bindDouble_
-val magic_bindUInt = magic Ustring.bindUInt_
-val magic_bindInt = magic Ustring.bindInt_
-val magic_bindByte = magic Ustring.bindByte_
-
-val magic_newString = magic Ustring.newString_
-val magic_newBoolean = magic Ustring.newBoolean_
-val magic_newInt = magic Ustring.newInt_
-val magic_newUInt = magic Ustring.newUInt_
-val magic_newByte = magic Ustring.newByte_
-val magic_newDouble = magic Ustring.newDouble_
 
 val magic_toPrimitive = magic Ustring.toPrimitive_
 val magic_isPrimitive = magic Ustring.isPrimitive_
