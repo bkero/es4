@@ -1961,58 +1961,70 @@ and evalExpr (regs:Mach.REGS)
 
 
 and evalSuperCall (regs:Mach.REGS)
-		  (ident:Ast.IDENT_EXPR)
-		  (args:Mach.VAL list)
+          (ident:Ast.IDENT_EXPR)
+          (args:Mach.VAL list)
     : Mach.VAL = 
     let 
-	val nomn = evalIdentExpr regs ident
-	val mname = case nomn of 
-			Multiname mn => mn
-		      | Name {ns,id} => {nss=[[ns]], id=id}
+    val nomn = evalIdentExpr regs ident
+    val mname = case nomn of 
+            Multiname mn => mn
+              | Name {ns,id} => {nss=[[ns]], id=id}
 
-	val Mach.Obj { tag = Mach.ClassTag thisType, ... } = (#this regs)
-	    
-	(* 
-	 *
-	 * For this to work properly, the supertype list has to be
-	 * sorted such that subtypes precede the supertypes. We
-	 * are synthesizing a special ribs environment for
-	 * multiname lookup to find the appropriate ancestor in.
-	 *
-	 * FIXME: this is pretty ugly, it would be nicer to
-	 * resolve all this during definition.
-	 *)
-	    
-	fun extractInstanceType (Ast.InstanceType ity) = SOME ity
-	  | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
-						 Ast.SpecialType Ast.Null ]) = SOME ity
-	  | extractInstanceType t = (error regs ["unexpected supertype in super() expression:", LogErr.ty t]; 
-				     NONE)
+    val Mach.Obj { tag = Mach.ClassTag thisType, ... } = (#this regs)
+        
+    (* 
+     *
+     * For this to work properly, the supertype list has to be
+     * sorted such that subtypes precede the supertypes. We
+     * are synthesizing a special ribs environment for
+     * multiname lookup to find the appropriate ancestor in.
+     *
+     * FIXME: this is pretty ugly, it would be nicer to
+     * resolve all this during definition.
+     *)
+        
+    fun extractInstanceType (Ast.InstanceType ity) = SOME ity
+      | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
+                         Ast.SpecialType Ast.Null ]) = SOME ity
+      | extractInstanceType t = (error regs ["unexpected supertype ",
+                                             "in super() expression:", 
+                                             LogErr.ty t]; 
+                     NONE)
 
-	fun getClassObjOf ity = 
-	    if Mach.isClass (getValue regs (#global regs) (#name ity))
-	    then SOME (Mach.Object (instanceClass regs ity))
-	    else NONE
+    fun getClassObjOf ity = 
+        if Mach.isClass (getValue regs (#global regs) (#name ity))
+        then SOME (instanceClass regs ity)
+        else NONE
 
-	fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
+    fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
 
-	val superRibs = map (instanceRibOf o (#cls) o Mach.needClass)
-			    (List.mapPartial getClassObjOf
-					     (List.mapPartial extractInstanceType 
-							      (#superTypes thisType)))
-			
-	val rno = Multiname.resolveInRibs mname superRibs
-	val func = case rno of 
-		       SOME ((rib::_),name) => 
-		       (case Fixture.getFixture rib (Ast.PropName name) of
-			    Ast.MethodFixture { func, ... } => func
-			  | _ => error regs ["non-method fixture in super expression"])
-		     | _ => error regs ["unable to resolve method in super expression"]
-			    
+    val superClassObjs = List.mapPartial 
+                             getClassObjOf
+                             (List.mapPartial extractInstanceType 
+                                              (#superTypes thisType))
+                         
+    val superRibs = map (instanceRibOf 
+                         o (#cls) 
+                         o Mach.needClass 
+                         o (Mach.Object))
+                        superClassObjs
+                        
+    val rno = Multiname.resolveInRibs mname superRibs
+    val (n, superClassInstanceRib, func) = 
+        case rno of 
+            SOME ((rib::ribs),name) => 
+            (case Fixture.getFixture rib (Ast.PropName name) of
+                 Ast.MethodFixture { func, ... } => 
+                 ((length superClassObjs) - (length (rib::ribs)), rib, func)
+               | _ => error regs ["non-method fixture in super expression"])
+          | _ => error regs ["unable to resolve method in super expression"]
 
-	val funcClosure = { func = func, env = (#scope regs), this = SOME (#this regs) }
+    val superClassObj = List.nth (superClassObjs,n)
+    val superClassEnv = (#env (Mach.needClass (Mach.Object superClassObj)))
+    val env = extendScope superClassEnv (#this regs) Mach.InstanceScope
+    val funcClosure = { func = func, env = env, this = SOME (#this regs) }
     in
-	invokeFuncClosure regs funcClosure args
+        invokeFuncClosure regs funcClosure args
     end
 
 
