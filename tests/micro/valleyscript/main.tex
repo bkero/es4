@@ -60,6 +60,7 @@
 \newcommand{\arrowt}[2]{#1\rightarrow #2}
 \newcommand{\defeq}{\stackrel{\mathrm{def}}{=}}
 \newcommand{\subtype}[2]{#1 \,\sword\, #2}
+\renewcommand{\subtype}[2]{\compatible{#1}{#2}}
 \newcommand{\sword}{\mbox{\,\,$<:$\,\,}}
 \newcommand{\convert}[2]{{#1}\convertword{#2}}
 \newcommand{\convertword}{\mbox{\,\,$\sim :$\,\,}}
@@ -110,7 +111,8 @@
 \newcommand{\convertible}[2]{#1 \prec #2 }
  
 %\newcommand{\allocty}[2]{#1:_{\sigma}#2}
-\newcommand{\allocty}[1]{ty_{\sigma}(#1)}
+\newcommand{\allocty}[1]{aty_{\sigma}(#1)}
+\newcommand{\curty}[1]{cty_{\sigma}(#1)}
 \renewcommand{\convert}[2]{\fun{convert}_{\sigma}(#1,#2)}
 \newcommand{\istype}[2]{#1~\t{is}_{\sigma}~ #2}
 \newcommand{\safe}[1]{\t{safe}~#1}
@@ -145,8 +147,10 @@ to better understand these concepts and to clarify what guarantees can be provid
 14 Nov: extended with generic functions.
 \item
 14 Nov: added wrap as a type constructor.
+\item 
+20 Nov: rework based on allocated and current types
 \item
-todo: typedefs, generics in type system, wrap in optimization system
+todo: add typedefs, rework verifier and optimizer
 \end{itemize}
 
 \section{Language Overview}
@@ -228,130 +232,89 @@ We include generic function definition, generic function application, and the as
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{Type Relations}
+\section{Compatible Types}
 
 
-\begin{displayfigure}{th}{Type Relations}
+\begin{displayfigure}{th}{Compatible Types}
 \begin{trules}
-\headtrule{$\subtype{S}{T}$}{Subtyping}
-\trule{Sub-Refl}{
+\headtrule{$\subtype{S}{T}$}{Compatible Types}
+\trule{C-Refl}{
 	}{
 		\subtype{T}{T}
 	}
-\trule{Sub-Arrow}{
+\trule{C-Arrow}{
 		\subtype{T_1}{S_1}\qquad
 		\subtype{S_2}{T_2}
 	}{
 		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
 	}
-\trule{Sub-Generic}{
+\trule{CL-Arrow}{
+		\subtype{T_1}{\likety S_1}\qquad
+		\subtype{S_2}{\likety T_2}
+	}{
+		\subtype{(\lamt{S_1}{S_2})}{\likety(\lamt{T_1}{T_2})}
+	}
+\trule{C-Generic}{
 		\subtype{S}{T}  %\qquad\mbox{(yes, $X$ is in env)}
 	}{
 		\subtype{(\Lamt{X}{S})}{(\Lamt{X}{T})}
 	}
-\trule{Sub-Obj}{
+\trule{CL-Generic}{
+		\subtype{S}{\likety T}  %\qquad\mbox{(yes, $X$ is in env)}
+	}{
+		\subtype{(\Lamt{X}{S})}{\likety (\Lamt{X}{T})}
+	}
+\trule{C-Obj}{
 		\subtype{T_i}{S_i}\qquad
 		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
 	}{
 		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
 				{\objty{l_i:T_i^{i\in 1..n}}}
 	}
-\trule{Sub-Dyn}{
+\trule{CL-Obj}{
+		\subtype{T_i}{\likety S_i}\qquad
+		\subtype{S_i}{\likety T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\likety  \objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{C-Dyn}{
 	}{
 		\subtype{T}{\dynamic}
 	}
-%\trule{Sub-DynObj}{
-%	}{
-%		\subtype{\objty{\dots}}{\dynobjty}
-%	}
-\trule{Sub-Like}{
+\trule{CL-Dyn}{
+	}{
+		\compatible{\dynamic}{\likety T}
+	}
+\trule{C-Like}{
 		\compatible{S}{T}
 	}{
 		\subtype{{S}}{\likety{T}} \\
 	}
-%\trule{S-Like-Covariant}{
-%		\subtype{S}{T}
-%	}{
-%		\subtype{\likety{S}}{\likety{T}} \\
-%	}
-\headtrule{$\compatible{S}{T}$}{Compatible Types}
-\mbox{Includes the above subtyping rules (with $\!\!\!\!\subtype{}{}\!\!\!\!$ replaced by $\!\compatible{}{}$), and also:}\\
-\trule{Com-Dyn}{
-	}{
-		\compatible{\dynamic}{T}
-	}
-%\trule{C-DynObj}{%
-%	}{
-%		\compatible{\dynobjty}{\objty{\dots}}
-%	}
-\trule{Com-Like}{
+\trule{CL-Like}{
 		\compatible{S}{T}
 	}{
-		\compatible{\likety S}T
-	}
-\headtrule{$\convertible{S}{T}$}{Convertible Types}
-\trule{Con-Sub}{
-		\subtype S T
-	}{
-		\convertible{S}{T}
-	}
-\trule{Con-IntBool}{
-	}{
-		\convertible{\Int}{\Bool}
-	}
-\trule{Con-Wrap}{
-		\compatible S T
-	}{
-		\convertible{S}{\wrapty T}
+		\subtype{\likety{S}}{\likety{T}} \\
 	}
 \end{trules}
 \end{displayfigure}
 
-The judgement $\subtype{S}{T}$ (\emph{$S$ is a subtype of $T$}) checks if every value of type $S$ 
-can be assigned to a variable of type $T$ (some caveats for \t{like} types are needed here).
+The judgement $\subtype{S}{T}$ (\emph{$S$ is compatible with $T$}) checks if values of type $S$ 
+can be assigned to a variable of type $T$.
+It is analogous to the usual subtype relation, but somewhat more complex because of \t{like} and $\dynamic$.
 The type $\dynamic$ is a top type, and we have width-subtyping on opjects.
+
+The compatibility relation is intransitive since $\subtype{\Int}{\dynamic}$ and $\subtype{\dynamic}{\likety \Bool}$, but $\subtype{\Int}{\likety \Bool}$ does not hold.
+
+It is similar to the consistency relation of Siek and Taha, but differs in that whenever a down-conversion is performed via \rel{CL-Dyn}, the type constructor \t{like} is inserted to record this fact. Thus, in general,
+a type $T$ denotes only values of type $T$, but $\likety T$ denotes a somewhat larger set of values.
+
 Although the subtyping judgement does not include an explicit environment, the rule \rel{S-Generic} means that the types may include free type variables. This rule applies implicit alpha-renaming so that the same type variable can be interpreted as the same on both sides.
 
-
-The judgement $\compatible{S}{T}$  (\emph{$S$ is compatible with $T$}) 
-extends the subtype relation with a more flexible interpretation of dynamic types; 
-in particular, the type $\dynamic$ is compatible with any type.
-The compatibility judgement is not transitively closed.
-In particular, we have that   $\compatible{\Int}{\dynamic}$ and
-$\compatible{\dynamic}{\Bool}$, but the judgement $\compatible{\Int}{\Bool}$ does not hold. 
-The rule~\rel{Sub-Like} for \t{like} types switches from checking subtyping to checking compatibility.
-
-The \t{like} type constructor is convariant, in that the following rule is admissable:
+The \t{like} type constructor is convariant via \rel{CL-Like}.
+ 
+ We have $\compatible{({\likety{T}})}{({\likety{\likety{T}}})}$, but not the converse, so ${\likety{\likety{T}}}$ is somewhat useless. We could add extra rules to covert ${\likety{\likety{T}}}$ to $\likety T$, but it seems unnecessary.
 \[
-	\frac{
-		\compatible S T
-	}{
-		\subtype{\likety S}{\likety T}
-	}
-\]
-
-\begin{lemma}
-The subtyping judgement is transitively closed.
-\end{lemma}
-Proof: TBW
-
-The constructor \t{like} is ``idempotent'', in that we have that $({\likety{\likety{T}}}) \sword ({\likety{T}}) \sword ({\likety{\likety{T}}})$.
-
-\[
-	\frac{
-		\frac{
-			\frac{
-				 	\compatible T T 
-				}{				
-					\compatible {\likety T} T
-				}
-			}{
-				\compatible {\likety {\likety T}} T
-			}
-		}{
-			\subtype {\likety {\likety T}} {\likety T}
-		}
-		\qquad\qquad\qquad\qquad
 	\frac{
 			\compatible {\likety T} {\likety T}
 		}{
@@ -379,6 +342,9 @@ The set of values in the language is given by:
 \end{array}
 \]
 A \emph{object store} $\sigma$ maps object addresses $a$ to object values of the form $\obje{\bar{l}=\bar v}{T}$.
+Values and object values in the store are \emph{closed} in that they do not contain free program variables $x$ or type variables $X$;
+though they may contain object addresses.
+
 Every value has an \emph{allocated type} according to the function $\allocty{v}$:
 \[
 \begin{array}{rcll}
@@ -390,8 +356,15 @@ Every value has an \emph{allocated type} according to the function $\allocty{v}$
 		\allocty{a}&=&T   &\mbox{~~if } 		\sigma(a)=\obje{\dots}{T}
 \end{array}
 \]
-Values and object values in the store are \emph{closed} in that they do not contain free program variables $x$ or type variables $X$;
-though they may contain object addresses.
+In addition, every value has a \emph{current type} $\curty{v}$, whose definition is identical to $\allocty{v}$, except for objects:
+\[
+\begin{array}{rcll}
+		\curty{a}&=& \objty{l_i:T_i}    &\mbox{~~if  $\sigma(a)=\obje{l_i=v_i}{S}$ and $T_i=\curty{v_i}$}
+\end{array}
+\]
+The allocated type of an object is invariant and never changes; the current type of an object changes over time but is more precise in the case of objects.
+
+A \emph{type tag} is a type that can be returned by $\allocty{v}$ or $\curty{v}$; in particular, it excludes $\dynamic$, \t{like}, and \t{wrap} types, and type variables.
 
 An evaluation context is:
 \[
@@ -415,16 +388,9 @@ A \emph{state} is a pair of an object store and a current expression.
 The evaluation relation on states is defined by the rules in Figure~\ref{fig:eval}.
 The rule \rel{E-Alloc} requires an explicit object type with a type for each field,
 but those field types could simply be $\dynamic$. (Note, fields can never be deleted in our semantics.)
-Thus, the necessary object type could always be locally inferred from the object expression.
 
-Several rules refer to the judgement $\istype{v}{T}$, which checks if the value $v$ matches the type $T$: 
-see  Figure ~\ref{fig:convert}. This judgement relies on two subtype-like relations on types.
-
-\begin{lemma}[Preservation under subtyping]
-If $\istype v S$ and $\subtype S T$ then $\istype v T$.
-\end{lemma}
-{\bf Does not hold, as  $\t{true}  \istype{}{} \dynamic \sword \likety \Int$}.
-
+Several rules refer to the function $\convert{v}{T}$, which checks if the value $v$ can be converted to the type $T$: 
+see  Figure ~\ref{fig:convert}.  
 
 \begin{displayfigure}{th}{Evaluation Rules}
 \label{fig:eval} 
@@ -457,7 +423,7 @@ If $\istype v S$ and $\subtype S T$ then $\istype v T$.
 	\sigma,C[\cast{v}{T}]
 	&\lred&
 	\sigma,C[v]
-	\qquad\mbox{if $\istype{v}{T}$}
+	\qquad\mbox{if $\compatible{\allocty v}{T}$}
 	&\rel{E-As}
 \\~\\
 	\sigma,C[\wrap{v}{T}]
@@ -496,7 +462,7 @@ If $\istype v S$ and $\subtype S T$ then $\istype v T$.
 	&\rel{E-Assign1} \\
 	&&\mbox{where if $\sigma(a)=\obje{\dots}{\objty{l:T,\dots}}$ }\\
 	&&\mbox{then $v'=\convert{v}{T}$} \\
-	&&\mbox{else $v'=v$} \\
+	&&\mbox{else $v'=v$} 
 \\~\\
 	\sigma,C[\objset{(\wrapv{w}{\objty{l:T,\dots}})}{l}{v}]
 	&\lred&
@@ -511,44 +477,42 @@ If $\istype v S$ and $\subtype S T$ then $\istype v T$.
 \label{fig:convert} 
 \[
 \begin{array}{rcll}
-	\convert{v}{T} &=& v &\mbox{if $\istype{v}{T}$} \\
+	\convert{v}{T} &=& v &\mbox{if $\compatible{\allocty v}{T}$} \\
+	\convert{v}{\likety T} &=& v &\mbox{if $\compatible{\curty v}{\likety T}$} \\
 	\convert{0}{\Bool} &=& \t{false} \\
 	\convert{n}{\Bool} &=& \t{true}  &\mbox{if $n\not=0$}\\
 	\convert{v}{\wrapty T} &=&  v'				&\mbox{if $v'=\convert v T$} \\
-	\convert{v}{\wrapty T} &=&  \wrapv{v}{T}		&\mbox{if $\istype{v}{\likety T}$}
+	\convert{v}{\wrapty T} &=&  \wrapv{v}{T}		&\mbox{if $\compatible{\curty v}{\likety T}$}
 \end{array}
 \]
- 
-\begin{trules}
-\headtrule{$\istype{v}{T}$}{Dynamic type check}
-\trule{Is-Ok}{
-		\subtype{\allocty{v}}{T} \\
-		(v\not=a \mbox{ or }T\not=\likety{\dots})
-	}{
-		\istype{v}{T}
-	}
-\trule{Is-Obj}{
-		\sigma(a) = \obje{l_i=v_i^{i\in 1..n+m}}{S} \\
-	%	\compatible{S}{\objty{l_i:T_i^{i\in 1..n}}} \\
-		\istype{v_i}{\likety{T_i}} \mbox{ ~for~} {i\in 1..n}
-	}{
-		\istype{a}{\likety \objty{l_i:T_i^{i\in 1..n}}}
-	}
-\comment{Redundant
-\trule{Is-NonObj}{
-		\compatible{\allocty{v}}{T} \\
-		v \mbox{ not an object address}
-	}{
-		\istype{v}{\likety T}
-	}
-}
-\end{trules}
-\end{displayfigure}
+ \end{displayfigure}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
 \section{Strict Mode Type System}
+
+
+
+\begin{displayfigure}{th}{Type Relations}
+\begin{trules}
+\headtrule{$\convertible{S}{T}$}{Convertible Types}
+\trule{Con-Sub}{
+		\subtype S T
+	}{
+		\convertible{S}{T}
+	}
+\trule{Con-IntBool}{
+	}{
+		\convertible{\Int}{\Bool}
+	}
+\trule{Con-Wrap}{
+		\compatible S T
+	}{
+		\convertible{S}{\wrapty T}
+	}
+\end{trules}
+\end{displayfigure}
 
 In a traditional statically typed language, the type system fulfills two goals: 
 \begin{enumerate}
@@ -557,7 +521,6 @@ It detects certain errors at compile time.
 \item
 It guarantees what kinds of values are produced by certain expressions, which enables  run-time check elimination.
 \end{enumerate}
-
 The situation in ES4 is somewhat different, because of two reasons. First, in \t{standard} mode, we would like to eliminate run-time checks where possible, using a type-based analysis,
 without reporting any compile-time type errors.
 Second, \t{like} types weaken the guarantees provided by \t{strict} mode.
