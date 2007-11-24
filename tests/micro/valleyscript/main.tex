@@ -243,17 +243,20 @@ We include generic function definition, generic function application, and the as
 		\subtype{T}{T}
 	}
 \trule{C-Arrow}{
-		\subtype{T_1}{S_1}\qquad
+		%(\subtype{T_1}{S_1}\mbox{ or }T_1=\dynamic)\\
+		\subtype{T_1}{\likety S_1} \qquad
 		\subtype{S_2}{T_2}
 	}{
 		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
 	}
 \trule{CL-Arrow}{
-		\subtype{T_1}{\likety S_1}\qquad
-		\subtype{S_2}{\likety T_2}
+		%\subtype{T_1}{\likety S_1}\qquad
+		%\subtype{S_2}{\likety T_2}
 	}{
-		\subtype{(\lamt{S_1}{S_2})}{\likety(\lamt{T_1}{T_2})}
+		%\subtype{(\lamt{S_1}{S_2})}{\likety(\lamt{T_1}{T_2})}
+		\subtype{(\likety{\lamt S T})}{(\lamt S T)}
 	}
+	\comment{
 \trule{C-Generic}{
 		\subtype{S}{T}  %\qquad\mbox{(yes, $X$ is in env)}
 	}{
@@ -264,8 +267,9 @@ We include generic function definition, generic function application, and the as
 	}{
 		\subtype{(\Lamt{X}{S})}{\likety (\Lamt{X}{T})}
 	}
+	}
 \trule{C-Obj}{
-		\subtype{T_i}{S_i}\qquad
+		\subtype{T_i}{\likety S_i}\qquad
 		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
 	}{
 		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
