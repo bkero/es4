@@ -1742,7 +1742,7 @@ and superExpression (ts:TOKENS)
             in case tl ts of
                 (LeftParen, _) :: _ =>
                     let
-                           val (ts1,nd1) = parenExpression(tl (tl ts))
+                           val (ts1,nd1) = parenExpression(tl ts)
                     in
                         (ts1,Ast.SuperExpr(SOME(nd1)))
                     end
