@@ -143,8 +143,7 @@ val dummyNs = Name.noNS
 (* Handy operator for subtype checks *)
 
 infix 4 <:;
-fun ((tsub:Ast.TYPE_EXPR) <: (tsup:Ast.TYPE_EXPR)) =
-    Type.groundIsSubtype tsub tsup
+fun tsub <: tsup = Type.groundIsSubtype tsub tsup
     
 
 fun mathOp (v:Mach.VAL)
@@ -1904,10 +1903,16 @@ and evalExpr (regs:Mach.REGS)
             val result =
                 case func of
                     Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
-		  | Ast.ObjectRef { base = Ast.ExpectedTypeExpr (_, Ast.SuperExpr NONE), ident, loc } => 
-		    evalSuperCall regs ident (args())
-		  | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
-		    evalSuperCall regs ident (args())
+
+		          | Ast.ObjectRef { base = Ast.ExpectedTypeExpr (_, Ast.SuperExpr NONE), ident, loc } => 
+		            evalSuperCall regs (#this regs) ident (args())
+		          | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
+		            evalSuperCall regs (#this regs) ident (args())
+		          | Ast.ObjectRef { base = Ast.ExpectedTypeExpr (_, Ast.SuperExpr (SOME b)), ident, loc } => 
+		            evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args())
+		          | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
+		            evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args())
+
                   | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
                   | _ =>
                     let
@@ -1959,70 +1964,70 @@ and evalExpr (regs:Mach.REGS)
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
-
 and evalSuperCall (regs:Mach.REGS)
-          (ident:Ast.IDENT_EXPR)
-          (args:Mach.VAL list)
+                  (base:Mach.OBJ)
+                  (ident:Ast.IDENT_EXPR)
+                  (args:Mach.VAL list)
     : Mach.VAL = 
     let 
-    val nomn = evalIdentExpr regs ident
-    val mname = case nomn of 
-            Multiname mn => mn
-              | Name {ns,id} => {nss=[[ns]], id=id}
+        val nomn = evalIdentExpr regs ident
+        val mname = case nomn of 
+                        Multiname mn => mn
+                      | Name {ns,id} => {nss=[[ns]], id=id}
+                                        
+        val Mach.Obj { tag = Mach.ClassTag thisType, ... } = base
+            
+        (* 
+         *
+         * For this to work properly, the supertype list has to be
+         * sorted such that subtypes precede the supertypes. We
+         * are synthesizing a special ribs environment for
+         * multiname lookup to find the appropriate ancestor in.
+         *
+         * FIXME: this is pretty ugly, it would be nicer to
+         * resolve all this during definition.
+         *)
+            
+        fun extractInstanceType (Ast.InstanceType ity) = SOME ity
+          | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
+                                                 Ast.SpecialType Ast.Null ]) = SOME ity
+          | extractInstanceType t = (error regs ["unexpected supertype ",
+                                                 "in super() expression:", 
+                                                 LogErr.ty t]; 
+                                     NONE)
 
-    val Mach.Obj { tag = Mach.ClassTag thisType, ... } = (#this regs)
-        
-    (* 
-     *
-     * For this to work properly, the supertype list has to be
-     * sorted such that subtypes precede the supertypes. We
-     * are synthesizing a special ribs environment for
-     * multiname lookup to find the appropriate ancestor in.
-     *
-     * FIXME: this is pretty ugly, it would be nicer to
-     * resolve all this during definition.
-     *)
-        
-    fun extractInstanceType (Ast.InstanceType ity) = SOME ity
-      | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
-                         Ast.SpecialType Ast.Null ]) = SOME ity
-      | extractInstanceType t = (error regs ["unexpected supertype ",
-                                             "in super() expression:", 
-                                             LogErr.ty t]; 
-                     NONE)
+        fun getClassObjOf ity = 
+            if Mach.isClass (getValue regs (#global regs) (#name ity))
+            then SOME (instanceClass regs ity)
+            else NONE
 
-    fun getClassObjOf ity = 
-        if Mach.isClass (getValue regs (#global regs) (#name ity))
-        then SOME (instanceClass regs ity)
-        else NONE
+        fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
 
-    fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
+        val superClassObjs = List.mapPartial 
+                                 getClassObjOf
+                                 (List.mapPartial extractInstanceType 
+                                                  (#superTypes thisType))
+                             
+        val superRibs = map (instanceRibOf 
+                             o (#cls) 
+                             o Mach.needClass 
+                             o (Mach.Object))
+                            superClassObjs
+                            
+        val rno = Multiname.resolveInRibs mname superRibs
+        val (n, superClassInstanceRib, func) = 
+            case rno of 
+                SOME ((rib::ribs),name) => 
+                (case Fixture.getFixture rib (Ast.PropName name) of
+                     Ast.MethodFixture { func, ... } => 
+                     ((length superClassObjs) - (length (rib::ribs)), rib, func)
+                   | _ => error regs ["non-method fixture in super expression"])
+              | _ => error regs ["unable to resolve method in super expression"]
 
-    val superClassObjs = List.mapPartial 
-                             getClassObjOf
-                             (List.mapPartial extractInstanceType 
-                                              (#superTypes thisType))
-                         
-    val superRibs = map (instanceRibOf 
-                         o (#cls) 
-                         o Mach.needClass 
-                         o (Mach.Object))
-                        superClassObjs
-                        
-    val rno = Multiname.resolveInRibs mname superRibs
-    val (n, superClassInstanceRib, func) = 
-        case rno of 
-            SOME ((rib::ribs),name) => 
-            (case Fixture.getFixture rib (Ast.PropName name) of
-                 Ast.MethodFixture { func, ... } => 
-                 ((length superClassObjs) - (length (rib::ribs)), rib, func)
-               | _ => error regs ["non-method fixture in super expression"])
-          | _ => error regs ["unable to resolve method in super expression"]
-
-    val superClassObj = List.nth (superClassObjs,n)
-    val superClassEnv = (#env (Mach.needClass (Mach.Object superClassObj)))
-    val env = extendScope superClassEnv (#this regs) Mach.InstanceScope
-    val funcClosure = { func = func, env = env, this = SOME (#this regs) }
+        val superClassObj = List.nth (superClassObjs,n)
+        val superClassEnv = (#env (Mach.needClass (Mach.Object superClassObj)))
+        val env = extendScope superClassEnv (#this regs) Mach.InstanceScope
+        val funcClosure = { func = func, env = env, this = SOME (#this regs) }
     in
         invokeFuncClosure regs funcClosure args
     end
@@ -2746,7 +2751,7 @@ and evalTypeExpr (regs:Mach.REGS)
     case te of 
         Ast.SpecialType st => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
-      | Ast.ArrayType at => Mach.Null (* FIXME *)
+      | Ast.ArrayType a => Mach.Null (* FIXME *)
       | Ast.TypeName tn => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.ObjectType ot => Mach.Null (* FIXME *)
@@ -3316,7 +3321,7 @@ and evalIdentExpr (regs:Mach.REGS)
                   (r:Ast.IDENT_EXPR)
     : NAME_OR_MULTINAME =
     case r of
-        Ast.Identifier { ident:Ast.IDENT, openNamespaces:Ast.NAMESPACE list list } =>
+        Ast.Identifier { ident, openNamespaces } =>
         Multiname { nss=openNamespaces, id=ident }
 
       | Ast.QualifiedIdentifier { qual, ident } =>
@@ -3513,7 +3518,7 @@ and resolveName (obj:Mach.OBJ)
             Name name => findValue obj name
           | Multiname mname =>
             let
-                val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
+                val fixedRefOpt = Multiname.resolve mname obj matchFixedBinding getObjProto
             in
                 case fixedRefOpt of
                     NONE => Multiname.resolve mname obj matchBinding getObjProto
