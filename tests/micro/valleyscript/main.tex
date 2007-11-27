@@ -51,7 +51,7 @@
 \newcommand{\hole}{\bullet}
 \newcommand{\Lam}[3]{\Lambda #1.\,#2:#3}
 \newcommand{\App}[2]{#1[#2]}
-\newcommand{\Lamt}[2]{\forall #1.\,#2}
+\newcommand{\Forall}[2]{\forall #1.\,#2}
 
 \newcommand{\letexp}[3]{\t{let}~{#1}={#2}~\t{in}~{#3}}
 \newcommand{\lett}[4]{\t{letXXX}~{#1}:{#2}={#3}~\t{in}~{#4}}
@@ -195,6 +195,8 @@ We include generic function definition, generic function application, and the as
 	\mydefcase{\objget{e}{l}					}{member selection}
 	\mydefcase{\objcall{e}{l}				}{member invocation}
 	\mydefcase{\objset{e}{l}{e}				}{member update}
+	\mydefcase{\Lam X e	T					 }{polymorphic function}
+	\mydefcase{e[T]							 }{polymorphic application}
 	\mydefcase{\cast{e}{T}					}{dynamic type check}
 	\mydefcase{\wrap{e}{T}					}{wrapping a value}
 \\
@@ -215,9 +217,10 @@ We include generic function definition, generic function application, and the as
 	\mydefcase{\Bool							}{booleans}
 	\mydefcase{\lamt{S}{T} 					}{function type}
 	\mydefcase{X								}{type variable}
-	\mydefcase{\Lamt{X}{T}					}{generic function type}
+	\mydefcase{\Forall{X}{T}					}{generic function type}
 %	\mydefcase{\Ref{T}                      	}{reference type}
 	\mydefcase{\objty{\bar{l}:\bar{T}}	   	}{object types}
+	\mydefcase{\Forall X T					 }{polymorphic type}
 %	\mydefcase{\dynobjty 	   				}{dynamic object type}
 	\mydefcase{\dynamic 		    				}{dynamic type}
 	\mydefcase{\likety{T}					}{like types}
@@ -260,7 +263,7 @@ We include generic function definition, generic function application, and the as
 \trule{C-Generic}{
 		\subtype{S}{T}  %\qquad\mbox{(yes, $X$ is in env)}
 	}{
-		\subtype{(\Lamt{X}{S})}{(\Lamt{X}{T})}
+		\subtype{(\Forall{X}{S})}{(\Forall{X}{T})}
 	}
 \trule{CL-Generic}{
 		\subtype{S}{\likety T}  %\qquad\mbox{(yes, $X$ is in env)}
@@ -337,7 +340,7 @@ The set of values in the language is given by:
 	\mydefhead{v ::=\qquad\qquad\qquad\qquad\qquad}{Values:} 
 	\mydefcase{c								}{constant} 
 	\mydefcase{\lam{x}{S}{T}{e} 				}{abstraction} 
-	\mydefcase{\Lam{X}{t}{T}					}{generic abstraction} 
+	\mydefcase{\Lam X e T					}{polymorphic function} 
 	\mydefcase{\wrapv{v}{T}	 				}{wrapped value} 
 	\mydefcase{a								}{object address}
 	\\
@@ -355,7 +358,7 @@ Every value has an \emph{allocated type} according to the function $\allocty{v}$
 		\allocty{n}&=&\Int \\
 		\allocty{b}&=&\Bool\\
 		\allocty{\lam{x}{S}{T}{e}}&=&(\lamt{S}{T})\\
-		\allocty{\Lam{X}{t}{T}}&=&(\Lamt{X}{T})\\
+		\allocty{\Lam X e T}&=&(\Forall X T)\\
 		\allocty{\wrapv{v}{T}}&=&T\\
 		\allocty{a}&=&T   &\mbox{~~if } 		\sigma(a)=\obje{\dots}{T}
 \end{array}
@@ -418,7 +421,7 @@ see  Figure ~\ref{fig:convert}.
 	\sigma,C[\cast{t[X:=S]}{T[X:=S]}]
 	&\rel{E-Generic1}
 \\~\\
-	\sigma,C[{\App{(\wrapv{w}{(\Lamt{X}{S})})}
+	\sigma,C[{\App{(\wrapv{w}{(\Forall{X}{S})})}
 		          {T}}]
 	&\lred&
 	\sigma,C[\cast{\App{w}{T}}{S[X:=T]}]
