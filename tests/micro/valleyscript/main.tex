@@ -24,15 +24,6 @@
 
 %%%%%%%% language %%%%%%%%%%%%%%%
 
-% deprecated
-\newcommand{\mkref}[2]{\t{ref}~{#1}~#2}
-\newcommand{\mkrefl}[3]{\t{ref}^{#3}~{#1}~#2}
-\newcommand{\deref}[1]{!{#1}}
-\newcommand{\dereft}[2]{!{#1}:{#2}}
-\newcommand{\derefl}[2]{!^{#2}{#1}}
-\newcommand{\assign}[2]{{#1}:={#2}}
-\newcommand{\assignl}[3]{{#1}:=^{#3}{#2}}
-\newcommand{\Ref}[1]{\t{Ref}~{#1}}
 
 \newcommand{\slam}[3]{\lambda#1\!:\!#2.\,\,#3}
 \newcommand{\lam}[4]{\lambda#1\!:\!#2.\,\,#4:#3}
@@ -59,11 +50,17 @@
 \newcommand{\arrowt}[2]{#1\rightarrow #2}
 \newcommand{\defeq}{\stackrel{\mathrm{def}}{=}}
 
-\newcommand{\subtypeword}[1]{\,\,<\!\!\!{\tiny{#1}}\,\,}
-\renewcommand{\subtypeword}[1]{\,\,<\!\!_{\tiny{#1}}\,\,}
-\newcommand{\subtyped}[3]{#2 \subtypeword{#1} #3}
-\newcommand{\subtype}[2]{#1 \subtypeword{\top} #2}
-%\newcommand{\subtypem}[2]{#1 \subtypeword{\bot} #2}
+\newcommand{\subtypeword}{<:}
+\newcommand{\subtype}[2]{#1 \subtypeword #2}
+\newcommand{\consistent}[2]{#1 \leadsto #2}
+\newcommand{\csubtype}[2]{#1 <\leadsto #2}
+\newcommand{\csupertype}[2]{#1 >\leadsto #2}
+
+\newcommand{\consubtypeword}[1]{\,\,<\!\!\!{\tiny{#1}}\,\,}
+\renewcommand{\consubtypeword}[1]{\,\,<\!\!_{\tiny{#1}}\,\,}
+\newcommand{\consubtyped}[3]{#2 \consubtypeword{#1} #3}
+\newcommand{\consubtype}[2]{#1 \consubtypeword{\top} #2}
+%\newcommand{\consubtypem}[2]{#1 \consubtypeword{\bot} #2}
 \newcommand{\notd}[1]{\overline #1}
 
 \newcommand{\convert}[2]{{#1}\convertword{#2}}
@@ -210,69 +207,72 @@ We include generic function definition, generic function application, and the as
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{Subtyping}
+\section{Type Relations}
 
 
 \begin{displayfigure}{th}{Subtyping}
 \label{fig:subtype}
 \begin{trules}
-\headtrule{$\subtyped{m}{S}{T}$}{Subtyping}
+\headtrule{$\subtype{S}{T}$}{Subtyping}
 \trule{Sub-Refl}{
 	}{
-		\subtyped{m}{T}{T}
-	}
-\trule{Sub-Dyn-Top}{
-	}{
-		\subtyped{\top}{T}{\dynamic}
-	}
-\trule{Sub-Dyn-Bot}{
-	}{
-		\subtyped{\bot}{\dynamic}T
+		\subtype{T}{T}
 	}
 \trule{Sub-Arrow}{
-		%(\subtyped{m}{T_1}{S_1}\mbox{ or }T_1=\dynamic)\\
-		\subtyped{\notd m}{T_1}{S_1} \qquad
-		\subtyped{m}{S_2}{T_2}
+		\subtype{T_1}{S_1} \qquad
+		\subtype{S_2}{T_2}
 	}{
-		\subtyped{m}{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
 	}
 \trule{Sub-Obj}{
-		\subtyped{\notd m}{T_i}{S_i}\qquad
-		\subtyped{m}{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+		\subtype{T_i}{S_i}\qquad
+		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
 	}{
-		\subtyped{m}{\objty{l_i:S_i^{i\in 1..n+m}}}
+		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\headtrule{$\consistent{S}{T}$}{Consistency}
+\trule{Con-Refl}{
+	}{
+		\consistent{T}{T}
+	}
+\trule{Con-Dyn}{
+	}{
+		\consistent{T}{\dynamic}
+	}
+\trule{Con-Arrow}{
+		\consistent{S_1}{T_1} \qquad
+		\consistent{S_2}{T_2}
+	}{
+		\consistent{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{Con-Obj}{
+		\consistent{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\consistent{\objty{l_i:S_i^{i\in 1..n+m}}}
 				{\objty{l_i:T_i^{i\in 1..n}}}
 	}
 \end{trules}
 \end{displayfigure}
 
-The type system supports the type $\dynamic$, which denotes an absence of static type information. We would like $\lamt\dynamic\dynamic$ to be the most general function type.
-That is, if a variable $f$ has type $\lamt{\dynamic}{\dynamic}$, then no static type information is available about the true domain of the function bound (at run-time) to $f$; instead, a dynamic type check is performed at run-time. 
+The type system supports the usual subtype relation $\subtype S T$.
+In addition, to support a notion of gradual typing, we also have a consistency relation $\consistent S T$,
+which holds provided that $S$ and $T$ are identical except that $T$ may include $dynamic$ in places where $S$ does not. The \emph{consistent-subtype} relation $\csubtype S T$ is then the composition of these two relations: $\csubtype S T$ hold if there exists $U$ such that $\subtype S U$ and $\consistent U T$.
+This relation is defined more directly in Figure~\ref{} via mutual recursion with an associated \emph{consistent-supertype} relation $\csupertype S T$.
 
-Since $\lamt\dynamic\dynamic$ is the maximal function type, we need that:
-\[
-	(\lamt{S}{T})  ~~<:~~  (\lamt\dynamic\dynamic)
-\]
-for any function type $\lamt{S}{T}$. However,  the usual rule for function subtyping then implies that $T~<:~\dynamic$ (that is, $\dynamic$ is a maximal or top type), and also that
-$\dynamic ~<:~ S$ (that is, $\dynamic$ is a minimal or bottom type). 
-
-To resolve these two differing interpretations of $\dynamic$, we introduce \emph{two} subtype relations, $\subtypeword{\top}$ (the ''top-subtype'' or simply ''subtype'' relation) and $\subtypeword{\bot}$ (the ''bottom-subtype'' relation), that differ in their interpretation of $\dynamic$. 
-Figure~\ref{fig:subtype} defines these relations, using the meta-variable $m$ to range over $\setz{\top,\bot}$.
-The rule \rel{Sub-Arrow} contravariant in the domain position, and also switches the interpretation of $\dynamic$. The rule \rel{Sub-Obj} introduces width-subtyping on objects, and again switches the interpretation of $\dynamic$ for the contravariant check. (Note that writes to an object field in general require a run-time check, analogous to the covariant array write check in Java.)
-
-Unlike the consistency relation of earlier work~\cite{SiekTaha}, both subtyping relations are transitively closed.
-
+Unlike the consistency relation of earlier work~\cite{SiekTaha}, our consistency relation is asymmetric (since $\consistent \dynamic \Int$ does not hold), but consistency and consistent-subtyping are both transitive.
+ 
 \begin{lemma}
-$\subtypeword{m}$ is reflexively and transitively closed.
+Subtyping, consistency, consistent-subtyping, and consistent-supertyping are transitive.
 \end{lemma}
-TBP. FIXME.
+PROVEME
 
 We have
 \[
 \begin{array}{rcl}
-	(\lamt{S}{T})  		&\subtypeword{\top}&  (\lamt\dynamic\dynamic) \\
-	\objty{l:T,\dots}	&\subtypeword{\top}&  \objty{l:\dynamic} \\
-	\objty{\dots}	   	&\subtypeword{\top}&  \objty{} \\
+	(\lamt{S}{T})  		&\csubtype{}{}&  (\lamt\dynamic\dynamic) \\
+	\objty{l:T,\dots}		& \csubtype{}{}&  \objty{l:\dynamic} \\
+	\objty{\dots}	   	& \csubtype{}{}&  \objty{} \\
 \end{array}
 \]
 
@@ -378,8 +378,9 @@ see  Figure ~\ref{fig:convert}.
 {\bf Dynamic Type Checks}
 \[
 \begin{array}{rcl}
-	\convert{v}{T} = v &\mbox{iff}&\mbox{$\istype v T$} \\
-	\istype{v}{T}      &\mbox{iff}& \mbox{$\subtype{\allocty v}{T}$} \\
+	\convert{v}{T} = v &\mbox{iff}&%\mbox{$\istype v T$} \\
+	%\istype{v}{T}      &\mbox{iff}&
+	 \mbox{$\csubtype{\allocty v}{T}$} \\
 \end{array}
 \]
  \end{displayfigure} 
@@ -402,7 +403,7 @@ it is straightforward to reformulate the analysis to infer these $\safe{}$ annot
 These rules rely on the relation $S\Implies T$, which is designed to satisfy the lemma:
 
 \begin{lemma}
-If $\istype v{S}$ and $S\Implies T$ then $\istype v{T}$.
+If $\csubtype V {S}$ and $S\Implies T$ and $\csupertype U T$ then $\csubtype V U$.
 \end{lemma}
 
 \begin{lemma}
@@ -556,7 +557,7 @@ PROVEME
 \begin{trules}
 \headtrule{$\convertible{S}{T}$}{Convertible Types}
 \trule{Con-Sub}{
-		\subtype S T
+		\consubtype S T
 	}{
 		\convertible{S}{T}
 	}
@@ -718,4 +719,40 @@ If $\judge{E}{e}{T}$, then $T$ is not a \t{like} or \t{wrap} type (at least at t
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \end{document}
+
+
+
+\begin{displayfigure}{th}{Subtyping}
+\label{fig:subtype}
+\begin{trules}
+\headtrule{$\consubtypeÄ{S}{T}$}{Subtyping}
+\trule{Sub-Refl}{
+	}{
+		\consubtype{T}{T}
+	}
+\trule{Sub-Dyn-Top}{
+	}{
+		\consubtyped{\top}{T}{\dynamic}
+	}
+\trule{Sub-Dyn-Bot}{
+	}{
+		\consubtyped{\bot}{\dynamic}T
+	}
+\trule{Sub-Arrow}{
+		%(\consubtype{T_1}{S_1}\mbox{ or }T_1=\dynamic)\\
+		\consubtyped{\notd m}{T_1}{S_1} \qquad
+		\consubtype{S_2}{T_2}
+	}{
+		\consubtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{Sub-Obj}{
+		\consubtyped{\notd m}{T_i}{S_i}\qquad
+		\consubtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\consubtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\end{trules}
+\end{displayfigure}
+
 
