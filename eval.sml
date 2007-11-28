@@ -2771,6 +2771,78 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
 
+and doubleToByte (regs:Mach.REGS)
+                 (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val i = Real64.trunc d
+        val word = Word8.fromInt i
+    in
+        newByte regs word
+    end
+
+
+and doubleToUInt (regs:Mach.REGS)
+                 (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
+        val word = Word32.fromLargeInt lg
+    in
+        newUInt regs word
+    end
+
+
+and doubleToInt (regs:Mach.REGS)
+                (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
+        val int = Int32.fromLarge lg
+    in
+        newInt regs int
+    end
+
+
+and doubleToNumberType (regs:Mach.REGS)
+                       (commonNumType:NUMBER_TYPE)
+                       (d:Real64.real)
+    : Mach.VAL =
+    let
+        val truncated = Real64.realTrunc d
+
+        val isIntegral = 
+            if Real64.isFinite d
+            then Real64.==(truncated, d)
+            else false
+
+        fun isInRange low high = 
+            low <= truncated andalso truncated <= high
+
+        val fitsInByte = isInRange 0.0 255.0
+        val fitsInUInt = isInRange 0.0 4294967295.0            
+        val fitsInInt = isInRange (~2147483647.0) 2147483647.0
+    in
+        if isIntegral
+        then 
+            case commonNumType of
+                ByteNum => if fitsInByte
+                           then doubleToByte regs d
+                           else 
+                               if fitsInUInt 
+                               then doubleToUInt regs d
+                               else newDouble regs d
+              | UIntNum => if fitsInUInt
+                           then doubleToUInt regs d
+                           else newDouble regs d
+              | IntNum =>  if fitsInInt
+                           then doubleToInt regs d
+                           else newDouble regs d
+              | _ => newDouble regs d
+        else 
+            newDouble regs d
+    end
+
 and performBinop (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (va:Mach.VAL)
@@ -2799,46 +2871,27 @@ and performBinop (regs:Mach.REGS)
              * 
              *)
             let                     
-                val commonNumType = promoteToCommon regs 
-                                                    (numTypeOf regs a) 
-                                                    (numTypeOf regs b)
+                val na = numTypeOf regs a
+                val nb = numTypeOf regs b
+                val commonNumType = promoteToCommon regs na nb
             in
                 case commonNumType of 
                     DecimalNum => 
-                    newDecimal regs (decimalOp precision mode
-                                               (toDecimal ctxt a) 
-                                               (toDecimal ctxt b))
+                    let
+                        val da = toDecimal ctxt a
+                        val db = toDecimal ctxt b
+                        val d = decimalOp precision mode da db
+                    in
+                        newDecimal regs d
+                    end
 
                   | _ => 
                     let 
-                        val d = doubleOp ((toDouble a), (toDouble b))
-                        val isIntegral = 
-                            if Real64.isFinite d
-                            then Real64.==(Real64.realTrunc d, d)
-                            else false
+                        val da = toDouble a
+                        val db = toDouble b
+                        val d = doubleOp (da, db)
                     in
-                        if isIntegral
-                        then 
-                            let 
-                                val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
-                            in
-                                case commonNumType of
-                                    ByteNum => if Mach.fitsInByte lg
-                                               then newByte regs (Word8.fromLargeInt lg)
-                                               else 
-                                                   if Mach.fitsInUInt lg
-                                                   then newUInt regs (Word32.fromLargeInt lg)
-                                                   else newDouble regs d
-                                  | UIntNum => if Mach.fitsInUInt lg
-                                               then newUInt regs (Word32.fromLargeInt lg)
-                                               else newDouble regs d
-                                  | IntNum =>  if Mach.fitsInInt lg
-                                               then newInt regs (Int32.fromLarge lg)
-                                               else newDouble regs d
-                                  | _ => newDouble regs d
-                            end
-                        else 
-                            newDouble regs d
+                        doubleToNumberType regs commonNumType d
                     end
             end
 
@@ -3168,6 +3221,7 @@ and typeOfTag (tag:Mach.VAL_TAG)
          * error regs ["typeOfVal on NoTag object"])
          *)
         Ast.SpecialType Ast.Any
+
                                 
 and typeOfVal (regs:Mach.REGS)
               (v:Mach.VAL)
