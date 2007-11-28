@@ -24,15 +24,6 @@
 
 %%%%%%%% language %%%%%%%%%%%%%%%
 
-% deprecated
-\newcommand{\mkref}[2]{\t{ref}~{#1}~#2}
-\newcommand{\mkrefl}[3]{\t{ref}^{#3}~{#1}~#2}
-\newcommand{\deref}[1]{!{#1}}
-\newcommand{\dereft}[2]{!{#1}:{#2}}
-\newcommand{\derefl}[2]{!^{#2}{#1}}
-\newcommand{\assign}[2]{{#1}:={#2}}
-\newcommand{\assignl}[3]{{#1}:=^{#3}{#2}}
-\newcommand{\Ref}[1]{\t{Ref}~{#1}}
 
 \newcommand{\slam}[3]{\lambda#1\!:\!#2.\,\,#3}
 \newcommand{\lam}[4]{\lambda#1\!:\!#2.\,\,#4:#3}
@@ -59,12 +50,14 @@
 \newcommand{\arrowt}[2]{#1\rightarrow #2}
 \newcommand{\defeq}{\stackrel{\mathrm{def}}{=}}
 
-\newcommand{\subtypeword}[1]{\,\,<\!\!\!{\tiny{#1}}\,\,}
-\renewcommand{\subtypeword}[1]{\,\,<\!\!_{\tiny{#1}}\,\,}
-\newcommand{\subtyped}[3]{#2 \subtypeword{#1} #3}
-\newcommand{\subtype}[2]{#1 \subtypeword{\top} #2}
-%\newcommand{\subtypem}[2]{#1 \subtypeword{\bot} #2}
-\newcommand{\notd}[1]{\overline #1}
+\newcommand{\subtypeword}{\,<\,}
+\newcommand{\subtype}[2]{#1 \subtypeword #2}
+\newcommand{\compatible}[2]{#1 \leadsto #2}
+\newcommand{\comsubtype}[2]{#1 <\!\!\leadsto #2}
+\newcommand{\csupertype}[2]{#1 >\leadsto #2}
+
+\newcommand{\consistent}[2]{#1 \sim #2}
+\newcommand{\consubtype}[2]{#1 <\!\!\sim #2}
 
 \newcommand{\convert}[2]{{#1}\convertword{#2}}
 \newcommand{\convertword}{\mbox{\,\,$\sim :$\,\,}}
@@ -111,8 +104,7 @@
 %\newcommand{\assignable}[2]{#1<#2}
 \newcommand{\likev}[2]{#1 \sqsubset_{\sigma} #2 }
 \renewcommand{\likev}[2]{#1 ~\fun{XXXX like}_{\sigma}~ #2 }
-\newcommand{\compatible}[2]{#1 XXX \sim: #2 }
-\newcommand{\convertible}[2]{#1 XXX \prec #2 }
+%\newcommand{\compatible}[2]{#1 XXX \sim: #2 }
  
 %\newcommand{\allocty}[2]{#1:_{\sigma}#2}
 \newcommand{\allocty}[1]{ty(#1)}
@@ -156,7 +148,9 @@ to better understand these concepts and to clarify what guarantees can be provid
 \item
 26 Nov: rework with two subtype relations
 \item
-todo: add typedefs, rework verifier and optimizer
+27 Nov: rework with ideas from Siek+Taha
+\item
+todo: add typedefs, like, wrap, and int to bool conversions
 \end{itemize}
 
 \clearpage
@@ -165,20 +159,20 @@ todo: add typedefs, rework verifier and optimizer
 We consider the implementation of a \emph{gradual typed} language that supports both
 typed and untyped terms, which interoperate in a flexible manner.
 We begin by defining the syntax of terms and types in the language: see Figure~\ref{fig:syntax}.
-In addition to the usual terms of the lambda calculus (variables, abstractions, and application), 
-the language also includes constants and expressions to create, dereference, and update objects.
-It also includes \t{is} expressions, which check that a value has a particular type,
-and \t{wrap} expressions, which, if necessary, wrap the given value to ensure that it behaves like it has that type. 
+The language extends  the lambda calculus (variables, abstractions, and application)
+with object allocation, dereference, and update. 
+It also includes \t{as} expressions, which check that a value has a particular type.
+%and \t{wrap} expressions, which, if necessary, wrap the given value to ensure that it behaves like it has that type. 
 
-The type language is fairly rich. In addition to  base types ($\Int$ and $\Bool$), function types,
-and object types, the language includes additional types related to gradual typing.
-The type $\dynamic$ is (roughly) a top type, and indicates that no static type information is known.
+The type language includes integers, function types, object types,
+and the  type $\dynamic$, which  indicates that no static type information is known.
 %The type $\dynobjty$ denotes an object type, where no static type information
 %is known about the names of fields of that object.
+\comment{
 The type $\likety{T}$ describes values whose value components match $T$, but whose type components may be more vague than $T$, due to the presence of the type $\dynamic$. (Due to imperative constructs, that matching-value guarantee does not persist, and so \t{like} types are helpful for debugging but do not provide strong guarantees.)
 
 We include generic function definition, generic function application, and the associated polymorphic types and type variables.
-
+}
 %Any value of type $\likety{T}$ can be assigned to a variable to type $\wrapty{T}$,
 %but that value is immediate wrapped (if necessary) so that the resulting value is guaranteed to have type $T$. 
 
@@ -210,69 +204,75 @@ We include generic function definition, generic function application, and the as
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{Subtyping}
+\section{Type Relations}
 
 
 \begin{displayfigure}{th}{Subtyping}
 \label{fig:subtype}
 \begin{trules}
-\headtrule{$\subtyped{m}{S}{T}$}{Subtyping}
+\headtrule{$\subtype{S}{T}$}{Subtyping}
 \trule{Sub-Refl}{
 	}{
-		\subtyped{m}{T}{T}
-	}
-\trule{Sub-Dyn-Top}{
-	}{
-		\subtyped{\top}{T}{\dynamic}
-	}
-\trule{Sub-Dyn-Bot}{
-	}{
-		\subtyped{\bot}{\dynamic}T
+		\subtype{T}{T}
 	}
 \trule{Sub-Arrow}{
-		%(\subtyped{m}{T_1}{S_1}\mbox{ or }T_1=\dynamic)\\
-		\subtyped{\notd m}{T_1}{S_1} \qquad
-		\subtyped{m}{S_2}{T_2}
+		\subtype{T_1}{S_1} \qquad
+		\subtype{S_2}{T_2}
 	}{
-		\subtyped{m}{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
 	}
 \trule{Sub-Obj}{
-		\subtyped{\notd m}{T_i}{S_i}\qquad
-		\subtyped{m}{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+		\subtype{T_i}{S_i}\qquad
+		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
 	}{
-		\subtyped{m}{\objty{l_i:S_i^{i\in 1..n+m}}}
+		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\headtrule{$\compatible{S}{T}$}{Compatibility}
+\trule{Com-Refl}{
+	}{
+		\compatible{T}{T}
+	}
+\trule{Com-Dyn}{
+	}{
+		\compatible{T}{\dynamic}
+	}
+\trule{Com-Arrow}{
+		\compatible{S_1}{T_1} \qquad
+		\compatible{S_2}{T_2}
+	}{
+		\compatible{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{Com-Obj}{
+		\compatible{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\compatible{\objty{l_i:S_i^{i\in 1..n+m}}}
 				{\objty{l_i:T_i^{i\in 1..n}}}
 	}
 \end{trules}
 \end{displayfigure}
 
-The type system supports the type $\dynamic$, which denotes an absence of static type information. We would like $\lamt\dynamic\dynamic$ to be the most general function type.
-That is, if a variable $f$ has type $\lamt{\dynamic}{\dynamic}$, then no static type information is available about the true domain of the function bound (at run-time) to $f$; instead, a dynamic type check is performed at run-time. 
+The type system is based in part on the usual subtype relation $\subtype S T$.
 
-Since $\lamt\dynamic\dynamic$ is the maximal function type, we need that:
-\[
-	(\lamt{S}{T})  ~~<:~~  (\lamt\dynamic\dynamic)
-\]
-for any function type $\lamt{S}{T}$. However,  the usual rule for function subtyping then implies that $T~<:~\dynamic$ (that is, $\dynamic$ is a maximal or top type), and also that
-$\dynamic ~<:~ S$ (that is, $\dynamic$ is a minimal or bottom type). 
+In addition, to support a notion of gradual typing, we also have a compatibility relation $\compatible S T$,
+which holds provided that $S$ and $T$ are identical except that $T$ may include $dynamic$ in places where $S$ does not. 
+Unlike the consistency relation of earlier work~\cite{SiekTaha}, our compatibility relation is asymmetric (since $\compatible \dynamic \Int$ does not hold), but is transitive.
 
-To resolve these two differing interpretations of $\dynamic$, we introduce \emph{two} subtype relations, $\subtypeword{\top}$ (the ''top-subtype'' or simply ''subtype'' relation) and $\subtypeword{\bot}$ (the ''bottom-subtype'' relation), that differ in their interpretation of $\dynamic$. 
-Figure~\ref{fig:subtype} defines these relations, using the meta-variable $m$ to range over $\setz{\top,\bot}$.
-The rule \rel{Sub-Arrow} contravariant in the domain position, and also switches the interpretation of $\dynamic$. The rule \rel{Sub-Obj} introduces width-subtyping on objects, and again switches the interpretation of $\dynamic$ for the contravariant check. (Note that writes to an object field in general require a run-time check, analogous to the covariant array write check in Java.)
+The \emph{compatible-subtyping} relation $\comsubtype S T$ is then the composition of these two relations: $\comsubtype S T$ hold if there exists $U$ such that $\subtype S U$ and $\compatible U T$.
 
-Unlike the consistency relation of earlier work~\cite{SiekTaha}, both subtyping relations are transitively closed.
-
+%Similarly, the \emph{consistent-supertype} relation $\csupertype S T$ holds if there exists $U$ such that $S>U$ and $\compatible U T$. These two relations can be defined directly via mutual
+ 
 \begin{lemma}
-$\subtypeword{m}$ is reflexively and transitively closed.
+Subtyping, compatibility, and compatible-subtyping  are transitive.
 \end{lemma}
-TBP. FIXME.
+PROVEME
 
 We have
 \[
 \begin{array}{rcl}
-	(\lamt{S}{T})  		&\subtypeword{\top}&  (\lamt\dynamic\dynamic) \\
-	\objty{l:T,\dots}	&\subtypeword{\top}&  \objty{l:\dynamic} \\
-	\objty{\dots}	   	&\subtypeword{\top}&  \objty{} \\
+	(\lamt{S}{T})  		&\comsubtype{}{}&  (\lamt\dynamic\dynamic) \\
+	\objty{l:T,\dots}		& \comsubtype{}{}&  \objty{l:\dynamic} \\
+	\objty{\dots}	   	& \comsubtype{}{}&  \objty{} \\
 \end{array}
 \]
 
@@ -378,8 +378,9 @@ see  Figure ~\ref{fig:convert}.
 {\bf Dynamic Type Checks}
 \[
 \begin{array}{rcl}
-	\convert{v}{T} = v &\mbox{iff}&\mbox{$\istype v T$} \\
-	\istype{v}{T}      &\mbox{iff}& \mbox{$\subtype{\allocty v}{T}$} \\
+	\convert{v}{T} = v &\mbox{iff}&%\mbox{$\istype v T$} \\
+	%\istype{v}{T}      &\mbox{iff}&
+	 \mbox{$\comsubtype{\allocty v}{T}$} \\
 \end{array}
 \]
  \end{displayfigure} 
@@ -389,6 +390,10 @@ see  Figure ~\ref{fig:convert}.
 \clearpage
 \section{Check Optimization}
 
+In a traditional statically typed language, the type system both detects errors and eliminates dynamic checks.
+This presentation separates these two components, primarily so that the check elimination phase 
+can be run even in   \t{standard} mode.
+ 
 We now sketch a 
 type-based analysis that statically identifies dynamic type checks that can be eliminated.
 We introduce the ``\safe{e}'' expression form to indicate where run-time checks are unnecessary.
@@ -399,16 +404,20 @@ It is straightforward to formulate the operational semantics of the extended lan
 
 Figure~\ref{fig:typerulesopt} presents \emph{optimization rules}, which verify that $\safe \dots$ occurs in correct places;
 it is straightforward to reformulate the analysis to infer these $\safe{}$ annotations.
-These rules rely on the relation $S\Implies T$, which is designed to satisfy the lemma:
+These rules rely on the relation $S\Implies T$, which is defined to hold if $\subtype S T$ and $T$ is $\dynamic$-free.
 
+The following lemma states that if a value of allocated type $V$ is in a variable of static type $S$,
+and is passed to a context with a static requirement $T$ but underlying dynamic requirement $U$,
+then if $\implies S T$ then we know that the value also has type $U$.
+ 
 \begin{lemma}
-If $\istype v{S}$ and $S\Implies T$ then $\istype v{T}$.
+If $\comsubtype V {S}$ and $S\Implies T$ and $U > U'$ and $\compatible {U'} T$ then $\comsubtype V U$.
 \end{lemma}
 
 \begin{lemma}
 The $\Implies$ relation is transitive. 
 \end{lemma}
-PROVEME
+
 
 \begin{lemma}[No Failure]
 For any term $e$ with no $\safe{}$ annotations, there exists $T$ such that
@@ -417,42 +426,9 @@ $\judges{\emptyset}{e}{T}$ .
 PROVEME
 
 \begin{lemma}[Soundness]
-If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stuck.
+If $\judges{\emptyset}{e}{T}$ then $\safe{}$ operations in $e$ can never get stuck.
 \end{lemma}
 PROVEME
-
-
-\begin{displayfigure}{th}{Implication on Types}
-\label{fig:subtype}
-\begin{trules}
-\headtrule{$\implies{S}{T}$}{Implication on Types}
-\trule{Imp-Refl}{
-	}{
-		\implies{T}{T}
-	}
-\trule{Imp-Dyn-Top}{
-	}{
-		\implies{T}{\dynamic}
-	}
-\trule{Imp-Arrow}{
-		%(\implies{T_1}{S_1}\mbox{ or }T_1=\dynamic)\\
-		\implies{T_1}{S_1} \qquad
-		\implies{S_2}{T_2}
-	}{
-		\implies{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
-	}
-\trule{Imp-Obj}{
-		\implies{T_i}{S_i}\qquad
-		\implies{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
-	}{
-		\implies{\objty{l_i:S_i^{i\in 1..n+m}}}
-				{\objty{l_i:T_i^{i\in 1..n}}}
-	}
-\end{trules}
-\end{displayfigure}
-
-
-\newcommand{\maybesafe}[1]{\t{safe}^?~#1}
 
 \begin{displayfigure}{th}{Type Rules for Optimization}
 \label{fig:typerulesopt}
@@ -552,71 +528,53 @@ PROVEME
 
 
 
-\begin{displayfigure}{th}{Type Relations}
+
+\begin{displayfigure}{th}{Consistency}
+\label{fig:subtype}
 \begin{trules}
-\headtrule{$\convertible{S}{T}$}{Convertible Types}
-\trule{Con-Sub}{
-		\subtype S T
+\headtrule{$\consistent{S}{T}$}{Consistency}
+\trule{Con-Refl}{
 	}{
-		\convertible{S}{T}
+		\consistent{T}{T}
 	}
-\trule{Con-IntBool}{
+\trule{Con-Dyn}{
 	}{
-		\convertible{\Int}{\Bool}
+		\consistent{T}{\dynamic}
 	}
-\trule{Con-Wrap}{
-		\compatible S T
+\trule{Con-Dyn}{
 	}{
-		\convertible{S}{\wrapty T}
+		\consistent{\dynamic}{T}
+	}
+\trule{Con-Arrow}{
+		\consistent{S_1}{T_1} \qquad
+		\consistent{S_2}{T_2}
+	}{
+		\consistent{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{Con-Obj}{
+		\consistent{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\consistent{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
 	}
 \end{trules}
 \end{displayfigure}
 
-In a traditional statically typed language, the type system fulfills two goals: 
-\begin{enumerate}
-\item
-It detects certain errors at compile time.
-\item
-It guarantees what kinds of values are produced by certain expressions, which enables  run-time check elimination.
-\end{enumerate}
-The situation in ES4 is somewhat different, because of two reasons. First, in \t{standard} mode, we would like to eliminate run-time checks where possible, using a type-based analysis,
-without reporting any compile-time type errors.
-Second, \t{like} types weaken the guarantees provided by \t{strict} mode.
-For these reasons, we actually present \emph{two} type systems.
-
-For example, if a variable $x$ has type $\likety{\objty{f:\Int}}$,
-then $\objget x f$  could actually return a value of any type.  
-Nevertheless, 
-$\objget x f$
-would be expected to produce values of type $\Int$, and so 
-the expression
-$\objget{\objget x f} g$ would yield a compile-time type error.
-Thus, we say that $\objget x f$ has type $\Int$, but this type is \emph{only} a statement of intent;
-it does not guarantee what kinds of values are returned by that expression,
-and so cannot be used for run-time check elimination.
-
-
 
 The strict mode type system is based on a judgement $\judge{E}{e}{T}$,
 stating that expression $e$ has type $T$ in environment $E$.
-Note that the type $T$ \emph{only} indicates that $e$ is intended to produce values of type $T$; there are no guarantees here, due to the use of \t{like} types. Thus, the strict mode type system 
-If $T$ is not a $\likety{}$ type, then $e$ will only produce values of that type.
-If $T=\likety{T'}$, then the intent is that $e$ will only produce values of type $T'$,
-but there is no guarantee. However, this intent can be still used to detect type errors at compile time.
-%We sometimes use $k$ to range over $\likety{}^+$ or $\epsilon$.
+Note that the type $T$ \emph{only} indicates that $e$ \emph{is intended to} produce values of type $T$.
+Note that there are no guarantees here; the purpose of the strict mode type system is only to heuristically detect errors at verification time.
 
-Note that the judgement $\judge{E}{e}{T}$ means that $e$ is \emph{expected} to only produce values of type $T$,
-and the purpose of the strict mode type system is only to heuristically detect errors at verification time.
-The following section presents a type system with stronger guarantees that are sufficient for removing some run-time type checks.
-
-If $\judge{E}{e}{T}$, then $T$ is not a \t{like} or \t{wrap} type (at least at the top level).
-
-\begin{displayfigure}{th}{Type Rules for Strict Mode}
+The \emph{consistency} relation $\consistent S T$ checks if types $S$ and $T$ are identical, where $\dynamic$ in either $S$ or $T$ matches any type. Thus, consistency extends  the compatibility relation, and it is symmetric but not transitive.
+The \emph{consistent-subtyping} relation $\consubtype S T$ holds if there exists $U$ such that $\subtype S U$ and $\consistent U T$. The type rules rely on this consistent-subtyping relation to see if an expression of static type $S$ can be passed to a context expecting a type $T$.
+ 
+ \begin{displayfigure}{th}{Type Rules for Strict Mode}
 \label{fig:typerules}
 \begin{trules}
 \headtrule{$\judge{E}{t}{T}$}{\underline{T}ype rules\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\mbox{}}
 \trule{T-Var}{
-		(x:(\t{like}~|~\t{wrap})^*~T)\in E
+		(x: T)\in E
 	}{
 		\judge{E}{x}{T}
 	}
@@ -626,14 +584,14 @@ If $\judge{E}{e}{T}$, then $T$ is not a \t{like} or \t{wrap} type (at least at t
 	}
 \trule{T-Fun}{
 		\judge{E,x:S}{e}{T'} \qquad
-		\convertible{T'}{T} 
+		\consubtype{T'}{T} 
 	}{
 		\judge{E}{(\lam{x}{S}{T}{e})}{(\lamt{S}{T})}
 	}
 \trule{T-App1}{
 		\judge{E}{t_1}{(\lamt{S}{T})}\qquad
 		\judge{E}{t_2}{S'} \qquad
-		\convertible{S'}{S} \\
+		\consubtype{S'}{S} \\
 	%	(k,k')\in\setz{(\likety{},\likety{\!\!}),(\wrapty{},\epsilon),(\epsilon,\epsilon)} \\
 	}{
 		\judge{E}{(\app{t_1}{t_2})}{T}
@@ -664,7 +622,7 @@ If $\judge{E}{e}{T}$, then $T$ is not a \t{like} or \t{wrap} type (at least at t
 %	}
 \trule{T-Alloc}{
 		\judge{E}{t_i}{S_i} \qquad
-		\convertible{S_i}{T_i} \qquad
+		\consubtype{S_i}{T_i} \qquad
 		T=\objty{l_i:T_i^{i\in 1..n}}
 	}{
 		\judge{E}{(\obje{l_i=t_i^{i\in 1..n}}{T})}{T}
@@ -683,7 +641,7 @@ If $\judge{E}{e}{T}$, then $T$ is not a \t{like} or \t{wrap} type (at least at t
 \trule{T-Set1}{
 		\judge{E}{e_1}{\objty{l:T,\dots}} \qquad
 		\judge{E}{e_2}{S} \qquad
-		\convertible{S}{T}  
+		\consubtype{S}{T}  
 	}{
 		\judge{E}{\objset{e_1}{l}{e_2}}{S}
 	}
@@ -718,4 +676,40 @@ If $\judge{E}{e}{T}$, then $T$ is not a \t{like} or \t{wrap} type (at least at t
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \end{document}
+
+
+
+\begin{displayfigure}{th}{Subtyping}
+\label{fig:subtype}
+\begin{trules}
+\headtrule{$\consubtypeÄ{S}{T}$}{Subtyping}
+\trule{Sub-Refl}{
+	}{
+		\consubtype{T}{T}
+	}
+\trule{Sub-Dyn-Top}{
+	}{
+		\consubtyped{\top}{T}{\dynamic}
+	}
+\trule{Sub-Dyn-Bot}{
+	}{
+		\consubtyped{\bot}{\dynamic}T
+	}
+\trule{Sub-Arrow}{
+		%(\consubtype{T_1}{S_1}\mbox{ or }T_1=\dynamic)\\
+		\consubtyped{\notd m}{T_1}{S_1} \qquad
+		\consubtype{S_2}{T_2}
+	}{
+		\consubtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{Sub-Obj}{
+		\consubtyped{\notd m}{T_i}{S_i}\qquad
+		\consubtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\consubtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\end{trules}
+\end{displayfigure}
+
 
