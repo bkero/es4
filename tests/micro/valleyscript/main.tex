@@ -1,4 +1,4 @@
-\documentclass{article}
+ \documentclass{article}
 \usepackage{amssymb}
 %\usepackage{gastex}
 \usepackage{graphics}
@@ -150,7 +150,11 @@ to better understand these concepts and to clarify what guarantees can be provid
 \item
 27 Nov: rework with ideas from Siek+Taha
 \item
-todo: add typedefs, like, wrap, and int to bool conversions
+todo: check proofs for like, wrap, and int to bool conversions
+\item
+todo: added typedefs and generics
+\item
+todo: resolve contravariant subtyping on function domains
 \end{itemize}
 
 \clearpage
@@ -288,9 +292,6 @@ The set of values in the language is given by:
 	\mydefcase{n								}{integer constant} 
 	\mydefcase{\lam{x}{S}{T}{e} 				}{abstraction} 
 	\mydefcase{a_T							}{object address with type $T$}
-	\\
-	\mydefhead{o ::=\qquad\qquad\qquad\qquad\qquad}{Object value:} 
-	\mydefcase{\obje{\bar l = \bar v}{T}		}{object value}
 \end{array}
 \]
 Each object address $a$ is annotated with the type $T$ of the object it points to.
@@ -608,12 +609,6 @@ The \emph{consistent-subtyping} relation $\consubtype S T$ holds if there exists
 	}{
 		\judge{E}{\cast{t}{T}}{T}
 	}
-\trule{T-Wrap}{
-		\judge{E}{t}{S}%\qquad 
-		%\compatible{S}{T}
-	}{
-		\judge{E}{\wrap{t}{T}}{T}
-	}
 %\trule{T-Let}{
 %		\judge{E}{t_1}{S}\qquad
 %		\judge{E,x:S}{t_2}{T} 
@@ -654,30 +649,133 @@ The \emph{consistent-subtyping} relation $\consubtype S T$ holds if there exists
 \end{trules}
 \end{displayfigure}
 
-\comment{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \clearpage
-\section{Sugar}
-\[
-\begin{array}{rcl}
+\section{Extensions}
 
-\lam{x}{(\t{wrap}~{S})}{T}{e} &=&
-	\lam{x}{(\likety{S})}{T}
-	    {\lete{x}{S}{(\wrap{x}{S})}{e}}
-	    \\~\\
-\lam{x}{S}{(\t{wrap}~T)}{e} &=&
-	\lam{x}{S}{T}{(\wrap{e}{T})}
-	\\~\\
-\t{wrap}~(\lam x S T e) &=&
-	\lam{x}{(\t{wrap}~S)}Te
+We now extend the language and type language:
+\[
+\begin{array}{llr}
+	\mydefhead{e ::=~\dots\qquad\qquad\qquad\qquad\qquad}{Terms:} 
+	\mydefcase{b								}{boolean constants} 
+	\mydefcase{\wrap e T						}{wrap operation} 
+\\
+	\mydefhead{S,T::=~\dots}{Types:} 
+	\mydefcase{\Bool							}{booleans}
+	\mydefcase{\likety{T} 					}{like type}
+	\mydefcase{\wrapty{T} 					}{wrap type}
+\\
+	\mydefhead{v::=~\dots}{Values:} 
+	\mydefcase{b								}{boolean constants} 
+	\mydefcase{\wrapv{v}{T} 					}{wrapped value}
 \end{array}
 \]
-}
+
+For subtyping, like types are increasing and covariant.
+
+\begin{trules}
+%\headtrule{$\subtype{S}{T}$}{Subtyping}
+\trule{Sub-Like-Inc}{
+		\subtype S T 
+	}{
+		\subtype S {\likety T}
+	}
+\trule{Sub-Like-Cov}{
+		\subtype S T 
+	}{
+		\subtype {\likety S} {\likety T}
+	}
+\trule{Sub-Wrap}{
+		\subtype S T
+	}{
+		\subtype {\wrapty S} T
+	}
+%\headtrule{$\compatible{S}{T}$}{Compatibility}
+\trule{Com-Like}{
+		\compatible S T
+	}{
+		\compatible{\likety S}{\likety T}
+	}
+\trule{Com-Like}{
+		\compatible S T
+	}{
+		\compatible{\wrapty S}{\wrapty T}
+	}
+\end{trules}
+
+We add the following evaluation rules:
+\[
+\begin{array}{@{}rcllr}
+	\sigma,C[{\app{(\wrapv{w}{(\lamt{S}{T})})}
+	              {v}}]
+	&\lred&
+	\sigma,C[\cast{(w~(\cast{v}{S}))}{T}]
+	&\rel{E-Beta-w}
+\\
+	\sigma,C[\objget{(\wrapv{w}{\objty{l:T,\dots}})}{l}]
+	&\lred&
+	\sigma,C[\cast{(\objget{w}{l})}{T}] 
+	&\rel{E-Get-w}
+\\
+	\sigma,C[\objset{(\wrapv{w}{\objty{l:T,\dots}})}{l}{v}]
+	&\lred&
+	\sigma,C[\objset{w}{l}{\convert{v}{T}}]
+	&\rel{E-Assign-w} \\
+\end{array}
+\]
+ 
+We extend \fun{convert} as follows:
+\[
+\begin{array}{rcll}
+	\convert{v}{T} 		&=& v 		&\mbox{if $\istype v T$} \\
+	\convert{0}{\Bool} &=& \false \\
+	\convert{n}{\Bool} &=& \true 	 &n\not=0\\
+	\convert{v}{\wrapty T} &=& v	&\mbox{if $\istype v T$} \\
+	\convert{v}{\wrapty T} &=& \wrap{v}{T}	&\mbox{if $\istype v {\likety T}$} \\
+%	\\
+%	\istype{v}{T}   &\mbox{if}& \comsubtype{\allocty v}{T} \\
+%	\istype{a_S}{T} &\mbox{if}& \sigma(a)=\objv{l_i:v_i} \mbox{ and }T=\objty{l_i:T_i} \mbox{ and } \istype {v_i}{\likety{T_i}}
+\end{array}
+\]
+\begin{trules}
+\headtrule{$\istype{v}{T}$}{Dynamic type check}
+\trule{Is-Ok}{
+		\comsubtype{\allocty{v}}{T}
+	}{
+		\istype{v}{T}
+	}
+\trule{Is-Like}{
+		\sigma(a_S) = \objv{l_i=v_i^{i\in 1..n+m}} \\
+	%	\compatible{S}{\objty{l_i:T_i^{i\in 1..n}}} \\
+		\istype{v_i}{\likety{T_i}} \mbox{ ~for~} {i\in 1..n}
+	}{
+		\istype{a_S}{\likety \objty{l_i:T_i^{i\in 1..n}}}
+	}
+\end{trules}
+
+We extend the $\consubtype{}{}$ relation with $\consubtype{\Int}{\Bool}$.
+
+We add the type checking and optimization rules for wrap:
+\begin{trules}
+\trule{O-As}{
+		\judges{E}{t}{S}%\qquad 
+		%\compatible{S}{T}
+	}{
+		\judges{E}{\wrap{t}{T}}{T}
+	}
+\trule{T-Wrap}{
+		\judge{E}{t}{S}%\qquad 
+		%\compatible{S}{T}
+	}{
+		\judge{E}{\wrap{t}{T}}{T}
+	}
+\end{trules}
+We believe the current system then fully supports \t{like} and \t{wrap} types, and implicit integer-to-boolean conversions.
+All the necessary proofs still remain to be done.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \end{document}
-
-
 
 \begin{displayfigure}{th}{Subtyping}
 \label{fig:subtype}
