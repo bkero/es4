@@ -874,11 +874,21 @@ and checkAndConvert (regs:Mach.REGS)
             end
     end
 
+
+and getObjTag (obj:Mach.OBJ)
+    : Mach.VAL_TAG = 
+    let
+        val Mach.Obj { tag, ... } = obj
+    in
+        tag
+    end
+
+
 and isDynamic (regs:Mach.REGS)
               (obj:Mach.OBJ)
     : bool =
     let
-        val Mach.Obj { tag, ... } = obj
+        val tag = getObjTag obj
     in
         case tag of
             Mach.ObjectTag _ => true
@@ -887,6 +897,7 @@ and isDynamic (regs:Mach.REGS)
           | Mach.NoTag => true
           | Mach.ClassTag ity => (#dynamic ity)
     end
+
 
 and setValueOrVirtual (regs:Mach.REGS)
                       (obj:Mach.OBJ)
@@ -1005,6 +1016,7 @@ and setValue (regs:Mach.REGS)
              (v:Mach.VAL)
     : unit =
     setValueOrVirtual regs base name v true
+
 
 (* A "defValue" call occurs when assigning a property definition's
  * initial value, as specified by the user. All other assignments
@@ -2759,6 +2771,78 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
 
+and doubleToByte (regs:Mach.REGS)
+                 (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val i = Real64.trunc d
+        val word = Word8.fromInt i
+    in
+        newByte regs word
+    end
+
+
+and doubleToUInt (regs:Mach.REGS)
+                 (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
+        val word = Word32.fromLargeInt lg
+    in
+        newUInt regs word
+    end
+
+
+and doubleToInt (regs:Mach.REGS)
+                (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
+        val int = Int32.fromLarge lg
+    in
+        newInt regs int
+    end
+
+
+and doubleToNumberType (regs:Mach.REGS)
+                       (commonNumType:NUMBER_TYPE)
+                       (d:Real64.real)
+    : Mach.VAL =
+    let
+        val truncated = Real64.realTrunc d
+
+        val isIntegral = 
+            if Real64.isFinite d
+            then Real64.==(truncated, d)
+            else false
+
+        fun isInRange low high = 
+            low <= truncated andalso truncated <= high
+
+        val fitsInByte = isInRange 0.0 255.0
+        val fitsInUInt = isInRange 0.0 4294967295.0            
+        val fitsInInt = isInRange (~2147483647.0) 2147483647.0
+    in
+        if isIntegral
+        then 
+            case commonNumType of
+                ByteNum => if fitsInByte
+                           then doubleToByte regs d
+                           else 
+                               if fitsInUInt 
+                               then doubleToUInt regs d
+                               else newDouble regs d
+              | UIntNum => if fitsInUInt
+                           then doubleToUInt regs d
+                           else newDouble regs d
+              | IntNum =>  if fitsInInt
+                           then doubleToInt regs d
+                           else newDouble regs d
+              | _ => newDouble regs d
+        else 
+            newDouble regs d
+    end
+
 and performBinop (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (va:Mach.VAL)
@@ -2787,46 +2871,27 @@ and performBinop (regs:Mach.REGS)
              * 
              *)
             let                     
-                val commonNumType = promoteToCommon regs 
-                                                    (numTypeOf regs a) 
-                                                    (numTypeOf regs b)
+                val na = numTypeOf regs a
+                val nb = numTypeOf regs b
+                val commonNumType = promoteToCommon regs na nb
             in
                 case commonNumType of 
                     DecimalNum => 
-                    newDecimal regs (decimalOp precision mode
-                                               (toDecimal ctxt a) 
-                                               (toDecimal ctxt b))
+                    let
+                        val da = toDecimal ctxt a
+                        val db = toDecimal ctxt b
+                        val d = decimalOp precision mode da db
+                    in
+                        newDecimal regs d
+                    end
 
                   | _ => 
                     let 
-                        val d = doubleOp ((toDouble a), (toDouble b))
-                        val isIntegral = 
-                            if Real64.isFinite d
-                            then Real64.==(Real64.realTrunc d, d)
-                            else false
+                        val da = toDouble a
+                        val db = toDouble b
+                        val d = doubleOp (da, db)
                     in
-                        if isIntegral
-                        then 
-                            let 
-                                val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
-                            in
-                                case commonNumType of
-                                    ByteNum => if Mach.fitsInByte lg
-                                               then newByte regs (Word8.fromLargeInt lg)
-                                               else 
-                                                   if Mach.fitsInUInt lg
-                                                   then newUInt regs (Word32.fromLargeInt lg)
-                                                   else newDouble regs d
-                                  | UIntNum => if Mach.fitsInUInt lg
-                                               then newUInt regs (Word32.fromLargeInt lg)
-                                               else newDouble regs d
-                                  | IntNum =>  if Mach.fitsInInt lg
-                                               then newInt regs (Int32.fromLarge lg)
-                                               else newDouble regs d
-                                  | _ => newDouble regs d
-                            end
-                        else 
-                            newDouble regs d
+                        doubleToNumberType regs commonNumType d
                     end
             end
 
@@ -3126,9 +3191,38 @@ and doubleEquals (regs:Mach.REGS)
                  (a:Mach.VAL)
                  (b:Mach.VAL)
     : bool =
-    toBoolean (performBinop regs Ast.Equals a b)
+    let
+        val b = performBinop regs Ast.Equals a b
+    in
+        toBoolean b
+    end
 
 
+and typeOfTag (tag:Mach.VAL_TAG)
+    : (Ast.TYPE_EXPR) =
+    case tag of
+        (* 
+         * FIXME: Class and Object should be pulling their 
+         * ty from their magic closures, not their tags.
+         * 
+         * Possibly the tags should not carry types at all? Or 
+         * should carry TYs rather than TYPE_EXPR subforms?
+         *)
+        Mach.ClassTag ity => Ast.InstanceType ity
+      | Mach.ObjectTag tys => Ast.ObjectType tys
+      | Mach.ArrayTag tys => Ast.ArrayType tys
+      | Mach.FunctionTag fty => Ast.FunctionType fty
+      | Mach.NoTag =>
+        (* FIXME: this would be a hard error if we didn't use NoTag values
+         * as temporaries. Currently we do, so there are contexts where we
+         * want them to have a type in order to pass a runtime type test.
+         * this is of dubious value to me. -graydon.
+         *
+         * error regs ["typeOfVal on NoTag object"])
+         *)
+        Ast.SpecialType Ast.Any
+
+                                
 and typeOfVal (regs:Mach.REGS)
               (v:Mach.VAL)
     : Ast.TYPE_EXPR =
@@ -3136,38 +3230,53 @@ and typeOfVal (regs:Mach.REGS)
         val te = case v of
                      Mach.Undef => Ast.SpecialType Ast.Undefined
                    | Mach.Null => Ast.SpecialType Ast.Null
-                   | Mach.Object (Mach.Obj {tag, ...}) =>
-                     (case tag of
-                          (* 
-                           * FIXME: Class and Object should be pulling their 
-                           * ty from their magic closures, not their tags.
-                           * 
-                           * Possibly the tags should not carry types at all? Or 
-                           * should carry TYs rather than TYPE_EXPR subforms?
-                           *)
-                          Mach.ClassTag ity => Ast.InstanceType ity
-                        | Mach.ObjectTag tys => Ast.ObjectType tys
-                        | Mach.ArrayTag tys => Ast.ArrayType tys
-                        | Mach.FunctionTag fty => Ast.FunctionType fty
-                        | Mach.NoTag =>
-                          (* FIXME: this would be a hard error if we didn't use NoTag values
-                           * as temporaries. Currently we do, so there are contexts where we
-                           * want them to have a type in order to pass a runtime type test.
-                           * this is of dubious value to me. -graydon.
-                           *
-                           * error regs ["typeOfVal on NoTag object"])
-                           *)
-                          Ast.SpecialType Ast.Any)
+                   | Mach.Object obj => 
+                     let 
+                         val tag = getObjTag obj
+                     in
+                         typeOfTag tag
+                     end
+        val ty = makeTy te
     in
-        evalTy regs (makeTy te)
+        evalTy regs ty
     end
-                     
+
 
 and isCompatible (regs:Mach.REGS)
                  (v:Mach.VAL)
                  (tyExpr:Ast.TYPE_EXPR)
     : bool =
-    Type.groundIsCompatible (typeOfVal regs v) tyExpr
+    let
+        val t = typeOfVal regs v
+    in        
+        Type.groundIsCompatible t tyExpr
+    end
+
+
+and evalLogicalAnd (regs:Mach.REGS)
+                   (aexpr:Ast.EXPR)
+                   (bexpr:Ast.EXPR)
+    : Mach.VAL = 
+    let
+        val a = evalExpr regs aexpr
+    in
+        if toBoolean a
+        then evalExpr regs bexpr
+        else a
+    end
+
+
+and evalLogicalOr (regs:Mach.REGS)
+                  (aexpr:Ast.EXPR)
+                  (bexpr:Ast.EXPR)
+    : Mach.VAL = 
+    let
+        val a = evalExpr regs aexpr
+    in
+        if toBoolean a
+        then a
+        else evalExpr regs bexpr
+    end
 
 
 and evalBinaryTypeOp (regs:Mach.REGS)
@@ -3186,6 +3295,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
           | Ast.To => checkAndConvert regs v ty
           | Ast.Is => newBoolean regs ((typeOfVal regs v) <: (evalTy regs ty))
     end
+
 
 and hasInstance (regs:Mach.REGS)
                 (obj:Mach.OBJ)
@@ -3213,63 +3323,72 @@ and hasInstance (regs:Mach.REGS)
         tryVal v
     end
 
+
+and objHasInstance (regs:Mach.REGS)
+                   (ob:Mach.OBJ)
+                   (a:Mach.VAL)                   
+    : Mach.VAL = 
+    let
+        val h = hasInstance regs ob a
+    in
+        newBoolean regs h
+    end
+
+
+and evalInstanceOf (regs:Mach.REGS)
+                   (aexpr:Ast.EXPR)
+                   (bexpr:Ast.EXPR)
+    : Mach.VAL = 
+    let
+        val a = evalExpr regs aexpr
+        val b = evalExpr regs bexpr
+        val ob = needObj regs b
+    in
+        case Mach.getObjMagic ob of 
+            SOME (Mach.Class _) => objHasInstance regs ob a
+          | SOME (Mach.Interface _) => objHasInstance regs ob a
+          | SOME (Mach.Function _) => objHasInstance regs ob a
+          | SOME (Mach.NativeFunction _) => objHasInstance regs ob a
+          | _ => (throwTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"]; 
+                  dummyVal)
+    end
+
+
+and evalOperatorIn (regs:Mach.REGS)
+                   (aexpr:Ast.EXPR)
+                   (bexpr:Ast.EXPR)
+    : Mach.VAL = 
+    let
+        val a = evalExpr regs aexpr
+        val b = evalExpr regs bexpr
+        val aname = needNameOrString regs a
+    in
+        case b of
+            Mach.Object obj =>
+            newBoolean regs (hasValue obj aname)
+          | _ => (throwTypeErr regs ["operator 'in' applied to non-object"]; dummyVal)
+    end
+
+
+and evalOperatorComma (regs:Mach.REGS)
+                      (aexpr:Ast.EXPR)
+                      (bexpr:Ast.EXPR)
+    : Mach.VAL = 
+    (evalExpr regs aexpr;
+     evalExpr regs bexpr)
+
+
 and evalBinaryOp (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (aexpr:Ast.EXPR)
                  (bexpr:Ast.EXPR)
     : Mach.VAL =
     case bop of
-        Ast.LogicalAnd =>
-        let
-            val a = evalExpr regs aexpr
-        in
-            if toBoolean a
-            then evalExpr regs bexpr
-            else a
-        end
-
-      | Ast.LogicalOr =>
-        let
-            val a = evalExpr regs aexpr
-        in
-            if toBoolean a
-            then a
-            else evalExpr regs bexpr
-        end
-
-      | Ast.Comma => (evalExpr regs aexpr;
-                      evalExpr regs bexpr)
-
-      | Ast.InstanceOf =>
-        let
-            val a = evalExpr regs aexpr
-            val b = evalExpr regs bexpr
-        in
-            case b of
-                Mach.Object ob => 
-                newBoolean 
-                    regs 
-                    (case Mach.getObjMagic ob of 
-                         SOME (Mach.Class _) => hasInstance regs ob a
-                       | SOME (Mach.Interface _) => hasInstance regs ob a
-                       | SOME (Mach.Function _) => hasInstance regs ob a
-                       | SOME (Mach.NativeFunction _) => hasInstance regs ob a
-                       | _ => (throwTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"]; false))
-              | _ => (throwTypeErr regs ["operator 'instanceof' applied to non-object"]; dummyVal)
-        end
-
-      | Ast.In =>
-        let
-            val a = evalExpr regs aexpr
-            val b = evalExpr regs bexpr
-            val aname = needNameOrString regs a
-        in
-            case b of
-                Mach.Object obj =>
-                newBoolean regs (hasValue obj aname)
-              | _ => (throwTypeErr regs ["operator 'in' applied to non-object"]; dummyVal)
-        end
-
+        Ast.LogicalAnd => evalLogicalAnd regs aexpr bexpr
+      | Ast.LogicalOr => evalLogicalOr regs aexpr bexpr
+      | Ast.InstanceOf => evalInstanceOf regs aexpr bexpr
+      | Ast.In => evalOperatorIn regs aexpr bexpr
+      | Ast.Comma => evalOperatorComma regs aexpr bexpr
       | _ => performBinop regs bop
                           (evalExpr regs aexpr)
                           (evalExpr regs bexpr)
