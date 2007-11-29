@@ -1,0 +1,5 @@
+builtins/array/concat                                                       ,es4ri   ,expectedfail   ,http://bugs.ecmascript.org/ticket/290 Array concat gives exception
+builtins/array/sort:sort\(\) var A=...undefined.*                           ,es4ri   ,expectedfail   ,http://bugs.ecmascript.org/ticket/292 sort throws exception when contains undefined element
+builtins/array/sort:sort\(\) comparing sorted array to \[\] = ...undefined.*,es4ri   ,expectedfail   ,http://bugs.ecmascript.org/ticket/292 sort throws exception when contains undefined element
+builtins/array/splice:splice small array delete 2 items. no add.*           ,es4ri   ,expectedfail   ,http://bugs.ecmascript.org/ticket/295 splice leaves empty elements from deleteCount
+builtins/array/splice:splice small array deletecount is negative.*          ,es4ri   ,expectedfail   ,http://bugs.ecmascript.org/ticket/295 splice leaves empty elements from deleteCount

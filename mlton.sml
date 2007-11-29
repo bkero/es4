@@ -38,20 +38,9 @@
 
 open MLton.World;
 
-fun main () =
-    case Main.main (CommandLine.name(), CommandLine.arguments()) of
-        0 => OS.Process.exit OS.Process.success
-      | _ => OS.Process.exit OS.Process.failure;
+fun dump (s:string) : bool =
+    (case save s of
+         Original => false
+       | Clone => true)
 
-val _ =
-    (case Main.startup true (CommandLine.arguments()) of
-         ["-dump", filename] => (case save filename of
-                                     Original => ()
-                                   | Clone => main ())
-       | _ => main ())
-
-(*
-val _ = (case Main.main (name, args) of
-             0 => OS.Process.exit OS.Process.success
-           | 1 => OS.Process.exit OS.Process.failure);
-*)
+val _ = Main.main dump;

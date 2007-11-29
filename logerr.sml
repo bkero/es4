@@ -79,15 +79,15 @@ fun error ss = case !loc of
 
 fun namespace (ns:Ast.NAMESPACE) =
     case ns of
-        Ast.Intrinsic=> "[ns intrinsic]"
-      | Ast.OperatorNamespace=> "[ns operator]"
-      | Ast.Private i=> "[ns private '" ^ (Ustring.toAscii i) ^ "']"
-      | Ast.Protected i=> "[ns protected '" ^ (Ustring.toAscii i) ^ "']"
-      | Ast.Public i => "[ns public '" ^ (Ustring.toAscii i) ^ "']"
-      | Ast.Internal i => "[ns internal '" ^ (Ustring.toAscii i) ^ "']"
-      | Ast.UserNamespace i => "[ns user '" ^ (Ustring.toAscii i) ^ "']"
-      | Ast.AnonUserNamespace i => "[ns user anon #" ^ (Int.toString i) ^ "]"
-      | Ast.LimitedNamespace (i,n) => "[ns limited '" ^ (Ustring.toAscii i) ^ "' => " ^ (namespace n) ^ "]"
+        Ast.Intrinsic=> "intrinsic"
+      | Ast.OperatorNamespace=> "operator"
+      | Ast.Private i=> "<private " ^ (Ustring.toAscii i) ^ ">"
+      | Ast.Protected i=> "<protected " ^ (Ustring.toAscii i) ^ ">"
+      | Ast.Public i => "<public " ^ (Ustring.toAscii i) ^ ">"
+      | Ast.Internal i => "<internal " ^ (Ustring.toAscii i) ^ ">"
+      | Ast.UserNamespace i => "<user \"" ^ (Ustring.toAscii i) ^ "\">"
+      | Ast.AnonUserNamespace i => "<anon #" ^ (Int.toString i) ^ ">"
+      | Ast.LimitedNamespace (i,n) => "<limited " ^ (Ustring.toAscii i) ^ " => " ^ (namespace n) ^ ">"
 
 fun name ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
 
@@ -97,12 +97,14 @@ fun fname (n:Ast.FIXTURE_NAME) =
       | Ast.PropName n => name n
 
 fun multiname (mn:Ast.MULTINAME) =
-    case (#nss mn) of
-	[] => (String.concat ["{multiname: NO NAMESPACE :: ", Ustring.toAscii (#id mn), "}"])
-      | _ => String.concat
-		 (["{multiname: "] @ (map String.concat
-		  (List.map (List.map (fn ns => name {ns = ns, id = (#id mn)})) (#nss mn)) @
-		  ["}"]))
+    let
+	fun fmtNss (nss:Ast.NAMESPACE list) = 
+	    "[" ^ (join ", " (map namespace nss)) ^ "]"
+	fun fmtNsss (nsss:Ast.NAMESPACE list list) = 
+	    "[" ^ (join ", " (map fmtNss nsss)) ^ "]"
+    in
+	(fmtNsss (#nss mn)) ^ "::" ^ (Ustring.toAscii (#id mn))
+    end
 
 fun ty t =
     let
@@ -130,17 +132,42 @@ fun ty t =
           | Ast.SpecialType Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => "<TypeName: {" ^ (nsssToString openNamespaces) ^ "}::" ^ (Ustring.toAscii ident) ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => "<TypeName: " ^ (nsExprToString qual) ^ "::" ^ (Ustring.toAscii ident) ^ ">"
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+	    "<TypeName: {" 
+	    ^ (nsssToString openNamespaces) 
+	    ^ "}::" 
+	    ^ (Ustring.toAscii ident) 
+	    ^ ">"
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => 
+	    "<TypeName: " 
+	    ^ (nsExprToString qual) 
+	    ^ "::" 
+	    ^ (Ustring.toAscii ident) 
+	    ^ ">"
           | Ast.TypeName _ => "<TypeName: ...>"
           | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
           | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
-          | Ast.FunctionType {params, result, ...} => "<function (" ^ (typeList params) ^ ") : " ^ (ty result) ^ ">"
-          | Ast.ObjectType fields => "{" ^ fieldList fields ^ "}"
-          | Ast.AppType {base, args} => (ty base) ^ ".<" ^ (typeList args) ^ ">"
-          | Ast.NullableType { expr, nullable } => (ty expr) ^ (if nullable then "?" else "!")
-          | Ast.InstanceType { name=n, ... } => name n
-	  | Ast.LamType { params, body } => "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
+          | Ast.FunctionType {params, result, hasRest, ...} => 
+	    "function (" 
+	    ^ (typeList params) 
+	    ^ (if hasRest 
+	       then (if List.length params = 0 
+		     then "..." 
+		     else ", ...") 
+	       else "")
+	    ^ ") : " 
+	    ^ (ty result) 
+
+          | Ast.ObjectType fields => 
+	    "{" ^ fieldList fields ^ "}"
+          | Ast.AppType {base, args} => 
+	    (ty base) ^ ".<" ^ (typeList args) ^ ">"
+          | Ast.NullableType { expr, nullable } => 
+	    (ty expr) ^ (if nullable then "?" else "!")
+          | Ast.InstanceType { name=n, ... } => 
+	    name n
+	  | Ast.LamType { params, body } => 
+	    "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
     end
 
 exception LexError of string

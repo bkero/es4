@@ -79,10 +79,6 @@ package
         meta static function invoke(x=0m)
             x is decimal ? x : new decimal(x);
 
-        /* E262-3 15.7.2.1: The decimal constructor */
-        function decimal(x=0m)
-            magic::bindDecimal(this, x);
-
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);

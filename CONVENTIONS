@@ -1,0 +1,49 @@
+CODING CONVENTIONS
+==================
+
+* Naming conventions
+
+type names:        FOO_BAR
+constructor names: FooBar
+local/field names: fooBar
+
+* Non-exhaustive matches
+
+During implementation, non-exhaustive match warnings are fine (they
+help us keep track of what hasn't been implemented). But completed
+code should not have non-exhaustive matches.
+
+If a particular case should never happen, the right-hand side of the
+match case should raise a Fail exception with a string indicating what
+invariant was violated.
+
+* Explicit type annotations
+
+Top-level functions must be annotated explicitly.
+
+* Line widths
+
+Lines must not exceed 100 columns.
+
+* Indentation
+
+[TODO]
+
+* Tabs
+
+Hard tabs are disallowed.
+
+* Internal errors
+
+The exception HostError represents *internal evaluator errors*, that
+is, errors that are not the fault of the user but instead a problem
+with the evaluator.
+
+There is a global invariant that for any ES4 program, HostError can
+never be raised. If a HostError is raised, this invariant has been
+violated, i.e. there's an internal inconsistency in the evaluator.
+
+HostError should be the only exception used to represent internal
+evaluator errors.
+
+HostError is defined in logerr.sml.

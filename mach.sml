@@ -99,16 +99,16 @@ datatype VAL = Object of OBJ
                 * builtin construction.
                 *)
 
-     and VAL_CACHE = 
-         ValCache of 
+     and OBJ_CACHE = 
+         ObjCache of 
          {
-          real64Cache: (VAL Real64Map.map) ref, (* ref Real64Map.empty *)
-          word32Cache: (VAL Word32Map.map) ref, (* ref Word32Map.empty *)                                              
-          word8Cache: (VAL Word8Map.map) ref, (* ref Word8Map.empty *)                                              
-          int32Cache: (VAL Int32Map.map) ref, (* ref Int32Map.empty *)
-          nsCache: (VAL NsMap.map) ref, (* ref NsMap.empty *)
-          nmCache: (VAL NmMap.map) ref, (* ref NmMap.empty *)
-          strCache: (VAL StrMap.map) ref (* ref StrMap.empty *)
+          real64Cache: (OBJ Real64Map.map) ref, (* ref Real64Map.empty *)
+          word32Cache: (OBJ Word32Map.map) ref, (* ref Word32Map.empty *)                                              
+          word8Cache: (OBJ Word8Map.map) ref, (* ref Word8Map.empty *)                                              
+          int32Cache: (OBJ Int32Map.map) ref, (* ref Int32Map.empty *)
+          nsCache: (OBJ NsMap.map) ref, (* ref NsMap.empty *)
+          nmCache: (OBJ NmMap.map) ref, (* ref NmMap.empty *)
+          strCache: (OBJ StrMap.map) ref (* ref StrMap.empty *)
          }
 
      and PROFILER =
@@ -121,12 +121,16 @@ datatype VAL = Object of OBJ
      and SPECIAL_OBJS = 
          SpecialObjs of 
          { 
+          classClass : (OBJ option) ref,
+          interfaceClass : (OBJ option) ref,
+          namespaceClass : (OBJ option) ref,
+
           objectClass : (OBJ option) ref,
           arrayClass : (OBJ option) ref,
           functionClass : (OBJ option) ref,
 
           stringClass : (OBJ option) ref,
-          publicStringClass : (OBJ option) ref,
+          stringWrapperClass : (OBJ option) ref,
 
           numberClass : (OBJ option) ref,
           intClass : (OBJ option) ref,
@@ -136,11 +140,11 @@ datatype VAL = Object of OBJ
           decimalClass : (OBJ option) ref,
 
           booleanClass : (OBJ option) ref,
-          publicBooleanClass : (OBJ option) ref,
+          booleanWrapperClass : (OBJ option) ref,
 
-          booleanTrue : (VAL option) ref,
-          booleanFalse : (VAL option) ref,
-          doubleNaN : (VAL option) ref
+          booleanTrue : (OBJ option) ref,
+          booleanFalse : (OBJ option) ref,
+          doubleNaN : (OBJ option) ref
          }
 
      and FRAME = 
@@ -170,6 +174,7 @@ datatype VAL = Object of OBJ
          Scope of { object: OBJ,
                     parent: SCOPE option,
                     temps: TEMPS,
+                    decimal: DECIMAL_CONTEXT,
                     kind: SCOPE_KIND }
 
      and SCOPE_KIND =
@@ -222,7 +227,7 @@ datatype VAL = Object of OBJ
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
-          valCache: VAL_CACHE, 
+          objCache: OBJ_CACHE, 
           profiler: PROFILER 
          }
          
@@ -238,6 +243,10 @@ withtype FUN_CLOSURE =
      and IFACE_CLOSURE =
          { iface: Ast.IFACE,
            env: SCOPE }
+
+     and DECIMAL_CONTEXT = 
+         { precision: int,
+           mode: DecimalParams.ROUNDING_MODE }
 
      and REGS = 
          { 
@@ -892,6 +901,15 @@ fun needType (v:VAL)
       | _ => (inspect v 1; 
               error ["require type object"])
 
+fun fitsInByte (x:LargeInt.int)
+    : bool =
+    let
+        val byteMax = IntInf.pow(2, 8) - 1
+        val byteMin = IntInf.fromInt 0
+    in
+        byteMin <= x andalso x <= byteMax
+    end
+
 fun fitsInUInt (x:LargeInt.int)
     : bool =
     let
@@ -1068,11 +1086,15 @@ fun getSpecials (regs:REGS) =
         ss
     end
 
+fun getClassClassSlot (regs:REGS) = (#classClass (getSpecials regs))
+fun getInterfaceClassSlot (regs:REGS) = (#interfaceClass (getSpecials regs))
+fun getNamespaceClassSlot (regs:REGS) = (#namespaceClass (getSpecials regs))
+
 fun getObjectClassSlot (regs:REGS) = (#objectClass (getSpecials regs))
 fun getArrayClassSlot (regs:REGS) = (#arrayClass (getSpecials regs))
 fun getFunctionClassSlot (regs:REGS) = (#functionClass (getSpecials regs))
 fun getStringClassSlot (regs:REGS) = (#stringClass (getSpecials regs))
-fun getPublicStringClassSlot (regs:REGS) = (#publicStringClass (getSpecials regs))
+fun getStringWrapperClassSlot (regs:REGS) = (#stringWrapperClass (getSpecials regs))
 
 fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
 fun getIntClassSlot (regs:REGS) = (#intClass (getSpecials regs))
@@ -1082,7 +1104,7 @@ fun getDoubleClassSlot (regs:REGS) = (#doubleClass (getSpecials regs))
 fun getDecimalClassSlot (regs:REGS) = (#decimalClass (getSpecials regs))
 
 fun getBooleanClassSlot (regs:REGS) = (#booleanClass (getSpecials regs)) 
-fun getPublicBooleanClassSlot (regs:REGS) = (#publicBooleanClass (getSpecials regs)) 
+fun getBooleanWrapperClassSlot (regs:REGS) = (#booleanWrapperClass (getSpecials regs)) 
 
 fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs)) 
 fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
@@ -1090,7 +1112,7 @@ fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs))
 
 fun getCaches (regs:REGS) =
     let 
-        val { aux = Aux { valCache = ValCache vc, ... }, ... } = regs
+        val { aux = Aux { objCache = ObjCache vc, ... }, ... } = regs
     in
         vc
     end
@@ -1142,12 +1164,16 @@ val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
 
+val defaultDecimalContext = 
+	{ precision = 34,
+	  mode = DecimalParams.HalfEven } 
 
 fun makeGlobalScopeWith (global:OBJ) 
     : SCOPE =
     Scope { object = global,
             parent = NONE,
             temps = ref [],
+            decimal = defaultDecimalContext,
             kind = GlobalScope }
 
 fun makeInitialRegs (prog:Fixture.PROGRAM)
@@ -1157,7 +1183,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         val prof = Profiler 
                        { profileMap = ref StrListMap.empty,
                          doProfile = ref NONE }
-        val vcache = ValCache 
+        val ocache = ObjCache 
                      { real64Cache = ref Real64Map.empty,
                        word32Cache = ref Word32Map.empty,                       
                        word8Cache = ref Word8Map.empty,
@@ -1166,11 +1192,14 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                        nmCache = ref NmMap.empty,
                        strCache = ref StrMap.empty }
         val specials = SpecialObjs 
-                       { objectClass = ref NONE,
+                       { classClass = ref NONE,
+                         interfaceClass = ref NONE,
+                         namespaceClass = ref NONE,
+                         objectClass = ref NONE,
                          arrayClass = ref NONE,
                          functionClass = ref NONE,
                          stringClass = ref NONE,
-                         publicStringClass = ref NONE,
+                         stringWrapperClass = ref NONE,
                          numberClass = ref NONE,
                          intClass = ref NONE,
                          uintClass = ref NONE,
@@ -1178,7 +1207,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          doubleClass = ref NONE,
                          decimalClass = ref NONE,
                          booleanClass = ref NONE,
-                         publicBooleanClass = ref NONE,
+                         booleanWrapperClass = ref NONE,
 
                          booleanTrue = ref NONE,
                          booleanFalse = ref NONE,
@@ -1186,7 +1215,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         val aux = Aux { booting = ref false,
                         specials = specials,
                         stack = ref [],
-                        valCache = vcache,
+                        objCache = ocache,
                         profiler = prof }
     in        
         { this = glob,

@@ -1,0 +1,72 @@
+ECMAScript Edition 4 Reference Implementation
+
+Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
+Software ASA, and others.
+
+See the file LICENSE for terms and conditions.
+
+
+======================================================================
+Binary Installation
+======================================================================
+
+The binary release consists of a single directory es4/ with several
+files. As long as you keep all these files together in one directory,
+you may move that directory anywhere (and/or rename it).
+
+Cygwin
+------
+
+Run the interpreter with the es4 script.
+
+Type :help at the ES4 prompt for information about the interpreter.
+
+Windows
+-------
+
+On Windows without Cygwin, run the es4.bat batch file.
+
+Type :help at the ES4 prompt for information about the interpreter.
+
+Linux
+-----
+
+Run the interpreter with the es4 script. Your system must contain an
+accessible installation of libgmp.so.3 (which it probably does) and
+GNU LIBC 2.3.
+
+Type :help at the ES4 prompt for information about the interpreter.
+
+MacOS X
+-------
+
+Run the interpreter with the es4 script.
+
+Type :help at the ES4 prompt for information about the interpreter.
+
+
+======================================================================
+Source Installation
+======================================================================
+
+We are actively working on improving and documenting the installation
+process. Currently the high-level overview is:
+
+Building with SML/NJ (recommended)
+--------------------
+
+Install SML/NJ version 110.62 or later
+% ./configure --with-dialect=smlnj
+% make compile dump
+
+Building with MLton
+-------------------
+
+Install MLton version 20070826 or later
+% ./configure --with-dialect=mlton
+% make compile dump
+
+Building with SML.NET
+---------------------
+
+Not currently supported.

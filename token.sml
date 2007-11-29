@@ -183,15 +183,10 @@ datatype TOKEN =
     | Identifier of Ustring.STRING
 
     (* The interpretation of these 4 literal types can be done during lexing. *)
-    | ExplicitDecimalLiteral of Decimal.DEC
-    | ExplicitDoubleLiteral of Real64.real
-    | ExplicitIntLiteral of Int32.int
-    | ExplicitUIntLiteral of Word32.word
-
-    (* The interpretation of these 3 literal types is deferred until defn phase. *)
-    | DecimalIntegerLiteral of string
-    | DecimalLiteral of string
-    | HexIntegerLiteral of string
+    | DecimalLiteral of Decimal.DEC
+    | DoubleLiteral of Real64.real
+    | IntLiteral of Int32.int
+    | UIntLiteral of Word32.word
 
     | PackageIdentifier of Ustring.STRING
     | RegexpLiteral of Ustring.STRING
@@ -404,14 +399,10 @@ fun tokenname (t,_) =
 
       | Identifier x => "identifier("^(Ustring.toAscii x)^")"
 
-      | DecimalIntegerLiteral x => x
-      | DecimalLiteral        x => x
-      | HexIntegerLiteral     x => x
-
-      | ExplicitDecimalLiteral x => Decimal.toString(x) ^ "m"
-      | ExplicitDoubleLiteral x => Real64.toString(x) ^ "d"
-      | ExplicitIntLiteral x => Int32.toString(x) ^ "i"
-      | ExplicitUIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
+      | DecimalLiteral x => Decimal.toString(x) ^ "m"
+      | DoubleLiteral x => Real64.toString(x) ^ "d"
+      | IntLiteral x => Int32.toString(x) ^ "i"
+      | UIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
 
       | PackageIdentifier x => "packageidentifier("^(Ustring.toAscii x)^")"
       | RegexpLiteral x => "regexp("^(Ustring.toAscii x)^")"

@@ -1,5 +1,5 @@
 namespace x
 {
 use namespace x, strict
-use decimal, rounding UP, precision 32
+use decimal x
 }

@@ -72,6 +72,8 @@ package
      */
     dynamic class String
     {
+        private var val : string;
+
         // A getter because String is loaded before int
         static function get length() { return 1 }
 
@@ -80,8 +82,7 @@ package
             string(value);
 
         /* 15.5.2 The String Constructor */
-        function String(value="")
-            magic::bindString(this, value);
+        function String(value="") : val = string(value) {}
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
@@ -90,13 +91,13 @@ package
             string.helper::fromCharCode(args);
 
         override intrinsic function toString() : string
-            string(this);
+            val;
 
         override intrinsic function toJSONString(pretty:boolean=false) : string
-            JSON.formatString(string(this), pretty);
+            JSON.formatString(val, pretty);
 
         override intrinsic function valueOf() : string
-            intrinsic::toString();
+            val;
 
 
         /* E262-3 15.5.4.4: String.prototype.charAt
@@ -106,7 +107,7 @@ package
             string.charAt(self, pos);
 
         intrinsic function charAt(pos: double = 0) : string
-            string.charAt(this, pos);
+            string.charAt(val, pos);
 
         /* E262-3 15.5.4.5: String.prototype.charCodeAt
            E262-4 draft proposals:static_generics
@@ -115,7 +116,7 @@ package
             string.charCodeAt(self, pos);
 
         intrinsic function charCodeAt(pos: double = 0) : double
-            string.charCodeAt(this, pos);
+            string.charCodeAt(val, pos);
 
         /* E262-3 15.5.4.6: String.prototype.concat.
            E262-4 draft proposals:static_generics
@@ -125,7 +126,7 @@ package
             string.helper::concat(self, args);
 
         intrinsic function concat(...args) : string
-            string.helper::concat(this, args);
+            string.helper::concat(val, args);
 
 
         /* E262-3 15.5.4.7: String.prototype.indexOf
@@ -136,7 +137,7 @@ package
             string.indexOf(self, searchString, position);
 
         intrinsic function indexOf(searchString: AnyString, position: double = 0.0) : double
-            string.indexOf(this, searchString, position);
+            string.indexOf(val, searchString, position);
 
 
         /* E262-3 15.5.4.8: String.prototype.lastIndexOf
@@ -147,7 +148,7 @@ package
             string.lastIndexOf(self, searchString, position);
 
         intrinsic function lastIndexOf(searchString: AnyString, position: double) : double
-            string.lastIndexOf(this, searchString, position);
+            string.lastIndexOf(val, searchString, position);
 
 
         /* E262-3 15.5.4.9: String.prototype.localeCompare
@@ -157,7 +158,7 @@ package
             string.localeCompare(self, that);
 
         intrinsic function localeCompare(that: AnyString) : double
-            string.localeCompare(this, that);
+            string.localeCompare(val, that);
 
 
         /* E262-3 15.5.4.10: String.prototype.match
@@ -167,7 +168,7 @@ package
             string.match(self, regexp);
 
         intrinsic function match(regexp: RegExp!) : Array
-            string.match(this, regexp);
+            string.match(val, regexp);
 
 
         /* E262-3 15.5.4.11: String.prototype.replace
@@ -177,7 +178,7 @@ package
             string.replace(self, searchValue, replaceValue);
 
         intrinsic function replace(s: (RegExp!,AnyString), r: (AnyString,function(...):AnyString)) : string
-            string.replace(this, searchValue, replaceValue);
+            string.replace(val, searchValue, replaceValue);
 
 
         /* E262-3 15.5.4.12: String.prototype.search
@@ -187,7 +188,7 @@ package
             string.search(self, regexp);
 
         intrinsic function search(regexp: RegExp!) : double
-            string.search(this, r);
+            string.search(val, r);
 
 
         /* E262-3 15.5.4.13: String.prototype.slice
@@ -197,7 +198,7 @@ package
             string.slice(self, start, end);
 
         intrinsic function slice(s: double, e: double): string
-            string.slice(this, s, e);
+            string.slice(val, s, e);
 
 
         /* ES262-3 15.5.4.14: String.prototype.split
@@ -207,7 +208,7 @@ package
             string.split(self, separator, limit);
 
         intrinsic function split(separator:(AnyString,RegExp!), limit: uint = uint.MAX_VALUE) : Array!
-            string.split(this, separator, limit);
+            string.split(val, separator, limit);
 
 
         /* E262-3 15.5.4.15: String.prototype.substring
@@ -217,7 +218,7 @@ package
             string.substring(self, start, end);
 
         intrinsic function substring(start: double, end: double=Infinity) : string
-            string.substring(this, start, end);
+            string.substring(val, start, end);
 
 
         /* E262-3 B.2.3: String.prototype.substr
@@ -227,7 +228,7 @@ package
             string.substr(self, start, length);
 
         intrinsic function substr(start: double, length: double): string
-            string.substr(this, start, length);
+            string.substr(val, start, length);
 
 
         /* E262-3 15.5.4.16: String.prototype.toLowerCase
@@ -237,7 +238,7 @@ package
             string.toLowerCase(self);
 
         intrinsic function toLowerCase(): string
-            string.toLowerCase(this);
+            string.toLowerCase(val);
 
 
         /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase
@@ -247,7 +248,7 @@ package
             string.toLocaleLowerCase(self);
 
         intrinsic function toLocaleLowerCase(): string
-            string.toLocaleLowerCase(this);
+            string.toLocaleLowerCase(val);
 
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase
@@ -257,7 +258,7 @@ package
             string.toUpperCase(self);
 
         intrinsic function toUpperCase() : string
-            string.toUpperCase(this);
+            string.toUpperCase(val);
 
 
         /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase
@@ -267,7 +268,7 @@ package
             string.toLocaleUpperCase(self);
 
         intrinsic function toLocaleUpperCase() : string
-            string.toLocaleUpperCase(this);
+            string.toLocaleUpperCase(val);
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
@@ -275,7 +276,7 @@ package
             string.parseJSON(string(self), filter);
 
         intrinsic function parseJSON(filter=undefined)
-            string.parseJSON(string(this), filter);
+            string.parseJSON(string(val), filter);
 
 
         /* E262-4 draft proposals:string.prototype.trim */
@@ -283,20 +284,27 @@ package
             string.trim(self);
 
         intrinsic function trim() : string
-            string.trim(string(this));
+            string.trim(string(val));
 
 
         /* E262-3 15.5.5.1: length. */
         function get length() : uint
-            magic::stringLength(this);
+            val.length;
 
 
         /* Catchall indexing operation. */
-        meta function get(pos) {
-            let x = double(pos);
+        /* FIXME: remove use of intrinsic::get / set. Ticket #214 */
+        meta function get(n) {
+            let x = double(n);
             if (isNaN(x))
-                return undefined;
+                return intrinsic::get(this, n);
             return charAt(x);
+        }
+
+        meta function set(n,v) {
+            let x = double(n);
+            if (isNaN(x))
+                intrinsic::set(this, n, v);
         }
 
 
@@ -310,60 +318,60 @@ package
             this.intrinsic::valueOf();
 
         prototype function charAt(pos)
-            string.charAt(this, pos);
+            string.charAt(this.toString(), pos);
 
         prototype function charCodeAt(pos)
-            string.charCodeAt(this, pos);
+            string.charCodeAt(this.toString(), pos);
 
         prototype function concat(...args)
-            string.helper::concat(this, args);
+            string.helper::concat(this.toString(), args);
 
         prototype function indexOf(searchString, position)
-            string.indexOf(this, searchString, position);
+            string.indexOf(this.toString(), searchString, position);
 
         prototype function lastIndexOf(searchString, position)
-            string.lastIndexOf(this, searchString, position);
+            string.lastIndexOf(this.toString(), searchString, position);
 
         prototype function localeCompare(that)
-            string.localeCompare(this, that);
+            string.localeCompare(this.toString(), that);
 
         prototype function match(regexp)
-            string.match(this, regexp);
+            string.match(this.toString(), regexp);
 
         prototype function replace(searchValue, replaceValue)
-            string.replace(this, searchValue, replaceValue);
+            string.replace(this.toString(), searchValue, replaceValue);
 
         prototype function search(regexp)
-            string.search(this, regexp);
+            string.search(this.toString(), regexp);
 
         prototype function slice(start, end)
-            string.slice(this, start, end);
+            string.slice(this.toString(), start, end);
 
         prototype function split(separator, limit)
-            string.split(this, separator, limit);
+            string.split(this.toString(), separator, limit);
 
         prototype function substring(start, end)
-            string.substring(this, start, end);
+            string.substring(this.toString(), start, end);
 
         prototype function substr(start, length)
-            string.substr(this, start, length);
+            string.substr(this.toString(), start, length);
 
         prototype function toLowerCase()
-            string.toLowerCase(this);
+            string.toLowerCase(this.toString());
 
         prototype function toLocaleLowerCase()
-            string.toLocaleLowerCase(this);
+            string.toLocaleLowerCase(this.toString());
 
         prototype function toUpperCase()
-            string.toUpperCase(this);
+            string.toUpperCase(this.toString());
 
         prototype function toLocaleUpperCase()
-            string.toLocaleUpperCase(this);
+            string.toLocaleUpperCase(this.toString());
 
         prototype function parseJSON(this:AnyString, filter=undefined)
-            string.parseJSON(string(this), filter);
+            string.parseJSON(this.toString(), filter);
 
         prototype function trim()
-            string.trim(this);
+            string.trim(this.toString());
     }
 }

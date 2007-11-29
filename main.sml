@@ -41,7 +41,43 @@
 structure Main = struct
 
 val interactive = ref true
+val quiet = ref false
 val langEd = ref 4
+val progDir : string option ref = ref NONE
+
+fun usage () =
+    (List.app TextIO.print
+              ["usage: es4 [-3|-4] [-b] [-h|-r|(-p|-d|-v|-e) file ...] [-Pn] [-Tmod] ...\n",
+               "    -3            process input files in 3rd edition mode\n",
+               "(*) -4            process input files in 4th edition mode\n",
+               "    -b            boot standard library from scratch (ignore image file)\n",
+               "    -q            quiet (suppress startup banner)\n",
+               "\n",
+               "    -h            display this help message and exit\n",
+               "(*) -r            start the interactive read-eval-print loop\n",
+               "    -p            run given files through parse phase and exit\n",
+               "    -d            run given files through definition phase and exit\n",
+               "    -v            run given files through verification phase and exit\n",
+               "    -e            evaluate given files and exit\n",
+               "\n",
+               "(*) default\n",
+               "\n",
+               "    -Pn           turn on profiling for stack depth {n}\n",
+               "    -Tmod         turn on tracing for module {mod}\n",
+               "\n",
+               "    mod:\n",
+               "        lex       lexing\n",
+               "        parse     parsing\n",
+               "        name      name resolution\n",
+               "        defn      definition phase\n",
+               "        verify    verification phase\n",
+               "        verified  show post-verification AST alone\n",
+               "        eval      evaluator\n",
+               "        mach      abstract machine operations\n",
+               "        decimal   decimal arithmetic\n",
+               "        native    native operations\n",
+               "        boot      standard library boot sequence\n",
+               "        stack     stack operations\n"])
 
 fun updateLangEd (regs:Mach.REGS)
     : unit =
@@ -72,9 +108,11 @@ fun consumeOption (opt:string) : bool =
         ([#"-", #"3"]) => (langEd := 3; false)
       | ([#"-", #"4"]) => (langEd := 4; false)
       | ([#"-", #"I"]) => (interactive := false; false)
+      | ([#"-", #"q"]) => (quiet := true; false)
       | (#"-" :: #"T" :: rest) => (case findTraceOption (String.implode rest) of
                                        SOME r => (r := true; false)
                                      | NONE => true)
+      | ([#"-", #"b"]) => false
       (*
       | (#"-" :: #"P" :: rest) =>
         (case Int.fromString (String.implode rest) of
@@ -86,6 +124,12 @@ fun consumeOption (opt:string) : bool =
       | _ => true
 
 exception quitException
+exception continueException of Ustring.SOURCE list
+exception noboot
+
+val exit = OS.Process.exit
+val success = OS.Process.success
+val failure = OS.Process.failure
 
 (* FIXME: should use more portable OS.Process.exit *)
 fun withEofHandler thunk =
@@ -108,124 +152,30 @@ fun withHandlers thunk =
   | LogErr.AstError e => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
   | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
-fun startup (argvRest:string list)
-    : (string list) =
-    List.filter consumeOption argvRest
+datatype COMMAND =
+    HelpCommand
+  | ReplCommand
+  | ParseCommand of string list
+  | DefineCommand of string list
+  | VerifyCommand of string list
+  | EvalCommand of string list
+  | ResetCommand
 
-fun repl regs argvRest =
-    let
-        val argvRest = startup argvRest
-        val regsCell = ref regs
-
-        val doParse = ref true
-        val doDefn = ref true
-        val doEval = ref true
-        val beStrict = ref false
-
-        fun toggleRef (n:string) (r:bool ref) =
-            (r := not (!r);
-             print ("set " ^ n ^ " = " ^ (Bool.toString (!r)) ^ "\n"))
-
-        fun doLine _ =
-            let
-                val _ = if !interactive then print ">> " else print "<SMLREADY>\n"
-                val line = case TextIO.inputLine TextIO.stdIn of
-                               NONE => raise quitException
-                             | SOME s => s
-                val toks = String.tokens Char.isSpace line
-                fun help _ = (List.app print
-                                       [
-                                        ":quit          - quit repl\n",
-                                        ":trace <T>     - toggle tracing of <T>\n",
-                                        ":help          - this message\n",
-                                        ":reboot        - reload the boot environment\n",
-                                        ":parse         - toggle parse stage\n",
-                                        ":defn          - toggle defn stage\n",
-                                        ":strict        - toggle strict verification\n",
-                                        ":eval          - toggle evaluation stage\n",
-                                        ":profile <N>   - toggle profiling at depth <N>\n"
-                                       ];
-                              doLine())
-            in
-                case toks of
-                    [":quit"] => raise quitException
-                  | [":3"] => (langEd := 3; updateLangEd (!regsCell))
-                  | [":4"] => (langEd := 4; updateLangEd (!regsCell))
-                  | [":q"] => raise quitException
-                  | [":h"] => help ()
-                  | [":help"] => help ()
-                  | [":?"] => help ()
-                  | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot(); updateLangEd (!regsCell); doLine ())
-                  | [":parse"] => toggleRef "parse" doParse
-                  | [":defn"] => toggleRef "defn" doDefn
-                  | [":eval"] => toggleRef "eval" doEval
-                  | [":strict"] => toggleRef "strict" beStrict
-                  | [":trace", t] =>
-                    ((case findTraceOption t of
-                          NONE =>
-                          (print ("unknown trace option " ^ t ^ "\n"))
-                        | SOME r => toggleRef ("trace option " ^ t) r);
-                     doLine())
-(*
-                  | [":profile", n] =>
-                    ((case Int.fromString n of
-                          NONE => Eval.doProfile := NONE
-                        | SOME 0 => Eval.doProfile := NONE
-                        | SOME n => Eval.doProfile := SOME n);
-                     doLine())
-*)
-
-                  | [] => doLine ()
-                  | _ =>
-                    if (!doParse)
-                    then
-                        let
-                            val frag = Parser.parseLines [Ustring.fromSource line]
-                        in
-                            if (!doDefn)
-                            then
-                                let
-                                    val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                                    val frag = Verify.verifyTopFragment prog true frag
-                                in
-                                    regsCell := Eval.withProg regs prog;
-                                    if (!doEval)
-                                    then
-                                        let
-                                            val res = Eval.evalTopFragment (!regsCell) frag
-                                        in
-                                            (case res of
-                                                 Mach.Undef => ()
-                                               | _ => print (Ustring.toAscii 
-                                                                 (Eval.toUstring (!regsCell) res) ^ "\n"));
-                                            doLine ()
-                                        end
-                                    else
-                                        doLine ()
-                                end
-                            else
-                                doLine ()
-                        end
-                    else
-                        doLine ()
-            end
-
-        fun runUntilQuit _ =
-            (withEofHandler (fn () => withHandlers doLine);
-             runUntilQuit ())
-    in
-        runUntilQuit ()
-        handle quitException => print "bye\n"
-    end
+fun processOptions (argvRest:string list)
+    : COMMAND =
+    (case List.filter consumeOption argvRest of
+         ("-h"::argvRest) => HelpCommand
+       | ("-r"::argvRest) => ReplCommand
+       | ("-p"::argvRest) => ParseCommand argvRest
+       | ("-d"::argvRest) => DefineCommand argvRest
+       | ("-v"::argvRest) => VerifyCommand argvRest
+       | ("-e"::argvRest) => EvalCommand argvRest
+       | ("-dump"::argvRest) => ResetCommand
+       | _ => ReplCommand)
 
 fun parse argvRest =
-    let
-        val argvRest = startup argvRest
-    in
-        TextIO.print "parsing ... \n";
-        List.map Parser.parseFile argvRest
-    end
+    (TextIO.print "parsing ... \n";
+     List.map Parser.parseFile argvRest)
 
 fun define prog argvRest =
     let
@@ -267,49 +217,183 @@ fun eval regs argvRest =
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
     end
 
-fun usage () =
-    (List.app TextIO.print
-              ["usage: es4 [-h|-r|-p file ...|-d file ...|-v file ...|-e file ...] [-Pn] [-Tmod] ...\n",
-               "    -3            process input files in 3rd edition mode\n",
-               "(*) -4            process input files in 4th edition mode\n",
-               "    -h            display this help message and exit\n",
-               "(*) -r            start the interactive read-eval-print loop\n",
-               "    -p            run given files through parse phase and exit\n",
-               "    -d            run given files through definition phase and exit\n",
-               "    -v            run given files through verification phase and exit\n",
-               "    -e            evaluate given files and exit\n",
-               "\n",
-               "(*) default\n",
-               "\n",
-               "    -Pn           turn on profiling for stack depth {n}\n",
-               "    -Tmod         turn on tracing for module {mod}\n",
-               "\n",
-               "    mod:\n",
-               "        lex       lexing\n",
-               "        parse     parsing\n",
-               "        name      name resolution\n",
-               "        defn      definition phase\n",
-               "        verify    verification phase\n",
-               "        verified  show post-verification AST alone\n",
-               "        eval      evaluator\n",
-               "        mach      abstract machine operations\n",
-               "        decimal   decimal arithmetic\n",
-               "        native    native operations\n",
-               "        boot      standard library boot sequence\n",
-               "        stack     stack operations\n"])
+fun getProgDir() =
+    let
+        val name = CommandLine.name()
+        val {dir, ...} = OS.Path.splitDirFile (CommandLine.name())
+    in
+        (* FIXME: total hack for telling whether we're running in the SML/NJ REPL *)
+        if String.isSuffix "sml" name then
+            OS.FileSys.getDir()
+        else
+            dir
+    end
 
-fun main (regs:Mach.REGS, argv0:string, argvRest:string list) =
-    withEofHandler
-        (fn () =>
-            withHandlers
-                (fn () =>
-                    (case argvRest of
-                         ("-h"::argvRest) => (usage (); 0)
-                       | ("-r"::argvRest) => (repl regs argvRest; 0)
-                       | ("-p"::argvRest) => (parse argvRest; 0)
-                       | ("-d"::argvRest) => (define (#prog regs) argvRest; 0)
-                       | ("-v"::argvRest) => (verify (#prog regs) argvRest; 0)
-                       | ("-e"::argvRest) => (eval regs argvRest)
-                       | _ => (repl regs argvRest; 0))))
+fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
+    let
+        val regsCell = ref regs
+
+        val doParse = ref true
+        val doDefn = ref true
+        val doEval = ref true
+        val beStrict = ref false
+
+        fun toggleRef (n:string) (r:bool ref) =
+            (r := not (!r);
+             print ("set " ^ n ^ " = " ^ (Bool.toString (!r)) ^ "\n"))
+
+        fun doLine (accum:Ustring.SOURCE list) : unit =
+            let
+                val _ = (case accum of
+                             [] =>  if !interactive then print ">> " else print "<SMLREADY>\n"
+                           | _ => ())
+                val line = case TextIO.inputLine TextIO.stdIn of
+                               NONE => raise quitException
+                             | SOME s => s
+                val toks = String.tokens Char.isSpace line
+                fun help _ = (List.app print
+                                       [
+                                        ":quit          - quit repl\n",
+                                        ":trace <T>     - toggle tracing of <T>\n",
+                                        ":help          - this message\n",
+                                        ":reboot        - reload the boot environment\n",
+                                        ":parse         - toggle parse stage\n",
+                                        ":defn          - toggle defn stage\n",
+                                        ":strict        - toggle strict verification\n",
+                                        ":eval          - toggle evaluation stage\n",
+                                        ":profile <N>   - toggle profiling at depth <N>\n"
+                                       ])
+            in
+                case toks of
+                    [":quit"] => raise quitException
+                  | [":3"] => (langEd := 3; updateLangEd (!regsCell))
+                  | [":4"] => (langEd := 4; updateLangEd (!regsCell))
+                  | [":q"] => raise quitException
+                  | [":h"] => help ()
+                  | [":help"] => help ()
+                  | [":?"] => help ()
+                  | ["?"] => help ()
+                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell))
+                  | [":parse"] => toggleRef "parse" doParse
+                  | [":defn"] => toggleRef "defn" doDefn
+                  | [":eval"] => toggleRef "eval" doEval
+                  | [":strict"] => toggleRef "strict" beStrict
+                  | [":trace", t] =>
+                    (case findTraceOption t of
+                         NONE =>
+                         (print ("unknown trace option " ^ t ^ "\n"))
+                       | SOME r => toggleRef ("trace option " ^ t) r)
+
+(*
+                  | [":profile", n] =>
+                    (case Int.fromString n of
+                         NONE => Eval.doProfile := NONE
+                       | SOME 0 => Eval.doProfile := NONE
+                       | SOME n => Eval.doProfile := SOME n)
+*)
+
+                  | [] => ()
+                  | _ =>
+                    if not (!doParse) then () else
+                    let
+                        val lines = (Ustring.fromSource line) :: accum
+                        val frag = Parser.parseLines (List.rev lines)
+                            handle LogErr.EofError => raise continueException lines
+			            fun tidyUp _ = 
+				            let
+				                val stk = Mach.stackOf (!regsCell)
+				                val ss = Mach.stackString stk
+				                val _ = Mach.resetStack (!regsCell)
+				            in
+				                print ("Uncaught exception at: " ^ ss ^ "\n")
+				            end
+                    in
+                        if not (!doDefn) then () else
+                        let
+                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
+                            val frag = Verify.verifyTopFragment prog true frag
+                        in
+                            regsCell := Eval.withProg regs prog;
+                            if not (!doEval) then () else
+                            let
+					            val _ = Mach.resetStack (!regsCell)
+                                val res = (Eval.evalTopFragment (!regsCell) frag)
+						            handle Eval.ThrowException v => (tidyUp (); v)
+                            in
+                                case res of
+                                    Mach.Undef => ()
+                                  | _ => 
+						            print (Ustring.toAscii 
+                                               (Eval.toUstring (!regsCell) res) ^ "\n")
+						            handle Eval.ThrowException v => 
+						                   (tidyUp();
+							                print (Ustring.toAscii 
+								                       (Eval.toUstring (!regsCell) v) ^ "\n")
+							                handle Eval.ThrowException _ => 
+							                       tidyUp() (* oh forget it... *))
+                            end
+                        end
+                    end
+            end
+
+        fun runUntilQuit accum =
+            runUntilQuit ((withHandlers (fn () => doLine accum); [])
+                          handle continueException accum' => accum')
+    in
+        if (!quiet) then () else
+            TextIO.print (Version.banner ^ "\n");
+        (runUntilQuit [])
+        handle quitException => print "bye\n"
+    end
+
+and main (dump:string -> bool) : 'a =
+    let
+        fun resume (regs:Mach.REGS option) =
+            let
+                val dir = getProgDir()
+
+                fun getRegs() = (case regs of
+                                     NONE => (Boot.boot dir
+                                              handle
+                                              LogErr.LexError e => (print ("**BOOT ERROR** LexError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.ParseError e => (print ("**BOOT ERROR** ParseError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.NameError e => (print ("**BOOT ERROR** NameError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.TypeError e => (print ("**BOOT ERROR** TypeError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.FixtureError e => (print ("**BOOT ERROR** FixtureError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.DefnError e => (print ("**BOOT ERROR** DefnError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.EvalError e => (print ("**BOOT ERROR** EvalError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.MachError e => (print ("**BOOT ERROR** MachError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.VerifyError e => (print ("**BOOT ERROR** VerifyError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.HostError e => (print ("**BOOT ERROR** HostError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.AstError e => (print ("**BOOT ERROR** AstError: " ^ e ^ "\n"); raise noboot)
+                                            | LogErr.UnimplError e => (print ("**BOOT ERROR** UnimplError: " ^ e ^ "\n"); raise noboot))
+                                   | SOME regs => regs)
+            in
+                progDir := SOME dir;
+                case processOptions (CommandLine.arguments()) of
+                    HelpCommand => (usage (); success)
+                  | ReplCommand => (repl (getRegs()) dump; success)
+                  | ParseCommand files => (parse files; success)
+                  | DefineCommand files => (define (#prog (getRegs())) files; success)
+                  | VerifyCommand files => (verify (#prog (getRegs())) files; success)
+                  | EvalCommand files => (eval (getRegs()) files; success)
+                  | ResetCommand =>
+                    let
+                        val _ = TextIO.print "Building image...\n"
+                        val regs = Boot.boot dir
+                    in
+                        if dump (OS.Path.joinDirFile {dir = dir, file = "es4.image"}) then
+                            resume (SOME regs)
+                        else
+                            success
+                    end
+            end
+    in
+        exit (withEofHandler
+                  (fn () =>
+                      withHandlers
+                          (fn () =>
+                              resume NONE)))
+    end
 
 end

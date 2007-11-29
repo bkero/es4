@@ -84,11 +84,7 @@ package
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(value="")
-            value is string ? value : magic::newString(value);
-
-        /* 15.5.2 The string Constructor */
-        function string(value="") 
-            magic::bindString(this, value);
+            value is string ? value : new string(value);
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
@@ -686,7 +682,7 @@ package
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function toLocaleLowerCase(self): string
-            string.toLowerCase();
+            string.toLowerCase(self);
 
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase

@@ -66,9 +66,6 @@ package
         meta static function invoke(x=null) : boolean
             x is boolean ? x : new boolean(x);
 
-        function boolean(x=null)
-            magic::bindBoolean(this, x);
-
         /* E262-4 early-binding variant. */
         override intrinsic function toString() : string
             this ? "true" : "false";

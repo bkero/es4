@@ -45,6 +45,8 @@ type UNIT_NAME = IDENT list
 
 type RIB_ID = int
 
+type TYPEVAR_NONCE = int
+
 datatype NAMESPACE =
          Intrinsic
        | OperatorNamespace
@@ -60,30 +62,17 @@ type NAME = { ns: NAMESPACE, id: IDENT }
 
 type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 
-datatype NUMBER_TYPE =
-         Decimal
-       | Double
-       | Int
-       | UInt
-       | Byte
-       | Number
-
-type NUMERIC_MODE =
-           { numberType: NUMBER_TYPE,
-             roundingMode: Decimal.ROUNDING_MODE,
-             precision: int }
-
 datatype BINTYPEOP =
          Cast
        | Is
        | To
 
 datatype BINOP =
-         Plus of NUMERIC_MODE option
-       | Minus of NUMERIC_MODE option
-       | Times of NUMERIC_MODE option
-       | Divide of NUMERIC_MODE option
-       | Remainder of NUMERIC_MODE option
+         Plus
+       | Minus
+       | Times
+       | Divide
+       | Remainder
        | LeftShift
        | RightShift
        | RightShiftUnsigned
@@ -94,23 +83,23 @@ datatype BINOP =
        | LogicalOr
        | InstanceOf
        | In
-       | Equals of NUMERIC_MODE option
-       | NotEquals of NUMERIC_MODE option
-       | StrictEquals of NUMERIC_MODE option
-       | StrictNotEquals of NUMERIC_MODE option
-       | Less of NUMERIC_MODE option
-       | LessOrEqual of NUMERIC_MODE option
-       | Greater of NUMERIC_MODE option
-       | GreaterOrEqual of NUMERIC_MODE option
+       | Equals 
+       | NotEquals 
+       | StrictEquals 
+       | StrictNotEquals 
+       | Less 
+       | LessOrEqual 
+       | Greater 
+       | GreaterOrEqual 
        | Comma
 
 datatype ASSIGNOP =
          Assign
-       | AssignPlus of NUMERIC_MODE option
-       | AssignMinus of NUMERIC_MODE option
-       | AssignTimes of NUMERIC_MODE option
-       | AssignDivide of NUMERIC_MODE option
-       | AssignRemainder of NUMERIC_MODE option
+       | AssignPlus 
+       | AssignMinus 
+       | AssignTimes 
+       | AssignDivide 
+       | AssignRemainder 
        | AssignLeftShift
        | AssignRightShift
        | AssignRightShiftUnsigned
@@ -124,12 +113,12 @@ datatype UNOP =
          Delete
        | Void
        | Typeof
-       | PreIncrement of NUMERIC_MODE option
-       | PreDecrement of NUMERIC_MODE option
-       | PostIncrement of NUMERIC_MODE option
-       | PostDecrement of NUMERIC_MODE option
-       | UnaryPlus of NUMERIC_MODE option
-       | UnaryMinus of NUMERIC_MODE option
+       | PreIncrement 
+       | PreDecrement 
+       | PostIncrement 
+       | PostDecrement 
+       | UnaryPlus 
+       | UnaryMinus 
        | BitwiseNot
        | LogicalNot
        | Type
@@ -149,9 +138,7 @@ datatype SPECIAL_TY =
 datatype PRAGMA =
          UseNamespace of EXPR
        | UseDefaultNamespace of EXPR
-       | UseNumber of NUMBER_TYPE
-       | UseRounding of Decimal.ROUNDING_MODE
-       | UsePrecision of int
+       | UseDecimalContext of EXPR
        | UseStrict
        | UseStandard
        | Import of
@@ -307,7 +294,6 @@ datatype PRAGMA =
              finally: BLOCK option }
 
        | SwitchStmt of {         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
-             mode: NUMERIC_MODE option,
              cond: EXPR,
              labels: IDENT list,
              cases: CASE list }
@@ -322,7 +308,7 @@ datatype PRAGMA =
          TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
-       | ExpectedTypeExpr of (TYPE_EXPR * EXPR)
+       | ExpectedTypeExpr of (TYPE_EXPR * EXPR)  (* FIXME: only for option 8, not option 9 *)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TY
        | ThisExpr
@@ -384,9 +370,6 @@ datatype PRAGMA =
      and LITERAL =
          LiteralNull
        | LiteralUndefined
-       | LiteralContextualDecimal of string        (* Should be erased after defn time. *)
-       | LiteralContextualDecimalInteger of string (* Should be erased after defn time. *)
-       | LiteralContextualHexInteger of string     (* Should be erased after defn time. *)
        | LiteralDouble of Real64.real
        | LiteralDecimal of Decimal.DEC
        | LiteralInt of Int32.int
@@ -419,7 +402,7 @@ datatype PRAGMA =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
-       | TypeVarFixture
+       | TypeVarFixture of TYPEVAR_NONCE
        | TypeFixture of TY
        | MethodFixture of
            { func: FUNC,
@@ -445,11 +428,12 @@ withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and RIB = (FIXTURE_NAME * FIXTURE) list
-     and RIBS = RIB list
+     and RIBS = ((FIXTURE_NAME * FIXTURE) list) list
      and INITS = (FIXTURE_NAME * EXPR) list
 
      and INSTANCE_TYPE =
           {  name: NAME,
+             typeParams: IDENT list,
              typeArgs: TYPE_EXPR list,
              nonnullable: bool,
              superTypes: TYPE_EXPR list,
