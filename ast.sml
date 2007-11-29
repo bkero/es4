@@ -259,7 +259,7 @@ datatype PRAGMA =
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }
-       | LamType of 
+       | LamType of
          { params: IDENT list,
            body: TYPE_EXPR }
        | NullableType of 

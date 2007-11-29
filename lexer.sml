@@ -709,8 +709,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "lass"     , Class),
                                              (Ustring.fromSource "onst"     , Const),
                                              (Ustring.fromSource "ase"      , Case),
-                                             (Ustring.fromSource "ast"      , Cast),
-                                             (Ustring.fromSource "all"      , Call)]
+                                             (Ustring.fromSource "ast"      , Cast)]
                       | #"d"  => lexResOrId [(Ustring.fromSource "ebugger"  , Debugger),
                                              (Ustring.fromSource "efault"   , Default),
                                              (Ustring.fromSource "ecimal"   , Decimal),
@@ -727,8 +726,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "alse"     , False),
                                              (Ustring.fromSource "inal"     , Final),
                                              (Ustring.fromSource "or"       , For)]
-                      | #"g"  => lexResOrId [(Ustring.fromSource "oto"      , Goto),
-                                             (Ustring.fromSource "et"       , Get)]
+                      | #"g"  => lexResOrId [(Ustring.fromSource "et"       , Get)]
                       | #"h"  => lexResOrId [(Ustring.fromSource "as"       , Has)]
                       | #"i"  => lexResOrId [(Ustring.fromSource "mplements", Implements),
                                              (Ustring.fromSource "nstanceof", InstanceOf),
@@ -769,6 +767,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "ry"       , Try),
                                              (Ustring.fromSource "o"        , To)]
                       | #"u"  => lexResOrId [(Ustring.fromSource "ndefined" , Undefined),
+                                             (Ustring.fromSource "nit"      , Unit),
                                              (Ustring.fromSource "int"      , UInt),
                                              (Ustring.fromSource "se"       , Use)]
                       | #"v"  => lexResOrId [(Ustring.fromSource "oid"      , Void),

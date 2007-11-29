@@ -2788,7 +2788,6 @@ and defDefn (env:ENV)
     Process each definition.
 *)
 
-
 and defDefns (env:ENV)
              (defns:Ast.DEFN list)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
@@ -2908,7 +2907,6 @@ and defFragment (env:ENV)
         Fixture.closeFragment (#program env) frag' (#ribId env);
         frag'
     end
-
 
 and mkTopEnv (prog:Fixture.PROGRAM) 
     : ENV =

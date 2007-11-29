@@ -37,53 +37,36 @@ datatype TOKEN =
 
     (* punctuators *)
 
-      Minus
-    | MinusMinus
+      Dot
+    | LeftDotAngle
+    | DoubleDot
+    | TripleDot
     | Not
     | NotEquals
     | StrictNotEquals
     | Modulus
     | ModulusAssign
     | BitwiseAnd
+    | BitwiseAndAssign
     | LogicalAnd
     | LogicalAndAssign
-    | BitwiseAndAssign
-    | LeftParen
-    | RightParen
     | Mult
     | MultAssign
-    | Comma
-    | Dot
-    | DoubleDot
-    | TripleDot
-    | LeftDotAngle
+    | Plus
+    | PlusAssign
+    | PlusPlus
+    | Minus
+    | MinusAssign
+    | MinusMinus
     | Div
     | DivAssign
-    | Colon
-    | DoubleColon
-    | SemiColon
-    | QuestionMark
-    | At
-    | LeftBracket
-    | RightBracket
-    | BitwiseXor
-    | BitwiseXorAssign
-    | LeftBrace
-    | BitwiseOr
-    | LogicalOr
-    | LogicalOrAssign
-    | BitwiseOrAssign
-    | RightBrace
-    | BitwiseNot
-    | Plus
-    | PlusPlus
-    | PlusAssign
+    | SlashGreaterThan
     | LessThan
+    | LessThanOrEquals
+    | LessThanSlash
     | LeftShift
     | LeftShiftAssign
-    | LessThanOrEquals
     | Assign
-    | MinusAssign
     | Equals
     | StrictEquals
     | GreaterThan
@@ -92,11 +75,31 @@ datatype TOKEN =
     | RightShiftAssign
     | UnsignedRightShift
     | UnsignedRightShiftAssign
+    | BitwiseXor
+    | BitwiseXorAssign
+    | BitwiseOr
+    | BitwiseOrAssign
+    | LogicalOr
+    | LogicalOrAssign
+    | Colon
+    | DoubleColon
+    | LeftParen
+    | RightParen
+    | LeftBracket
+    | RightBracket
+    | LeftBrace
+    | RightBrace
+    | BitwiseNot
+    | At
+    | Comma
+    | SemiColon
+    | QuestionMark
 
     (* reserved identifiers *)
 
     | Break
     | Case
+    | Cast
     | Catch
     | Class
     | Continue
@@ -111,12 +114,16 @@ datatype TOKEN =
     | Finally
     | For
     | Function
-    | Goto
     | If
     | In
     | InstanceOf
+    | Internal
+    | Is
     | New
     | Null
+    | Private
+    | Protected
+    | Public
     | Return
     | Super
     | Switch
@@ -129,11 +136,10 @@ datatype TOKEN =
     | Void
     | While
     | With
+    | Wrap
 
     (* contextually reserved identifiers *)
 
-    | Call
-    | Cast
     | Const
     | Decimal
     | Double
@@ -141,15 +147,15 @@ datatype TOKEN =
     | Each
     | Eval
     | Final
+    | Generator
+    | Generic
     | Get
     | Has
     | Implements
     | Import
     | Int
     | Interface
-    | Internal
     | Intrinsic
-    | Is
     | Let
     | Namespace
     | Native
@@ -157,10 +163,7 @@ datatype TOKEN =
     | Override
     | Package
     | Precision
-    | Private
-    | Protected
     | Prototype
-    | Public
     | Rounding
     | Set
     | Standard
@@ -170,6 +173,7 @@ datatype TOKEN =
     | Type
     | UInt
     | Undefined
+    | Unit
     | Use
     | Xml
     | Yield
@@ -213,6 +217,7 @@ fun isreserved (t,_) =
     case t of
         Break => true
       | Case => true
+      | Cast => true
       | Catch => true
       | Class => true
       | Continue => true
@@ -230,8 +235,13 @@ fun isreserved (t,_) =
       | If => true
       | In => true
       | InstanceOf => true
+      | Internal => true
+      | Is => true
       | New => true
       | Null => true
+      | Private => true
+      | Protected => true
+      | Public => true
       | Return => true
       | Super => true
       | Switch => true
@@ -311,6 +321,7 @@ fun tokenname (t,_) =
 
       | Break => "break"
       | Case => "case"
+      | Cast => "cast"
       | Catch => "catch"
       | Class => "class"
       | Continue => "continue"
@@ -325,12 +336,16 @@ fun tokenname (t,_) =
       | Finally => "finally"
       | For => "for"
       | Function => "function"
-      | Goto => "goto"
       | If => "if"
       | In => "in"
       | InstanceOf => "instanceof"
+      | Internal => "internal"
+      | Is => "is"
       | New => "new"
       | Null => "null"
+      | Private => "private"
+      | Protected => "protected"
+      | Public => "public"
       | Return => "return"
       | Super => "super"
       | Switch => "switch"
@@ -343,11 +358,10 @@ fun tokenname (t,_) =
       | Void => "void"
       | While => "while"
       | With => "with"
+      | Wrap => "wrap"
 
       (* contextually reserved identifiers *)
 
-      | Call => "call"
-      | Cast => "cast"
       | Const => "const"
       | Decimal => "decimal"
       | Double => "double"
@@ -355,15 +369,15 @@ fun tokenname (t,_) =
       | Each => "each"
       | Eval => "eval"
       | Final => "final"
+      | Generator => "generator"
+      | Generic => "generic"
       | Get => "get"
       | Has => "has"
       | Implements => "implements"
       | Import => "import"
       | Int => "int"
       | Interface => "interface"
-      | Internal => "internal"
       | Intrinsic => "intrinsic"
-      | Is => "is"
       | Let => "let"
       | Namespace => "namespace"
       | Native => "native"
@@ -371,10 +385,7 @@ fun tokenname (t,_) =
       | Override => "override"
       | Package => "package"
       | Precision => "precision"
-      | Private => "private"
-      | Protected => "protected"
       | Prototype => "prototype"
-      | Public => "public"
       | Rounding => "rounding"
       | Set => "set"
       | Standard => "standard"
@@ -383,6 +394,7 @@ fun tokenname (t,_) =
       | To => "to"
       | Type => "type"
       | UInt => "uint"
+      | Unit => "unit"
       | Undefined => "undefined"
       | Use => "use"
       | Xml => "xml"

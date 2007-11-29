@@ -31,6 +31,12 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
+
+(*
+   The parser is modeled after the design by Peter Sestoft describe here:
+       www.itu.dk/courses/FDP/E2002/parsernotes.pdf
+*)
+
 structure Parser = struct
 
 (* Local tracing machinery *)
@@ -435,8 +441,6 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
     let fun tn () = Ustring.fromString (tokenname (t,()))
         val ustr = case t of
         Identifier(us) => us
-      | Call => tn ()
-      | Cast => tn ()
       | Const => tn ()
       | Decimal => tn ()
       | Double => tn ()
@@ -444,15 +448,15 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Each => tn ()
       | Eval => tn ()
       | Final => tn ()
+      | Generator => tn ()
+      | Generic => tn ()
       | Get => tn ()
       | Has => tn ()
       | Implements => tn ()
       | Import => tn ()
       | Int => tn ()
       | Interface => tn ()
-      | Internal => tn ()
       | Intrinsic => tn ()
-      | Is => tn ()
       | Let => tn ()
       | Namespace => tn ()
       | Native => tn ()
@@ -460,10 +464,7 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Override => tn ()
       | Package => tn ()
       | Precision => tn ()
-      | Private => tn ()
-      | Protected => tn ()
       | Prototype => tn ()
-      | Public => tn ()
       | Rounding => tn ()
       | Set => tn ()
       | Standard => tn ()
@@ -473,6 +474,7 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Type => tn ()
       | UInt => tn ()
       | Undefined => tn ()
+      | Unit => tn ()
       | Use => tn ()
       | Xml => tn ()
       | Yield => tn ()
@@ -531,40 +533,56 @@ and reservedNamespace (ts:TOKENS) =
     end
 
 (*
-    SimpleQualifiedIdentifier
-        PropertyIdentifier
-        Qualifier  ::  PropertyIdentifier
-        Qualifier  ::  ReservedIdentifier
-        Qualifier  ::  Brackets
-
-    ExpressionQualifiedIdentifer
-        ParenListExpression  ::  PropertyIdentifier
-        ParenListExpression  ::  ReservedIdentifier
-        ParenListExpression  ::  Brackets
-
-    left factored:
-
-    SimpleQualifiedIdentifier
-        ReservedNamespace :: QualifiedIdentifierPrime
-        PropertyIdentifier :: QualifiedIdentifierPrime
-        PropertyIdentifier
-
-    ExpressionQualifiedIdentifer
-        ParenListExpression  ::  QualifiedIdentifierPrime
-
-    QualifiedIdentifierPrime
-        PropertyIdentifier
+    QualifiedNameIdentifier 
+        Identifier
         ReservedIdentifier
+        StringLiteral
+        NumberLiteral
         Brackets
+        OverloadedOperator
 *)
 
-and simpleQualifiedIdentifier (ts:TOKENS) =
-    let val _ = trace([">> simpleQualifiedIdentifier with next=",tokenname(hd(ts))])
+and qualifiedNameIdentifier (ts0:TOKENS, nd0:Ast.EXPR)
+    : (TOKENS * Ast.IDENT_EXPR) =
+    let val _ = trace([">> qualifiedNameIdentifier with next=",tokenname(hd(ts0))])
+    in case ts0 of
+        (StringLiteral s, _) :: ts1 => (ts1,Ast.QualifiedIdentifier {qual=nd0,ident=s})
+      | (DecimalLiteral n, _) :: ts1 => (ts1,Ast.QualifiedExpression {qual=nd0,expr=Ast.LiteralExpr(Ast.LiteralContextualDecimal n)})
+                (* FIXME could be another kind of number token *)
+      | (LeftBracket, _) :: _ =>
+            let
+                val (ts1,nd1) = brackets (ts0)
+                val (ts2,nd2) = (ts1,Ast.QualifiedExpression ({qual=nd0,expr=nd1}))
+            in
+                (ts2,nd2)
+            end
+      (* FIXME overloaded operators *)
+      | _  =>
+            let
+                val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts0)
+                val (ts2,nd2) = (ts1,Ast.QualifiedIdentifier ({qual=nd0, ident=nd1}))
+            in
+                (ts2,nd2)
+            end
+    end
+
+(*
+    SimpleQualifiedIdentifier
+        Identifier
+        Qualifier  ::  QualifiedNameIdentifier
+
+    ExpressionQualifiedIdentifer
+        ParenListExpression  ::  QualifiedNameIdentifier
+*)
+
+and simpleQualifiedName (ts:TOKENS)
+    : (TOKENS * Ast.IDENT_EXPR) =
+    let val _ = trace([">> simpleQualifiedName with next=",tokenname(hd(ts))])
         fun rn () =
             let
                 val (ts1, nd1) = reservedNamespace(ts)
             in case ts1 of
-                   (DoubleColon, _) :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
+                   (DoubleColon, _) :: ts2 => qualifiedNameIdentifier(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
                  | _ => error ["qualified namespace without double colon"]
             end
     in case ts of
@@ -578,9 +596,9 @@ and simpleQualifiedIdentifier (ts:TOKENS) =
               val (ts1, nd1) = (tl ts, Ast.WildcardIdentifier)
           in case ts1 of
               (DoubleColon, _) :: _ =>
-                  qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=nd1, loc=locOf ts1}))
+                  qualifiedNameIdentifier(tl ts1,Ast.LexicalRef ({ident=nd1, loc=locOf ts1}))
             | _ =>
-                  (trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
+                  (trace(["<< simpleQualifiedName with next=",tokenname(hd(ts1))]);
                    (ts1,nd1))
           end
       | _ =>
@@ -589,23 +607,23 @@ and simpleQualifiedIdentifier (ts:TOKENS) =
               val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
           in case ts1 of
               (DoubleColon, _) :: _ =>
-                  qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id, loc=locOf ts}))
+                  qualifiedNameIdentifier(tl ts1,Ast.LexicalRef ({ident=id, loc=locOf ts}))
             | _ =>
-                  (trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
+                  (trace(["<< simpleQualifiedName with next=",tokenname(hd(ts1))]);
                    (ts1,id))
           end
     end
 
-and expressionQualifiedIdentifier (ts) =
+and expressionQualifiedName (ts0)
+    : (TOKENS * Ast.IDENT_EXPR) =
     let
-        val (ts1,nd1) = parenListExpression(ts)
+        val (ts1, nd1) = parenListExpression (ts0)
     in case ts1 of
         (DoubleColon, _) :: _ =>
             let
-                val (ts2,nd2) = qualifiedIdentifier'(tl ts1,nd1)
-(* todo: make qualifier be an EXPR list *)
+                val (ts2, nd2) = qualifiedNameIdentifier (tl ts1, nd1)
             in
-                (ts2,nd2)
+                (ts2, nd2)
             end
 
       | _ => error ["unknown form of expression-qualified identifier"]
@@ -625,157 +643,101 @@ and reservedIdentifier [] = error ["no reserved identifier"]
         true => (ts, Ustring.fromString (tokenname t))
       | false => error ["non-reserved identifier"]
 
-and qualifiedIdentifier' (ts1, nd1) : ((TOKEN * Ast.LOC) list * Ast.IDENT_EXPR) =
-    let val _ = trace([">> qualifiedIdentifier' with next=",tokenname(hd(ts1))])
-    in case ts1 of
-        (LeftBracket, _) :: ts =>
-            let
-                val (ts2,nd2) = brackets (ts1)
-                val (ts3,nd3) = (ts2,Ast.QualifiedExpression({qual=nd1,expr=nd2}))
+(*
+    PropertyName
+        SimpleQualifiedName
+        ExpressionQualifiedName
+*)
 
-            in
-                (ts3,nd3)
-            end
-      | tk :: ts =>
-            let
-                val (ts2,nd2) = reservedOrOrdinaryIdentifier(ts1)
-                val qid = Ast.QualifiedIdentifier({qual=nd1, ident=nd2})
-                val (ts3,nd3) = (ts2,qid)
-            in
-                (ts3,nd3)
-            end
-      | _ => error ["empty token stream for qualified identifier"]
+and propertyName (ts0:TOKENS)
+    : (TOKENS * Ast.IDENT_EXPR) =
+    let val _ = trace([">> propertyName with next=",tokenname (hd (ts0))])
+    in case ts0 of
+        (LeftParen, _) :: _ => expressionQualifiedName (ts0)
+      | _ => simpleQualifiedName (ts0)
     end
 
 (*
-    NonAttributeQualifiedIdentifier
-        SimpleQualifiedIdentifier
-        ExpressionQualifiedIdentifier
+    AttributeName   
+        @  Brackets       <<reserved syntax>>
+        @  PropertyName   <<reserved syntax>>
+
+    QualifiedName
+        AttributeName
+        PropertyName
 *)
 
-and nonAttributeQualifiedIdentifier (ts:TOKENS) =
-    let val _ = trace([">> nonAttributeQualifiedIdentifier with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftParen, _) :: _ => expressionQualifiedIdentifier(ts)
-      | _ => simpleQualifiedIdentifier(ts)
+and qualifiedName (ts0: TOKENS)
+    : (TOKENS * Ast.IDENT_EXPR) =
+    let val _ = trace ([">> qualifiedName with next=", tokenname (hd (ts0))])
+    in case ts0 of
+        (At, _) :: _ => error ["reserved syntax in qualifiedName"]
+      | _ => propertyName (ts0)
     end
 
 (*
-    AttributeIdentifier
-        @  Brackets
-        @  NonAttributeQualifiedIdentifier
+    PrimaryName 
+        Path  .  PropertyName
+        PropertyName    
 *)
 
-and attributeIdentifier (ts:TOKENS) =
-    let val _ = trace([">> attributeIdentifier with next=",tokenname(hd(ts))])
-    in case ts of
-        (At, _) :: (LeftBracket, _) :: _ =>
-            let
-                val (ts1,nd1) = brackets(tl ts)
-            in
-                (ts1,Ast.AttributeIdentifier (Ast.ExpressionIdentifier { expr = nd1,
-                                                                         openNamespaces = [] }))
-            end
-      | (At, _) :: _ =>
-            let
-                val (ts1,nd1) = nonAttributeQualifiedIdentifier(tl ts)
-            in
-                (ts1,Ast.AttributeIdentifier nd1)
-            end
-      | _ =>
-            error ["unknown form of attribute identifier"]
-    end
-
-(*
-
-    QualifiedIdentifier
-        AttributeIdentifier
-        NonAttributeQualifiedIdentifier
-
-*)
-
-and qualifiedIdentifier (ts:TOKENS) =
-    let val _ = trace([">> qualifiedIdentifier with next=",tokenname(hd(ts))])
-    in case ts of
-        (At, _) :: _ => attributeIdentifier(ts)
-      | _ => nonAttributeQualifiedIdentifier(ts)
-    end
-
-(*
-    TypeIdentifier
-        SimpleTypeIdentifier
-        SimpleTypeIdentifier  .<  TypeExpressionList  >
-*)
-
-and propertyIdentifier (ts:TOKENS) = 
-    nonAttributeQualifiedIdentifier ts
-(*
-    let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
-    in case ts1 of
-        (LeftDotAngle, _) :: _ =>
-            let
-                val (ts2,nd2) = typeExpressionList (tl ts1)
-            in case ts2 of
-                (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
-                    (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]);
-                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
-              | _ => error ["unknown final token of parametric type expression"]
-            end
-      | _ =>
-            (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);
-            (ts1, nd1))
-    end
-*)
-    
-and primaryIdentifier (ts:TOKENS) =
-    let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))])
-    in case ts of
+and primaryName (ts0: TOKENS)
+    : (TOKENS * Ast.IDENT_EXPR) =
+    let val _ = trace ([">> primaryName with next=",tokenname (hd (ts0))])
+    in case ts0 of
         (Identifier _, _) :: (Dot, _) :: _ =>
             let
-                val (ts1,nd1) = path ts
+                val (ts1, nd1) = path ts0
             in case ts1 of
                 (Dot, _) :: _ =>
                     let
-                       val (ts2,nd2) = propertyIdentifier (tl ts1)
+                       val (ts2, nd2) = propertyName (tl ts1)
                     in
-                       (ts2,Ast.UnresolvedPath (nd1,nd2))
+                       (ts2, Ast.UnresolvedPath (nd1,nd2))
                     end
-              | _ => LogErr.internalError ["primaryIdentifier"]
+              | _ => LogErr.internalError ["primaryName"]
             end
-      | _ => propertyIdentifier(ts)
+      | _ => propertyName (ts0)
     end
 
-and path (ts) : (TOKEN * Ast.LOC) list * Ast.IDENT list =
-    let val _ = trace([">> path with next=", tokenname(hd ts)])
-        val (ts1,nd1) = identifier ts
+(*
+    Path    
+        Identifier
+        Path  .  Identifier
+*)
+
+and path (ts0: TOKENS)
+    : (TOKENS * Ast.IDENT list) =
+    let val _ = trace ([">> path with next=", tokenname (hd ts0)])
+        val (ts1,nd1) = identifier ts0
     in case ts1 of
-           (Dot, _) :: (Identifier _, _) :: (Dot, _) :: (Identifier _, _) :: _ =>
+        (Dot, _) :: (Identifier _, _) :: (Dot, _) :: (Identifier _, _) :: _ =>
            let
-               val (ts2,nd2) = path (tl ts1)
+               val (ts2, nd2) = path (tl ts1)
            in
-               (ts2,nd1::nd2)
+               (ts2, nd1::nd2)
            end
-         | _ =>
+      | _ =>
            let
            in
-               (ts1,nd1::[])
+               (ts1, nd1::[])
            end
     end
 
 (*
     ParenExpression
-        (  AssignmentExpressionallowLet, allowIn  )
+        (  AssignmentExpression(allowLet,allowIn) )
 *)
 
-and parenExpression (ts:TOKENS) =
-    let val _ = trace([">> parenExpression with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftParen, _) :: ts1 =>
+and parenExpression (ts0: TOKENS)
+    : TOKENS * Ast.EXPR =
+    let val _ = trace ([">> parenExpression with next=", tokenname (hd (ts0))])
+    in case ts0 of
+        (LeftParen, _) :: _ =>
             let
-                val (ts2,nd2:Ast.EXPR) = assignmentExpression (ts1,AllowList,AllowIn)
-            in case ts2 of
-                (RightParen, _) :: ts3 => (ts3,nd2)
+                val (ts1, nd1) = assignmentExpression (tl ts0, AllowList, AllowIn)
+            in case ts1 of
+                (RightParen, _) :: _ => (tl ts1, nd1)
               | _ => error ["unknown final token of paren expression"]
             end
       | _ => error ["unknown initial token of paren expression"]
@@ -786,19 +748,20 @@ and parenExpression (ts:TOKENS) =
         (  ListExpression(AllowIn)  )
 *)
 
-and parenListExpression (ts:TOKENS) : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> parenListExpression with next=",tokenname(hd(ts))])
-    in case ts of
+and parenListExpression (ts0: TOKENS) 
+    : TOKENS * Ast.EXPR =
+    let val _ = trace ([">> parenListExpression with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (LeftParen, _) :: _ =>
             let
-                val (ts1,nd1,_) = listExpression (tl ts,AllowIn)
+                val (ts1, nd1, _) = listExpression (tl ts0, AllowIn)
                 val nd1 = case nd1 of
                               Ast.ListExpr [x] => x
                             | x => x
             in case ts1 of
                 (RightParen, _) :: _ =>
-                    (trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
-                    (tl ts1,nd1))
+                    (trace (["<< parenListExpression with next=", tokenname (hd (ts1))]);
+                    (tl ts1, nd1))
               | _ => error ["unknown final token of paren list expression"]
             end
       | _ => error ["unknown initial token of paren list expression"]
@@ -940,7 +903,7 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = primaryIdentifier (tl (tl (tl ts1)))
+                val (ts2,nd2) = primaryName (tl (tl (tl ts1)))
                 val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
                                     (* FIXME: what is the type of this? *)
             in case ts2 of
@@ -1013,7 +976,7 @@ and functionSignatureType (ts) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = primaryIdentifier (tl (tl (tl ts1)))
+                val (ts2,nd2) = primaryName (tl (tl (tl ts1)))
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
@@ -1733,18 +1696,13 @@ and primaryExpression (ts:TOKENS, a:ALPHA, b:BETA)
            | _ => error ["non-regexp-literal token after '/' lexbreak"])
 
 (* todo:
-      | (XmlMarkup | LessThan ) :: _ => xmlInitializer ts
+      | (XmlMarkup | LessThan ) :: _ => error ["syntax reserved for E4X"]
 *)
 
-      | (At, _) :: _ =>
-            let
-                val (ts1,nd1) = attributeIdentifier ts
-            in
-                (ts1,Ast.LexicalRef {ident=nd1, loc=locOf ts})
-            end
+      | (At, _) :: _ => error ["syntax reserved for E4X"]
       | _ =>
             let
-                val (ts1,nd1) = primaryIdentifier ts
+                val (ts1,nd1) = primaryName ts
             in
                 (ts1,Ast.LexicalRef {ident=nd1, loc=locOf ts})
             end
@@ -2057,7 +2015,7 @@ and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
                     let
                         fun notReserved () =
                             let
-                                val (ts1,nd1) = propertyIdentifier (tl ts)
+                                val (ts1,nd1) = propertyName (tl ts)
                             in
                                 (ts1,Ast.ObjectRef {base=nd,ident=nd1,loc=locOf ts})
                             end
@@ -3551,7 +3509,7 @@ and typeExpression (ts:TOKENS)
       | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
       | _ =>
             let
-                val (ts1,nd1) = primaryIdentifier ts
+                val (ts1,nd1) = primaryName ts
             in
                 (ts1,makeTy (needType(nd1,NONE)))
             end
@@ -6136,10 +6094,6 @@ and functionName (ts:TOKENS)
                 (ts1,{kind=Ast.Set,ident=nd1})
             end
 
-      | (Call, _) :: (LeftParen,    _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.call_})
-      | (Call, _) :: (LeftDotAngle, _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.call_})
-      | (Call, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Call,ident=Ustring.asterisk})
-
       | (Has, _) :: (LeftParen,    _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.has_})
       | (Has, _) :: (LeftDotAngle, _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.has_})
       | (Has, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Has,ident=Ustring.asterisk})
@@ -6572,7 +6526,7 @@ and typeIdentifierList (ts:TOKENS)
             in case ts of
                 (Comma, _) :: _ =>
                     let
-                        val (ts1,nd1) = primaryIdentifier (tl ts)
+                        val (ts1,nd1) = primaryName (tl ts)
                         val (ts2,nd2) = typeIdentifierList' (ts1)
                     in
                         (ts2,nd1::nd2)
@@ -6583,7 +6537,7 @@ and typeIdentifierList (ts:TOKENS)
                         (ts,[])
                     end
             end
-        val (ts1,nd1) = primaryIdentifier (ts)
+        val (ts1,nd1) = primaryName (ts)
         val (ts2,nd2) = typeIdentifierList' (ts1)
     in
         trace(["<< typeIdentifierList with next=", tokenname(hd ts2)]);
@@ -6705,7 +6659,7 @@ and namespaceInitialisation (ts:TOKENS)
             end
       | (Assign, _) :: _ =>
             let
-                val (ts1,nd1) = primaryIdentifier (tl ts)
+                val (ts1,nd1) = primaryName (tl ts)
             in
                 trace(["<< namespaceInitialisation simpleTypeIdentifer with next=", tokenname(hd ts1)]);
                 (ts1,SOME (Ast.LexicalRef {ident=nd1, loc=locOf ts}))
@@ -6911,7 +6865,7 @@ and pragmaItem (ts:TOKENS)
       | (Default, _) :: (Namespace, _) :: (Private,   _) :: _ => defaultNamespaceReserved ()
       | (Default, _) :: (Namespace, _) :: _ =>
             let
-                val (ts1,nd1) = primaryIdentifier (tl (tl ts))
+                val (ts1,nd1) = primaryName (tl (tl ts))
             in
                 (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1, loc=locOf ts}))
             end
@@ -6923,7 +6877,7 @@ and pragmaItem (ts:TOKENS)
             end
       | (Namespace, _) :: _ =>
             let
-                val (ts1,nd1) = primaryIdentifier (tl ts)
+                val (ts1,nd1) = primaryName (tl ts)
             in
                 (ts1, Ast.UseNamespace (Ast.LexicalRef { ident = nd1, loc = locOf ts}))
             end
