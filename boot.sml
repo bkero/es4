@@ -293,11 +293,11 @@ fun boot (baseDir:string) : Mach.REGS =
                         * type uses string's prototype.
                         *)
 
+                       builtin "double.es",
                        builtin "int.es",
                        builtin "uint.es",
                        builtin "byte.es",
                        builtin "decimal.es",
-                       builtin "double.es",
                        builtin "Number.es",
 
                        builtin "string_primitive.es",

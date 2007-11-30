@@ -144,13 +144,10 @@ val dummyNs = Name.noNS
 
 infix 4 <:;
 fun tsub <: tsup = Type.groundIsSubtype tsub tsup
-    
 
 fun mathOp (v:Mach.VAL)
            (decimalFn:(Decimal.DEC -> 'a) option)
            (doubleFn:(Real64.real -> 'a) option)
-           (intFn:(Int32.int -> 'a) option)
-           (uintFn:(Word32.word -> 'a) option)
            (default:'a)
     : 'a =
     let
@@ -163,8 +160,6 @@ fun mathOp (v:Mach.VAL)
             (case !(#magic ob) of
                  SOME (Mach.Decimal d) => fnOrDefault decimalFn d
                | SOME (Mach.Double d) => fnOrDefault doubleFn d
-               | SOME (Mach.Int i) => fnOrDefault intFn i
-               | SOME (Mach.UInt u) => fnOrDefault uintFn u
                | _ => default)
           | _ => default
     end
@@ -287,18 +282,6 @@ fun getGlobalScope (regs:Mach.REGS)
 type REF = (Mach.OBJ * Ast.NAME)
 
 datatype NUMBER_TYPE = ByteNum | IntNum | UIntNum | DoubleNum | DecimalNum 
-
-fun numTypeOf (regs:Mach.REGS) 
-              (v:Mach.VAL) 
-    : NUMBER_TYPE = 
-    case (Mach.needMagic v) of 
-        Mach.Byte _ => ByteNum
-      | Mach.Int _ => IntNum
-      | Mach.UInt _ => UIntNum
-      | Mach.Double _ => DoubleNum
-      | Mach.Decimal _ => DecimalNum
-      | other => error regs ["unexpected magic type in numTypeOf: ", 
-                             Ustring.toAscii (Mach.magicToUstring other)]
                           
 fun numLE (a:NUMBER_TYPE)
           (b:NUMBER_TYPE) =
@@ -679,16 +662,11 @@ and asArrayIndex (v:Mach.VAL)
     case v of
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
-             SOME (Mach.Int i) => if i >= 0 then
-                                      Word32.fromLargeInt (Int32.toLarge i)
-                                  else
-                                      0wxFFFFFFFF
-           | SOME (Mach.UInt u) => u
-           | SOME (Mach.Double d) => if Real64.compare(Real64.realFloor d, d) = EQUAL andalso
-                                        d >= 0.0 andalso
-                                        d < 4294967295.0
+             SOME (Mach.Double d) => if Mach.isIntegral d 
+                                        andalso 0.0 <= d 
+                                        andalso d < 4294967295.0
                                      then
-                                         Word32.fromLargeInt (Real64.toLargeInt IEEEReal.TO_NEAREST d)
+                                         doubleToWord d
                                      else
                                          0wxFFFFFFFF
            | SOME (Mach.Decimal d) => 0wxFFFFFFFF (* FIXME *)
@@ -1186,7 +1164,7 @@ and newArray (regs:Mach.REGS)
      *)
     let val a = instantiateGlobalClass 
                     regs Name.nons_Array 
-                    [newInt regs (Int32.fromInt (List.length vals))]
+                    [newInt regs (Real64.fromInt (List.length vals))]
         fun init a _ [] = ()
           | init a k (x::xs) =
             (setValue regs a (Name.nons (Ustring.fromInt k)) x ;
@@ -1223,23 +1201,23 @@ and newDouble (regs:Mach.REGS)
     if Real64.isNan n
     then newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
     else
-	case Mach.findInReal64Cache regs n of
+	case Mach.findInDoubleCache regs n of
 	    SOME obj => Mach.Object obj
 	  | NONE => newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
 
 and newInt (regs:Mach.REGS) 
-           (n:Int32.int)
+           (n:Real64.real)
     : Mach.VAL =    
-    case Mach.findInInt32Cache regs n of
+    case Mach.findInIntCache regs n of
 	SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_int (SOME (Mach.Int n))
+      | NONE => newBuiltin regs Name.ES4_int (SOME (Mach.Double n))
 
-and newUInt (regs:Mach.REGS) 
-            (n:Word32.word)
+and newUInt (regs:Mach.REGS)
+            (n:Real64.real)
     : Mach.VAL =
-    case Mach.findInWord32Cache regs n of
+    case Mach.findInUIntCache regs n of
         SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_uint (SOME (Mach.UInt n))
+      | NONE => newBuiltin regs Name.ES4_uint (SOME (Mach.Double n))
 
 and newStringWrapper (regs:Mach.REGS)
                     (s:Ustring.STRING)
@@ -1254,11 +1232,11 @@ and newString (regs:Mach.REGS)
       | NONE => newBuiltin regs Name.ES4_string (SOME (Mach.String s))
 
 and newByte (regs:Mach.REGS)
-            (b:Word8.word)
+            (b:Real64.real)
     : Mach.VAL =
-    case Mach.findInWord8Cache regs b of
+    case Mach.findInByteCache regs b of
         SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_byte (SOME (Mach.Byte b))
+      | NONE => newBuiltin regs Name.ES4_byte (SOME (Mach.Double b))
 
 and newBooleanWrapper (regs:Mach.REGS)
                      (b:bool)
@@ -1437,8 +1415,6 @@ and toBoolean (v:Mach.VAL) : bool =
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Boolean b) => b
-           | SOME (Mach.Int x) => not (x = (Int32.fromInt 0))
-           | SOME (Mach.UInt x) => not (x = (Word32.fromInt 0))
            | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
                                           orelse
                                           Real64.isNan x)
@@ -1532,9 +1508,6 @@ and toNumeric (regs:Mach.REGS)
             (case !(#magic ob) of
                  SOME (Mach.Double _) => v
                | SOME (Mach.Decimal _) => v
-               | SOME (Mach.Int _) => v
-               | SOME (Mach.UInt _) => v
-               | SOME (Mach.Byte _) => v
                | SOME (Mach.Boolean false) => zero ()
                | SOME (Mach.Boolean true) => one ()
                (*
@@ -1570,9 +1543,6 @@ and toDecimal (ctxt:Mach.DECIMAL_CONTEXT)
                   SOME d' => d'
                 | NONE => Decimal.NaN)
            | SOME (Mach.Decimal d) => d
-           | SOME (Mach.Int i) => Decimal.fromLargeInt (Int32.toLarge i)
-           | SOME (Mach.UInt u) => Decimal.fromLargeInt (Word32.toLargeInt u)
-           | SOME (Mach.Byte b) => Decimal.fromLargeInt (Word8.toLargeInt b)
            | SOME (Mach.Boolean false) => Decimal.zero
            | SOME (Mach.Boolean true) => Decimal.one
            (*
@@ -1609,10 +1579,6 @@ and toDouble (v:Mach.VAL)
                  (case Real64.fromString (Decimal.toString d) of
                       SOME d' => d'
                     | NONE => NaN ())
-
-               | SOME (Mach.Int i) => Real64.fromLargeInt (Int32.toLarge i)
-               | SOME (Mach.UInt u) => Real64.fromLargeInt (Word32.toLargeInt u)
-               | SOME (Mach.Byte b) => Real64.fromLargeInt (Word8.toLargeInt b)
                | SOME (Mach.Boolean false) => zero ()
                | SOME (Mach.Boolean true) => one ()
                (*
@@ -1642,7 +1608,7 @@ and isPositiveZero (v:Mach.VAL)
         mathOp v
                (SOME Decimal.isPositiveZero)
                (SOME doubleIsPosZero)
-               NONE NONE false
+               false
     end
 
 
@@ -1656,7 +1622,7 @@ and isNegativeZero (v:Mach.VAL)
         mathOp v
                (SOME Decimal.isPositiveZero)
                (SOME doubleIsNegZero)
-               NONE NONE false
+               false
     end
 
 
@@ -1670,7 +1636,7 @@ and isPositiveInf (v:Mach.VAL)
         mathOp v
                (SOME Decimal.isPositiveZero)
                (SOME doubleIsPosInf)
-               NONE NONE false
+               false
     end
 
 
@@ -1684,7 +1650,7 @@ and isNegativeInf (v:Mach.VAL)
         mathOp v
                (SOME Decimal.isPositiveZero)
                (SOME doubleIsNegInf)
-               NONE NONE false
+               false
     end
 
 
@@ -1693,7 +1659,7 @@ and isNaN (v:Mach.VAL)
     mathOp v
            (SOME Decimal.isNaN)
            (SOME Real64.isNan)
-           NONE NONE false
+           false
 
 
 and sign (v:Mach.VAL)
@@ -1721,8 +1687,6 @@ and sign (v:Mach.VAL)
         mathOp v
                (SOME decimalSign)
                (SOME Real64.sign)
-               (SOME Int32.sign)
-               (SOME uint32Sign)
                0
     end
 
@@ -1732,8 +1696,6 @@ and floor (v:Mach.VAL)
     mathOp v
            (SOME Decimal.floorInt)
            (SOME (Real64.toLargeInt IEEEReal.TO_NEGINF))
-           (SOME Int32.toLarge)
-           (SOME Word32.toLargeInt)
            (LargeInt.fromInt 0)
 
 
@@ -1751,7 +1713,7 @@ and signFloorAbs (v:Mach.VAL)
 
 and toInt32 (regs:Mach.REGS)
             (v:Mach.VAL)
-    : Int32.int =
+    : Real64.real =
     let
         val v' = toNumeric regs v
     in
@@ -1760,72 +1722,62 @@ and toInt32 (regs:Mach.REGS)
             isNegativeInf v' orelse
             isPositiveZero v' orelse
             isNegativeZero v')
-        then Int32.fromInt 0
+        then 0.0
         else
             let
                 val l31 = IntInf.pow (2, 31)
                 val l32 = IntInf.pow (2, 32)
                 val v'' = IntInf.mod (signFloorAbs v', l32)
             in
-                Int32.fromLarge (if LargeInt.>= (v'', l31)
-                                 then LargeInt.- (v'', l32)
-                                 else v'')
+                Real64.fromLargeInt (if LargeInt.>= (v'', l31)
+                                     then LargeInt.- (v'', l32)
+                                     else v'')
             end
     end
 
+and toUIntNN (regs:Mach.REGS)
+             (nn:int)
+             (v:Mach.VAL)
+    : Real64.real =
+    let
+        val v' = toNumeric regs v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then 0.0
+        else
+            let
+                val mask = IntInf.pow (2, nn)
+            in
+                Real64.fromLargeInt (LargeInt.mod (signFloorAbs v', mask))
+            end
+    end
+
+
 and toByte (regs:Mach.REGS)
            (v:Mach.VAL)
-    : Word8.word =
-    let
-        val u32 = toUInt32 regs v
-    in
-        Word8.fromInt (Word32.toInt (Word32.andb (0wxff, u32)))
-    end
+    : Real64.real =
+    toUIntNN regs 8 v
     
 
 (* ES-262-3 9.6 ToUInt32 *)
 
 and toUInt32 (regs:Mach.REGS)
              (v:Mach.VAL)
-    : Word32.word =
-    let
-        val v' = toNumeric regs v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then Word32.fromInt 0
-        else
-            let
-                val l32 = IntInf.pow (2, 32)
-            in
-                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l32))
-            end
-    end
+    : Real64.real =
+    toUIntNN regs 32 v
+
 
 (* ES-262-3 9.6 ToUInt16 *)
 
 and toUInt16 (regs:Mach.REGS)
              (v:Mach.VAL)
-    : Word32.word =
-    let
-        val v' = toNumeric regs v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then Word32.fromInt 0
-        else
-            let
-                val l16 = IntInf.pow (2, 16)
-            in
-                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l16))
-            end
-    end
+    : Real64.real =
+    toUIntNN regs 16 v
+
 
 and getExpectedType (regs:Mach.REGS)
                     (expr:Ast.EXPR)
@@ -1833,6 +1785,7 @@ and getExpectedType (regs:Mach.REGS)
     case expr of
         Ast.ExpectedTypeExpr (te, e) => (te, e)
       | _ => (Ast.SpecialType Ast.Any, expr)
+
 
 and checkCompatible (regs:Mach.REGS)
                     (tyExpr:Ast.TYPE_EXPR)
@@ -1842,6 +1795,7 @@ and checkCompatible (regs:Mach.REGS)
     else error regs ["typecheck failed, val=", Mach.approx v,
                      " type=", LogErr.ty (typeOfVal regs v),
                      " wanted=", LogErr.ty tyExpr]
+
 
 and evalExpr (regs:Mach.REGS)
              (expr:Ast.EXPR)
@@ -2307,7 +2261,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
             end
         val numProps = putVal 0 vals
     in
-        setValue regs obj Name.nons_length (newUInt regs (Word32.fromInt numProps)) ;
+        setValue regs obj Name.nons_length (newUInt regs (Real64.fromInt numProps));
         Mach.Object obj
     end
 
@@ -2389,8 +2343,8 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralUndefined => Mach.Undef
       | Ast.LiteralDouble r => newDouble regs r
       | Ast.LiteralDecimal d => newDecimal regs d
-      | Ast.LiteralInt i => newInt regs i
-      | Ast.LiteralUInt u => newUInt regs u
+      | Ast.LiteralInt i => newInt regs (Real64.fromLargeInt (Int32.toLarge i))
+      | Ast.LiteralUInt u => newUInt regs (Real64.fromLargeInt (Word32.toLargeInt u))
       | Ast.LiteralBoolean b => newBoolean regs b
       | Ast.LiteralString s => newString regs s
       | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr regs exprs ty
@@ -2597,7 +2551,7 @@ and evalUnaryOp (regs:Mach.REGS)
                 (expr:Ast.EXPR)
     : Mach.VAL =
     let
-        fun crement decimalOp doubleOp intOp uintOp byteOp isPre =
+        fun crement decimalOp doubleOp isPre =
             let
                 val (exprType, expr) = getExpectedType regs expr
                 val (obj, name) = evalRefExpr regs expr false
@@ -2615,30 +2569,9 @@ and evalUnaryOp (regs:Mach.REGS)
 
                       | Mach.Double vd =>  
                         let
-                            val one = Real64.fromInt 1
+                            val one = 1.0
                         in
                             (newDouble regs vd, newDouble regs (doubleOp (vd, one)))
-                        end
-
-                      | Mach.Int vi => 
-                        let
-                            val one = Int32.fromInt 1
-                        in
-                            (newInt regs vi, newInt regs (intOp (vi, one)))
-                        end
-
-                      | Mach.UInt vu =>
-                        let
-                            val one = Word32.fromInt 1
-                        in
-                            (newUInt regs vu, newUInt regs (uintOp (vu, one)))
-                        end
-
-                      | Mach.Byte vb =>
-                        let
-                            val one = Word8.fromInt 1
-                        in
-                            (newByte regs vb, newByte regs (byteOp (vb, one)))
                         end
 
                       | _ => error regs ["non-numeric operand to crement operation"]
@@ -2660,38 +2593,26 @@ and evalUnaryOp (regs:Mach.REGS)
 
           | Ast.PreIncrement => crement (Decimal.add)
                                         (Real64.+)
-                                        (Int32.+)
-                                        (Word32.+)
-                                        (Word8.+)
                                         true
 
           | Ast.PreDecrement => crement (Decimal.subtract)
                                         (Real64.-)
-                                        (Int32.-)
-                                        (Word32.-)
-                                        (Word8.-)
                                         true
 
           | Ast.PostIncrement => crement (Decimal.add)
                                          (Real64.+)
-                                         (Int32.+)
-                                         (Word32.+)
-                                         (Word8.+)
                                          false
 
           | Ast.PostDecrement => crement (Decimal.subtract)
                                          (Real64.-)
-                                         (Int32.-)
-                                         (Word32.-)
-                                         (Word8.-)
                                          false
 
           | Ast.BitwiseNot =>
-            newInt regs (Int32.fromLarge
-                             (Word32.toLargeIntX
-                                  (Word32.notb
+            newInt regs (wordToDouble
+                             (Word32.notb
+                                  (doubleToWord 
                                        (toUInt32 regs
-                                            (evalExpr regs expr)))))
+                                                 (evalExpr regs expr)))))
 
           | Ast.LogicalNot =>
             newBoolean regs (not (toBoolean (evalExpr regs expr)))
@@ -2699,8 +2620,16 @@ and evalUnaryOp (regs:Mach.REGS)
           | Ast.UnaryPlus =>
             toNumeric regs (evalExpr regs expr)
 
-          | Ast.UnaryMinus =>
-	    performBinop regs Ast.Minus (newInt regs 0) (evalExpr regs expr)
+          | Ast.UnaryMinus =>            
+            let
+                val v = toNumeric regs (evalExpr regs expr)
+            in
+                case numTypeOf regs v of
+                    IntNum => performBinop regs Ast.Minus (newInt regs 0.0) v
+                  | UIntNum => performBinop regs Ast.Minus (newUInt regs 0.0) v
+                  | ByteNum => performBinop regs Ast.Minus (newByte regs 0.0) v
+                  | _ => performBinop regs Ast.Minus (newDouble regs 0.0) v
+            end
 
           | Ast.Void => Mach.Undef
 
@@ -2771,77 +2700,67 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
 
-and doubleToByte (regs:Mach.REGS)
-                 (d:Real64.real)
-    : Mach.VAL = 
-    let
-        val i = Real64.trunc d
-        val word = Word8.fromInt i
-    in
-        newByte regs word
-    end
-
-
-and doubleToUInt (regs:Mach.REGS)
-                 (d:Real64.real)
-    : Mach.VAL = 
-    let
-        val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
-        val word = Word32.fromLargeInt lg
-    in
-        newUInt regs word
-    end
-
-
-and doubleToInt (regs:Mach.REGS)
-                (d:Real64.real)
-    : Mach.VAL = 
-    let
-        val lg = Real64.toLargeInt IEEEReal.TO_NEAREST d
-        val int = Int32.fromLarge lg
-    in
-        newInt regs int
-    end
-
-
 and doubleToNumberType (regs:Mach.REGS)
                        (commonNumType:NUMBER_TYPE)
                        (d:Real64.real)
     : Mach.VAL =
-    let
-        val truncated = Real64.realTrunc d
-
-        val isIntegral = 
-            if Real64.isFinite d
-            then Real64.==(truncated, d)
-            else false
-
-        fun isInRange low high = 
-            low <= truncated andalso truncated <= high
-
-        val fitsInByte = isInRange 0.0 255.0
-        val fitsInUInt = isInRange 0.0 4294967295.0            
-        val fitsInInt = isInRange (~2147483647.0) 2147483647.0
-    in
-        if isIntegral
-        then 
-            case commonNumType of
-                ByteNum => if fitsInByte
-                           then doubleToByte regs d
-                           else 
-                               if fitsInUInt 
-                               then doubleToUInt regs d
-                               else newDouble regs d
-              | UIntNum => if fitsInUInt
-                           then doubleToUInt regs d
+    if Mach.isIntegral d
+    then 
+        case commonNumType of
+            ByteNum => if Mach.fitsInByte d
+                       then newByte regs d
+                       else 
+                           if Mach.fitsInUInt d
+                           then newUInt regs d
                            else newDouble regs d
-              | IntNum =>  if fitsInInt
-                           then doubleToInt regs d
-                           else newDouble regs d
-              | _ => newDouble regs d
-        else 
-            newDouble regs d
-    end
+          | UIntNum => if Mach.fitsInUInt d
+                       then newUInt regs d
+                       else newDouble regs d
+          | IntNum =>  if Mach.fitsInInt d
+                       then newInt regs d
+                       else newDouble regs d
+          | _ => newDouble regs d
+    else 
+        newDouble regs d
+
+
+and wordToDouble (x:Word32.word) 
+    : Real64.real =
+    (Real64.fromLargeInt (Word32.toLargeInt x))
+
+and doubleToWord (d:Real64.real)
+    : Word32.word =
+    Word32.fromLargeInt (Real64.toLargeInt IEEEReal.TO_NEAREST d)
+
+and doubleToInt (d:Real64.real)
+    : Int32.int =
+    Int32.fromLarge (Real64.toLargeInt IEEEReal.TO_NEAREST d)
+
+
+and numTypeOf (regs:Mach.REGS) 
+              (v:Mach.VAL) 
+    : NUMBER_TYPE = 
+    case (Mach.needMagic v) of 
+        Mach.Double _ => 
+        let
+            val obj = needObj regs v
+            val id = getObjId obj
+        in
+                if slotObjId regs Mach.getIntClassSlot = id
+                then IntNum
+                else 
+                    if slotObjId regs Mach.getUintClassSlot = id
+                    then UIntNum
+                    else 
+                        if slotObjId regs Mach.getByteClassSlot = id
+                        then ByteNum
+                        else 
+                            DoubleNum                            
+        end
+      | Mach.Decimal _ => DecimalNum
+      | other => error regs ["unexpected magic type in numTypeOf: ", 
+                             Ustring.toAscii (Mach.magicToUstring other)]
+    
 
 and performBinop (regs:Mach.REGS)
                  (bop:Ast.BINOP)
@@ -2930,18 +2849,21 @@ and performBinop (regs:Mach.REGS)
                         else newBoolean regs 
                              (case commonNumType of 
                                   ByteNum => 
-                                  cmp (Word8.compare 
-                                           ((toByte regs va),
-                                            (toByte regs vb)))
+                                  cmp (reorder
+                                           (Real64.compareReal 
+                                                ((toByte regs va),
+                                                 (toByte regs vb))))
 
                                 | IntNum => 
-                                  cmp (Int32.compare 
-                                           ((toInt32 regs va),
-                                            (toInt32 regs vb)))
+                                  cmp (reorder
+                                           (Real64.compareReal
+                                                ((toInt32 regs va),
+                                                 (toInt32 regs vb))))
                                 | UIntNum => 
-                                  cmp (Word32.compare 
-                                           ((toUInt32 regs va),
-                                            (toUInt32 regs vb)))
+                                  cmp (reorder
+                                           (Real64.compareReal 
+                                                ((toUInt32 regs va),
+                                                 (toUInt32 regs vb))))
                                   
                                 | DoubleNum => 
                                   cmp (reorder
@@ -2960,20 +2882,9 @@ and performBinop (regs:Mach.REGS)
         fun masku5 (x:Word32.word) : Word.word =
             Word.fromInt (Word32.toInt (Word32.andb (x, (valOf (Word32.fromString "0x1F")))))
 
-        fun i2u (x:Int32.int) : Word32.word =
-            Word32.fromLargeInt (Int32.toLarge x)
-
-        fun u2i (x:Word32.word) : Int32.int =
-            Int32.fromLarge (Word32.toLargeInt x)
-
         fun bitwiseWordOp f =
-            newUInt regs (f ((toUInt32 regs va),
-                             (toUInt32 regs vb)))
-
-        fun pickRepByA (x:Word32.word) =
-            if Mach.isUInt va
-            then newUInt regs x
-            else newInt regs (u2i x)
+            newUInt regs (wordToDouble (f ((doubleToWord (toUInt32 regs va),
+                                            (doubleToWord (toUInt32 regs vb))))))
 
         (*
          * ES-262-3 11.9.6 Strict Equality Comparison Algorithm
@@ -3133,16 +3044,16 @@ and performBinop (regs:Mach.REGS)
                 end
 
               | Ast.LeftShift =>
-                pickRepByA (Word32.<< ((i2u (toInt32 regs va)),
-                                       (masku5 (toUInt32 regs vb))))
-
+                newUInt regs (wordToDouble (Word32.<< ((doubleToWord (toInt32 regs va)),
+                                                       (masku5 (doubleToWord (toUInt32 regs vb))))))
+                
               | Ast.RightShift =>
-                pickRepByA (Word32.>> ((i2u (toInt32 regs va)),
-                                       (masku5 (toUInt32 regs vb))))
+                newUInt regs (wordToDouble (Word32.>> ((doubleToWord (toInt32 regs va)),
+                                                       (masku5 (doubleToWord (toUInt32 regs vb))))))
 
               | Ast.RightShiftUnsigned =>
-                pickRepByA (Word32.~>> ((toUInt32 regs va),
-                                        (masku5 (toUInt32 regs vb))))
+                newUInt regs (wordToDouble (Word32.~>> ((doubleToWord (toUInt32 regs va)),
+                                                        (masku5 (doubleToWord (toUInt32 regs vb))))))
 
               (* FIXME: should we return int if we do int|int or int&int ? *)
               | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
@@ -4271,7 +4182,7 @@ and specialArrayConstructor (regs:Mach.REGS)
              bindVal (n+1) xs)
     in
         case args of
-            [] => setValue regs instanceObj Name.nons_length (newUInt regs 0w0)
+            [] => setValue regs instanceObj Name.nons_length (newUInt regs 0.0)
           | [k] => let val idx = asArrayIndex k
                    in
                        if not (idx = 0wxFFFFFFFF) then
@@ -4395,13 +4306,13 @@ and specialDoubleConstructor (regs:Mach.REGS)
 		  | SOME obj => obj
 	    end
 	else 
-	    case Mach.findInReal64Cache regs n of
+	    case Mach.findInDoubleCache regs n of
 		SOME obj => obj
 	      | NONE => 
 		let 
 		    val obj = build ()
 		in 
-		    Mach.updateReal64Cache regs (n, obj);
+		    Mach.updateDoubleCache regs (n, obj);
 		    obj
 		end
     end
@@ -4414,7 +4325,7 @@ and specialDecimalConstructor (regs:Mach.REGS)
     : Mach.OBJ =
     let
 	val n = case args of 
-		    [] => toDecimal (decimalCtxt regs) (newInt regs 0)
+		    [] => toDecimal (decimalCtxt regs) (newInt regs 0.0)
 		  | v :: _ => toDecimal (decimalCtxt regs) v
 	val obj = constructStandard regs classObj classClosure []
     in
@@ -4430,17 +4341,17 @@ and specialIntConstructor (regs:Mach.REGS)
     : Mach.OBJ =
     let
 	val i = case args of 
-		    [] => 0
+		    [] => 0.0
 		  | v :: _ => toInt32 regs v
     in
-	case Mach.findInInt32Cache regs i of
+	case Mach.findInIntCache regs i of
 	    SOME obj => obj
 	  | NONE => 
 	    let 
 		val obj = constructStandard regs classObj classClosure []
 	    in 
-		Mach.setMagic obj (SOME (Mach.Int i));
-		Mach.updateInt32Cache regs (i, obj);
+		Mach.setMagic obj (SOME (Mach.Double i));
+		Mach.updateIntCache regs (i, obj);
 		obj
 	    end
     end
@@ -4453,17 +4364,17 @@ and specialUIntConstructor (regs:Mach.REGS)
     : Mach.OBJ = 
     let 
 	val u = case args of 
-		    [] => Word32.fromInt 0
+		    [] => 0.0
 		  | v :: _ => toUInt32 regs v
     in
-	case Mach.findInWord32Cache regs u of
+	case Mach.findInUIntCache regs u of
 	    SOME obj => obj
 	  | NONE => 
 	    let 
 		val obj = constructStandard regs classObj classClosure []
 	    in 
-		Mach.setMagic obj (SOME (Mach.UInt u));
-		Mach.updateWord32Cache regs (u, obj);
+		Mach.setMagic obj (SOME (Mach.Double u));
+		Mach.updateUIntCache regs (u, obj);
 		obj
 	    end
     end
@@ -4476,17 +4387,17 @@ and specialByteConstructor (regs:Mach.REGS)
     : Mach.OBJ =
     let 
 	val b = case args of 
-		    [] => Word8.fromInt 0
+		    [] => 0.0
 		  | v :: _ => toByte regs v
     in
-	case Mach.findInWord8Cache regs b of
+	case Mach.findInByteCache regs b of
 	    SOME obj => obj
 	  | NONE => 
 	    let 
 		val obj = constructStandard regs classObj classClosure []
 	    in 
-		Mach.setMagic obj (SOME (Mach.Byte b));
-		Mach.updateWord8Cache regs (b, obj);
+		Mach.setMagic obj (SOME (Mach.Double b));
+		Mach.updateByteCache regs (b, obj);
 		obj
 	    end
     end
@@ -5026,7 +4937,7 @@ and callIteratorGet (regs:Mach.REGS)
               | _ => curr
         val iterator = needObj regs (newArray regs (NameMap.foldri f [] (!props)))
     in
-        setValue regs iterator Name.nons_cursor (newInt regs 0);
+        setValue regs iterator Name.nons_cursor (newInt regs 0.0);
         iterator
     end
 
@@ -5042,8 +4953,8 @@ and callIteratorNext (regs:Mach.REGS)
         if cursor < length
         then
             let
-                val nextName       = Name.nons (Ustring.fromInt32 cursor)
-                val newCursorValue = newInt regs (cursor + 1)
+                val nextName       = Name.nons (Mach.NumberToString cursor)
+                val newCursorValue = newInt regs (cursor + 1.0)
             in
                 setValue regs iterator Name.nons_cursor newCursorValue;
                 getValue regs iterator nextName

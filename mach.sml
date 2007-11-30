@@ -58,15 +58,6 @@ structure StrMap = SplayMapFn (StrKey);
 
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
-
-structure Word32Key = struct type ord_key = Word32.word val compare = Word32.compare end
-structure Word32Map = SplayMapFn (Word32Key);
-
-structure Word8Key = struct type ord_key = Word8.word val compare = Word8.compare end
-structure Word8Map = SplayMapFn (Word8Key);
-
-structure Int32Key = struct type ord_key = Int32.int val compare = Int32.compare end
-structure Int32Map = SplayMapFn (Int32Key);
           
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
@@ -102,13 +93,13 @@ datatype VAL = Object of OBJ
      and OBJ_CACHE = 
          ObjCache of 
          {
-          real64Cache: (OBJ Real64Map.map) ref, (* ref Real64Map.empty *)
-          word32Cache: (OBJ Word32Map.map) ref, (* ref Word32Map.empty *)                                              
-          word8Cache: (OBJ Word8Map.map) ref, (* ref Word8Map.empty *)                                              
-          int32Cache: (OBJ Int32Map.map) ref, (* ref Int32Map.empty *)
-          nsCache: (OBJ NsMap.map) ref, (* ref NsMap.empty *)
-          nmCache: (OBJ NmMap.map) ref, (* ref NmMap.empty *)
-          strCache: (OBJ StrMap.map) ref (* ref StrMap.empty *)
+          doubleCache: (OBJ Real64Map.map) ref,
+          intCache: (OBJ Real64Map.map) ref,
+          uintCache: (OBJ Real64Map.map) ref,
+          byteCache: (OBJ Real64Map.map) ref,
+          nsCache: (OBJ NsMap.map) ref,
+          nmCache: (OBJ NmMap.map) ref,
+          strCache: (OBJ StrMap.map) ref
          }
 
      and PROFILER =
@@ -157,9 +148,6 @@ datatype VAL = Object of OBJ
 
      and MAGIC =
          Boolean of bool
-       | Byte of Word8.word
-       | UInt of Word32.word
-       | Int of Int32.int
        | Double of Real64.real
        | Decimal of Decimal.DEC
        | String of Ustring.STRING
@@ -301,33 +289,6 @@ fun isObject (v:VAL) : bool =
       | _ => false
 
 
-fun isUInt (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (UInt _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isByte (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Byte _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isInt (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Int _) => true
-           | _ => false)
-      | _ => false
-
-
 fun isDouble (v:VAL) : bool =
     case v of
         Object (Obj ob) =>
@@ -425,8 +386,6 @@ fun isNumeric (v:VAL) : bool =
         (case !(#magic ob) of
              SOME (Double _) => true
            | SOME (Decimal _) => true
-           | SOME (Int _) => true
-           | SOME (UInt _) => true
            | _ => false)
       | _ => false
 
@@ -624,6 +583,32 @@ fun defTemp (temps:TEMPS)
         else temps := replaceNth n (!temps)
     end
 
+
+fun isIntegral d = 
+    let
+        val truncated = Real64.realTrunc d
+    in
+        if Real64.isFinite d
+        then Real64.==(truncated, d)
+        else false
+    end
+         
+fun isInRange (low:Real64.real) 
+              (high:Real64.real) 
+              (d:Real64.real) 
+  : bool = 
+    low <= d andalso d <= high
+                     
+fun fitsInByte (d:Real64.real) 
+    : bool = isIntegral d andalso isInRange 0.0 255.0 d
+
+fun fitsInUInt (d:Real64.real) : bool 
+  = isIntegral d andalso isInRange 0.0 4294967295.0 d
+
+fun fitsInInt (d:Real64.real) : bool 
+  = isIntegral d andalso isInRange (~2147483647.0) 2147483647.0 d
+
+
 (* 
  * Some stringification helpers on low-level values.
  *)
@@ -633,9 +618,6 @@ fun magicToUstring (magic:MAGIC)
     case magic of
         Double n => NumberToString n
       | Decimal d => Ustring.fromString (Decimal.toString d)
-      | Int i => Ustring.fromInt32 i
-      | UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
-      | Byte b => Ustring.fromString (LargeInt.toString (Word8.toLargeInt b))
       | String s => s
       | Boolean true => Ustring.true_
       | Boolean false => Ustring.false_
@@ -901,34 +883,6 @@ fun needType (v:VAL)
       | _ => (inspect v 1; 
               error ["require type object"])
 
-fun fitsInByte (x:LargeInt.int)
-    : bool =
-    let
-        val byteMax = IntInf.pow(2, 8) - 1
-        val byteMin = IntInf.fromInt 0
-    in
-        byteMin <= x andalso x <= byteMax
-    end
-
-fun fitsInUInt (x:LargeInt.int)
-    : bool =
-    let
-        val uintMax = IntInf.pow(2, 32) - 1
-        val uintMin = IntInf.fromInt 0
-    in
-        uintMin <= x andalso x <= uintMax
-    end
-
-
-fun fitsInInt (x:LargeInt.int)
-    : bool =
-    let
-        val intMax = IntInf.pow(2, 31) - 1
-        val intMin = ~ (IntInf.pow(2, 31))
-    in
-        intMin <= x andalso x <= intMax
-    end
-
 
 (* Call stack and debugging stuff *)
 
@@ -1140,26 +1094,26 @@ fun updateCache cacheGetter
         else v
     end
 
-fun getReal64Cache (regs:REGS) = (#real64Cache (getCaches regs)) 
-fun getWord32Cache (regs:REGS) = (#word32Cache (getCaches regs)) 
-fun getWord8Cache (regs:REGS) = (#word8Cache (getCaches regs)) 
-fun getInt32Cache (regs:REGS) = (#int32Cache (getCaches regs)) 
+fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
+fun getUIntCache (regs:REGS) = (#uintCache (getCaches regs)) 
+fun getByteCache (regs:REGS) = (#byteCache (getCaches regs)) 
+fun getIntCache (regs:REGS) = (#intCache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
 fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
 
-val findInReal64Cache = findInCache getReal64Cache Real64Map.find
-val findInWord32Cache = findInCache getWord32Cache Word32Map.find
-val findInWord8Cache = findInCache getWord8Cache Word8Map.find
-val findInInt32Cache = findInCache getInt32Cache Int32Map.find
+val findInDoubleCache = findInCache getDoubleCache Real64Map.find
+val findInUIntCache = findInCache getUIntCache Real64Map.find
+val findInByteCache = findInCache getByteCache Real64Map.find
+val findInIntCache = findInCache getIntCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
 val findInStrCache = findInCache getStrCache StrMap.find
 
-val updateReal64Cache = updateCache getReal64Cache Real64Map.numItems Real64Map.insert
-val updateWord32Cache = updateCache getWord32Cache Word32Map.numItems Word32Map.insert
-val updateWord8Cache = updateCache getWord8Cache Word8Map.numItems Word8Map.insert
-val updateInt32Cache = updateCache getInt32Cache Int32Map.numItems Int32Map.insert
+val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
+val updateUIntCache = updateCache getUIntCache Real64Map.numItems Real64Map.insert
+val updateByteCache = updateCache getByteCache Real64Map.numItems Real64Map.insert
+val updateIntCache = updateCache getIntCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
@@ -1184,10 +1138,10 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                        { profileMap = ref StrListMap.empty,
                          doProfile = ref NONE }
         val ocache = ObjCache 
-                     { real64Cache = ref Real64Map.empty,
-                       word32Cache = ref Word32Map.empty,                       
-                       word8Cache = ref Word8Map.empty,
-                       int32Cache = ref Int32Map.empty,
+                     { doubleCache = ref Real64Map.empty,
+                       uintCache = ref Real64Map.empty,
+                       byteCache = ref Real64Map.empty,
+                       intCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
                        strCache = ref StrMap.empty }

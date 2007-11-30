@@ -254,8 +254,8 @@ tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm tools/gen-convert.sml 
 tools/gen-english.heap.$(HEAP_SUFFIX): tools/gen-english.cm tools/gen-english.sml tools/smlast.sml
 	$(MLBUILD) $(MLBUILD_ARGS) $< GenEnglish.main $@
 
-english: 
-	$(SMLNJ) @SMLload=tools/gen-english.heap 
+english/eval-%.html: eval.sml tools/gen-english.heap.$(HEAP_SUFFIX)
+	$(SMLNJ) @SMLload=tools/gen-english.heap $< $* $@
 
 tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) $< UnitTests.main $@
