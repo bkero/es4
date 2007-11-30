@@ -2538,6 +2538,7 @@ and evalSetExpr (regs:Mach.REGS)
         v
     end
 
+
 and decimalCtxt (regs:Mach.REGS)
     : Mach.DECIMAL_CONTEXT = 
     let
@@ -2546,39 +2547,49 @@ and decimalCtxt (regs:Mach.REGS)
         decimal
     end
 
+
+and numberOfSimilarType (regs:Mach.REGS)
+                        (v:Mach.VAL)
+                        (d:Real64.real)
+    : Mach.VAL = 
+    let
+        val nt = numTypeOf regs v
+    in
+        case nt of 
+            IntNum => newInt regs d
+          | UIntNum => newUInt regs d
+          | ByteNum => newByte regs d
+          | _ => newDouble regs d
+    end
+
+
+and evalCrement (regs:Mach.REGS)
+                (bop:Ast.BINOP)
+                (pre:bool)
+                (expr:Ast.EXPR)
+    : Mach.VAL = 
+    let
+        val (exprType, expr) = getExpectedType regs expr
+        val (obj, name) = evalRefExpr regs expr false
+        val v = getValue regs obj name
+        val v' = checkCompatible regs exprType v
+        val v'' = toNumeric regs v'
+        val i = numberOfSimilarType regs v'' 1.0
+        val v''' = performBinop regs bop v'' i
+    in
+        setValue regs obj name v''';
+        if pre
+        then v'''
+        else v''
+    end        
+        
+    
+
 and evalUnaryOp (regs:Mach.REGS)
                 (unop:Ast.UNOP)
                 (expr:Ast.EXPR)
     : Mach.VAL =
     let
-        fun crement decimalOp doubleOp isPre =
-            let
-                val (exprType, expr) = getExpectedType regs expr
-                val (obj, name) = evalRefExpr regs expr false
-                val v = checkCompatible regs exprType (getValue regs obj name)
-                val (n, n') = 
-                    case Mach.needMagic (toNumeric regs v) of
-                        Mach.Decimal vd => 
-                        let
-                            val { precision, mode } = decimalCtxt regs
-                            val one = valOf (Decimal.fromStringDefault "1")
-                        in
-                            (newDecimal regs vd,
-                             newDecimal regs (decimalOp precision mode vd one))
-                        end
-
-                      | Mach.Double vd =>  
-                        let
-                            val one = 1.0
-                        in
-                            (newDouble regs vd, newDouble regs (doubleOp (vd, one)))
-                        end
-
-                      | _ => error regs ["non-numeric operand to crement operation"]
-            in
-                setValue regs obj name n';
-                if isPre then n' else n
-            end
     in
         case unop of
             Ast.Delete =>
@@ -2591,22 +2602,10 @@ and evalUnaryOp (regs:Mach.REGS)
                 else (Mach.delProp props name; newBoolean regs true)		    
             end
 
-          | Ast.PreIncrement => crement (Decimal.add)
-                                        (Real64.+)
-                                        true
-
-          | Ast.PreDecrement => crement (Decimal.subtract)
-                                        (Real64.-)
-                                        true
-
-          | Ast.PostIncrement => crement (Decimal.add)
-                                         (Real64.+)
-                                         false
-
-          | Ast.PostDecrement => crement (Decimal.subtract)
-                                         (Real64.-)
-                                         false
-
+          | Ast.PreIncrement => evalCrement regs Ast.Plus true expr
+          | Ast.PreDecrement => evalCrement regs Ast.Minus true expr
+          | Ast.PostIncrement => evalCrement regs Ast.Plus false expr
+          | Ast.PostDecrement => evalCrement regs Ast.Minus false expr
           | Ast.BitwiseNot =>
             newInt regs (wordToDouble
                              (Word32.notb
@@ -2740,26 +2739,25 @@ and doubleToInt (d:Real64.real)
 and numTypeOf (regs:Mach.REGS) 
               (v:Mach.VAL) 
     : NUMBER_TYPE = 
-    case (Mach.needMagic v) of 
-        Mach.Double _ => 
-        let
-            val obj = needObj regs v
-            val id = getObjId obj
-        in
-                if slotObjId regs Mach.getIntClassSlot = id
-                then IntNum
+    let
+        val ty = typeOfVal regs v 
+    in
+        if Type.groundEquals ty (instanceType regs Name.ES4_double [])
+        then DoubleNum
+        else
+            if Type.groundEquals ty (instanceType regs Name.ES4_int [])
+            then IntNum
+            else
+                if Type.groundEquals ty (instanceType regs Name.ES4_uint [])
+                then UIntNum
                 else 
-                    if slotObjId regs Mach.getUintClassSlot = id
-                    then UIntNum
+                    if Type.groundEquals ty (instanceType regs Name.ES4_byte [])
+                    then ByteNum
                     else 
-                        if slotObjId regs Mach.getByteClassSlot = id
-                        then ByteNum
-                        else 
-                            DoubleNum                            
-        end
-      | Mach.Decimal _ => DecimalNum
-      | other => error regs ["unexpected magic type in numTypeOf: ", 
-                             Ustring.toAscii (Mach.magicToUstring other)]
+                        if Type.groundEquals ty (instanceType regs Name.ES4_decimal [])
+                        then DecimalNum
+                        else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+    end
     
 
 and performBinop (regs:Mach.REGS)
