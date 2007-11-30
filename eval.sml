@@ -2699,30 +2699,6 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
 
-and doubleToNumberType (regs:Mach.REGS)
-                       (commonNumType:NUMBER_TYPE)
-                       (d:Real64.real)
-    : Mach.VAL =
-    if Mach.isIntegral d
-    then 
-        case commonNumType of
-            ByteNum => if Mach.fitsInByte d
-                       then newByte regs d
-                       else 
-                           if Mach.fitsInUInt d
-                           then newUInt regs d
-                           else newDouble regs d
-          | UIntNum => if Mach.fitsInUInt d
-                       then newUInt regs d
-                       else newDouble regs d
-          | IntNum =>  if Mach.fitsInInt d
-                       then newInt regs d
-                       else newDouble regs d
-          | _ => newDouble regs d
-    else 
-        newDouble regs d
-
-
 and wordToDouble (x:Word32.word) 
     : Real64.real =
     (Real64.fromLargeInt (Word32.toLargeInt x))
@@ -2758,7 +2734,85 @@ and numTypeOf (regs:Mach.REGS)
                         then DecimalNum
                         else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
+
+
+and performDecimalBinop (regs:Mach.REGS)
+                        (bop:Ast.BINOP)
+                        (va:Mach.VAL)
+                        (vb:Mach.VAL)
+    : Mach.VAL = 
+    let
+        val ctxt = decimalCtxt regs
+        val { precision, mode } = ctxt
+        val da = toDecimal ctxt va
+        val db = toDecimal ctxt vb
+        val dc = case bop of 
+                     Ast.Plus => Decimal.add precision mode da db
+                   | Ast.Minus => Decimal.subtract precision mode da db
+                   | Ast.Times => Decimal.multiply precision mode da db
+                   | Ast.Divide => Decimal.divide precision mode da db
+                   | Ast.Remainder => Decimal.remainder precision mode da db
+                   | _ => error regs ["unexpected binary operator in performDecimalBinop"]
+    in
+        newDecimal regs dc
+    end
+
     
+and realRem (x,y) =
+    let
+        val n = Real.realTrunc(x / y)
+    in
+        x - ( n * y)
+    end
+
+
+and performNumericBinop (regs:Mach.REGS)
+                        (bop:Ast.BINOP)
+                        (va:Mach.VAL)
+                        (vb:Mach.VAL)
+    : Mach.VAL = 
+    let
+        val va' = toNumeric regs va
+        val vb' = toNumeric regs vb
+        val na = numTypeOf regs va'
+        val nb = numTypeOf regs vb'
+        val commonNumType = promoteToCommon regs na nb
+    in
+        if commonNumType = DecimalNum
+        then performDecimalBinop regs bop va' vb'
+        else 
+            let
+                val da = toDouble va'
+                val db = toDouble vb'
+                val dc = case bop of 
+                     Ast.Plus => da + db
+                   | Ast.Minus => da - db
+                   | Ast.Times => da * db
+                   | Ast.Divide => da / db
+                   | Ast.Remainder => realRem (da,db)
+                   | _ => error regs ["unexpected binary operator in performNumericBinop"]
+            in
+                if Mach.isIntegral dc
+                then 
+                    case commonNumType of
+                        ByteNum => if Mach.fitsInByte dc
+                                   then newByte regs dc
+                                   else 
+                                       if Mach.fitsInUInt dc
+                                       then newUInt regs dc
+                                       else newDouble regs dc
+                      | UIntNum => if Mach.fitsInUInt dc
+                                   then newUInt regs dc
+                                   else newDouble regs dc
+                      | IntNum =>  if Mach.fitsInInt dc
+                                   then newInt regs dc
+                                   else newDouble regs dc
+                      | _ => newDouble regs dc
+                else 
+                    newDouble regs dc
+            end
+    end
+
 
 and performBinop (regs:Mach.REGS)
                  (bop:Ast.BINOP)
@@ -2769,48 +2823,6 @@ and performBinop (regs:Mach.REGS)
     let
         val ctxt = decimalCtxt regs
         val { precision, mode } = ctxt
-
-        fun simpleNumeric decimalOp doubleOp a b =
-            (* 
-             * First we perform promotions until we get a common representation.
-             * The promotion lattice is a little odd:
-             * 
-             *    byte -> uint
-             *    uint -> double
-             *    int -> double
-             *    double -> decimal
-             * 
-             * Then we perform the operation in either double or decimal and 
-             * see if the result is integral. If it is -- and the common input 
-             * representation was integral -- then we attempt to store the result 
-             * in the common integral form but will promote if necessary to 
-             * preserve precision. 
-             * 
-             *)
-            let                     
-                val na = numTypeOf regs a
-                val nb = numTypeOf regs b
-                val commonNumType = promoteToCommon regs na nb
-            in
-                case commonNumType of 
-                    DecimalNum => 
-                    let
-                        val da = toDecimal ctxt a
-                        val db = toDecimal ctxt b
-                        val d = decimalOp precision mode da db
-                    in
-                        newDecimal regs d
-                    end
-
-                  | _ => 
-                    let 
-                        val da = toDouble a
-                        val db = toDouble b
-                        val d = doubleOp (da, db)
-                    in
-                        doubleToNumberType regs commonNumType d
-                    end
-            end
 
         fun reorder (ord:IEEEReal.real_order) 
             : order =
@@ -2999,47 +3011,22 @@ and performBinop (regs:Mach.REGS)
                     val b = toPrimitiveWithNoHint regs vb
                 in
                     if Mach.isString a orelse Mach.isString b
-                    then newString regs (Ustring.stringAppend 
-                                             (toUstring regs va) 
-                                             (toUstring regs vb))
-                    else
-                        simpleNumeric ( Decimal.add )
-                                      ( Real64.+ )
-                                      (toNumeric regs a) (toNumeric regs b)
-                end
-                
-              | Ast.Minus => (* ES3 11.6.2 The Subtraction operator (-) *)
-                simpleNumeric ( Decimal.subtract )
-                              ( Real64.- )
-                              (toNumeric regs va) (toNumeric regs vb)
-                
-              | Ast.Times => 
-                simpleNumeric ( Decimal.multiply )
-                              ( Real64.* )
-                              (toNumeric regs va) (toNumeric regs vb)
-                
-              | Ast.Divide => 
-                simpleNumeric ( Decimal.divide )
-                              ( Real64./ )
-                              (toNumeric regs va) (toNumeric regs vb)
-
-              | Ast.Remainder =>
-                let
-                    (*
-                     * Something is numerically *very wrong*
-                     * with the Real64.rem operation.
-                     *)
-                    fun realRem (x,y) =
+                    then 
                         let
-                            val n = Real.realTrunc(x / y)
+                            val sa = toUstring regs va
+                            val sb = toUstring regs vb
+                            val sc = Ustring.stringAppend sa sb
                         in
-                            x - ( n * y)
+                            newString regs sc
                         end
-                in
-                    simpleNumeric ( Decimal.remainder )
-                                  ( realRem )
-                                  (toNumeric regs va) (toNumeric regs vb)                    
+                    else
+                        performNumericBinop regs bop a b
                 end
+                
+              | Ast.Minus => performNumericBinop regs bop va vb                
+              | Ast.Times => performNumericBinop regs bop va vb
+              | Ast.Divide => performNumericBinop regs bop va vb
+              | Ast.Remainder => performNumericBinop regs bop va vb
 
               | Ast.LeftShift =>
                 newUInt regs (wordToDouble (Word32.<< ((doubleToWord (toInt32 regs va)),
