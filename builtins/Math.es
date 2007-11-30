@@ -646,9 +646,7 @@ package MathInternals
             }
         }
 
-        // 15.8.1 Value Properties of the Math Object.  These are
-        // {DD,DE,RO}.  Fixme, ticket #81. See redeclaration of these
-        // outside package, below.
+        // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
         public const E: double = double.E;
         public const LN10: double = double.LN10;
         public const LN2: double = double.LN2;
@@ -702,18 +700,6 @@ package
     // and #90.
     
     public var Math = intrinsic::Math;
-
-    // 15.8.1 Value Properties of the Math Object.  These *should be* {DD,DE,RO}.
-    // and should probably be set above in MathInternals, but the use of 'public'
-    // there refers to the public namespace of MathInternals. See ticket #81.
-    Math.public::E = double.E;
-    Math.public::LN10 = double.LN10;
-    Math.public::LN2 = double.LN2;
-    Math.public::LOG2E = double.LOG2E;
-    Math.public::LOG10E = double.LOG10E;
-    Math.public::PI = double.PI;
-    Math.public::SQRT1_2 = double.SQRT1_2;
-    Math.public::SQRT2 = double.SQRT2;
     
     Math.public::abs = 
         function (x) intrinsic::Math.intrinsic::abs(x);
