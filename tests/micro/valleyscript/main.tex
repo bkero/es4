@@ -264,7 +264,7 @@ We include generic function definition, generic function application, and the as
 \trule{Com-Obj}{
 		\compatible{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
 	}{
-		\compatible{\objty{l_i:S_i^{i\in 1..n+m}}}
+		\compatible{\objty{l_i:S_i^{i\in 1..n}}}
 				{\objty{l_i:T_i^{i\in 1..n}}}
 	}
 \end{trules}
@@ -639,7 +639,7 @@ PROVEME
 \trule{Con-Obj}{
 		\consistent{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
 	}{
-		\consistent{\objty{l_i:S_i^{i\in 1..n+m}}}
+		\consistent{\objty{l_i:S_i^{i\in 1..n}}}
 				{\objty{l_i:T_i^{i\in 1..n}}}
 	}
 \end{trules}
