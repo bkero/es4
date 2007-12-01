@@ -2430,7 +2430,10 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          * wrapper object.
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
-        val (thisObj, r) = evalRefExprFull regs func true
+        val (thisObjOpt, r) = evalRefExprFull regs func true
+        val thisObj = case thisObjOpt of 
+                          NONE => (#this regs)
+                        | SOME obj => obj
         val _ = trace ["resolved thisObj=#", (Int.toString (getObjId thisObj)), " for call"]
         val result = evalCallMethodByRef (withThis regs thisObj) r args
     in
@@ -2490,7 +2493,7 @@ and evalSetExpr (regs:Mach.REGS)
     let
         val _ = trace ["evalSetExpr"]
         val (lhsType, lhs) = getExpectedType regs lhs
-        val (obj, name) = evalRefExpr regs lhs false
+        val (thisOpt, (obj, name)) = evalRefExprFull regs lhs false
         val v =
             let
                 fun modifyWith bop =
@@ -2534,7 +2537,9 @@ and evalSetExpr (regs:Mach.REGS)
             end
     in
         trace ["setExpr assignment to slot ", fmtName name];
-        setValue regs obj name v;
+        (case thisOpt of 
+             NONE => setValue regs obj name v
+           | SOME this => setValue regs this name v);
         v
     end
 
@@ -3390,7 +3395,7 @@ and evalRefExpr (regs:Mach.REGS)
 and evalRefExprFull (regs:Mach.REGS)
                     (expr:Ast.EXPR)
                     (errIfNotFound:bool)
-    : (Mach.OBJ * REF) =
+    : (Mach.OBJ option * REF) =
     let
         fun defaultRef obj nomn =
             case nomn of
@@ -3411,7 +3416,7 @@ and evalRefExprFull (regs:Mach.REGS)
                                     then (throwRefErr regs ["unresolved lexical reference ", nomnToStr nomn]; dummyRef)
                                     else defaultRef (#global regs) nomn
             in
-                ((#this regs), r)
+                (NONE, r)
             end
 
           | Ast.ObjectRef { base, ident, loc } =>
@@ -3439,7 +3444,7 @@ and evalRefExprFull (regs:Mach.REGS)
                                " on object #", Int.toString (getObjId holder),
                                " with this=#", Int.toString (getObjId ob)]
             in
-                (ob, r)
+                (SOME ob, r)
             end
 
           | _ => error regs ["need lexical or object-reference expression"]
