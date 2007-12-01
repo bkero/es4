@@ -264,11 +264,7 @@ datatype PRAGMA =
              static: bool,
              temps: BINDINGS,
              inits: INIT_STEP list }
-       | ClassBlock of
-           { ns: EXPR option,
-             ident: IDENT,
-             name: NAME option,
-             block: BLOCK }
+       | ClassBlock of CLASS_BLOCK                           
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR
        | ReturnStmt of EXPR
@@ -506,6 +502,12 @@ withtype
            { ident: IDENT,
              ns: EXPR option,
              init: TYPE_EXPR }
+
+     and CLASS_BLOCK = 
+         { ns: EXPR option,
+           ident: IDENT,
+           name: NAME option,
+             block: BLOCK }
 
      and FOR_ENUM_STMT =
            { isEach: bool,

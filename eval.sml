@@ -4697,7 +4697,7 @@ and evalBlock (regs:Mach.REGS)
 
 
 and evalClassBlock (regs:Mach.REGS)
-                   (classBlock)
+                   (classBlock:Ast.CLASS_BLOCK)
     : Mach.VAL =
 
     (* 
@@ -4709,17 +4709,16 @@ and evalClassBlock (regs:Mach.REGS)
     let
         val {name, block, ...} = classBlock
         val {scope, ...} = regs
-        val name = valOf name
 
-        val _ = trace ["evaluating class stmt for ", fmtName name]
-
-        val classObj = needObj regs (findVal regs scope name)
+        val _ = trace ["evaluating class stmt for ", fmtName (valOf name)]
+        val classVal = findVal regs scope (valOf name)
+        val classObj = needObj regs classVal
 
         (* FIXME: might have 'this' binding wrong in class scope *)
-        val _ = trace ["extending scope for class block of ", fmtName name]
+        val _ = trace ["extending scope for class block of ", fmtName (valOf name)]
         val classRegs = extendScopeReg regs classObj Mach.InstanceScope
     in
-        trace ["evaluating class block of ", fmtName name];
+        trace ["evaluating class block of ", fmtName (valOf name)];
         evalBlock classRegs block
     end
 
@@ -4811,18 +4810,19 @@ and evalDoWhileStmt (regs:Mach.REGS)
 
 
 and evalWithStmt (regs:Mach.REGS)
-                 (obj:Ast.EXPR)
+                 (expr:Ast.EXPR)
                  (ty:Ast.TY)
                  (body:Ast.STMT)
     : Mach.VAL =
     let
-        val v = evalExpr regs obj
-        val ob = needObj regs v
-        val s = extendScope (#scope regs) ob Mach.WithScope
-        val regs = withScope regs s
-        val regs = withThis regs ob
+        val v = evalExpr regs expr
+        val obj = needObj regs v
+        val { scope, ... } = regs
+        val scope' = extendScope scope obj Mach.WithScope
+        val regs' = withScope regs scope'
+        val regs'' = withThis regs' obj
     in
-        evalStmt regs body
+        evalStmt regs'' body
     end
 
 and evalSwitchStmt (regs:Mach.REGS)

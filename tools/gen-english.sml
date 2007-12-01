@@ -41,21 +41,17 @@ fun first (q:'a -> 'b option) [] = NONE
     (case q x of NONE => first q xs
 	       | SOME r => SOME r)
 
-type context = { inCode: bool,
-		 locals: string list,
+type context = { locals: string list,
 		 indent: int }
 
 
-fun withLocals ss (ctx:context) = { inCode = (#inCode ctx),
-				    locals = ss @ (#locals ctx),
+fun withLocals ss (ctx:context) = { locals = ss @ (#locals ctx),
 				    indent = (#indent ctx)}
 
-fun withCode (ctx:context) = { inCode = true,
-			       locals = (#locals ctx),
+fun withCode (ctx:context) = { locals = (#locals ctx),
 			       indent = (#indent ctx) }
 
-fun withIndent (ctx:context) n = { inCode = (#inCode ctx),
-				   locals = (#locals ctx),
+fun withIndent (ctx:context) n = { locals = (#locals ctx),
 				   indent = (#indent ctx) + n }
 
 
@@ -95,7 +91,9 @@ fun ol ctx (elts:string list list) =
     @ (List.concat (List.map (li (withIndent ctx 1)) elts))
     @ ["\n"] @ (spaces ctx) @ ["</ol>\n"]
 
-fun bad str = [" <font color='red'>?", str, "?</font>"]    
+fun span n inner = [" <span class=\"", n, "\">"] @ inner @ ["</span>"]
+
+fun bad str = span "bad" ["?", str, "?"]
 
 fun commaList [x] = x
   | commaList [x,y] = x @ [" and"] @ y
@@ -172,6 +170,7 @@ fun cvtTy (IDty (IDENT (["Mach"], "SCOPE"))) = [" scope"]
   | cvtTy (IDty (IDENT (["Ast"], "CLASS_DEFN"))) = [" class definition"]
   | cvtTy (IDty (IDENT (["Ast"], "INTERFACE_DEFN"))) = [" interface definition"]
   | cvtTy (IDty (IDENT (["Ast"], "TYPE_DEFN"))) = [" type definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "CLASS_BLOCK"))) = [" class block"]
   | cvtTy (IDty (IDENT (["Ast"], "FOR_ENUM_STATEMENT"))) = [" foreach statement"]
   | cvtTy (IDty (IDENT (["Ast"], "FOR_STMT"))) = [" for statement"]
   | cvtTy (IDty (IDENT (["Ast"], "WHILE_STMT"))) = [" while statement"]
@@ -194,10 +193,9 @@ fun cvtLit (WORDlit w) =  (lint (Word.toLargeInt w))
   | cvtLit (INTINFlit w) = (lint (IntInf.toLarge w))
   | cvtLit (STRINGlit s) = ["\""] @ [String.toCString s] @ ["\""]
   | cvtLit (CHARlit c) = ["'"] @ [Char.toString c] @ ["'"]
-  | cvtLit (BOOLlit true) = ["<code>true</code>"]
-  | cvtLit (BOOLlit false) = ["<code>false</code>"]
+  | cvtLit (BOOLlit b) = span "const" [Bool.toString b]
   | cvtLit (REALlit s) = [s]
-    
+
 fun cvtPat def pat = 
     let
 	fun isVowel c = List.exists (fn x => c = x) 
@@ -234,6 +232,9 @@ fun cvtPat def pat =
 	      | (["Ast"], "InstanceType") => SOME "instance type"
 
 	      | _ => NONE
+
+	fun relevantRecordField (_, (IDpat "loc")) = false
+	  | relevantRecordField _ = true
 	    
 	fun res (CONSpat ((IDENT id), sub)) =
 	    let 
@@ -254,18 +255,18 @@ fun cvtPat def pat =
 		  | SOME s => prefix @ (res s)
 	    end
 	    
-	  | res (IDpat id) = [" <var>", id, "</var>"]
+	  | res (IDpat id) = span "var" [id]
 	  | res (RECORDpat (subpats,_)) =
 	    let
 		fun subPat (id1, (IDpat id2)) =
 		    if id1 = id2
 		    then res (IDpat id2)
 		    else bad "pat"
-
+			 
 		  | subPat _ = 
 		    bad "pat"
 	    in
-		commaList (List.map subPat subpats)
+		commaList (List.map subPat (List.filter relevantRecordField subpats))
 	    end
 	  | res (WILDpat) = []
 	  | res _ = bad "pat"
@@ -280,31 +281,64 @@ fun cvtPat def pat =
 	  | (WILDpat) => [" any value"]
 	  | _ => res pat
     end
-    			 
-	      
-(* 
- * This function lists the module-qualified names we are going to *elide*
- * any calls to; they are noise-words as far as the spec is concerned, mostly
- * concerned with tagging members of disjoint unions in SML.
- *)
 
-fun elideApp (IDENT (["Mach"], "Obj")) = true
-  | elideApp (IDENT (["Mach"], "Object")) = true
-  | elideApp (IDENT (["Mach"], "Boolean")) = true
-  | elideApp (IDENT (["Mach"], "Byte")) = true
-  | elideApp (IDENT (["Mach"], "UInt")) = true
-  | elideApp (IDENT (["Mach"], "Int")) = true
-  | elideApp (IDENT (["Mach"], "Double")) = true
-  | elideApp (IDENT (["Mach"], "Decimal")) = true
-  | elideApp (IDENT (["Mach"], "String")) = true
-  | elideApp (IDENT (["Mach"], "Namespace")) = true
-  | elideApp (IDENT (["Mach"], "Class")) = true
-  | elideApp (IDENT (["Mach"], "Function")) = true
-  | elideApp (IDENT (["Mach"], "Type")) = true
-  | elideApp (IDENT (["Mach"], "NativeFunction")) = true
-  | elideApp (IDENT ([], "SOME")) = true
-  | elideApp (IDENT ([], "valOf")) = true
-  | elideApp _ = false
+fun isDestructuringPat (CONSpat (_, SOME p)) = isDestructuringPat p
+  | isDestructuringPat (ASpat (_, p)) = isDestructuringPat p
+  | isDestructuringPat (TYPEDpat (p, _)) = isDestructuringPat p
+  | isDestructuringPat (LISTpat _) = true
+  | isDestructuringPat (TUPLEpat _) = true
+  | isDestructuringPat (VECTORpat _) = true
+  | isDestructuringPat (RECORDpat _) = true
+  | isDestructuringPat _ = false
+
+fun patVars (IDpat id) = [id]
+  | patVars (TYPEDpat (pat, ty)) = patVars pat
+  | patVars (RECORDpat (subpats,_)) = 
+    let
+	fun subPat (_, p) = patVars p
+    in
+	List.concat (List.map subPat subpats)
+    end
+  | patVars (LISTpat (ps, p)) = 
+    let
+	val subs = List.concat (List.map patVars ps)
+    in
+	case p of 
+	    NONE => subs
+	  | SOME s => subs @ (patVars s)
+    end     
+  | patVars (TUPLEpat ps) = List.concat (List.map patVars ps)
+  | patVars (VECTORpat ps) = List.concat (List.map patVars ps)
+  | patVars (CONSpat (_, SOME p)) = patVars p
+  | patVars _ = []
+
+fun relevantApp (IDENT (["Mach"], "Obj")) = false
+  | relevantApp (IDENT (["Mach"], "Object")) = false
+  | relevantApp (IDENT (["Mach"], "Boolean")) = false
+  | relevantApp (IDENT (["Mach"], "Byte")) = false
+  | relevantApp (IDENT (["Mach"], "UInt")) = false
+  | relevantApp (IDENT (["Mach"], "Int")) = false
+  | relevantApp (IDENT (["Mach"], "Double")) = false
+  | relevantApp (IDENT (["Mach"], "Decimal")) = false
+  | relevantApp (IDENT (["Mach"], "String")) = false
+  | relevantApp (IDENT (["Mach"], "Namespace")) = false
+  | relevantApp (IDENT (["Mach"], "Class")) = false
+  | relevantApp (IDENT (["Mach"], "Function")) = false
+  | relevantApp (IDENT (["Mach"], "Type")) = false
+  | relevantApp (IDENT (["Mach"], "NativeFunction")) = false
+  | relevantApp (IDENT ([], "SOME")) = false
+  | relevantApp (IDENT ([], "valOf")) = false
+  | relevantApp _ = true
+
+
+fun relevantExp (APPexp (IDexp (IDENT ([], "log")), _)) = false
+  | relevantExp (APPexp (IDexp (IDENT ([], "trace")), _)) = false
+  | relevantExp (APPexp (IDexp (IDENT (["LogErr"], _)), _)) = false
+  | relevantExp _ = true
+
+
+fun relevantValBinding (VALbind (WILDpat, exp)) = relevantExp exp
+  | relevantValBinding _ = true
 
 
 fun translateFn (outfile:string)
@@ -317,74 +351,61 @@ fun translateFn (outfile:string)
 		  
 	fun cvtPats (definite:bool) pats = commaList (List.map (cvtPat definite) pats)
 
-	fun patLocal (IDpat id) = [id]
-	  | patLocal (TYPEDpat (pat, ty)) = patLocal pat
-	  | patLocal (RECORDpat (subpats,_)) = 
-	    let
-		fun subPat (_, p) = patLocal p
-	    in
-		List.concat (List.map subPat subpats)
-	    end
-	  | patLocal (CONSpat (_, SOME p)) = patLocal p
-	  | patLocal _ = []
-
 	fun withPatLocals ctx pats = 
-	    withLocals (List.concat (List.map patLocal pats)) ctx
+	    withLocals (List.concat (List.map patVars pats)) ctx
 
 	fun cvtPatId (TYPEDpat (pat, ty)) = cvtPatId pat
-	  | cvtPatId (IDpat id) = [" <var>", id, "</var>"]
+	  | cvtPatId (IDpat id) = span "var" [id]
 	  | cvtPatId (LITpat lit) = [" "] @ (cvtLit lit)
 	  | cvtPatId _ = bad "patid"
 
 	fun cvtPatIds pats = List.concat (List.map cvtPatId pats)
 
-	fun cvtValBind ctx (VALbind (pat, exp)) = ["Let"]
-						  @ (cvtPat true pat)
-						  @ [" be"] 
-						  @ (cvtExp ctx exp)
+	fun cvtValBind ctx (VALbind (pat, exp)) =
+	    (if isDestructuringPat pat
+	     then ["Get "] @ (cvtPat true pat) @ [" from"]
+	     else ["Let "] @ (cvtPat true pat) @ [" be"])
+	    @ (cvtExp ctx exp)
 							
-
 	and valBindPat (VALbind (pat, _)) = pat
 
-	and declPats (VALdecl valbinds) = List.map valBindPat valbinds
+	and declPats (VALdecl valbinds) = List.map valBindPat 
+						   (List.filter 
+							relevantValBinding 
+							valbinds)
 	  | declPats (MARKdecl (_, d)) = declPats d
 	  | declPats _ = []
 
-	and cvtDecl ctx (VALdecl valbinds) = List.map (cvtValBind ctx) valbinds
+	and cvtDecl ctx (VALdecl valbinds) = List.map (cvtValBind ctx) (List.filter 
+									    relevantValBinding 
+									    valbinds)
 	  | cvtDecl ctx (FUNdecl funbinds) = List.map (cvtFunBind ctx) funbinds
 	  | cvtDecl ctx (MARKdecl (_, d)) = cvtDecl ctx d
 	  | cvtDecl _ _ = [bad "decl"]
 	    
-	and cvtExps ctx [] : (string list list) = []
-	  | cvtExps ctx [x] = [["The result is"] @ (cvtExp ctx x)]
-	  | cvtExps ctx (x::xs) = (((cvtExp ctx x) @ ["."]) :: (cvtExps ctx xs))
+	and cvtExps' ctx [] : (string list list) = []
+	  | cvtExps' ctx [x] = [["The result is"] @ (cvtExp ctx x)]
+	  | cvtExps' ctx (x::xs) = (((cvtExp ctx x) @ ["."]) :: (cvtExps ctx xs))
 
-	and inCode ctx thunk = if (#inCode ctx) 
-			       then (thunk ctx)
-			       else ([" <code>"] @ (thunk (withCode ctx)) @ ["</code>"])
+	and cvtExps ctx xs = cvtExps' ctx (List.filter relevantExp xs)
 
 	and cvtIdent ctx id = if List.exists (fn x => x = id) (#locals ctx)
-			      then [" <var>", id, "</var>"]
-			      else [" ", id]
+			      then span "var" [id]
+			      else span "const" [id]
 				   
 	and cvtExp ctx (LITexp lit) = [" "] @ (cvtLit lit)
 	  | cvtExp ctx (MARKexp (_, exp)) = cvtExp ctx exp
 	  | cvtExp ctx (TYPEDexp (exp, _)) = cvtExp ctx exp
 	  | cvtExp ctx (APPexp (a,b)) = 
 	    let
-		fun innerThunk ctx = 
-		    let
-			val prefix = 
-			    case a of 
-				IDexp id => if elideApp id
-					    then []
-					    else (cvtExp ctx a)
-			      | _ => (cvtExp ctx a)
-		    in			
-			prefix @ (cvtExp ctx b)
-		    end
+		val prefix = 
+		    case a of 
+			IDexp id => if relevantApp id
+				    then (cvtExp ctx a)
+				    else []
+		      | _ => (cvtExp ctx a)
 	    in
-		inCode ctx innerThunk
+		span "expr" (prefix @ (cvtExp ctx b))
 	    end
 	  | cvtExp ctx (CASEexp (exp, clauses)) =
 	    let
@@ -400,11 +421,19 @@ fun translateFn (outfile:string)
 		 @ (ol (withIndent ctx 1)
 		       (List.map cvtCaseClause clauses))
 	    end
-	  | cvtExp ctx (IDexp (IDENT (_, id))) = cvtIdent ctx id
+	  | cvtExp ctx (IDexp (IDENT (["Name"], id))) = 
+	    span "name"
+		 (case String.tokens (fn c => c = #"_") id of 
+		      ["ES4", id] => ["__ES4__::", id]
+		    | [ns, id] => [ns, "::", id]
+		    | _ => [id])
+
+	  | cvtExp ctx (IDexp (IDENT ([], id))) = cvtIdent ctx id
+	  | cvtExp ctx (IDexp (IDENT (_, id))) = span "const" [id]
 	  | cvtExp ctx (IFexp (a, b, c)) = 
 	    ([" a value determined by the value of "] @ (cvtExp ctx a) @ [":"]
 	     @ (ol (withIndent ctx 1)
-		   [["If the value is <code>true</code>, then "] @ (cvtExp (withIndent ctx 2) b),
+		   [["If the value is "] @ (span "const" ["true"]) @ [", then "] @ (cvtExp (withIndent ctx 2) b),
 		    ["Otherwise "] @ (cvtExp (withIndent ctx 2) c)]))
 	    
 	  | cvtExp ctx (LETexp (decls, exps)) = 
@@ -425,9 +454,9 @@ fun translateFn (outfile:string)
 			     (CLAUSE (pats, NONE, exp)) = 
 	    [" Given "] 
 	    @ (cvtPats true pats) 
-	    @ [", the function <code>", id]
-	    @ (cvtPatIds pats)
-	    @ ["</code> evaluates to"]
+	    @ [", the function"]
+	    @ (span "expr" ((span "const" [id]) @ (cvtPatIds pats)))
+	    @ [" evaluates to"]
 	    @ (cvtExp (withPatLocals ctx pats) exp)
 	  | cvtFunBindClause _ _ _ = bad "funBindClause"
 
@@ -438,19 +467,36 @@ fun translateFn (outfile:string)
 	    @ (ol (withIndent ctx 1) 
 		  (List.map (cvtFunBindClause (withIndent ctx 2) id) clauses))
 	    
-	val ctx = { inCode = false, 
-		    locals = [],
+	val ctx = { locals = [],
 		    indent = 0 }
 	val head = ["<html>\n",
 		    " <head>\n",
 		    "  <style>\n",
-		    "    code\n",
+		    "    body\n",
 		    "      {\n",
-		    "        background-color: #f8f8f8;\n",
-		    "        padding-top: 0.25em;\n",
-		    "        padding-bottom: 0.25em;\n",
-		    "        padding-left: 0.5em;\n",
-		    "        padding-right: 0.5em;\n",
+		    "        line-height: 150%;\n",
+		    "      }\n",
+		    "    span.var\n",
+		    "      {\n",		    
+		    "        font-style: italic;\n",
+		    "      }\n",		    
+		    "    span.name\n",
+		    "      {\n",
+		    "        font-weight: bold;\n",
+		    "      }\n",		    
+		    "    span.const\n",
+		    "      {\n",
+		    "        font-weight: bold;\n",
+		    "      }\n",		    
+		    "    span.bad\n",
+		    "      {\n",
+		    "        color: #ff0000;\n",
+		    "        font-weight: bold;\n",
+		    "      }\n",		    
+		    "    span.expr\n",
+		    "      {\n",
+		    "        background-color: #f0f0f0;\n",
+		    "        padding: 0.25em;\n",
 		    "      }\n",
 		    "  </style>\n",
 		    " </head>\n",
