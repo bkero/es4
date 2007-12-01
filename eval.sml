@@ -2651,7 +2651,7 @@ and evalUnaryOp (regs:Mach.REGS)
             let
                 fun typeNameOfVal (v:Mach.VAL) =
                     case v of
-                        Mach.Null => Ustring.null_
+                        Mach.Null => Ustring.object_
                       | Mach.Undef => Ustring.undefined_
                       | Mach.Object (Mach.Obj ob) =>
                         let
