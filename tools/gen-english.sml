@@ -83,6 +83,25 @@ fun withIndent (ctx:context) n = { inCode = (#inCode ctx),
  * fragment.
  *)
 
+
+fun spaces (ctx:context) = 
+    List.tabulate ((#indent ctx), (fn _ => "  "))
+			   
+fun li ctx (content:string list) = 
+    ["\n"] @ (spaces ctx) @ ["<li>"] @ content @ ["</li>"]
+
+fun ol ctx (elts:string list list) = 
+    ["\n"] @ (spaces ctx) @ ["<ol>\n"]
+    @ (List.concat (List.map (li (withIndent ctx 1)) elts))
+    @ ["\n"] @ (spaces ctx) @ ["</ol>\n"]
+
+fun bad str = [" <font color='red'>?", str, "?</font>"]    
+
+fun commaList [x] = x
+  | commaList [x,y] = x @ [" and"] @ y
+  | commaList (x::xs) = x @ [", "] @ (commaList xs)
+  | commaList [] = []
+
 (* 
  * 
  * Converting patterns is a little tricky. 
@@ -116,8 +135,52 @@ fun cvtTy (IDty (IDENT (["Mach"], "SCOPE"))) = [" scope"]
   | cvtTy (IDty (IDENT (["Real64"], "real"))) = [" double number"]
   | cvtTy (IDty (IDENT (["Decimal"], "DEC"))) = [" decimal number"]
 
-  | cvtTy (IDty (IDENT (["Ast"], "EXPR"))) = [" expression"]
+  | cvtTy (IDty (IDENT (["Ast"], "PRAGMA"))) = [" pragma"]
+  | cvtTy (IDty (IDENT (["Ast"], "FUNC_NAME_KIND"))) = [" function name kind"]
+  | cvtTy (IDty (IDENT (["Ast"], "TY"))) = [" type closure"]
+  | cvtTy (IDty (IDENT (["Ast"], "CLS"))) = [" class"]
+  | cvtTy (IDty (IDENT (["Ast"], "IFACE"))) = [" interface"]
+  | cvtTy (IDty (IDENT (["Ast"], "CTOR"))) = [" constructor"]
+  | cvtTy (IDty (IDENT (["Ast"], "FUNC"))) = [" function"]
+  | cvtTy (IDty (IDENT (["Ast"], "DEFN"))) = [" definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "FUNC_SIG"))) = [" function signature"]
+  | cvtTy (IDty (IDENT (["Ast"], "BINDING"))) = [" binding"]
+  | cvtTy (IDty (IDENT (["Ast"], "BINDING_IDENT"))) = [" binding identifier"]
+  | cvtTy (IDty (IDENT (["Ast"], "INIT_STEP"))) = [" initialization step"]
+  | cvtTy (IDty (IDENT (["Ast"], "TYPE_EXPR"))) = [" type expression"]
   | cvtTy (IDty (IDENT (["Ast"], "STMT"))) = [" statement"]
+  | cvtTy (IDty (IDENT (["Ast"], "EXPR"))) = [" expression"]
+  | cvtTy (IDty (IDENT (["Ast"], "INIT_TARGET"))) = [" initialization target"]
+  | cvtTy (IDty (IDENT (["Ast"], "FIXTURE_NAME"))) = [" fixture name"]
+  | cvtTy (IDty (IDENT (["Ast"], "IDENT_EXPR"))) = [" identifier expression"]
+  | cvtTy (IDty (IDENT (["Ast"], "LITERAL"))) = [" literal"]
+  | cvtTy (IDty (IDENT (["Ast"], "BLOCK"))) = [" block"]
+  | cvtTy (IDty (IDENT (["Ast"], "FIXTURE"))) = [" fixture"]
+  | cvtTy (IDty (IDENT (["Ast"], "HEAD"))) = [" head"]
+  | cvtTy (IDty (IDENT (["Ast"], "BINDINGS"))) = [" bindings"]
+  | cvtTy (IDty (IDENT (["Ast"], "RIB"))) = [" rib"]
+  | cvtTy (IDty (IDENT (["Ast"], "RIBS"))) = [" ribs"]
+  | cvtTy (IDty (IDENT (["Ast"], "INITS"))) = [" initializers"]
+  | cvtTy (IDty (IDENT (["Ast"], "INSTANCE_TYPE"))) = [" instance type"]
+  | cvtTy (IDty (IDENT (["Ast"], "FIELD"))) = [" field"]
+  | cvtTy (IDty (IDENT (["Ast"], "FIELD_TYPE"))) = [" field type"]
+  | cvtTy (IDty (IDENT (["Ast"], "FUNC_TYPE"))) = [" function type"]
+  | cvtTy (IDty (IDENT (["Ast"], "FUNC_DEFN"))) = [" function definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "CTOR_DEFN"))) = [" constructor definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "VAR_DEFN"))) = [" variable definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "NAMESPACE_DEFN"))) = [" namespace definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "CLASS_DEFN"))) = [" class definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "INTERFACE_DEFN"))) = [" interface definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "TYPE_DEFN"))) = [" type definition"]
+  | cvtTy (IDty (IDENT (["Ast"], "FOR_ENUM_STATEMENT"))) = [" foreach statement"]
+  | cvtTy (IDty (IDENT (["Ast"], "FOR_STMT"))) = [" for statement"]
+  | cvtTy (IDty (IDENT (["Ast"], "WHILE_STMT"))) = [" while statement"]
+  | cvtTy (IDty (IDENT (["Ast"], "DIRECTIVES"))) = [" directives"]
+  | cvtTy (IDty (IDENT (["Ast"], "CASE"))) = [" case"]
+  | cvtTy (IDty (IDENT (["Ast"], "CATCH_CLAUSE"))) = [" catch clause"]
+  | cvtTy (IDty (IDENT (["Ast"], "FUNC_NAME"))) = [" function name"]
+  | cvtTy (IDty (IDENT (["Ast"], "VIRTUAL_VAL_FIXTURE"))) = [" virtual value fixture"]
+  | cvtTy (IDty (IDENT (["Ast"], "FRAGMENT"))) = [" fragment"]
 
   | cvtTy (IDty (IDENT (_, id))) = [" ", id]
   | cvtTy _ = []
@@ -169,6 +232,7 @@ fun cvtPat def pat =
 	      | (["Ast"], "LamType") => SOME "lambda type"
 	      | (["Ast"], "NullableType") => SOME "nullability-indication type"
 	      | (["Ast"], "InstanceType") => SOME "instance type"
+
 	      | _ => NONE
 	    
 	fun res (CONSpat ((IDENT id), sub)) =
@@ -189,10 +253,22 @@ fun cvtPat def pat =
 		    NONE => prefix
 		  | SOME s => prefix @ (res s)
 	    end
-
+	    
 	  | res (IDpat id) = [" <var>", id, "</var>"]
+	  | res (RECORDpat (subpats,_)) =
+	    let
+		fun subPat (id1, (IDpat id2)) =
+		    if id1 = id2
+		    then res (IDpat id2)
+		    else bad "pat"
+
+		  | subPat _ = 
+		    bad "pat"
+	    in
+		commaList (List.map subPat subpats)
+	    end
 	  | res (WILDpat) = []
-	  | res _ = [" ?pat?"]
+	  | res _ = bad "pat"
     in
 	case pat of 
 	    (IDpat "NONE") => [" missing"]
@@ -227,20 +303,9 @@ fun elideApp (IDENT (["Mach"], "Obj")) = true
   | elideApp (IDENT (["Mach"], "Type")) = true
   | elideApp (IDENT (["Mach"], "NativeFunction")) = true
   | elideApp (IDENT ([], "SOME")) = true
+  | elideApp (IDENT ([], "valOf")) = true
   | elideApp _ = false
-		 
-fun spaces (ctx:context) = 
-    List.tabulate ((#indent ctx), (fn _ => "  "))
-			   
-fun li ctx (content:string list) = 
-    ["\n"] @ (spaces ctx) @ ["<li>"] @ content @ ["</li>"]
 
-fun ol ctx (elts:string list list) = 
-    ["\n"] @ (spaces ctx) @ ["<ol>\n"]
-    @ (List.concat (List.map (li (withIndent ctx 1)) elts))
-    @ ["\n"] @ (spaces ctx) @ ["</ol>\n"]
-    
-	     
 
 fun translateFn (outfile:string)
 		(funbind:funbind)
@@ -250,22 +315,26 @@ fun translateFn (outfile:string)
 				     
 	val put = List.app (fn s => TextIO.output (out, s))
 		  
-	fun cvtPats (definite:bool) [x] = (cvtPat definite x)			      
-	  | cvtPats definite [x,y] = (cvtPat definite x) @ [" and"] @ (cvtPat definite y)
-	  | cvtPats definite (x::xs) = (cvtPat definite x) @ [", "] @ (cvtPats definite xs)
-	  | cvtPats _ _ = []
+	fun cvtPats (definite:bool) pats = commaList (List.map (cvtPat definite) pats)
 
-	fun patLocal (IDpat id) = SOME id
+	fun patLocal (IDpat id) = [id]
 	  | patLocal (TYPEDpat (pat, ty)) = patLocal pat
-	  | patLocal _ = NONE
+	  | patLocal (RECORDpat (subpats,_)) = 
+	    let
+		fun subPat (_, p) = patLocal p
+	    in
+		List.concat (List.map subPat subpats)
+	    end
+	  | patLocal (CONSpat (_, SOME p)) = patLocal p
+	  | patLocal _ = []
 
 	fun withPatLocals ctx pats = 
-	    withLocals (List.mapPartial patLocal pats) ctx
+	    withLocals (List.concat (List.map patLocal pats)) ctx
 
 	fun cvtPatId (TYPEDpat (pat, ty)) = cvtPatId pat
 	  | cvtPatId (IDpat id) = [" <var>", id, "</var>"]
 	  | cvtPatId (LITpat lit) = [" "] @ (cvtLit lit)
-	  | cvtPatId _ = [" ?patid?"]
+	  | cvtPatId _ = bad "patid"
 
 	fun cvtPatIds pats = List.concat (List.map cvtPatId pats)
 
@@ -284,7 +353,7 @@ fun translateFn (outfile:string)
 	and cvtDecl ctx (VALdecl valbinds) = List.map (cvtValBind ctx) valbinds
 	  | cvtDecl ctx (FUNdecl funbinds) = List.map (cvtFunBind ctx) funbinds
 	  | cvtDecl ctx (MARKdecl (_, d)) = cvtDecl ctx d
-	  | cvtDecl _ _ = [[" ?decl?"]]
+	  | cvtDecl _ _ = [bad "decl"]
 	    
 	and cvtExps ctx [] : (string list list) = []
 	  | cvtExps ctx [x] = [["The result is"] @ (cvtExp ctx x)]
@@ -348,7 +417,7 @@ fun translateFn (outfile:string)
 		       @ (cvtExps (withIndent ctx 2) exps)))
 	    end
 	  | cvtExp ctx (SEQexp exps) = List.concat (cvtExps ctx exps)
-	  | cvtExp _ _ = [" ?expr?"]
+	  | cvtExp _ _ = bad "expr"
 
 					    
 	and cvtFunBindClause (ctx:context)
@@ -360,7 +429,7 @@ fun translateFn (outfile:string)
 	    @ (cvtPatIds pats)
 	    @ ["</code> evaluates to"]
 	    @ (cvtExp (withPatLocals ctx pats) exp)
-	  | cvtFunBindClause _ _ _ = [" ?funBindClause?"]
+	  | cvtFunBindClause _ _ _ = bad "funBindClause"
 
 	and cvtFunBind (ctx:context) (FUNbind (id, [clause])) = 
 	    cvtFunBindClause ctx id clause
