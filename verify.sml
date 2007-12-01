@@ -399,6 +399,7 @@ and verifyExpr (env:ENV)
             in
                 whenStrict (fn () => case b of
                                           Ast.To => checkConvertible t1 t2
+                                        | Ast.Is => ()
                                         | _ => checkCompatible t1 t2);
                 return (Ast.BinaryTypeExpr (b, e', ty), resultType)
             end
