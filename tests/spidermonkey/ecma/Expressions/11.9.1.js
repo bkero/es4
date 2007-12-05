@@ -133,7 +133,7 @@ new TestCase( SECTION,    "void 0 == null",             true,   void 0 == null )
 
 new TestCase( SECTION,    "1 == '1'",                   true,   1 == '1' );
 new TestCase( SECTION,    "255 == '0xff'",               true,  255 == '0xff' );
-new TestCase( SECTION,    "0 == '\r'",                  true,   0 == "\r" );
+new TestCase( SECTION,    "0 == '\\r'",                  true,   0 == "\r" );
 new TestCase( SECTION,    "1e19 == '1e19'",             true,   1e19 == "1e19" );
 
 
