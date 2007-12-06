@@ -488,8 +488,15 @@ If $\judges{}{\sigma,e}{ok}$ and $\sigma,e\lred \sigma',e'$ then $\judges{}{\sig
 \end{lemma}
 PROVEME
 
-\begin{lemma}[Soundness]
-If $\judges{}{\sigma,e}{ok}$ then operations marked with $\safe$ can never get stuck.
+A \emph{unsafe operation} r is a term of the form:
+\[
+	r ~::=~ x^\unsafe ~|~ \app{\unsafe}{v}{v} ~|~ \obje{\unsafe}{\bar l = \bar v}{T} ~|~ \objget{\unsafe}{v}{l} ~|~ \objset{\unsafe} v l v
+	~|~ \cast{\unsafe} v T
+\]
+ 
+\begin{lemma}[Progress]
+If $\judges{}{\sigma,e}{ok}$ and $\sigma,e\not\lred \sigma',e'$
+for any $\sigma'$ and $e'$ then $e=C[r]$ where $r$ is an unsafe operation. 
 \end{lemma}
 PROVEME
 
@@ -506,11 +513,11 @@ PROVEME
 \trule{O-Var-Safe}{
 		(x:T)\in E
 	}{
-		\judges{E}{x}{T}
+		\judges{E}{x^\safe}{T}
 	}
 \trule{O-Var-Unsafe}{
 	}{
-		\judges{E}{x}{\dynamic}
+		\judges{E}{x^\unsafe}{\dynamic}
 	}
 \trule{O-Int}{
 	}{
@@ -519,8 +526,8 @@ PROVEME
 \trule{O-Fun-Safe}{
 		\judges{E,x:S}{e}{T'} \qquad
 		{T'} \Implies {T} 
-	}{
-		\judges{E}{(\lam{\safe}{x}{S}{T}{e})}{(\lamt{S}{T})}
+	}{	
+	\judges{E}{(\lam{\safe}{x}{S}{T}{e})}{(\lamt{S}{T})}
 	}
 \trule{O-Fun-Unsafe}{
 		\judges{E,x:S}{e}{T'}  
@@ -541,11 +548,17 @@ PROVEME
 	}{
 		\judges{E}{\app{\unsafe}{t_1}{t_2}}{\dynamic}
 	}
-\trule{O-As}{
+\trule{O-As-safe}{
+		\judges{E}{t}{S} \qquad 
+		\implies{S}{T}
+	}{
+		\judges{E}{\cast{\safe}{t}{T}}{T}
+	}
+\trule{O-As-Unsafe}{
 		\judges{E}{t}{S}%\qquad 
 		%\compatible{S}{T}
 	}{
-		\judges{E}{\cast{}{t}{T}}{T}
+		\judges{E}{\cast{\unsafe}{t}{T}}{T}
 	}
 \trule{O-Alloc-Safe}{
 		T=\objty{l_i:T_i^{i\in 1..n}} \qquad
