@@ -184,7 +184,7 @@ smoketest: $(DUMP)
 
 SM_CWD:=$(PWD)
 SM_REL=$(patsubst $(SM_CWD)/%,%,$(1))
-SM_CMD=$(call SM_REL,$(RUN_DUMPED) -3 -e tests/shell.js $(realpath $(dir $(1))../shell.js $(dir $(1))shell.js) $(1))
+SM_CMD=$(call SM_REL,$(RUN_DUMPED) -3 -e tests/spidermonkey/ecma/shell.js $(realpath $(dir $(1))../shell.js $(dir $(1))shell.js) $(1))
 SM_TARGET_DIR=tests/spidermonkey/ecma*/*/*.js
 SPIDERMONKEY_TESTS:=$(call SM_REL,$(sort $(filter-out %/shell.js, $(wildcard $(SM_TARGET_DIR)))))
 SPIDERMONKEY_OUTPUTS:=$(patsubst %.js,%.sm-out,$(SPIDERMONKEY_TESTS))
