@@ -143,8 +143,7 @@ datatype PRAGMA =
        | UseStandard
        | Import of
            { package: IDENT list,
-             name: IDENT,
-             alias: IDENT option }
+             name: IDENT }
 
      and FUNC_NAME_KIND =
          Ordinary

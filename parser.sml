@@ -6906,7 +6906,6 @@ and pragmaItem (ts:TOKENS)
 
 (*
     ImportPragma
-        import  Identifier  =  ImportName
         import  ImportName
 
     ImportName
@@ -6917,19 +6916,12 @@ and importPragma (ts:TOKENS)
     : (TOKENS * Ast.PRAGMA list) =
     let val _ = trace([">> importPragma with next=", tokenname(hd ts)])
     in case ts of
-        (Import, _) :: _ :: (Assign, _) :: _ =>
-            let
-                val (ts1,nd1) = identifier (tl ts)
-                val (ts2,(p,i)) = importName (tl ts1)
-            in
-                (ts2,[Ast.Import {package=p,name=i,alias=SOME nd1}])
-            end
-      | (Import, _) :: _ =>
-            let
-                val (ts1,(p,i)) = importName (tl ts)
-            in
-                (ts1,[Ast.Import {package=p,name=i,alias=NONE}])
-            end
+	   (Import, _) :: _ =>
+           let
+               val (ts1,(p,i)) = importName (tl ts)
+           in
+               (ts1,[Ast.Import {package=p,name=i}])
+           end
       | _ => error ["unknown token in importPragma"]
     end
 
