@@ -223,7 +223,7 @@ def outputHtmlFile(file):
 	print "Writing results to %s" % js_output
 	return open(js_output, "w")
 
-verbose = True
+verbose = False
 js_output = True
 configFile = "testconfig.txt"
 outputFile = None
