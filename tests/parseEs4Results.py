@@ -67,7 +67,7 @@ def err_print(m):
 	verbose_print(m, "<font color=#990000>", "</font><br/>")
 
 def js_print(m, start_tag="<p><tt>", end_tag="</tt></p>"):
-	#print m
+	print m
 	if js_output:
 		js_output_f.write("%s %s %s\n" % (start_tag, m, end_tag))
 		js_output_f.flush()
