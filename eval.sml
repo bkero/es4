@@ -395,9 +395,13 @@ fun allocRib (regs:Mach.REGS)
                   | Ast.SpecialType (Ast.VoidType) =>
                     error regs ["attempt to allocate void-type property"]
                     
-                  (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
-                  | Ast.UnionType _ =>
-                    Mach.ValProp (Mach.Null)
+                  | Ast.UnionType [] => 
+		    Mach.UninitProp
+
+                  | Ast.UnionType (x::xs) => 
+		    (case valAllocState (makeTy x) of 
+			 Mach.UninitProp => valAllocState (makeTy (Ast.UnionType xs))
+		       | other => other)
                     
                   | Ast.ArrayType _ =>
                     Mach.ValProp (Mach.Null)
@@ -415,7 +419,7 @@ fun allocRib (regs:Mach.REGS)
                     Mach.ValProp (Mach.Null)
                     
                   | Ast.NullableType { expr, nullable=false } =>
-                    Mach.UninitProp
+                    valAllocState (makeTy expr)
                     
                   | Ast.TypeName ident =>
                     error regs ["allocating fixture with unresolved type name: ", LogErr.ty expr]
@@ -430,19 +434,15 @@ fun allocRib (regs:Mach.REGS)
                    * where the program does not contain such inits.
                    *)
                   | Ast.InstanceType n =>
-                    if (#nonnullable n)
+                    (* It is possible that we're booting and the class n doesn't even exist yet. *)
+                    if (not (Mach.isBooting regs)) orelse 
+                       Mach.isClass (getValue regs (#global regs) (#name n))
                     then
-                        (* It is possible that we're booting and the class n doesn't even exist yet. *)
-                        if (not (Mach.isBooting regs)) orelse 
-                           Mach.isClass (getValue regs (#global regs) (#name n))
-                        then
-                            case Type.groundFindConversion (#prog regs) (Ast.SpecialType Ast.Undefined) expr of
-                                SOME t => Mach.ValProp (checkAndConvert regs Mach.Undef (makeTy t))
-                              | NONE => Mach.UninitProp
-                        else
-                            Mach.UninitProp
+                        case Type.groundFindConversion (#prog regs) (Ast.SpecialType Ast.Undefined) expr of
+                            SOME t => Mach.ValProp (checkAndConvert regs Mach.Undef (makeTy t))
+                          | NONE => Mach.UninitProp
                     else
-                        Mach.ValProp Mach.Null
+                        Mach.UninitProp
                         
                   | Ast.LamType _ => 
                     Mach.UninitProp
