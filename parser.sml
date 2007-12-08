@@ -7151,7 +7151,11 @@ and fragment (ts:TOKENS)
             (ts2, Ast.Package {name=nd1, fragments=nd2})
         end
 
+      | (RightBrace, _) :: rest => 
+        error ["unexpected right brace opening fragment"]
+
       (* FIXME: add code here to parse units *)
+
 
       | _ => 
         let
