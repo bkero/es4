@@ -608,15 +608,6 @@ and verifyExpr (env:ENV)
                 return (Ast.ListExpr es', anyType)
             end
 
-          | Ast.SliceExpr (a, b, c) =>
-            let
-                val (a', t1) = verifySub a
-                val (b', t2) = verifySub b
-                val (c', t3) = verifySub c
-            in
-                return (Ast.SliceExpr (a, b, c), anyType)
-            end
-
           | Ast.InitExpr (it, head, inits) =>
             let
                 val it' = it (* TODO *)

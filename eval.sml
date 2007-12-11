@@ -1815,7 +1815,7 @@ and evalExpr (regs:Mach.REGS)
         in
             getValue regs obj name
         end
-
+	
       | Ast.ObjectRef { base, ident, loc } =>
         let
             val _ = LogErr.setLoc loc
@@ -1922,13 +1922,11 @@ and evalExpr (regs:Mach.REGS)
       | Ast.GetParam n =>
         LogErr.unimplError ["unhandled GetParam expression"]
 
-      | Ast.SliceExpr _ =>
-        LogErr.unimplError ["unhandled Slice expression"]
-
       | Ast.ApplyTypeExpr { expr, actuals } =>
         evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
 
-      | _ => LogErr.unimplError ["unhandled expression type"]
+      | _ => LogErr.unimplError ["unhandled expression type"]    
+
 
 and evalSuperCall (regs:Mach.REGS)
                   (base:Mach.OBJ)

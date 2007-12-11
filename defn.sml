@@ -1903,9 +1903,6 @@ and defExpr (env:ENV)
           | Ast.ListExpr es =>
             Ast.ListExpr (map sub es)
 
-          | Ast.SliceExpr (a, b, c) =>
-            Ast.SliceExpr (sub a, sub b, sub c)
-
           | Ast.InitExpr ie =>
             Ast.InitExpr ie
     end

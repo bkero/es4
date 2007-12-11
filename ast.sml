@@ -333,7 +333,6 @@ datatype PRAGMA =
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
-       | SliceExpr of (EXPR * EXPR * EXPR)
        | GetTemp of int
        | GetParam of int
 
