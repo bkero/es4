@@ -184,8 +184,9 @@ smoketest: $(DUMP)
 
 SM_CWD:=$(PWD)
 SM_REL=$(patsubst $(SM_CWD)/%,%,$(1))
-SM_CMD=$(call SM_REL,$(RUN_DUMPED) -3 -e $(realpath $(dir $(1))../shell.js $(dir $(1))shell.js) $(1))
-SPIDERMONKEY_TESTS:=$(call SM_REL,$(sort $(filter-out %/shell.js, $(wildcard tests/spidermonkey/ecma*/*/*.js))))
+SM_CMD=$(call SM_REL,$(RUN_DUMPED) -3 -e tests/spidermonkey/ecma/shell.js $(realpath $(dir $(1))../shell.js $(dir $(1))shell.js) $(1))
+SM_TARGET_DIR=tests/spidermonkey/ecma*/*/*.js
+SPIDERMONKEY_TESTS:=$(call SM_REL,$(sort $(filter-out %/shell.js, $(wildcard $(SM_TARGET_DIR)))))
 SPIDERMONKEY_OUTPUTS:=$(patsubst %.js,%.sm-out,$(SPIDERMONKEY_TESTS))
 SPIDERMONKEY_LOG=spidermonkey-test.log
 
@@ -254,8 +255,14 @@ tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm tools/gen-convert.sml 
 tools/gen-english.heap.$(HEAP_SUFFIX): tools/gen-english.cm tools/gen-english.sml tools/smlast.sml
 	$(MLBUILD) $(MLBUILD_ARGS) $< GenEnglish.main $@
 
-english: 
-	$(SMLNJ) @SMLload=tools/gen-english.heap 
+tools/gen-cg.heap.$(HEAP_SUFFIX): tools/gen-cg.cm tools/gen-cg.sml tools/smlast.sml
+	$(MLBUILD) $(MLBUILD_ARGS) $< GenCG.main $@
+
+%.cg: tools/gen-cg.heap.$(HEAP_SUFFIX)
+	$(SMLNJ) @SMLload=tools/gen-cg.heap $*.sml | tee $@
+
+english/eval-%.html: eval.sml tools/gen-english.heap.$(HEAP_SUFFIX)
+	$(SMLNJ) @SMLload=tools/gen-english.heap $< $* $@
 
 tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) $< UnitTests.main $@

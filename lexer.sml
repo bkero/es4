@@ -409,9 +409,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 				    SOME li => li
 				  | NONE => error ["LexError: error converting int literal"]
 		in
-		    if Mach.fitsInInt n
-		    then IntLiteral (Int32.fromLarge n)
-		    else DoubleLiteral (Real64.fromLargeInt n)
+		    DoubleLiteral (Real64.fromLargeInt n)
 		end
 
             fun countExpChars chars =

@@ -70,7 +70,6 @@ fun mkParamRib (idents:Ast.IDENT list)
 
     To be specific, the definition phase completes the following tasks:
     - fold type expressions
-    - fold namespace aliases
     - translate defnitions to rib + initialisers
     - check for conflicting fixtures
     - hoist rib
@@ -1526,137 +1525,6 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
     end
 
 
-
-(* 
- * FIXME: replace this boilerplate getter/setter code with a new 
- * kind of fixture for import aliasing? In the cases of ClassFixture 
- * and TypeFixture, the verifier has to evaluate the getter to 
- * see the concrete type of the alias 
- *)    
-
-and makeAliasFixture (env:ENV) 
-                     (alias:Ast.IDENT option) 
-                     (package:Ast.IDENT) 
-                     (ident:Ast.IDENT) =
-    let
-        val targetName = {ns=Ast.Public package,id=ident}
-        val (n,targetFixture) = resolve env (multinameFromName targetName)
-        val fixtureType:Ast.TY = 
-            case targetFixture of
-                Ast.ValFixture {ty,...} => ty
-              | Ast.NamespaceFixture _ => 
-                makeTy env (Name.typename Name.ES4_Namespace)
-              | Ast.ClassFixture _ => 
-                makeTy env (Name.typename Name.intrinsic_Class)
-              (* ISSUE: this is the base type of the class object *)
-              | Ast.TypeFixture _ => 
-                makeTy env (Name.typename Name.intrinsic_Type)
-              | Ast.MethodFixture {ty,...} => ty
-              | Ast.VirtualValFixture {ty,...} => ty
-              | _ => LogErr.unimplError ["unhandle fixture type"]
-        val targetRef = 
-            defExpr env 
-                    (Ast.LexicalRef 
-                         {ident=Ast.QualifiedIdentifier 
-                                    {qual=Ast.LiteralExpr 
-                                              (Ast.LiteralNamespace 
-                                                   (Ast.Public package)),
-                                     ident=ident},
-                          loc=NONE})
-            
-        val (getterTy, setterTy) = 
-            let 
-                val Ast.Ty { expr, ribId } = fixtureType 
-                val getterFuncType = {params=[],
-                                      result=expr,
-                                      thisType=NONE,
-                                      hasRest=false,
-                                      minArgs=0}
-
-                val setterFuncType = {params=[expr],
-                                      result=Ast.SpecialType Ast.VoidType,
-                                      thisType=NONE,
-                                      hasRest=false,
-                                      minArgs=1}
-            in
-                (Ast.Ty { expr=(Ast.FunctionType getterFuncType), 
-                          ribId=ribId },
-                 Ast.Ty { expr=(Ast.FunctionType setterFuncType), 
-                          ribId=ribId })
-            end
-
-        val getterFunc : Ast.FUNC = 
-            Ast.Func 
-                { name={ kind=Ast.Get,
-                         ident=Ustring.empty},
-                  fsig=Ast.FunctionSignature 
-                           {typeParams=[],params=([],[]),paramTypes=[],
-                            defaults=[],ctorInits=NONE,
-                            returnType=Ast.SpecialType Ast.Any,
-                            thisType=NONE,hasRest=false},
-                  native=false,
-                  block=SOME (Ast.Block 
-                                  {pragmas=[],defns=[],
-                                   head=SOME (Ast.Head ([],[])),
-                                   loc=NONE,
-                                   body=[Ast.ReturnStmt targetRef]}),
-                  param=Ast.Head ([],[]),
-                  defaults=[],
-                  ty = getterTy,
-                  loc=NONE}
-                            
-
-        val setterFunc : Ast.FUNC =
-            Ast.Func 
-                { name={kind=Ast.Set,
-                        ident=Ustring.empty},
-                  fsig=Ast.FunctionSignature 
-                           {typeParams=[],params=([],[]),paramTypes=[],
-                            defaults=[],ctorInits=NONE,
-                            returnType=Ast.SpecialType Ast.Any,
-                            thisType=NONE,hasRest=false},
-                  native=false,
-                  block = SOME 
-                              (Ast.Block
-                                   { pragmas = [],
-                                     defns = [],
-                                     head = SOME (Ast.Head ([], [])),
-                                     body = 
-                                     [Ast.ExprStmt
-                                          (Ast.SetExpr
-                                               (Ast.Assign, targetRef,
-                                                Ast.LexicalRef
-                                                    { ident = Ast.Identifier
-                                                                  { ident = Ustring.x_,
-                                                                    openNamespaces = [[Name.noNS]]},
-                                                      loc = NONE}))],
-                                     loc = NONE}),
-                  param = Ast.Head
-                              ([(Ast.TempName 0,
-                                 Ast.ValFixture
-                                     { ty = makeTy env (Ast.SpecialType Ast.Any),
-                                       readOnly = false}),
-                                (Ast.PropName
-                                     { ns = Name.noNS,
-                                       id = Ustring.x_},
-                                 Ast.ValFixture
-                                     { ty = makeTy env (Ast.SpecialType Ast.Any),
-                                       readOnly = false})],
-                               [(Ast.PropName
-                                     { ns = Name.noNS,
-                                       id = Ustring.x_},
-                                 Ast.GetTemp 0)]),
-                  
-                  defaults=[],
-                  ty = setterTy,
-                  loc=NONE}
-    in
-        Ast.VirtualValFixture {ty=fixtureType,
-                               getter=SOME getterFunc,
-                               setter=SOME setterFunc}
-    end
-
-
 (*
     PRAGMA list
 
@@ -1710,36 +1578,18 @@ and defPragmas (env:ENV)
                            | _ => opennss := (namespace :: !opennss));
                         defaultNamespace := namespace
                     end
-              | Ast.Import {package,name,alias} =>
-                    let
-                    in case alias of
-                        NONE =>
-                            let
-                                val id = packageIdentFromPath package
-                                val ns = if name = Ustring.asterisk
-                                         then Ast.Public id
-                                         else Ast.LimitedNamespace (name,Ast.Public id)
-                            in
-                                (Fixture.addPackageName program package;
-                                 trace2 ("openning package ",id);
-                                 opennss  := addNamespace ns (!opennss))
-                            end
-                      | _ =>
-                            let
-                                val aliasFixture = makeAliasFixture (modifiedEnv()) alias (packageIdentFromPath package) name
-                                val aliasName = {ns=(!defaultNamespace),id=valOf alias}
-                                val _ = trace ["aliasName ",LogErr.name aliasName]
-                                val id = packageIdentFromPath package
-                                val ns = if name=Ustring.asterisk 
-                                         then Ast.Public id
-                                         else Ast.LimitedNamespace (name,Ast.Public id)
-                            in
-                                (rib := (Ast.PropName aliasName,aliasFixture) :: (!rib);
-                                 addToRib (modifiedEnv()) [(Ast.PropName aliasName, aliasFixture)];
-                                 Fixture.addPackageName program package;
-                                 opennss  := addNamespace ns (!opennss))
-                            end
-                    end
+              | Ast.Import {package,name} =>
+                let
+                    val id = packageIdentFromPath package
+                    val ns = if name = Ustring.asterisk
+                             then Ast.Public id
+                             else Ast.LimitedNamespace (name,Ast.Public id)
+                in
+                    (Fixture.addPackageName program package;
+                     trace2 ("openning package ",id);
+                     opennss  := addNamespace ns (!opennss))
+                end
+
               | _ => ()
     in
         List.app defPragma pragmas;
@@ -2052,9 +1902,6 @@ and defExpr (env:ENV)
 
           | Ast.ListExpr es =>
             Ast.ListExpr (map sub es)
-
-          | Ast.SliceExpr (a, b, c) =>
-            Ast.SliceExpr (sub a, sub b, sub c)
 
           | Ast.InitExpr ie =>
             Ast.InitExpr ie

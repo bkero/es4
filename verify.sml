@@ -399,6 +399,7 @@ and verifyExpr (env:ENV)
             in
                 whenStrict (fn () => case b of
                                           Ast.To => checkConvertible t1 t2
+                                        | Ast.Is => ()
                                         | _ => checkCompatible t1 t2);
                 return (Ast.BinaryTypeExpr (b, e', ty), resultType)
             end
@@ -605,15 +606,6 @@ and verifyExpr (env:ENV)
                 val (es', ts) = verifySubList es
             in
                 return (Ast.ListExpr es', anyType)
-            end
-
-          | Ast.SliceExpr (a, b, c) =>
-            let
-                val (a', t1) = verifySub a
-                val (b', t2) = verifySub b
-                val (c', t3) = verifySub c
-            in
-                return (Ast.SliceExpr (a, b, c), anyType)
             end
 
           | Ast.InitExpr (it, head, inits) =>

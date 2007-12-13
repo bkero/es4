@@ -143,8 +143,7 @@ datatype PRAGMA =
        | UseStandard
        | Import of
            { package: IDENT list,
-             name: IDENT,
-             alias: IDENT option }
+             name: IDENT }
 
      and FUNC_NAME_KIND =
          Ordinary
@@ -264,11 +263,7 @@ datatype PRAGMA =
              static: bool,
              temps: BINDINGS,
              inits: INIT_STEP list }
-       | ClassBlock of
-           { ns: EXPR option,
-             ident: IDENT,
-             name: NAME option,
-             block: BLOCK }
+       | ClassBlock of CLASS_BLOCK                           
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR
        | ReturnStmt of EXPR
@@ -338,7 +333,6 @@ datatype PRAGMA =
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
-       | SliceExpr of (EXPR * EXPR * EXPR)
        | GetTemp of int
        | GetParam of int
 
@@ -506,6 +500,12 @@ withtype
            { ident: IDENT,
              ns: EXPR option,
              init: TYPE_EXPR }
+
+     and CLASS_BLOCK = 
+         { ns: EXPR option,
+           ident: IDENT,
+           name: NAME option,
+             block: BLOCK }
 
      and FOR_ENUM_STMT =
            { isEach: bool,

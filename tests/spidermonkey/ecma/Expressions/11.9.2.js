@@ -133,7 +133,7 @@ new TestCase( SECTION,    "void 0 != null",             false,   void 0 != null 
 
 new TestCase( SECTION,    "1 != '1'",                   false,   1 != '1' );
 new TestCase( SECTION,    "255 != '0xff'",               false,  255 != '0xff' );
-new TestCase( SECTION,    "0 != '\r'",                  false,   0 != "\r" );
+new TestCase( SECTION,    "0 != '\\r'",                  false,   0 != "\r" );
 new TestCase( SECTION,    "1e19 != '1e19'",             false,   1e19 != "1e19" );
 
 

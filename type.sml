@@ -59,6 +59,10 @@ fun fmtType t = if !doTrace
                  then LogErr.ty t
                  else ""
 
+fun fmtTy t = if !doTrace
+              then LogErr.ty (AstQuery.typeExprOf t)
+              else ""
+
 (* -----------------------------------------------------------------------------
  * Normalized types
  * ----------------------------------------------------------------------------- *)
@@ -184,7 +188,14 @@ type TY_NORM = { exprs: Ast.TYPE_EXPR list,
 fun normalize (prog:Fixture.PROGRAM) 
               (locals:Ast.RIBS)
               (t:Ast.TY) 
-    : Ast.TY = (norm2ty (ty2norm prog t locals []))
+    : Ast.TY =
+    let
+        val _ = trace [">>> normalize: ", fmtTy t]
+        val res = (norm2ty (ty2norm prog t locals []))
+        val _ = trace ["<<< normalize: ", fmtTy t, " ---> ", fmtTy res]
+    in
+        res
+    end
 
 and repackage (t:Ast.TY) 
     : TY_NORM = 
@@ -206,6 +217,17 @@ and fix2norm (prog:Fixture.PROGRAM)
     let
         val _ = trace ["examined type multiname ", fmtMname mname]
         val Ast.Ty { expr, ribId } = originalt
+        fun subIty ity = 
+            let
+                val subnorm = ty2norm prog ity [] seen
+                val nullable = case (#exprs subnorm) of 
+                                   [Ast.InstanceType { nonnullable, ... }] => not nonnullable
+                                 | [Ast.LamType { body = Ast.InstanceType { nonnullable, ... }, ... }] => not nonnullable
+                                 | _ => error ["expected instance type for multiname ", 
+                                               LogErr.multiname mname]
+            in
+                { exprs = (#exprs subnorm), nullable = nullable, ribId = (#ribId subnorm) }
+            end
     in
         case fixOpt of 
             NONE => (trace ["failed to resolve"];
@@ -217,8 +239,8 @@ and fix2norm (prog:Fixture.PROGRAM)
             (trace ["resolved"];
              case fix of
                  Ast.TypeFixture ty => ty2norm prog ty [] seen
-               | Ast.ClassFixture (Ast.Cls cls) => ty2norm prog (#instanceType cls) [] seen
-               | Ast.InterfaceFixture (Ast.Iface iface) => ty2norm prog (#instanceType iface) [] seen
+               | Ast.ClassFixture (Ast.Cls cls) => subIty (#instanceType cls)
+               | Ast.InterfaceFixture (Ast.Iface iface) => subIty (#instanceType iface)
                | Ast.TypeVarFixture _ => repackage originalt
                | _ => error ["expected type fixture for: ", LogErr.multiname mname])
     end
@@ -286,6 +308,7 @@ and norm2ty (norm:TY_NORM)
     : Ast.TY = 
     let
         val { exprs, nullable, ribId } = norm 
+        val _ = trace ["norm2ty on type with nullable=", Bool.toString nullable]
         val null = Ast.SpecialType Ast.Null
         val expr = case exprs of 
                        [] => if nullable
@@ -393,11 +416,11 @@ and ty2norm (prog:Fixture.PROGRAM)
                                                        dynamic = (#dynamic it) }                                                       
             in
                 if (length typeParams) = (length typeArgs)
-                then simple expr (not (#nonnullable it))
+                then simple expr false
                 else 
                     case (subTerms (map (fn id => Name.typename (Name.nons id)) typeParams)) of 
-                        NONE => simple expr (not (#nonnullable it))
-                      | SOME args => simple (withArgs args) (not (#nonnullable it))
+                        NONE => simple expr false
+                      | SOME args => simple (withArgs args) false
             end
 
             (* 
@@ -443,12 +466,12 @@ and ty2norm (prog:Fixture.PROGRAM)
                                    
           | Ast.AppType { base, args } => 
             let
-                val sub = norm2ty o subTerm2Norm
-                val (base':Ast.TY) = sub base
-                val (args':Ast.TY list) = map sub args
-            in
-                case base' of 
-                    Ast.Ty {expr=Ast.LamType {params, body}, ribId=ribId' } => 
+                val baseNorm = subTerm2Norm base
+                val baseTy = norm2ty baseNorm
+                val (args':Ast.TY list) = map (norm2ty o subTerm2Norm) args
+            in                
+                case baseNorm of 
+                    { exprs=[Ast.LamType {params, body}], nullable, ribId } => 
                     let
                         val _ = if length params = length args'
                                 then ()
@@ -475,12 +498,13 @@ and ty2norm (prog:Fixture.PROGRAM)
                                 val bindings = ListPair.zip (names, args')
                                 fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
                                 val rib = List.foldl bind [] bindings
+                                val appNorm = ty2norm prog (Ast.Ty { expr=body, ribId=ribId }) (rib::locals) seen
                             in
-                                ty2norm prog (Ast.Ty { expr=body, ribId=ribId' }) (rib::locals) seen
+                                { exprs = (#exprs appNorm), ribId = (#ribId appNorm), 
+                                  nullable = nullable orelse (#nullable appNorm) }
                             end               
                     end 
-                  | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
-                  | _ => error ["applying bad type: ", LogErr.ty (AstQuery.typeExprOf base')]
+                  | _ => repackage ty
             end
             
           | (Ast.UnionType tys) => 
@@ -538,8 +562,10 @@ and ty2norm (prog:Fixture.PROGRAM)
             
           | Ast.NullableType { expr, nullable } => 
             let
+                val _ = trace [">>> normalizing nullableType with nullable=", Bool.toString nullable]
                 val {exprs, ribId=ribId', ...} = subTerm2Norm expr
-            in
+                val _ = trace ["<<< normalizing nullableType with nullable=", Bool.toString nullable]
+            in                
                 { exprs=exprs, ribId=ribId', nullable=nullable }
             end
             
@@ -712,9 +738,6 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                         | (_, Ast.NullableType { nullable=false, expr }) =>
                           groundIsSubtype t1 expr
 
-                        | ((Ast.SpecialType Ast.Null), Ast.InstanceType {nonnullable,...}) =>
-                          not nonnullable
-
                         | (Ast.SpecialType _, _) => false
 
 	                    | (Ast.UnionType types1,_) =>
@@ -724,8 +747,9 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
 	                      List.exists (fn t => groundIsSubtype t1 t) types2
 
                         | (Ast.ArrayType _, Ast.InstanceType it2) =>
-                          (#name it2) = Name.nons_Array
-
+                          (#name it2) = Name.nons_Array orelse
+                          (#name it2) = Name.nons_Object
+                          
                         | (Ast.ObjectType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Object
 
