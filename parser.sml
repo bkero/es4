@@ -6100,11 +6100,16 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
         val hasNonStarAnno = (not (Type.isGroundTy ty))
                              orelse hasNonStar (AstQuery.paramTypesOfFuncTy ty) 
                              orelse hasNonStar [(AstQuery.resultTypeOfFuncTy ty)]
+
+        fun unconst Ast.Const = Ast.Var
+          | unconst Ast.LetConst = Ast.LetVar
+          | unconst x = x
+
     in
         (ts4,{pragmas=[],
               defns=[Ast.FunctionDefn {kind=if hasNonStarAnno 
                                             then nd1 
-                                            else Ast.Var, (* dynamic function are writable *)
+                                            else unconst nd1, (* dynamic function are writable *)
                                        ns=ns,
                                        final=final,
                                        override=override,
