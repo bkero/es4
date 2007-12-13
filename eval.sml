@@ -398,10 +398,22 @@ fun allocRib (regs:Mach.REGS)
                   | Ast.UnionType [] => 
 		    Mach.UninitProp
 
-                  | Ast.UnionType (x::xs) => 
-		    (case valAllocState (makeTy x) of 
-			 Mach.UninitProp => valAllocState (makeTy (Ast.UnionType xs))
-		       | other => other)
+                  | Ast.UnionType ts => 
+		    let
+			fun firstType [] = Mach.UninitProp
+			  | firstType (x::xs) = 
+			    (case valAllocState (makeTy x) of
+				 Mach.UninitProp => firstType xs
+			       | other => other)
+
+			fun firstSimpleType [] = firstType ts
+			  | firstSimpleType ((Ast.SpecialType Ast.Any)::xs) = Mach.ValProp (Mach.Undef)
+			  | firstSimpleType ((Ast.SpecialType Ast.Null)::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.SpecialType Ast.Undefined)::xs) = Mach.ValProp (Mach.Undef)
+			  | firstSimpleType (x::xs) = firstSimpleType xs
+		    in
+			firstSimpleType ts
+		    end
                     
                   | Ast.ArrayType _ =>
                     Mach.ValProp (Mach.Null)
@@ -437,9 +449,10 @@ fun allocRib (regs:Mach.REGS)
                     (* It is possible that we're booting and the class n doesn't even exist yet. *)
                     if (not (Mach.isBooting regs)) orelse 
                        Mach.isClass (getValue regs (#global regs) (#name n))
-                    then
+                    then			
                         case Type.groundFindConversion (#prog regs) (Ast.SpecialType Ast.Undefined) expr of
-                            SOME t => Mach.ValProp (checkAndConvert regs Mach.Undef (makeTy t))
+                            SOME t => (trace ["initializing instance type ", fmtName (#name n), " from undefined"];
+				       Mach.ValProp (checkAndConvert regs Mach.Undef (makeTy t)))
                           | NONE => Mach.UninitProp
                     else
                         Mach.UninitProp
@@ -487,6 +500,7 @@ fun allocRib (regs:Mach.REGS)
                 end
               | Ast.PropName pn =>
                 let
+		    val _ = trace ["allocating fixture for prop ", fmtName pn]
                     fun allocProp state p =
                         if Mach.hasProp props pn
                         then
@@ -516,8 +530,7 @@ fun allocRib (regs:Mach.REGS)
                                     | Mach.VirtualValProp _ => permit ()
                                     | _ => fail ()
                             end
-                        else (trace ["allocating fixture for ", state, " property ", fmtName pn];
-                              Mach.addProp props pn p)
+                        else Mach.addProp props pn p
                 in
                     case f of
                         Ast.TypeFixture ty =>
@@ -1424,11 +1437,6 @@ and toBoolean (v:Mach.VAL) : bool =
            | SOME (Mach.String s) => not (Ustring.stringLength s = 0)
            | _ => true)
 
-(*
- * NB: don't move isPrimitive or defaultValue up to Conversions.es: they
- * need to use "v === undefined", but the triple-equals operator is
- * implemented in *terms* of isPrimitive.
- *)
 
 (*
  * ES-262-3 8.6.2.6: The [[DefaultValue]] operation
@@ -1443,10 +1451,10 @@ and defaultValue (regs:Mach.REGS)
                        then (Name.nons_toString, Name.nons_valueOf)
                        else (Name.nons_valueOf, Name.nons_toString)
         val va = if hasValue obj na
-                 then evalCallMethodByRef (withThis regs obj) (obj, na) []
+                 then evalNamedMethodCall regs obj na []
                  else Mach.Undef
         val vb = if not (isPrimitive va) andalso hasValue obj nb
-                 then evalCallMethodByRef (withThis regs obj) (obj, nb) []
+                 then evalNamedMethodCall regs obj nb []
                  else va
     in
         if isPrimitive vb
@@ -2099,8 +2107,17 @@ and applyTypesToClass (regs:Mach.REGS)
                                        classType = (#classType c),
                                        instanceType = applyArgs (#instanceType c) }
 		val newEnv = bindTypes regs (#typeParams c) typeArgs env
+		val newClassVal = newClass regs newEnv newCls
+		val newClassObj = needObj regs newClassVal
+		val baseClassObj = needObj regs classVal
+		val proto = if hasOwnValue baseClassObj Name.nons_prototype
+			    then getValue regs baseClassObj Name.nons_prototype
+			    else Mach.Null
+		val Mach.Obj { props, ... } = newClassObj
             in
-		newClass regs newEnv newCls
+		defValue regs newClassObj Name.nons_prototype proto;
+		Mach.setPropDontEnum props Name.nons_prototype true;
+		newClassVal
             end
     end
 
@@ -2405,18 +2422,6 @@ and evalNewExpr (regs:Mach.REGS)
           | _ => (throwTypeErr regs ["operator 'new' applied to unknown object"]; dummyVal)
 
 
-and callGlobal (regs:Mach.REGS)
-               (n:Ast.NAME)
-               (args:Mach.VAL list)
-    : Mach.VAL =
-    let
-        val _ = trace ["evaluator calling up to global function ", fmtName n]
-        val global = (#global regs)
-    in
-        evalCallMethodByRef regs (global, n) args
-    end
-
-
 and evalCallMethodByExpr (regs:Mach.REGS)
                          (func:Ast.EXPR)
                          (args:Mach.VAL list)
@@ -2440,6 +2445,25 @@ and evalCallMethodByExpr (regs:Mach.REGS)
     end
 
 
+and evalNamedMethodCall (regs:Mach.REGS)
+			(obj:Mach.OBJ)
+			(name:Ast.NAME)
+			(args:Mach.VAL list)
+    : Mach.VAL = 
+    let
+	val refOpt = resolveName obj (Name name)
+    in
+	case refOpt of 
+	    NONE => error regs ["unable to resolve method: ", LogErr.name name]
+	  | SOME r => evalCallMethodByRef (withThis regs obj) r args
+    end
+
+(* 
+ * Note: unless you are part of the function-calling machinery, you probably do 
+ * not want to call evalCallMethodByRef. It assumes you're passing in a sane 
+ * ref and a sane 'this' register. If you just want to synthesize 
+ * "a call to x.y()" use evalNamedMethodCall, above.
+ *)
 and evalCallMethodByRef (regs:Mach.REGS)
                         (r:REF)
                         (args:Mach.VAL list)
@@ -4484,6 +4508,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			(Name.ES4_string, Mach.getStringClassSlot),
 			
 			(Name.nons_Number, Mach.getNumberClassSlot),
+			(Name.ES4_byte, Mach.getByteClassSlot),
 			(Name.ES4_int, Mach.getIntClassSlot),
 			(Name.ES4_uint, Mach.getUintClassSlot),
 			(Name.ES4_double, Mach.getDoubleClassSlot),
@@ -4629,9 +4654,9 @@ and constructClassInstance (regs:Mach.REGS)
               | NONE => constructStandard regs classObj classClosure args			
     in
         bindAnySpecialIdentity regs obj;
-	initClassPrototype regs obj;
-	Mach.pop regs;
-	Mach.Object obj
+        initClassPrototype regs obj;
+        Mach.pop regs;
+        Mach.Object obj
     end
 
 

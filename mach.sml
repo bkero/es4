@@ -544,6 +544,14 @@ fun newObjNoTag _
     : OBJ =
     newObj NoTag Null NONE
 
+fun getProto (ob:OBJ)
+    : VAL =
+    let
+         val Obj {proto, ...} = ob
+    in
+        !proto
+    end
+
 fun setProto (ob:OBJ) (p:VAL)
     : OBJ =
     let

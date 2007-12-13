@@ -2114,18 +2114,22 @@ and bracketOrSlice (ts:TOKENS) (base:Ast.EXPR)
                                                   openNamespaces = []}, 
                   loc=locOf ts}
 
+        val intrinsic = Ast.LiteralExpr 
+                            (Ast.LiteralNamespace 
+                                 (Ast.Intrinsic))
         fun asSlice a b c = 
             Ast.CallExpr 
             { func = Ast.ObjectRef { base = base,
                                      ident = Ast.QualifiedIdentifier 
                                                  { ident = Ustring.slice_,
-                                                   qual = Ast.LiteralExpr 
-                                                              (Ast.LiteralNamespace 
-                                                                   (Ast.Intrinsic)) },
+                                                   qual = intrinsic },
                                      loc = locOf ts },
               actuals = [ a, b, c ] }
 
-        val none = Ast.ListExpr []
+        val none = Ast.LexicalRef { ident = Ast.QualifiedIdentifier { ident = Ustring.NaN_,
+                                                                      qual = intrinsic },
+                                    loc = locOf ts }
+                                                                     
 
         fun slice2 ts nd1 nd2 = 
             case ts of 
