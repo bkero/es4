@@ -429,9 +429,7 @@ fun setPropertyIsDontEnum (regs:Mach.REGS)
     : Mach.VAL =
     let
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val id = nthAsUstr vals 1
-        val ns = Ast.Internal Ustring.empty
-        val n = { id = id, ns = ns }
+        val n = nthAsName regs vals 1
         val b = nthAsBool vals 2
     in
         Mach.setPropDontEnum props n b;
