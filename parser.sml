@@ -850,6 +850,463 @@ and functionExpressionBody (ts0: TOKENS, alpha: ALPHA, beta: BETA) =
     end
 
 (*
+    FunctionSignature
+        TypeParameters  (  Parameters  )  ResultType
+        TypeParameters  (  this  :  TypeIdentifier  ,  Parameters  )  ResultType
+*)
+
+and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
+    case nd of
+        Ast.Identifier {ident,...} =>
+                if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
+                then Ast.TypeName nd
+                else Ast.TypeName nd
+(* Don't convert to Ast.Any so we can distinguish from un-anno'd defs
+   for handling compatibility cases, such as writable functions
+        Ast.WildcardIdentifier =>
+                Ast.SpecialType Ast.Any
+*)
+      | _ => Ast.TypeName nd
+
+and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
+    let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))])
+        val (ts1,nd1) = typeParameters ts
+    in case ts1 of
+        (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
+            let
+                val (ts2,nd2) = typeExpression (tl (tl (tl ts1)))
+                val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
+            in case ts2 of
+                (Comma, _) :: _ =>
+                    let
+                           val (ts3,((b,i),e,t),hasRest) = nonemptyParameters (tl ts2) 0 false
+                       in case ts3 of
+                           (RightParen, _) :: _ =>
+                               let
+                                   val (ts4,nd4) = resultType (tl ts3)
+                               in
+                                trace(["<< functionSignature with next=",tokenname(hd ts4)]);
+                                (ts4,Ast.FunctionSignature
+                                     {typeParams=nd1,
+                                      thisType=SOME (unwrapTy nd2),
+                                      params=(b,i),
+                                      paramTypes=t,
+                                      defaults=e,
+                                      returnType=nd4,
+                                      ctorInits=NONE,
+                                      hasRest=hasRest })
+                               end
+                         | _ => error ["unknown token in functionSignature"]
+                    end
+                 | (RightParen, _) :: _ =>
+                   let
+                       val (ts3,nd3) = resultType (tl ts2)
+                   in
+                       trace ["<< functionSignature with next=",tokenname(hd ts3)];
+                       (ts3,Ast.FunctionSignature
+                                { typeParams=nd1,
+                                  thisType=SOME (unwrapTy nd2),
+                                  params=([],[]),
+                                  paramTypes=[],
+                                  defaults=[],
+                                  returnType=nd3,
+                                  ctorInits=NONE,
+                                  hasRest=false})
+                   end
+                 | _ => error ["unknown final token of this-qualified function signature"]
+            end
+      | (LeftParen, _) :: _ =>
+               let
+                   val (ts2,((b,i),e,t),hasRest) = parameters (tl ts1)
+               in case ts2 of
+                   (RightParen, _) :: _ =>
+                       let
+                           val (ts3,nd3) = resultType (tl ts2)
+                       in
+                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
+                        (ts3,Ast.FunctionSignature
+                                 {typeParams=nd1,
+                                  params=(b,i),
+                                  paramTypes=t,
+                                  defaults=e,
+                                  returnType=nd3,
+                                  ctorInits=NONE,
+                                  thisType=NONE,  (* todo *)
+                                  hasRest=hasRest })
+                       end
+                 | _ => error ["unknown final token of function signature"]
+            end
+      | _ => error ["unknown initial token of function signature"]
+    end
+
+and functionSignatureType (ts) =
+    let val _ = trace([">> functionSignatureType with next=",tokenname(hd(ts))])
+        val (ts1,nd1) = typeParameters ts
+    in case ts1 of
+        (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
+            let
+                val (ts2,nd2) = primaryName (tl (tl (tl ts1)))
+            in case ts2 of
+                (Comma, _) :: _ =>
+                    let
+                        val (ts3,(d,t)) = nonemptyParametersType (tl ts2)
+                    in case ts3 of
+                        (RightParen, _) :: _ =>
+                           let
+                               val (ts4,nd4) = resultType (tl ts3)
+                           in
+                               trace ["<< functionSignature with next=",tokenname(hd ts4)];
+                               (ts4,Ast.FunctionSignature
+                                        { typeParams=nd1,
+                                          thisType=SOME (needType (nd2,SOME false)),
+                                          params=([],[]),
+                                          paramTypes=t,
+                                          defaults=d,
+                                          returnType=nd4,
+                                          ctorInits=NONE,
+                                          hasRest=false }) (* do we need this *)
+                               end
+                      | _ => error ["unknown token in functionSignatureType"]
+                    end
+              | (RightParen, _) :: _ =>
+                    let
+                        val (ts3,nd3) = resultType (tl ts2)
+                    in
+                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
+                        (ts3,Ast.FunctionSignature
+                                 { typeParams=nd1,
+                                   thisType=SOME (needType (nd2,SOME false)),
+                                   params=([],[]),
+                                   paramTypes=[],
+                                   defaults=[],
+                                   returnType=nd3,
+                                   ctorInits=NONE,
+                                   hasRest=false }) (* do we need this *)
+                          end
+              | _ => error ["unknown token in functionSignatureType"]
+            end
+      | (LeftParen, _) :: _ =>
+            let
+                val (ts2, (d,t)) = parametersType (tl ts1)
+            in case ts2 of
+                   (RightParen, _) :: _ =>
+                       let
+                           val (ts3,nd3) = resultType (tl ts2)
+                       in
+                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
+                        (ts3,Ast.FunctionSignature
+                                 { typeParams=nd1,
+                                   params=([],[]),
+                                   paramTypes=t,
+                                   defaults=d,
+                                   returnType=nd3,
+                                   ctorInits=NONE,
+                                   thisType=NONE,  (* todo *)
+                                   hasRest=false }) (* do we need this *)
+                       end
+                 | _ => error ["unknown token in functionSignatureType"]
+            end
+      | _ => error ["unknown token in functionSignatureType"]
+    end
+
+(*
+    TypeParameters
+        empty
+        .<  TypeParameterList  >
+*)
+
+and typeParameters (ts:TOKENS)
+    : (TOKENS * (Ustring.STRING list)) =
+    let val _ = trace([">> typeParameters with next=",tokenname(hd(ts))])
+    in case ts of
+        (LeftDotAngle, _) :: _ =>
+            let
+                val (ts1,nd1) = typeParameterList (tl ts)
+            in case ts1 of
+                (GreaterThan, _) :: _ =>
+                    let
+                    in
+                        trace(["<< typeParameters with next=",tokenname(hd(tl ts1))]);
+                        (tl ts1,nd1)
+                    end
+              | _ => error ["unknown token in typeParameters"]
+            end
+      | _ =>
+            (trace(["<< typeParameters with next=",tokenname(hd(ts))]);
+            (ts,[]))
+    end
+
+(*
+    TypeParametersList
+        Identifier
+        Identifier  ,  TypeParameterList
+
+    left factored:
+
+    TypeParameterList
+        Identifier TypeParameterListPrime
+
+    TypeParameterListPrime
+        empty
+        ,  Identififier  TypeParameterListPrime
+*)
+
+and typeParameterList (ts:TOKENS)
+    : (TOKENS * (Ustring.STRING list)) =
+    let val _ = trace([">> typeParameterList with next=",tokenname(hd(ts))])
+        fun typeParameterList' (ts) =
+            let
+            in case ts of
+                (Comma, _) :: _ =>
+                       let
+                           val (ts1,nd1) = identifier(tl ts)
+                           val (ts2,nd2) = typeParameterList' (ts1)
+                       in
+                         (ts2,nd1::nd2)
+                       end
+              | _ => (ts,[])
+    end
+        val (ts1,nd1) = identifier ts
+        val (ts2,nd2) = typeParameterList' (ts1)
+    in
+        trace(["<< typeParameterList with next=",tokenname(hd ts2)]);
+        (ts2,nd1::nd2)
+    end
+
+(*
+    Parameters
+        empty
+        NonemptyParameters
+
+    NonemptyParameters
+        ParameterInit
+        ParameterInit  ,  NonemptyParameters
+        RestParameter
+*)
+
+and nonemptyParameters (ts) (n) (initRequired)
+    : (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list) * bool) =
+    let
+    in case ts of
+        (TripleDot, _) :: _ =>
+            let
+                val (ts1,nd1) = restParameter ts n
+            in case ts1 of
+                (RightParen, _) :: _ => (ts1,nd1,true)
+              | _ => error ["unknown token in nonemptyParameters"]
+            end
+      | _ =>
+            let
+                val (ts1,((b1,i1),e1,t1)) = parameterInit ts n initRequired
+            in case ts1 of
+                (RightParen, _) :: _ => (ts1,((b1,i1),e1,t1),false)
+              | (Comma, _) :: _ =>
+                    let
+                        val (ts2,((b2,i2),e2,t2),hasRest) = nonemptyParameters (tl ts1) (n+1) (not (length e1 = 0))
+                    in
+                        (ts2,((b1@b2,i1@i2),e1@e2,t1@t2),hasRest)
+                    end
+              | _ => error ["unknown token in nonemptyParameters"]
+            end
+    end
+
+and nonemptyParametersType (ts)
+    : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
+    let
+    in case ts of
+        (TripleDot, _) :: _ =>
+            let
+                val (ts1,nd1) = restParameterType ts
+            in case ts1 of
+                (RightParen, _) :: _ => (ts1,nd1)
+              | _ => error ["unknown token in nonemptyParametersType"]
+            end
+      | _ =>
+            let
+                val (ts1,(d1,t1)) = parameterInitType ts
+            in case ts1 of
+                (RightParen, _) :: _ => (ts1,(d1,t1))
+              | (Comma, _) :: ts2 =>
+                    let
+                        val (ts3,(d3,t3)) = nonemptyParametersType ts2
+                    in
+                        (ts3,(d1@d3,t1@t3))
+                    end
+              | _ => error ["unknown token in nonemptyParametersType"]
+            end
+    end
+
+and parameters (ts)
+    : (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list) * bool) =
+    let val _ = trace([">> parameters with next=",tokenname(hd(ts))])
+    in case ts of
+        (RightParen, _) :: ts1 => (ts,(([],[]),[],[]),false)
+      | _ => nonemptyParameters ts 0 false
+    end
+
+and parametersType (ts)
+    : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list))=
+    let val _ = trace([">> parameters with next=",tokenname(hd(ts))])
+    in case ts of
+        (RightParen, _) :: ts1 => (ts,([],[]))
+      | _ => nonemptyParametersType ts
+    end
+
+(*
+    ParameterInit
+        Parameter
+        Parameter  =  NonAssignmentExpression(AllowIn)
+*)
+
+and parameterInit (ts) (n) (initRequired)
+    : (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) =
+    let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))])
+        val (ts1,(temp,nd1)) = parameter ts n
+    in case (ts1,initRequired) of
+        ((Assign, _) :: _,_) =>
+            let
+                val {pattern,ty,...} = nd1
+                val (ts2,nd2) = nonAssignmentExpression (tl ts1,AllowColon,AllowIn)
+                val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
+            in
+                trace(["<< parameterInit with next=",tokenname(hd(ts))]);
+                (ts2, ((temp::b,i),[nd2],[ty]))
+            end
+      | (_,false) =>
+            let
+                val {pattern,ty,...} = nd1
+                val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
+            in
+                trace(["<< parameterInit with next=",tokenname(hd(ts))]);
+                (ts1, ((temp::b,i),[],[ty]))
+            end
+      | _ => error ["default expression required"]
+    end
+
+and parameterInitType (ts)
+    : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
+    let val _ = trace([">> parameterInitType with next=",tokenname(hd(ts))])
+        val (ts1,nd1) = parameterType ts
+    in case ts1 of
+        (Assign,_) :: _ =>
+            let
+                val (ts2,init) = (tl ts1,Ast.LiteralExpr Ast.LiteralUndefined)
+            in
+                trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
+                (ts2, ([init],[nd1]))
+            end
+      | _ =>
+            let
+            in
+                trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
+                (ts1, ([],[nd1]))
+            end
+    end
+
+(*
+    Parameter
+        ParameterKind TypedIdentifier(AllowIn)
+        ParameterKind TypedPattern
+
+    ParameterKind
+        empty
+        const
+*)
+
+and parameter (ts) (n)
+    : (TOKENS * (Ast.BINDING * {pattern:PATTERN, ty:Ast.TYPE_EXPR})) =
+    let val _ = trace([">> parameter with next=",tokenname(hd(ts))])
+        val (ts1,nd1) = parameterKind (ts)
+        val (ts2,(p,t)) = typedPattern (ts1,AllowIn)
+        val temp = Ast.Binding {ident=Ast.ParamIdent n,ty=t}
+    in
+        trace(["<< parameter with next=",tokenname(hd(ts2))]);
+        (ts2,(temp,{pattern=p,ty=t}))
+    end
+
+and parameterType (ts) =
+    let val _ = trace([">> parameter with next=",tokenname(hd(ts))])
+        val (ts2,t) = nullableTypeExpression ts
+    in
+        trace(["<< parameter with next=",tokenname(hd(ts2))]);
+        (ts2, (unwrapTy t))
+    end
+
+and parameterKind (ts)
+    : (TOKENS * Ast.VAR_DEFN_TAG)  =
+    let val _ = trace([">> parameterKind with next=",tokenname(hd(ts))])
+    in case ts of
+        (Const, _) :: ts1 => (ts1,Ast.Const)
+      | ts1 => (ts1,Ast.Var)
+    end
+
+(*
+    RestParameter
+        ...
+        ...  ParameterKind TypedIdentifier
+        ...  ParameterKind TypedPattern
+*)
+
+and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) =
+    let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
+    in case ts of
+        (TripleDot, _) :: _ =>
+            let
+            in case tl ts of
+                (RightParen, _) :: _ =>
+                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.SpecialType Ast.Any}],[]),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
+              | _ =>
+                    let
+                        val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
+                        val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
+                    in
+                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=[],ty=NONE})],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
+                    end
+            end
+      | _ => error ["unknown token in restParameter"]
+    end
+
+and restParameterType (ts) : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
+    let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
+    in case ts of
+        (TripleDot, _) :: _ =>
+            let
+            in case tl ts of
+                (RightParen, _) :: _ =>
+                    (tl ts,([],[Ast.ArrayType []]))
+              | _ =>
+                    let
+                        val (ts1:TOKENS,ty) = parameterType (tl ts)
+                    in
+                        (ts1,([],[ty]))
+                    end
+            end
+      | _ => error ["unknown token in restParameterType"]
+    end
+
+(*
+    ResultType
+        empty
+        :  void
+        :  TypeExpression
+*)
+
+and resultType (ts:TOKENS)
+    : (TOKENS * Ast.TYPE_EXPR) =
+    let val _ = trace([">> resultType with next=",tokenname(hd(ts))])
+    in case ts of
+        (Colon, _) :: (Void, _) :: ts1 => (ts1,Ast.SpecialType(Ast.VoidType))
+      | (Colon, _) :: _ =>
+            let
+                val (ts1,nd1) = nullableTypeExpression (tl ts)
+            in
+                trace ["<< resultType with next=",tokenname(hd ts1)];
+                (ts1,unwrapTy nd1)
+            end
+      | ts1 => (ts1,Ast.SpecialType(Ast.Any))
+    end
+
+(*
     ObjectLiteral
         {  FieldList  }
         {  FieldList  }  :  TypeExpression
@@ -5605,463 +6062,6 @@ and operatorName [] = error ["missing token in operatorName"]
       | _ => error ["unknown token in operatorName"]
     in
         (ts, Ustring.fromString opStr)
-    end
-
-(*
-    FunctionSignature
-        TypeParameters  (  Parameters  )  ResultType
-        TypeParameters  (  this  :  TypeIdentifier  ,  Parameters  )  ResultType
-*)
-
-and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
-    case nd of
-        Ast.Identifier {ident,...} =>
-                if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
-                then Ast.TypeName nd
-                else Ast.TypeName nd
-(* Don't convert to Ast.Any so we can distinguish from un-anno'd defs
-   for handling compatibility cases, such as writable functions
-        Ast.WildcardIdentifier =>
-                Ast.SpecialType Ast.Any
-*)
-      | _ => Ast.TypeName nd
-
-and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
-    let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = typeParameters ts
-    in case ts1 of
-        (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
-            let
-                val (ts2,nd2) = typeExpression (tl (tl (tl ts1)))
-                val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
-            in case ts2 of
-                (Comma, _) :: _ =>
-                    let
-                           val (ts3,((b,i),e,t),hasRest) = nonemptyParameters (tl ts2) 0 false
-                       in case ts3 of
-                           (RightParen, _) :: _ =>
-                               let
-                                   val (ts4,nd4) = resultType (tl ts3)
-                               in
-                                trace(["<< functionSignature with next=",tokenname(hd ts4)]);
-                                (ts4,Ast.FunctionSignature
-                                     {typeParams=nd1,
-                                      thisType=SOME (unwrapTy nd2),
-                                      params=(b,i),
-                                      paramTypes=t,
-                                      defaults=e,
-                                      returnType=nd4,
-                                      ctorInits=NONE,
-                                      hasRest=hasRest })
-                               end
-                         | _ => error ["unknown token in functionSignature"]
-                    end
-                 | (RightParen, _) :: _ =>
-                   let
-                       val (ts3,nd3) = resultType (tl ts2)
-                   in
-                       trace ["<< functionSignature with next=",tokenname(hd ts3)];
-                       (ts3,Ast.FunctionSignature
-                                { typeParams=nd1,
-                                  thisType=SOME (unwrapTy nd2),
-                                  params=([],[]),
-                                  paramTypes=[],
-                                  defaults=[],
-                                  returnType=nd3,
-                                  ctorInits=NONE,
-                                  hasRest=false})
-                   end
-                 | _ => error ["unknown final token of this-qualified function signature"]
-            end
-      | (LeftParen, _) :: _ =>
-               let
-                   val (ts2,((b,i),e,t),hasRest) = parameters (tl ts1)
-               in case ts2 of
-                   (RightParen, _) :: _ =>
-                       let
-                           val (ts3,nd3) = resultType (tl ts2)
-                       in
-                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
-                        (ts3,Ast.FunctionSignature
-                                 {typeParams=nd1,
-                                  params=(b,i),
-                                  paramTypes=t,
-                                  defaults=e,
-                                  returnType=nd3,
-                                  ctorInits=NONE,
-                                  thisType=NONE,  (* todo *)
-                                  hasRest=hasRest })
-                       end
-                 | _ => error ["unknown final token of function signature"]
-            end
-      | _ => error ["unknown initial token of function signature"]
-    end
-
-and functionSignatureType (ts) =
-    let val _ = trace([">> functionSignatureType with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = typeParameters ts
-    in case ts1 of
-        (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
-            let
-                val (ts2,nd2) = primaryName (tl (tl (tl ts1)))
-            in case ts2 of
-                (Comma, _) :: _ =>
-                    let
-                        val (ts3,(d,t)) = nonemptyParametersType (tl ts2)
-                    in case ts3 of
-                        (RightParen, _) :: _ =>
-                           let
-                               val (ts4,nd4) = resultType (tl ts3)
-                           in
-                               trace ["<< functionSignature with next=",tokenname(hd ts4)];
-                               (ts4,Ast.FunctionSignature
-                                        { typeParams=nd1,
-                                          thisType=SOME (needType (nd2,SOME false)),
-                                          params=([],[]),
-                                          paramTypes=t,
-                                          defaults=d,
-                                          returnType=nd4,
-                                          ctorInits=NONE,
-                                          hasRest=false }) (* do we need this *)
-                               end
-                      | _ => error ["unknown token in functionSignatureType"]
-                    end
-              | (RightParen, _) :: _ =>
-                    let
-                        val (ts3,nd3) = resultType (tl ts2)
-                    in
-                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
-                        (ts3,Ast.FunctionSignature
-                                 { typeParams=nd1,
-                                   thisType=SOME (needType (nd2,SOME false)),
-                                   params=([],[]),
-                                   paramTypes=[],
-                                   defaults=[],
-                                   returnType=nd3,
-                                   ctorInits=NONE,
-                                   hasRest=false }) (* do we need this *)
-                          end
-              | _ => error ["unknown token in functionSignatureType"]
-            end
-      | (LeftParen, _) :: _ =>
-            let
-                val (ts2, (d,t)) = parametersType (tl ts1)
-            in case ts2 of
-                   (RightParen, _) :: _ =>
-                       let
-                           val (ts3,nd3) = resultType (tl ts2)
-                       in
-                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
-                        (ts3,Ast.FunctionSignature
-                                 { typeParams=nd1,
-                                   params=([],[]),
-                                   paramTypes=t,
-                                   defaults=d,
-                                   returnType=nd3,
-                                   ctorInits=NONE,
-                                   thisType=NONE,  (* todo *)
-                                   hasRest=false }) (* do we need this *)
-                       end
-                 | _ => error ["unknown token in functionSignatureType"]
-            end
-      | _ => error ["unknown token in functionSignatureType"]
-    end
-
-(*
-    TypeParameters
-        empty
-        .<  TypeParameterList  >
-*)
-
-and typeParameters (ts:TOKENS)
-    : (TOKENS * (Ustring.STRING list)) =
-    let val _ = trace([">> typeParameters with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftDotAngle, _) :: _ =>
-            let
-                val (ts1,nd1) = typeParameterList (tl ts)
-            in case ts1 of
-                (GreaterThan, _) :: _ =>
-                    let
-                    in
-                        trace(["<< typeParameters with next=",tokenname(hd(tl ts1))]);
-                        (tl ts1,nd1)
-                    end
-              | _ => error ["unknown token in typeParameters"]
-            end
-      | _ =>
-            (trace(["<< typeParameters with next=",tokenname(hd(ts))]);
-            (ts,[]))
-    end
-
-(*
-    TypeParametersList
-        Identifier
-        Identifier  ,  TypeParameterList
-
-    left factored:
-
-    TypeParameterList
-        Identifier TypeParameterListPrime
-
-    TypeParameterListPrime
-        empty
-        ,  Identififier  TypeParameterListPrime
-*)
-
-and typeParameterList (ts:TOKENS)
-    : (TOKENS * (Ustring.STRING list)) =
-    let val _ = trace([">> typeParameterList with next=",tokenname(hd(ts))])
-        fun typeParameterList' (ts) =
-            let
-            in case ts of
-                (Comma, _) :: _ =>
-                       let
-                           val (ts1,nd1) = identifier(tl ts)
-                           val (ts2,nd2) = typeParameterList' (ts1)
-                       in
-                         (ts2,nd1::nd2)
-                       end
-              | _ => (ts,[])
-    end
-        val (ts1,nd1) = identifier ts
-        val (ts2,nd2) = typeParameterList' (ts1)
-    in
-        trace(["<< typeParameterList with next=",tokenname(hd ts2)]);
-        (ts2,nd1::nd2)
-    end
-
-(*
-    Parameters
-        empty
-        NonemptyParameters
-
-    NonemptyParameters
-        ParameterInit
-        ParameterInit  ,  NonemptyParameters
-        RestParameter
-*)
-
-and nonemptyParameters (ts) (n) (initRequired)
-    : (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list) * bool) =
-    let
-    in case ts of
-        (TripleDot, _) :: _ =>
-            let
-                val (ts1,nd1) = restParameter ts n
-            in case ts1 of
-                (RightParen, _) :: _ => (ts1,nd1,true)
-              | _ => error ["unknown token in nonemptyParameters"]
-            end
-      | _ =>
-            let
-                val (ts1,((b1,i1),e1,t1)) = parameterInit ts n initRequired
-            in case ts1 of
-                (RightParen, _) :: _ => (ts1,((b1,i1),e1,t1),false)
-              | (Comma, _) :: _ =>
-                    let
-                        val (ts2,((b2,i2),e2,t2),hasRest) = nonemptyParameters (tl ts1) (n+1) (not (length e1 = 0))
-                    in
-                        (ts2,((b1@b2,i1@i2),e1@e2,t1@t2),hasRest)
-                    end
-              | _ => error ["unknown token in nonemptyParameters"]
-            end
-    end
-
-and nonemptyParametersType (ts)
-    : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
-    let
-    in case ts of
-        (TripleDot, _) :: _ =>
-            let
-                val (ts1,nd1) = restParameterType ts
-            in case ts1 of
-                (RightParen, _) :: _ => (ts1,nd1)
-              | _ => error ["unknown token in nonemptyParametersType"]
-            end
-      | _ =>
-            let
-                val (ts1,(d1,t1)) = parameterInitType ts
-            in case ts1 of
-                (RightParen, _) :: _ => (ts1,(d1,t1))
-              | (Comma, _) :: ts2 =>
-                    let
-                        val (ts3,(d3,t3)) = nonemptyParametersType ts2
-                    in
-                        (ts3,(d1@d3,t1@t3))
-                    end
-              | _ => error ["unknown token in nonemptyParametersType"]
-            end
-    end
-
-and parameters (ts)
-    : (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list) * bool) =
-    let val _ = trace([">> parameters with next=",tokenname(hd(ts))])
-    in case ts of
-        (RightParen, _) :: ts1 => (ts,(([],[]),[],[]),false)
-      | _ => nonemptyParameters ts 0 false
-    end
-
-and parametersType (ts)
-    : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list))=
-    let val _ = trace([">> parameters with next=",tokenname(hd(ts))])
-    in case ts of
-        (RightParen, _) :: ts1 => (ts,([],[]))
-      | _ => nonemptyParametersType ts
-    end
-
-(*
-    ParameterInit
-        Parameter
-        Parameter  =  NonAssignmentExpression(AllowIn)
-*)
-
-and parameterInit (ts) (n) (initRequired)
-    : (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) =
-    let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))])
-        val (ts1,(temp,nd1)) = parameter ts n
-    in case (ts1,initRequired) of
-        ((Assign, _) :: _,_) =>
-            let
-                val {pattern,ty,...} = nd1
-                val (ts2,nd2) = nonAssignmentExpression (tl ts1,AllowColon,AllowIn)
-                val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
-            in
-                trace(["<< parameterInit with next=",tokenname(hd(ts))]);
-                (ts2, ((temp::b,i),[nd2],[ty]))
-            end
-      | (_,false) =>
-            let
-                val {pattern,ty,...} = nd1
-                val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
-            in
-                trace(["<< parameterInit with next=",tokenname(hd(ts))]);
-                (ts1, ((temp::b,i),[],[ty]))
-            end
-      | _ => error ["default expression required"]
-    end
-
-and parameterInitType (ts)
-    : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
-    let val _ = trace([">> parameterInitType with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = parameterType ts
-    in case ts1 of
-        (Assign,_) :: _ =>
-            let
-                val (ts2,init) = (tl ts1,Ast.LiteralExpr Ast.LiteralUndefined)
-            in
-                trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
-                (ts2, ([init],[nd1]))
-            end
-      | _ =>
-            let
-            in
-                trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
-                (ts1, ([],[nd1]))
-            end
-    end
-
-(*
-    Parameter
-        ParameterKind TypedIdentifier(AllowIn)
-        ParameterKind TypedPattern
-
-    ParameterKind
-        empty
-        const
-*)
-
-and parameter (ts) (n)
-    : (TOKENS * (Ast.BINDING * {pattern:PATTERN, ty:Ast.TYPE_EXPR})) =
-    let val _ = trace([">> parameter with next=",tokenname(hd(ts))])
-        val (ts1,nd1) = parameterKind (ts)
-        val (ts2,(p,t)) = typedPattern (ts1,AllowIn)
-        val temp = Ast.Binding {ident=Ast.ParamIdent n,ty=t}
-    in
-        trace(["<< parameter with next=",tokenname(hd(ts2))]);
-        (ts2,(temp,{pattern=p,ty=t}))
-    end
-
-and parameterType (ts) =
-    let val _ = trace([">> parameter with next=",tokenname(hd(ts))])
-        val (ts2,t) = nullableTypeExpression ts
-    in
-        trace(["<< parameter with next=",tokenname(hd(ts2))]);
-        (ts2, (unwrapTy t))
-    end
-
-and parameterKind (ts)
-    : (TOKENS * Ast.VAR_DEFN_TAG)  =
-    let val _ = trace([">> parameterKind with next=",tokenname(hd(ts))])
-    in case ts of
-        (Const, _) :: ts1 => (ts1,Ast.Const)
-      | ts1 => (ts1,Ast.Var)
-    end
-
-(*
-    RestParameter
-        ...
-        ...  ParameterKind TypedIdentifier
-        ...  ParameterKind TypedPattern
-*)
-
-and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) =
-    let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
-    in case ts of
-        (TripleDot, _) :: _ =>
-            let
-            in case tl ts of
-                (RightParen, _) :: _ =>
-                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.SpecialType Ast.Any}],[]),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
-              | _ =>
-                    let
-                        val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
-                        val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
-                    in
-                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=[],ty=NONE})],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
-                    end
-            end
-      | _ => error ["unknown token in restParameter"]
-    end
-
-and restParameterType (ts) : (TOKENS * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
-    let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
-    in case ts of
-        (TripleDot, _) :: _ =>
-            let
-            in case tl ts of
-                (RightParen, _) :: _ =>
-                    (tl ts,([],[Ast.ArrayType []]))
-              | _ =>
-                    let
-                        val (ts1:TOKENS,ty) = parameterType (tl ts)
-                    in
-                        (ts1,([],[ty]))
-                    end
-            end
-      | _ => error ["unknown token in restParameterType"]
-    end
-
-(*
-    ResultType
-        empty
-        :  void
-        :  TypeExpression
-*)
-
-and resultType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPR) =
-    let val _ = trace([">> resultType with next=",tokenname(hd(ts))])
-    in case ts of
-        (Colon, _) :: (Void, _) :: ts1 => (ts1,Ast.SpecialType(Ast.VoidType))
-      | (Colon, _) :: _ =>
-            let
-                val (ts1,nd1) = nullableTypeExpression (tl ts)
-            in
-                trace ["<< resultType with next=",tokenname(hd ts1)];
-                (ts1,unwrapTy nd1)
-            end
-      | ts1 => (ts1,Ast.SpecialType(Ast.Any))
     end
 
 (*
