@@ -4228,7 +4228,7 @@ and parseFunctionFromArgs (regs:Mach.REGS)
         val (_,funcExpr) = Parser.functionExpression
                                (Parser.lexLines
                                     [Ustring.sourceFromUstring fullStr],
-                                Parser.NoList,
+                                Parser.AllowColon,
                                 Parser.AllowIn)
 
         val funcExpr = Defn.defExpr (Defn.mkTopEnv (#prog regs)) funcExpr
