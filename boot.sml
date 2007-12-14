@@ -373,9 +373,10 @@ fun boot (baseDir:string) : Mach.REGS =
         completeClassFixtures regs Name.nons_Function funClassObj;
         completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
+        (* NB: order matters here. *)
+        Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
-        Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs ifaceClassObj;
 
         evalFiles regs otherFrags;
@@ -391,6 +392,13 @@ fun boot (baseDir:string) : Mach.REGS =
         Mach.setBooting regs false;
         Mach.resetProfile regs;
         describeGlobal regs;
+
+        (* Do a small bit of rewiring of the root prototype chains. *)
+        Mach.setProto funClassObj (Eval.getPrototype regs funClassObj);
+        Mach.setProto objClassObj (Mach.getProto funClassObj);
+        Mach.setProto classClassObj (Mach.getProto funClassObj);
+        Mach.setProto ifaceClassObj (Mach.getProto funClassObj);
+
         regs
     end
 end

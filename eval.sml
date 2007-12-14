@@ -4531,6 +4531,13 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 		end
 	      | _ => ()
 	end
+
+
+and getPrototype (regs:Mach.REGS)
+		 (obj:Mach.OBJ)
+    : Mach.VAL = 
+    getValueOrVirtual regs obj Name.nons_prototype false (fn _ => Mach.Null)
+    
 	
 and getSpecialPrototype (regs:Mach.REGS)
                         (id:Mach.OBJ_IDENT)
@@ -4544,14 +4551,11 @@ and getSpecialPrototype (regs:Mach.REGS)
                 let
 		    val _ = trace ["fetching existing proto"]
                     val objOptRef = q regs 
-                    fun propNotFound _ = Mach.Null
                 in
                     case !objOptRef of 
                         NONE => NONE
                       | SOME obj => 
-                        SOME ((getValueOrVirtual 
-                                   regs obj Name.nons_prototype 
-                                   false propNotFound), false)
+                        SOME (getPrototype regs obj, false)
                 end
                             
             fun findSpecial [] = NONE
@@ -4565,7 +4569,12 @@ and getSpecialPrototype (regs:Mach.REGS)
                 end
         in
             findSpecial 
-                [
+                [		
+                 (Mach.getClassClassSlot,
+                  (fn _ => getExistingProto Mach.getFunctionClassSlot)),
+                 (Mach.getInterfaceClassSlot,
+                  (fn _ => getExistingProto Mach.getFunctionClassSlot)),
+
                  (Mach.getStringClassSlot, 
                   (fn _ => SOME (newObject regs, true))),
                  (Mach.getStringWrapperClassSlot,
