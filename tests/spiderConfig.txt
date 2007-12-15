@@ -1388,6 +1388,8 @@ tests/spidermonkey/ecma_2/Statements/try-005 : eval\( Thrower\(5\) \) = uncaught
 tests/spidermonkey/ecma_2/Statements/try-005 : eval\( Thrower\("some random exception"\) \) = uncaught exception: Caught some random exception \(near tests/spidermonkey/ecma_2/Statements/try-005\.js:28:22-28\.21\), es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/try-010 : No Exceptions Thrown = 3, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/try-010 : Throw Exception in Inner Try = 13, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma_2/String/match-004 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma_2/String/split-002 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/instanceof/instanceof-002 : true instanceof Boolean = true, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/instanceof/instanceof-003 : function Foo\(\) = \{\}; theproto = \{\}; Foo\.prototype = theproto; theproto instanceof Foo = true, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/instanceof/regress-7635 : function Foo\(\) \{\}; theproto = \{\}; Foo\.prototype = theproto; theproto instanceof Foo = true, es4ri, expectedfail, auto-generated error
