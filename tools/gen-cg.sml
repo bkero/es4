@@ -52,7 +52,7 @@ fun elide id =
 
 	  "Name", "Multiname",
 
-	  "NONE", "SOME", "EQUAL", "LESS", "GREATER", "pow", "mod",
+	  "NONE", "SOME", "EQUAL", "LESS", "GREATER", "pow", "mod", "min",
 	  "!", "+", "-", "/", "*", "<", ">", ">=", "<=", "=", "<<",
 	  ">>", "~>>", "^", "@",
 
