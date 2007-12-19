@@ -2892,13 +2892,6 @@ and performBinop (regs:Mach.REGS)
         val ctxt = decimalCtxt regs
         val { precision, mode } = ctxt
 
-        fun reorder (ord:IEEEReal.real_order) 
-            : order =
-            case ord of
-                IEEEReal.EQUAL => EQUAL
-              | IEEEReal.LESS => LESS
-              | IEEEReal.GREATER => GREATER
-
         fun dispatchComparison cmp =            
             let
                 val va = toPrimitiveWithNumberHint regs va
@@ -2927,27 +2920,23 @@ and performBinop (regs:Mach.REGS)
                         else newBoolean regs 
                              (case commonNumType of 
                                   ByteNum => 
-                                  cmp (reorder
-                                           (Real64.compareReal 
-                                                ((toByte regs va),
-                                                 (toByte regs vb))))
+                                  cmp (Real64.compare
+                                           ((toByte regs va),
+                                            (toByte regs vb)))
 
                                 | IntNum => 
-                                  cmp (reorder
-                                           (Real64.compareReal
-                                                ((toInt32 regs va),
-                                                 (toInt32 regs vb))))
+                                  cmp (Real64.compare
+                                           ((toInt32 regs va),
+                                            (toInt32 regs vb)))
                                 | UIntNum => 
-                                  cmp (reorder
-                                           (Real64.compareReal 
-                                                ((toUInt32 regs va),
-                                                 (toUInt32 regs vb))))
+                                  cmp (Real64.compare 
+                                           ((toUInt32 regs va),
+                                            (toUInt32 regs vb)))
                                   
                                 | DoubleNum => 
-                                  cmp (reorder
-                                           (Real64.compareReal 
-                                                ((toDouble va),
-                                                 (toDouble vb))))
+                                  cmp (Real64.compare 
+                                           ((toDouble va),
+                                            (toDouble vb)))
                                   
                                 | DecimalNum => 
                                   cmp (Decimal.compare 
@@ -3627,19 +3616,14 @@ and evalNonTailCallExpr (regs:Mach.REGS)
 and labelMatch (stmtLabels:Ast.IDENT list)
                (exnLabel:Ast.IDENT option)
     : bool =
-    case (stmtLabels, exnLabel) of
-        (sl::[], SOME el) => sl = el
-      | (sl::[], NONE) => sl = Ustring.empty
-      | ([], NONE) => false                   (* FIXME: refactor *)
-      | ([], SOME el) => false
-      | (sl::sls,NONE) =>
-        if sl = Ustring.empty
-        then true
-        else labelMatch sls exnLabel
-      | (sl::sls,SOME el) =>
-        if sl = el
-        then true
-        else labelMatch sls exnLabel
+    let
+	val lab = case exnLabel of 
+		      NONE => Ustring.empty
+		    | SOME lab => lab
+	fun equalsLab x = lab = x
+    in
+	List.exists equalsLab stmtLabels
+    end
 
 
 and evalStmts (regs:Mach.REGS)
