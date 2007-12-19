@@ -73,10 +73,12 @@ fun usage () =
                "        verify    verification phase\n",
                "        verified  show post-verification AST alone\n",
                "        eval      evaluator\n",
+               "        construct object construction\n",
                "        mach      abstract machine operations\n",
                "        decimal   decimal arithmetic\n",
                "        native    native operations\n",
                "        boot      standard library boot sequence\n",
+               "        ns        namespaces in traces\n",
                "        stack     stack operations\n"])
 
 fun updateLangEd (regs:Mach.REGS)
@@ -99,6 +101,8 @@ fun findTraceOption (tname:string)
       | "native" => SOME (Native.doTrace)
       | "boot" => SOME (Boot.doTrace)
       | "type" => SOME (Type.doTrace)
+      | "construct" => SOME (Eval.doTraceConstruct) 
+      | "ns" => SOME (LogErr.doNamespaces) 
       | "stack" => SOME (Mach.traceStack) 
       (* FIXME: add "fixture" *)
       | _ => NONE

@@ -917,60 +917,49 @@ fun groundFindConversion (prog:Fixture.PROGRAM)
                                             undefinedType, 
                                             nullType ]
 
-        fun flattenUnion (Ast.UnionType tys) = List.concat (map flattenUnion tys)
-          | flattenUnion t = [t]
+        fun stripUnion (Ast.UnionType [Ast.InstanceType t, Ast.SpecialType Ast.Null]) = SOME (Ast.InstanceType t)
+          | stripUnion (Ast.UnionType [x]) = SOME x
+          | stripUnion (Ast.UnionType _) =  NONE
+          | stripUnion t = SOME t
 
     (* 
      * We have a matrix of pairs-of-conversion-paths that work, for
      * example, any kind of number can be converted to any kind of string.
      *
      * First we flatten the tyExpr2 (possible) union into a list of
-     * possible target conversion types.
-     * 
-     * For each type target in the flattened target list, we check to see
-     * if there's a (src,dst) pair in the conversion matrix where dst = target
-     * and tyExpr1 ~: src.
-     * 
-     * If we find zero, there is no conversion.
-     * 
-     * If we find one or more, we return the dst of the first pair we
-     * find. The caller then looks up this type and calls it via
-     * meta::invoke.
+     * possible target conversion types. If the union has only member T, or 
+     * is the form (T,null) for some instancetype T, we consider T the
+     * target type; otherwise we say the conversion is ambiguous and
+     * return NONE.
      *
-     * NB: the order of this matrix is a *priority order* for conversions.
-     * It returns the first matching pair.
-     * 
-     * Also keep in mind that if you're trying to convert to a target
-     * union type, you are going to get the first *union member* that
-     * matches *any* dst in the matrix, not necessarily the first
-     * matrix-entry. The priority scheme is only 1-dimensional.
-     *
-     * So it's best to do one of two things: sort your union by
-     * best-to-worst in the first place, or simply don't try to
-     * convert into a union, as it's likely to surprise you!
+     * If we have a target type, we search the matrix first-to-last
+     * checking to see if the target type is equal to the second 
+     * member of each pair in the matrix. If so, and if the source type
+     * is compatible with the first entry of the pair, we return the 
+     * specified conversion. 
      *)
 
-        val matrix = [ (AnyScalarType, decimalType),
-                       (AnyScalarType, doubleType),
-                       (AnyScalarType, intType),
-                       (AnyScalarType, uintType),
-                       (AnyScalarType, byteType),
+        val matrix = [ (AnyNumberType, decimalType),
+                       (AnyNumberType, doubleType),
+                       (AnyNumberType, intType),
+                       (AnyNumberType, uintType),
+                       (AnyNumberType, byteType),
 
                        (AnyScalarType, booleanType),
                        (AnyScalarType, BooleanType),                       
 
-                       (AnyScalarType, stringType),
-                       (AnyScalarType, StringType) ]
+                       (AnyStringType, stringType),
+                       (AnyStringType, StringType) ]
 
         fun pairMatches target (src,dst) = (groundEquals target dst andalso
                                             groundIsCompatible tyExpr1 src)
-        fun searchTargs [] = NONE
-          | searchTargs (t::ts) = 
-            case List.find (pairMatches t) matrix of
-                SOME (src,dst) => SOME dst
-              | NONE => searchTargs ts
-        
-        val res = searchTargs (flattenUnion tyExpr2)         
+
+        val res = case stripUnion tyExpr2 of 
+                      NONE => NONE
+                    | SOME t => 
+                      (case List.find (pairMatches t) matrix of
+                           SOME (src,dst) => SOME dst
+                         | NONE => NONE)
     in
         case res of 
             NONE => trace ["determined that ", fmtType tyExpr1, 

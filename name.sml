@@ -52,7 +52,7 @@ val intrinsicNS = Ast.Intrinsic
  * than the mangled form of their containing class.
  *)
 fun mangle (n:Ast.NAME) : Ast.IDENT =
-    Ustring.fromString (LogErr.name n)
+    Ustring.fromString (LogErr.fullName n)
 
 fun make (id:Ast.IDENT) (ns:Ast.NAMESPACE) : Ast.NAME = { id = id, ns = ns }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }

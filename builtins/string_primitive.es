@@ -485,26 +485,37 @@ package
            E262-4 draft proposals:static_generics
          */
         /*
-        prototype function slice(start, end)
-            string.slice(this, start, end);
+        prototype function slice(start, end, step)
+            string.slice(this, start, end, step);
         */
 
-        intrinsic function slice(start: double, end: double): Array
-            string.slice(this, start, end);
+        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): string
+            string.slice(this, start, end, step);
 
-        static function slice(self, s, e): Array {
-            let S     = string(self);
-            let len   = S.length;
-            let start = helper::toInteger(s);
-            let end   = e === undefined ? len : helper::toInteger(e);
+        static function slice(object, start: AnyNumber, end: AnyNumber, step: AnyNumber) {
 
-            let startpos = start < 0 ? Math.max(len+start,0) : Math.min(start,len);
-            let endpos = end < 0 ? Math.max(len+end,0) : Math.min(end,len);
-            let n = Math.max(endpos-startpos,0);
+            let len = uint(object.length);
 
-            return S.substring(startpos, startpos+n);
+            step = int(step);
+            if (step == 0)
+                step = 1;
+
+            if (intrinsic::isNaN(start))
+                start = step > 0 ? 0 : (len-1);
+            else
+                start = helper::clamp(start, len);
+            
+            if (intrinsic::isNaN(end))
+                end = step > 0 ? len : (-1);
+            else
+                end = helper::clamp(end, len);
+            
+            let out = new string();
+            for (let i = start; step > 0 ? i < end : i > end; i += step)
+                out += object[i];
+
+            return out;
         }
-
 
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics

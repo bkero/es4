@@ -187,11 +187,15 @@ fun checkBicompatible (ty1:Ast.TYPE_EXPR)
 	    checkCompatible ty2 ty1
     end
 
-fun checkConvertible (ty1:Ast.TYPE_EXPR)
+fun checkConvertible (prog:Fixture.PROGRAM)
+                     (ty1:Ast.TYPE_EXPR)
                      (ty2:Ast.TYPE_EXPR)
     : unit =
-    (* TODO: int to float, etc, and to() methods *)
-    checkCompatible ty1 ty2
+    if ty1 ~: ty2 
+    then ()
+    else case Type.groundFindConversion prog ty1 ty2 of 
+             NONE => error ["checkConvertible failed: ", LogErr.ty ty1, " vs. ", LogErr.ty ty2]
+           | SOME _ => ()
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
                     (t2:Ast.TYPE_EXPR)
@@ -331,7 +335,7 @@ and verifyExpr (env:ENV)
                 val (e2', t2) = verifySub e2
                 val (e3', t3) = verifySub e3
             in
-                whenStrict (fn () => checkConvertible t1 booleanType);
+                whenStrict (fn () => checkConvertible (#prog env) t1 booleanType);
                 (* FIXME: this produces a union type. is that right? *)
                 return (Ast.TernaryExpr (e1', e2', e3'), leastUpperBound t2 t3)
             end
@@ -398,7 +402,7 @@ and verifyExpr (env:ENV)
                                     | _ => t2
             in
                 whenStrict (fn () => case b of
-                                          Ast.To => checkConvertible t1 t2
+                                          Ast.To => checkConvertible (#prog env) t1 t2
                                         | Ast.Is => ()
                                         | _ => checkCompatible t1 t2);
                 return (Ast.BinaryTypeExpr (b, e', ty), resultType)
@@ -434,7 +438,7 @@ and verifyExpr (env:ENV)
                                   | Ast.UnaryPlus => checkCompatible t AnyNumberType
                                   | Ast.UnaryMinus => checkCompatible t AnyNumberType
                                   | Ast.BitwiseNot => checkCompatible t AnyNumberType
-                                  | Ast.LogicalNot => checkConvertible t booleanType
+                                  | Ast.LogicalNot => checkConvertible (#prog env) t booleanType
                                   (* TODO: Ast.Type? *)
                                   | _ => ());
                 return (Ast.UnaryExpr (u, e'), resultType)

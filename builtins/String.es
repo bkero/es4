@@ -194,11 +194,11 @@ package
         /* E262-3 15.5.4.13: String.prototype.slice
            E262-4 draft proposals:static_generics
          */
-        static function slice(self, start, end): string
-            string.slice(self, start, end);
+        static function slice(self, start, end, step): string
+            string.slice(self, Number(start), Number(end), Number(step));
 
-        intrinsic function slice(s: double, e: double): string
-            string.slice(val, s, e);
+        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): string
+            string.slice(val, start, end, step);
 
 
         /* ES262-3 15.5.4.14: String.prototype.split
@@ -344,8 +344,8 @@ package
         prototype function search(regexp)
             string.search(this.toString(), regexp);
 
-        prototype function slice(start, end)
-            string.slice(this.toString(), start, end);
+        prototype function slice(start, end, step)
+            string.slice(this.toString(), Number(start), Number(end), Number(step));
 
         prototype function split(separator, limit)
             string.split(this.toString(), separator, limit);

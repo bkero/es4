@@ -55,7 +55,7 @@ package MathInternals
     helper function toAnyNumber(x): AnyNumber {
         if (x is AnyNumber)
             return x;
-        return ToPrimitive(x,"number");
+        return double(x);
     }
 
     helper function coerceToCommonFloatNumber(a, b) {

@@ -303,32 +303,37 @@ package
         intrinsic function shift()
             Array.shift(this);
 
-        // 15.4.4.10 Array.prototype.slice (start, end)
+        // 15.4.4.10 Array.prototype.slice (start, end, step)
         // FIXME #155: type system bug
-        static function slice(object/*: Object!*/, start: AnyNumber=0, end: AnyNumber=Infinity) {
+        static function slice(object/*: Object!*/, start: AnyNumber, end: AnyNumber, step: AnyNumber) {
             let len = uint(object.length);
 
-            // If a param is passed then the first one is start.
-            // If no params are passed then start = 0.
-            let a = helper::clamp( start, len);
-            let b = helper::clamp( end, len);
-            if (b < a)
-                b = a;
+            step = int(step);
+            if (step == 0)
+                step = 1;
 
+            if (intrinsic::isNaN(start))
+                start = step > 0 ? 0 : (len-1);
+            else
+                start = helper::clamp(start, len);
+            
+            if (intrinsic::isNaN(end))
+                end = step > 0 ? len : (-1);
+            else
+                end = helper::clamp(end, len);
+            
             let out = new Array;
-            for (let i = a; i < b; i++)
+            for (let i = start; step > 0 ? i < end : i > end; i += step)
                 out.push(object[i]);
 
             return out;
         }
 
-        prototype function slice(start, end)
-            Array.slice(this, 
-                        start === undefined ? 0 : Number(start), 
-                        end === undefined ? Infinity : Number(end));
+        prototype function slice(start, end, step)
+            Array.slice(this, Number(start), Number(end), Number(step))
 
-        intrinsic function slice(start: AnyNumber=0, end: AnyNumber=Infinity): Array
-            Array.slice(this, start, end);
+        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): Array
+            Array.slice(this, start, end, step);
 
         // FIXME #155: type system bug
         static function sort(object/*: Object!*/, comparefn) {

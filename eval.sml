@@ -36,11 +36,16 @@ structure Eval = struct
 fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 
 val doTrace = ref false
+val doTraceConstruct = ref false
+
 fun fmtName n = if (!doTrace) then LogErr.name n else ""
 fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
+
+fun traceConstruct (ss:string list) = 
+    if (!doTraceConstruct) then log ss else ()
 
 fun error (regs:Mach.REGS) 
           (ss:string list) =
@@ -359,108 +364,9 @@ fun allocRib (regs:Mach.REGS)
     let
         
         val Mach.Obj { props, ident, ... } = obj
-        val _ = trace ["allocating rib on object id #", Int.toString ident]
+        val _ = traceConstruct ["allocating rib on object id #", Int.toString ident]
         val {scope, ...} = regs
         val methodScope = extendScope scope obj Mach.ActivationScope
-        fun valAllocState (ty:Ast.TY)
-            : Mach.PROP_STATE =
-            
-            (* Every value fixture has a type, and every type has an
-             * associated "allocated state". Note that
-             * this is *not* the same as saying that every type
-             * has an associated default value; for *some* types
-             * the allocated state is a default value; for
-             * types that are non-nullable, however, the allocated
-             * state is Mach.UninitProp. This property
-             * state should never be observable to a user. It is
-             * always a hard error to read a property in
-             * Mach.UninitProp state, and it is always a hard
-             * error to complete the initialization phase of an
-             * object with any properties remaining in
-             * Mach.UninitProp state. *)
-
-            let
-                val Ast.Ty { expr, ribId } = ty 
-            in            
-                case expr of
-                    Ast.SpecialType (Ast.Any) =>
-                    Mach.ValProp (Mach.Undef)
-                    
-                  | Ast.SpecialType (Ast.Null) =>
-                    Mach.ValProp (Mach.Null)
-                    
-                  | Ast.SpecialType (Ast.Undefined) =>
-                    Mach.ValProp (Mach.Undef)
-                    
-                  | Ast.SpecialType (Ast.VoidType) =>
-                    error regs ["attempt to allocate void-type property"]
-                    
-                  | Ast.UnionType [] => 
-		    Mach.UninitProp
-
-                  | Ast.UnionType ts => 
-		    let
-			fun firstType [] = Mach.UninitProp
-			  | firstType (x::xs) = 
-			    (case valAllocState (makeTy x) of
-				 Mach.UninitProp => firstType xs
-			       | other => other)
-
-			fun firstSimpleType [] = firstType ts
-			  | firstSimpleType ((Ast.SpecialType Ast.Any)::xs) = Mach.ValProp (Mach.Undef)
-			  | firstSimpleType ((Ast.SpecialType Ast.Null)::xs) = Mach.ValProp (Mach.Null)
-			  | firstSimpleType ((Ast.SpecialType Ast.Undefined)::xs) = Mach.ValProp (Mach.Undef)
-			  | firstSimpleType (x::xs) = firstSimpleType xs
-		    in
-			firstSimpleType ts
-		    end
-                    
-                  | Ast.ArrayType _ =>
-                    Mach.ValProp (Mach.Null)
-                    
-                  | Ast.FunctionType _ =>
-                    Mach.UninitProp
-                    
-                  | Ast.ObjectType _ =>
-                    Mach.ValProp (Mach.Null)
-                    
-                  | Ast.AppType {base, ...} =>
-                    valAllocState (Ast.Ty { expr=base, ribId=ribId })
-                
-                  | Ast.NullableType { expr, nullable=true } =>
-                    Mach.ValProp (Mach.Null)
-                    
-                  | Ast.NullableType { expr, nullable=false } =>
-                    valAllocState (makeTy expr)
-                    
-                  | Ast.TypeName ident =>
-                    error regs ["allocating fixture with unresolved type name: ", LogErr.ty expr]
-                    
-                  | Ast.ElementTypeRef _ =>
-                    error regs ["allocating fixture of unresolved element type reference"]
-                
-                  | Ast.FieldTypeRef _ =>
-                    error regs ["allocating fixture of unresolved field type reference"]
-                    
-                  (* Note, the definer must have created inits for nonnullable primitive types
-                   * where the program does not contain such inits.
-                   *)
-                  | Ast.InstanceType n =>
-                    (* It is possible that we're booting and the class n doesn't even exist yet. *)
-                    if (not (Mach.isBooting regs)) orelse 
-                       Mach.isClass (getValue regs (#global regs) (#name n))
-                    then			
-                        case Type.groundFindConversion (#prog regs) (Ast.SpecialType Ast.Undefined) expr of
-                            SOME t => (trace ["initializing instance type ", fmtName (#name n), " from undefined"];
-				       Mach.ValProp (checkAndConvert regs Mach.Undef (makeTy t)))
-                          | NONE => Mach.UninitProp
-                    else
-                        Mach.UninitProp
-                        
-                  | Ast.LamType _ => 
-                    Mach.UninitProp
-            end
-
         fun tempPadding n =
             if n = 0
             then []
@@ -481,18 +387,18 @@ fun allocRib (regs:Mach.REGS)
                          * use the value tag for rt typechecking 
                          *)
                         (if t = tlen
-                         then (trace ["allocating fixture for temporary ", Int.toString t];
+                         then (traceConstruct ["allocating fixture for temporary ", Int.toString t];
                                temps := emptyTmp::tmps)
                          else 
                              if t < tlen
                              then 
-                                 (trace ["ignoring fixture, already allocated ", Int.toString t];
+                                 (traceConstruct ["ignoring fixture, already allocated ", Int.toString t];
                                   temps := (List.take (tmps, (tlen-t-1))) @ 
                                            (((evalTy regs ty), Mach.UninitTemp) :: 
                                             (List.drop (tmps, (tlen-t)))))
                                  
                              else 
-                                 (trace ["allocating rib for temporaries ", 
+                                 (traceConstruct ["allocating rib for temporaries ", 
                                          Int.toString tlen, " to ", Int.toString t];
                                   temps := emptyTmp :: ((tempPadding (t-tlen)) @ tmps)))
                         
@@ -500,7 +406,7 @@ fun allocRib (regs:Mach.REGS)
                 end
               | Ast.PropName pn =>
                 let
-		    val _ = trace ["allocating fixture for prop ", fmtName pn]
+		    val _ = traceConstruct ["allocating fixture for prop ", fmtName pn]
                     fun allocProp state p =
                         if Mach.hasProp props pn
                         then
@@ -516,7 +422,7 @@ fun allocRib (regs:Mach.REGS)
                              *)
                             let
                                 fun fail _ = error regs ["allocating duplicate property name: ", LogErr.name pn]
-                                fun permit _ = (trace ["replacing ", state, " property ", fmtName pn];
+                                fun permit _ = (traceConstruct ["replacing ", state, " property ", fmtName pn];
                                                 Mach.delProp props pn; 
                                                 Mach.addProp props pn p)
                                 val state = (#state (Mach.getProp props pn))
@@ -564,7 +470,7 @@ fun allocRib (regs:Mach.REGS)
                         in
                             allocProp "value"
                                       { ty = ty,
-                                        state = valAllocState ty,
+                                        state = valAllocState regs ty,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum regs pn obj, *)
                                                   readOnly = readOnly,
@@ -593,9 +499,9 @@ fun allocRib (regs:Mach.REGS)
                       | Ast.ClassFixture cls =>
                         let
                             val Ast.Cls {classRib, ...} = cls
-                            val _ = trace ["allocating class object for class ", fmtName pn]
+                            val _ = traceConstruct ["allocating class object for class ", fmtName pn]
                             val classObj = needObj regs (newClass regs scope cls)
-                            val _ = trace ["allocating class rib on class ", fmtName pn]
+                            val _ = traceConstruct ["allocating class rib on class ", fmtName pn]
                             (* FIXME: 'this' binding in class objects might be wrong here. *)
                             val _ = allocObjRib regs classObj NONE classRib
                         in
@@ -628,7 +534,7 @@ fun allocRib (regs:Mach.REGS)
 
                       | Ast.InterfaceFixture iface =>  (* FIXME *)
                         let
-                            val _ = trace ["allocating interface object for interface ", fmtName pn]
+                            val _ = traceConstruct ["allocating interface object for interface ", fmtName pn]
                             val ifaceObj = needObj regs (newInterface regs scope iface)
                         in
                             allocProp "interface"
@@ -662,12 +568,147 @@ and allocObjRib (regs:Mach.REGS)
         else ()
     end
 
+
 and allocScopeRib (regs:Mach.REGS)
                   (f:Ast.RIB)
     : unit =
     case (#scope regs) of
         Mach.Scope { object, temps, ... } =>
         allocRib regs object NONE temps f
+
+
+and valAllocState (regs:Mach.REGS) 
+                  (ty:Ast.TY)
+    : Mach.PROP_STATE =
+    
+    (* Every value fixture has a type, and every type has an
+     * associated "allocated state". Note that
+     * this is *not* the same as saying that every type
+     * has an associated default value; for *some* types
+     * the allocated state is a default value; for
+     * types that are non-nullable, however, the allocated
+     * state is Mach.UninitProp. This property
+     * state should never be observable to a user. It is
+     * always a hard error to read a property in
+     * Mach.UninitProp state, and it is always a hard
+     * error to complete the initialization phase of an
+     * object with any properties remaining in
+     * Mach.UninitProp state. 
+     *)
+    
+    let
+        val Ast.Ty { expr, ribId } = ty 
+    in            
+        case expr of
+            Ast.SpecialType (Ast.Any) =>
+            Mach.ValProp (Mach.Undef)
+            
+          | Ast.SpecialType (Ast.Null) =>
+            Mach.ValProp (Mach.Null)
+            
+          | Ast.SpecialType (Ast.Undefined) =>
+            Mach.ValProp (Mach.Undef)
+            
+          | Ast.SpecialType (Ast.VoidType) =>
+            error regs ["attempt to allocate void-type property"]
+            
+          | Ast.UnionType [] => 
+		    Mach.UninitProp
+
+          | Ast.UnionType ts => 
+		    let
+			    fun firstType [] = Mach.UninitProp
+			      | firstType (x::xs) = 
+			        (case valAllocState regs (makeTy x) of
+				         Mach.UninitProp => firstType xs
+			           | other => other)
+
+			    fun firstSimpleType [] = firstType ts
+			      | firstSimpleType ((Ast.SpecialType Ast.Any)::xs) = Mach.ValProp (Mach.Undef)
+			      | firstSimpleType ((Ast.SpecialType Ast.Null)::xs) = Mach.ValProp (Mach.Null)
+			      | firstSimpleType ((Ast.SpecialType Ast.Undefined)::xs) = Mach.ValProp (Mach.Undef)
+			      | firstSimpleType (x::xs) = firstSimpleType xs
+		    in
+			    firstSimpleType ts
+		    end
+            
+          | Ast.ArrayType _ =>
+            Mach.ValProp (Mach.Null)
+            
+          | Ast.FunctionType _ =>
+            Mach.UninitProp
+            
+          | Ast.ObjectType _ =>
+            Mach.ValProp (Mach.Null)
+            
+          | Ast.AppType {base, ...} =>
+            valAllocState regs (Ast.Ty { expr=base, ribId=ribId })
+            
+          | Ast.NullableType { expr, nullable=true } =>
+            Mach.ValProp (Mach.Null)
+            
+          | Ast.NullableType { expr, nullable=false } =>
+            valAllocState regs (makeTy expr)
+            
+          | Ast.TypeName ident =>
+            error regs ["allocating fixture with unresolved type name: ", LogErr.ty expr]
+            
+          | Ast.ElementTypeRef _ =>
+            error regs ["allocating fixture of unresolved element type reference"]
+            
+          | Ast.FieldTypeRef _ =>
+            error regs ["allocating fixture of unresolved field type reference"]
+            
+          | Ast.InstanceType n =>
+            (* It is possible that we're booting and the class n doesn't even exist yet. *)
+            if (not (Mach.isBooting regs)) orelse 
+               Mach.isClass (getValue regs (#global regs) (#name n))
+            then			
+                let 
+                    val clsid = getObjId (needObj regs (getValue regs (#global regs) (#name n)))
+                in
+                    case allocSpecial regs clsid of
+                        SOME v => Mach.ValProp v
+                      | NONE => Mach.UninitProp
+                end
+            else
+                Mach.UninitProp
+                
+          | Ast.LamType _ => 
+            Mach.UninitProp
+    end
+
+and allocSpecial (regs:Mach.REGS)
+                 (id:Mach.OBJ_IDENT)
+    : Mach.VAL option =
+    let
+        fun findSpecial [] = NONE
+          | findSpecial ((q,f)::rest) = 
+            let
+                val ident = slotObjId regs q
+            in
+                if ident = id 
+                then 
+                    (traceConstruct ["allocating special builtin"]; SOME (f ()))
+                else 
+		            findSpecial rest
+	        end
+    in
+        findSpecial 
+            [
+             (Mach.getBooleanClassSlot, (fn _ => newBoolean regs false)),
+             (Mach.getBooleanWrapperClassSlot, (fn _ => newBooleanWrapper regs false)),
+
+             (Mach.getDoubleClassSlot, (fn _ => newDouble regs 0.0)),
+             (Mach.getDecimalClassSlot, (fn _ => newDecimal regs Decimal.zero)),
+             (Mach.getIntClassSlot, (fn _ => newInt regs 0.0)),
+             (Mach.getUintClassSlot, (fn _ => newUInt regs 0.0)),
+             (Mach.getByteClassSlot, (fn _ => newByte regs 0.0)),
+
+             (Mach.getStringClassSlot, (fn _ => newString regs Ustring.empty)),
+             (Mach.getStringWrapperClassSlot, (fn _ => newStringWrapper regs Ustring.empty))
+	        ]
+    end
 
 
 and asArrayIndex (v:Mach.VAL)
@@ -1081,7 +1122,7 @@ and instantiateGlobalClass (regs:Mach.REGS)
                            (args:Mach.VAL list)
     : Mach.VAL =
     let
-        val _ = trace ["instantiating global class ", fmtName n];
+        val _ = traceConstruct ["instantiating global class ", fmtName n];
         val (cls:Mach.VAL) = getValue regs (#global regs) n
     in
         case cls of
@@ -1347,16 +1388,16 @@ and newFunctionFromClosure (regs:Mach.REGS)
         val fty = findFuncType (AstQuery.typeExprOf ty)
         val tag = Mach.FunctionTag fty
 
-        val _ = trace ["finding Function.prototype"]
+        val _ = traceConstruct ["finding Function.prototype"]
         val funClass = needObj regs (getValue regs (#global regs) 
                                               Name.nons_Function)
         val funProto = getValue regs funClass Name.nons_prototype
-        val _ = trace ["building new prototype chained to ",
-                       "Function.prototype"]
+        val _ = traceConstruct ["building new prototype chained to ",
+                                "Function.prototype"]
         val newProtoObj = Mach.setProto (newObj regs) funProto
         val newProto = Mach.Object newProtoObj
-        val _ = trace ["built new prototype chained to ",
-                       "Function.prototype"]
+        val _ = traceConstruct ["built new prototype chained to ",
+                                "Function.prototype"]
 
         val Mach.Obj { magic, ... } = funClass
         val obj = case (!magic) of
@@ -3915,8 +3956,8 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
             in
                 case n of
                     Ast.PropName pn =>
-                    (trace ["evalInit assigning to prop ", fmtName pn,
-                            " on object #", (Int.toString (getObjId obj))];
+                    (traceConstruct ["evalInit assigning to prop ", fmtName pn,
+                                     " on object #", (Int.toString (getObjId obj))];
                      (*                     if isPrototypeInit then
                                                 LogErr.log ["Propname: ", fmtName pn]
                                             else
@@ -3931,8 +3972,8 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
                          end
                      else defValue regs obj pn v)
                   | Ast.TempName tn =>
-                    (trace ["evalInit assigning to temp ", (Int.toString tn),
-                            " on object #", (Int.toString (getObjId obj))];
+                    (traceConstruct ["evalInit assigning to temp ", (Int.toString tn),
+                                     " on object #", (Int.toString (getObjId obj))];
                      Mach.defTemp temps tn v);
                 Mach.pop regs
             end
@@ -3964,7 +4005,7 @@ and findTargetObj (regs:Mach.REGS)
         val Mach.Scope { object, kind, parent, ...} = scope
         val Mach.Obj {props,...} = object
     in
-        trace ["considering init target as object #", Int.toString (getScopeId scope)];
+        traceConstruct ["considering init target as object #", Int.toString (getScopeId scope)];
         case target of
             Ast.Local =>
             if (NameMap.numItems (!props)) > 0 orelse 
@@ -3996,7 +4037,7 @@ and evalScopeInits (regs:Mach.REGS)
         val Mach.Scope { temps, ...} = scope
         val obj = findTargetObj regs scope target
         val Mach.Obj { ident, ... } = obj
-        val _ = trace ["resolved init target to object id #", Int.toString ident]
+        val _ = traceConstruct ["resolved init target to object id #", Int.toString ident]
     in
         evalInitsMaybePrototype regs obj temps inits (target=Ast.Prototype)
     end
@@ -4016,9 +4057,9 @@ and initializeAndConstruct (classRegs:Mach.REGS)
     in
         let
             fun idStr ob = Int.toString (getObjId ob)
-            val _ = trace ["initializeAndConstruct: this=#", (idStr (#this classRegs)),
-                           ", constructee=#", (idStr instanceObj),
-                           ", class=#", (idStr classObj)]
+            val _ = traceConstruct ["initializeAndConstruct: this=#", (idStr (#this classRegs)),
+                                    ", constructee=#", (idStr instanceObj),
+                                    ", class=#", (idStr classObj)]
             val _ = if getObjId (#this classRegs) = getObjId instanceObj
                     then ()
                     else error classRegs ["constructor running on non-this value"]
@@ -4030,12 +4071,12 @@ and initializeAndConstruct (classRegs:Mach.REGS)
             fun initializeAndConstructSuper (superArgs:Mach.VAL list) =
                 case extends of
                     NONE =>
-                    (trace ["checking all properties initialized at root class ", fmtName name];
+                    (traceConstruct ["checking all properties initialized at root class ", fmtName name];
                      checkAllPropertiesInitialized classRegs instanceObj)
                   | SOME parentTy =>
                     let
                         val parentTy = evalTy classRegs parentTy
-                        val _ = trace ["initializing and constructing superclass ", Type.fmtType parentTy]
+                        val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
                         val (superObj:Mach.OBJ) = instanceClass classRegs (AstQuery.needInstanceType parentTy)
                         val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
                         val (superRegs:Mach.REGS) = 
@@ -4045,7 +4086,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                             superRegs superClsClosure superObj superArgs instanceObj
                     end
         in
-            trace ["evaluating instance initializers for ", fmtName name];
+            traceConstruct ["evaluating instance initializers for ", fmtName name];
             evalObjInits classRegs instanceObj instanceInits;
             case constructor of
                 NONE => initializeAndConstructSuper []
@@ -4065,18 +4106,18 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                                                               varObj
                                                               Mach.ActivationScope
                 in
-                    trace ["allocating scope rib for constructor of ", fmtName name];
+                    traceConstruct ["allocating scope rib for constructor of ", fmtName name];
                     allocScopeRib varRegs paramRib;
-                    trace ["binding constructor args of ", fmtName name];
+                    traceConstruct ["binding constructor args of ", fmtName name];
                     bindArgs classRegs varScope func args;
-                    trace ["evaluating inits of ", fmtName name,
-                           " in scope #", Int.toString (getScopeId varScope)];
+                    traceConstruct ["evaluating inits of ", fmtName name,
+                                    " in scope #", Int.toString (getScopeId varScope)];
                     evalScopeInits varRegs Ast.Local paramInits;
-                    trace ["evaluating settings"];
+                    traceConstruct ["evaluating settings"];
                     evalObjInits varRegs instanceObj settings;
-                    trace ["initializing and constructing superclass of ", fmtName name];
+                    traceConstruct ["initializing and constructing superclass of ", fmtName name];
                     initializeAndConstructSuper (map (evalExpr varRegs) superArgs);
-                    trace ["entering constructor for ", fmtName name];
+                    traceConstruct ["entering constructor for ", fmtName name];
                     (case block of 
                          NONE => Mach.Undef
                        | SOME b => (evalBlock ctorRegs b
@@ -4117,12 +4158,12 @@ and constructStandardWithTag (regs:Mach.REGS)
         val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
         val classRegs = withThis (withScope regs classScope) instanceObj
     in
-        trace ["allocating ", Int.toString (length instanceRib),
-               " instance rib for new ", fmtName name];
+        traceConstruct ["allocating ", Int.toString (length instanceRib),
+                        " instance rib for new ", fmtName name];
         allocObjRib classRegs instanceObj (SOME instanceObj) instanceRib;
-        trace ["entering most derived constructor for ", fmtName name];
+        traceConstruct ["entering most derived constructor for ", fmtName name];
         initializeAndConstruct classRegs classClosure classObj args instanceObj;
-        trace ["finished constructing new ", fmtName name];
+        traceConstruct ["finished constructing new ", fmtName name];
         instanceObj
     end
 
@@ -4455,7 +4496,7 @@ and constructSpecial (regs:Mach.REGS)
                 if ident = id 
                 then 
 		    (trace ["running special ctor for instance of class #", 
-			    Int.toString id, " = ", fmtName name];
+			        Int.toString id, " = ", fmtName name];
 		     SOME (f regs classObj classClosure args))
                 else 
 		    findSpecial rest
@@ -4705,9 +4746,9 @@ and evalHead (regs:Mach.REGS)
         val obj = Mach.newObjNoTag ()
         val regs = extendScopeReg regs obj Mach.TempScope
         val {scope,...} = regs
-        val _ = trace ["built temp scope #",
-                       Int.toString (getScopeId (#scope regs)),
-                       " for head"]
+        val _ = traceConstruct ["built temp scope #",
+                                Int.toString (getScopeId (#scope regs)),
+                                " for head"]
     in
         allocScopeRib regs rib;
         evalInits regs obj (getScopeTemps scope) inits;

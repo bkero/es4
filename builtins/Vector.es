@@ -173,13 +173,12 @@ package
             let s = "";
             let i = 0;
 
-            while (true) {
+            for (let i = 0; i < limit; i++) {
                 let x = this[i];
+                if (i != 0)
+                    s += separator;
                 if (x !== undefined && x !== null)
                     s += string(x);
-                if (++i == limit)
-                    break;
-                s += separator;
             }
             return s;
         }
@@ -233,13 +232,27 @@ package
             return v;
         }
 
-        intrinsic function slice(start: AnyNumber=0, end: AnyNumber=Infinity): Vector.<T> {
-            let first = helper::clamp( start, length );
-            let limit = helper::clamp( end, length );
-            let result = new Vector.<T>;
-            for ( let i=first ; i < limit ; i++ )
-                result.push(this[i]);
-            return result;
+        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): Vector.<T> {
+
+            step = int(step);
+            if (step == 0)
+                step = 1;
+
+            if (intrinsic::isNaN(start))
+                start = step > 0 ? 0 : (length-1);
+            else
+                start = helper::clamp(start, length);
+            
+            if (intrinsic::isNaN(end))
+                end = step > 0 ? len : (-1);
+            else
+                end = helper::clamp(end, length);
+            
+            let out:Vector.<T> = new Vector.<T>;
+            for (let i = start; step > 0 ? i < end : i > end; i += step)
+                out.push(this[i]);
+
+            return out;
         }
 
         intrinsic function some(checker: Checker, thisObj: Object=null): boolean { 
@@ -328,7 +341,7 @@ package
             this.intrinsic::indexOf(value, Number(from));
 
         prototype function join(this:Vector.<*>, separator=undefined)
-            this.intrinsic::indexOf(separator == undefined ? "," : string(separator));
+            this.intrinsic::join(separator == undefined ? "," : string(separator));
 
         prototype function lastIndexOf(this:Vector.<*>, value, from=undefined)
             this.intrinsic::indexOf(value, from == undefined ? Infinity : Number(from));
@@ -348,9 +361,8 @@ package
         prototype function shift(this:Vector.<*>)
             this.intrinsic::shift();
 
-        prototype function slice(this:Vector.<*>, start=undefined, end=undefined)
-            this.intrinsic::slice(start == undefined ? 0 : Number(start), 
-                                  end == undefined ? Infinity : Number(end));
+        prototype function slice(this:Vector.<*>, start, end, step)
+            this.intrinsic::slice(Number(start), Number(end), Number(step));
 
         prototype function some(this:Vector.<*>, checker, thisObj=undefined)
             this.intrinsic::some(checker, thisObj is Object ? thisObj : null);

@@ -45,6 +45,8 @@ fun locToString {file, span, post_newline} =
 val (loc:(Ast.LOC option) ref) = ref NONE
 fun setLoc (p:Ast.LOC option) = loc := p
 
+val doNamespaces = ref false
+
 val (lastReported:(Ast.LOC option) ref) = ref NONE
 
 fun log ss =
@@ -89,7 +91,11 @@ fun namespace (ns:Ast.NAMESPACE) =
       | Ast.AnonUserNamespace i => "<anon #" ^ (Int.toString i) ^ ">"
       | Ast.LimitedNamespace (i,n) => "<limited " ^ (Ustring.toAscii i) ^ " => " ^ (namespace n) ^ ">"
 
-fun name ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
+fun fullName ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
+
+fun name ({ns,id}:Ast.NAME) = if !doNamespaces
+			      then fullName {ns=ns,id=id}
+			      else (Ustring.toAscii id)
 
 fun fname (n:Ast.FIXTURE_NAME) =
     case n of
@@ -103,7 +109,9 @@ fun multiname (mn:Ast.MULTINAME) =
 	fun fmtNsss (nsss:Ast.NAMESPACE list list) = 
 	    "[" ^ (join ", " (map fmtNss nsss)) ^ "]"
     in
-	(fmtNsss (#nss mn)) ^ "::" ^ (Ustring.toAscii (#id mn))
+	if !doNamespaces
+	then (fmtNsss (#nss mn)) ^ "::" ^ (Ustring.toAscii (#id mn))
+	else "[...]::" ^ (Ustring.toAscii (#id mn))
     end
 
 fun ty t =
