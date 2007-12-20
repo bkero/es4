@@ -1,5 +1,4 @@
-#commented out to force an error
-#tests/spidermonkey/ecma/Array/15.4-1 : var myarr = new Array\(\); myarr\[Math.pow\(2\,32\)-2\]='hi'; myarr.length, es4ri, expectedfail,http://bugs.ecmascript.org/ticket/334
+tests/spidermonkey/ecma/Array/15.4-1 : var myarr = new Array\(\); myarr\[Math.pow\(2\,32\)-2\]='hi'; myarr.length, es4ri, expectedfail,http://bugs.ecmascript.org/ticket/334
 tests/spidermonkey/ecma/Array/15.4-1 : var myarr = new Array\(\); myarr\[Math.pow\(2\,32\)-3\]='hi'; myarr.length,es4ri, expectedfail,http://bugs.ecmascript.org/ticket/334
 tests/spidermonkey/ecma/Array/15.4-1 : var myarr = new Array\(\); myarr\[Math.pow\(2\,31\)-2\]='hi'; myarr.length,es4ri, expectedfail,http://bugs.ecmascript.org/ticket/334
 tests/spidermonkey/ecma/Array/15.4-1 : var myarr = new Array\(\); myarr\[Math.pow\(2\,31\)-1\]='hi'; myarr.length,es4ri, expectedfail,http://bugs.ecmascript.org/ticket/334
