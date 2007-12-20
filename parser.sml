@@ -454,6 +454,7 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Intrinsic => tn ()
       | Is => tn ()
       | Let => tn ()
+      | Like => tn ()
       | Namespace => tn ()
       | Native => tn ()
       | Number => tn ()
@@ -3583,6 +3584,12 @@ and typeExpression (ts:TOKENS)
       | (LeftBracket, _) :: _ => arrayType ts
       | (Null, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Null))
       | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
+      | (Like, _) :: _ => 
+        let
+            val (ts1, nd1) = typeExpression (tl ts)
+        in
+            (ts1, makeTy (Ast.LikeType (unwrapTy nd1)))
+        end
       | _ =>
             let
                 val (ts1,nd1) = primaryIdentifier ts                                

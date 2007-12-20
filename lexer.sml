@@ -792,7 +792,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "s"        , Is),
                                              (Ustring.fromSource "f"        , If),
                                              (Ustring.fromSource "n"        , In)]
-                      | #"l"  => lexResOrId [(Ustring.fromSource "et"       , Let)]
+                      | #"l"  => lexResOrId [(Ustring.fromSource "et"       , Let),
+					     (Ustring.fromSource "ike"      , Like)]
                       | #"n"  => lexResOrId [(Ustring.fromSource "amespace" , Namespace),
                                              (Ustring.fromSource "ative"    , Native),
                                              (Ustring.fromSource "umber"    , Number),

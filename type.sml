@@ -153,6 +153,7 @@ fun isGroundType (t:Ast.TYPE_EXPR)
                              
           | Ast.NullableType { expr, ... } => isGroundType expr
           | Ast.ObjectType fields => List.all isGroundField fields
+          | Ast.LikeType t => isGroundType t
           | Ast.UnionType tys => List.all isGroundType tys
           | Ast.ArrayType tys =>List.all isGroundType tys
           | Ast.FunctionType { params, result, thisType, ... } => 
@@ -559,6 +560,16 @@ and ty2norm (prog:Fixture.PROGRAM)
                         (Ast.ObjectType (map pack (ListPair.zip (names, tys')))) 
                         false
             end
+
+          | Ast.LikeType t => 
+            let
+                val { exprs, ribId, nullable } = subTerm2Norm t
+            in
+                { exprs = map (fn x => Ast.LikeType x) exprs,
+                  ribId = ribId,
+                  nullable = nullable }
+            end
+                  
             
           | Ast.NullableType { expr, nullable } => 
             let
@@ -701,6 +712,9 @@ fun groundEquals (t1:Ast.TYPE_EXPR)
               | (Ast.ObjectType fts1, Ast.ObjectType fts2)
                 => fieldTypesEqual fts1 fts2
 
+	      | (Ast.LikeType lt1, Ast.LikeType lt2)
+		=> groundEquals lt1 lt2
+
               | (Ast.InstanceType ity1, Ast.InstanceType ity2)
                 => Mach.nameEq (#name ity1) (#name ity2) andalso
                    allEqual (#typeArgs ity1) (#typeArgs ity2)
@@ -738,13 +752,13 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                         | (_, Ast.NullableType { nullable=false, expr }) =>
                           groundIsSubtype t1 expr
 
-                        | (Ast.SpecialType _, _) => false
+                        | (_, Ast.SpecialType Ast.Any) => true
 
-	                    | (Ast.UnionType types1,_) =>
-	                      List.all (fn t => groundIsSubtype t t2) types1
-
-	                    | (_, Ast.UnionType types2) =>
-	                      List.exists (fn t => groundIsSubtype t1 t) types2
+	                | (Ast.UnionType types1,_) =>
+	                  List.all (fn t => groundIsSubtype t t2) types1
+			  
+	                | (_, Ast.UnionType types2) =>
+	                  List.exists (fn t => groundIsSubtype t1 t) types2
 
                         | (Ast.ArrayType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Array orelse
@@ -752,6 +766,9 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                           
                         | (Ast.ObjectType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Object
+
+			| (_, Ast.LikeType lt2) => 
+			  groundIsCompatible t1 lt2
 
                         | (Ast.FunctionType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Function orelse
@@ -767,14 +784,11 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
         res
     end
 
-val isSubtype = normalizingPredicate groundIsSubtype false
-
-
 (* -----------------------------------------------------------------------------
  * Compatibility
  * ----------------------------------------------------------------------------- *)
 
-fun groundIsCompatible (t1:Ast.TYPE_EXPR)
+and groundIsCompatible (t1:Ast.TYPE_EXPR)
                        (t2:Ast.TYPE_EXPR)
     : bool = 
     let
@@ -839,6 +853,7 @@ fun groundIsCompatible (t1:Ast.TYPE_EXPR)
     end
 
 val isCompatible = normalizingPredicate groundIsCompatible false
+val isSubtype = normalizingPredicate groundIsSubtype false
 
 
 (* -----------------------------------------------------------------------------

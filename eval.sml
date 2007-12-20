@@ -641,6 +641,9 @@ and valAllocState (regs:Mach.REGS)
           | Ast.ObjectType _ =>
             Mach.ValProp (Mach.Null)
             
+          | Ast.LikeType ty => 
+            valAllocState regs (makeTy ty)
+            
           | Ast.AppType {base, ...} =>
             valAllocState regs (Ast.Ty { expr=base, ribId=ribId })
             
@@ -885,8 +888,8 @@ and checkAndConvert (regs:Mach.REGS)
     : Mach.VAL =
     let
         val tyExpr = evalTy regs ty
-    in
-        if (isCompatible regs v tyExpr)
+    in                         
+        if evalOperatorIs regs v tyExpr
         then v
         else
             let
@@ -900,9 +903,7 @@ and checkAndConvert (regs:Mach.REGS)
                 (* FIXME: this will call back on itself! *)
                 val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_invoke) [v]
             in
-                if isCompatible regs converted tyExpr
-                then converted
-                else (typeOpFailure regs "conversion returned incompatible value" converted tyExpr; dummyVal)
+                typeCheck regs converted tyExpr
             end
     end
 
@@ -1137,7 +1138,7 @@ and throwExn (regs:Mach.REGS)
     : unit =
     if Mach.isBooting regs
     then error regs ["trapped ThrowException during boot: ", 
-                     LogErr.name name, "(", LogErr.join ", " args, ")"]
+                     LogErr.name name, "(", String.concat args, ")"]
     else raise ThrowException 
                    (instantiateGlobalClass 
                         regs name 
@@ -1836,10 +1837,11 @@ and getExpectedType (regs:Mach.REGS)
       | _ => (Ast.SpecialType Ast.Any, expr)
 
 
-and checkCompatible (regs:Mach.REGS)
-                    (tyExpr:Ast.TYPE_EXPR)
-                    (v:Mach.VAL) =
-    if isCompatible regs v tyExpr
+and typeCheck (regs:Mach.REGS)
+              (v:Mach.VAL)
+              (tyExpr:Ast.TYPE_EXPR)
+    : Mach.VAL =
+    if evalOperatorIs regs v tyExpr
     then v
     else error regs ["typecheck failed, val=", Mach.approx v,
                      " type=", LogErr.ty (typeOfVal regs v),
@@ -1938,7 +1940,7 @@ and evalExpr (regs:Mach.REGS)
                           | _ => (throwTypeErr regs ["not a function"]; dummyVal)
                     end
         in
-            checkCompatible regs resultTy result
+            typeCheck regs result resultTy
         end
 
       | Ast.NewExpr { obj, actuals } =>
@@ -1966,7 +1968,7 @@ and evalExpr (regs:Mach.REGS)
         evalBinaryTypeOp regs typeOp expr tyExpr
 
       | Ast.ExpectedTypeExpr (te, e) =>
-        checkCompatible regs te (evalExpr regs e)
+        typeCheck regs (evalExpr regs e) te
 
       | Ast.GetParam n =>
         LogErr.unimplError ["unhandled GetParam expression"]
@@ -2563,9 +2565,10 @@ and evalSetExpr (regs:Mach.REGS)
                     let val v = evalExpr regs rhs
                     in performBinop 
                            regs bop 
-                           (checkCompatible 
-                                regs lhsType 
-                                (getValue regs obj name)) v
+                           (typeCheck regs 
+                                      (getValue regs obj name) 
+                                      lhsType) 
+                           v
                     end
             in
                 case aop of
@@ -2583,7 +2586,7 @@ and evalSetExpr (regs:Mach.REGS)
                   | Ast.AssignBitwiseXor => modifyWith Ast.BitwiseXor
                   | Ast.AssignLogicalAnd =>
                     let
-                        val a = checkCompatible regs lhsType (getValue regs obj name)
+                        val a = typeCheck regs (getValue regs obj name) lhsType
                     in
                         if toBoolean a
                         then evalExpr regs rhs
@@ -2591,7 +2594,7 @@ and evalSetExpr (regs:Mach.REGS)
                     end
                   | Ast.AssignLogicalOr =>
                     let
-                        val a = checkCompatible regs lhsType (getValue regs obj name)
+                        val a = typeCheck regs (getValue regs obj name) lhsType
                     in
                         if toBoolean a
                         then a
@@ -2640,7 +2643,7 @@ and evalCrement (regs:Mach.REGS)
         val (exprType, expr) = getExpectedType regs expr
         val (obj, name) = evalRefExpr regs expr false
         val v = getValue regs obj name
-        val v' = checkCompatible regs exprType v
+        val v' = typeCheck regs v exprType
         val v'' = toNumeric regs v'
         val i = numberOfSimilarType regs v'' 1.0
         val v''' = performBinop regs bop v'' i
@@ -2763,6 +2766,7 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.TypeName tn => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.ObjectType ot => Mach.Null (* FIXME *)
+      | Ast.LikeType lt => Mach.Null (* FIXME *)
       | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
@@ -3195,17 +3199,6 @@ and typeOfVal (regs:Mach.REGS)
     end
 
 
-and isCompatible (regs:Mach.REGS)
-                 (v:Mach.VAL)
-                 (tyExpr:Ast.TYPE_EXPR)
-    : bool =
-    let
-        val t = typeOfVal regs v
-    in        
-        Type.groundIsCompatible t tyExpr
-    end
-
-
 and evalLogicalAnd (regs:Mach.REGS)
                    (aexpr:Ast.EXPR)
                    (bexpr:Ast.EXPR)
@@ -3232,6 +3225,38 @@ and evalLogicalOr (regs:Mach.REGS)
     end
 
 
+
+and evalOperatorIs (regs:Mach.REGS)
+                   (v:Mach.VAL)
+                   (te:Ast.TYPE_EXPR)
+    : bool = 
+    let
+        val vt = typeOfVal regs v 
+        fun isLike (Mach.Object obj) (Ast.ObjectType fields) = List.all (objHasLikeField obj) fields
+          | isLike v lte = Type.groundIsCompatible (typeOfVal regs v) lte
+        and objHasLikeField obj {name, ty} = 
+            let
+                val name = Name.nons name
+            in
+                if hasOwnValue obj name
+                then 
+                    let 
+                        val v2 = getValue regs obj name
+                    in
+                        isLike v2 ty
+                    end
+                else 
+                    false
+            end
+    in
+        case te of 
+            Ast.LikeType lte => isLike v lte
+          | _ => (* FIXME: Should this be ~: or <:? Only the former presently works... *) 
+            Type.groundIsCompatible vt te
+    end
+
+
+
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
                      (expr:Ast.EXPR)
@@ -3242,11 +3267,11 @@ and evalBinaryTypeOp (regs:Mach.REGS)
     in
         case bop of
             Ast.Cast =>
-            if isCompatible regs v (evalTy regs ty)
+            if evalOperatorIs regs v (evalTy regs ty)
             then v
             else (typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty); dummyVal)
           | Ast.To => checkAndConvert regs v ty
-          | Ast.Is => newBoolean regs ((typeOfVal regs v) <: (evalTy regs ty))
+          | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end
 
 
@@ -3776,7 +3801,7 @@ and catch (regs:Mach.REGS)
     case clauses of
         [] => NONE
       | {ty, rib, inits, block, ...}::cs =>
-        if isCompatible regs e (evalTy regs ty)
+        if evalOperatorIs regs e (evalTy regs ty)
         then
             let
                 val fixs = valOf rib
@@ -5111,7 +5136,7 @@ and evalForStmt (regs:Mach.REGS)
                     val (ty, cond) = getExpectedType regs cond
                     val b = case cond of
                                 Ast.ListExpr [] => true
-                              | _ => toBoolean (checkCompatible regs ty (evalExpr forRegs cond))
+                              | _ => toBoolean (typeCheck regs (evalExpr forRegs cond) ty)
                 in
                     if b
                     then

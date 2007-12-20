@@ -242,6 +242,7 @@ datatype PRAGMA =
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
+       | LikeType of TYPE_EXPR
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }

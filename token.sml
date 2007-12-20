@@ -151,6 +151,7 @@ datatype TOKEN =
     | Intrinsic
     | Is
     | Let
+    | Like
     | Namespace
     | Native
     | Number
@@ -360,6 +361,7 @@ fun tokenname (t,_) =
       | Intrinsic => "intrinsic"
       | Is => "is"
       | Let => "let"
+      | Like => "like"
       | Namespace => "namespace"
       | Native => "native"
       | Number => "number"
