@@ -175,6 +175,7 @@ The language extends  the lambda calculus (variables, abstractions, and applicat
 with object allocation, dereference, and update. 
 It also includes \t{as} expressions, which check that a value has a particular type.
 %and \t{wrap} expressions, which, if necessary, wrap the given value to ensure that it behaves like it has that type. 
+Object addresses $a_T$ should not occur in source programs.
 
 Some expression forms (variable references, function definitions and applications, and object allocation, dereference, and update, and cast expressions) are annotated with a \emph{check mark} $c\in\setz{\circ,\safe}$,
 where $\safe$ means that that expression has been proven \emph{safe} and that no run-time type check is required.
@@ -205,6 +206,7 @@ We include generic function definition, generic function application, and the as
 	\mydefcase{\objget{c}{e}{l}					}{member selection}
 	\mydefcase{\objset{c}{e}{l}{e}				}{member update}
 	\mydefcase{\cast{c}{e}{T}					}{runtime type check}
+	\mydefcase{a_T						}{object address}
 \\
 	\mydefhead{S,T::=}{Types:} 
 	\mydefcase{\Int 							}{integers}
@@ -361,6 +363,9 @@ A \emph{state} is a pair of an object store and a current expression.
 The evaluation relation on states is defined by the rules in Figure~\ref{fig:eval}.
 For now, these rules ignore the check marks, and always perform dynamic type checks by calling the function $\convert{v}{T}$, which checks if the value $v$ can be converted to the type $T$. 
 
+The notation $\sigma[a_T,l:=v]$ denotes the store that is identical to $\sigma$, except that the $l$ field of the object at address $a_T$ is updated with the value $v$.
+
+
 \begin{displayfigure}{th}{Operational Semantics}
 \label{fig:eval} 
 \label{fig:convert} 
@@ -421,7 +426,7 @@ In a traditional statically typed language, the type system both detects errors 
 This presentation separates these two components, primarily so that the check elimination phase 
 can be run even in   \t{standard} mode.
  
-We first extend the operational semantics to omit \emph{convert} checks on operations labelled with the check mark $\safe$: see Figure~\ref{fig:eval2}. Thus, even though the original rule \rel{E-Beta} can evaluate all applications, \rel{E-Beta-Safe1} provides an optimized evaluation rules for a safe application of a safe function, and \rel{E-Beta-Safe2} and \rel{E-Beta-Safe3} provide alternative rules if only the application or the called function is safe, respectively.
+We first extend the operational semantics to omit \emph{convert} checks on operations labelled with the check mark $\safe$: see Figure~\ref{fig:eval2}. Thus, even though the original rule \rel{E-Beta} can evaluate all applications, \rel{E-Beta-Safe} provides an optimized evaluation rule for a safe application.
 
 \begin{displayfigure}{h}{Extended Operational Semantics}
 \label{fig:eval2} 
@@ -463,6 +468,8 @@ These rules rely on the relation $S\Implies T$, which is defined to hold if $\su
 \frac{\subtype S T \qquad \mbox{$T$ is $\dynamic$-free}}
 	{\implies S T}
 \]
+
+TODO: example.
 
 The following lemma states that if a value of allocated type $V$ is in a variable of static type $S$,
 and is passed to a context with a static requirement $T$ but underlying dynamic requirement $U$,
@@ -591,10 +598,10 @@ PROVEME
 		\judges{E}{{(\objset{\safe}{e_1}{l}{e_2})}}{S}
 	}
 \trule{O-Set-Unsafe}{
-		\judges{E}{e_1}{\dynamic} \qquad
-		\judges{E}{e_2}{S}
+		\judges{E}{e_1}{S} \qquad
+		\judges{E}{e_2}{T}
 	}{
-		\judges{E}{(\objset{\unsafe}{e_1}{l}{e_2})}{S}
+		\judges{E}{(\objset{\unsafe}{e_1}{l}{e_2})}{T}
 	}
 \headtrule{$\judges{E}{\sigma,e}{ok}$}{\underline{O}ptimization rules for states}
 \trule{O-State}{
@@ -671,6 +678,8 @@ The type system is based on the \emph{convertibility relation} $\convertible{S}{
 to see if an expression of static type $S$ can be passed to a context expecting a type $T$.
 The relation $\convertible S T$ holds if there exists $U$ such that $\subtype S U$ and $\consistent U T$. 
 In turn, the \emph{consistency relation} $\consistent U T$ checks if types $U$ and $T$ are identical, where $\dynamic$ in either $U$ or $T$ matches any type. Thus, consistency extends the compatibility relation, and it is symmetric but not transitive.
+
+TODO: When do we have guarantees?
 
 \begin{displayfigure}{thp}{Type Rules for Strict Mode}
 \label{fig:typerules}
