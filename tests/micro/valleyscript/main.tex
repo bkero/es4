@@ -58,6 +58,7 @@
 \newcommand{\subtype}[2]{#1 \subtypeword #2}
 \newcommand{\compatible}[2]{#1 \leadsto #2}
 \newcommand{\comsubtype}[2]{#1 <\!\!\leadsto #2}
+\newcommand{\comeqtype}[2]{#1 =\!\leadsto #2}
 \newcommand{\csupertype}[2]{#1 >\leadsto #2}
 
 \newcommand{\consistent}[2]{#1 \sim #2}
@@ -308,6 +309,62 @@ We have:
 	\objty{\dots}	   	& \comsubtype{}{}&  \objty{} \\
 \end{array}
 \]
+
+Figure~\ref{fig:alg} presents an algorithm (really, a collection of syntax-directed rules) for $\comsubtype{}{}$.
+
+\begin{displayfigure}{th}{Compatible-Subtyping Algorithm}
+\label{fig:alg}
+\begin{trules}
+\headtrule{$\comsubtype{S}{T}$}{Compatible-Subtyping}
+\trule{CS-Int}{
+	}{
+		\comsubtype \Int \Int
+	}
+\trule{CS-Dyn}{
+	}{
+		\comsubtype{T}{*}
+	}
+\trule{CS-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\comeqtype{S_1}{T_1} \qquad
+		\comsubtype{S_2}{T_2}
+	}{
+		\comsubtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{CS-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\comsubtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\headtrule{$\comeqtype{S}{T}$}{Compatible-Equality}
+\trule{CE-Int}{
+	}{
+		\comeqtype \Int \Int
+	}
+\trule{CE-Dyn}{
+	}{
+		\comeqtype{T}{\dynamic}
+	}
+\trule{CE-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\comeqtype{S_1}{T_1} \qquad
+		\comeqtype{S_2}{T_2}
+	}{
+		\comeqtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{CE-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\comeqtype{\objty{l_i:S_i^{i\in 1..n}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\end{trules}
+\end{displayfigure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \myclearpage
@@ -847,7 +904,7 @@ We extend compatibility and consistency to \t{like} and \t{wrap} types.
 	}{
 		\compatible{\likety S}{\likety T}
 	}
-\trule{Com-Like}{
+\trule{Com-Wrap}{
 		\compatible S T
 	}{
 		\compatible{\wrapty S}{\wrapty T}
@@ -857,7 +914,7 @@ We extend compatibility and consistency to \t{like} and \t{wrap} types.
 	}{
 		\consistent{\likety S}{\likety T}
 	}
-\trule{Con-Like}{
+\trule{Con-Wrap}{
 		\consistent S T
 	}{
 		\consistent{\wrapty S}{\wrapty T}
