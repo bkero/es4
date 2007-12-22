@@ -69,6 +69,7 @@ type ATTRS = { dontDelete: bool,
                isFixed: bool }     
              
 datatype VAL = Object of OBJ
+             | Wrapped of (VAL * Ast.TYPE_EXPR)
              | Null
              | Undef
 
@@ -752,6 +753,10 @@ fun inspect (v:VAL)
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"
+          | printVal indent n (Wrapped (v, t)) = 
+            (TextIO.print ("wrapped " ^ (typ t) ^ ":\n");
+             printVal (indent+1) (n-1) v)
+            
           | printVal indent 0 (Object (Obj ob)) =
             (TextIO.print (case !(#magic ob) of
                                NONE => tag (Obj ob)

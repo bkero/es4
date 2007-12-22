@@ -615,6 +615,17 @@ and ty2norm (prog:Fixture.PROGRAM)
           | _ => repackage ty
     end
 
+
+fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
+    Ustring.stringEquals name (#name field) 
+    
+fun extractFieldType (name:Ast.IDENT) 
+                     (fields:Ast.FIELD_TYPE list)
+    : (Ast.TYPE_EXPR * Ast.FIELD_TYPE list) option = 
+    case List.partition (isNamedField name) fields of
+        ([field], rest) => SOME ((#ty field), rest)
+      | _ => NONE
+             
 (* -----------------------------------------------------------------------------
  * Equality
  * ----------------------------------------------------------------------------- *)
@@ -651,35 +662,6 @@ fun groundEquals (t1:Ast.TYPE_EXPR)
                 then error ["groundEquals on non-ground terms"]
                 else ()
 
-                     
-        fun allEqual [] [] = true
-          | allEqual (x::xs) (y::ys) = groundEquals x y 
-                                       andalso  allEqual xs ys
-          | allEqual _ _ = false
-
-
-        fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
-            Ustring.stringEquals name (#name field) 
-            
-        fun extractFieldType (name:Ast.IDENT) 
-                             (fields:Ast.FIELD_TYPE list)
-            : (Ast.TYPE_EXPR * Ast.FIELD_TYPE list) option = 
-            case List.partition (isNamedField name) fields of
-                ([field], rest) => SOME ((#ty field), rest)
-              | _ => NONE
-
-        fun fieldTypesEqual [] [] = true
-          | fieldTypesEqual ({ name, ty }::ts1) ts2 =
-            (case extractFieldType name ts2 of
-                 NONE => false
-               | SOME (ty2, rest) => groundEquals ty ty2
-                                     andalso fieldTypesEqual ts1 rest)
-          | fieldTypesEqual _ _ = false
-                                      
-        fun optionEqual NONE NONE = true
-          | optionEqual (SOME t1) (SOME t2) = groundEquals t1 t2
-          | optionEqual _ _ = false
-
         val res = 
             case (t1, t2) of
                 (Ast.SpecialType st1, Ast.SpecialType st2) => st1 = st2
@@ -711,9 +693,9 @@ fun groundEquals (t1:Ast.TYPE_EXPR)
 
               | (Ast.ObjectType fts1, Ast.ObjectType fts2)
                 => fieldTypesEqual fts1 fts2
-
-	      | (Ast.LikeType lt1, Ast.LikeType lt2)
-		=> groundEquals lt1 lt2
+                   
+	          | (Ast.LikeType lt1, Ast.LikeType lt2)
+		        => groundEquals lt1 lt2
 
               | (Ast.InstanceType ity1, Ast.InstanceType ity2)
                 => Mach.nameEq (#name ity1) (#name ity2) andalso
@@ -724,6 +706,22 @@ fun groundEquals (t1:Ast.TYPE_EXPR)
         trace ["<<< groundEquals: ", fmtType t1, " == ", fmtType t2, " = ", Bool.toString res ];
         res
     end
+
+and allEqual xs ys =
+    length xs = length ys andalso 
+    ListPair.all (fn (t1,t2) => groundEquals t1 t2) (xs, ys)
+                   
+and fieldTypesEqual [] [] = true
+  | fieldTypesEqual ({ name, ty }::ts1) ts2 =
+    (case extractFieldType name ts2 of
+         NONE => false
+       | SOME (ty2, rest) => groundEquals ty ty2
+                             andalso fieldTypesEqual ts1 rest)
+  | fieldTypesEqual _ _ = false
+                          
+and optionEqual NONE NONE = true
+  | optionEqual (SOME t1) (SOME t2) = groundEquals t1 t2
+  | optionEqual _ _ = false
 
 val equals = normalizingPredicate groundEquals false
 
@@ -740,45 +738,95 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                 then error ["groundIsSubtype on non-ground terms"]
                 else ()
 
-        val res = if groundEquals t1 t2 then
-                      true
-                  else
-                      case (t1,t2) of
-                          (* FIXME: nullability is a bit of a mess. *)
-                          
-                          ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
-                          nullable
+        val res =
 
-                        | (_, Ast.NullableType { nullable=false, expr }) =>
-                          groundIsSubtype t1 expr
+            (* SUB-REFL *)
 
-                        | (_, Ast.SpecialType Ast.Any) => true
+            if groundEquals t1 t2 then
+                true
+            else
+                case (t1,t2) of
+                    
+                    (* SUB-ARROW *)
+                    
+                    (Ast.FunctionType
+		                 {params  =params1,
+		                  result  =result1,
+		                  thisType=thisType1,
+		                  hasRest =hasRest1,
+	                      minArgs=minArgs1},
+	                 Ast.FunctionType
+		                 {params=params2,
+		                  result=result2,
+		                  thisType=thisType2,
+		                  hasRest=hasRest2,
+		                  minArgs=minArgs2}) => 
+                    (allEqual params1 params2) andalso
+                    groundIsSubtype result1 result2 andalso
+                    (optionEqual thisType1 thisType2) andalso
+                    hasRest1 = hasRest2 andalso
+                    minArgs1 = minArgs2
 
-	                | (Ast.UnionType types1,_) =>
-	                  List.all (fn t => groundIsSubtype t t2) types1
-			  
-	                | (_, Ast.UnionType types2) =>
-	                  List.exists (fn t => groundIsSubtype t1 t) types2
+                  (* SUB-OBJ *) 
 
-                        | (Ast.ArrayType _, Ast.InstanceType it2) =>
-                          (#name it2) = Name.nons_Array orelse
-                          (#name it2) = Name.nons_Object
-                          
-                        | (Ast.ObjectType _, Ast.InstanceType it2) =>
-                          (#name it2) = Name.nons_Object
+                  | (Ast.ObjectType fts1,
+                     Ast.ObjectType fts2)
+                    => fieldTypesEqual (List.take (fts1, Int.min (length fts1, length fts2))) fts2
 
-			| (_, Ast.LikeType lt2) => 
-			  groundIsCompatible t1 lt2
+                  (* SUB-LIKE-COV *)
 
-                        | (Ast.FunctionType _, Ast.InstanceType it2) =>
-                          (#name it2) = Name.nons_Function orelse
-                          (#name it2) = Name.nons_Object
+			      | (Ast.LikeType lt1,
+                     Ast.LikeType lt2) =>
+			        groundIsSubtype lt1 lt2
 
-                        | (Ast.InstanceType it1, Ast.InstanceType it2) =>
-                          List.exists (fn sup => groundIsSubtype sup t2) 
-                                      (#superTypes it1)
-                          
-                        | _ => false
+                  (* SUB-LIKE-INC *)
+
+			      | (_, Ast.LikeType lt2) =>
+			        groundIsSubtype t1 lt2
+
+                  (* SUB-WRAP *)
+
+			      | (Ast.WrapType wt1, _) =>
+			        groundIsSubtype wt1 t2
+
+                  (* Extra rules covering nullable, array and union types. *)
+
+                  | ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
+                    nullable
+                    
+                  | (_, Ast.NullableType { nullable=false, expr }) =>
+                    groundIsSubtype t1 expr
+
+                  | (Ast.ArrayType ets1,
+                     Ast.ArrayType ets2)
+                    => allEqual (List.take (ets1, Int.min (length ets1, length ets2))) ets2
+
+	              | (Ast.UnionType types1,_) =>
+	                List.all (fn t => groundIsSubtype t t2) types1
+			        
+	              | (_, Ast.UnionType types2) =>
+	                List.exists (fn t => groundIsSubtype t1 t) types2
+
+                  (* Extra rules connecting structural types to nominal types. *)
+
+                  | (Ast.FunctionType _, Ast.InstanceType it2) =>
+                    (#name it2) = Name.nons_Function orelse
+                    (#name it2) = Name.nons_Object
+
+                  | (Ast.ArrayType _, Ast.InstanceType it2) =>
+                    (#name it2) = Name.nons_Array orelse
+                    (#name it2) = Name.nons_Object
+                    
+                  | (Ast.ObjectType _, Ast.InstanceType it2) =>
+                    (#name it2) = Name.nons_Object
+
+                  (* The nominal subtyping encoded into instance types. *) 
+
+                  | (Ast.InstanceType it1, Ast.InstanceType it2) =>
+                    List.exists (fn sup => groundIsSubtype sup t2) 
+                                (#superTypes it1)
+                    
+                  | _ => false
     in
         trace ["<<< groundIsSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
         res
@@ -793,67 +841,259 @@ and groundIsCompatible (t1:Ast.TYPE_EXPR)
     : bool = 
     let
         val _ = trace [">>> groundIsCompatible: ", fmtType t1, " ~: ", fmtType t2 ]
-        val res = (groundIsSubtype t1 t2) orelse
-	              (groundEquals t1 anyType) orelse
-	              (groundEquals t2 anyType) orelse
-	              case (t1,t2) of
-	                  (Ast.UnionType types1,_) =>
-	                  List.all (fn t => groundIsCompatible t t2) types1
-	                | (_, Ast.UnionType types2) =>
-	                  (* t1 must exist in types2 *)
-	                  List.exists (fn t => groundIsCompatible t1 t) types2
-	                | (Ast.ArrayType types1, Ast.ArrayType types2) =>
-	                  (* arrays are invariant, every entry should be compatible in both directions *)
-	                  let fun check (h1::t1) (h2::t2) =
-		                      (groundIsCompatible h1 h2)
-		                      andalso
-		                      (groundIsCompatible h2 h1)
-		                      andalso
-		                      (case (t1,t2) of
-			                       ([],[]) => true
-		                         | ([],_::_) => check [h1] t2
-		                         | (_::_,[]) => check t1 [h2]
-		                         | (_::_,_::_) => check t1 t2)
-                            | check _ _ =
-                              error ["unexpected array types: ",
-                                     LogErr.ty t1, " vs. ", LogErr.ty t2]
-	                  in
-		                  check types1 types2
-	                  end
-                      
-	                | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
-	                  false
+        val _ = if not (isGroundType t1 andalso isGroundType t2)
+                then error ["groundIsCompatible on non-ground terms"]
+                else ()
 
-	                | (Ast.FunctionType
-		                   {params  =params1,
-		                    result  =result1,
-		                    thisType=thisType1,
-		                    hasRest =hasRest1,
-	                        minArgs=minArgs},
-	                   Ast.FunctionType
-		                   {params=params2,
-		                    result=result2,
-		                    thisType=thisType2,
-		                    hasRest=hasRest2,
-		                    minArgs=minArgs2}) =>
-	                  let
-	                  in
-		                  (* TODO: Assume for now that functions are not polymorphic *)
-		                  assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
+        val res = 
+            
+            (* COM-REFL *)
 
-		                  ListPair.all (fn (t1,t2) => groundIsCompatible t1 t2) (params1,params2)
-		                  andalso
-		                  groundIsCompatible result1 result2
-	                  end
+            if groundEquals t1 t2 then
+                true
+            else
+                
+	            case (t1,t2) of
+                    
+                    (* COM-DYN *)
+                    
+                    (_, Ast.SpecialType Ast.Any) => true
+                                                    
+                  (* COM-OBJ *)
+                                                    
+	              | (Ast.ObjectType fields1,
+                     Ast.ObjectType fields2) =>
+                    fieldTypesCompatible fields1 fields2
+                    
+                  (* COM-ARROW *)
 
-                    | _ => false
+	              | (Ast.FunctionType
+		                 {params  =params1,
+		                  result  =result1,
+		                  thisType=thisType1,
+		                  hasRest =hasRest1,
+	                      minArgs=minArgs1},
+	                 Ast.FunctionType
+		                 {params=params2,
+		                  result=result2,
+		                  thisType=thisType2,
+		                  hasRest=hasRest2,
+		                  minArgs=minArgs2}) =>
+                    allCompatible params1 params2 andalso
+		            groundIsCompatible result1 result2 andalso
+                    (optionEqual thisType1 thisType2) andalso
+                    hasRest1 = hasRest2 andalso
+                    minArgs1 = minArgs2
+
+                  (* COM-LIKE *)
+                    
+			      | (Ast.LikeType lt1,
+                     Ast.LikeType lt2) =>
+			        groundIsCompatible lt1 lt2
+
+                  (* COM-WRAP *)
+                    
+			      | (Ast.WrapType wt1,
+                     Ast.WrapType wt2) =>
+			        groundIsCompatible wt1 wt2
+                    
+                  (* Extra rules covering nullable, array and union types. *)
+
+                  | ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
+                    nullable
+                    
+                  | (_, Ast.NullableType { nullable=false, expr }) =>
+                    groundIsCompatible t1 expr
+
+	              | (Ast.ArrayType types1, 
+                     Ast.ArrayType types2) =>
+                    allCompatible types1 types2
+
+	              | (Ast.UnionType types1,_) =>
+	                List.all (fn t => groundIsCompatible t t2) types1
+
+	              | (_, Ast.UnionType types2) =>
+	                List.exists (fn t => groundIsCompatible t1 t) types2
+
+                  | _ => false
     in
         trace ["<<< isCompatible: ", fmtType t1, " ~: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
 
+and allCompatible xs ys = 
+    length xs = length ys andalso 
+    ListPair.all (fn (t1,t2) => groundIsCompatible t1 t2) (xs, ys)
+                   
+and fieldTypesCompatible [] [] = true
+  | fieldTypesCompatible ({ name, ty }::ts1) ts2 =
+    (case extractFieldType name ts2 of
+         NONE => false
+       | SOME (ty2, rest) => groundIsCompatible ty ty2 andalso fieldTypesCompatible ts1 rest)                             
+  | fieldTypesCompatible _ _ = false
+                               
+
 val isCompatible = normalizingPredicate groundIsCompatible false
 val isSubtype = normalizingPredicate groundIsSubtype false
+
+
+(* -----------------------------------------------------------------------------
+ * Compatible-subtyping
+ * ----------------------------------------------------------------------------- *)
+
+fun prefixes [] = []
+  | prefixes xs =
+    let
+        val len = length xs
+        fun prefixes' n es = if n = len
+                             then [es]
+                             else (List.take (es, n)) :: (prefixes' (n+1) es)
+    in        
+        prefixes' 1 xs
+    end
+
+fun subsets [] = [[]]
+  | subsets (x::xs) = 
+    let 
+	    val rest = subsets xs 
+    in 
+	    rest @ (map (fn elt => x :: elt) rest) 
+    end
+    
+fun groundIsCompatibleSubtype (ty1:Ast.TYPE_EXPR) 
+                              (ty2:Ast.TYPE_EXPR)
+    : bool = 
+    let
+        fun tryType u = groundIsSubtype ty1 u andalso groundIsCompatible u ty2
+    in
+        case ty2 of 
+            Ast.ArrayType ts => 
+            let
+                val arrayPrefixes = map (fn ts => Ast.ArrayType ts) (prefixes ts)
+            in
+                List.exists tryType arrayPrefixes
+            end
+                
+          | Ast.ObjectType fields => 
+            let
+                val fieldSubsets = map (fn fs => Ast.ObjectType fs) (subsets fields)
+            in
+                List.exists tryType fieldSubsets
+            end
+            
+          (* FIXME: probably some more cases are worth exploring. *)
+
+          | _ => tryType ty1 orelse tryType ty2
+    end
+    
+
+val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype false
+
+
+(* -----------------------------------------------------------------------------
+ * Consistency
+ * ----------------------------------------------------------------------------- *)
+
+fun groundIsConsistent (t1:Ast.TYPE_EXPR)
+                       (t2:Ast.TYPE_EXPR)
+    : bool = 
+    let
+        val _ = trace [">>> groundIsConsistent: ", fmtType t1, " ~: ", fmtType t2 ]
+        val _ = if not (isGroundType t1 andalso isGroundType t2)
+                then error ["groundIsConsistent on non-ground terms"]
+                else ()
+
+        val res = 
+            
+            (* CON-REFL *)
+
+            if groundEquals t1 t2 then
+                true
+            else
+                
+	            case (t1,t2) of
+                    
+                    (* CON-DYN *)
+                    
+                    (_, Ast.SpecialType Ast.Any) => true
+                  | (Ast.SpecialType Ast.Any, _) => true
+                                                    
+                  (* CON-OBJ *)
+                                                    
+	              | (Ast.ObjectType fields1,
+                     Ast.ObjectType fields2) =>
+                    fieldTypesConsistent fields1 fields2
+                    
+                  (* CON-ARROW *)
+
+	              | (Ast.FunctionType
+		                 {params  =params1,
+		                  result  =result1,
+		                  thisType=thisType1,
+		                  hasRest =hasRest1,
+	                      minArgs=minArgs1},
+	                 Ast.FunctionType
+		                 {params=params2,
+		                  result=result2,
+		                  thisType=thisType2,
+		                  hasRest=hasRest2,
+		                  minArgs=minArgs2}) =>
+                    allConsistent params1 params2 andalso
+		            groundIsConsistent result1 result2 andalso
+                    (optionEqual thisType1 thisType2) andalso
+                    hasRest1 = hasRest2 andalso
+                    minArgs1 = minArgs2
+
+                  (* CON-LIKE *)
+                    
+			      | (Ast.LikeType lt1,
+                     Ast.LikeType lt2) =>
+			        groundIsConsistent lt1 lt2
+
+                  (* CON-WRAP *)
+                    
+			      | (Ast.WrapType wt1,
+                     Ast.WrapType wt2) =>
+			        groundIsConsistent wt1 wt2
+
+                  (* Extra rules covering nullable, array and union types. *)
+
+                  | ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
+                    nullable
+                    
+                  | (_, Ast.NullableType { nullable=false, expr }) =>
+                    groundIsConsistent t1 expr
+
+	              | (Ast.ArrayType types1, 
+                     Ast.ArrayType types2) =>
+                    allConsistent types1 types2
+
+	              | (Ast.UnionType types1,_) =>
+	                List.all (fn t => groundIsConsistent t t2) types1
+
+	              | (_, Ast.UnionType types2) =>
+	                List.exists (fn t => groundIsConsistent t1 t) types2
+
+                  | _ => false
+    in
+        trace ["<<< isConsistent: ", fmtType t1, " ~ ", fmtType t2, " = ", Bool.toString res ];
+        res
+    end
+
+
+and allConsistent xs ys =
+    length xs = length ys andalso 
+    ListPair.exists (fn (t1,t2) => groundIsConsistent t1 t2) (xs, ys)
+                   
+and fieldTypesConsistent [] [] = true
+  | fieldTypesConsistent ({ name, ty }::ts1) ts2 =
+    (case extractFieldType name ts2 of
+         NONE => false
+       | SOME (ty2, rest) => groundIsConsistent ty ty2
+                             andalso fieldTypesConsistent ts1 rest)
+  | fieldTypesConsistent _ _ = false
+
+val isConsistent = normalizingPredicate groundIsConsistent false
 
 
 (* -----------------------------------------------------------------------------
@@ -885,9 +1125,7 @@ fun getNamedGroundType (prog:Fixture.PROGRAM)
 
 
 (*
- * When investigating ty1 ~~> ty2, call this.
- *
- * It checks a matrix of predefined conversions and returns an instanceType
+ * Checks a matrix of predefined conversions and returns an instanceType
  * expression if one exists for a defined target conversion form of ty2.
  * 
  * The return value *should* be a type you can look up, find a class C for,
@@ -997,6 +1235,39 @@ fun findConversion (prog:Fixture.PROGRAM)
                    (t1:Ast.TY)
                    (t2:Ast.TY) = 
     normalizingPredicate (groundFindConversion prog) NONE prog locals t1 t2
+
+
+fun groundIsConvertible (prog:Fixture.PROGRAM)
+                        (t1:Ast.TYPE_EXPR) 
+                        (t2:Ast.TYPE_EXPR)
+    : bool = 
+    case groundFindConversion prog t1 t2 of
+        SOME _ => true
+      | NONE => 
+        let
+            fun tryType u = groundIsSubtype t1 u andalso groundIsConsistent u t2
+        in
+            case t2 of 
+                Ast.ArrayType ts => 
+                let
+                    val arrayPrefixes = map (fn ts => Ast.ArrayType ts) (prefixes ts)
+                in
+                    List.exists tryType arrayPrefixes
+                end
+                
+              | Ast.ObjectType fields => 
+                let
+                    val fieldSubsets = map (fn fs => Ast.ObjectType fs) (subsets fields)
+                in
+                    List.exists tryType fieldSubsets
+                end
+                
+              (* FIXME: probably some more cases are worth exploring. *)
+
+              | _ => tryType t1 orelse 
+                     tryType t2 orelse 
+                     tryType (Ast.SpecialType Ast.Any)
+        end
 
 
 (* 

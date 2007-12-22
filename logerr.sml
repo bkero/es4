@@ -170,6 +170,8 @@ fun ty t =
 	    "{" ^ fieldList fields ^ "}"
           | Ast.LikeType t => 
 	    "like(" ^ (ty t) ^ ")"
+          | Ast.WrapType t => 
+	    "wrap(" ^ (ty t) ^ ")"
           | Ast.AppType {base, args} => 
 	    (ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NullableType { expr, nullable } => 

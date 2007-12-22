@@ -172,6 +172,7 @@ datatype TOKEN =
     | UInt
     | Undefined
     | Use
+    | Wrap
     | Xml
     | Yield
 
@@ -382,6 +383,7 @@ fun tokenname (t,_) =
       | UInt => "uint"
       | Undefined => "undefined"
       | Use => "use"
+      | Wrap => "wrap"
       | Xml => "xml"
       | Yield => "yield"
 

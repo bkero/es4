@@ -921,14 +921,17 @@ and isDynamic (regs:Mach.REGS)
               (obj:Mach.OBJ)
     : bool =
     let
-        val tag = getObjTag obj
+        fun typeIsDynamic (Ast.UnionType tys) = List.exists typeIsDynamic tys
+          | typeIsDynamic (Ast.ArrayType _) = true
+          | typeIsDynamic (Ast.FunctionType _) = true
+          | typeIsDynamic (Ast.ObjectType _) = true
+          | typeIsDynamic (Ast.LikeType _) = true
+          | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body
+          | typeIsDynamic (Ast.NullableType {expr, nullable}) = typeIsDynamic expr
+          | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
+          | typeIsDynamic _ = false
     in
-        case tag of
-            Mach.ObjectTag _ => true
-          | Mach.ArrayTag _ => true
-          | Mach.FunctionTag _ => true
-          | Mach.NoTag => true
-          | Mach.ClassTag ity => (#dynamic ity)
+        typeIsDynamic (typeOfVal regs (Mach.Object obj))
     end
 
 
@@ -3187,6 +3190,7 @@ and typeOfVal (regs:Mach.REGS)
         val te = case v of
                      Mach.Undef => Ast.SpecialType Ast.Undefined
                    | Mach.Null => Ast.SpecialType Ast.Null
+                   | Mach.Wrapped (_,t) => t
                    | Mach.Object obj => 
                      let 
                          val tag = getObjTag obj
@@ -3251,11 +3255,20 @@ and evalOperatorIs (regs:Mach.REGS)
     in
         case te of 
             Ast.LikeType lte => isLike v lte
-          | _ => (* FIXME: Should this be ~: or <:? Only the former presently works... *) 
-            Type.groundIsCompatible vt te
+          | _ => Type.groundIsCompatibleSubtype vt te
     end
 
-
+and evalOperatorWrap (regs:Mach.REGS)
+                     (v:Mach.VAL)
+                     (t:Ast.TYPE_EXPR)
+    : Mach.VAL = 
+    if (typeOfVal regs v) <: t
+    then v
+    else 
+        if evalOperatorIs regs v t
+        then Mach.Wrapped (v, t)
+        else (typeOpFailure regs "wrapping failed" v t; dummyVal)
+             
 
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
@@ -3271,6 +3284,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             then v
             else (typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty); dummyVal)
           | Ast.To => checkAndConvert regs v ty
+          | Ast.Wrap => evalOperatorWrap regs v (evalTy regs ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end
 

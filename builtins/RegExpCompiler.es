@@ -65,7 +65,7 @@ package RegExpInternals
         var   idx : uint;              // current character in the source
         var   largest_backref : uint;  // largest back reference seen
         var   extended : boolean;      // true iff expression has /x flag  // FIXME: const.  Ticket #24.
-        var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
+        var   names : [string?] = []:[string?];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
         var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const.  Ticket #24.
 
         function RegExpCompiler( source : string, flags  )
@@ -162,12 +162,12 @@ package RegExpInternals
                 greedy = false;
                 advance();
             }
-            return [min,max,greedy];
+            return [min,max,greedy] : [double,double,boolean];
         }
 
-        static const star = [0,Infinity];
-        static const plus = [1,Infinity];
-        static const ques = [0,1];
+        static const star = [0,Infinity] : [double,double];
+        static const plus = [1,Infinity] : [double,double];
+        static const ques = [0,1] : [double,double];
 
         function quantifierPrefix() : [double, double]? {
             switch (peekCharCode()) {
@@ -200,7 +200,7 @@ package RegExpInternals
                         match("}");
                     if (isFinite(max) && max < min)
                         fail( SyntaxError, "max quant must be at least as large as min" );
-                    return [min,max];
+                    return [min,max] : [double,double];
                 }
 
             default:

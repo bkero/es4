@@ -475,6 +475,7 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | UInt => tn ()
       | Undefined => tn ()
       | Use => tn ()
+      | Wrap => tn ()
       | Xml => tn ()
       | Yield => tn ()
       | _ => error ["expecting 'identifier' before '",tokenname (t,()),"'"]
@@ -2570,6 +2571,12 @@ and relationalExpression (ts:TOKENS, a:ALPHA, b:BETA)
                         val (ts3,nd3) = typeExpression (ts2)
                     in
                         relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Is,nd1,nd3),a,AllowIn)
+                    end
+              | ((Wrap, _) :: ts2, _) =>
+                    let
+                        val (ts3,nd3) = typeExpression (ts2)
+                    in
+                        relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Wrap,nd1,nd3),a,AllowIn)
                     end
               | (_,_) =>
                     (trace(["<< relationalExpression"]);(ts1,nd1))
