@@ -6,6 +6,7 @@
 \input{restate.sty}
 
 \newcommand{\myclearpage}{}
+\renewcommand{\myclearpage}{\clearpage}
 \setlength{\textwidth}{6.5in}
 \setlength{\oddsidemargin}{0in}
 \setlength{\textheight}{8.5in}
@@ -53,13 +54,16 @@
 \newcommand{\arrowt}[2]{#1\rightarrow #2}
 \newcommand{\defeq}{\stackrel{\mathrm{def}}{=}}
 
-\newcommand{\convertible}[2]{#1 \prec #2}
+\newcommand{\matches}[2]{#1 \prec #2}
 \newcommand{\subtypeword}{\,<\,}
 \newcommand{\subtype}[2]{#1 \subtypeword #2}
 \newcommand{\compatible}[2]{#1 \leadsto #2}
+\renewcommand{\compatible}[2]{#1 -\!\!\!*\,\, #2}
 \newcommand{\comsubtype}[2]{#1 <\!\!\leadsto #2}
+\renewcommand{\comsubtype}[2]{#1 <\!\!\!*\,\, #2}
 \newcommand{\comeqtype}[2]{#1 =\!\leadsto #2}
-\newcommand{\csupertype}[2]{#1 >\leadsto #2}
+\renewcommand{\comeqtype}[2]{#1 =\!\!*\,\, #2}
+%\newcommand{\csupertype}[2]{#1 >\leadsto #2}
 
 \newcommand{\consistent}[2]{#1 \sim #2}
 \newcommand{\consubtype}[2]{#1 <\!\!\sim #2}
@@ -309,62 +313,6 @@ We have:
 	\objty{\dots}	   	& \comsubtype{}{}&  \objty{} \\
 \end{array}
 \]
-
-Figure~\ref{fig:alg} presents an algorithm (really, a collection of syntax-directed rules) for $\comsubtype{}{}$.
-
-\begin{displayfigure}{th}{Compatible-Subtyping Algorithm}
-\label{fig:alg}
-\begin{trules}
-\headtrule{$\comsubtype{S}{T}$}{Compatible-Subtyping}
-\trule{CS-Int}{
-	}{
-		\comsubtype \Int \Int
-	}
-\trule{CS-Dyn}{
-	}{
-		\comsubtype{T}{*}
-	}
-\trule{CS-Arrow}{
-		%\subtype{T_1}{S_1} \qquad
-		\comeqtype{S_1}{T_1} \qquad
-		\comsubtype{S_2}{T_2}
-	}{
-		\comsubtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
-	}
-\trule{CS-Obj}{
-		%\subtype{T_i}{S_i}\qquad
-		%\subtype{S_i}{T_i} 
-		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
-	}{
-		\comsubtype{\objty{l_i:S_i^{i\in 1..n+m}}}
-				{\objty{l_i:T_i^{i\in 1..n}}}
-	}
-\headtrule{$\comeqtype{S}{T}$}{Compatible-Equality}
-\trule{CE-Int}{
-	}{
-		\comeqtype \Int \Int
-	}
-\trule{CE-Dyn}{
-	}{
-		\comeqtype{T}{\dynamic}
-	}
-\trule{CE-Arrow}{
-		%\subtype{T_1}{S_1} \qquad
-		\comeqtype{S_1}{T_1} \qquad
-		\comeqtype{S_2}{T_2}
-	}{
-		\comeqtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
-	}
-\trule{CE-Obj}{
-		%\subtype{T_i}{S_i}\qquad
-		%\subtype{S_i}{T_i} 
-		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
-	}{
-		\comeqtype{\objty{l_i:S_i^{i\in 1..n}}}
-				{\objty{l_i:T_i^{i\in 1..n}}}
-	}
-\end{trules}
-\end{displayfigure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \myclearpage
@@ -687,15 +635,15 @@ PROVEME
 \myclearpage
 \section{Strict Mode Type System}
 
-\begin{displayfigure}{th}{Convertibility and Consistency}
+\begin{displayfigure}{th}{Matching and Consistency}
 \label{fig:convert}
 \begin{trules}
-\headtrule{$\convertible{S}{T}$}{Convertibility}
-\trule{Con-Refl}{
+\headtrule{$\matches{S}{T}$}{Matching}
+\trule{Match-Refl}{
 		\subtype S U \qquad
 		\consistent U T
 	}{
-		\convertible{S}{T}
+		\matches{S}{T}
 	}
 \headtrule{$\consistent{S}{T}$}{Consistency}
 \trule{Con-Refl}{
@@ -731,9 +679,9 @@ stating that expression $e$ has type $T$ in environment $E$.
 Note that the type $T$ \emph{only} indicates that $e$ \emph{is intended to} produce values of type $T$; it provides no guarantees, 
 and the sole purpose of the strict mode type system is to heuristically detect errors at verification time.
 
-The type system is based on the \emph{convertibility relation} $\convertible{S}{T}$ (shown in Figure~\ref{fig:convert})
+The type system is based on the \emph{matching relation} $\matches{S}{T}$ (shown in Figure~\ref{fig:convert})
 to see if an expression of static type $S$ can be passed to a context expecting a type $T$.
-The relation $\convertible S T$ holds if there exists $U$ such that $\subtype S U$ and $\consistent U T$. 
+The relation $\matches S T$ holds if there exists $U$ such that $\subtype S U$ and $\consistent U T$. 
 In turn, the \emph{consistency relation} $\consistent U T$ checks if types $U$ and $T$ are identical, where $\dynamic$ in either $U$ or $T$ matches any type. Thus, consistency extends the compatibility relation, and it is symmetric but not transitive.
 
 TODO: When do we have guarantees?
@@ -753,14 +701,14 @@ TODO: When do we have guarantees?
 	}
 \trule{T-Fun}{
 		\judge{E,x:S}{e}{T'} \qquad
-		\convertible{T'}{T} 
+		\matches{T'}{T} 
 	}{
 		\judge{E}{(\lam{}{x}{S}{T}{e})}{(\lamt{S}{T})}
 	}
 \trule{T-App1}{
 		\judge{E}{t_1}{(\lamt{S}{T})}\qquad
 		\judge{E}{t_2}{S'} \qquad
-		\convertible{S'}{S} \\
+		\matches{S'}{S} \\
 	%	(k,k')\in\setz{(\likety{},\likety{\!\!}),(\wrapty{},\epsilon),(\epsilon,\epsilon)} \\
 	}{
 		\judge{E}{(\app{}{t_1}{t_2})}{T}
@@ -785,7 +733,7 @@ TODO: When do we have guarantees?
 %	}
 \trule{T-Alloc}{
 		\judge{E}{t_i}{S_i} \qquad
-		\convertible{S_i}{T_i} \qquad
+		\matches{S_i}{T_i} \qquad
 		T=\objty{l_i:T_i^{i\in 1..n}}
 	}{
 		\judge{E}{(\obje{}{l_i=t_i^{i\in 1..n}}{T})}{T}
@@ -804,7 +752,7 @@ TODO: When do we have guarantees?
 \trule{T-Set1}{
 		\judge{E}{e_1}{\objty{l:T,\dots}} \qquad
 		\judge{E}{e_2}{S} \qquad
-		\convertible{S}{T}  
+		\matches{S}{T}  
 	}{
 		\judge{E}{\objset{}{e_1}{l}{e_2}}{S}
 	}
@@ -893,6 +841,11 @@ For subtyping, $\likety{S}$ is a supertype of $S$ (describes more values) and is
 	}{
 		\subtype {\wrapty S} T
 	}
+\trule{Sub-Wrap-Cov}{
+		\subtype S T 
+	}{
+		\subtype {\wrapty S} {\wrapty T}
+	}
 \end{trules}
 %
 We extend compatibility and consistency to \t{like} and \t{wrap} types.
@@ -921,12 +874,12 @@ We extend compatibility and consistency to \t{like} and \t{wrap} types.
 	}
 \end{trules} 
 %
-We extend the convertibility relation to allow int-to-boolean conversions:
+We extend the matching relation to allow int-to-boolean conversions:
 %
 \begin{trules}
-\trule{Conv-Int-Bool}{
+\trule{Match-Int-Bool}{
 	}{
-		\convertible{\Int}{\Bool}
+		\matches{\Int}{\Bool}
 	}
 \end{trules}
 We extend \fun{convert} as follows:
@@ -984,7 +937,118 @@ We add the type checking and optimization rules for the wrap operation and boole
 \end{trules}
 We conjecture (but have not proved!) that the resulting system then behaves as intended. 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\section{Algorithms}
+
+
+Figure~\ref{fig:alg} presents an algorithm for $\comsubtype{}{}$.
+These rules are not quite syntax-directed, but ambiguities are resolved in favor of the more specific rule.
+That is, \rel{CS-Like-Con} is preferred to \rel{CS-Like-Inc}, and ditto \rel{CS-Wrap-Cov} over \rel{CS-Wrap}.
+
+\begin{displayfigure}{th}{Compatible-Subtyping Algorithm}
+\footnotesize
+\label{fig:alg}
+\begin{trules}
+\headtrule{$\comsubtype{S}{T}$}{Compatible-Subtyping}
+\trule{CS-Int}{
+	}{
+		\comsubtype \Int \Int
+	}
+\trule{CS-Dyn}{
+	}{
+		\comsubtype{T}{*}
+	}
+\trule{CS-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\comeqtype{S_1}{T_1} \qquad
+		\comsubtype{S_2}{T_2}
+	}{
+		\comsubtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{CS-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\comsubtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{CS-Like-Inc}{
+		\comsubtype S T 
+	}{
+		\comsubtype S {\likety T}
+	}
+\trule{CS-Like-Cov}{
+		\comsubtype S T 
+	}{
+		\comsubtype {\likety S} {\likety T}
+	}
+\trule{CS-Wrap}{
+		\comsubtype S T
+	}{
+		\comsubtype {\wrapty S} T
+	}
+\trule{CS-Wrap-Cov}{
+		\comsubtype S T 
+	}{
+		\comsubtype {\wrapty S} {\wrapty T}
+	}
+\headtrule{$\comeqtype{S}{T}$}{Compatible-Equality}
+\trule{CE-Int}{
+	}{
+		\comeqtype \Int \Int
+	}
+\trule{CE-Dyn}{
+	}{
+		\comeqtype{T}{\dynamic}
+	}
+\trule{CE-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\comeqtype{S_1}{T_1} \qquad
+		\comeqtype{S_2}{T_2}
+	}{
+		\comeqtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{CE-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\comeqtype{\objty{l_i:S_i^{i\in 1..n}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{CE-Like}{
+		\comeqtype S T 
+	}{
+		\comeqtype {\likety S} {\likety T}
+	}
+\trule{CE-Wrap}{
+		\comeqtype S T 
+	}{
+		\comeqtype {\wrapty S} {\wrapty T}
+	}
+\end{trules}
+\end{displayfigure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Review}
+
+\[
+\begin{array}{|c|c|l|}
+\hline
+\mbox{Relation} & \mbox{Name} & \mbox{Meaning, properties} \\
+\hline
+\subtype{S}{T} 			& \mbox{Subtyping} 			& \mbox{Transitive, reflexive}\\
+\compatible{S}{T}		&\mbox{Compatible}		& \mbox{Transitive, reflexive, $\compatible{T}{\dynamic}$} \\
+\comsubtype S T		&\mbox{Compatible-subtyping} & \mbox{Transitive, reflexive, $\subtype{}{}\circ\compatible{}{}$}\\
+\implies S T 			&\mbox{Implies}			&\mbox{Transitive, irreflexive, used for optimization}\\
+\consistent S T			&\mbox{Consistency (Siek-Taha)}		&\mbox{Intransitive, reflexive, symmetric, $\consistent T \dynamic$ and $\consistent \dynamic T$} \\
+\matches S T			&\mbox{Matches}				&\mbox{$\subtype{}{}\circ\consistent{}{}$ plus extras, used in strict mode}\\
+\convert v T			&\mbox{}					&\mbox{Converts $v$ to have type $T$, or fails} \\
+\hline
+\end{array}
+\]
 \end{document}
  
