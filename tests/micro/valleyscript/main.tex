@@ -1042,8 +1042,8 @@ That is, \rel{CS-Like-Con} is preferred to \rel{CS-Like-Inc}, and ditto \rel{CS-
 \hline
 \subtype{S}{T} 			& \mbox{Subtyping} 			& \mbox{Transitive, reflexive}\\
 \compatible{S}{T}		&\mbox{Compatible}		& \mbox{Transitive, reflexive, $\compatible{T}{\dynamic}$} \\
-\comsubtype S T		&\mbox{Compatible-subtyping} & \mbox{Transitive, reflexive, $\subtype{}{}\circ\compatible{}{}$}\\
-\implies S T 			&\mbox{Implies}			&\mbox{Transitive, irreflexive, used for optimization}\\
+\comsubtype S T		&\mbox{Compatible-subtyping} & \mbox{Transitive, reflexive, $\subtype{}{}\circ\compatible{}{}$, used for dynamic checks}\\
+\implies S T 			&\mbox{Implies}			&\mbox{Transitive, irreflexive, used for (optional) optimization}\\
 \consistent S T			&\mbox{Consistency (Siek-Taha)}		&\mbox{Intransitive, reflexive, symmetric, $\consistent T \dynamic$ and $\consistent \dynamic T$} \\
 \matches S T			&\mbox{Matches}				&\mbox{$\subtype{}{}\circ\consistent{}{}$ plus extras, used in strict mode}\\
 \convert v T			&\mbox{}					&\mbox{Converts $v$ to have type $T$, or fails} \\
