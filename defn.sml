@@ -1534,7 +1534,7 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
-    : (ENV * Ast.RIB) =
+    : (Ast.PRAGMA list * ENV * Ast.RIB) =
     let
         val program = #program env
         val ribId  = #ribId env
@@ -1557,16 +1557,22 @@ and defPragmas (env:ENV)
 
         fun defPragma x =
             case x of
-                Ast.UseDecimalContext e => ()
+                Ast.UseDecimalContext e =>
+                Ast.UseDecimalContext (defExpr (modifiedEnv()) e)
               | Ast.UseNamespace ns =>
                     let
-                        val namespace = resolveExprToNamespace (modifiedEnv()) ns
+                        val env = modifiedEnv()
+                        val ns = defExpr env ns
+                        val namespace = resolveExprToNamespace env ns
                     in
-                        opennss := addNamespace namespace (!opennss)
+                        opennss := addNamespace namespace (!opennss);
+                        Ast.UseNamespace ns
                     end
               | Ast.UseDefaultNamespace ns =>
                     let
-                        val namespace = resolveExprToNamespace (modifiedEnv()) ns
+                        val env = modifiedEnv()
+                        val ns = defExpr env ns
+                        val namespace = resolveExprToNamespace env ns
                         val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=Ustring.empty}]
                     in
                         (case namespace of
@@ -1576,7 +1582,8 @@ and defPragmas (env:ENV)
                            | (Ast.Private _) => ()
                            | (Ast.Internal _) => ()
                            | _ => opennss := (namespace :: !opennss));
-                        defaultNamespace := namespace
+                        defaultNamespace := namespace;
+                        Ast.UseDefaultNamespace ns
                     end
               | Ast.Import {package,name} =>
                 let
@@ -1585,15 +1592,17 @@ and defPragmas (env:ENV)
                              then Ast.Public id
                              else Ast.LimitedNamespace (name,Ast.Public id)
                 in
-                    (Fixture.addPackageName program package;
-                     trace2 ("openning package ",id);
-                     opennss  := addNamespace ns (!opennss))
+                    Fixture.addPackageName program package;
+                    trace2 ("openning package ",id);
+                    opennss  := addNamespace ns (!opennss);
+                    Ast.Import {package=package, name=name}
                 end
 
-              | _ => ()
+              | p => p
+
+        val newPragmas = map defPragma pragmas                         
     in
-        List.app defPragma pragmas;
-        (modifiedEnv (), !rib)
+        (newPragmas, modifiedEnv (), !rib)
     end
 
 (*
@@ -2589,7 +2598,7 @@ and defBlockFull (env:ENV)
         val env = if top 
                   then env
                   else extendEnvironment env []
-        val (env, unhoisted_pragma_fxtrs) = defPragmas env pragmas
+        val (pragmas, env, unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs, hoisted_defn_fxtrs, inits) = defDefns env defns
         val (body, hoisted_body_fxtrs) = defStmts env body
         val unhoisted = mergeRibs (#program env) 

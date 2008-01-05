@@ -65,6 +65,7 @@ fun nthAsObj (vals:Mach.VAL list)
     let
         fun f Mach.Undef = error ["Wanted Object, got Undef"]
           | f Mach.Null = error ["Wanted Object, got Null"]
+          | f (Mach.Wrapped (v,t)) = nthAsObj [v] n
           | f (Mach.Object ob) = ob
     in
         nthAsA f vals n
@@ -943,24 +944,24 @@ fun assert (regs:Mach.REGS)
 
 fun typename (regs:Mach.REGS)
              (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newString regs
-    (case hd vals of
-        Mach.Null => Ustring.null_
-      | Mach.Undef => Ustring.undefined_
+    : Mach.VAL =    
+    case hd vals of
+        Mach.Null => Eval.newString regs Ustring.null_
+      | Mach.Undef => Eval.newString regs Ustring.undefined_
+      | Mach.Wrapped (v, t) => typename regs [v]
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
-             NONE => Ustring.object_
-           | SOME (Mach.Double _) => Ustring.double_
-           | SOME (Mach.Decimal _) => Ustring.decimal_
-           | SOME (Mach.String _) => Ustring.string_
-           | SOME (Mach.Boolean _) => Ustring.bool_
-           | SOME (Mach.Namespace _) => Ustring.namespace_
-           | SOME (Mach.Class _) => Ustring.class_
-           | SOME (Mach.Interface _) => Ustring.interface_
-           | SOME (Mach.Function _) => Ustring.function_
-           | SOME (Mach.Type _) => Ustring.type_
-           | SOME (Mach.NativeFunction _) => Ustring.native_function_))
+             NONE => Eval.newString regs Ustring.object_
+           | SOME (Mach.Double _) => Eval.newString regs Ustring.double_
+           | SOME (Mach.Decimal _) => Eval.newString regs Ustring.decimal_
+           | SOME (Mach.String _) => Eval.newString regs Ustring.string_
+           | SOME (Mach.Boolean _) => Eval.newString regs Ustring.bool_
+           | SOME (Mach.Namespace _) => Eval.newString regs Ustring.namespace_
+           | SOME (Mach.Class _) => Eval.newString regs Ustring.class_
+           | SOME (Mach.Interface _) => Eval.newString regs Ustring.interface_
+           | SOME (Mach.Function _) => Eval.newString regs Ustring.function_
+           | SOME (Mach.Type _) => Eval.newString regs Ustring.type_
+           | SOME (Mach.NativeFunction _) => Eval.newString regs Ustring.native_function_)
 
 fun dumpFunc (regs:Mach.REGS)
              (vals:Mach.VAL list)

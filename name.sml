@@ -195,6 +195,11 @@ val nons_RegExp = nons Ustring.RegExp_
 val JSON_emit = { ns = Ast.Public Ustring.JSON_, id = Ustring.emit_ }
 val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
 
+(* From DecimalContext.es *)
+val ES4_DecimalContext = ES4 Ustring.DecimalContext_
+val nons_precision = nons Ustring.precision_
+val nons_mode = nons Ustring.mode_
+
 
 (*
  * Natives

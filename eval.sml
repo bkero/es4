@@ -223,6 +223,24 @@ fun withScope (r:Mach.REGS)
          aux=aux}
     end
 
+fun withDecimalContext (r:Mach.REGS)
+                       (newDecimalContext:Mach.DECIMAL_CONTEXT)
+    : Mach.REGS =
+    let
+        val {scope,this,global,prog,aux} = r
+        val Mach.Scope {object, parent, temps, decimal, kind } = scope
+    in
+        {scope=Mach.Scope{object=object,
+                          parent=parent,
+                          temps=temps,
+                          decimal=newDecimalContext,
+                          kind=kind}, 
+         this=this, 
+         global=global, 
+         prog=prog,
+         aux=aux}
+    end
+
 fun withProg (r:Mach.REGS)
              (newProg:Fixture.PROGRAM)
     : Mach.REGS =
@@ -642,6 +660,9 @@ and valAllocState (regs:Mach.REGS)
             Mach.ValProp (Mach.Null)
             
           | Ast.LikeType ty => 
+            valAllocState regs (makeTy ty)
+
+          | Ast.WrapType ty => 
             valAllocState regs (makeTy ty)
             
           | Ast.AppType {base, ...} =>
@@ -1453,6 +1474,7 @@ and toUstring (regs:Mach.REGS)
     case v of
         Mach.Undef => Ustring.undefined_
       | Mach.Null => Ustring.null_
+      | Mach.Wrapped (v, ty) => toUstring regs v
       | Mach.Object obj =>
         let
             val Mach.Obj ob = obj
@@ -1462,6 +1484,7 @@ and toUstring (regs:Mach.REGS)
               | NONE => toUstring regs (toPrimitiveWithStringHint regs v)
         end
 
+
 (*
  * ES-262-3 9.2: The ToBoolean operation
  *)
@@ -1470,6 +1493,7 @@ and toBoolean (v:Mach.VAL) : bool =
     case v of
         Mach.Undef => false
       | Mach.Null => false
+      | Mach.Wrapped (v, ty) => toBoolean v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Boolean b) => b
@@ -1557,6 +1581,7 @@ and toNumeric (regs:Mach.REGS)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
+          | Mach.Wrapped (v, ty) => toNumeric regs v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
                  SOME (Mach.Double _) => v
@@ -1588,6 +1613,7 @@ and toDecimal (ctxt:Mach.DECIMAL_CONTEXT)
     case v of
         Mach.Undef => Decimal.NaN
       | Mach.Null => Decimal.zero
+      | Mach.Wrapped (v, ty) => toDecimal ctxt v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Double d) =>
@@ -1624,6 +1650,7 @@ and toDouble (v:Mach.VAL)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
+          | Mach.Wrapped (v, ty) => toDouble v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
                  SOME (Mach.Double d) => d
@@ -1993,7 +2020,10 @@ and evalSuperCall (regs:Mach.REGS)
                         Multiname mn => mn
                       | Name {ns,id} => {nss=[[ns]], id=id}
                                         
-        val Mach.Obj { tag = Mach.ClassTag thisType, ... } = base
+        val Mach.Obj { tag, ... } = base
+        val thisType = case tag of 
+                           Mach.ClassTag thisType => thisType
+                         | _ => error regs ["missing class-type tag during super call"]
             
         (* 
          *
@@ -2722,6 +2752,7 @@ and evalUnaryOp (regs:Mach.REGS)
                     case v of
                         Mach.Null => Ustring.object_
                       | Mach.Undef => Ustring.undefined_
+                      | Mach.Wrapped (v, ty) => typeNameOfVal v
                       | Mach.Object (Mach.Obj ob) =>
                         let
                             val n = Mach.nominalBaseOfTag (#tag ob)
@@ -2772,6 +2803,7 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.LikeType lt => Mach.Null (* FIXME *)
       | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
+      | _ => Mach.Null (* FIXME *)
 
 
 and wordToDouble (x:Word32.word) 
@@ -3302,6 +3334,7 @@ and hasInstance (regs:Mach.REGS)
             case v' of 
                 Mach.Null => false
               | Mach.Undef => false
+              | Mach.Wrapped (v, ty) => hasInstance regs obj v
               | Mach.Object ob =>
                 if getObjId ob = targId
                 then true
@@ -3517,10 +3550,16 @@ and evalRefExprFull (regs:Mach.REGS)
                 val _ = LogErr.setLoc loc
                 val nomn = evalIdentExpr regs ident
                 val _ = LogErr.setLoc loc
-                val ob = case v of
-                             Mach.Object ob => ob
-                           | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
-                           | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
+                val ob = let
+                    fun extractFrom v = 
+                        case v of
+                            Mach.Object ob => ob
+                          | Mach.Wrapped (v',t) => extractFrom v'
+                          | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
+                          | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
+                in
+                    extractFrom v
+                end
                 val _ = LogErr.setLoc loc
                 val refOpt = resolveName ob nomn
                 val _ = LogErr.setLoc loc
@@ -4303,6 +4342,7 @@ and specialObjectConstructor (regs:Mach.REGS)
             [] => instantiate ()
           | (Mach.Null :: _) => instantiate ()
           | (Mach.Undef :: _) => instantiate ()
+          | (Mach.Wrapped (v,t) :: rest) => specialObjectConstructor regs classObj classClosure (v::rest)
           | (Mach.Object obj :: _) =>
             case Mach.getObjMagic obj of
                 NONE => obj
@@ -4757,6 +4797,42 @@ and get (regs:Mach.REGS)
         tryObj obj
     end
 
+and evalPragmas (regs:Mach.REGS)
+                (pragmas:Ast.PRAGMA list)
+    : Mach.REGS = 
+    case pragmas of 
+        ((Ast.UseDecimalContext e) :: pragmas) => 
+        let
+            val t = instanceType regs Name.ES4_DecimalContext [] 
+            val v = evalExpr regs e             
+        in
+            if evalOperatorIs regs v t
+            then 
+                let
+                    val obj = needObj regs v
+                    val pv = getValue regs obj Name.nons_precision
+                    val pr = toUInt32 regs pv
+                    val precision = Real64.floor pr
+
+                    val mv = getValue regs obj Name.nons_mode
+                    val mr = toUInt32 regs mv
+                    val mode = case Real64.floor mr of 
+                                   0 => DecimalParams.Ceiling
+                                 | 1 => DecimalParams.Floor
+                                 | 2 => DecimalParams.Up
+                                 | 3 => DecimalParams.Down
+                                 | 4 => DecimalParams.HalfUp
+                                 | 5 => DecimalParams.HalfDown
+                                 | _ => DecimalParams.HalfEven
+                in
+                    evalPragmas (withDecimalContext regs {precision=precision, mode=mode}) pragmas
+                end
+            else
+                error regs ["need DecimalContext as argument to 'use decimal' pragma"]
+        end
+      | p::pragmas => evalPragmas regs pragmas
+      | [] => regs
+
 (*
  HEAD
  *)
@@ -4786,9 +4862,10 @@ and evalBlock (regs:Mach.REGS)
               (block:Ast.BLOCK)
     : Mach.VAL =
     let
-        val Ast.Block {head, body, loc, ...} = block
+        val Ast.Block {pragmas, head, body, loc, ...} = block
+        val blockRegs = evalPragmas regs pragmas 
         val _ = LogErr.setLoc loc
-        val blockRegs = evalHead regs (valOf head)
+        val blockRegs = evalHead blockRegs (valOf head)
         val _ = LogErr.setLoc loc
         val res = evalStmts blockRegs body
         val _ = LogErr.setLoc loc
@@ -4990,16 +5067,19 @@ and evalIterable (regs:Mach.REGS)
     : Mach.OBJ =
     let
         val v = evalExpr regs obj
+        fun finishWith v = 
+            case v of
+                Mach.Object ob => ob
+              | Mach.Wrapped (v',t) => finishWith v'
+              | Mach.Undef => newObj regs
+              | Mach.Null => newObj regs            
     in
         (*
          * Implement the IE JScript quirk where for (i in null) and
          * for (i in undefined) do not loop at all by returning an
          * empty object for Undef and Null.
          *)
-        case v of
-            Mach.Object ob => ob
-          | Mach.Undef => newObj regs
-          | Mach.Null => newObj regs
+        finishWith v
     end
 
 and callIteratorGet (regs:Mach.REGS)

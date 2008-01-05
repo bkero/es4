@@ -332,7 +332,8 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "MetaObjects.es", (* before JSON *)
                        builtin "JSON.es",
                        builtin "Vector.es",
-                       builtin "Map.es"
+                       builtin "Map.es",
+                       builtin "DecimalContext.es"
                  ]
 
         val objFrag = Verify.verifyTopFragment prog true objFrag

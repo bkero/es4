@@ -6947,7 +6947,7 @@ and pragmaItem (ts:TOKENS)
     in case ts of
         (Decimal, _) :: _ => 
             let
-                val (ts1,nd1) = primaryExpression ((tl ts), NoList, NoIn)
+                val (ts1,nd1) = assignmentExpression ((tl ts), NoList, NoIn)
 	    in
                 (ts1, Ast.UseDecimalContext nd1)
             end

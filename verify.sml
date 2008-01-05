@@ -979,7 +979,8 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
   : Ast.FRAGMENT = 
     let 
         val env = newEnv prog strict
-        val res = verifyFragment env frag
+        val res = frag
+        (* val res = verifyFragment env frag *)
     in
         trace ["verification complete"];
         (if !doTrace orelse !doTraceFrag
