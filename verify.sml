@@ -174,13 +174,11 @@ fun checkForDuplicates [] = ()
 
 infix 4 <:;
 
-fun (tsub <: tsup) =
-    Type.groundIsSubtype tsub tsup
+fun (tsub <: tsup) = true
 
 infix 4 ~:;
 
-fun (tleft ~: tright) =
-    Type.groundIsCompatible tleft tright
+fun (tleft ~: tright) = true
 
 fun checkConvertible (prog:Fixture.PROGRAM)
                      (t1:Ast.TYPE_EXPR) (* assignment src *)

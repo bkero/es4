@@ -670,7 +670,7 @@ fun normalizingPredicate groundPredicate
           nonNormalizableDefault
     end
     
-
+(*
 fun groundEquals (t1:Ast.TYPE_EXPR)
                  (t2:Ast.TYPE_EXPR)
     : bool =
@@ -734,11 +734,12 @@ and optionEqual NONE NONE = true
   | optionEqual _ _ = false
 
 val equals = normalizingPredicate groundEquals false
+*)
 
 (* -----------------------------------------------------------------------------
  * Subtyping
  * ----------------------------------------------------------------------------- *)
-
+(*
 fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                     (t2:Ast.TYPE_EXPR) (* base *)
     : bool = 
@@ -841,11 +842,12 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
         trace ["<<< groundIsSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
+*)
 
 (* -----------------------------------------------------------------------------
  * Compatibility
  * ----------------------------------------------------------------------------- *)
-
+(*
 and groundIsCompatible (t1:Ast.TYPE_EXPR)
                        (t2:Ast.TYPE_EXPR)
     : bool = 
@@ -934,7 +936,9 @@ and groundIsCompatible (t1:Ast.TYPE_EXPR)
 and allCompatible xs ys = arrayPairWise groundIsCompatible xs ys                   
 and fieldTypesCompatible fts1 fts2 = fieldPairWise groundIsCompatible fts1 fts2
 val isCompatible = normalizingPredicate groundIsCompatible false
-val isSubtype = normalizingPredicate groundIsSubtype false
+val isSubtype = normalizingPredicate groundIsSubtype false 
+
+*)
 
 
 (* -----------------------------------------------------------------------------
@@ -944,6 +948,7 @@ val isSubtype = normalizingPredicate groundIsSubtype false
 fun groundIsCompatibleEqual (ty1:Ast.TYPE_EXPR)
                             (ty2:Ast.TYPE_EXPR)
     : bool = 
+
     case (ty1, ty2) of 
         
         (* CE-WRAP *)
@@ -991,8 +996,9 @@ fun groundIsCompatibleEqual (ty1:Ast.TYPE_EXPR)
       (* CE-INSTANCE -- generalized from CE-INT *)
 
       | (Ast.InstanceType it1,
-         Ast.InstanceType it2) => 
-        groundEquals ty1 ty2
+         Ast.InstanceType it2) =>
+        Mach.nameEq (#name it1) (#name it2) andalso
+        allCompatibleEqual (#typeArgs it1) (#typeArgs it2)
 
       (* Extra rules covering nullable, array and union types. *)
 
@@ -1023,6 +1029,8 @@ and optionCompatibleEqual NONE NONE = true
   | optionCompatibleEqual (SOME t1) (SOME t2) = groundIsCompatibleEqual t1 t2
   | optionCompatibleEqual _ _ = false
 
+val isCompatibleEqual = normalizingPredicate groundIsCompatibleEqual false
+
 
 (* -----------------------------------------------------------------------------
  * Compatible-subtyping:  <*
@@ -1031,98 +1039,108 @@ and optionCompatibleEqual NONE NONE = true
 fun groundIsCompatibleSubtype (ty1:Ast.TYPE_EXPR) 
                               (ty2:Ast.TYPE_EXPR)
     : bool = 
-
-    (* CS-SUB -- made up but it seems likt it's necessary! *)
     
-    if groundIsSubtype ty1 ty2 
-    then true
-    else 
+    case (ty1, ty2) of 
+        
+        (* CS-WRAP-COV *)
+        
+        (Ast.WrapType wt1, 
+         Ast.WrapType wt2) => 
+        groundIsCompatibleSubtype wt1 wt2
+        
+      (* CS-WRAP *)
+        
+      | (Ast.WrapType wt1, _) => 
+        groundIsCompatibleSubtype wt1 ty2
+        
 
-        case (ty1, ty2) of 
-            
-            (* CS-WRAP-COV *)
-            
-            (Ast.WrapType wt1, 
-             Ast.WrapType wt2) => 
-            groundIsCompatibleSubtype wt1 wt2
-            
-          (* CS-WRAP *)
+      (* CS-LIKE-COV *)
+        
+      | (Ast.LikeType lt1, 
+         Ast.LikeType lt2) => 
+        groundIsCompatibleSubtype lt1 lt2
+        
+      (* CS-LIKE *)
+        
+      | (_, Ast.LikeType lt2) => 
+        groundIsCompatibleSubtype ty1 lt2
 
-          | (Ast.WrapType wt1, _) => 
-            groundIsCompatibleSubtype wt1 ty2
-            
+      (* CS-OBJ *)
 
-          (* CS-LIKE-COV *)
-            
-          | (Ast.LikeType lt1, 
-             Ast.LikeType lt2) => 
-            groundIsCompatibleSubtype lt1 lt2
-            
-          (* CS-LIKE *)
-            
-          | (_, Ast.LikeType lt2) => 
-            groundIsCompatibleSubtype ty1 lt2
+      | (Ast.ObjectType fields1,
+         Ast.ObjectType fields2) => 
+        fieldTypesCompatibleEqualSuperset fields1 fields2
 
-          (* CS-OBJ *)
+      (* CS-ARROW *)
 
-          | (Ast.ObjectType fields1,
-             Ast.ObjectType fields2) => 
-            fieldTypesCompatibleEqualSuperset fields1 fields2
+      | (Ast.FunctionType
+		     {params  =params1,
+		      result  =result1,
+		      thisType=thisType1,
+		      hasRest =hasRest1,
+	          minArgs=minArgs1},
+	     Ast.FunctionType
+		     {params=params2,
+		      result=result2,
+		      thisType=thisType2,
+		      hasRest=hasRest2,
+		      minArgs=minArgs2}) => 
+        (allCompatibleEqual params1 params2) andalso
+        groundIsCompatibleSubtype result1 result2 andalso
+        (optionCompatibleEqual thisType1 thisType2) andalso
+        hasRest1 = hasRest2 andalso
+        minArgs1 = minArgs2
 
-          (* CS-ARROW *)
+      (* CS-DYN *)
+        
+      | (_, Ast.SpecialType Ast.Any) => true
+                                        
+      (* CS-INSTANCE -- generalized from CS-INT *)
 
-          | (Ast.FunctionType
-		         {params  =params1,
-		          result  =result1,
-		          thisType=thisType1,
-		          hasRest =hasRest1,
-	              minArgs=minArgs1},
-	         Ast.FunctionType
-		         {params=params2,
-		          result=result2,
-		          thisType=thisType2,
-		          hasRest=hasRest2,
-		          minArgs=minArgs2}) => 
-            (allCompatibleEqual params1 params2) andalso
-            groundIsCompatibleSubtype result1 result2 andalso
-            (optionCompatibleEqual thisType1 thisType2) andalso
-            hasRest1 = hasRest2 andalso
-            minArgs1 = minArgs2
-
-          (* CS-DYN *)
-            
-          | (_, Ast.SpecialType Ast.Any) => true
-                                            
-          (* CS-INSTANCE -- generalized from CS-INT *)
-
-          | (Ast.InstanceType it1,
-             Ast.InstanceType it2) => 
-            groundEquals ty1 ty2
+      | (Ast.InstanceType it1, Ast.InstanceType it2) =>
+        groundIsCompatibleEqual ty1 ty2 
+        orelse
+        List.exists (fn sup => groundIsCompatibleEqual sup ty2) 
+                    (#superTypes it1)
+        
+      (* CS-STRUCT-INSTANCE -- extra rules connecting structural types to instance types. *)
+                                        
+      | (Ast.FunctionType _, Ast.InstanceType it2) =>
+        (#name it2) = Name.nons_Function orelse
+        (#name it2) = Name.nons_Object
+        
+      | (Ast.ArrayType _, Ast.InstanceType it2) =>
+        (#name it2) = Name.nons_Array orelse
+        (#name it2) = Name.nons_Object
+        
+      | (Ast.ObjectType _, Ast.InstanceType it2) =>
+                    (#name it2) = Name.nons_Object
 
 
-          (* Extra rules covering nullable, array and union types. *)
+      (* Extra rules covering nullable, array and union types. *)
 
-          | (Ast.SpecialType x, 
-             Ast.SpecialType y) => 
-            x = y
-            
+      | (Ast.SpecialType x, 
+         Ast.SpecialType y) => 
+        x = y
+        
 
-          | ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
-            nullable
-            
-          | (_, Ast.NullableType { nullable=false, expr }) =>
-            groundIsCompatibleSubtype ty1 expr
-            
-          | (Ast.ArrayType ets1,
-             Ast.ArrayType ets2) => 
-            allCompatibleEqual (List.take (ets1, Int.min (length ets1, length ets2))) ets2
+      | ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
+        nullable
+        
+      | (_, Ast.NullableType { nullable=false, expr }) =>
+        groundIsCompatibleSubtype ty1 expr
+        
+      | (Ast.ArrayType ets1,
+         Ast.ArrayType ets2) => 
+        allCompatibleEqual (List.take (ets1, Int.min (length ets1, length ets2))) ets2
 
-          | (Ast.UnionType tys1, 
-             Ast.UnionType tys2) => 
-            (List.all (fn ty1 => List.exists (fn ty2 => groundIsCompatibleEqual ty1 ty2) tys2) tys1) andalso
-            (List.all (fn ty2 => List.exists (fn ty1 => groundIsCompatibleEqual ty1 ty2) tys1) tys2)
+      | (Ast.UnionType tys1, _) => 
+        List.all (fn t => groundIsCompatibleSubtype t ty2) tys1
 
-          | _ => false
+      | (_, Ast.UnionType tys2) => 
+        List.exists (groundIsCompatibleSubtype ty1) tys2
+
+      | _ => false
     
 
 and fieldTypesCompatibleEqualSuperset fts1 fts2 = fieldPairWiseSuperset groundIsCompatibleEqual fts1 fts2
@@ -1165,7 +1183,9 @@ fun groundIsConsistent (t1:Ast.TYPE_EXPR)
             
             (* CON-REFL *)
 
-            if groundEquals t1 t2 then
+            if (* FIXME: need a way to encode T ~ T ... used to use "groundEquals t1 t2" *) 
+                true 
+            then
                 true
             else
                 
@@ -1198,7 +1218,9 @@ fun groundIsConsistent (t1:Ast.TYPE_EXPR)
 		                  minArgs=minArgs2}) =>
                     allConsistent params1 params2 andalso
 		            groundIsConsistent result1 result2 andalso
-                    (optionEqual thisType1 thisType2) andalso
+
+                    (* FIXME: need a way to encode T ~ T ... used to use "(optionEqual thisType1 thisType2)" *) 
+
                     hasRest1 = hasRest2 andalso
                     minArgs1 = minArgs2
 
@@ -1353,7 +1375,7 @@ fun groundFindConversion (prog:Fixture.PROGRAM)
                        (AnyStringType, StringType) ]
 
         fun pairMatches target (src,dst) = (groundIs target dst andalso
-                                            groundIsSubtype tyExpr1 src)
+                                            groundIsCompatibleSubtype tyExpr1 src)
 
         val res = case stripUnion tyExpr2 of 
                       NONE => NONE

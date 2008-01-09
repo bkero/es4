@@ -145,10 +145,11 @@ val dummyTypeExpr = Ast.SpecialType Ast.Any
 val dummyNs = Name.noNS
 
 
-(* Handy operator for subtype checks *)
+infix 4 <*;
+fun tsub <* tsup = Type.groundIsCompatibleSubtype tsub tsup
 
-infix 4 <:;
-fun tsub <: tsup = Type.groundIsSubtype tsub tsup
+infix 4 =*;
+fun ta =* tb = Type.groundIsCompatibleEqual ta tb
 
 fun mathOp (v:Mach.VAL)
            (decimalFn:(Decimal.DEC -> 'a) option)
@@ -1204,7 +1205,7 @@ and needNameOrString (regs:Mach.REGS)
     : Ast.NAME =
     case v of
         Mach.Object obj => 
-        if (typeOfVal regs v) <: (instanceType regs Name.ES4_Name [])
+        if (typeOfVal regs v) <* (instanceType regs Name.ES4_Name [])
         then
             let
                 val nsval = getValue regs obj Name.nons_qualifier
@@ -2825,19 +2826,19 @@ and numTypeOf (regs:Mach.REGS)
     let
         val ty = typeOfVal regs v 
     in
-        if Type.groundEquals ty (instanceType regs Name.ES4_double [])
+        if ty =* (instanceType regs Name.ES4_double [])
         then DoubleNum
         else
-            if Type.groundEquals ty (instanceType regs Name.ES4_int [])
+            if ty =* (instanceType regs Name.ES4_int [])
             then IntNum
             else
-                if Type.groundEquals ty (instanceType regs Name.ES4_uint [])
+                if ty =* (instanceType regs Name.ES4_uint [])
                 then UIntNum
                 else 
-                    if Type.groundEquals ty (instanceType regs Name.ES4_byte [])
+                    if ty =* (instanceType regs Name.ES4_byte [])
                     then ByteNum
                     else 
-                        if Type.groundEquals ty (instanceType regs Name.ES4_decimal [])
+                        if ty =* (instanceType regs Name.ES4_decimal [])
                         then DecimalNum
                         else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
@@ -3269,7 +3270,7 @@ and evalOperatorIs (regs:Mach.REGS)
     let
         val vt = typeOfVal regs v 
         fun isLike (Mach.Object obj) (Ast.ObjectType fields) = List.all (objHasLikeField obj) fields
-          | isLike v lte = Type.groundIsCompatible (typeOfVal regs v) lte
+          | isLike v lte = (typeOfVal regs v) <* lte
         and objHasLikeField obj {name, ty} = 
             let
                 val name = Name.nons name
@@ -3286,15 +3287,18 @@ and evalOperatorIs (regs:Mach.REGS)
             end
     in
         case te of 
+            (* IS-LIKE *)
             Ast.LikeType lte => isLike v lte
-          | _ => Type.groundIsCompatibleSubtype vt te
+                                
+          (* IS-OK *)
+          | _ => vt <* te
     end
 
 and evalOperatorWrap (regs:Mach.REGS)
                      (v:Mach.VAL)
                      (t:Ast.TYPE_EXPR)
     : Mach.VAL = 
-    if (typeOfVal regs v) <: t
+    if (typeOfVal regs v) <* t
     then v
     else 
         if evalOperatorIs regs v t
@@ -3481,7 +3485,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if (typeOfVal regs v) <: (instanceType regs Name.ES4_Name [])
+                if (typeOfVal regs v) <* (instanceType regs Name.ES4_Name [])
                 then
                     let
                         val nsval = getValue regs obj Name.nons_qualifier

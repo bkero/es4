@@ -393,6 +393,22 @@ val x_                       = fromString "x"
 val precision_               = fromString "precision"
 val mode_                    = fromString "mode"
 
+val uint32ops_               = fromString "uint32ops"
+val add_                     = fromString "add"
+val sub_                     = fromString "sub"
+val mul_                     = fromString "mul"
+val div_                     = fromString "div"
+val mod_                     = fromString "mod"
+val and_                     = fromString "and"
+val or_                      = fromString "or"
+val xor_                     = fromString "xor"
+val not_                     = fromString "not"
+val sar_                     = fromString "sar"
+val slr_                     = fromString "slr"
+val sll_                     = fromString "sll"
+val ror_                     = fromString "ror"
+val rol_                     = fromString "rol"
+
 val ES4_                     = fromString "__ES4__"
 
 val emptySource              = []
