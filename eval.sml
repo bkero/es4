@@ -73,7 +73,7 @@ fun extractRuntimeTypeRibs (regs:Mach.REGS)
                            (ribs:Ast.RIBS) 
     : Ast.RIBS = 
       let
-          fun typePropToFixture (n:Ast.NAME, prop:Mach.PROP) : 
+          fun typePropToFixture (n:Ast.NAME, {prop:Mach.PROP, seq}) : 
               (Ast.FIXTURE_NAME * Ast.FIXTURE) = 
               case (#state prop) of 
                   Mach.TypeProp => (Ast.PropName n, Ast.TypeFixture (#ty prop))
@@ -81,7 +81,11 @@ fun extractRuntimeTypeRibs (regs:Mach.REGS)
                        
           fun typePropsToRib (props:Mach.PROP_BINDINGS) 
               : Ast.RIB = 
-              map typePropToFixture (NameMap.listItemsi (!props))
+              let
+                  val { bindings, ... } = !props
+              in
+                  map typePropToFixture (NameMap.listItemsi bindings)
+              end
               
           val Mach.Scope {kind, object=Mach.Obj {props, ...}, parent, ...} = scope
           val ribs' = case kind of 
@@ -888,7 +892,7 @@ and getValue (regs:Mach.REGS)
                               regs 
                               ["attempting to get nonexistent property ",
                                LogErr.name name,
-                               "from non-dynamic object"]; dummyVal)
+                               " from non-dynamic object"]; dummyVal)
             end
     in
         getValueOrVirtual regs obj name true propNotFound
@@ -2119,7 +2123,8 @@ and traceScope (s:Mach.SCOPE)
         let
             val Mach.Scope { object, parent, ... } = s
             val Mach.Obj { ident, props, ... } = getScopeObj s
-            val names = map (fn (n,_) => n) (NameMap.listItemsi (!props))
+            val { bindings, ... } = !props
+            val names = map (fn (n,_) => n) (NameMap.listItemsi bindings)
         in    
             trace ["scope: ", Int.toString ident, " = ",
                    (if length names > 5
@@ -3760,16 +3765,16 @@ and checkAllPropertiesInitialized (regs:Mach.REGS)
                                   (obj:Mach.OBJ)
     : unit =
     let
-        fun checkOne (n:Ast.NAME, p:Mach.PROP) =
-            case (#state p) of
+        fun checkOne (n:Ast.NAME, {prop:Mach.PROP, seq}) =
+            case (#state prop) of
                 Mach.UninitProp => 
                 error regs ["uninitialized property: ",
                             LogErr.name n]
               | _ => ()
+        val Mach.Obj { props, ... } = obj
+        val { bindings, ... } = !props
     in
-        case obj of
-            Mach.Obj { props, ... } =>
-            NameMap.appi checkOne (!props)
+        NameMap.appi checkOne bindings
     end
 
 
@@ -4070,11 +4075,12 @@ and findTargetObj (regs:Mach.REGS)
     let
         val Mach.Scope { object, kind, parent, ...} = scope
         val Mach.Obj {props,...} = object
+        val { bindings, ... } = !props
     in
         traceConstruct ["considering init target as object #", Int.toString (getScopeId scope)];
         case target of
             Ast.Local =>
-            if (NameMap.numItems (!props)) > 0 orelse 
+            if (NameMap.numItems bindings) > 0 orelse 
                not (Option.isSome parent)
             then object
             else findTargetObj regs (valOf parent) target
@@ -5091,21 +5097,29 @@ and callIteratorGet (regs:Mach.REGS)
     : Mach.OBJ =
     let
         val Mach.Obj { props, ... } = iterable
-        fun f (name:Ast.NAME, prop:Mach.PROP, (curr:Mach.VAL list)) =
-            case prop of
+        val { bindings, ... } = !props
+        val bindingList = NameMap.listItemsi bindings
+        fun select (name:Ast.NAME, { seq:int, prop:Mach.PROP }) = 
+            case prop of 
                 { state = Mach.ValProp _,
                   attrs = { dontEnum = false, ... },
-                  ... } =>
-                (case name of
-                     { ns = Ast.Public key, id = ident } =>
-                     if key = Ustring.empty
-                     then
-                         (newString regs ident) :: curr
-                     else
-                         (newName regs name) :: curr
-                   | _ => (newName regs name) :: curr)
-              | _ => curr
-        val iterator = needObj regs (newArray regs (NameMap.foldri f [] (!props)))
+                  ... } => SOME (name, seq)
+              | _ => NONE
+        val filteredList = List.mapPartial select bindingList
+        val bindingArray = Array.fromList filteredList
+        fun sort ((_, seq1), (_, seq2)) = Int.compare (seq2,seq1)
+        val _ = ArrayQSort.sort sort bindingArray
+        fun project ((name:Ast.NAME, _), (curr:Mach.VAL list)) =
+            case name of 
+                { ns = Ast.Public key, id = ident } =>
+                if key = Ustring.empty
+                then
+                    (newString regs ident) :: curr
+                else
+                    (newName regs name) :: curr
+              | _ => (newName regs name) :: curr
+        val vals = Array.foldl project [] bindingArray
+        val iterator = needObj regs (newArray regs vals)
     in
         setValue regs iterator Name.nons_cursor (newInt regs 0.0);
         iterator
