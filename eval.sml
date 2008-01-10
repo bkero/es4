@@ -1922,7 +1922,7 @@ and evalExpr (regs:Mach.REGS)
       | Ast.TypeExpr ty =>
         evalTypeExpr regs (evalTy regs ty)
 
-      | Ast.ThisExpr =>
+      | Ast.ThisExpr k =>  (* FIXME function and generator this *)
         let
             val { this, ... } = regs
         in
@@ -2439,7 +2439,7 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralUInt u => newUInt regs (Real64.fromLargeInt (Word32.toLargeInt u))
       | Ast.LiteralBoolean b => newBoolean regs b
       | Ast.LiteralString s => newString regs s
-      | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr regs exprs ty
+      | Ast.LiteralArray {exprs=Ast.ListExpr exprs, ty} => evalLiteralArrayExpr regs exprs ty (* FIXME handle comprehensions *)
       | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr regs expr ty
       | Ast.LiteralNamespace n => newNamespace regs n                
       | Ast.LiteralFunction f => newFunctionFromFunc regs (#scope regs) f
@@ -4258,7 +4258,7 @@ and parseFunctionFromArgs (regs:Mach.REGS)
         val (_,funcExpr) = Parser.functionExpression
                                (Parser.lexLines
                                     [Ustring.sourceFromUstring fullStr],
-                                Parser.NoList,
+                                Parser.AllowColon,
                                 Parser.AllowIn)
 
         val funcExpr = Defn.defExpr (Defn.mkTopEnv (#prog regs)) funcExpr

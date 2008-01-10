@@ -248,7 +248,7 @@ datatype PRAGMA =
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }
-       | LamType of 
+       | LamType of
          { params: IDENT list,
            body: TYPE_EXPR }
        | NullableType of 
@@ -309,7 +309,7 @@ datatype PRAGMA =
        | ExpectedTypeExpr of (TYPE_EXPR * EXPR)  (* FIXME: only for option 8, not option 9 *)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TY
-       | ThisExpr
+       | ThisExpr of THIS_KIND option
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
@@ -338,10 +338,14 @@ datatype PRAGMA =
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
        | GetTemp of int
        | GetParam of int
+       | Comprehension of (EXPR * FOR_ENUM_HEAD list * EXPR option)
 
      and INIT_TARGET = Hoisted
                      | Local
                      | Prototype
+
+     and THIS_KIND = FunctionThis
+                   | GeneratorThis
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
@@ -374,7 +378,7 @@ datatype PRAGMA =
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
        | LiteralArray of
-           { exprs:EXPR list,
+           { exprs: EXPR,  (* FIXME: more specific type here *)
              ty:TY option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
@@ -509,6 +513,11 @@ withtype
            ident: IDENT,
            name: NAME option,
              block: BLOCK }
+
+     and FOR_ENUM_HEAD =  (* FIXME: use this in FOR_ENUM_STMT *)
+           { isEach: bool,
+             bindings: (BINDING list * INIT_STEP list),
+             expr: EXPR }
 
      and FOR_ENUM_STMT =
            { isEach: bool,

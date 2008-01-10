@@ -1658,7 +1658,7 @@ and defLiteral (env:ENV)
             end
 
           | Ast.LiteralArray {exprs, ty} =>
-            Ast.LiteralArray {exprs = defExprs env exprs,
+            Ast.LiteralArray {exprs = defExpr env exprs,
                               ty = case ty of
                                        NONE => NONE
                                      | SOME t => SOME (defTyFromTy env t) }
@@ -1825,8 +1825,8 @@ and defExpr (env:ENV)
           | Ast.TypeExpr t =>
             Ast.TypeExpr (defTyFromTy env t)
 
-          | Ast.ThisExpr =>
-            Ast.ThisExpr
+          | Ast.ThisExpr k =>
+            Ast.ThisExpr k
 
           | Ast.YieldExpr eo =>
             (case eo of
@@ -2524,7 +2524,6 @@ and defDefn (env:ENV)
     Process each definition.
 *)
 
-
 and defDefns (env:ENV)
              (defns:Ast.DEFN list)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
@@ -2643,7 +2642,6 @@ and defFragment (env:ENV)
         Fixture.closeFragment (#program env) frag' (#ribId env);
         frag'
     end
-
 
 and mkTopEnv (prog:Fixture.PROGRAM) 
     : ENV =
