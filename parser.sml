@@ -1394,23 +1394,292 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
         super  ParenExpression
 *)
 
-and superExpression (ts:TOKENS)
+and superExpression (ts0: TOKENS)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> superExpression with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> superExpression with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (Super, _) :: _ =>
             let
-            in case tl ts of
+            in case tl ts0 of
                 (LeftParen, _) :: _ =>
                     let
-                           val (ts1,nd1) = parenExpression(tl ts)
+                        val (ts1, nd1) = parenExpression (tl ts0)
                     in
-                        (ts1,Ast.SuperExpr(SOME(nd1)))
+                        (ts1, Ast.SuperExpr (SOME (nd1)))
                     end
                 | _ =>
-                    (tl ts,Ast.SuperExpr(NONE))
+                    (tl ts0, Ast.SuperExpr (NONE))
             end
       | _ => error ["unknown token in superExpression"]
+    end
+
+(*
+    Arguments
+        (  )
+        (  ArgumentList  )
+*)
+
+and arguments (ts0:TOKENS)
+    : (TOKENS * Ast.EXPR list) =
+    let val _ = trace ([">> arguments with next=", tokenname (hd (ts0))])
+    in case ts0 of
+        (LeftParen, _) :: (RightParen, _) :: _ =>
+            let
+            in
+                trace (["<< arguments with next=", tokenname (hd (tl (tl ts0)))]);
+                (tl (tl ts0), [])
+            end
+      | (LeftParen, _) :: _ =>
+            let
+                val (ts1,nd1) = argumentList (tl ts0)
+            in case ts1 of
+                (RightParen, _) :: _ =>
+                    let
+                    in
+                        trace (["<< arguments with next=", tokenname (hd (tl ts1))]);
+                        (tl ts1, nd1)
+                    end
+              | _ => error ["unknown token in arguments"]
+            end
+      | _ => error ["unknown token in arguments"]
+    end
+
+(*
+    ArgumentList
+        AssignmentExpression(AllowColon, AllowIn)
+        ArgumentList  ,  AssignmentExpression(AllowColon, AllowIn)
+
+    refactored:
+
+    ArgumentList
+        AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
+
+    ArgumentListPrime
+        empty
+        ,  AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
+*)
+
+and argumentList (ts0: TOKENS)
+    : (TOKENS * Ast.EXPR list) =
+    let val _ = trace ([">> argumentList with next=", tokenname (hd (ts0))])
+        fun argumentList' (ts) : (TOKENS * Ast.EXPR list) =
+            let val _ = trace ([">> argumentList' with next=", tokenname (hd (ts0))])
+            in case ts0 of
+                (Comma, _) :: _ =>
+                    let
+                        val (ts1, nd1) = assignmentExpression (tl ts0, AllowColon, AllowIn)
+                        val (ts2, nd2) = argumentList' (ts1)
+                    in
+                        (ts2, nd1::nd2)
+                    end
+              | (RightParen, _) :: _ =>
+                    (ts0, [])
+              | _ =>
+                (trace ["*syntax error*: expect '", tokenname (RightParen, 0), "' before '", tokenname (hd ts0), "'"];
+                 error ["unknown token in argumentList"])
+            end
+        val (ts1, nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
+        val (ts2, nd2) = argumentList' (ts1)
+    in
+        (ts2, nd1::nd2)
+    end
+
+(*
+    PropertyOperator
+        .  ReservedIdentifier
+        .  PropertyName
+        .. QualifiedName
+        .  ParenListExpression
+        .  ParenListExpression  ::  QualifiedNameIdentifier
+        Brackets
+        TypeApplication
+*)
+
+and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
+    : (TOKENS * Ast.EXPR) =
+    let val _ = trace([">> propertyOperator with next=",tokenname(hd(ts))])
+    in case ts of
+        (Dot, _) :: (LeftParen, _) :: _ =>
+                    let
+                        val (ts1,nd1) = parenListExpression(tl ts)
+                    in case ts1 of
+                        (DoubleColon, _) :: (LeftBracket, _) :: _ =>
+                               let
+                                val (ts2,nd2) = brackets(tl ts1)
+                               in
+                                   (ts2,Ast.ObjectRef {base=nd,ident=Ast.QualifiedExpression {
+                                            qual=nd1, expr=nd2}, loc=locOf ts})
+                            end
+                      | (DoubleColon, _) :: _ =>
+                            let
+                                val (ts2,nd2) = reservedOrOrdinaryIdentifier(tl ts1)
+                            in
+                                (ts2,Ast.ObjectRef({base=nd,
+                                                    ident=Ast.QualifiedIdentifier
+                                                              {qual=nd1, ident=nd2},
+                                                    loc=locOf ts}))
+                            end
+                      | _ => error ["unknown token in propertyOperator"] (* e4x filter expr *)
+                    end
+      | (Dot, _) :: _ =>
+                    let
+                        fun notReserved () =
+                            let
+                                val (ts1,nd1) = propertyName (tl ts)
+                            in
+                                (ts1,Ast.ObjectRef {base=nd,ident=nd1,loc=locOf ts})
+                            end
+                     in case (isreserved(hd (tl ts)),tl ts) of
+                        (false,_)               => notReserved ()
+                      | (true,(Intrinsic,_)::_) => notReserved ()
+                      | (true,(Private,_)::_)   => notReserved ()
+                      | (true,(Public,_)::_)    => notReserved ()
+                      | (true,(Protected,_)::_) => notReserved ()
+                      | (true,(Internal,_)::_)  => notReserved ()
+                      | (true,_) =>
+                            let
+                                val (ts1,nd1) = reservedIdentifier (tl ts)
+                            in
+                                (ts1,Ast.ObjectRef
+                                         { base=nd,
+                                           ident=Ast.Identifier
+                                                     { ident=nd1,
+                                                       openNamespaces=[] },
+                                           loc=locOf ts})
+                            end
+                    end
+
+      | (LeftBracket, _) :: _ =>
+        bracketsOrSlice (ts, nd)
+
+      | (LeftDotAngle, _) :: _ =>
+        let
+            val (ts1, nd1) = typeExpressionList (tl ts)
+        in 
+            case ts1 of
+                (* FIXME: what about >> and >>> *)
+                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpr {expr=nd, actuals=nd1})
+              | _ => error ["unknown final token of parametric type expression"]
+            end
+
+      | _ => error ["unknown token in propertyOperator"]
+    end
+
+(*
+    Brackets
+        [  ListExpression(AllowColon,AllowIn)  ]
+        [  SliceExpression   ]
+
+    SliceExpression
+        OptionalExpression  :  OptionalExpression
+        OptionalExpression  :  OptionalExpression  :  OptionalExpression
+
+    OptionalExpression
+        ListExpression(AllowColon,AllowIn)
+        empty
+*)
+
+and brackets (ts:TOKENS)
+    : (TOKENS * Ast.EXPR) =
+    let val _ = trace ([">> brackets with next=", tokenname (hd (ts))])
+    in case ts of
+        (LeftBracket, _) :: ts' =>
+            let
+                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
+            in case ts1 of
+                (RightBracket, _) :: ts'' => (ts'',nd1)
+              | _ => error ["unknown token in brackets"]
+            end
+      | _ => error ["unknown token in brackets"]
+    end
+
+and bracketsOrSlice (ts:TOKENS, base:Ast.EXPR)
+    : (TOKENS * Ast.EXPR) = 
+    let val _ = trace([">> brackets with next=",tokenname(hd(ts))])
+
+        fun asBracket e = 
+            Ast.ObjectRef
+                { base=base,
+                  ident=Ast.ExpressionIdentifier {expr = e, 
+                                                  openNamespaces = []}, 
+                  loc=locOf ts}
+
+        val intrinsic = Ast.LiteralExpr 
+                            (Ast.LiteralNamespace 
+                                 (Ast.Intrinsic))
+        fun asSlice a b c = 
+            Ast.CallExpr 
+            { func = Ast.ObjectRef { base = base,
+                                     ident = Ast.QualifiedIdentifier 
+                                                 { ident = Ustring.slice_,
+                                                   qual = intrinsic },
+                                     loc = locOf ts },
+              actuals = [ a, b, c ] }
+
+        val none = Ast.LexicalRef { ident = Ast.QualifiedIdentifier { ident = Ustring.NaN_,
+                                                                      qual = intrinsic },
+                                    loc = locOf ts }
+                                                                     
+
+        fun slice2 ts nd1 nd2 = 
+            case ts of 
+                (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 none)
+              | _ => 
+                let
+                    val (ts3, nd3, _) = listExpression (ts, AllowColon, AllowIn)
+                in
+                    case ts3 of 
+                        (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 nd3)
+                      | _ => error ["unknown token in slice"]                                                    
+                end
+                
+        fun slice1 ts nd1 = 
+            case ts of 
+                (RightBracket, _) :: ts' => (ts', asSlice nd1 none none)
+              | (Colon, _) :: ts' => slice2 ts' nd1 none
+              | _ => 
+                let
+                    val (ts2,nd2,_) = listExpression (ts, AllowColon, AllowIn)
+                in
+                    case ts2 of 
+                        (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 none)
+                      | (Colon, _) :: ts' => slice2 ts' nd1 nd2
+                      | _ => error ["unknown token in slice"]
+                end
+    in
+        case ts of
+            (LeftBracket, _) :: (Colon, _) :: ts' => slice1 ts' none 
+          | (LeftBracket, _) :: (DoubleColon, x) :: ts' => slice1 ((Colon, x) :: ts') none 
+          | (LeftBracket, _) :: ts' => 
+            let
+                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
+            in 
+                case ts1 of
+                    (Colon, _) :: ts'' => slice1 ts'' nd1
+                  | (DoubleColon, x) :: ts'' => slice1 ((Colon, x) :: ts'') nd1
+                  | (RightBracket, _) :: ts'' => (ts'', asBracket nd1)
+                  | _ => error ["unknown token in brackets"]
+            end
+          | _ => error ["unknown token in brackets"]
+    end
+    
+(*
+    TypeApplication
+        .<  TypeExpressionList  >
+*)
+
+and typeApplication (ts:TOKENS)
+    : (TOKENS * Ast.EXPR) =
+    let val _ = trace([">> brackets with next=",tokenname(hd(ts))])
+    in case ts of
+        (LeftBracket, _) :: ts' =>
+            let
+                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
+            in case ts1 of
+                (RightBracket, _) :: ts'' => (ts'',nd1)
+              | _ => error ["unknown token in brackets"]
+            end
+      | _ => error ["unknown token in brackets"]
     end
 
 (*
@@ -1582,257 +1851,6 @@ and newExpression (ts:TOKENS, a:ALPHA, b:BETA)
             end
     end
 
-(*
-    Arguments
-        (  )
-        (  ArgumentList  )
-*)
-
-and arguments (ts:TOKENS)
-    : (TOKENS * Ast.EXPR list) =
-    let val _ = trace([">> arguments with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftParen, _) :: (RightParen, _) :: _ =>
-            let
-            in
-                trace(["<< arguments with next=",tokenname(hd(tl (tl ts)))]);
-                (tl (tl ts),[])
-            end
-      | (LeftParen, _) :: _ =>
-            let
-                val (ts1,nd1) = argumentList(tl ts)
-            in case ts1 of
-                (RightParen, _) :: _ =>
-                    let
-                    in
-                        trace(["<< arguments with next=",tokenname(hd(tl ts1))]);
-                        (tl ts1,nd1)
-                    end
-              | _ => error ["unknown token in arguments"]
-            end
-      | _ => error ["unknown token in arguments"]
-    end
-
-(*
-    ArgumentList
-        AssignmentExpression(AllowColon, AllowIn)
-        ArgumentList  ,  AssignmentExpression(AllowColon, AllowIn)
-
-    refactored:
-
-    ArgumentList
-        AssignmentExpression(AllowColon,AllowIn) ArgumentListPrime
-
-    ArgumentListPrime
-        empty
-        , AssignmentExpression(AllowColon,AllowIn) ArgumentListPrime
-*)
-
-and argumentList (ts:TOKENS)
-    : (TOKENS * Ast.EXPR list) =
-    let val _ = trace([">> argumentList with next=",tokenname(hd(ts))])
-        fun argumentList' (ts) : (TOKENS * Ast.EXPR list) =
-            let val _ = trace([">> argumentList' with next=",tokenname(hd(ts))])
-            in case ts of
-                (Comma, _) :: _ =>
-                    let
-                        val (ts1,nd1) = assignmentExpression(tl ts,AllowColon,AllowIn)
-                        val (ts2,nd2) = argumentList'(ts1)
-                    in
-                        (ts2,nd1::nd2)
-                    end
-              | (RightParen, _) :: _ =>
-                    (ts,[])
-              | _ =>
-                (trace ["*syntax error*: expect '",tokenname (RightParen,0), "' before '",tokenname(hd ts),"'"];
-                 error ["unknown token in argumentList"])
-            end
-        val (ts1,nd1) = assignmentExpression(ts,AllowColon,AllowIn)
-        val (ts2,nd2) = argumentList'(ts1)
-    in
-        (ts2,nd1::nd2)
-    end
-
-(*
-    PropertyOperator
-        .. QualifiedIdentifier
-        .  ReservedIdentifier   <- might be private, public, etc
-        .  QualifiedIdentifier
-        .  ParenListExpression
-        .  ParenListExpression  ::  PropertyIdentifier
-        .  ParenListExpression  ::  ReservedIdentifier
-        .  ParenListExpression  ::  Brackets
-        Brackets
-*)
-
-and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
-    : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> propertyOperator with next=",tokenname(hd(ts))])
-    in case ts of
-        (Dot, _) :: (LeftParen, _) :: _ =>
-                    let
-                        val (ts1,nd1) = parenListExpression(tl ts)
-                    in case ts1 of
-                        (DoubleColon, _) :: (LeftBracket, _) :: _ =>
-                               let
-                                val (ts2,nd2) = brackets(tl ts1)
-                               in
-                                   (ts2,Ast.ObjectRef {base=nd,ident=Ast.QualifiedExpression {
-                                            qual=nd1, expr=nd2}, loc=locOf ts})
-                            end
-                      | (DoubleColon, _) :: _ =>
-                            let
-                                val (ts2,nd2) = reservedOrOrdinaryIdentifier(tl ts1)
-                            in
-                                (ts2,Ast.ObjectRef({base=nd,
-                                                    ident=Ast.QualifiedIdentifier
-                                                              {qual=nd1, ident=nd2},
-                                                    loc=locOf ts}))
-                            end
-                      | _ => error ["unknown token in propertyOperator"] (* e4x filter expr *)
-                    end
-      | (Dot, _) :: _ =>
-                    let
-                        fun notReserved () =
-                            let
-                                val (ts1,nd1) = propertyName (tl ts)
-                            in
-                                (ts1,Ast.ObjectRef {base=nd,ident=nd1,loc=locOf ts})
-                            end
-                     in case (isreserved(hd (tl ts)),tl ts) of
-                        (false,_)               => notReserved ()
-                      | (true,(Intrinsic,_)::_) => notReserved ()
-                      | (true,(Private,_)::_)   => notReserved ()
-                      | (true,(Public,_)::_)    => notReserved ()
-                      | (true,(Protected,_)::_) => notReserved ()
-                      | (true,(Internal,_)::_)  => notReserved ()
-                      | (true,_) =>
-                            let
-                                val (ts1,nd1) = reservedIdentifier (tl ts)
-                            in
-                                (ts1,Ast.ObjectRef
-                                         { base=nd,
-                                           ident=Ast.Identifier
-                                                     { ident=nd1,
-                                                       openNamespaces=[] },
-                                           loc=locOf ts})
-                            end
-                    end
-
-      | (LeftBracket, _) :: _ =>
-        bracketOrSlice ts nd
-
-      | (LeftDotAngle, _) :: _ =>
-        let
-            val (ts1, nd1) = typeExpressionList (tl ts)
-        in 
-            case ts1 of
-                (* FIXME: what about >> and >>> *)
-                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpr {expr=nd, actuals=nd1})
-              | _ => error ["unknown final token of parametric type expression"]
-            end
-
-      | _ => error ["unknown token in propertyOperator"]
-    end
-
-(*
-    Brackets
-        [  ListExpression(allowIn)  ]
-        [  SliceExpression   ]
-
-    SliceExpression
-        OptionalExpression  :  OptionalExpression
-        OptionalExpression  :  OptionalExpression  :  OptionalExpression
-
-    OptionalExpression
-        ListExpression(allowIn)
-        empty
-*)
-
-and brackets (ts:TOKENS)
-    : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> brackets with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftBracket, _) :: ts' =>
-            let
-                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
-            in case ts1 of
-                (RightBracket, _) :: ts'' => (ts'',nd1)
-              | _ => error ["unknown token in brackets"]
-            end
-      | _ => error ["unknown token in brackets"]
-    end
-
-and bracketOrSlice (ts:TOKENS) (base:Ast.EXPR)
-    : (TOKENS * Ast.EXPR) = 
-    let val _ = trace([">> bracketOrSlice with next=",tokenname(hd(ts))])
-
-        fun asBracket e = 
-            Ast.ObjectRef
-                { base=base,
-                  ident=Ast.ExpressionIdentifier {expr = e, 
-                                                  openNamespaces = []}, 
-                  loc=locOf ts}
-
-        val intrinsic = Ast.LiteralExpr 
-                            (Ast.LiteralNamespace 
-                                 (Ast.Intrinsic))
-        fun asSlice a b c = 
-            Ast.CallExpr 
-            { func = Ast.ObjectRef { base = base,
-                                     ident = Ast.QualifiedIdentifier 
-                                                 { ident = Ustring.slice_,
-                                                   qual = intrinsic },
-                                     loc = locOf ts },
-              actuals = [ a, b, c ] }
-
-        val none = Ast.LexicalRef { ident = Ast.QualifiedIdentifier { ident = Ustring.NaN_,
-                                                                      qual = intrinsic },
-                                    loc = locOf ts }
-                                                                     
-
-        fun slice2 ts nd1 nd2 = 
-            case ts of 
-                (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 none)
-              | _ => 
-                let
-                    val (ts3, nd3, _) = listExpression (ts, AllowColon, AllowIn)
-                in
-                    case ts3 of 
-                        (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 nd3)
-                      | _ => error ["unknown token in slice"]                                                    
-                end
-                
-        fun slice1 ts nd1 = 
-            case ts of 
-                (RightBracket, _) :: ts' => (ts', asSlice nd1 none none)
-              | (Colon, _) :: ts' => slice2 ts' nd1 none
-              | _ => 
-                let
-                    val (ts2,nd2,_) = listExpression (ts, AllowColon, AllowIn)
-                in
-                    case ts2 of 
-                        (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 none)
-                      | (Colon, _) :: ts' => slice2 ts' nd1 nd2
-                      | _ => error ["unknown token in slice"]
-                end
-    in
-        case ts of
-            (LeftBracket, _) :: (Colon, _) :: ts' => slice1 ts' none 
-          | (LeftBracket, _) :: (DoubleColon, x) :: ts' => slice1 ((Colon, x) :: ts') none 
-          | (LeftBracket, _) :: ts' => 
-            let
-                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
-            in 
-                case ts1 of
-                    (Colon, _) :: ts'' => slice1 ts'' nd1
-                  | (DoubleColon, x) :: ts'' => slice1 ((Colon, x) :: ts'') nd1
-                  | (RightBracket, _) :: ts'' => (ts'', asBracket nd1)
-                  | _ => error ["unknown token in brackets"]
-            end
-          | _ => error ["unknown token in brackets"]
-    end
-    
 (*
     LeftHandSideExpression(a, b)
         NewExpression(a, b)

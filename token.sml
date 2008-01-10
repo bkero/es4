@@ -176,7 +176,6 @@ datatype TOKEN =
     | Undefined
     | Unit
     | Use
-    | Wrap
     | Xml
     | Yield
 
@@ -395,7 +394,6 @@ fun tokenname (t,_) =
       | Unit => "unit"
       | Undefined => "undefined"
       | Use => "use"
-      | Wrap => "wrap"
       | Xml => "xml"
       | Yield => "yield"
 
