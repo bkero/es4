@@ -1462,7 +1462,7 @@ and arguments (ts0:TOKENS)
 and argumentList (ts0: TOKENS)
     : (TOKENS * Ast.EXPR list) =
     let val _ = trace ([">> argumentList with next=", tokenname (hd (ts0))])
-        fun argumentList' (ts) : (TOKENS * Ast.EXPR list) =
+        fun argumentList' (ts0) : (TOKENS * Ast.EXPR list) =
             let val _ = trace ([">> argumentList' with next=", tokenname (hd (ts0))])
             in case ts0 of
                 (Comma, _) :: _ =>
