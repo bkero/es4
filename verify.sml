@@ -443,9 +443,10 @@ and verifyExpr (env:ENV)
           | Ast.TypeExpr t =>
             return (Ast.TypeExpr (verifyTy env t), TypeType)
 
-          | Ast.ThisExpr =>
+          | Ast.ThisExpr k =>
             (* FIXME: type of current class, if any... also Self type? *)
-            return (Ast.ThisExpr, anyType)
+            (* FIXME: handle function and generator this *)
+            return (Ast.ThisExpr k, anyType)
 
           | Ast.YieldExpr eo =>
             let
@@ -500,8 +501,8 @@ and verifyExpr (env:ENV)
                                                           NONE => NONE
                                                         | SOME ty' => SOME (verifyTy env ty') }
 
-                           | Ast.LiteralArray { exprs, ty } =>
-                             Ast.LiteralArray { exprs = map (verifyExprOnly env) exprs,
+                           | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => (* FIXME handle comprehensions *)
+                             Ast.LiteralArray { exprs = Ast.ListExpr (map (verifyExprOnly env) exprs),
                                                 ty = case ty of
                                                          NONE => NONE
                                                        | SOME ty' => SOME (verifyTy env ty') }
