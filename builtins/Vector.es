@@ -329,13 +329,13 @@ package
             this.helper::concat(items);
 
         prototype function every(this:Vector.<*>, checker, thisObj=undefined)
-            this.intrinsic::every(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::every(checker, thisObj is Object) ? thisObj : null);
 
         prototype function filter(this:Vector.<*>, checker, thisObj=undefined)
-            this.intrinsic::filter(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::filter(checker, thisObj is Object) ? thisObj : null);
 
         prototype function forEach(this:Vector.<*>, eacher, thisObj=undefined)
-            this.intrinsic::forEach(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::forEach(checker, thisObj is Object) ? thisObj : null);
 
         prototype function indexOf(this:Vector.<*>, value, from=undefined)
             this.intrinsic::indexOf(value, Number(from));
@@ -347,7 +347,7 @@ package
             this.intrinsic::indexOf(value, from == undefined ? Infinity : Number(from));
 
         prototype function map(this:Vector.<*>, mapper, thisObj=undefined)
-            this.intrinsic::map(mapper, thisObj is Object ? thisObj : null);
+            (this.intrinsic::map(mapper, thisObj is Object) ? thisObj : null);
 
         prototype function pop(this:Vector.<*>)
             this.intrinsic::pop();
@@ -365,7 +365,7 @@ package
             this.intrinsic::slice(Number(start), Number(end), Number(step));
 
         prototype function some(this:Vector.<*>, checker, thisObj=undefined)
-            this.intrinsic::some(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::some(checker, thisObj is Object) ? thisObj : null);
 
         prototype function sort(this:Vector.<*>, comparefn)
             this.intrinsic::sort(comparefn);

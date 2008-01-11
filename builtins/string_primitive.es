@@ -84,7 +84,7 @@ package
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(value="")
-            value is string ? value : new string(value);
+            (value is string) ? value : new string(value);
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
@@ -299,7 +299,7 @@ package
 
         static function match(self, regexp): Array {
             let S = string(self);
-            let R = regexp is RegExp ? regexp : new RegExp(regexp);
+            let R = (regexp is RegExp) ? regexp : new RegExp(regexp);
 
             if (!R.global)
                 return R.exec(S);  // ie, intrinsic::exec
@@ -389,8 +389,8 @@ package
             }
 
             let S             = string(self);
-            let replaceString = r is string ? r cast string : null;
-            let replaceFun    = r is Function ? r cast Function : null;
+            let replaceString = (r is string) ? r cast string : null;
+            let replaceFun    = (r is Function) ? r cast Function : null;
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
@@ -472,7 +472,7 @@ package
 
         static function search(self, regexp): double {
             let S = string(self);
-            let R = regexp is RegExp ? regexp : new RegExp(regexp);
+            let R = (regexp is RegExp) ? regexp : new RegExp(regexp);
 
             for ( let i=0, limit=S.length ; i < limit ; i++ )
                 if (R.helper::match(S, i) !== null)

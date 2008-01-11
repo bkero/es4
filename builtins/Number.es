@@ -69,7 +69,7 @@ package
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
         meta static function invoke(value=0d) {
-            if (value is (int,uint,double,decimal,Number))
+            if (value is (int,uint,double,decimal,Number!))
                 return value;
             return double(value);
         }

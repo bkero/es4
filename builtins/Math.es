@@ -276,7 +276,7 @@ package MathInternals
         intrinsic function atan2(y: AnyNumber, x: AnyNumber): FloatNumber {
             [y, x] = helper::coerceToCommonFloatNumber(y, x);
 
-            let Type = x is double ? double : decimal;
+            let Type = (x is double) ? double : decimal;
 
             if (isNaN(x) || isNaN(y)) 
                 return Type.NaN;
@@ -455,7 +455,7 @@ package MathInternals
             }
 
             [x,y] = helper::coerceToCommonFloatNumber(x,y);
-            let Type = x is double ? double : decimal;
+            let Type = (x is double) ? double : decimal;
 
             if (isNaN(y)) return Type.NaN;
             if (y == 0) return Type(1);
