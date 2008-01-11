@@ -269,12 +269,14 @@ withtype FUN_CLOSURE =
                   state: PROP_STATE,
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = ({ ty: Ast.TY,
-                            state: PROP_STATE,
-                            attrs: ATTRS } (* PROP *)
-                          NameMap.map) ref
-
-
+     and PROP_BINDINGS = { max_seq: int,
+			   bindings: { seq: int,
+				       prop: (* PROP *)
+				       { ty: Ast.TY,   
+					 state: PROP_STATE,
+					 attrs: ATTRS } } NameMap.map } ref 
+			 
+			 
 (* Exceptions for control transfer. *)
 
 exception ContinueException of (Ast.IDENT option)
@@ -424,27 +426,41 @@ fun isSameType (va:VAL) (vb:VAL) : bool =
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS =
-    ref NameMap.empty
+    ref { max_seq = 0, bindings = NameMap.empty }
 
 fun addProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
             (x:PROP)
     : unit =
-    b := NameMap.insert ((!b),n,x)
+    let
+	val { max_seq, bindings } = !b	
+	val s = max_seq + 1
+	val binding = { seq = s, prop = x }
+	val bindings = NameMap.insert (bindings, n, binding)
+    in
+	b := { max_seq = s, bindings = bindings }
+    end
 
 fun delProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
     : unit =
     let
-        val (newmap, _) = NameMap.remove ((!b),n)
+	val { max_seq, bindings } = !b	
+	val (bindings, _) = NameMap.remove (bindings, n)
     in
-        b := newmap
+	b := { max_seq = max_seq, bindings = bindings }
     end
 
 fun findProp (b:PROP_BINDINGS)
              (n:Ast.NAME)
     : PROP option =
-    NameMap.find (!b, n)
+    let
+	val { bindings, ... } = !b
+    in
+	case NameMap.find (bindings, n) of
+	    NONE => NONE
+	  | SOME { prop, ... } => SOME prop
+    end
 
 fun matchProps (fixedProps:bool)
                (b:PROP_BINDINGS)
@@ -768,7 +784,8 @@ fun inspect (v:VAL)
                 fun subVal i v = printVal (i+1) (n-1) v
                 fun prop np =
                     let
-                        val (n,{ty=ty0,state,attrs}) = np
+			val (n,binding) = np
+			val {prop={ty=ty0, state, attrs}, seq} = binding
                         val indent = indent + 1
                         val stateStr =
                             case state of
@@ -788,6 +805,7 @@ fun inspect (v:VAL)
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
                 val Obj { magic, props, proto, ... } = obj
+		val { bindings, ... } = !props
             in
                 TextIO.print "Obj {\n";
                 (case !magic of
@@ -797,7 +815,7 @@ fun inspect (v:VAL)
                 p indent ["  ident = ", (id obj)]; nl();
                 p indent ["  proto = "]; subVal indent (!proto);
                 p indent ["  props = ["]; nl();
-                NameMap.appi prop (!props);
+                NameMap.appi prop bindings;
                 p indent ["          ] }"]; nl()
             end
     in
