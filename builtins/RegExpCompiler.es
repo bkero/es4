@@ -214,6 +214,7 @@ package RegExpInternals
 
             switch (peekCharCode()) {
             case 0x29u /* ")" */:
+                skip();
                 return null;
 
             case 0x2Eu /* "." */:
@@ -286,11 +287,17 @@ package RegExpInternals
                 match(")");
                 return new Capturing(d, capno);
 
-            case 0x5Bu /* "[" */:
-                return characterClass();
+            case 0x5Bu /* "[" */: {
+                let m : Matcher = characterClass();
+                skip();
+                return m;
+            }
 
-            case 0x5Cu /* "\\" */:
-                return atomEscape();
+            case 0x5Cu /* "\\" */: {
+                let m : Matcher = atomEscape();
+                skip();
+                return m;
+            }
 
             case 0x5Eu /* "^" */:
             case 0x24u /* "$" */:
@@ -301,6 +308,7 @@ package RegExpInternals
             case 0x7Cu /* "|" */:
                 // case 0x7Du /* "}" */:
                 // case 0x5Du /* "]" */:
+                skip();
                 return null;
 
             default: {
