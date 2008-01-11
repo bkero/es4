@@ -52,9 +52,6 @@
 %% [fexpr] parse
 @tests/fexpr.es
 
-%% [atident] parse
-@tests/atident.es
-
 %% [assign] parse
 @tests/assign.es
 
@@ -97,9 +94,6 @@
 
 %% [letexpr] parse
 @tests/letexpr.es
-
-%% [nolist] parse
-@tests/nolist.es
 
 %% [arraypattern] parse
 @tests/arraypattern.es
@@ -240,5 +234,3 @@
 %% [assign error] parse, fail
 @tests/assign_err.es
 
-%% [nolist error] parse, fail
-@tests/nolist_err.es
