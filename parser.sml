@@ -1419,7 +1419,7 @@ and superExpression (ts0: TOKENS)
         (  ArgumentList  )
 *)
 
-and arguments (ts0:TOKENS)
+and arguments (ts0: TOKENS)
     : (TOKENS * Ast.EXPR list) =
     let val _ = trace ([">> arguments with next=", tokenname (hd (ts0))])
     in case ts0 of
@@ -1492,32 +1492,26 @@ and argumentList (ts0: TOKENS)
         .  ParenListExpression
         .  ParenListExpression  ::  QualifiedNameIdentifier
         Brackets
-        TypeApplication
+
+    TypeApplication
+        .<  TypeExpressionList  >
 *)
 
-and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
+and propertyOperator (ts0: TOKENS, nd0: Ast.EXPR)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> propertyOperator with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> propertyOperator with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (Dot, _) :: (LeftParen, _) :: _ =>
                     let
-                        val (ts1,nd1) = parenListExpression(tl ts)
+                        val (ts1, nd1) = parenListExpression (tl ts0)
                     in case ts1 of
-                        (DoubleColon, _) :: (LeftBracket, _) :: _ =>
-                               let
-                                val (ts2,nd2) = brackets(tl ts1)
-                               in
-                                   (ts2,Ast.ObjectRef {base=nd,ident=Ast.QualifiedExpression {
-                                            qual=nd1, expr=nd2}, loc=locOf ts})
-                            end
-                      | (DoubleColon, _) :: _ =>
+                        (DoubleColon, _) :: _ =>
                             let
-                                val (ts2,nd2) = reservedOrOrdinaryIdentifier(tl ts1)
+                                val (ts2, nd2) = qualifiedNameIdentifier (tl ts1, nd1)
                             in
-                                (ts2,Ast.ObjectRef({base=nd,
-                                                    ident=Ast.QualifiedIdentifier
-                                                              {qual=nd1, ident=nd2},
-                                                    loc=locOf ts}))
+                                (ts2, Ast.ObjectRef({base=nd0,
+                                                    ident=nd2,
+                                                    loc=locOf ts0}))
                             end
                       | _ => error ["unknown token in propertyOperator"] (* e4x filter expr *)
                     end
@@ -1525,40 +1519,40 @@ and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
                     let
                         fun notReserved () =
                             let
-                                val (ts1,nd1) = propertyName (tl ts)
+                                val (ts1,nd1) = propertyName (tl ts0)
                             in
-                                (ts1,Ast.ObjectRef {base=nd,ident=nd1,loc=locOf ts})
+                                (ts1, Ast.ObjectRef {base=nd0, ident=nd1, loc=locOf ts0})
                             end
-                     in case (isreserved(hd (tl ts)),tl ts) of
-                        (false,_)               => notReserved ()
-                      | (true,(Intrinsic,_)::_) => notReserved ()
-                      | (true,(Private,_)::_)   => notReserved ()
-                      | (true,(Public,_)::_)    => notReserved ()
-                      | (true,(Protected,_)::_) => notReserved ()
-                      | (true,(Internal,_)::_)  => notReserved ()
-                      | (true,_) =>
+                     in case (isreserved(hd (tl ts0)), tl ts0) of
+                        (false, _)               => notReserved ()
+                      | (true, (Intrinsic,_)::_) => notReserved ()
+                      | (true, (Private,_)::_)   => notReserved ()
+                      | (true, (Public,_)::_)    => notReserved ()
+                      | (true, (Protected,_)::_) => notReserved ()
+                      | (true, (Internal,_)::_)  => notReserved ()
+                      | (true, _) =>
                             let
-                                val (ts1,nd1) = reservedIdentifier (tl ts)
+                                val (ts1,nd1) = reservedIdentifier (tl ts0)
                             in
                                 (ts1,Ast.ObjectRef
-                                         { base=nd,
+                                         { base=nd0,
                                            ident=Ast.Identifier
                                                      { ident=nd1,
                                                        openNamespaces=[] },
-                                           loc=locOf ts})
+                                           loc=locOf ts0})
                             end
                     end
 
       | (LeftBracket, _) :: _ =>
-        bracketsOrSlice (ts, nd)
+        bracketsOrSlice (ts0, nd0)
 
       | (LeftDotAngle, _) :: _ =>
         let
-            val (ts1, nd1) = typeExpressionList (tl ts)
+            val (ts1, nd1) = typeExpressionList (tl ts0)
         in 
             case ts1 of
                 (* FIXME: what about >> and >>> *)
-                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpr {expr=nd, actuals=nd1})
+                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpr {expr=nd0, actuals=nd1})
               | _ => error ["unknown final token of parametric type expression"]
             end
 
@@ -1579,109 +1573,90 @@ and propertyOperator (ts:TOKENS, nd:Ast.EXPR)
         empty
 *)
 
-and brackets (ts:TOKENS)
+and brackets (ts0:TOKENS)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace ([">> brackets with next=", tokenname (hd (ts))])
-    in case ts of
-        (LeftBracket, _) :: ts' =>
+    let val _ = trace ([">> brackets with next=", tokenname (hd (ts0))])
+    in case ts0 of
+        (LeftBracket, _) :: _ =>
             let
-                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
+                val (ts1, nd1, _) = listExpression (tl ts0, AllowColon, AllowIn)
             in case ts1 of
-                (RightBracket, _) :: ts'' => (ts'',nd1)
+                (RightBracket, _) :: _ => (tl ts1, nd1)
               | _ => error ["unknown token in brackets"]
             end
       | _ => error ["unknown token in brackets"]
     end
 
-and bracketsOrSlice (ts:TOKENS, base:Ast.EXPR)
+and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
     : (TOKENS * Ast.EXPR) = 
-    let val _ = trace([">> brackets with next=",tokenname(hd(ts))])
+    let val _ = trace ([">> brackets with next=", tokenname (hd (ts0))])
 
         fun asBracket e = 
             Ast.ObjectRef
-                { base=base,
-                  ident=Ast.ExpressionIdentifier {expr = e, 
-                                                  openNamespaces = []}, 
-                  loc=locOf ts}
+                { base = nd0,
+                  ident = Ast.ExpressionIdentifier {expr = e, 
+                                                    openNamespaces = []}, 
+                  loc = locOf ts0}
 
         val intrinsic = Ast.LiteralExpr 
                             (Ast.LiteralNamespace 
                                  (Ast.Intrinsic))
         fun asSlice a b c = 
             Ast.CallExpr 
-            { func = Ast.ObjectRef { base = base,
+            { func = Ast.ObjectRef { base = nd0,
                                      ident = Ast.QualifiedIdentifier 
                                                  { ident = Ustring.slice_,
                                                    qual = intrinsic },
-                                     loc = locOf ts },
+                                     loc = locOf ts0 },
               actuals = [ a, b, c ] }
 
         val none = Ast.LexicalRef { ident = Ast.QualifiedIdentifier { ident = Ustring.NaN_,
                                                                       qual = intrinsic },
-                                    loc = locOf ts }
-                                                                     
+                                    loc = locOf ts0 }
 
-        fun slice2 ts nd1 nd2 = 
-            case ts of 
-                (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 none)
+
+        fun slice2 ts0 nd1 nd2 = 
+            case ts0 of 
+                (RightBracket, _) :: _ => (tl ts0, asSlice nd1 nd2 none)
               | _ => 
                 let
-                    val (ts3, nd3, _) = listExpression (ts, AllowColon, AllowIn)
+                    val (ts3, nd3, _) = listExpression (ts0, AllowColon, AllowIn)
                 in
                     case ts3 of 
-                        (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 nd3)
+                        (RightBracket, _) :: _ => (tl ts0, asSlice nd1 nd2 nd3)
                       | _ => error ["unknown token in slice"]                                                    
                 end
-                
-        fun slice1 ts nd1 = 
-            case ts of 
-                (RightBracket, _) :: ts' => (ts', asSlice nd1 none none)
-              | (Colon, _) :: ts' => slice2 ts' nd1 none
+
+        fun slice1 ts0 nd0 = 
+            case ts0 of 
+                (RightBracket, _) :: _ => (tl ts0, asSlice nd0 none none)
+              | (Colon, _) :: _ => slice2 (tl ts0) nd0 none
               | _ => 
                 let
-                    val (ts2,nd2,_) = listExpression (ts, AllowColon, AllowIn)
+                    val (ts1,nd1,_) = listExpression (ts0, AllowColon, AllowIn)
                 in
-                    case ts2 of 
-                        (RightBracket, _) :: ts' => (ts', asSlice nd1 nd2 none)
-                      | (Colon, _) :: ts' => slice2 ts' nd1 nd2
+                    case ts1 of
+                        (RightBracket, _) :: _ => (tl ts1, asSlice nd0 nd1 none)
+                      | (Colon, _) :: _ => slice2 (tl ts0) nd0 nd1
                       | _ => error ["unknown token in slice"]
                 end
     in
-        case ts of
-            (LeftBracket, _) :: (Colon, _) :: ts' => slice1 ts' none 
-          | (LeftBracket, _) :: (DoubleColon, x) :: ts' => slice1 ((Colon, x) :: ts') none 
-          | (LeftBracket, _) :: ts' => 
+        case ts0 of
+            (LeftBracket, _) :: (Colon, _) :: _ => slice1 (tl (tl ts0)) none 
+          | (LeftBracket, _) :: (DoubleColon, x) :: _ => slice1 ((Colon, x) :: (tl (tl ts0))) none 
+          | (LeftBracket, _) :: _ => 
             let
-                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
+                val (ts1, nd1, _) = listExpression (tl ts0, AllowColon, AllowIn)
             in 
                 case ts1 of
-                    (Colon, _) :: ts'' => slice1 ts'' nd1
-                  | (DoubleColon, x) :: ts'' => slice1 ((Colon, x) :: ts'') nd1
-                  | (RightBracket, _) :: ts'' => (ts'', asBracket nd1)
+                    (Colon, _) :: _ => slice1 (tl ts1) nd1
+                  | (DoubleColon, x) :: _ => slice1 ((Colon, x) :: (tl ts1)) nd1
+                  | (RightBracket, _) :: _ => (tl ts1, asBracket nd1)
                   | _ => error ["unknown token in brackets"]
             end
           | _ => error ["unknown token in brackets"]
     end
     
-(*
-    TypeApplication
-        .<  TypeExpressionList  >
-*)
-
-and typeApplication (ts:TOKENS)
-    : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> brackets with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftBracket, _) :: ts' =>
-            let
-                val (ts1,nd1,_) = listExpression (ts', AllowColon, AllowIn)
-            in case ts1 of
-                (RightBracket, _) :: ts'' => (ts'',nd1)
-              | _ => error ["unknown token in brackets"]
-            end
-      | _ => error ["unknown token in brackets"]
-    end
-
 (*
     MemberExpression
         PrimaryExpression
@@ -1691,74 +1666,76 @@ and typeApplication (ts:TOKENS)
 
     Refactored:
 
-    MemberExpression :
+    MemberExpression
         PrimaryExpression MemberExpressionPrime
         new MemberExpression Arguments MemberExpressionPrime
         SuperExpression  PropertyOperator  MemberExpressionPrime
 
-    MemberExpressionPrime :
+    MemberExpressionPrime
         PropertyOperator MemberExpressionPrime
         empty
 *)
 
-and memberExpression (ts:TOKENS, a:ALPHA, b:BETA)
+and memberExpression (ts0:TOKENS, alpha:ALPHA, beta:BETA)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> memberExpression with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> memberExpression with next=", tokenname (hd (ts0))])
+
+        fun memberExpression' (ts0:TOKENS, nd0:Ast.EXPR, alpha:ALPHA, beta:BETA)
+            : (TOKENS * Ast.EXPR) =
+            let val _ = trace ([">> memberExpression' with next=", tokenname (hd (ts0))])
+                fun withPropertyOperator () =
+                    let
+                        val (ts1, nd1) = propertyOperator(ts0, nd0)
+                        val (ts2, nd2) = memberExpression' (ts1, nd1, alpha, beta)
+                    in
+                        trace (["<< memberExpression' with next=", tokenname (hd (ts2))]);
+                        (ts2, nd2)
+                    end
+            in case ts0 of
+                (LeftBracket, _) :: _ => withPropertyOperator ()
+              | (Dot, _) :: _ => withPropertyOperator ()
+              | (LeftDotAngle, _) :: _ => withPropertyOperator ()
+              | _ =>
+                    let
+                    in
+                        trace (["<< memberExpression' with next=", tokenname (hd (ts0))]);
+                        (ts0, nd0)
+                    end
+            end
+
+    in case ts0 of
         (New, _) :: _ =>
             let
-                val (ts1,nd1) = memberExpression(tl ts,a,b)
+                val (ts1, nd1) = memberExpression (tl ts0, alpha, beta)
             in case ts1 of
                 (LeftParen, _) :: _ =>
                     let
-                        val (ts2,nd2) = arguments(ts1)
-                        val (ts3,nd3) = memberExpressionPrime(ts2,Ast.NewExpr {obj=nd1,actuals=nd2},a,b)
+                        val (ts2, nd2) = arguments (ts1)
+                        val (ts3, nd3) = memberExpression' (ts2, Ast.NewExpr {obj=nd1, actuals=nd2}, alpha, beta)
                     in
-                        (ts3,nd3)
+                        (ts3, nd3)
                     end
               | _ =>
                     let
                     in
-                        (ts1,Ast.NewExpr {obj=nd1,actuals=[]}) (* short new, we're done *)
+                        (ts1, Ast.NewExpr {obj=nd1, actuals=[]}) (* short new, we're done *)
                     end
             end
       | (Super, _) :: _ =>
             let
-                val (ts2,nd2) = superExpression(ts)
-                val (ts3,nd3) = propertyOperator(ts2,nd2)
-                val (ts4,nd4) = memberExpressionPrime(ts3,nd3,a,b)
+                val (ts1, nd1) = superExpression (ts0)
+                val (ts2, nd2) = propertyOperator (ts1, nd1)
+                val (ts3, nd3) = memberExpression' (ts2, nd2, alpha, beta)
             in
-                (ts4,nd4)
+                (ts3,nd3)
             end
       | _ =>
             let
-                val (ts3,nd3) = primaryExpression(ts,a,b)
-                val (ts4,nd4) = memberExpressionPrime(ts3,nd3,a,b)
+                val (ts1, nd1) = primaryExpression (ts0, alpha, beta)
+                val (ts2, nd2) = memberExpression' (ts1, nd1, alpha, beta)
             in
-                (trace(["<< memberExpression with next=",tokenname(hd ts4)]);(ts4,nd4))
-            end
-    end
-
-and memberExpressionPrime (ts:TOKENS, nd:Ast.EXPR, a:ALPHA, b:BETA)
-    : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> memberExpressionPrime with next=",tokenname(hd(ts))])
-        fun withPropertyOperator () =
-            let
-                val (ts1,nd1) = propertyOperator(ts,nd)
-                val (ts2,nd2) = memberExpressionPrime(ts1,nd1,a,b)
-            in
-                trace(["<< memberExpressionPrime with next=",tokenname(hd(ts2))]);
-                (ts2,nd2)
-            end
-    in case ts of
-        (LeftBracket, _) :: _ => withPropertyOperator ()
-      | (Dot, _) :: _ => withPropertyOperator ()
-      | (LeftDotAngle, _) :: _ => withPropertyOperator ()
-      | _ =>
-            let
-            in
-                trace(["<< memberExpressionPrime with next=",tokenname(hd(ts))]);
-                (ts,nd)
+                trace (["<< memberExpression with next=", tokenname (hd ts2)]);
+                (ts2, nd2)
             end
     end
 
@@ -1779,33 +1756,33 @@ and memberExpressionPrime (ts:TOKENS, nd:Ast.EXPR, a:ALPHA, b:BETA)
         empty
 *)
 
-and callExpressionPrime (ts:TOKENS, nd:Ast.EXPR, a:ALPHA, b:BETA)
+and callExpression' (ts0:TOKENS, nd0:Ast.EXPR, alpha:ALPHA, beta:BETA)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> callExpressionPrime with next=",tokenname(hd(ts))])
+    let val _ = trace ([">> callExpression' with next=", tokenname (hd (ts0))])
         fun withPropertyOperator () =
             let
-                val (ts1,nd1) = propertyOperator(ts,nd)
-                val (ts2,nd2) = callExpressionPrime(ts1,nd1,a,b)
+                val (ts1, nd1) = propertyOperator (ts0, nd0)
+                val (ts2, nd2) = callExpression' (ts1, nd1, alpha, beta)
             in
-                trace(["<< callExpressionPrime with next=",tokenname(hd(ts2))]);
-                (ts2,nd2)
+                trace (["<< callExpressionPrime with next=", tokenname (hd (ts2))]);
+                (ts2, nd2)
             end
-    in case ts of
+    in case ts0 of
         (LeftBracket, _) :: _ => withPropertyOperator ()
       | (Dot, _) :: _ => withPropertyOperator ()
       | (LeftParen, _) :: _ =>
             let
-                val (ts1,nd1) = arguments(ts)
-                val (ts2,nd2) = callExpressionPrime(ts1,Ast.CallExpr({func=nd,actuals=nd1}),a,b)
+                val (ts1, nd1) = arguments (ts0)
+                val (ts2, nd2) = callExpression' (ts1, Ast.CallExpr ({func=nd0, actuals=nd1}), alpha, beta)
             in
-                trace(["<< callExpressionPrime with next=",tokenname(hd(ts2))]);
-                (ts2,nd2)
+                trace (["<< callExpression' with next=", tokenname (hd (ts2))]);
+                (ts2, nd2)
             end
       | _ =>
             let
             in
-                trace(["<< callExpressionPrime with next=",tokenname(hd(ts))]);
-                (ts,nd)
+                trace (["<< callExpression' with next=", tokenname (hd (ts0))]);
+                (ts0, nd0)
             end
     end
 
@@ -1815,38 +1792,38 @@ and callExpressionPrime (ts:TOKENS, nd:Ast.EXPR, a:ALPHA, b:BETA)
         new  NewExpression(a,b)
 *)
 
-and newExpression (ts:TOKENS, a:ALPHA, b:BETA)
+and newExpression (ts0:TOKENS, alpha:ALPHA, beta:BETA)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> newExpression with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> newExpression with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (New, _) :: (New, _) :: _ =>
             let
-                val (ts1,nd1) = newExpression(tl ts,a,b)  (* eat only the first new *)
+                val (ts1, nd1) = newExpression(tl ts0, alpha, beta)  (* eat only the first new *)
             in
-                trace(["<< newExpression new new with next=",tokenname(hd(ts1))]);
-                (ts1,Ast.NewExpr({obj=nd1,actuals=[]}))
+                trace (["<< newExpression new new with next=", tokenname (hd (ts1))]);
+                (ts1, Ast.NewExpr ({obj=nd1,actuals=[]}))
             end
       | (New, _) :: _ =>
             let
-                val (ts1,nd1) = memberExpression(ts,a,b)  (* don't eat new, let memberExpr eat it *)
+                val (ts1, nd1) = memberExpression (ts0, alpha, beta)  (* don't eat new, let memberExpr eat it *)
             in
-                trace(["<< newExpression with next=",tokenname(hd(ts1))]);
-                (ts1,nd1)
+                trace (["<< newExpression with next=", tokenname (hd (ts1))]);
+                (ts1, nd1)
             end
       | _ =>
             let
-                val (ts1,nd1) = memberExpression(ts,a,b)
+                val (ts1, nd1) = memberExpression (ts0, alpha, beta)
             in case ts1 of
                 (LeftParen, _) :: _ =>
                     let
-                        val (ts2,nd2) = callExpressionPrime (ts,nd1,a,b)
+                        val (ts2, nd2) = callExpression' (ts0, nd1, alpha, beta)
                     in
-                        (ts2,nd2)
+                        (ts2, nd2)
                     end
               | _ =>
                     let
                     in
-                        (ts1,nd1)
+                        (ts1, nd1)
                     end
             end
     end
@@ -1864,30 +1841,34 @@ and newExpression (ts:TOKENS, a:ALPHA, b:BETA)
         MemberExpression(a, b)
 *)
 
-and leftHandSideExpression (ts:TOKENS, a:ALPHA, b:BETA)
+and leftHandSideExpression (ts0:TOKENS, alpha:ALPHA, beta:BETA)
     : (TOKENS * Ast.EXPR) =
-    let val _ = trace([">> leftHandSideExpression with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> leftHandSideExpression with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (New, _) :: (New, _) :: _ =>
             let
-                val (ts1,nd1) = newExpression(ts,a,b)
+                val (ts1,nd1) = newExpression(ts0, alpha, beta)
             in
-                (ts1,nd1)
+                (ts1, nd1)
             end
       | _ =>
             let
-                val (ts1,nd1) = memberExpression(ts,a,b)
+                val (ts1, nd1) = memberExpression (ts0, alpha, beta)
             in case ts1 of
                 (LeftParen, _) :: _ =>
                     let
-                        val (ts2,nd2) = arguments(ts1)
-                        val (ts3,nd3) = callExpressionPrime(ts2,Ast.CallExpr {func=nd1,actuals=nd2},a,b)
+                        val (ts2,nd2) = arguments (ts1)
+                        val (ts3,nd3) = callExpression' (ts2, Ast.CallExpr {func=nd1, actuals=nd2}, alpha, beta)
                     in
-                        (trace(["<< leftHandSideExpression with next=",tokenname(hd(ts3))]);(ts3,nd3))
+                        trace (["<< leftHandSideExpression with next=", tokenname (hd (ts3))]);
+                        (ts3, nd3)
                     end
               | _ =>
-                    (trace(["<< leftHandSideExpression with next=",tokenname(hd(ts1))]);
-                    (ts1,nd1))
+                    let
+                    in
+                        trace(["<< leftHandSideExpression with next=",tokenname (hd (ts1))]);
+                        (ts1, nd1)
+                    end
             end
     end
 
@@ -1989,7 +1970,7 @@ and unaryExpression (ts:TOKENS, a:ALPHA, b:BETA)
                         (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident=Ustring.type_,openNamespaces=[[]]},loc=NONE})
                     else
                         let
-                            val (ts1,nd1) = nullableTypeExpression (tl ts)
+                            val (ts1,nd1) = typeExpression (tl ts)
                         in
                             (ts1,Ast.TypeExpr nd1)
                         end
@@ -3090,7 +3071,7 @@ and typedIdentifier (ts:TOKENS)
     in case ts1 of
         (Colon, _) :: _ =>
             let
-                val (ts2,nd2) = nullableTypeExpression (tl ts1)
+                val (ts2,nd2) = typeExpression (tl ts1)
             in
                 (ts2,(nd1,unwrapTy nd2))
             end
@@ -3149,7 +3130,7 @@ and typedPattern (ts:TOKENS, b:BETA)
             in case ts1 of
                 (Colon, _) :: _ =>
                     let
-                        val (ts2,nd2) = nullableTypeExpression (tl ts1)
+                        val (ts2,nd2) = typeExpression (tl ts1)
                     in
                         (ts2,(nd1,unwrapTy nd2))
                     end
@@ -3164,65 +3145,87 @@ and typedPattern (ts:TOKENS, b:BETA)
 *)
 
 (*
+    TypeExpression
+        NullableTypeExpression
+        like  NullableTypeExpression
+
     NullableTypeExpression
+        BasicTypeExpression
+        BasicTypeExpression  ?
+        BasicTypeExpression  !
+
+    BasicTypeExpression
+        *
         null
         undefined
-        TypeExpression
-        TypeExpression  ?
-        TypeExpression  !
-
-    TypeExpression
         FunctionType
         UnionType
         RecordType
         ArrayType
-        TypeIdentifier
+        PrimaryName
 *)
 
-and nullableTypeExpression (ts:TOKENS)
+and typeExpression (ts0:TOKENS)
     : (TOKENS * Ast.TY) =
-    let val _ = trace([">> nullableTypeExpression with next=",tokenname(hd ts)])
-        val (ts1,nd1) = typeExpression ts
-    in case ts1 of
-        (Not, _) :: _ =>
-            (tl ts1,makeTy (Ast.NullableType {expr=unwrapTy nd1,nullable=false}))
-      | (QuestionMark, _) :: _ =>
-            (tl ts1,makeTy (Ast.NullableType {expr=unwrapTy nd1,nullable=true}))
-      | _ =>
-            (ts1,nd1)
-    end
-
-and typeExpression (ts:TOKENS)
-    : (TOKENS * Ast.TY) =
-    let val _ = trace([">> typeExpression with next=",tokenname(hd ts)])
-    in case ts of
-        (Function, _) :: _ => functionType ts
-      | (LeftParen, _) :: _ => unionType ts
-      | (LeftBrace, _) :: _ => objectType ts
-      | (LeftBracket, _) :: _ => arrayType ts
-      | (Null, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Null))
-      | (Undefined, _) :: _ => (tl ts, makeTy (Ast.SpecialType Ast.Undefined))
-      | (Like, _) :: _ => 
-        let
-            val (ts1, nd1) = typeExpression (tl ts)
-        in
-            (ts1, makeTy (Ast.LikeType (unwrapTy nd1)))
-        end
+    let val _ = trace ([">> typeExpression with next=", tokenname (hd ts0)])
+    in case ts0 of
+        (Like, _) :: _ =>
+            let
+                val (ts1, nd1) = nullableTypeExpression (tl ts0)
+            in
+                trace (["<< typeExpression with next=", tokenname (hd ts1)]);
+                (ts1, makeTy (Ast.LikeType (unwrapTy nd1)))
+            end
       | _ =>
             let
-                val (ts1,nd1) = primaryName ts
+                val (ts1, nd1) = nullableTypeExpression (ts0)
             in
-                case ts1 of 
-                    (LeftDotAngle, _) :: _ => 
+                trace (["<< typeExpression with next=", tokenname (hd ts1)]);
+                (ts1, nd1)
+            end
+    end
+
+and nullableTypeExpression (ts0:TOKENS)
+    : (TOKENS * Ast.TY) =
+    let val _ = trace ([">> nullableTypeExpression with next=", tokenname (hd ts0)])
+        val (ts1, nd1) = basicTypeExpression ts0
+    in case ts1 of
+        (Not, _) :: _ =>
+            (trace (["<< nullableTypeExpression with next=", tokenname (hd ts0)]);
+            (tl ts1, makeTy (Ast.NullableType {expr = unwrapTy nd1, nullable = false})))
+      | (QuestionMark, _) :: _ =>
+            (trace (["<< nullableTypeExpression with next=", tokenname (hd ts0)]);
+            (tl ts1, makeTy (Ast.NullableType {expr = unwrapTy nd1, nullable = true})))
+      | _ =>
+            (trace (["<< nullableTypeExpression with next=", tokenname (hd ts0)]);
+            (ts1, nd1))
+    end
+
+and basicTypeExpression (ts0:TOKENS)
+    : (TOKENS * Ast.TY) =
+    let val _ = trace ([">> basicTypeExpression with next=", tokenname (hd ts0)])
+    in case ts0 of
+        (Mult, _) :: _ => (tl ts0, makeTy (Ast.SpecialType Ast.Any))
+      | (Null, _) :: _ => (tl ts0, makeTy (Ast.SpecialType Ast.Null))
+      | (Undefined, _) :: _ => (tl ts0, makeTy (Ast.SpecialType Ast.Undefined))
+      | (Function, _) :: _ => functionType ts0
+      | (LeftParen, _) :: _ => unionType ts0
+      | (LeftBrace, _) :: _ => objectType ts0
+      | (LeftBracket, _) :: _ => arrayType ts0
+      | _ =>
+            let
+                val (ts1, nd1) = primaryName ts0
+            in case ts1 of
+                (LeftDotAngle, _) :: _ => 
                     let
                         val (ts2,nd2) = typeExpressionList (tl ts1)
                     in case ts2 of
-                           (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
-                           (tl ts2, makeTy (Ast.AppType { base = needType(nd1,NONE),
-                                                          args = (map AstQuery.typeExprOf nd2) }))
-                         | _ => error ["unknown final token of AppType type expression"]
+                        (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
+                        (tl ts2, makeTy (Ast.AppType { base = needType(nd1, NONE),
+                                                       args = (map AstQuery.typeExprOf nd2) }))
+                      | _ => error ["unknown final token of AppType type expression"]
                     end
-                  | _ => (ts1,makeTy (needType(nd1,NONE)))
+              | _ => (ts1, makeTy (needType (nd1, NONE)))
             end
     end
 
@@ -3231,15 +3234,15 @@ and typeExpression (ts:TOKENS)
         function  FunctionSignature
 *)
 
-and functionType (ts:TOKENS)
+and functionType (ts0:TOKENS)
     : (TOKENS * Ast.TY) =
-    let val _ = trace([">> functionType with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> functionType with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (Function, _) :: _ =>
             let
-                val (ts1,nd1) = functionSignatureType (tl ts)
+                val (ts1, nd1) = functionSignatureType (tl ts0)
             in
-                trace(["<< functionType with next=",tokenname(hd ts1)]);
+                trace (["<< functionType with next=", tokenname (hd ts1)]);
                 (ts1, (functionTypeFromSignature nd1))
             end
       | _ => error ["unknown token in functionType"]
@@ -3271,16 +3274,32 @@ and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
 
 (*
     UnionType
-        (  TypeExpressionList  )
+        (  TypeUnionList  )
+
+    TypeUnionList
+        TypeExpression
+        TypeUnionList  |  TypeExpression
+
+    refactored:
+
+    TypeUnionList
+        TypeExpression TypeUnionList'
+
+    TypeUnionList'
+        empty
+        | TypeExpression TypeUnionList'
+
 *)
 
-and unionType (ts:TOKENS)
+and unionType (ts0:TOKENS)
     : (TOKENS * Ast.TY)  =
-    let val _ = trace([">> unionType with next=",tokenname(hd(ts))])
-    in case ts of
-        (LeftParen, _) :: _ =>
+    let val _ = trace ([">> unionType with next=", tokenname (hd (ts0))])
+    in case ts0 of
+        (LeftParen, _) :: (RightParen, _) :: _ =>  (* unit type *)
+            (tl (tl ts0), makeTy (Ast.UnionType []))
+      | (LeftParen, _) :: _ =>
             let
-                val (ts1,nd1) = typeExpressionList (tl ts)
+                val (ts1, nd1) = typeUnionList (tl ts0)
             in case ts1 of
                 (RightParen, _) :: _ =>
                     (tl ts1, makeTy (Ast.UnionType (map unwrapTy nd1)))
@@ -3289,21 +3308,52 @@ and unionType (ts:TOKENS)
       | _ => error ["unknown token in unionType"]
     end
 
+and typeUnionList (ts0:TOKENS)
+    : (TOKENS * Ast.TY list) =
+    let
+        fun typeUnionList' (ts0) =
+            let
+            in case ts0 of
+                (BitwiseOr, _) :: _ =>
+                    let
+                        val (ts1, nd1) = typeExpression (tl ts0)
+                        val (ts2, nd2) = typeUnionList' ts1
+                    in
+                        (ts2, nd1::nd2)
+                    end
+              | (Comma, _) :: _ =>  (* FIXME delete this case when builtins are migrated to use | *)
+                    let
+                        val (ts1, nd1) = typeExpression (tl ts0)
+                        val (ts2, nd2) = typeUnionList' ts1
+                    in
+                        (ts2, nd1::nd2)
+                    end
+              | _ => (ts0, [])
+            end
+            
+        val _ = trace ([">> typeExpressionList with next=", tokenname (hd (ts0))])
+        val (ts1, nd1) = typeExpression ts0
+        val (ts2, nd2) = typeUnionList' ts1
+    in
+        trace (["<< typeExpressionList with next=", tokenname(hd(ts0))]);
+        (ts2, nd1::nd2)
+    end
+
 (*
     ObjectType
         {  FieldTypeList  }
 *)
 
-and objectType (ts:TOKENS)
+and objectType (ts0:TOKENS)
     : (TOKENS * Ast.TY) =
-    let val _ = trace([">> objectType with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> objectType with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (LeftBrace, _) :: ts1 =>
             let
                 val (ts2,nd2) = fieldTypeList ts1
             in case ts2 of
                 (RightBrace, _) :: ts3 =>
-                    (trace(["<< objectType with next=",tokenname(hd(ts3))]);
+                    (trace (["<< objectType with next=", tokenname (hd (ts3))]);
                     (ts3, makeTy (Ast.ObjectType nd2)))
               | _ => error ["unknown token in objectType"]
             end
@@ -3320,28 +3370,28 @@ and objectType (ts:TOKENS)
         FieldType  ,  NonemptyFieldTypeList
 *)
 
-and fieldTypeList (ts:TOKENS)
+and fieldTypeList (ts0:TOKENS)
     : (TOKENS * (Ast.FIELD_TYPE list)) =
-    let val _ = trace([">> fieldTypeList with next=",tokenname(hd(ts))])
-        fun nonemptyFieldTypeList (ts) =
+    let val _ = trace([">> fieldTypeList with next=", tokenname (hd (ts0))])
+        fun nonemptyFieldTypeList (ts0) =
             let
-                val (ts1,nd1) = fieldType(ts)
+                val (ts1,nd1) = fieldType(ts0)
             in case ts1 of
                 (Comma, _) :: _ =>
                     let
                         val (ts2,nd2) = nonemptyFieldTypeList (tl ts1)
                     in
-                        (ts2,nd1::nd2)
+                        (ts2, nd1::nd2)
                     end
-              | _ => (ts1,nd1::[])
+              | _ => (ts1, nd1::[])
             end
-    in case ts of
-        (RightBrace, _) :: _ => (ts,[])
+    in case ts0 of
+        (RightBrace, _) :: _ => (ts0, [])
       | _ =>
         let
-            val (ts1,nd1) = nonemptyFieldTypeList (ts)
+            val (ts1, nd1) = nonemptyFieldTypeList (ts0)
         in
-            (ts1,nd1)
+            (ts1, nd1)
          end
     end
 
@@ -3350,20 +3400,19 @@ and fieldTypeList (ts:TOKENS)
         FieldName  :  TypeExpression
 *)
 
-and fieldType (ts:TOKENS)
+and fieldType (ts0:TOKENS)
     : (TOKENS * Ast.FIELD_TYPE) =
-    let val _ = trace([">> fieldType with next=",tokenname(hd(ts))])
-
-        val (ts1,nd1) = fieldName ts
+    let val _ = trace ([">> fieldType with next=", tokenname (hd (ts0))])
+        val (ts1, nd1) = fieldName ts0
         val ident = case nd1 of
-                        Ast.Identifier{ident,...} => ident
+                        Ast.Identifier {ident,...} => ident
                       | _ => LogErr.internalError ["fieldType: unexpected field name"]
     in case ts1 of
         (Colon, _) :: _ =>
             let
-                val (ts2,nd2) = nullableTypeExpression (tl ts1)
+                val (ts2, nd2) = typeExpression (tl ts1)
             in
-                (ts2,{name=ident,ty=unwrapTy nd2})
+                (ts2, {name=ident, ty=unwrapTy nd2})
             end
       | _ => error ["unknown token in fieldType"]
     end
@@ -3373,13 +3422,13 @@ and fieldType (ts:TOKENS)
         [  ElementTypeList  ]
 *)
 
-and arrayType (ts:TOKENS)
+and arrayType (ts0:TOKENS)
     : (TOKENS * Ast.TY) =
-    let val _ = trace([">> arrayType with next=",tokenname(hd(ts))])
-    in case ts of
+    let val _ = trace ([">> arrayType with next=", tokenname (hd (ts0))])
+    in case ts0 of
         (LeftBracket, _) :: _ =>
             let
-                val (ts1,nd1) = elementTypeList (tl ts)
+                val (ts1, nd1) = elementTypeList (tl ts0)
             in case ts1 of
                 (RightBracket, _) :: _ => (tl ts1, makeTy (Ast.ArrayType nd1))
               | _ => error ["unknown token in arrayType"]
@@ -3395,28 +3444,28 @@ and arrayType (ts:TOKENS)
         TypeExpression  ,  ElementTypeList
 *)
 
-and elementTypeList (ts:TOKENS)
+and elementTypeList (ts0:TOKENS)
     : (TOKENS * Ast.TYPE_EXPR list) =
-    let val _ = trace([">> elementTypeList with next=",tokenname(hd(ts))])
-    in case ts of
-        (RightBracket, _) :: _ => (ts,[])
+    let val _ = trace ([">> elementTypeList with next=", tokenname (hd (ts0))])
+    in case ts0 of
+        (RightBracket, _) :: _ => (ts0, [])
       | (Comma, _) :: _ =>
             let
-                val (ts1,nd1) = elementTypeList (tl ts)
+                val (ts1, nd1) = elementTypeList (tl ts0)
             in
-                (ts1,Ast.SpecialType(Ast.Any) :: nd1)
+                (ts1, Ast.SpecialType (Ast.Any) :: nd1)
             end
       | _ =>
             let
-                val (ts1,nd1) = nullableTypeExpression (ts)
+                val (ts1, nd1) = typeExpression (ts0)
             in case ts1 of
                 (Comma, _) :: _ =>
                     let
-                        val (ts2,nd2) = elementTypeList (tl ts1)
+                        val (ts2, nd2) = elementTypeList (tl ts1)
                     in
-                        (ts2,(unwrapTy nd1)::nd2)
+                        (ts2, (unwrapTy nd1)::nd2)
                     end
-              | _ => (ts1,(unwrapTy nd1)::[])
+              | _ => (ts1, (unwrapTy nd1)::[])
             end
     end
 
@@ -3426,25 +3475,27 @@ and elementTypeList (ts:TOKENS)
         TypeExpressionList  ,  TypeExpression
 *)
 
-and typeExpressionList (ts:TOKENS)
+and typeExpressionList (ts0:TOKENS)
     : (TOKENS * Ast.TY list) =
     let
-        fun typeExpressionList' (ts) =
+        fun typeExpressionList' (ts0) =
             let
-            in case ts of
+            in case ts0 of
                 (Comma, _) :: _ =>
                     let
-                        val (ts1,nd1) = nullableTypeExpression (tl ts)
-                        val (ts2,nd2) = typeExpressionList' ts1
+                        val (ts1, nd1) = typeExpression (tl ts0)
+                        val (ts2, nd2) = typeExpressionList' ts1
                     in
-                        (ts2,nd1::nd2)
+                        (ts2, nd1::nd2)
                     end
-              | _ => (ts,[])
+              | _ => (ts0, [])
             end
-        val (ts1,nd1) = nullableTypeExpression ts
-        val (ts2,nd2) = typeExpressionList' ts1
+        val _ = trace ([">> typeExpressionList with next=", tokenname(hd(ts0))])
+        val (ts1, nd1) = typeExpression ts0
+        val (ts2, nd2) = typeExpressionList' ts1
     in
-        (ts2,nd1::nd2)
+        trace (["<< typeExpressionList with next=", tokenname(hd(ts0))]);
+        (ts2, nd1::nd2)
     end
 
 (* STATEMENTS *)
@@ -3735,7 +3786,7 @@ and typedExpression (ts:TOKENS)
     in case ts1 of
         (Colon, _) :: _ =>
             let
-                val (ts2,nd2) = nullableTypeExpression (tl ts1)
+                val (ts2,nd2) = typeExpression (tl ts1)
             in
                 (ts2,(nd1,unwrapTy nd2))
             end
@@ -6231,7 +6282,7 @@ and parameter (ts) (n)
 
 and parameterType (ts) =
     let val _ = trace([">> parameter with next=",tokenname(hd(ts))])
-        val (ts2,t) = nullableTypeExpression ts
+        val (ts2,t) = typeExpression ts
     in
         trace(["<< parameter with next=",tokenname(hd(ts2))]);
         (ts2, (unwrapTy t))
@@ -6303,7 +6354,7 @@ and resultType (ts:TOKENS)
         (Colon, _) :: (Void, _) :: ts1 => (ts1,Ast.SpecialType(Ast.VoidType))
       | (Colon, _) :: _ =>
             let
-                val (ts1,nd1) = nullableTypeExpression (tl ts)
+                val (ts1,nd1) = typeExpression (tl ts)
             in
                 trace ["<< resultType with next=",tokenname(hd ts1)];
                 (ts1,unwrapTy nd1)
@@ -6882,7 +6933,7 @@ and typeInitialisation (ts:TOKENS)
     in case ts of
         (Assign, _) :: _ =>
             let
-                val (ts1,nd1) = nullableTypeExpression (tl ts)
+                val (ts1,nd1) = typeExpression (tl ts)
             in
                 trace(["<< typeInitialisation with next=", tokenname(hd ts1)]);
                 (ts1,unwrapTy nd1)

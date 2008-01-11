@@ -92,7 +92,7 @@ package
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            magic::hasOwnProperty(this, V is EnumerableId ? V : string(V));
+            magic::hasOwnProperty(this, (V is EnumerableId) ? V : string(V));
 
         intrinsic function hasOwnProperty(V: EnumerableId): boolean
             magic::hasOwnProperty(this, V);
@@ -123,8 +123,8 @@ package
         /* E262-4 draft proposals:enumerability */
         prototype function propertyIsEnumerable(prop, e=undefined)
             private::propertyIsEnumerable(this, 
-                                         prop is EnumerableId ? prop : string(prop), 
-                                         e is (boolean,undefined) ? e : boolean(e));
+                                         (prop is EnumerableId) ? prop : string(prop), 
+                                         (e is (boolean,undefined)) ? e : boolean(e));
 
         intrinsic function propertyIsEnumerable(prop: EnumerableId,
                                                 e:(boolean,undefined) = undefined): boolean 

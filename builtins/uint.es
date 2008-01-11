@@ -63,7 +63,7 @@ package
 
         /* E262-4 draft: The uint Constructor Called as a Function */
         meta static function invoke(x=0u)
-            x is uint ? x : new uint(x);
+            (x is uint) ? x : new uint(x);
 
         override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)

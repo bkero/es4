@@ -62,7 +62,7 @@ package
 
         /* E262-4 draft: The byte Constructor Called as a Function */
         meta static function invoke(x=0u)
-            x is byte ? x : new byte(x);
+            (x is byte) ? x : new byte(x);
 
         override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
