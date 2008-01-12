@@ -3321,13 +3321,6 @@ and typeUnionList (ts0:TOKENS)
                     in
                         (ts2, nd1::nd2)
                     end
-              | (Comma, _) :: _ =>  (* FIXME delete this case when builtins are migrated to use | *)
-                    let
-                        val (ts1, nd1) = typeExpression (tl ts0)
-                        val (ts2, nd2) = typeUnionList' ts1
-                    in
-                        (ts2, nd1::nd2)
-                    end
               | _ => (ts0, [])
             end
             

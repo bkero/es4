@@ -330,12 +330,12 @@ package Unicode
         isUnicodeCo(cc) ||
         isUnicodeCn(cc);
 
-    public function toUpperCaseCharCode(i: uint) : (uint,[/*uint*/]) {
+    public function toUpperCaseCharCode(i: uint) : (uint|[/*uint*/]) {
         var c = toUpperTbl(i);
         return c ? c : i;
     }
 
-    public function toLowerCaseCharCode(i: uint) : (uint,[/*uint*/]) {
+    public function toLowerCaseCharCode(i: uint) : (uint|[/*uint*/]) {
         var c = toLowerTbl(i);
         return c ? c : i;
     }
