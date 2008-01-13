@@ -4853,15 +4853,15 @@ and evalHead (regs:Mach.REGS)
     let
         val (Ast.Head (rib,inits)) = head
         val obj = Mach.newObjNoTag ()
-        val regs = extendScopeReg regs obj Mach.TempScope
-        val {scope,...} = regs
+        val newRegs = extendScopeReg regs obj Mach.TempScope
+        val {scope,...} = newRegs
         val _ = traceConstruct ["built temp scope #",
-                                Int.toString (getScopeId (#scope regs)),
+                                Int.toString (getScopeId scope),
                                 " for head"]
     in
-        allocScopeRib regs rib;
+        allocScopeRib newRegs rib;
         evalInits regs obj (getScopeTemps scope) inits;
-        regs
+        newRegs
     end
 
 (*
