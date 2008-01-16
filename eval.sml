@@ -493,7 +493,9 @@ fun allocRib (regs:Mach.REGS)
                         in
                             allocProp "value"
                                       { ty = ty,
-                                        state = valAllocState regs ty,
+                                        state = if readOnly
+						then Mach.UninitProp
+						else valAllocState regs ty,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum regs pn obj, *)
                                                   readOnly = readOnly,
@@ -726,7 +728,6 @@ and allocSpecial (regs:Mach.REGS)
         findSpecial 
             [
              (Mach.getBooleanClassSlot, (fn _ => newBoolean regs false)),
-             (Mach.getBooleanWrapperClassSlot, (fn _ => newBooleanWrapper regs false)),
 
              (Mach.getDoubleClassSlot, (fn _ => newDouble regs 0.0)),
              (Mach.getDecimalClassSlot, (fn _ => newDecimal regs Decimal.zero)),
@@ -734,8 +735,7 @@ and allocSpecial (regs:Mach.REGS)
              (Mach.getUintClassSlot, (fn _ => newUInt regs 0.0)),
              (Mach.getByteClassSlot, (fn _ => newByte regs 0.0)),
 
-             (Mach.getStringClassSlot, (fn _ => newString regs Ustring.empty)),
-             (Mach.getStringWrapperClassSlot, (fn _ => newStringWrapper regs Ustring.empty))
+             (Mach.getStringClassSlot, (fn _ => newString regs Ustring.empty))
 	        ]
     end
 
@@ -3768,8 +3768,7 @@ and checkAllPropertiesInitialized (regs:Mach.REGS)
         fun checkOne (n:Ast.NAME, {prop:Mach.PROP, seq}) =
             case (#state prop) of
                 Mach.UninitProp => 
-                error regs ["uninitialized property: ",
-                            LogErr.name n]
+                error regs ["uninitialized property: ", LogErr.name n]
               | _ => ()
         val Mach.Obj { props, ... } = obj
         val { bindings, ... } = !props
@@ -3814,15 +3813,6 @@ and invokeFuncClosure (regs:Mach.REGS)
             val (varRegs:Mach.REGS) = extendScopeReg regs varObj Mach.ActivationScope
             val (varScope:Mach.SCOPE) = (#scope varRegs)
             val (Mach.Obj {props, ...}) = varObj
-
-            (* FIXME: self-name binding is surely more complex than this! *)
-            val selfName = Name.nons (#ident name)
-            fun initSelf _ = Mach.addProp props selfName { ty = makeTy (Ast.SpecialType Ast.Any),
-                                                           state = Mach.MethodProp closure,
-                                                           attrs = { dontDelete = true,
-                                                                     dontEnum = true,
-                                                                     readOnly = true,
-                                                                     isFixed = true } }
         in
             trace ["invokeFuncClosure: allocating scope rib"];
             allocScopeRib varRegs paramRib;
@@ -3831,16 +3821,6 @@ and invokeFuncClosure (regs:Mach.REGS)
             trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
                    Int.toString (getScopeId varScope)];
             evalScopeInits varRegs Ast.Local paramInits;
-
-            (* NOTE: is this for the binding of a function expression to its optional
-             * identifier? If so, we need to extend the scope chain before extending it
-             * with the activation object, and add the self-name binding to that new
-             * scope, as in sec 13 ed. 3.
-             *
-             * Changing defValue to setValue for now.
-             *)
-
-            initSelf ();
             checkAllPropertiesInitialized regs varObj;
             trace ["invokeFuncClosure: evaluating block"];
             let
@@ -4853,7 +4833,7 @@ and evalHead (regs:Mach.REGS)
     let
         val (Ast.Head (rib,inits)) = head
         val obj = Mach.newObjNoTag ()
-        val newRegs = extendScopeReg regs obj Mach.TempScope
+        val newRegs = extendScopeReg regs obj Mach.BlockScope
         val {scope,...} = newRegs
         val _ = traceConstruct ["built temp scope #",
                                 Int.toString (getScopeId scope),

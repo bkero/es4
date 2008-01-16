@@ -818,17 +818,36 @@ and functionExpression (ts0: TOKENS, alpha: ALPHA, beta: BETA)
                         val (ts1,nd1) = identifier (tl ts0)
                         val (ts2,nd2) = functionSignature ts1
                         val (ts3,nd3) = functionExpressionBody (ts2,alpha,beta)
+
+                        val ident = nd1
+                        val ty = functionTypeFromSignature nd2
+                        val expr = (Ast.LiteralFunction
+                                         (Ast.Func {name={kind=Ast.Ordinary,ident=nd1},
+                                                    fsig=nd2,
+                                                    block=SOME nd3,
+                                                    native=false,
+                                                    param=Ast.Head ([],[]),
+                                                    defaults=[],
+                                                    ty=ty,
+                                                    loc=SOME funcStartLoc}))
+                        val bid = Ast.PropIdent ident
+                        val bindings = [Ast.Binding { ident = bid, ty = unwrapTy ty }]
+                        val inits = [Ast.InitStep (bid, Ast.LiteralExpr expr)]
+                        val res = Ast.LexicalRef { ident = Ast.Identifier { ident = ident, 
+                                                                            openNamespaces = []}, 
+                                                   loc = SOME funcStartLoc }
                     in
-                        (ts3,Ast.LiteralExpr
-                             (Ast.LiteralFunction
-                                  (Ast.Func {name={kind=Ast.Ordinary,ident=nd1},
-                                             fsig=nd2,
-                                             block=SOME nd3,
-                                             native=false,
-                                             param=Ast.Head ([],[]),
-                                             defaults=[],
-                                             ty=functionTypeFromSignature nd2,
-                                             loc=SOME funcStartLoc})))
+                        (* 
+                         * ES3 section 13 compatibility.
+                         * 
+                         * expression: function f () { ... } 
+                         * desugaring: (let (f = function() { ... }) f)
+                         *)
+                        (ts3,
+                         Ast.LetExpr 
+                             { defs = (bindings, inits),
+                               body = res,
+                               head = NONE })
                     end
             end
       | _ => error ["unknown form of function expression"]

@@ -50,7 +50,7 @@ package
         /* Becomes available as Object.prototype, Boolean.prototype,
            and so on */
 
-        const prototype;
+        var prototype = null;
 
         private var classname : string?;
 

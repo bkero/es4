@@ -171,7 +171,7 @@ datatype VAL = Object of OBJ
        | GlobalScope
        | InstanceScope
        | ActivationScope
-       | TempScope
+       | BlockScope
        | TypeArgScope
 
      and TEMP_STATE = UninitTemp

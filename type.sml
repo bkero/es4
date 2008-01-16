@@ -1378,8 +1378,8 @@ fun groundFindConversion (prog:Fixture.PROGRAM)
                        (AnyNumberType, uintType),
                        (AnyNumberType, byteType),
 
-                       (AnyScalarType, booleanType),
-                       (AnyScalarType, BooleanType),                       
+                       (AnyType, booleanType),
+                       (AnyType, BooleanType),
 
                        (AnyStringType, stringType),
                        (AnyStringType, StringType) ]

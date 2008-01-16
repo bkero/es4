@@ -307,7 +307,6 @@ val meta_set = meta Ustring.set_
 val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
 
-val this = nons Ustring.this_
 val arguments = nons Ustring.arguments_
 val empty = nons Ustring.empty
 
