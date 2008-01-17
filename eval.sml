@@ -4043,7 +4043,7 @@ and evalObjInits (regs:Mach.REGS)
     let
         val (Ast.Head (rib,inits)) = head
         val tempRegs = evalHead regs (Ast.Head (rib,[]))
-        val temps = getScopeTemps (#scope regs)
+        val temps = getScopeTemps (#scope tempRegs)
     in
         evalInits tempRegs instanceObj temps inits
     end
