@@ -760,9 +760,23 @@ and asArrayIndex (v:Mach.VAL)
 and hasOwnValue (obj:Mach.OBJ)
                 (n:Ast.NAME)
     : bool =
-    case obj of
-        Mach.Obj { props, ... } =>
+    let
+        val Mach.Obj { props, ... } = obj
+    in
         Mach.hasProp props n
+    end
+
+and hasOwnInitializedValue (obj:Mach.OBJ)
+                           (n:Ast.NAME)
+    : bool =
+    let
+        val Mach.Obj { props, ... } = obj
+    in
+        case Mach.findProp props n of 
+            NONE => false
+          | SOME { state = Mach.UninitProp, ... } => false
+          | SOME prop => true
+    end
 
 
 and findValue (obj:Mach.OBJ)
@@ -1421,10 +1435,11 @@ and newFunctionFromClosure (regs:Mach.REGS)
         val _ = traceConstruct ["finding Function.prototype"]
         val funClass = needObj regs (getValue regs (#global regs) 
                                               Name.nons_Function)
-        val funProto = getValue regs funClass Name.nons_prototype
+        val funProto = getPrototype regs funClass
         val _ = traceConstruct ["building new prototype chained to ",
                                 "Function.prototype"]
-        val newProtoObj = Mach.setProto (newObj regs) funProto
+	val newProtoObj = newObj regs
+        val newProtoObj = Mach.setProto newProtoObj funProto
         val newProto = Mach.Object newProtoObj
         val _ = traceConstruct ["built new prototype chained to ",
                                 "Function.prototype"]
@@ -1440,7 +1455,7 @@ and newFunctionFromClosure (regs:Mach.REGS)
 
     in
         Mach.setMagic obj (SOME (Mach.Function closure));
-        setValueOrVirtual regs obj Name.nons_prototype newProto false;
+	setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj Name.nons_constructor (Mach.Object obj) false;
         Mach.Object obj
     end
@@ -2192,13 +2207,9 @@ and applyTypesToClass (regs:Mach.REGS)
 		val newClassVal = newClass regs newEnv newCls
 		val newClassObj = needObj regs newClassVal
 		val baseClassObj = needObj regs classVal
-		val proto = if hasOwnValue baseClassObj Name.nons_prototype
-			    then getValue regs baseClassObj Name.nons_prototype
-			    else Mach.Null
-		val Mach.Obj { props, ... } = newClassObj
+		val proto = getPrototype regs baseClassObj 
             in
-		defValue regs newClassObj Name.nons_prototype proto;
-		Mach.setPropDontEnum props Name.nons_prototype true;
+		setPrototype regs newClassObj proto;
 		newClassVal
             end
     end
@@ -2462,35 +2473,35 @@ and evalListExpr (regs:Mach.REGS)
       | (e::ez) => ((evalExpr regs e); (evalListExpr regs ez))
 
 
+(* 
+ * ES3 13.2.2 [[Construct]] on a Function object.
+ *)
+
 and constructObjectViaFunction (regs:Mach.REGS)
                                (ctorObj:Mach.OBJ)
                                (ctor:Mach.FUN_CLOSURE)
                                (args:Mach.VAL list)
     : Mach.VAL =
-    case ctorObj of
-        Mach.Obj { props, ... } =>
-        let
-            (* FIXME: the default prototype should be the initial Object prototype,
-             * as per ES-262-3 13.2.2, not the current Object prototype. *)
-            val (proto:Mach.VAL) =
-                if Mach.hasProp props Name.nons_prototype
-                then getValue regs ctorObj Name.nons_prototype
-                else
-                    let
-                        val globalObjectObj = 
-                            needObj regs (getValue regs 
-                                                   (#global regs) 
-                                                   Name.nons_Object)
-                    in
-                        getValue regs globalObjectObj Name.nons_prototype
-                    end
-            val (newObj:Mach.OBJ) = Mach.setProto (newObj regs) proto
-        in
-            case invokeFuncClosure (withThis regs newObj) ctor args of
-                Mach.Object ob => Mach.Object ob
-              | _ => Mach.Object newObj
-        end
+    let
+	val ctorProto = getPrototype regs ctorObj
+	val originalObjectProto = case !(Mach.getObjectClassSlot regs) of 
+				      NONE => Mach.Null
+				    | SOME obj => getPrototype regs obj
 
+        val proto = case ctorProto of 
+			Mach.Object ob => ctorProto
+		      | _ => originalObjectProto
+
+	val newObject = newObj regs
+        val newObject = Mach.setProto newObject proto
+	val constructorRegs = withThis regs newObject
+	val constructorResult = invokeFuncClosure constructorRegs ctor args
+    in
+	if Mach.isObject constructorResult
+	then constructorResult
+	else Mach.Object newObject
+    end
+    
 
 and evalNewExpr (regs:Mach.REGS)
                 (obj:Mach.OBJ)
@@ -3335,7 +3346,7 @@ and hasInstance (regs:Mach.REGS)
                 (v:Mach.VAL)
     : bool = 
     let
-        val proto = getValue regs obj Name.nons_prototype
+        val proto = getPrototype regs obj
         val targId = case proto of 
                          (Mach.Object (Mach.Obj { ident, ... })) => ident
                        | _ => (throwTypeErr regs ["no 'prototype' property found in [[hasInstance]]"]; dummyObjId)
@@ -4075,7 +4086,7 @@ and findTargetObj (regs:Mach.REGS)
                  
           | Ast.Prototype =>
             if kind = Mach.InstanceScope
-            then (needObj regs (getValue regs object Name.nons_prototype))
+            then needObj regs (getPrototype regs object)
             else findTargetObj regs (valOf parent) target
     end
 
@@ -4202,9 +4213,7 @@ and constructStandardWithTag (regs:Mach.REGS)
     : Mach.OBJ =
     let
         val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
-        val (proto:Mach.VAL) = if hasOwnValue classObj Name.nons_prototype
-                               then getValue regs classObj Name.nons_prototype
-                               else Mach.Null
+        val (proto:Mach.VAL) = getPrototype regs classObj
         val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
         (* FIXME: might have 'this' binding wrong in class scope here. *)
         val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
@@ -4627,10 +4636,42 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 	end
 
 
+and setPrototype (regs:Mach.REGS)
+		 (obj:Mach.OBJ)
+		 (proto:Mach.VAL)
+    : unit = 
+    let
+	val Mach.Obj { props, ... } = obj
+	val n = Name.nons_prototype
+	val prop = { ty = makeTy (Ast.SpecialType Ast.Any),
+                     state = Mach.ValProp proto,
+		     attrs = { dontDelete = true,
+			       dontEnum = true,
+			       readOnly = true,
+			       isFixed = true } }
+    in
+	if Mach.hasProp props n
+	then Mach.delProp props n
+	else ();
+	Mach.addProp props n prop
+    end
+
+
 and getPrototype (regs:Mach.REGS)
 		 (obj:Mach.OBJ)
     : Mach.VAL = 
-    getValueOrVirtual regs obj Name.nons_prototype false (fn _ => Mach.Null)
+    let
+	val Mach.Obj { props, ... } = obj
+    in
+	(* 
+	 * NB: Do not refactor this; it has to handle a variety of
+	 * unwelcome circumstances for the .prototype slot: 
+	 * null-valued, unallocated, and uninitialized.
+	 *)
+	case Mach.findProp props Name.nons_prototype of 
+            SOME { state = Mach.ValProp v, ... } => v
+	  | _ => Mach.Null
+    end
     
 	
 and getSpecialPrototype (regs:Mach.REGS)
@@ -4711,10 +4752,8 @@ and initClassPrototype (regs:Mach.REGS)
 			let
 			    val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
 			    val ob = instanceClass regs ty
-			in                        
-			    if hasOwnValue ob Name.nons_prototype
-			    then getValue regs ob Name.nons_prototype
-			    else Mach.Null
+			in 
+			    getPrototype regs ob
 			end
 		val _ = trace ["initializing prototype"]
 		val (newPrototype, setConstructor) = 
@@ -4723,12 +4762,10 @@ and initClassPrototype (regs:Mach.REGS)
 		      | NONE => (newObj regs, true)
 		val newPrototype = Mach.setProto newPrototype baseProtoVal
 	    in
-		trace ["setting proto on ",
-		       fmtName name,
-		       ": (obj #", Int.toString ident, ").prototype = ", 
+		trace ["initializing proto on (obj #", Int.toString ident, 
+		       "): ", fmtName name, ".prototype = ", 
 		       "(obj #", Int.toString (getObjId newPrototype), ")"];
-		defValue regs obj Name.nons_prototype (Mach.Object newPrototype);
-		Mach.setPropDontEnum props Name.nons_prototype true;
+		setPrototype regs obj (Mach.Object newPrototype);
 		if setConstructor
 		then 
 		    setValueOrVirtual regs newPrototype 
