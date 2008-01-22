@@ -750,7 +750,7 @@ val equals = normalizingPredicate groundEquals false
  * Subtyping
  * ----------------------------------------------------------------------------- *)
 (*
-fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
+fun groundIsSubtype (T1:Ast.TYPE_EXPR) (* derived *)
                     (t2:Ast.TYPE_EXPR) (* base *)
     : bool = 
     let
@@ -858,7 +858,7 @@ fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
  * Compatibility
  * ----------------------------------------------------------------------------- *)
 (*
-and groundIsCompatible (t1:Ast.TYPE_EXPR)
+and Groundiscompatible (T1:Ast.TYPE_EXPR)
                        (t2:Ast.TYPE_EXPR)
     : bool = 
     let
