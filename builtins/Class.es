@@ -45,7 +45,7 @@ package
     use namespace __ES4__;
     use strict;
 
-    intrinsic class Class
+    dynamic intrinsic class Class
     {
         /* 
            Becomes available as Object.prototype, Boolean.prototype,
