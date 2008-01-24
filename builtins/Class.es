@@ -47,10 +47,15 @@ package
 
     intrinsic class Class
     {
-        /* Becomes available as Object.prototype, Boolean.prototype,
-           and so on */
+        /* 
+           Becomes available as Object.prototype, Boolean.prototype,
+           and so on. Note that this is not *really* initialized here;
+           the proper initialization order is not expressible in the
+           language. It's done in the underlying system. Null is just
+           a placeholder so we can construct instances of Class.
+        */
 
-        var prototype = null;
+        const prototype = null;
 
         private var classname : string?;
 

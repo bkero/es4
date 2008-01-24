@@ -481,9 +481,9 @@ package RegExpInternals
 
     class CharsetAdhoc! extends CharsetMixin implements CharsetMatcher
     {
-        function CharsetAdhoc(s: string) {
-            cs = explodeString(s);
-        }
+        function CharsetAdhoc(s: string)
+            : cs = explodeString(s) 
+            { }
 
         public function match(ctx: Context, c: string): boolean {
             for ( let i=0 ; i < cs.length ; i++ ) {
@@ -501,7 +501,7 @@ package RegExpInternals
             return cs[0];
         }
 
-        var cs : [string] = [] : [string]; // FIXME: const.  Ticket #24.
+        const cs : [string];
     }
 
     class CharsetUnicodeClass! extends CharsetMixin implements CharsetMatcher
