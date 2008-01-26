@@ -306,7 +306,6 @@ datatype PRAGMA =
          TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
-       | ExpectedTypeExpr of (TYPE_EXPR * EXPR)  (* FIXME: only for option 8, not option 9 *)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TY
        | ThisExpr of THIS_KIND option

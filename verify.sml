@@ -312,8 +312,7 @@ and verifyExpr (env:ENV)
                 (SOME e', SOME t)
             end
 
-        fun return (e, t:Ast.TYPE_EXPR) =
-            (Ast.ExpectedTypeExpr (t, e), t)
+        fun return (e, t:Ast.TYPE_EXPR) = (e, t)
 
         fun whenStrict (thunk:unit -> unit) : unit =
             if strict
@@ -376,14 +375,6 @@ and verifyExpr (env:ENV)
                                end);
                 return (Ast.BinaryExpr (b, e1', e2'), resultType)
             end
-
-          | Ast.ExpectedTypeExpr (t, e) =>
-            (*
-             * If we got here, we're re-verifying an already-verified expression.
-             * This means we've already put expectations on all subexpressions, and
-             * we don't want to re-wrap any subexpressions, so we just bottom out here.
-             *)
-            (Ast.ExpectedTypeExpr (t, e), t)
 
           | Ast.BinaryTypeExpr (b, e, ty) =>
             let

@@ -127,6 +127,8 @@ fun ty t =
             join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
         fun typeList tys =
             join ", " (map ty tys)
+        fun typeOrList tys =
+            join "|" (map ty tys)
         fun fieldToString {name, ty=fieldType} = (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
         fun fieldList fields =
             join ", " (map fieldToString fields)
@@ -138,7 +140,7 @@ fun ty t =
           | Ast.SpecialType Ast.Null => "null"
           | Ast.SpecialType Ast.Undefined => "undefined"
           | Ast.SpecialType Ast.VoidType => "<VoidType>"
-          | Ast.UnionType tys => "(" ^ (typeList tys) ^ ")"
+          | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
           | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
 	    "<TypeName: {" 

@@ -1879,14 +1879,6 @@ and toUInt16 (regs:Mach.REGS)
     toUIntNN regs 16 v
 
 
-and getExpectedType (regs:Mach.REGS)
-                    (expr:Ast.EXPR)
-    : (Ast.TYPE_EXPR * Ast.EXPR) =
-    case expr of
-        Ast.ExpectedTypeExpr (te, e) => (te, e)
-      | _ => (Ast.SpecialType Ast.Any, expr)
-
-
 and typeCheck (regs:Mach.REGS)
               (v:Mach.VAL)
               (tyExpr:Ast.TYPE_EXPR)
@@ -1962,35 +1954,24 @@ and evalExpr (regs:Mach.REGS)
       | Ast.CallExpr { func, actuals } =>
         let
             fun args _ = map (evalExpr regs) actuals
-            val (funcTy, func) = getExpectedType regs func
-            val resultTy =
-                case funcTy of
-                    Ast.FunctionType fty => (#result fty)
-                  | _ => Ast.SpecialType Ast.Any
-            val result =
-                case func of
-                    Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
-
-		          | Ast.ObjectRef { base = Ast.ExpectedTypeExpr (_, Ast.SuperExpr NONE), ident, loc } => 
-		            evalSuperCall regs (#this regs) ident (args())
-		          | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
-		            evalSuperCall regs (#this regs) ident (args())
-		          | Ast.ObjectRef { base = Ast.ExpectedTypeExpr (_, Ast.SuperExpr (SOME b)), ident, loc } => 
-		            evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args())
-		          | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
-		            evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args())
-
-                  | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
-                  | _ =>
-                    let
-                        val f = evalExpr regs func
-                    in
-                        case f of
-                            Mach.Object ob => evalCallExpr regs ob (args ())
-                          | _ => (throwTypeErr regs ["not a function"]; dummyVal)
-                    end
         in
-            typeCheck regs result resultTy
+            case func of
+                Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
+                                    
+		      | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
+		        evalSuperCall regs (#this regs) ident (args())
+		      | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
+		        evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args())
+                
+              | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
+              | _ =>
+                let
+                    val f = evalExpr regs func
+                in
+                    case f of
+                        Mach.Object ob => evalCallExpr regs ob (args ())
+                      | _ => (throwTypeErr regs ["not a function"]; dummyVal)
+                end
         end
 
       | Ast.NewExpr { obj, actuals } =>
@@ -2016,9 +1997,6 @@ and evalExpr (regs:Mach.REGS)
 
       | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) =>
         evalBinaryTypeOp regs typeOp expr tyExpr
-
-      | Ast.ExpectedTypeExpr (te, e) =>
-        typeCheck regs (evalExpr regs e) te
 
       | Ast.GetParam n =>
         LogErr.unimplError ["unhandled GetParam expression"]
@@ -2607,7 +2585,6 @@ and evalSetExpr (regs:Mach.REGS)
     : Mach.VAL =
     let
         val _ = trace ["evalSetExpr"]
-        val (lhsType, lhs) = getExpectedType regs lhs
         val (thisOpt, (obj, name)) = evalRefExprFull regs lhs false
         val v =
             let
@@ -2615,9 +2592,7 @@ and evalSetExpr (regs:Mach.REGS)
                     let val v = evalExpr regs rhs
                     in performBinop 
                            regs bop 
-                           (typeCheck regs 
-                                      (getValue regs obj name) 
-                                      lhsType) 
+                           (getValue regs obj name) 
                            v
                     end
             in
@@ -2636,7 +2611,7 @@ and evalSetExpr (regs:Mach.REGS)
                   | Ast.AssignBitwiseXor => modifyWith Ast.BitwiseXor
                   | Ast.AssignLogicalAnd =>
                     let
-                        val a = typeCheck regs (getValue regs obj name) lhsType
+                        val a = getValue regs obj name
                     in
                         if toBoolean a
                         then evalExpr regs rhs
@@ -2644,7 +2619,7 @@ and evalSetExpr (regs:Mach.REGS)
                     end
                   | Ast.AssignLogicalOr =>
                     let
-                        val a = typeCheck regs (getValue regs obj name) lhsType
+                        val a = getValue regs obj name
                     in
                         if toBoolean a
                         then a
@@ -2690,18 +2665,16 @@ and evalCrement (regs:Mach.REGS)
                 (expr:Ast.EXPR)
     : Mach.VAL = 
     let
-        val (exprType, expr) = getExpectedType regs expr
         val (obj, name) = evalRefExpr regs expr false
         val v = getValue regs obj name
-        val v' = typeCheck regs v exprType
-        val v'' = toNumeric regs v'
-        val i = numberOfSimilarType regs v'' 1.0
-        val v''' = performBinop regs bop v'' i
+        val v' = toNumeric regs v
+        val i = numberOfSimilarType regs v' 1.0
+        val v'' = performBinop regs bop v' i
     in
-        setValue regs obj name v''';
+        setValue regs obj name v'';
         if pre
-        then v'''
-        else v''
+        then v''
+        else v'
     end        
         
     
@@ -2715,7 +2688,6 @@ and evalUnaryOp (regs:Mach.REGS)
         case unop of
             Ast.Delete =>
             let
-                val (_, expr) = getExpectedType regs expr
                 val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr true
             in
                 if (#dontDelete (#attrs (Mach.getProp props name)))
@@ -2790,7 +2762,6 @@ and evalUnaryOp (regs:Mach.REGS)
                                            then Ustring.string_
                                            else Ustring.object_)))
                         end
-                val (_, expr) = getExpectedType regs expr
             in
                 newString regs
                     (case expr of
@@ -3465,7 +3436,6 @@ and evalExprToNamespace (regs:Mach.REGS)
         fun evalRefNamespace _ =
             let
                 val _ = trace ["evaluating ref to namespace"];
-                val (_, expr) = getExpectedType regs expr
                 val (obj, name) = evalRefExpr regs expr true
                 val Mach.Obj { props, ... } = obj
             in
@@ -5189,16 +5159,12 @@ and evalForInStmt (regs:Mach.REGS)
             val (nextTarget, nextHead, nextInits, nextExpr) =
                 case next of
                     Ast.ExprStmt e =>
-                    let
-                        val (ty, e) = getExpectedType regs e
-                    in
-                        case e of
-                            Ast.InitExpr (target, head, inits) =>
-                            (target, head, inits, NONE)
-                          | Ast.LetExpr {defs, body, head = SOME (Ast.Head (f, i))} =>
-                            (Ast.Hoisted, Ast.Head (f, []), i, SOME body)
-                          | _ => LogErr.internalError ["evalForInStmt: invalid expr structure"]
-                    end
+                    (case e of
+                         Ast.InitExpr (target, head, inits) =>
+                         (target, head, inits, NONE)
+                       | Ast.LetExpr {defs, body, head = SOME (Ast.Head (f, i))} =>
+                         (Ast.Hoisted, Ast.Head (f, []), i, SOME body)
+                       | _ => LogErr.internalError ["evalForInStmt: invalid expr structure"])
                   | _ => LogErr.internalError ["evalForInStmt: invalid stmt structure"]
                          
             (*
@@ -5262,10 +5228,9 @@ and evalForStmt (regs:Mach.REGS)
 
             fun loop (accum:Mach.VAL option) =
                 let
-                    val (ty, cond) = getExpectedType regs cond
                     val b = case cond of
                                 Ast.ListExpr [] => true
-                              | _ => toBoolean (typeCheck regs (evalExpr forRegs cond) ty)
+                              | _ => toBoolean (evalExpr forRegs cond)
                 in
                     if b
                     then
