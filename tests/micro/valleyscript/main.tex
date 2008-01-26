@@ -1061,10 +1061,107 @@ We conjecture (but have not proved!) that the resulting system then behaves as i
 \clearpage
 \section{Algorithms}
 
+\newcommand{\alg}[4]{#3 \sqsubset^{#1}_{#2} #4}
 
 Figure~\ref{fig:alg} presents an algorithm for $\comsubtype{}{}$.
 These rules are not quite syntax-directed, but ambiguities are resolved in favor of the more specific rule.
-That is, \rel{CS-Like-Con} is preferred to \rel{CS-Like-Inc}, and ditto \rel{CS-Wrap-Cov} over \rel{CS-Wrap}.
+That is, \rel{A-Like-Cov} is preferred to \rel{A-Like-Inc}, and ditto \rel{A-Wrap-Cov} over \rel{A-Wrap}.
+
+We believe that $\comsubtype S T$ hold if and only if $\alg {\t{compat}} {\t{covariant}} S T$.
+
+Also, $\matches S T$ if and only if $\alg {\t{bicompat}} {\t{covariant}} S T$.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{displayfigure}{th}{Type Algorithms}
+\footnotesize
+\label{fig:alg}
+\[
+\begin{array}{rcl}
+	b &::=& \t{bicompat}~|~\t{compat} \\
+	v &::=& \t{covariant}~|~\t{invariant}
+\end{array}
+\]
+\begin{trules}
+\headtrule{$\alg{b}{v}{S}{T}$}{Matching Algorithm}
+\trule{A-Int}{
+	}{
+		\alg b v  \Int \Int
+	}
+\trule{A-Dyn}{
+	}{
+		\alg b v {T}{*}
+	}
+\trule{A-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\alg b {\t{invariant}} {S_1}{T_1} \qquad
+		\alg b v {S_2}{T_2}
+	}{
+		\alg b v {(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{A-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\alg b {\t{invariant}} {S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\alg b v {\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{A-Generic}{
+		\alg b v  S T 
+	}{
+		\alg b v {\Forall X S}{\Forall X T}
+	}
+\trule{A-Like-Inc}{
+		\alg b {\t{covariant}}  S T 
+	}{
+		\alg b {\t{covariant}} S {\likety T}
+	}
+\trule{A-Like-Cov}{
+		\alg b v  S T 
+	}{
+		\alg b v  {\likety S} {\likety T}
+	}
+\trule{A-Wrap}{
+		\alg b {\t{covariant}}  S T
+	}{
+		\alg b {\t{covariant}} {\wrapty S} T
+	}
+\trule{A-Wrap-Cov}{
+		\alg b v  S T 
+	}{
+		\alg b v  {\wrapty S} {\wrapty T}
+	}
+\trule{A-Int-Bool}{
+	}{
+		\alg {\t{bicompat}} {\t{covariant}}  \Int \Bool
+	}
+\end{trules}
+\end{displayfigure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Review}
+
+\[
+\begin{array}{|c|c|l|}
+\hline
+\mbox{Relation} & \mbox{Name} & \mbox{Meaning, properties} \\
+\hline
+\subtype{S}{T} 			& \mbox{Subtyping} 			& \mbox{Transitive, reflexive}\\
+\compatible{S}{T}		&\mbox{Compatible}		& \mbox{Transitive, reflexive, $\compatible{T}{\dynamic}$} \\
+\comsubtype S T		&\mbox{Compatible-subtyping} & \mbox{Transitive, reflexive, $\subtype{}{}\circ\compatible{}{}$, used for dynamic checks}\\
+\implies S T 			&\mbox{Implies}			&\mbox{Transitive, irreflexive, used for (optional) optimization}\\
+\bicompatible S T			&\mbox{Bicompatibility (Siek-Taha)}		&\mbox{Intransitive, reflexive, symmetric, $\bicompatible T \dynamic$ and $\bicompatible \dynamic T$} \\
+\matches S T			&\mbox{Matches}				&\mbox{$\subtype{}{}\circ\bicompatible{}{}$ plus extras, used in strict mode}\\
+\convert v T			&\mbox{}					&\mbox{Converts $v$ to have type $T$, or fails} \\
+\hline
+\end{array}
+\]
+\end{document}
+ 
 
 \begin{displayfigure}{th}{Compatible-Subtyping Algorithm}
 \footnotesize
@@ -1161,24 +1258,98 @@ That is, \rel{CS-Like-Con} is preferred to \rel{CS-Like-Inc}, and ditto \rel{CS-
 \end{trules}
 \end{displayfigure}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Review}
-
-\[
-\begin{array}{|c|c|l|}
-\hline
-\mbox{Relation} & \mbox{Name} & \mbox{Meaning, properties} \\
-\hline
-\subtype{S}{T} 			& \mbox{Subtyping} 			& \mbox{Transitive, reflexive}\\
-\compatible{S}{T}		&\mbox{Compatible}		& \mbox{Transitive, reflexive, $\compatible{T}{\dynamic}$} \\
-\comsubtype S T		&\mbox{Compatible-subtyping} & \mbox{Transitive, reflexive, $\subtype{}{}\circ\compatible{}{}$, used for dynamic checks}\\
-\implies S T 			&\mbox{Implies}			&\mbox{Transitive, irreflexive, used for (optional) optimization}\\
-\bicompatible S T			&\mbox{Bicompatibility (Siek-Taha)}		&\mbox{Intransitive, reflexive, symmetric, $\bicompatible T \dynamic$ and $\bicompatible \dynamic T$} \\
-\matches S T			&\mbox{Matches}				&\mbox{$\subtype{}{}\circ\bicompatible{}{}$ plus extras, used in strict mode}\\
-\convert v T			&\mbox{}					&\mbox{Converts $v$ to have type $T$, or fails} \\
-\hline
-\end{array}
-\]
-\end{document}
- 
+\begin{displayfigure}{th}{Matching Algorithm (work in progress)}
+\footnotesize
+\label{fig:alg}
+\begin{trules}
+\headtrule{$\matches{S}{T}$}{Matching Algorithm}
+\trule{M-Int}{
+	}{
+		\matches \Int \Int
+	}
+\trule{M-Dyn}{
+	}{
+		\matches{T}{*}
+	}
+\trule{M-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\comeqtype{S_1}{T_1} \qquad
+		\matches{S_2}{T_2}
+	}{
+		\matches{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{M-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\matches{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{M-Generic}{
+		\matches S T 
+	}{
+		\matches{\Forall X S}{\Forall X T}
+	}
+\trule{M-Like-Inc}{
+		\matches S T 
+	}{
+		\matches S {\likety T}
+	}
+\trule{M-Like-Cov}{
+		\matches S T 
+	}{
+		\matches {\likety S} {\likety T}
+	}
+\trule{M-Wrap}{
+		\matches S T
+	}{
+		\matches {\wrapty S} T
+	}
+\trule{M-Wrap-Cov}{
+		\matches S T 
+	}{
+		\matches {\wrapty S} {\wrapty T}
+	}
+\headtrule{$\comeqtype{S}{T}$}{Compatible-Equality}
+\trule{CE-Int}{
+	}{
+		\comeqtype \Int \Int
+	}
+\trule{CE-Dyn}{
+	}{
+		\comeqtype{T}{\dynamic}
+	}
+\trule{CE-Arrow}{
+		%\subtype{T_1}{S_1} \qquad
+		\comeqtype{S_1}{T_1} \qquad
+		\comeqtype{S_2}{T_2}
+	}{
+		\comeqtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{CE-Obj}{
+		%\subtype{T_i}{S_i}\qquad
+		%\subtype{S_i}{T_i} 
+		\comeqtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\comeqtype{\objty{l_i:S_i^{i\in 1..n}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{CE-Generic}{
+		\comeqtype S T 
+	}{
+		\comeqtype{\Forall X S}{\Forall X T}
+	}
+\trule{CE-Like}{
+		\comeqtype S T 
+	}{
+		\comeqtype {\likety S} {\likety T}
+	}
+\trule{CE-Wrap}{
+		\comeqtype S T 
+	}{
+		\comeqtype {\wrapty S} {\wrapty T}
+	}
+\end{trules}
+\end{displayfigure}
