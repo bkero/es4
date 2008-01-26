@@ -582,38 +582,50 @@ and ty2norm (prog:Fixture.PROGRAM)
                     then repackage ty
                     else { exprs=exprs, ribId=ribId', nullable=nullable }
                 end
-                
-              | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 
+
+
+              | Ast.ElementTypeRef (t, idx) =>                 
                 let
-                    val t = if idx < length fields 
-                            then List.nth (fields, idx)
-                            else 
-                                if length fields > 0
-                                then List.last fields
-                                else Ast.SpecialType Ast.Any
+                    val baseNorm = subTerm2Norm t
                 in
-                    subTerm2Norm t
+                    case baseNorm of 
+                        { exprs=[Ast.ArrayType fields], nullable, ribId } => 
+                        let
+                            val t = if idx < length fields 
+                                    then List.nth (fields, idx)
+                                    else 
+                                        if length fields > 0
+                                        then List.last fields
+                                        else Ast.SpecialType Ast.Any
+                        in
+                            subTerm2Norm t
+                        end
+                      | { exprs=[Ast.SpecialType Ast.Any], nullable, ribId } => 
+                          baseNorm
+                      | _ => error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
                 end
                 
-              | Ast.ElementTypeRef (t, _) => 
-                error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
                 
-              | Ast.FieldTypeRef ((Ast.ObjectType fields), ident) => 
+              | Ast.FieldTypeRef (t, ident) => 
                 let
-                    fun f [] = error ["FieldTypeRef on unknown field: ", Ustring.toAscii ident]
-                      | f ({name,ty}::fields) = if name = ident 
-                                                then ty
-                                                else f fields
-                    val t = f fields
+                    val baseNorm = subTerm2Norm t
                 in
-                    subTerm2Norm t
+                    case baseNorm of 
+                        { exprs=[Ast.ObjectType fields], nullable, ribId } =>
+                        let                            
+                            fun f [] = error ["FieldTypeRef on unknown field: ", Ustring.toAscii ident]
+                              | f ({name,ty}::fields) = if name = ident 
+                                                        then ty
+                                                        else f fields
+                            val t = f fields
+                        in
+                            subTerm2Norm t
+                        end
+                      | { exprs = [Ast.SpecialType Ast.Any], nullable, ribId } => 
+                        baseNorm
+                      | _ => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
                 end
                 
-              | Ast.FieldTypeRef (Ast.SpecialType Ast.Any, _) =>
-                simple (Ast.SpecialType Ast.Any) false
-                
-              | Ast.FieldTypeRef (t, _) => 
-                error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
                 
               | _ => repackage ty
 

@@ -75,21 +75,34 @@ fun extractRuntimeTypeRibs (regs:Mach.REGS)
       let
           fun typePropToFixture (n:Ast.NAME, {prop:Mach.PROP, seq}) : 
               (Ast.FIXTURE_NAME * Ast.FIXTURE) = 
-              case (#state prop) of 
-                  Mach.TypeProp => (Ast.PropName n, Ast.TypeFixture (#ty prop))
-                | _ => error regs ["non-type property in type-arg scope"]
+              let
+                  val { state, ty, ... } = prop
+                  val fixtureName = Ast.PropName n
+                  val fixtureVal = Ast.TypeFixture ty
+                  val fixture = (fixtureName, fixtureVal)
+              in
+                  case state of 
+                      Mach.TypeProp => fixture
+                    | _ => error regs ["non-type property in type-arg scope"]
+              end
                        
           fun typePropsToRib (props:Mach.PROP_BINDINGS) 
               : Ast.RIB = 
               let
                   val { bindings, ... } = !props
+                  val items = NameMap.listItemsi bindings
               in
-                  map typePropToFixture (NameMap.listItemsi bindings)
+                  map typePropToFixture items
               end
               
           val Mach.Scope {kind, object=Mach.Obj {props, ...}, parent, ...} = scope
           val ribs' = case kind of 
-                          Mach.TypeArgScope => (typePropsToRib props) :: ribs
+                          Mach.TypeArgScope => 
+                          let 
+                              val rib = typePropsToRib props
+                          in
+                              rib :: ribs
+                          end
                         | _ => ribs
       in
           case parent of 
@@ -101,9 +114,10 @@ fun normalize (regs:Mach.REGS)
               (ty:Ast.TY)
     : Ast.TY = 
     let
-        val locals = extractRuntimeTypeRibs regs (#scope regs) []
+        val { scope, prog, ... } = regs
+        val locals = extractRuntimeTypeRibs regs scope []
     in
-        Type.normalize (#prog regs) locals ty
+        Type.normalize prog locals ty
     end
 
 fun needGroundTy (regs:Mach.REGS)
@@ -120,15 +134,24 @@ fun needGroundTy (regs:Mach.REGS)
     in
         if Type.isGroundTy norm
         then norm             
-        else error regs ["Unable to ground type closure: ", 
-                         LogErr.ty (AstQuery.typeExprOf ty)]
+        else let
+                val tyExpr = AstQuery.typeExprOf ty
+                val tyStr = LogErr.ty tyExpr
+                val msg = ["Unable to ground type closure: ", tyStr]
+            in 
+                error regs msg
+            end
     end
     
 
 fun evalTy (regs:Mach.REGS)
            (ty:Ast.TY)
     : Ast.TYPE_EXPR =     
-    AstQuery.typeExprOf (needGroundTy regs ty)
+    let
+        val groundTy = needGroundTy regs ty
+    in
+        AstQuery.typeExprOf groundTy
+    end
 
 
 (* Exceptions for object-language control transfer. *)
@@ -180,10 +203,12 @@ fun extendScope (p:Mach.SCOPE)
     : Mach.SCOPE =
     let
         val Mach.Scope { decimal, ... } = p
+        val parent = SOME p
+        val temps = ref []
     in
-        Mach.Scope { parent = (SOME p),
+        Mach.Scope { parent = parent,
                      object = ob,
-                     temps = ref [],
+                     temps = temps,
                      kind = kind,
                      decimal = decimal }
     end
@@ -193,112 +218,142 @@ fun extendScopeReg (r:Mach.REGS)
                    (kind:Mach.SCOPE_KIND)
     : Mach.REGS =
     let
-        val {scope,this,global,prog,aux} = r
+        val { scope, this, global, prog, aux } = r
+        val scope = extendScope scope ob kind
     in
-        {scope=extendScope scope ob kind,
-         this=this,
-         global=global,
-         prog=prog,
-         aux=aux}
+        { scope = scope,
+          this = this,
+          global = global,
+          prog = prog,
+          aux = aux }
     end
 
 fun withThis (r:Mach.REGS)
              (newThis:Mach.OBJ)
     : Mach.REGS =
     let
-        val {scope,this,global,prog,aux} = r
+        val { scope, this, global, prog, aux } = r
     in
-        {scope=scope, 
-         this=newThis, 
-         global=global, 
-         prog=prog,
-         aux=aux}
+        { scope = scope, 
+          this = newThis, 
+          global = global, 
+          prog = prog,
+          aux = aux }
     end
 
 fun withScope (r:Mach.REGS)
               (newScope:Mach.SCOPE)
     : Mach.REGS =
     let
-        val {scope,this,global,prog,aux} = r
+        val { scope, this, global, prog, aux } = r
     in
-        {scope=newScope, 
-         this=this, 
-         global=global, 
-         prog=prog,
-         aux=aux}
+        { scope = newScope, 
+          this = this, 
+          global = global, 
+          prog = prog,
+          aux = aux }
     end
-
+    
 fun withDecimalContext (r:Mach.REGS)
                        (newDecimalContext:Mach.DECIMAL_CONTEXT)
     : Mach.REGS =
     let
-        val {scope,this,global,prog,aux} = r
-        val Mach.Scope {object, parent, temps, decimal, kind } = scope
+        val { scope, this, global, prog, aux } = r
+        val Mach.Scope { object, parent, temps, decimal, kind } = scope
+        val scope = Mach.Scope{ object = object,
+                                parent = parent,
+                                temps = temps,
+                                decimal = newDecimalContext,
+                                kind = kind }
     in
-        {scope=Mach.Scope{object=object,
-                          parent=parent,
-                          temps=temps,
-                          decimal=newDecimalContext,
-                          kind=kind}, 
-         this=this, 
-         global=global, 
-         prog=prog,
-         aux=aux}
+        { scope = scope, 
+          this = this, 
+          global = global, 
+          prog = prog,
+          aux = aux }
     end
 
 fun withProg (r:Mach.REGS)
              (newProg:Fixture.PROGRAM)
     : Mach.REGS =
     let
-        val {scope,this,global,prog,aux} = r
+        val { scope, this, global, prog, aux } = r
     in
-        {scope=scope, 
-         this=this, 
-         global=global, 
-         prog=newProg,
-         aux=aux}
+        { scope = scope, 
+          this = this, 
+          global = global, 
+          prog = newProg,
+          aux = aux }
     end
-
-
+    
+    
 fun getObjId (obj:Mach.OBJ)
     : Mach.OBJ_IDENT =
-    case obj of
-        Mach.Obj { ident, ... } => ident
+    let
+        val Mach.Obj { ident, ... } = obj
+    in
+        ident
+    end
+
 
 fun slotObjId (regs:Mach.REGS) 
               (slotFunc:Mach.REGS -> (Mach.OBJ option) ref) 
     : Mach.OBJ_IDENT =
-    case !(slotFunc regs) of 
-        NONE => ~1
-      | SOME obj => getObjId obj
-
+    let
+        val slot = slotFunc regs
+        val slotVal = !slot
+    in
+        case slotVal of 
+            SOME obj => getObjId obj
+          | NONE => ~1
+    end
 
 
 fun getScopeObj (scope:Mach.SCOPE)
     : Mach.OBJ =
-    case scope of
-        Mach.Scope { object, ... } => object
+    let
+        val Mach.Scope { object, ... } = scope
+    in
+        object
+    end
 
 
 fun getScopeId (scope:Mach.SCOPE)
-    : Mach.OBJ_IDENT = getObjId (getScopeObj scope)
+    : Mach.OBJ_IDENT = 
+    let 
+        val scopeObj = getScopeObj scope
+    in 
+        getObjId scopeObj
+    end
 
 
 fun getScopeTemps (scope:Mach.SCOPE)
     : Mach.TEMPS =
-    case scope of
-        Mach.Scope { temps, ... } => temps
+    let
+        val Mach.Scope { temps, ... } = scope
+    in
+        temps
+    end
 
 fun getTemps (regs:Mach.REGS)
     : Mach.TEMPS =
-    getScopeTemps (#scope regs)
+    let
+        val { scope, ... } = regs
+    in        
+        getScopeTemps scope
+    end
 
 (*
  * The global object and scope.
  *)
 
 fun getGlobalScope (regs:Mach.REGS) 
-    : Mach.SCOPE = Mach.makeGlobalScopeWith (#global regs)
+    : Mach.SCOPE =
+    let
+        val { global, ... } = regs
+    in
+       Mach.makeGlobalScopeWith global
+    end 
 
 
 (*
@@ -371,11 +426,19 @@ fun shouldBeDontEnum (regs:Mach.REGS)
                      (n:Ast.NAME) 
                      (obj:Mach.OBJ) 
     : bool =
-    case (#ns n) of
-        Ast.Private _ => true
-      | _ => (Mach.isBooting regs) 
-             andalso (getObjId obj) = (getObjId (#global regs))
-
+    let
+        val { ns, ... } = n
+        val { global, ... } = regs
+        val globalId = getObjId global
+        val objId = getObjId obj
+        val isGlobal = objId = globalId
+        val isBooting = Mach.isBooting regs
+    in
+        case ns of 
+            Ast.Private _ => true
+          | _ => isBooting andalso isGlobal
+    end
+    
 (* Fundamental object methods *)
 
 fun allocRib (regs:Mach.REGS)
