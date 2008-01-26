@@ -452,47 +452,17 @@ fun allocRib (regs:Mach.REGS)
         val Mach.Obj { props, ident, ... } = obj
         val _ = traceConstruct ["allocating rib on object id #", Int.toString ident]
         val {scope, ...} = regs
-        val methodScope = extendScope scope obj Mach.ActivationScope
-        fun tempPadding n =
-            if n = 0
-            then []
-            else (Ast.SpecialType Ast.Any, Mach.UninitTemp)::(tempPadding (n-1))
-                 
+        val methodScope = extendScope scope obj Mach.ActivationScope                 
+        val attrs0 = { dontDelete = true,
+                       dontEnum = true,
+                       readOnly = true,
+                       isFixed = true }
         fun allocFixture (n, f) =
             case n of
-                Ast.TempName t =>
-                let
-                    val tmps = !temps
-                    val tlen = List.length tmps
-                    val emptyTmp = (Ast.SpecialType Ast.Any, Mach.UninitTemp)
-                in
-                    case f of
-                        Ast.ValFixture { ty, ... } =>  
-                        (* 
-                         * FIXME: temp types are not needed, 
-                         * use the value tag for rt typechecking 
-                         *)
-                        (if t = tlen
-                         then (traceConstruct ["allocating fixture for temporary ", Int.toString t];
-                               temps := emptyTmp::tmps)
-                         else 
-                             if t < tlen
-                             then 
-                                 (traceConstruct ["ignoring fixture, already allocated ", Int.toString t];
-                                  temps := (List.take (tmps, (tlen-t-1))) @ 
-                                           (((evalTy regs ty), Mach.UninitTemp) :: 
-                                            (List.drop (tmps, (tlen-t)))))
-                                 
-                             else 
-                                 (traceConstruct ["allocating rib for temporaries ", 
-                                         Int.toString tlen, " to ", Int.toString t];
-                                  temps := emptyTmp :: ((tempPadding (t-tlen)) @ tmps)))
-                        
-                      | _ => error regs ["allocating non-value temporary"]
-                end
+                Ast.TempName t => allocTemp regs f t temps
               | Ast.PropName pn =>
                 let
-		    val _ = traceConstruct ["allocating fixture for prop ", fmtName pn]
+		            val _ = traceConstruct ["allocating fixture for prop ", fmtName pn]
                     fun allocProp state p =
                         if Mach.hasProp props pn
                         then
@@ -529,10 +499,7 @@ fun allocRib (regs:Mach.REGS)
                             allocProp "type"
                                       { ty = normalize regs ty,
                                         state = Mach.TypeProp,
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = true,
-                                                  readOnly = true,
-                                                  isFixed = true } }
+                                        attrs = attrs0 }
                             
                       | Ast.MethodFixture { func, ty, readOnly, ... } =>
                         let
@@ -596,29 +563,20 @@ fun allocRib (regs:Mach.REGS)
                             allocProp "class"
                                       { ty = makeTy (Name.typename Name.intrinsic_Class),
                                         state = Mach.ValProp (Mach.Object classObj),
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = true,
-                                                  readOnly = true,
-                                                  isFixed = true } }
+                                        attrs = attrs0 }
                         end
 
                       | Ast.NamespaceFixture ns =>
                         allocProp "namespace"
                                   { ty = makeTy (Name.typename Name.ES4_Namespace),
                                     state = Mach.NamespaceProp ns,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
+                                    attrs = attrs0 }
 
                       | Ast.TypeVarFixture _ =>
                         allocProp "type variable"
                                   { ty = makeTy (Name.typename Name.intrinsic_Type),
                                     state = Mach.TypeVarProp,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
+                                    attrs = attrs0 }
 
                       | Ast.InterfaceFixture iface =>  (* FIXME *)
                         let
@@ -628,10 +586,7 @@ fun allocRib (regs:Mach.REGS)
                             allocProp "interface"
                                       { ty = makeTy (Name.typename Name.intrinsic_Type),
                                         state = Mach.ValProp (Mach.Object ifaceObj),
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = true,
-                                                  readOnly = true,
-                                                  isFixed = true } }
+                                        attrs = attrs0 }
                         end
 
                 (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
@@ -663,6 +618,52 @@ and allocScopeRib (regs:Mach.REGS)
     case (#scope regs) of
         Mach.Scope { object, temps, ... } =>
         allocRib regs object NONE temps f
+
+
+and allocTemp (regs:Mach.REGS) 
+              (f:Ast.FIXTURE)
+              (t:int)
+              (temps:Mach.TEMPS) 
+    : unit =
+    let
+        val ty = case f of 
+                     Ast.ValFixture { ty, ... } => ty
+                   | _ => error regs ["allocating non-value temporary"]
+        val tmps = !temps
+        val tlen = List.length tmps
+        val emptyTmp = (Ast.SpecialType Ast.Any, Mach.UninitTemp)
+    in
+        if t = tlen
+        then 
+            let
+                val newTemps = tmps @ [emptyTmp]
+            in
+                traceConstruct ["allocating temp #", Int.toString t];
+                temps := newTemps
+            end
+        else 
+            if t < tlen
+            then 
+                let
+                    val prefix = List.take (tmps, t-1)
+                    val suffix = List.drop (tmps, t)
+                    val tempTy = evalTy regs ty
+                    val tempCell = (tempTy, Mach.UninitTemp)
+                    val newTemps = prefix @ (tempCell :: suffix)
+                in
+                    traceConstruct ["reallocating temp #", Int.toString t, " of ", Int.toString tlen];
+                    temps := newTemps
+                end                                 
+            else 
+                let
+                    val prefixLen = t-tlen
+                    val prefix = List.tabulate (prefixLen, (fn _ => emptyTmp))
+                    val newTemps = prefix @ (emptyTmp :: tmps)
+                in
+                    traceConstruct ["extending temps to cover temp #", Int.toString t];
+                    temps := newTemps
+                end                                
+    end
 
 
 and valAllocState (regs:Mach.REGS) 
@@ -771,6 +772,7 @@ and valAllocState (regs:Mach.REGS)
           | Ast.LamType _ => 
             Mach.UninitProp
     end
+
 
 and allocSpecial (regs:Mach.REGS)
                  (id:Mach.OBJ_IDENT)
