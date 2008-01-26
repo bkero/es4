@@ -2048,13 +2048,42 @@ and evalExpr (regs:Mach.REGS)
         end
 
       | Ast.GetTemp n =>
-        Mach.getTemp (getScopeTemps (#scope regs)) n
-
-      | Ast.InitExpr (target,temps,inits) =>
         let
-            val tempRegs = evalHead regs temps
+            val { scope, ... } = regs
         in
-            evalScopeInits tempRegs target inits;
+            trace ["GetTemp ", Int.toString n, " on scope #", 
+                   Int.toString (getScopeId scope) ];
+            Mach.getTemp (getTemps regs) n
+        end
+
+      | Ast.InitExpr (target,tempHead,inits) =>
+        (* 
+         * We are aiming to initialize properties on 'target'.
+         * 
+         * The properties we want to initialize are described in 'inits'.
+         * 
+         * In order to initialize the target properties, we may have
+         * to allocate and initialize a bunch of temps -- to
+         * destructure fully -- which are presented here in a HEAD,
+         * 'tempHead'. But we do not want to build a transient block
+         * scope for tempHead; we want to allocate those temps in the
+         * present scope. We are going to *use* the temps allocated
+         * by tempHead in the target property inits.
+         *
+         * NB: do not reorganize this to use evalHead, since it
+         * allocates a new scope object containing the head. If you so
+         * so, the final evalScopeInits call may fail if there is any
+         * deep destructuring.
+         *)
+        let
+            val (Ast.Head (tempRib, tempInits)) = tempHead
+        in
+            (* Allocate and init the temp head in the current scope. *)
+            allocScopeRib regs tempRib;
+            evalScopeInits regs Ast.Local tempInits;
+
+            (* Allocate and init the target props. *)
+            evalScopeInits regs target inits;
             Mach.Undef
         end
 
