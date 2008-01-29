@@ -494,7 +494,7 @@ fun apply (regs:Mach.REGS)
         val argsObj = nthAsObj vals 2
         val argsList = arrayToList regs argsObj
     in
-        Eval.evalCallExpr (Eval.withThis regs thisObj) fnObj argsList
+        Eval.evalCallByObj (Eval.withThis regs thisObj) fnObj argsList
     end
 
 fun fnLength (regs:Mach.REGS)

@@ -935,7 +935,7 @@ and getValueOrVirtual (regs:Mach.REGS)
                             (Ustring.toAscii (#id name)), 
                             "\") catchall on obj #", 
                             Int.toString (getObjId obj)];
-                     (evalCallMethodByRef (withThis regs obj) 
+                     (evalCallByRef (withThis regs obj) 
                                           (obj, Name.meta_get) 
                                           [newString regs (#id name)]))
             in
@@ -1006,7 +1006,7 @@ and checkAndConvert (regs:Mach.REGS)
                 val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
-                val converted = evalCallMethodByRef (withThis regs classObj) (classObj, Name.meta_invoke) [v]
+                val converted = evalCallByRef (withThis regs classObj) (classObj, Name.meta_invoke) [v]
             in
                 typeCheck regs converted tyExpr
             end
@@ -1134,7 +1134,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                             "\", ", Mach.approx v,
                             ") catchall on obj #", 
                             Int.toString (getObjId obj)];
-                     (evalCallMethodByRef (withThis regs obj) 
+                     (evalCallByRef (withThis regs obj) 
                                           (obj, Name.meta_set) 
                                           [newString regs (#id name), v]; 
                       ()))
@@ -1235,7 +1235,7 @@ and instantiateGlobalClass (regs:Mach.REGS)
         val (cls:Mach.VAL) = getValue regs (#global regs) n
     in
         case cls of
-            Mach.Object ob => evalNewExpr regs ob args
+            Mach.Object ob => evalNewObj regs ob args
           | _ => error regs ["global class name ", LogErr.name n,
                              " did not resolve to object"]
     end
@@ -1966,22 +1966,10 @@ and evalExpr (regs:Mach.REGS)
         evalListExpr regs es
 
       | Ast.LexicalRef { ident, loc } =>
-        let
-            val _ = LogErr.setLoc loc;
-            val (obj, name) = evalRefExpr regs expr true
-            val _ = LogErr.setLoc loc;
-        in
-            getValue regs obj name
-        end
+        evalLexicalRef regs ident loc
 	
       | Ast.ObjectRef { base, ident, loc } =>
-        let
-            val _ = LogErr.setLoc loc
-            val (obj, name) = evalRefExpr regs expr false
-            val _ = LogErr.setLoc loc
-        in
-            getValue regs obj name
-        end
+        evalObjectRef regs base ident loc
 
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr regs (valOf head) body
@@ -1998,67 +1986,146 @@ and evalExpr (regs:Mach.REGS)
       | Ast.TypeExpr ty =>
         evalTypeExpr regs (evalTy regs ty)
 
-      | Ast.ThisExpr k =>  (* FIXME function and generator this *)
-        let
-            val { this, ... } = regs
-        in
-            Mach.Object this
-        end
+      | Ast.ThisExpr kind =>
+        evalThisExpr regs kind
 
+	  (* 
+	   * Naked super-exprs on their own are not permitted. Super is only 
+	   * permitted in a few contexts, which we explicitly handle elsewhere
+	   * (CallExprs and constructor settings).
+	   *)
       | Ast.SuperExpr _ => 
-	(* 
-	 * Naked super-exprs on their own are not permitted. Super is only 
-	 * permitted in a few contexts, which we explicitly handle elsewhere
-	 * (CallExprs and constructor settings).
-	 *)
-	error regs ["super expression in illegal context"]
+	    error regs ["super expression in illegal context"]
 
       | Ast.SetExpr (aop, pat, expr) =>
         evalSetExpr regs aop pat expr
 
       | Ast.CallExpr { func, actuals } =>
-        let
-            fun args _ = map (evalExpr regs) actuals
-        in
-            case func of
-                Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
-                                    
-		      | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
-		        evalSuperCall regs (#this regs) ident (args())
-		      | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
-		        evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args())
-                
-              | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
-              | _ =>
-                let
-                    val f = evalExpr regs func
-                in
-                    case f of
-                        Mach.Object ob => evalCallExpr regs ob (args ())
-                      | _ => (throwTypeErr regs ["not a function"]; dummyVal)
-                end
-        end
+        evalCallExpr regs func actuals
 
       | Ast.NewExpr { obj, actuals } =>
-        let
-            fun args _ = map (evalExpr regs) actuals
-            val rhs = evalExpr regs obj
-        in
-            case rhs of
-                Mach.Object ob => evalNewExpr regs ob (args())
-              | _ => (throwTypeErr regs ["not a constructor"]; dummyVal)
-        end
+        evalNewExpr regs obj actuals
 
       | Ast.GetTemp n =>
-        let
-            val { scope, ... } = regs
-        in
-            trace ["GetTemp ", Int.toString n, " on scope #", 
-                   Int.toString (getScopeId scope) ];
-            Mach.getTemp (getTemps regs) n
-        end
+        evalGetTemp regs n
 
       | Ast.InitExpr (target,tempHead,inits) =>
+        evalInitExpr regs target tempHead inits
+
+      | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) =>
+        evalBinaryTypeOp regs typeOp expr tyExpr
+
+      | Ast.GetParam n =>
+        LogErr.unimplError ["unhandled GetParam expression"]
+
+      | Ast.ApplyTypeExpr { expr, actuals } =>
+        evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
+
+      | _ => LogErr.unimplError ["unhandled expression type"]    
+
+
+and evalLexicalRef (regs:Mach.REGS)
+                   (ident:Ast.IDENT_EXPR)
+                   (loc:Ast.LOC option) 
+    : Mach.VAL =
+    let
+        val _ = LogErr.setLoc loc;
+        val expr = Ast.LexicalRef { ident = ident, loc = loc }
+        val (obj, name) = evalRefExpr regs expr true
+        val _ = LogErr.setLoc loc;
+    in
+        getValue regs obj name
+    end
+
+
+and evalObjectRef (regs:Mach.REGS)
+                  (base:Ast.EXPR)
+                  (ident:Ast.IDENT_EXPR)
+                  (loc:Ast.LOC option)
+    : Mach.VAL =
+    let
+        val _ = LogErr.setLoc loc
+        val expr = Ast.ObjectRef { base = base, ident = ident, loc = loc }
+        val (obj, name) = evalRefExpr regs expr false
+        val _ = LogErr.setLoc loc
+    in
+        getValue regs obj name
+    end
+
+
+and evalThisExpr (regs:Mach.REGS)
+                 (kind:Ast.THIS_KIND option)
+    : Mach.VAL = 
+    let
+        (* FIXME function and generator this *)
+        val { this, ... } = regs
+    in
+        Mach.Object this
+    end
+
+
+and evalCallExpr (regs:Mach.REGS)
+                 (func:Ast.EXPR)
+                 (actuals:Ast.EXPR list)
+    : Mach.VAL = 
+    let
+        fun evalArgs _ = map (evalExpr regs) actuals
+    in
+        case func of
+            Ast.LexicalRef _ => evalCallMethodByExpr regs func (evalArgs ())
+                                
+		  | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
+		    evalSuperCall regs (#this regs) ident (evalArgs())
+
+		  | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
+		    evalSuperCall regs (needObj regs (evalExpr regs b)) ident (evalArgs())
+            
+          | Ast.ObjectRef _ => evalCallMethodByExpr regs func (evalArgs ())
+                               
+          | _ =>
+            let
+                val funcVal = evalExpr regs func
+                val funcObj = needObj regs funcVal
+                val args = evalArgs ()
+            in
+                evalCallByObj regs funcObj args
+            end
+    end
+
+
+and evalNewExpr (regs:Mach.REGS)
+                (obj:Ast.EXPR)
+                (actuals:Ast.EXPR list)
+    : Mach.VAL = 
+    let
+        fun args _ = map (evalExpr regs) actuals
+        val rhs = evalExpr regs obj
+    in
+        case rhs of
+            Mach.Object ob => evalNewObj regs ob (args())
+          | _ => (throwTypeErr regs ["not a constructor"]; dummyVal)
+    end
+
+
+and evalGetTemp (regs:Mach.REGS)
+                (n:int)
+    : Mach.VAL = 
+    let
+        val { scope, ... } = regs
+        val scopeId = getScopeId scope
+        val temps = getScopeTemps scope
+    in
+        trace ["GetTemp ", Int.toString n, " on scope #", Int.toString scopeId];
+        Mach.getTemp temps n
+    end
+
+
+and evalInitExpr (regs:Mach.REGS)
+                 (target:Ast.INIT_TARGET) 
+                 (tempHead:Ast.HEAD)
+                 (inits:Ast.INITS) 
+    : Mach.VAL = 
+    let
         (* 
          * We are aiming to initialize properties on 'target'.
          * 
@@ -2077,28 +2144,18 @@ and evalExpr (regs:Mach.REGS)
          * so, the final evalScopeInits call may fail if there is any
          * deep destructuring.
          *)
-        let
-            val (Ast.Head (tempRib, tempInits)) = tempHead
-        in
-            (* Allocate and init the temp head in the current scope. *)
-            allocScopeRib regs tempRib;
-            evalScopeInits regs Ast.Local tempInits;
 
-            (* Allocate and init the target props. *)
-            evalScopeInits regs target inits;
-            Mach.Undef
-        end
-
-      | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) =>
-        evalBinaryTypeOp regs typeOp expr tyExpr
-
-      | Ast.GetParam n =>
-        LogErr.unimplError ["unhandled GetParam expression"]
-
-      | Ast.ApplyTypeExpr { expr, actuals } =>
-        evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
-
-      | _ => LogErr.unimplError ["unhandled expression type"]    
+        val (Ast.Head (tempRib, tempInits)) = tempHead
+    in
+        (* Allocate and init the temp head in the current scope. *)
+        allocScopeRib regs tempRib;
+        evalScopeInits regs Ast.Local tempInits;
+        
+        (* Allocate and init the target props. *)
+        evalScopeInits regs target inits;
+        Mach.Undef
+    end
+    
 
 
 and evalSuperCall (regs:Mach.REGS)
@@ -2575,9 +2632,9 @@ and constructObjectViaFunction (regs:Mach.REGS)
     end
     
 
-and evalNewExpr (regs:Mach.REGS)
-                (obj:Mach.OBJ)
-                (args:Mach.VAL list)
+and evalNewObj (regs:Mach.REGS)
+               (obj:Mach.OBJ)
+               (args:Mach.VAL list)
     : Mach.VAL =
     case obj of
         Mach.Obj { magic, ... } =>
@@ -2603,7 +2660,7 @@ and evalCallMethodByExpr (regs:Mach.REGS)
                           NONE => (#this regs)
                         | SOME obj => obj
         val _ = trace ["resolved thisObj=#", (Int.toString (getObjId thisObj)), " for call"]
-        val result = evalCallMethodByRef (withThis regs thisObj) r args
+        val result = evalCallByRef (withThis regs thisObj) r args
     in
         trace ["<<< evalCallMethodByExpr"];
         result
@@ -2620,22 +2677,22 @@ and evalNamedMethodCall (regs:Mach.REGS)
     in
 	case refOpt of 
 	    NONE => error regs ["unable to resolve method: ", LogErr.name name]
-	  | SOME r => evalCallMethodByRef (withThis regs obj) r args
+	  | SOME r => evalCallByRef (withThis regs obj) r args
     end
 
 (* 
  * Note: unless you are part of the function-calling machinery, you probably do 
- * not want to call evalCallMethodByRef. It assumes you're passing in a sane 
+ * not want to call evalCallByRef. It assumes you're passing in a sane 
  * ref and a sane 'this' register. If you just want to synthesize 
  * "a call to x.y()" use evalNamedMethodCall, above.
  *)
-and evalCallMethodByRef (regs:Mach.REGS)
+and evalCallByRef (regs:Mach.REGS)
                         (r:REF)
                         (args:Mach.VAL list)
     : Mach.VAL =
     let
         val (obj, name) = r
-        val _ = trace [">>> evalCallMethodByRef ", fmtName name]
+        val _ = trace [">>> evalCallByRef ", fmtName name]
         val Mach.Obj { props, ... } = obj
         val res = 
             case (#state (Mach.getProp props name)) of
@@ -2643,33 +2700,33 @@ and evalCallMethodByRef (regs:Mach.REGS)
               | Mach.MethodProp f => 
                 invokeFuncClosure (withThis regs obj) f args
               | _ =>
-                (trace ["evalCallMethodByRef: non-method property ",
+                (trace ["evalCallByRef: non-method property ",
                         "referenced, getting and calling"];
-                 evalCallExpr regs (needObj regs (getValue regs obj name)) args)
-        val _ = trace ["<<< evalCallMethodByRef ", fmtName name]
+                 evalCallByObj regs (needObj regs (getValue regs obj name)) args)
+        val _ = trace ["<<< evalCallByRef ", fmtName name]
     in
         res
     end
 
-and evalCallExpr (regs:Mach.REGS)
-                 (fobj:Mach.OBJ)
-                 (args:Mach.VAL list)
+and evalCallByObj (regs:Mach.REGS)
+                  (fobj:Mach.OBJ)
+                  (args:Mach.VAL list)
     : Mach.VAL =
     case fobj of
         Mach.Obj { magic, ... } =>
         case !magic of
             SOME (Mach.NativeFunction { func, ... }) =>
-            (trace ["evalCallExpr: entering native function"];
+            (trace ["evalCallByObj: entering native function"];
              func regs args)
           | SOME (Mach.Function f) =>
-            (trace ["evalCallExpr: entering standard function"];
+            (trace ["evalCallByObj: entering standard function"];
              invokeFuncClosure regs f args)
           | _ =>
             if hasOwnValue fobj Name.meta_invoke
             then
-                (trace ["evalCallExpr: redirecting through meta::invoke"];
-                 evalCallMethodByRef regs (fobj, Name.meta_invoke) args)
-            else error regs ["evalCallExpr: calling non-callable object"]
+                (trace ["evalCallByObj: redirecting through meta::invoke"];
+                 evalCallByRef regs (fobj, Name.meta_invoke) args)
+            else error regs ["evalCallByObj: calling non-callable object"]
 
 
 and evalSetExpr (regs:Mach.REGS)
