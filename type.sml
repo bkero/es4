@@ -665,6 +665,9 @@ fun fieldPairWiseSuperset predicate _ [] = true
          NONE => false
        | SOME (ty1, rest) => predicate ty1 ty andalso fieldPairWise predicate rest ts2)
 
+fun optionWise predicate (SOME a) (SOME b) = predicate a b
+  | optionWise _ NONE NONE = true
+  | optionWise _ _ _ = false
 
              
 (* -----------------------------------------------------------------------------
@@ -964,6 +967,104 @@ val isSubtype = normalizingPredicate groundIsSubtype false
 
 
 (* -----------------------------------------------------------------------------
+ * Generic matching algorithm
+ * ----------------------------------------------------------------------------- *)
+
+datatype BICOMPAT = Bicompat | Compat
+datatype VARIANCE = Covariant | Invariant
+
+fun groundMatches (b:BICOMPAT)
+                  (v:VARIANCE)
+                  (ty1:Ast.TYPE_EXPR)
+                  (ty2:Ast.TYPE_EXPR)
+
+    : bool = 
+    case (b, v, ty1, ty2) of 
+        
+        (* FIXME: handle A-INT-BOOL via special-conversion table here. *)
+        
+
+        (* A-WRAP-COV *)
+        (_, _, Ast.WrapType wt1, Ast.WrapType wt2) => 
+        groundMatches b v wt1 wt2
+
+      (* A-WRAP *)
+      | (_, Covariant, Ast.WrapType wt1, _) => 
+        groundMatches b v wt1 ty2
+
+      (* A-LIKE-COV *)
+      | (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
+        groundMatches b v lt2 lt2
+
+      (* A-LIKE-INC *)
+      | (_, Covariant, _, Ast.LikeType lt2) => 
+        groundMatches b v ty1 lt2
+
+      (* A-GENERIC *)
+      | (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
+        groundMatches b v (#body lt1) (#body lt2)
+
+      (* A-OBJ *)
+      | (_, _, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
+        fieldPairWiseSuperset (groundMatches b Invariant) fields1 fields2
+        
+      (* A-ARROW *)
+      | (_, _, 
+         Ast.FunctionType
+		     {params  =params1,
+		      result  =result1,
+		      thisType=thisType1,
+		      hasRest =hasRest1,
+	          minArgs=minArgs1},
+	     Ast.FunctionType
+		     {params=params2,
+		      result=result2,
+		      thisType=thisType2,
+		      hasRest=hasRest2,
+		      minArgs=minArgs2}) => 
+        (arrayPairWise (groundMatches b Invariant) params1 params2) andalso
+        groundMatches b v result1 result2 andalso
+        (optionWise (groundMatches b Invariant) thisType1 thisType2) andalso
+        hasRest1 = hasRest2 andalso
+        minArgs1 = minArgs2
+
+      (* A-DYN *)
+      | (_, _, _, Ast.SpecialType Ast.Any) => true
+
+      (* A-INSTANCE -- generalized from A-INT *)
+      | (_, _, Ast.InstanceType it1, Ast.InstanceType it2) =>
+        (Mach.nameEq (#name it1) (#name it2) andalso
+         (arrayPairWise (groundMatches b Invariant) (#typeArgs it1) (#typeArgs it2)))
+        orelse 
+        (List.exists (fn sup => groundMatches b v sup ty2) 
+                     (#superTypes it1))
+        
+      (* Extra rules covering nullable, array and union types. *)
+
+      | (_, _, Ast.SpecialType x, Ast.SpecialType y) => 
+        x = y
+        
+      | (_, _, Ast.NullableType nt1, Ast.NullableType nt2) =>
+        (#nullable nt1) = (#nullable nt2) andalso
+        groundMatches b v (#expr nt1) (#expr nt2)
+        
+      | (_, _, 
+         Ast.ArrayType tys1,
+         Ast.ArrayType tys2) => 
+        arrayPairWise (groundMatches b Invariant) tys1 tys2
+
+      | (_, _, Ast.UnionType tys1, _) => 
+        List.all (fn t => groundMatches b v t ty2) tys1
+
+      | (_, _, _, Ast.UnionType tys2) => 
+        List.exists (groundMatches b v ty1) tys2
+
+      | _ => false
+        
+
+
+
+(* -----------------------------------------------------------------------------
  * Compatible-equality:  =*
  * ----------------------------------------------------------------------------- *)
 
@@ -1057,7 +1158,11 @@ val isCompatibleEqual = normalizingPredicate groundIsCompatibleEqual false
 (* -----------------------------------------------------------------------------
  * Compatible-subtyping:  <*
  * ----------------------------------------------------------------------------- *)
-    
+
+val groundIsCompatibleSubtype = groundMatches Compat Covariant
+val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype false
+
+(*     
 fun groundIsCompatibleSubtype (ty1:Ast.TYPE_EXPR) 
                               (ty2:Ast.TYPE_EXPR)
     : bool = 
@@ -1167,6 +1272,7 @@ fun groundIsCompatibleSubtype (ty1:Ast.TYPE_EXPR)
 
 and fieldTypesCompatibleEqualSuperset fts1 fts2 = fieldPairWiseSuperset groundIsCompatibleEqual fts1 fts2
 val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype false
+*)
 
 
 (* -----------------------------------------------------------------------------
