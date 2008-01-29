@@ -1065,7 +1065,7 @@ We conjecture (but have not proved!) that the resulting system then behaves as i
 
 Figure~\ref{fig:alg} presents an algorithm for $\comsubtype{}{}$.
 These rules are not quite syntax-directed, but ambiguities are resolved in favor of the more specific rule.
-That is, \rel{A-Like-Cov} is preferred to \rel{A-Like-Inc}, and ditto \rel{A-Wrap-Cov} over \rel{A-Wrap}.
+That is, \rel{A-Like-Cov} is preferred to \rel{A-Like}, and ditto \rel{A-Wrap-Cov} over \rel{A-Wrap}.
 
 We believe that $\comsubtype S T$ hold if and only if $\alg {\t{compat}} {\t{covariant}} S T$.
 
@@ -1114,7 +1114,7 @@ Also, $\matches S T$ if and only if $\alg {\t{bicompat}} {\t{covariant}} S T$.
 	}{
 		\alg b v {\Forall X S}{\Forall X T}
 	}
-\trule{A-Like-Inc}{
+\trule{A-Like}{
 		\alg b {\t{covariant}}  S T 
 	}{
 		\alg b {\t{covariant}} S {\likety T}
