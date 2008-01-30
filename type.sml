@@ -783,6 +783,19 @@ fun groundMatches (b:BICOMPAT)
       | (_, _, _, Ast.UnionType tys2) => 
         List.exists (groundMatches b v ty1) tys2
 
+      (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
+
+      | (_, _, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
+	List.exists (Mach.nameEq name) [ Name.nons_Array,
+					 Name.nons_Object ]
+
+      | (_, _, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
+	List.exists (Mach.nameEq name) [ Name.nons_Object ]
+
+      | (_, _, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
+	List.exists (Mach.nameEq name) [ Name.nons_Function, 
+					 Name.nons_Object ]
+
       (* A-SPECIAL-CONVERSION -- generalized from A-INT-BOOL *)
       | _ => 
         (case findSpecialConversion ty1 ty2 of 
