@@ -613,11 +613,14 @@ and allocObjRib (regs:Mach.REGS)
 
 
 and allocScopeRib (regs:Mach.REGS)
-                  (f:Ast.RIB)
+                  (rib:Ast.RIB)
     : unit =
-    case (#scope regs) of
-        Mach.Scope { object, temps, ... } =>
-        allocRib regs object NONE temps f
+    let
+        val { scope, ... } = regs
+        val Mach.Scope { object, temps, ... } = scope
+    in
+        allocRib regs object NONE temps rib
+    end
 
 
 and allocTemp (regs:Mach.REGS) 
@@ -831,6 +834,7 @@ and hasOwnValue (obj:Mach.OBJ)
         Mach.hasProp props n
     end
 
+
 and hasOwnInitializedValue (obj:Mach.OBJ)
                            (n:Ast.NAME)
     : bool =
@@ -849,11 +853,14 @@ and findValue (obj:Mach.OBJ)
     : REF option =
     if hasOwnValue obj n
     then SOME (obj, n)
-    else (case obj of
-              Mach.Obj { proto, ... } =>
-              case (!proto) of
-                  Mach.Object p => findValue p n
-                | _ => NONE)
+    else 
+        let
+            val Mach.Obj { proto, ... } = obj
+        in
+            case (!proto) of
+                Mach.Object p => findValue p n
+              | _ => NONE
+        end
 
 
 and hasValue (obj:Mach.OBJ)
@@ -878,12 +885,17 @@ and getValueOrVirtual (regs:Mach.REGS)
                        " on obj #", Int.toString (getObjId obj)]
         val Mach.Obj { props, ... } = obj
         fun upgraded (currProp:Mach.PROP) newVal =
-            (Mach.delProp props name;
-             Mach.addProp props name { state = Mach.ValProp newVal,
-                                       ty = (#ty currProp),
-                                       attrs = (#attrs currProp) };
-             trace ["upgraded property ", fmtName name ];
-             newVal)
+            let
+                val { ty, attrs, ... } = currProp
+                val newProp = { state = Mach.ValProp newVal,
+                                ty = ty,
+                                attrs = attrs }
+            in
+                Mach.delProp props name;
+                Mach.addProp props name newProp;
+                trace ["upgraded property ", fmtName name ];
+                newVal
+            end
     in
         case Mach.findProp props name of
             SOME prop =>
@@ -1040,6 +1052,31 @@ and isDynamic (regs:Mach.REGS)
     end
 
 
+and badPropAccess (regs:Mach.REGS)
+                  (accessKind:string)
+                  (propName:Ast.NAME)
+                  (existingPropState:Mach.PROP_STATE)
+    : unit =
+    let
+        val existingPropKind = 
+            case existingPropState of 
+                Mach.TypeVarProp => "type variable"
+              | Mach.TypeProp => "type"
+              | Mach.UninitProp => "uninitialized"
+              | Mach.ValProp _ => "value"
+              | Mach.NamespaceProp _ => "namespace"
+              | Mach.MethodProp _ => "method"
+              | Mach.ValListProp _ => "value-list"
+              | Mach.NativeFunctionProp _ => "native function"
+              | Mach.VirtualValProp _ => "virtual"
+    in
+        throwTypeErr regs ["bad property ", accessKind, 
+                           " on ", existingPropKind, 
+                           " ", LogErr.name propName];
+        ()
+    end
+
+
 and setValueOrVirtual (regs:Mach.REGS)
                       (obj:Mach.OBJ)
                       (name:Ast.NAME)
@@ -1052,11 +1089,11 @@ and setValueOrVirtual (regs:Mach.REGS)
         case Mach.findProp props name of
             SOME existingProp =>
             let
-                val existingAttrs = (#attrs existingProp)
-                val ty = (#ty existingProp)
+                val { state, attrs, ty, ... } = existingProp
+                val { readOnly, ... } = attrs
                 fun newProp _ = { state = Mach.ValProp (checkAndConvert regs v ty),
                                   ty = ty,
-                                  attrs = existingAttrs }
+                                  attrs = attrs }
                 fun write _ =
                     let
                         val np = newProp()
@@ -1065,52 +1102,29 @@ and setValueOrVirtual (regs:Mach.REGS)
                         Mach.addProp props name np
                     end
             in
-                case (#state existingProp) of
-                    Mach.UninitProp =>
-                    throwTypeErr regs ["setValue on uninitialized property",
-                                       LogErr.name name]
-                
-
-                  | Mach.TypeVarProp =>
-                    throwTypeErr regs ["setValue on type variable property:",
-                                       LogErr.name name]
-
-                  | Mach.TypeProp =>
-                    throwTypeErr regs ["setValue on type property: ",
-                                       LogErr.name name]
-
-                  | Mach.NamespaceProp _ =>
-                    throwTypeErr regs ["setValue on namespace property: ",
-                                       LogErr.name name]
-
-                  | Mach.NativeFunctionProp _ =>
-                    throwTypeErr regs ["setValue on native function property: ",
-                                       LogErr.name name]
-
-                  | Mach.MethodProp _ =>
-                    if (#readOnly existingAttrs)
+                case state of
+                    
+                    Mach.MethodProp _ =>
+                    if readOnly
                     then throwTypeErr regs ["setValue on read-only method property: ",
                                             LogErr.name name]
                     else write ()  (* ES3 style mutable fun props are readOnly *)
 
-                  | Mach.ValListProp _ =>
-                    throwTypeErr regs ["setValue on value-list property: ",
-                                       LogErr.name name]
-
-                  | Mach.VirtualValProp { setter = SOME s, ... } =>
+                  | Mach.VirtualValProp { setter, ... } =>
                     if doVirtual
-                    then (invokeFuncClosure (withThis regs obj) s [v]; ())
-                    else write ()
-
-                  | Mach.VirtualValProp { setter = NONE, ... } =>
-                    if doVirtual
-                    then ()  (* ignore it *)
-                    else write ()
+                    then 
+                        case setter of 
+                            NONE => () (* ignore it *)
+                          | SOME s => (invokeFuncClosure (withThis regs obj) s [v]; ())
+                    else 
+                        write ()
 
                   | Mach.ValProp _ =>
-                    if (#readOnly existingAttrs)
+                    if readOnly
                     then ()  (* ignore it *)
                     else write ()
+                         
+                  | _ => badPropAccess regs "setValue" name state
             end
           | NONE =>
             let
