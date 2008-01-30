@@ -175,8 +175,8 @@ val dummyNs = Name.noNS
 infix 4 <*;
 fun tsub <* tsup = Type.groundIsCompatibleSubtype tsub tsup
 
-infix 4 =*;
-fun ta =* tb = Type.groundIsCompatibleEqual ta tb
+infix 4 ~~;
+fun ta ~~ tb = Type.groundIsBicompatible ta tb
 
 fun mathOp (v:Mach.VAL)
            (decimalFn:(Decimal.DEC -> 'a) option)
@@ -999,7 +999,7 @@ and checkAndConvert (regs:Mach.REGS)
         else
             let
                 val (classType:Ast.TYPE_EXPR) =
-                    case Type.groundFindConversion (#prog regs) (typeOfVal regs v) tyExpr of
+                    case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
                         NONE => (typeOpFailure regs "incompatible types w/o conversion" v tyExpr; 
                                  dummyTypeExpr)
                       | SOME n => n
@@ -2964,19 +2964,19 @@ and numTypeOf (regs:Mach.REGS)
     let
         val ty = typeOfVal regs v 
     in
-        if ty =* (instanceType regs Name.ES4_double [])
+        if ty ~~ (instanceType regs Name.ES4_double [])
         then DoubleNum
         else
-            if ty =* (instanceType regs Name.ES4_int [])
+            if ty ~~ (instanceType regs Name.ES4_int [])
             then IntNum
             else
-                if ty =* (instanceType regs Name.ES4_uint [])
+                if ty ~~ (instanceType regs Name.ES4_uint [])
                 then UIntNum
                 else 
-                    if ty =* (instanceType regs Name.ES4_byte [])
+                    if ty ~~ (instanceType regs Name.ES4_byte [])
                     then ByteNum
                     else 
-                        if ty =* (instanceType regs Name.ES4_decimal [])
+                        if ty ~~ (instanceType regs Name.ES4_decimal [])
                         then DecimalNum
                         else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end

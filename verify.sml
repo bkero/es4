@@ -184,9 +184,9 @@ fun checkConvertible (prog:Fixture.PROGRAM)
                      (t1:Ast.TYPE_EXPR) (* assignment src *)
 		             (t2:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
-    if Type.groundIsConvertible prog t1 t2
-    then ()
-    else error ["checkConvertible failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+    case Type.findSpecialConversion t1 t2 of 
+        NONE => error ["checkConvertible failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+      | SOME _ => ()
 
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
