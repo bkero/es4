@@ -63,6 +63,7 @@ fun fmtTy t = if !doTrace
               then LogErr.ty (AstQuery.typeExprOf t)
               else ""
 
+
 (* -----------------------------------------------------------------------------
  * Normalized types
  * ----------------------------------------------------------------------------- *)
@@ -702,7 +703,7 @@ fun normalizingPredicate groundPredicate
 datatype BICOMPAT = Bicompat | Compat
 datatype VARIANCE = Covariant | Invariant
 
-fun groundMatches (b:BICOMPAT)
+fun groundMatchesGeneric (b:BICOMPAT)
                   (v:VARIANCE)
                   (ty1:Ast.TYPE_EXPR)
                   (ty2:Ast.TYPE_EXPR)
@@ -712,27 +713,27 @@ fun groundMatches (b:BICOMPAT)
 
         (* A-WRAP-COV *)
         (_, _, Ast.WrapType wt1, Ast.WrapType wt2) => 
-        groundMatches b v wt1 wt2
+        groundMatchesGeneric b v wt1 wt2
         
       (* A-WRAP *)
       | (_, Covariant, Ast.WrapType wt1, _) => 
-        groundMatches b v wt1 ty2
+        groundMatchesGeneric b v wt1 ty2
 
       (* A-LIKE-COV *)
       | (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
-        groundMatches b v lt2 lt2
+        groundMatchesGeneric b v lt2 lt2
 
       (* A-LIKE *)
       | (_, Covariant, _, Ast.LikeType lt2) => 
-        groundMatches b v ty1 lt2
+        groundMatchesGeneric b v ty1 lt2
 
       (* A-GENERIC *)
       | (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
-        groundMatches b v (#body lt1) (#body lt2)
+        groundMatchesGeneric b v (#body lt1) (#body lt2)
 
       (* A-OBJ *)
       | (_, _, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
-        fieldPairWiseSuperset (groundMatches b Invariant) fields1 fields2
+        fieldPairWiseSuperset (groundMatchesGeneric b Invariant) fields1 fields2
         
       (* A-ARROW *)
       | (_, _, 
@@ -748,9 +749,9 @@ fun groundMatches (b:BICOMPAT)
 		      thisType=thisType2,
 		      hasRest=hasRest2,
 		      minArgs=minArgs2}) => 
-        (arrayPairWise (groundMatches b Invariant) params1 params2) andalso
-        groundMatches b v result1 result2 andalso
-        (optionWise (groundMatches b Invariant) thisType1 thisType2) andalso
+        (arrayPairWise (groundMatchesGeneric b Invariant) params1 params2) andalso
+        groundMatchesGeneric b v result1 result2 andalso
+        (optionWise (groundMatchesGeneric b Invariant) thisType1 thisType2) andalso
         hasRest1 = hasRest2 andalso
         minArgs1 = minArgs2
 
@@ -760,9 +761,9 @@ fun groundMatches (b:BICOMPAT)
       (* A-INSTANCE -- generalized from A-INT *)
       | (_, _, Ast.InstanceType it1, Ast.InstanceType it2) =>
         (Mach.nameEq (#name it1) (#name it2) andalso
-         (arrayPairWise (groundMatches b Invariant) (#typeArgs it1) (#typeArgs it2)))
+         (arrayPairWise (groundMatchesGeneric b Invariant) (#typeArgs it1) (#typeArgs it2)))
         orelse 
-        (List.exists (fn sup => groundMatches b v sup ty2) 
+        (List.exists (fn sup => groundMatchesGeneric b v sup ty2) 
                      (#superTypes it1))
         
       (* Extra rules covering nullable, array and union types. *)
@@ -772,16 +773,16 @@ fun groundMatches (b:BICOMPAT)
         
       | (_, _, Ast.NullableType nt1, Ast.NullableType nt2) =>
         (#nullable nt1) = (#nullable nt2) andalso
-        groundMatches b v (#expr nt1) (#expr nt2)
+        groundMatchesGeneric b v (#expr nt1) (#expr nt2)
         
       | (_, _, Ast.ArrayType tys1, Ast.ArrayType tys2) => 
-        arrayPairWise (groundMatches b Invariant) tys1 tys2
+        arrayPairWise (groundMatchesGeneric b Invariant) tys1 tys2
         
       | (_, _, Ast.UnionType tys1, _) => 
-        List.all (fn t => groundMatches b v t ty2) tys1
+        List.all (fn t => groundMatchesGeneric b v t ty2) tys1
 
       | (_, _, _, Ast.UnionType tys2) => 
-        List.exists (groundMatches b v ty1) tys2
+        List.exists (groundMatchesGeneric b v ty1) tys2
 
       (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
 
@@ -861,115 +862,15 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
  * Compatible-subtyping:  <*
  * ----------------------------------------------------------------------------- *)
 
-val groundIsCompatibleSubtype = groundMatches Compat Covariant
+val groundIsCompatibleSubtype = groundMatchesGeneric Compat Covariant
 val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype false
 
 (* -----------------------------------------------------------------------------
- * Bicompatibility: ~~
+ * Matching: ~<
  * ----------------------------------------------------------------------------- *)
 
-val groundIsBicompatible = groundMatches Bicompat Covariant
-val isBicompatible = normalizingPredicate groundIsBicompatible false
-
-
-(* -----------------------------------------------------------------------------
- * Consistency
- * ----------------------------------------------------------------------------- *)
-
-fun groundIsConsistent (t1:Ast.TYPE_EXPR)
-                       (t2:Ast.TYPE_EXPR)
-    : bool = 
-    let
-        val _ = trace [">>> groundIsConsistent: ", fmtType t1, " ~: ", fmtType t2 ]
-        val _ = if not (isGroundType t1 andalso isGroundType t2)
-                then error ["groundIsConsistent on non-ground terms"]
-                else ()
-
-        val res = 
-            
-            (* CON-REFL *)
-
-            if (* FIXME: need a way to encode T ~ T ... used to use "groundEquals t1 t2" *) 
-                true 
-            then
-                true
-            else
-                
-	            case (t1,t2) of
-                    
-                    (* CON-DYN *)
-                    
-                    (_, Ast.SpecialType Ast.Any) => true
-                  | (Ast.SpecialType Ast.Any, _) => true
-                                                    
-                  (* CON-OBJ *)
-                                                    
-	              | (Ast.ObjectType fields1,
-                     Ast.ObjectType fields2) =>
-                    fieldTypesConsistent fields1 fields2
-                    
-                  (* CON-ARROW *)
-
-	              | (Ast.FunctionType
-		                 {params  =params1,
-		                  result  =result1,
-		                  thisType=thisType1,
-		                  hasRest =hasRest1,
-	                      minArgs=minArgs1},
-	                 Ast.FunctionType
-		                 {params=params2,
-		                  result=result2,
-		                  thisType=thisType2,
-		                  hasRest=hasRest2,
-		                  minArgs=minArgs2}) =>
-                    allConsistent params1 params2 andalso
-		            groundIsConsistent result1 result2 andalso
-
-                    (* FIXME: need a way to encode T ~ T ... used to use "(optionEqual thisType1 thisType2)" *) 
-
-                    hasRest1 = hasRest2 andalso
-                    minArgs1 = minArgs2
-
-                  (* CON-LIKE *)
-                    
-			      | (Ast.LikeType lt1,
-                     Ast.LikeType lt2) =>
-			        groundIsConsistent lt1 lt2
-
-                  (* CON-WRAP *)
-                    
-			      | (Ast.WrapType wt1,
-                     Ast.WrapType wt2) =>
-			        groundIsConsistent wt1 wt2
-
-                  (* Extra rules covering nullable, array and union types. *)
-
-                  | ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
-                    nullable
-                    
-                  | (_, Ast.NullableType { nullable=false, expr }) =>
-                    groundIsConsistent t1 expr
-
-	              | (Ast.ArrayType types1, 
-                     Ast.ArrayType types2) =>
-                    allConsistent types1 types2
-
-	              | (Ast.UnionType types1,_) =>
-	                List.all (fn t => groundIsConsistent t t2) types1
-
-	              | (_, Ast.UnionType types2) =>
-	                List.exists (fn t => groundIsConsistent t1 t) types2
-
-                  | _ => false
-    in
-        trace ["<<< isConsistent: ", fmtType t1, " ~ ", fmtType t2, " = ", Bool.toString res ];
-        res
-    end
-
-
-and allConsistent xs ys = arrayPairWise groundIsConsistent xs ys                   
-and fieldTypesConsistent xs ys = fieldPairWise groundIsConsistent xs ys
-val isConsistent = normalizingPredicate groundIsConsistent false
+val groundMatches = groundMatchesGeneric Bicompat Covariant
+val matches = normalizingPredicate groundMatches false
 
 
 

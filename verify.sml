@@ -56,7 +56,6 @@ type STD_TYPES = {
 
      NamespaceType: Ast.TYPE_EXPR,
      TypeType: Ast.TYPE_EXPR
-
 }
 
 type ENV = { returnType: Ast.TYPE_EXPR option,
@@ -76,6 +75,15 @@ fun withStrict { returnType, strict=_, prog, ribs, stdTypes } strict =
 
 fun withRib { returnType, strict, prog, ribs, stdTypes} extn =
     { returnType=returnType, strict=strict, prog=prog, ribs=(extn :: ribs), stdTypes=stdTypes }
+
+fun withRibOpt { returnType, strict, prog, ribs, stdTypes} extn =
+    { returnType=returnType, 
+      strict=strict, 
+      prog=prog, 
+      ribs=case extn of 
+               NONE => ribs 
+             | SOME e => (e :: ribs), 
+      stdTypes=stdTypes }
 
 (* Local tracing machinery *)
 
@@ -159,34 +167,19 @@ fun newEnv (prog:Fixture.PROGRAM)
      }
     }
 
-(****************************** misc auxiliary functions *************************)
-
-fun assert b s = if b then () else (raise error [s])
-
-fun checkForDuplicates [] = ()
-  | checkForDuplicates (x::xs) =
-    if List.exists (fn y => x = y) xs
-    then error ["concurrent definition"]
-    else checkForDuplicates xs
-
 
 (******************* Subtyping and Compatibility *************************)
 
-infix 4 <:;
+infix 4 ~<;
 
-fun (tsub <: tsup) = true
+fun (tleft ~< tright) = Type.groundMatches tleft tright
 
-infix 4 ~:;
-
-fun (tleft ~: tright) = true
-
-fun checkConvertible (prog:Fixture.PROGRAM)
-                     (t1:Ast.TYPE_EXPR) (* assignment src *)
-		             (t2:Ast.TYPE_EXPR) (* assignment dst *)
+fun checkMatch (t1:Ast.TYPE_EXPR) (* assignment src *)
+		       (t2:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
-    case Type.findSpecialConversion t1 t2 of 
-        NONE => error ["checkConvertible failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
-      | SOME _ => ()
+    if t1 ~< t2
+    then ()
+    else error ["checkMatch failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
 
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
@@ -194,9 +187,9 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
     in
-        if t1 <: t2 then
+        if t1 ~< t2 then
             t2
-        else if t2 <: t1 then
+        else if t2 ~< t1 then
             t1
         else
             Ast.UnionType [t1, t2]
@@ -208,19 +201,23 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
 fun verifyType (env:ENV)
                (ty:Ast.TY)
     : (Ast.TY * Ast.TYPE_EXPR) =
-(* 
- * Verification, if it runs, is obliged to come up with a best guess
- * ground type expression for every type it sees. It does this because it performs 
- * some static reasoning and leaves behind a bunch of runtime checks.
- * 
- * As such, when we hit a TY, we try to reduce it to a TYPE_EXPR. If we get a non-ground
- * type, we produce the special TYPE_EXPR "anyType", representing *, because it's
- * the "best guess" at this stage. 
- * 
- * We also return the normalized TY, as many of our callers are rewriting their 
- * type expressions and it gives us a chance to optimize away future
- * runtime calculations of the same normal form.
- *)
+
+    (* 
+     * Verification, if it runs, is obliged to come up with a best
+     * guess ground type expression for every type it sees. It does
+     * this because it performs some static reasoning and leaves
+     * behind a bunch of runtime checks.
+     * 
+     * As such, when we hit a TY, we try to reduce it to a
+     * TYPE_EXPR. If we get a non-ground type, we produce the special
+     * TYPE_EXPR "anyType", representing *, because it's the "best
+     * guess" at this stage.
+     * 
+     * We also return the normalized TY, as many of our callers are
+     * rewriting their type expressions and it gives us a chance to
+     * optimize away future runtime calculations of the same normal
+     * form.
+     *)
     let
         val norm = normalize (#prog env) (#strict env) ty
     in
@@ -256,30 +253,35 @@ fun verifyTypeExpr (env:ENV)
 *)
 
 and verifyInits (env:ENV) (inits:Ast.INITS)
-    : Ast.INITS =
-    List.map (fn (name, expr) => (name, verifyExprOnly env expr))
-             inits
+    : unit =
+    (List.map (fn (name, expr) => verifyExpr env expr) inits; ())
+
 
 and verifyInitsOption (env:ENV)
 		              (inits:Ast.INITS option)
-    : Ast.INITS =
+    : unit =
     case inits of
         SOME inits => verifyInits env inits
       | _ => LogErr.internalError ["missing inits"]
 
 
-and verifyHead (env:ENV) ((Ast.Head (rib, inits)):Ast.HEAD)
-    : Ast.HEAD =
-    (trace ["verifying head with ", Int.toString (length rib), " entry rib"];
-     (Ast.Head (verifyRib env rib, verifyInits env inits)))
+and verifyHead (env:ENV) 
+               (head:Ast.HEAD)
+    : unit =
+    let
+        val Ast.Head (rib, inits) = head
+        val _ = trace ["verifying head with ", 
+                       Int.toString (length rib), 
+                       " entry rib"];
+    in        
+        verifyRib env rib;
+        verifyInits env inits
+    end
 
-(*
-    EXPR
-*)
 
 and verifyExpr (env:ENV)
                (expr:Ast.EXPR)
-    : (Ast.EXPR * Ast.TYPE_EXPR) =
+    : Ast.TYPE_EXPR =
     let
         val { prog, 
               strict, 
@@ -302,39 +304,28 @@ and verifyExpr (env:ENV)
                 TypeType,
                 NamespaceType }, ... } = env
 
-        fun verifySub e = verifyExpr env e
-        fun verifySubList es = verifyExprs env es
-        fun verifySubOption NONE = (NONE, NONE)
-          | verifySubOption (SOME e) =
-            let
-                val (e', t) = verifySub e
-            in
-                (SOME e', SOME t)
-            end
-
-        fun return (e, t:Ast.TYPE_EXPR) = (e, t)
-
-        fun whenStrict (thunk:unit -> unit) : unit =
-            if strict
-            then thunk ()
-            else ()
+        fun verifySub (e:Ast.EXPR) : Ast.TYPE_EXPR = verifyExpr env e
+        fun verifySubList (es:Ast.EXPR list) : Ast.TYPE_EXPR list = verifyExprs env es
+        fun verifySubOption (eo:Ast.EXPR option) : Ast.TYPE_EXPR option = Option.map verifySub eo
     in
         case expr of
             Ast.TernaryExpr (e1, e2, e3) =>
             let
-                val (e1', t1) = verifySub e1
-                val (e2', t2) = verifySub e2
-                val (e3', t3) = verifySub e3
+                val t1:Ast.TYPE_EXPR = verifySub e1
+                val t2:Ast.TYPE_EXPR = verifySub e2
+                val t3:Ast.TYPE_EXPR = verifySub e3
             in
-                whenStrict (fn () => checkConvertible (#prog env) t1 booleanType);
+                if strict
+                then checkMatch t1 booleanType
+                else ();
                 (* FIXME: this produces a union type. is that right? *)
-                return (Ast.TernaryExpr (e1', e2', e3'), leastUpperBound t2 t3)
+                leastUpperBound t2 t3
             end
 
           | Ast.BinaryExpr (b, e1, e2) =>
             let
-                val (e1', t1) = verifySub e1
-                val (e2', t2) = verifySub e2
+                val t1 = verifySub e1
+                val t2 = verifySub e2
                 (* FIXME: these are way wrong. For the time being, just jam in star everywhere
                  * we know we don't know enough *)
                 val AdditionType = anyType
@@ -367,277 +358,318 @@ and verifyExpr (env:ENV)
                        | Ast.GreaterOrEqual => (CompareType, CompareType, booleanType)
                        | Ast.Comma => (anyType, anyType, t2)
             in
-                whenStrict (fn () =>
-                               let
-                               in
-                                   checkConvertible (#prog env) t1 expectedType1;
-                                   checkConvertible (#prog env) t2 expectedType2
-                               end);
-                return (Ast.BinaryExpr (b, e1', e2'), resultType)
+                if strict
+                then 
+                    let
+                    in
+                        (*
+                         checkMatch t1 expectedType1;
+                         checkMatch t2 expectedType2
+                         *)
+                        ()
+                    end
+                else ();
+                resultType
             end
 
           | Ast.BinaryTypeExpr (b, e, ty) =>
             let
-                val (e', t1) = verifySub e
-                val (ty, t2) = verifyType env ty
+                val t1 = verifySub e
+                val t2 = verifyTypeExpr env ty
                 val resultType = case b of
-                                      Ast.Is => booleanType
-                                    | _ => t2
+                                     Ast.Is => booleanType
+                                   | _ => t2
             in
-                whenStrict (fn () => case b of
-                                          Ast.To => checkConvertible (#prog env) t1 t2
-                                        | Ast.Is => ()
-                                        | Ast.Wrap => ()
-                                        | Ast.Cast => checkConvertible (#prog env) t1 t2);
-                return (Ast.BinaryTypeExpr (b, e', ty), resultType)
+                if strict
+                then 
+                    case b of
+                        Ast.To => checkMatch t1 t2
+                      | Ast.Is => ()
+                      | Ast.Wrap => ()
+                      | Ast.Cast => checkMatch t1 t2
+                else 
+                    ();
+                resultType
             end
 
           | Ast.UnaryExpr (u, e) =>
             let
-                val (e', t) = verifySub e
-                val resultType = case u of
-                                      (* FIXME: these are probably mostly wrong *)
-                                      Ast.Delete => booleanType
-                                    | Ast.Void => undefinedType
-                                    | Ast.Typeof => stringType
-                                    | Ast.PreIncrement => AnyNumberType
-                                    | Ast.PreDecrement => AnyNumberType
-                                    | Ast.PostIncrement => AnyNumberType
-                                    | Ast.PostDecrement => AnyNumberType
-                                    | Ast.UnaryPlus => AnyNumberType
-                                    | Ast.UnaryMinus => AnyNumberType
-                                    | Ast.BitwiseNot => AnyNumberType
-                                    | Ast.LogicalNot => booleanType
-                                    (* TODO: isn't this supposed to be the prefix of a type expression? *)
-                                    | Ast.Type => TypeType
+                val t = verifySub e
+                val resultType = 
+                    case u of
+                        (* FIXME: these are probably mostly wrong *)
+                        Ast.Delete => booleanType
+                      | Ast.Void => undefinedType
+                      | Ast.Typeof => stringType
+                      | Ast.PreIncrement => AnyNumberType
+                      | Ast.PreDecrement => AnyNumberType
+                      | Ast.PostIncrement => AnyNumberType
+                      | Ast.PostDecrement => AnyNumberType
+                      | Ast.UnaryPlus => AnyNumberType
+                      | Ast.UnaryMinus => AnyNumberType
+                      | Ast.BitwiseNot => AnyNumberType
+                      | Ast.LogicalNot => booleanType
+                      (* TODO: isn't this supposed to be the prefix of a type expression? *)
+                      | Ast.Type => TypeType
             in
-                whenStrict (fn () =>
-                               case u of
-                                    (* FIXME: these are probably wrong *)
-                                    Ast.Delete => ()
-                                  | Ast.PreIncrement => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.PostIncrement => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.PreDecrement => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.PostDecrement => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.UnaryPlus => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.UnaryMinus => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.BitwiseNot => checkConvertible (#prog env) t AnyNumberType
-                                  | Ast.LogicalNot => checkConvertible (#prog env) t booleanType
-                                  (* TODO: Ast.Type? *)
-                                  | _ => ());
-                return (Ast.UnaryExpr (u, e'), resultType)
+                if strict
+                then 
+                    case u of
+                        (* FIXME: these are probably wrong *)
+                        Ast.Delete => ()
+                      | Ast.PreIncrement => checkMatch t AnyNumberType
+                      | Ast.PostIncrement => checkMatch t AnyNumberType
+                      | Ast.PreDecrement => checkMatch t AnyNumberType
+                      | Ast.PostDecrement => checkMatch t AnyNumberType
+                      | Ast.UnaryPlus => checkMatch t AnyNumberType
+                      | Ast.UnaryMinus => checkMatch t AnyNumberType
+                      | Ast.BitwiseNot => checkMatch t AnyNumberType
+                      | Ast.LogicalNot => checkMatch t booleanType
+                      (* TODO: Ast.Type? *)
+                      | _ => ()
+                else
+                    ();
+                resultType
             end
-
+            
           | Ast.TypeExpr t =>
-            return (Ast.TypeExpr (verifyTy env t), TypeType)
+            let
+            in
+                verifyTy env t;
+                TypeType
+            end
 
           | Ast.ThisExpr k =>
             (* FIXME: type of current class, if any... also Self type? *)
             (* FIXME: handle function and generator this *)
-            return (Ast.ThisExpr k, anyType)
+            let
+            in
+                anyType
+            end
 
           | Ast.YieldExpr eo =>
             let
-                val (eo', t) = verifySubOption eo
+                val t = verifySubOption eo
             in
-                (* TODO: strict check that returnType is Generator.<t> *)
-                return (Ast.YieldExpr eo', anyType)
+                (* FIXME: strict check that returnType is Generator.<t> *)
+                anyType
             end
 
           | Ast.SuperExpr eo =>
             let
-                val (eo', t) = verifySubOption eo
+                val t = verifySubOption eo
             in
-                (* TODO: what is this AST form again? *)
-                return (Ast.SuperExpr eo', anyType)
+                (* FIXME: what is this AST form again? *)
+                anyType
             end
 
           | Ast.LiteralExpr le =>
             let
                 val resultType = case le of
-                                      Ast.LiteralNull => nullType
-                                    | Ast.LiteralUndefined => undefinedType
-                                    | Ast.LiteralDouble _ => doubleType
-                                    | Ast.LiteralDecimal _ => decimalType
-                                    | Ast.LiteralInt _ => intType
-                                    | Ast.LiteralUInt _ => uintType
-                                    | Ast.LiteralBoolean _ => booleanType
-                                    | Ast.LiteralString _ => stringType
-                                    | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
-                                    (* FIXME: how do we want to represent [*] ? *)
-                                    | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [anyType]
-                                    (* TODO: define this *)
-                                    | Ast.LiteralXML _ => anyType
-                                    | Ast.LiteralNamespace _ => NamespaceType
-                                    | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
-                                    (* FIXME: how do we want to represent {*} ? *)
-                                    | Ast.LiteralObject { ty=NONE, ... } => anyType
-                                    | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyTypeExpr env ty
-                                    | Ast.LiteralRegExp _ => RegExpType
+                                     Ast.LiteralNull => nullType
+                                   | Ast.LiteralUndefined => undefinedType
+                                   | Ast.LiteralDouble _ => doubleType
+                                   | Ast.LiteralDecimal _ => decimalType
+                                   | Ast.LiteralInt _ => intType
+                                   | Ast.LiteralUInt _ => uintType
+                                   | Ast.LiteralBoolean _ => booleanType
+                                   | Ast.LiteralString _ => stringType
+                                   | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                   (* FIXME: how do we want to represent [*] ? *)
+                                   | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [anyType]
+                                   (* TODO: define this *)
+                                   | Ast.LiteralXML _ => anyType
+                                   | Ast.LiteralNamespace _ => NamespaceType
+                                   | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                   (* FIXME: how do we want to represent {*} ? *)
+                                   | Ast.LiteralObject { ty=NONE, ... } => anyType
+                                   | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyTypeExpr env ty
+                                   | Ast.LiteralRegExp _ => RegExpType
                 fun verifyField { kind, name, init } =
-                    { kind = kind,
-                      name = name,
-                      init = verifyExprOnly env init }
-
-                val le = case le of
-                             Ast.LiteralFunction func =>
-                             Ast.LiteralFunction (verifyFunc env func)
-
-                           | Ast.LiteralObject { expr, ty } =>
-                             Ast.LiteralObject { expr = map verifyField expr,
-                                                 ty = case ty of
-                                                          NONE => NONE
-                                                        | SOME ty' => SOME (verifyTy env ty') }
-
-                           | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => (* FIXME handle comprehensions *)
-                             Ast.LiteralArray { exprs = Ast.ListExpr (map (verifyExprOnly env) exprs),
-                                                ty = case ty of
-                                                         NONE => NONE
-                                                       | SOME ty' => SOME (verifyTy env ty') }
-                           | x => x
+                    (verifyExpr env init; ())
+                    
             in
-                return (Ast.LiteralExpr le, resultType)
+                case le of
+                    Ast.LiteralFunction func => 
+                    verifyFunc env func
+                  | Ast.LiteralObject { expr, ty } =>
+                    let
+                    in
+                        List.app verifyField expr;
+                        Option.map (verifyTy env) ty;
+                        ()
+                    end                    
+                  (* FIXME handle comprehensions *)
+                  | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => 
+                    let                        
+                    in
+                        List.map (verifyExpr env) exprs;
+                        Option.map (verifyTy env) ty;
+                        ()
+                    end
+                  | x => ();
+                resultType
             end
 
           | Ast.CallExpr {func, actuals} =>
             let
-                val (func', t) = verifySub func
-                val (actuals', ts) = verifySubList actuals
+                val t = verifySub func
+                val ts = verifySubList actuals
                 val resultType = case t of
-                                      Ast.FunctionType { result, ... } => result
-                                    | _ => anyType
+                                     Ast.FunctionType { result, ... } => result
+                                   | _ => anyType
             in
-                whenStrict (fn () =>
-                               case t of
-                                    Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
-                                    if (List.length actuals) < minArgs then
-                                        error ["too few actuals"]
-                                    else if (not hasRest) andalso
-                                            ((List.length actuals) > (List.length params)) then
-                                        error ["too many actuals"]
-                                    else
-                                        List.app (fn (formal, actual) => checkConvertible (#prog env) actual formal)
-                                                 (ListPair.zip (params, ts))
-                                  | Ast.SpecialType Ast.Any => ()
-                                  | _ => error ["ill-typed call"]);
-                return (Ast.CallExpr { func = func', actuals = actuals' }, resultType)
+                if strict
+                then 
+                    case t of
+                        Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
+                        if 
+                            (List.length actuals) < minArgs 
+                        then 
+                            error ["too few actuals"]
+                        else 
+                            if (not hasRest) andalso
+                               ((List.length actuals) > (List.length params))
+                            then
+                                error ["too many actuals"]
+                            else
+                                List.app (fn (formal, actual) => checkMatch actual formal)
+                                         (ListPair.zip (params, ts))
+                      | Ast.SpecialType Ast.Any => ()
+                      | _ => error ["ill-typed call"]
+                else 
+                    ();
+                resultType
             end
 
-            (* TODO: what is this? *)
+            (* FIXME: what is this? *)
           | Ast.ApplyTypeExpr { expr, actuals } =>
             let
-                val (expr', t) = verifySub expr
+                val t = verifySub expr
                 val actuals' = List.map (verifyTy env) actuals
             in
-                return (Ast.ApplyTypeExpr { expr = expr',
-                                            actuals = actuals' }, anyType)
+                anyType
             end
 
-          (* TODO: ---------- left off here ---------- *)
-
-          | Ast.LetExpr { defs, body, head } =>
+          | Ast.LetExpr { defs, head, body } =>
             let
-                val defs' = defs (* TODO *)
+                val defs' = defs 
                 val head' = Option.map (verifyHead env) head
-                (* TODO: verify body with `head' rib in env *)
-                val (body', t) = verifySub body
+                (* FIXME: verify body with `head' rib in env *)
+                val t = verifySub body
             in
-                return (Ast.LetExpr { defs = defs',
-                                      body = body',
-                                      head = head' }, anyType)
+                t
             end
 
           | Ast.NewExpr { obj, actuals } =>
             let
-                val (obj', t) = verifySub obj
-                val (actuals', ts) = verifySubList actuals
+                val t = verifySub obj
+                val ts = verifySubList actuals
             in
-                return (Ast.NewExpr { obj = obj',
-                                      actuals = actuals' }, anyType)
+                (* FIXME: implement *)
+                t
             end
 
           | Ast.ObjectRef { base, ident, loc } =>
             let
                 val _ = LogErr.setLoc loc
-                val (base', t) = verifySub base
+                val t = verifySub base
                 val _ = LogErr.setLoc loc
-                val ident' = ident (* TODO *)
+                val ident' = ident
             in
-                return (Ast.ObjectRef { base=base', ident=ident', loc=loc }, anyType)
+                (* FIXME: implement *)
+                anyType
             end
 
           | Ast.LexicalRef { ident, loc } =>
             let
                 val _ = LogErr.setLoc loc
-                val ident' = ident (* TODO *)
-                val _ = LogErr.setLoc loc
+
+                fun resolveToFixture (mname:Ast.MULTINAME)
+                    : Ast.FIXTURE option =     
+                    case Multiname.resolveInRibs mname (#ribs env) of 
+                        NONE => NONE
+                      | SOME (ribs, n) =>
+                        SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
+                        
+                fun resolveToType id nss = 
+                    case resolveToFixture { id = id, nss = nss } of 
+
+                        SOME (Ast.TypeFixture ty) => 
+                        verifyTypeExpr env ty
+
+                      | SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => 
+                        verifyTypeExpr env classType
+
+                      | SOME (Ast.ValFixture { ty, ... }) => 
+                        verifyTypeExpr env ty
+
+                      | SOME (Ast.VirtualValFixture { ty, ... }) => 
+                        verifyTypeExpr env ty
+                        
+                      | _ => anyType
             in
-                return (Ast.LexicalRef { ident=ident', loc=loc }, anyType)
+                LogErr.setLoc loc;
+                case ident of                     
+                    Ast.Identifier { ident, openNamespaces } => 
+                    resolveToType ident openNamespaces
+                    
+                  (* FIXME: handle qualified identifiers here. *)
+                  | _ => anyType
             end
 
           | Ast.SetExpr (a, le, re) =>
             let
-                val (le', t1) = verifySub le
-                val (re', t2) = verifySub re
+                val t1 = verifySub le
+                val t2 = verifySub re
             in
-                return (Ast.SetExpr (a, le', re'), anyType)
+                (* FIXME: implement *)
+                anyType
             end
 
           | Ast.GetTemp n =>
-            (* TODO: these only occur on the RHS of compiled destructuring assignments. how to type-check? *)
-            return (Ast.GetTemp n, anyType)
+            (* FIXME: these only occur on the RHS of compiled destructuring assignments. how to type-check? *)
+            anyType
 
           | Ast.GetParam n =>
             LogErr.internalError ["GetParam not eliminated by Defn"]
 
           | Ast.ListExpr es =>
             let
-                val (es', ts) = verifySubList es
+                val ts = verifySubList es
             in
-                return (Ast.ListExpr es', anyType)
+                case ts of 
+                    [] => undefinedType
+                  | _ => List.last ts
             end
 
           | Ast.InitExpr (it, head, inits) =>
             let
-                val it' = it (* TODO *)
-                val head' = verifyHead env head
-                val inits' = verifyInits env inits
             in
-                return (Ast.InitExpr (it', head', inits'), anyType)
+                verifyHead env head;
+                verifyInits env inits;
+                anyType
             end
 
     end
 
 
-and verifyExprOnly (env:ENV)
-                   (expr:Ast.EXPR)
-    : Ast.EXPR =
-    let
-        val (e, _) = verifyExpr env expr
-    in
-        e
-    end
-
-
 and verifyExprs (env:ENV)
-             (exprs:Ast.EXPR list)
-    : Ast.EXPR list * Ast.TYPE_EXPR list =
-    let
-        val es = ListPair.unzip (map (verifyExpr env) exprs)
-    in
-        es
-    end
+                (exprs:Ast.EXPR list)
+    : Ast.TYPE_EXPR list =
+    List.map (verifyExpr env) exprs
+
 
 and verifyExprAndCheck (env:ENV)
                        (expr:Ast.EXPR)
                        (expectedType:Ast.TYPE_EXPR)
-    : Ast.EXPR =
-    let val (expr',ty') = verifyExpr env expr
-        val _ = if #strict env
-                then checkConvertible (#prog env) ty' expectedType
-                else ()
+    : unit =
+    let 
+        val ty = verifyExpr env expr
     in
-        expr'
+        if #strict env
+        then checkMatch ty expectedType
+        else ()
     end
 
 (*
@@ -646,7 +678,7 @@ and verifyExprAndCheck (env:ENV)
 
 and verifyStmt (env:ENV)
                (stmt:Ast.STMT)
-    : Ast.STMT =
+    : unit =
     let 
         fun verifySub s = verifyStmt env s
         val { prog, 
@@ -672,36 +704,27 @@ and verifyStmt (env:ENV)
                 NamespaceType }, ... } = env
     in
         case stmt of
-            Ast.EmptyStmt =>
-            Ast.EmptyStmt
 
-          | Ast.ExprStmt e =>
-            Ast.ExprStmt (verifyExprOnly env e)
+            Ast.EmptyStmt => ()
+          | Ast.BreakStmt i => ()
+          | Ast.ContinueStmt i => ()
+
+          | Ast.ExprStmt e => (verifyExpr env e; ())
 
           | Ast.ForInStmt {isEach, defn, obj, rib, next, labels, body} =>
             let
-                val obj = verifyExprOnly env obj
-                val rib = valOf rib
-                val rib = verifyRib env rib
-                val env = withRib env rib
-                val next = verifyStmt env next
-                val body = verifyStmt env body
+                val newEnv = withRibOpt env rib
             in
-                Ast.ForInStmt { isEach = isEach,
-                                defn = defn,
-                                obj = obj,
-                                rib = SOME rib,
-                                next = next,
-                                labels = labels,
-                                body = body }
+                verifyExpr env obj;
+                verifyStmt newEnv next;
+                verifyStmt newEnv body
             end
 
-          | Ast.ThrowStmt es =>
-            Ast.ThrowStmt (verifyExprOnly env es)
+          | Ast.ThrowStmt es => (verifyExpr env es; ())
 
           | Ast.ReturnStmt es =>
             let 
-                val (es',ty) = verifyExpr env es
+                val ty = verifyExpr env es
             in
                 if strict
                 then
@@ -709,259 +732,223 @@ and verifyStmt (env:ENV)
                     (*
 	                 case returnType of
 	                     NONE => error ["return not allowed here"]
-                       | SOME retTy => checkConvertible ty retTy
+                       | SOME retTy => checkMatch ty retTy
                      *)
                     ()
-                else ();
-                Ast.ReturnStmt es'
+                else 
+                    ()
             end
 
-          | Ast.BreakStmt i =>
-            Ast.BreakStmt i
 
-          | Ast.ContinueStmt i =>
-            Ast.ContinueStmt i
+          | Ast.BlockStmt block => verifyBlock env block
+          | Ast.ClassBlock { block, ... } => verifyBlock env block
+          | Ast.LabeledStmt (_, s) => verifySub s
+          | Ast.LetStmt block => verifyBlock env block
 
-          | Ast.BlockStmt block =>
-            Ast.BlockStmt (verifyBlock env block)
-
-          | Ast.ClassBlock { ns, ident, name, block } =>
-            Ast.ClassBlock { ns=ns, ident=ident, name=name,
-                             block=verifyBlock env block }
-
-          | Ast.LabeledStmt (id, s) =>
-            Ast.LabeledStmt (id, verifySub s)
-
-          | Ast.LetStmt block =>
-            Ast.LetStmt (verifyBlock env block)
-
-          | Ast.WhileStmt {cond,body,labels,rib=NONE} =>
-            Ast.WhileStmt {cond=verifyExprAndCheck env cond booleanType,
-                           body=verifySub body,
-                           labels=labels,
-                           rib=NONE}
-
-          | Ast.DoWhileStmt {cond,body,labels,rib=NONE} =>
-            Ast.DoWhileStmt {cond=verifyExprAndCheck env cond booleanType,
-                             body=verifySub body,
-                             labels=labels,
-                             rib=NONE}
-
-          | Ast.ForStmt  { defn=_, rib, init, cond, update, labels, body } =>
-            let 
-                val rib' = verifyRibOption env rib
-                val env' = withRib env rib'
-                val init' = verifyStmts env' init
-                val cond' = verifyExprAndCheck env' cond booleanType
-                val update' = verifyExprOnly env' update
-                val body' = verifyStmt env' body
+          | Ast.WhileStmt { cond, body, rib, ... } =>
+            let
+                val newEnv = withRibOpt env rib
             in
-                Ast.ForStmt  { defn=NONE, rib=SOME rib', init=init', cond=cond',
-                               update=update', labels=labels, body=body' }
+                verifyExprAndCheck env cond booleanType;
+                verifyStmt newEnv body
             end
-          | Ast.IfStmt {cnd, els, thn} =>
-            Ast.IfStmt {cnd=verifyExprAndCheck env cnd booleanType,
-                        els=verifySub els,
-                        thn=verifySub thn}
 
-          | Ast.WithStmt {obj, ty, body} => (*TODO*)
-            Ast.WithStmt {obj=obj, ty=ty, body=body}
+          | Ast.DoWhileStmt { cond, body, rib, ... } =>
+            let
+                val newEnv = withRibOpt env rib
+            in
+                verifyExprAndCheck env cond booleanType;
+                verifyStmt newEnv body
+            end
+
+          | Ast.ForStmt  { rib, init, cond, update, body, ... } =>
+            let 
+                val newEnv = withRibOpt env rib
+            in
+                Option.app (verifyRib env) rib;
+                List.app (verifyStmt newEnv) init;
+                verifyExprAndCheck newEnv cond booleanType;
+                verifyExpr newEnv update;
+                verifyStmt newEnv body
+            end
+
+          | Ast.IfStmt {cnd, thn, els } =>
+            let
+            in
+                verifyExprAndCheck env cnd booleanType;
+                verifySub thn;
+                verifySub els
+            end
+
+          | Ast.WithStmt {obj, ty, body} => (* FIXME: implement *)
+            ()
 
           | Ast.TryStmt {block, catches, finally} =>
-            Ast.TryStmt {block=verifyBlock env block,
-                         catches=List.map (verifyCatchClause env) catches,
-                         finally=Option.map (verifyBlock env) finally }
-
-          | Ast.SwitchStmt {cond, cases, labels} =>
             let
-                fun verifyCase { label, inits, body } =
-                    { label = Option.map (verifyExprOnly env) label,
-                      inits = Option.map (verifyInits env) inits,
-                      body = verifyBlock env body }
             in
-                Ast.SwitchStmt {cond = verifyExprOnly env cond,
-                                cases = map verifyCase cases,
-                                labels = labels}
+                verifyBlock env block;
+                List.app (verifyCatchClause env) catches;
+                Option.app (verifyBlock env) finally
             end
 
-          | Ast.SwitchTypeStmt {cond, ty, cases} =>
-            Ast.SwitchTypeStmt {cond = verifyExprOnly env cond,
-                                ty = verifyTy env ty,
-                                cases = List.map (verifyCatchClause env) cases}
+          | Ast.SwitchStmt { cond, cases, ... } =>
+            let
+                fun verifyCase { label, inits, body } =
+                    let
+                    in
+                        Option.map (verifyExpr env) label;
+                        Option.app (verifyInits env) inits;
+                        verifyBlock env body
+                    end
+            in
+                verifyExpr env cond;
+                List.app verifyCase cases
+            end
 
-          | Ast.DXNStmt x => (*TODO*)
-            Ast.DXNStmt x
+          | Ast.SwitchTypeStmt { cond, ty, cases } =>
+            let
+            in
+                verifyExpr env cond;
+                verifyTy env ty;
+                List.app (verifyCatchClause env) cases
+            end
+
+          | Ast.DXNStmt x => (* FIXME: implement *)
+            ()
 
           | _ => error ["Shouldn't happen: failed to match in Verify.verifyStmt"]
 
     end
 
+
 and verifyCatchClause (env:ENV)
-                      ({bindings, ty, rib, inits, block}:Ast.CATCH_CLAUSE)
-    : Ast.CATCH_CLAUSE =
+                      (clause:Ast.CATCH_CLAUSE)
+    : unit =
     let
-        val ty = verifyTy env ty
-        val rib' = verifyRibOption env rib
-        val inits' = verifyInitsOption env inits
-        val env' = withRib env rib'
-        val block' = verifyBlock env' block
+        val {bindings, ty, rib, inits, block} = clause
+        val blockEnv = withRibOpt env rib
     in
-        {bindings=bindings, ty=ty,
-         rib=SOME rib', inits=SOME inits', block=block'}
+        verifyTy env ty;
+        Option.app (verifyRib env) rib;
+        verifyInitsOption env inits;
+        verifyBlock blockEnv block
     end
 
-and verifyStmts (env) (stmts:Ast.STMT list)
-    : Ast.STMT list =
-    List.map (verifyStmt env) stmts
 
 and verifyBlock (env:ENV)
                 (b:Ast.BLOCK)
-    : Ast.BLOCK =
+    : unit =
     let
-    in case b of
-        Ast.Block { head, body, loc, pragmas=pragmas, defns=defns } =>
-            let
-                val _ = LogErr.setLoc loc
-                val (Ast.Head (rib, _)) = valOf head
-                val env = withRib env rib
-                val head = Option.map (verifyHead env) head
-                val body = verifyStmts env body
-            in
-                Ast.Block { pragmas = pragmas,
-                            defns = defns,
-                            body = body,
-                            head = head,
-                            loc = loc }
-            end
+        val Ast.Block { head, body, loc, pragmas, ... } = b
+        val (Ast.Head (rib, _)) = valOf head
+        val env = withRib env rib
+    in 
+        (* FIXME: pragmas *)
+        LogErr.setLoc loc;
+        Option.app (verifyHead env) head;
+        List.app (verifyStmt env) body
     end
 
-(*
-    RIB
-*)
 
 and verifyFunc (env:ENV)
                (func:Ast.FUNC)
-    : Ast.FUNC =
+    : unit =
     let
         val Ast.Func { name, fsig, native, block, param, defaults, ty, loc } = func
-        val ty = verifyTy env ty
-        val param = verifyHead env param
-        val (defaults,_) = verifyExprs env defaults
         val (Ast.Head (paramRib, _)) = param
-        val env = withRib env paramRib
-        val block = Option.map (verifyBlock env) block
+        val blockEnv = withRib env paramRib
     in
-        Ast.Func { name=name, fsig=fsig, native=native, block=block, param=param, defaults=defaults, ty=ty, loc=loc }
+        LogErr.setLoc loc;
+        verifyTy env ty;
+        verifyHead env param;
+        verifyExprs env defaults;
+        Option.app (verifyBlock blockEnv) block
     end
+
 
 and verifyFixture (env:ENV)
 		          (f:Ast.FIXTURE)
-    : Ast.FIXTURE = (*TODO*)
-    let in
-        case f of
-         Ast.NamespaceFixture ns =>
-         Ast.NamespaceFixture ns
-       | Ast.ClassFixture (Ast.Cls {name, typeParams, nonnullable, dynamic, extends, implements, classRib, instanceRib,
-                                    instanceInits, constructor, classType, instanceType }) =>
+    : unit =
+    case f of
+     
+        Ast.ClassFixture (Ast.Cls {name, typeParams, nonnullable, 
+                                   dynamic, extends, implements, 
+                                   classRib, instanceRib, instanceInits, 
+                                   constructor, classType, instanceType }) =>
          let
-             val classRib = verifyRib env classRib
-             val env = withRib env classRib
-             val instanceRib = verifyRib env instanceRib
-             val instanceInits = verifyHead env instanceInits
-             val constructor = case constructor of
-                                   NONE => NONE
-                                 | SOME (Ast.Ctor {settings, superArgs, func}) =>
-                                   let
-                                       val settings = verifyHead env settings
-                                       val (superArgs, _) = verifyExprs env superArgs
-                                       val func = verifyFunc env func
-                                   in
-                                       SOME (Ast.Ctor { settings = settings,
-                                                        superArgs = superArgs,
-                                                        func = func })
-                                   end
+             val classEnv = withRib env classRib
+             val instanceEnv = withRib classEnv instanceRib
          in
-             Ast.ClassFixture (Ast.Cls {name=name, typeParams=typeParams, nonnullable=nonnullable, dynamic=dynamic, 
-                                        extends=extends, implements=implements, classRib=classRib,
-                                        instanceRib=instanceRib, instanceInits=instanceInits,                                        
-                                        constructor=constructor, classType=classType, instanceType=instanceType })
-         end
-       | Ast.TypeVarFixture x =>
-         Ast.TypeVarFixture x
-       | Ast.TypeFixture ty =>
-         Ast.TypeFixture (verifyTy env ty)
-       | Ast.ValFixture {ty, readOnly} =>
-         Ast.ValFixture {ty=verifyTy env ty, readOnly=readOnly}
-       | Ast.MethodFixture { func, ty, readOnly, override, final } =>
-         let
-             val func = verifyFunc env func
-             val ty = verifyTy env ty
-         in
-             Ast.MethodFixture { func=func, ty=ty, readOnly=readOnly, override=override, final=final }
-         end
-       | Ast.VirtualValFixture { ty, getter, setter} =>
-         let
-             val ty = verifyTy env ty
-             val getter = Option.map (verifyFunc env) getter
-             val setter = Option.map (verifyFunc env) setter
-         in
-             Ast.VirtualValFixture { ty = ty, getter = getter, setter = setter }
+             verifyRib env classRib;
+             verifyRib classEnv instanceRib;
+             verifyHead instanceEnv instanceInits;
+             case constructor of
+                 NONE => ()
+               | SOME (Ast.Ctor {settings, superArgs, func}) =>
+                 let
+                 in
+                     (* FIXME: need to construct a sort of odd env for settings verification. *)
+                     (* verifyHead instanceEnv settings; *)
+                     verifyExprs instanceEnv superArgs;
+                     verifyFunc instanceEnv func
+                 end
          end
 
-       | _ => f
-    (*
-       | _ => unimplError ["in verifyFixture"]
-     *)
-    end
+      (* FIXME: verify interfaces *)
+
+      | Ast.TypeFixture ty => (verifyTy env ty; ())
+      | Ast.ValFixture { ty, readOnly } => (verifyTy env ty; ())
+      | Ast.MethodFixture { func, ty, ... } =>
+        let
+        in
+            verifyFunc env func;
+            verifyTy env ty;
+            ()
+        end
+
+      | Ast.VirtualValFixture { ty, getter, setter} =>
+        let
+        in
+            verifyTy env ty;
+            Option.app (verifyFunc env) getter;
+            Option.app (verifyFunc env) setter
+        end
+
+      | _ => ()
+
 
 and verifyRib (env:ENV)
               (rib:Ast.RIB)
-    : Ast.RIB =
+    : unit =
     let
         val env = withRib env rib
         fun doFixture (name, fixture) =
             (trace ["verifying fixture: ", LogErr.fname name];
-             (name,verifyFixture env fixture))
+             verifyFixture env fixture)
     in
-        map doFixture rib
+        List.app doFixture rib
     end
 
-and verifyRibOption (env:ENV)
-		            (fs:Ast.RIB option)
-    : Ast.RIB =
-    case fs of
-        SOME rib => verifyRib env rib
-
-      | _ => LogErr.internalError ["missing rib"]
-
-(*
-    PROGRAM
-*)
 
 and verifyFragment (env:ENV)
                    (frag:Ast.FRAGMENT) 
-  : Ast.FRAGMENT = 
+  : unit = 
     case frag of 
-        Ast.Unit { name, fragments } => 
-        Ast.Unit { name = name,
-                   fragments = map (verifyFragment env) fragments }
+        Ast.Unit { fragments, ... } => List.app (verifyFragment env) fragments
+      | Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
+      | Ast.Anon block => verifyBlock env block
 
-      | Ast.Package { name, fragments } => 
-        Ast.Package { name = name,
-                      fragments = map (verifyFragment env) fragments }
-        
-      | Ast.Anon block => 
-        Ast.Anon (verifyBlock env block)
 
 and verifyTopRib (prog:Fixture.PROGRAM)
                  (strict:bool)
                  (rib:Ast.RIB)
-    : Ast.RIB =
+    : unit =
     let
         val env = newEnv prog strict
     in
         verifyRib env rib
     end
+
 
 and verifyTopFragment (prog:Fixture.PROGRAM)
                       (strict:bool) 
@@ -969,14 +956,10 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
   : Ast.FRAGMENT = 
     let 
         val env = newEnv prog strict
-        val res = frag
-        (* val res = verifyFragment env frag *)
     in
+        verifyFragment env frag;
         trace ["verification complete"];
-        (if !doTrace orelse !doTraceFrag
-         then Pretty.ppFragment res
-         else ());
-        res
+        frag
     end
 
 

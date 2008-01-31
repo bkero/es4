@@ -361,7 +361,7 @@ fun addToRib (env:ENV)
                     then ribId
                     else NONE
     in
-        Fixture.extendRib (#program env) ribId additions (Type.isBicompatible (#program env) [])
+        Fixture.extendRib (#program env) ribId additions (Type.matches (#program env) [])
     end
 
 
@@ -369,7 +369,7 @@ fun mergeRibs (program:Fixture.PROGRAM)
               (oldRib:Ast.RIB)
               (newRib:Ast.RIB)
     : Ast.RIB = 
-    Fixture.mergeRibs (Type.isBicompatible program []) oldRib newRib
+    Fixture.mergeRibs (Type.matches program []) oldRib newRib
 
 
 fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
