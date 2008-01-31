@@ -63,11 +63,7 @@ package
 
         /* E262-4 draft: The int Constructor Called as a Function */
         meta static function invoke(x=0)
-            x is int ? x : magic::newInt(x);
-
-        /* E262-4 draft: The int constructor */
-        function int(x=0i)
-            magic::bindInt(this, x);
+            (x is int) ? x : new int(x);
 
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)

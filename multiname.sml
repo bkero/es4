@@ -52,6 +52,9 @@ fun resolve (mname:Ast.MULTINAME)
     : ('a * Ast.NAME) option =
     let
         val _ = trace ["resolving multiname ", fmtMultiname mname]
+        val _ = if (#nss mname) = [] 
+                then error ["empty namespace set in multiname: ", LogErr.multiname mname]
+                else ()
         val id = (#id mname)
 
         (*

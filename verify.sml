@@ -37,6 +37,7 @@ structure Verify = struct
  * strict vs standard mode, and the expected return type, if any.
  *)
 
+
 type STD_TYPES = { 
      AnyNumberType: Ast.TYPE_EXPR,
      doubleType: Ast.TYPE_EXPR,
@@ -86,6 +87,15 @@ fun error ss = LogErr.verifyError ss
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
+
+(*
+fun verifyTopFragment (prog:Fixture.PROGRAM)
+                      (strict:bool) 
+                      (frag:Ast.FRAGMENT) 
+  : Ast.FRAGMENT = 
+    frag
+*)
+
 
 (*
 fun typeToString ty = ...
@@ -164,34 +174,20 @@ fun checkForDuplicates [] = ()
 
 infix 4 <:;
 
-fun (tsub <: tsup) =
-    Type.groundIsSubtype tsub tsup
+fun (tsub <: tsup) = true
 
 infix 4 ~:;
 
-fun (tleft ~: tright) =
-    Type.groundIsCompatible tleft tright
+fun (tleft ~: tright) = true
 
-fun checkCompatible (t1:Ast.TYPE_EXPR) (* assignment src *)
-		            (t2:Ast.TYPE_EXPR) (* assignment dst *)
+fun checkConvertible (prog:Fixture.PROGRAM)
+                     (t1:Ast.TYPE_EXPR) (* assignment src *)
+		             (t2:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
-    if t1 ~: t2
-    then ()
-    else error ["checkCompatible failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+    case Type.findSpecialConversion t1 t2 of 
+        NONE => error ["checkConvertible failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+      | SOME _ => ()
 
-fun checkBicompatible (ty1:Ast.TYPE_EXPR)
-		              (ty2:Ast.TYPE_EXPR)
-    : unit =
-    let in
-	    checkCompatible ty1 ty2;
-	    checkCompatible ty2 ty1
-    end
-
-fun checkConvertible (ty1:Ast.TYPE_EXPR)
-                     (ty2:Ast.TYPE_EXPR)
-    : unit =
-    (* TODO: int to float, etc, and to() methods *)
-    checkCompatible ty1 ty2
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
                     (t2:Ast.TYPE_EXPR)
@@ -316,8 +312,7 @@ and verifyExpr (env:ENV)
                 (SOME e', SOME t)
             end
 
-        fun return (e, t:Ast.TYPE_EXPR) =
-            (Ast.ExpectedTypeExpr (t, e), t)
+        fun return (e, t:Ast.TYPE_EXPR) = (e, t)
 
         fun whenStrict (thunk:unit -> unit) : unit =
             if strict
@@ -331,7 +326,7 @@ and verifyExpr (env:ENV)
                 val (e2', t2) = verifySub e2
                 val (e3', t3) = verifySub e3
             in
-                whenStrict (fn () => checkConvertible t1 booleanType);
+                whenStrict (fn () => checkConvertible (#prog env) t1 booleanType);
                 (* FIXME: this produces a union type. is that right? *)
                 return (Ast.TernaryExpr (e1', e2', e3'), leastUpperBound t2 t3)
             end
@@ -375,19 +370,11 @@ and verifyExpr (env:ENV)
                 whenStrict (fn () =>
                                let
                                in
-                                   checkCompatible t1 expectedType1;
-                                   checkCompatible t2 expectedType2
+                                   checkConvertible (#prog env) t1 expectedType1;
+                                   checkConvertible (#prog env) t2 expectedType2
                                end);
                 return (Ast.BinaryExpr (b, e1', e2'), resultType)
             end
-
-          | Ast.ExpectedTypeExpr (t, e) =>
-            (*
-             * If we got here, we're re-verifying an already-verified expression.
-             * This means we've already put expectations on all subexpressions, and
-             * we don't want to re-wrap any subexpressions, so we just bottom out here.
-             *)
-            (Ast.ExpectedTypeExpr (t, e), t)
 
           | Ast.BinaryTypeExpr (b, e, ty) =>
             let
@@ -398,8 +385,10 @@ and verifyExpr (env:ENV)
                                     | _ => t2
             in
                 whenStrict (fn () => case b of
-                                          Ast.To => checkConvertible t1 t2
-                                        | _ => checkCompatible t1 t2);
+                                          Ast.To => checkConvertible (#prog env) t1 t2
+                                        | Ast.Is => ()
+                                        | Ast.Wrap => ()
+                                        | Ast.Cast => checkConvertible (#prog env) t1 t2);
                 return (Ast.BinaryTypeExpr (b, e', ty), resultType)
             end
 
@@ -426,14 +415,14 @@ and verifyExpr (env:ENV)
                                case u of
                                     (* FIXME: these are probably wrong *)
                                     Ast.Delete => ()
-                                  | Ast.PreIncrement => checkCompatible t AnyNumberType
-                                  | Ast.PostIncrement => checkCompatible t AnyNumberType
-                                  | Ast.PreDecrement => checkCompatible t AnyNumberType
-                                  | Ast.PostDecrement => checkCompatible t AnyNumberType
-                                  | Ast.UnaryPlus => checkCompatible t AnyNumberType
-                                  | Ast.UnaryMinus => checkCompatible t AnyNumberType
-                                  | Ast.BitwiseNot => checkCompatible t AnyNumberType
-                                  | Ast.LogicalNot => checkConvertible t booleanType
+                                  | Ast.PreIncrement => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.PostIncrement => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.PreDecrement => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.PostDecrement => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.UnaryPlus => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.UnaryMinus => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.BitwiseNot => checkConvertible (#prog env) t AnyNumberType
+                                  | Ast.LogicalNot => checkConvertible (#prog env) t booleanType
                                   (* TODO: Ast.Type? *)
                                   | _ => ());
                 return (Ast.UnaryExpr (u, e'), resultType)
@@ -442,9 +431,10 @@ and verifyExpr (env:ENV)
           | Ast.TypeExpr t =>
             return (Ast.TypeExpr (verifyTy env t), TypeType)
 
-          | Ast.ThisExpr =>
+          | Ast.ThisExpr k =>
             (* FIXME: type of current class, if any... also Self type? *)
-            return (Ast.ThisExpr, anyType)
+            (* FIXME: handle function and generator this *)
+            return (Ast.ThisExpr k, anyType)
 
           | Ast.YieldExpr eo =>
             let
@@ -499,8 +489,8 @@ and verifyExpr (env:ENV)
                                                           NONE => NONE
                                                         | SOME ty' => SOME (verifyTy env ty') }
 
-                           | Ast.LiteralArray { exprs, ty } =>
-                             Ast.LiteralArray { exprs = map (verifyExprOnly env) exprs,
+                           | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => (* FIXME handle comprehensions *)
+                             Ast.LiteralArray { exprs = Ast.ListExpr (map (verifyExprOnly env) exprs),
                                                 ty = case ty of
                                                          NONE => NONE
                                                        | SOME ty' => SOME (verifyTy env ty') }
@@ -526,7 +516,7 @@ and verifyExpr (env:ENV)
                                             ((List.length actuals) > (List.length params)) then
                                         error ["too many actuals"]
                                     else
-                                        List.app (fn (formal, actual) => checkCompatible actual formal)
+                                        List.app (fn (formal, actual) => checkConvertible (#prog env) actual formal)
                                                  (ListPair.zip (params, ts))
                                   | Ast.SpecialType Ast.Any => ()
                                   | _ => error ["ill-typed call"]);
@@ -607,15 +597,6 @@ and verifyExpr (env:ENV)
                 return (Ast.ListExpr es', anyType)
             end
 
-          | Ast.SliceExpr (a, b, c) =>
-            let
-                val (a', t1) = verifySub a
-                val (b', t2) = verifySub b
-                val (c', t3) = verifySub c
-            in
-                return (Ast.SliceExpr (a, b, c), anyType)
-            end
-
           | Ast.InitExpr (it, head, inits) =>
             let
                 val it' = it (* TODO *)
@@ -653,7 +634,7 @@ and verifyExprAndCheck (env:ENV)
     : Ast.EXPR =
     let val (expr',ty') = verifyExpr env expr
         val _ = if #strict env
-                then checkCompatible ty' expectedType
+                then checkConvertible (#prog env) ty' expectedType
                 else ()
     in
         expr'
@@ -728,7 +709,7 @@ and verifyStmt (env:ENV)
                     (*
 	                 case returnType of
 	                     NONE => error ["return not allowed here"]
-                       | SOME retTy => checkCompatible ty retTy
+                       | SOME retTy => checkConvertible ty retTy
                      *)
                     ()
                 else ();
@@ -905,8 +886,8 @@ and verifyFixture (env:ENV)
                                         instanceRib=instanceRib, instanceInits=instanceInits,                                        
                                         constructor=constructor, classType=classType, instanceType=instanceType })
          end
-       | Ast.TypeVarFixture =>
-         Ast.TypeVarFixture
+       | Ast.TypeVarFixture x =>
+         Ast.TypeVarFixture x
        | Ast.TypeFixture ty =>
          Ast.TypeFixture (verifyTy env ty)
        | Ast.ValFixture {ty, readOnly} =>
@@ -988,7 +969,8 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
   : Ast.FRAGMENT = 
     let 
         val env = newEnv prog strict
-        val res = verifyFragment env frag
+        val res = frag
+        (* val res = verifyFragment env frag *)
     in
         trace ["verification complete"];
         (if !doTrace orelse !doTraceFrag
@@ -996,666 +978,7 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
          else ());
         res
     end
- 
+
 
 end
 
-
-
-(********************************** OLD **************************************
-
-(*
- * INVARIANTS:
- *   - all typed libraries in host environment must be DontDelete
- *   - all typed libraries in host environment must carry compatible runtime type constraints
- *)
-
-(****************************** type environments *************************)
-
-type ID = FIXTURE_NAME
-
-fun checkForDuplicateExtension extensions =
-    let val (names, _) = ListPair.unzip extensions
-    in
-      checkForDuplicates names
-end
-
-fun extendEnv (env:TYPE_ENV) (id:ID) (k:KIND) : TYPE_ENV = (id,k)::env
-fun extendEnvWithTypeVars (params:ID list) (env:TYPE_ENV):TYPE_ENV =
-    let in
-	checkForDuplicates params;
-	foldl (fn (p,env) => extendEnv env p TypeVar) env params
-    end
-fun extendEnvs (env:TYPE_ENV) (ext:TYPE_ENV) =
-    let in
-	ext @ env
-    end
-fun fixtureNameToString (TempName i) = "TempName" ^ (Int.toString(i))
-  | fixtureNameToString (PropName { ns, id }) = id
-
-fun lookupIdNamespace (env:TYPE_ENV)
-		      (id:Ast.IDENT)
-		      (ns:NAMESPACE)
-    : KIND option =
-    case List.find (fn (i,_) => i=PropName {id=id,ns=ns}) env of
-	NONE => NONE
-      | SOME (_,k) => SOME k
-
-fun lookupIdNamespaces (env:TYPE_ENV)
-		       (id:Ast.IDENT)
-		       (nss : NAMESPACE list)
-    : KIND option =
-    let val theMatches
-	  = List.mapPartial (lookupIdNamespace env id) nss
-    in
-	case theMatches of
-	    [] => NONE
-	  | [k] => SOME k
-
-
-
-(******************** Expressions **************************************************)
-
-and verifyIdentExpr (env as {env,this,...}:Ast.RIB)
-		    (ide:Ast.IDENT_EXPR)
-    : Ast.TYPE_EXPR =
-    let
-    in
-	case ide of
-	    Ast.QualifiedIdentifier { qual, ident } =>
-	    let in
-		checkCompatible (verifyExpr env qual) NamespaceType;
-		anyType
-	    end
-	  | Ast.QualifiedExpression { qual, expr } =>
-	    let in
-		checkCompatible (verifyExpr env qual) NamespaceType;
-		checkCompatible (verifyExpr env qual) stringType;
-		anyType
-	    end
-	  | Ast.AttributeIdentifier idexpr =>
-	    let in
-		verifyIdentExpr env idexpr;
-		anyType
-	    end
-	  | Ast.Identifier { ident, openNamespaces } =>
-	    let val k : KIND = lookupIdNamespacess env ident openNamespaces
-	    in
-		case k of
-		    TypeVar => verifyError ["Attempt to refer to type variable ",
-                                    ident,
-                                    " as a program variable"]
-		  | ProgVar (ty,read_only) => ty
-	    end
-    end
-
-and verifyExpr (env as {env,this,...}:Ast.RIB)
-	       (e:EXPR)
-    : Ast.TYPE_EXPR =
-    let
-    in
-      TextIO.print ("type checking expr: env len " ^ (Int.toString (List.length env)) ^"\n");
-      Pretty.ppExpr e;
-      TextIO.print "\n";
-      case e of
-        LiteralExpr LiteralNull => nullType
-      | LiteralExpr (LiteralInt _) => intType
-      | LiteralExpr (LiteralUInt _) => uintType
-      | LiteralExpr (LiteralDecimal _) => decimalType
-      | LiteralExpr (LiteralDouble _) => doubleType
-      | LiteralExpr (LiteralBoolean _) => booleanType
-      | LiteralExpr (LiteralString _) => stringType
-      | LiteralExpr (LiteralRegExp _) => regexpType
-      | LiteralExpr (LiteralArray { exprs, ty }) =>
-        (* EXAMPLES:
-           [a, b, c] : [int, Boolean, String]
-           [a, b, c] : Array
-           [a, b, c] : *
-           [a, b, c] : Object
-        *)
-        let val annotatedTy = unOptionDefault ty anyType
-            val inferredTy = ArrayType (map (fn elt => verifyExpr env elt) exprs)
-        in
-          checkCompatible inferredTy annotatedTy;
-          annotatedTy
-        end
-      | LiteralExpr (LiteralObject { expr=fields, ty }) =>
-        let val annotatedTy = unOptionDefault ty anyType
-            val inferredTy = ObjectType (map (verifyField env) fields)
-        in
-          checkCompatible inferredTy annotatedTy;
-          annotatedTy
-        end
-      | LiteralExpr (LiteralFunction (Func { param=(rib,inits), block, ty, ... }))
-	=>
-	 let
-	     val env1 = verifyFunctionType env ty
-	     val extensions = verifyRib env1 rib
-	     val env2 = withEnvExtn env1 extensions
-	 in
-	     checkForDuplicateExtension extensions;
-(** FIXME: inits are now settings and are BINDINGS
-	     verifyStmts env2 inits;
-*)
-	     verifyBlock env2 block;
-	     Ast.FunctionType ty
-         end
-      | LexicalRef { ident, loc } =>
-	verifyIdentExpr env ident
-      | ListExpr l => List.last (List.map (verifyExpr env) l)
-      | LetExpr {defs=_, body, head=SOME (rib,inits) } =>  (* FIXME: inits added *)
-          let val extensions = verifyRib env rib
-          in
-	    checkForDuplicateExtension extensions;
-	    verifyExpr (withEnvExtn env extensions) body
-	  end
-       | ThisExpr => this
-       | UnaryExpr (unop, arg) => verifyUnaryExpr env unop arg
-       | BinaryExpr (binop, lhs, rhs ) => verifyBinaryExpr env (binop, lhs, rhs)
-       | BinaryTypeExpr (binop, lhs, rhs ) => verifyBinaryTypeExpr env (binop, lhs, rhs)
-       | TrinaryExpr (triop, a,b,c ) => verifyTrinaryExpr env (triop, a,b,c)
-
-       | CallExpr { func, actuals } => verifyCallExpr env func actuals
-       | ApplyTypeExpr {expr, actuals} =>
-	 (* Can only instantiate Functions, classes, and interfaces *)
-	 let val exprTy = verifyExpr env expr;
-	     val typeParams =
-		 case exprTy of
-		     Ast.FunctionType {typeParams, ...} => typeParams
-                   (* TODO: class and interface types *)
-		   | _ => verifyError ["Cannot instantiate a non-polymorphic type"]
-	 in
-	     List.app (fn t => verifyTypeExpr env t) actuals;
-	     if (List.length typeParams) = (List.length actuals)
-	     then ()
-	     else verifyError ["Wrong number of type arguments"];
-	     normalizeType (Ast.AppType { base=exprTy, args=actuals })
-	 end
-
-       | TypeExpr ty =>
-	 let in
-	     verifyTypeExpr env ty;
-	     typeType
-	 end
-
-       | _ => (TextIO.print "verifyExpr incomplete: "; Pretty.ppExpr e; raise Match)
-    end
-
-(*
-     and LITERAL =
-       | LiteralXML of EXPR list
-       | LiteralNamespace of NAMESPACE
-
-       | LiteralObject of
-         { name: EXPR,
-           init: EXPR } list
-
-     and EXPR =
-        | YieldExpr of EXPR option
-       | SuperExpr of EXPR option
-
-       | Ref of { base: EXPR option,
-                  ident: Ast.IDENT_EXPR }
-       | NewExpr of { obj: EXPR,x
-                      actuals: EXPR list }
-
-
-     and Ast.IDENT_EXPR =
-         Ast.QualifiedIdentifier of { qual : EXPR,
-                                  ident : Ustring.STRING }
-       | Ast.QualifiedExpression of { qual : EXPR,
-                                  expr : EXPR }
-       | Ast.AttributeIdentifier of Ast.IDENT_EXPR
-       | Ast.Identifier of Ast.IDENT
-       | Ast.Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
-
-*)
-
-
-and verifyCallExpr  (env as {env,this,...}:Ast.RIB)
-		    func actuals
-    : Ast.TYPE_EXPR =
-    let val functy = verifyExpr env func;
-	val actualsTy = (map (fn a => verifyExpr env a) actuals)
-    in case normalizeType functy of
-	   Ast.SpecialType Ast.Any =>
-	   (* not much to do *)
-	   anyType
-	 | Ast.FunctionType { typeParams, params, result, thisType, hasRest, minArgs }
-	   =>
-	   let
-	   in
-	       if not (null typeParams)
-	       then verifyError ["Attempt to apply polymorphic function to values"]
-	       else ();
-	       (* check this has compatible type *)
-	       case thisType of
-		   NONE => ()  (* this lexically bound, nothing to check *)
-		 | SOME t => checkCompatible this t;
-	       (* check compatible parameters *)
-	       let val (normalParams, restParam) =
-		       if hasRest
-		       then (List.rev (List.tl (List.rev params)), SOME (List.last params))
-		       else (params, NONE)
-		   (* handleArgs normalParams actualTys *)
-		   fun handleArgs [] [] = ()
-		     | handleArgs (p::pr) (a::ar) =
-		       let in
-			   checkCompatible a p;
-			   handleArgs pr ar
-		       end
-		     | handleArgs [] (_::_) =
-		       if hasRest
-		       then (* all ok, no type checking to do on rest arg *) ()
-		       else verifyError ["Too many args to function"]
-		     | handleArgs (_::_) [] =
-		       verifyError ["Not enough args to function"]
-	       in
-		   handleArgs params actualsTy;
-		   result
-	       end
-	   end
-	 | _ => verifyError ["Function expression does not have a function type"]
-    end
-
-
-(* TODO: verifyPattern returns a pair of env extension and (inferred) type?
-         or takes a type (checked) and returns just extension? *)
-(*
-and verifyPattern (env:Ast.RIB) (Ast.IdentifierPattern name) = (
-  | verifyPattern env (Ast.ObjectPattern props) =
-  | verifyPattern env (Ast.ArrayPattern elts) =
-  | verifyPattern env (Ast.SimplePattern expr) = ??
-*)
-
-and verifyExprList (env as {env,this,...}:RIB)
-		   (l:EXPR list)
-    : Ast.TYPE_EXPR =
-    let
-    in
-	List.last (List.map (verifyExpr env) l)
-    end
-
-and verifyField (env:RIB)
-		({kind,name,init}:FIELD)
-    : FIELD_TYPE =
-	let
-		val Ast.Identifier {ident,...} = name
-	in
-	    {name=ident, ty = verifyExpr env init }
-	end
-
-(* This type checksTODO: this needs to return some type structure as well *)
-
-(* deprecated due to rib
-and verifyBinding (env:RIB)
-		  (Binding {init,pattern,ty})
-    : TYPE_ENV =
-    let val ty = unOptionDefault ty anyType in
-	case init of
-	    SOME expr => checkCompatible (verifyExpr env expr) ty
-	  | NONE => ();
-	case pattern of
-	    IdentifierPattern ident => [(ident,SOME ty)]
-    end
-
-(*
- and VAR_BINDING =
-         Binding of { init: EXPR option,
-                      pattern: PATTERN,
-                      ty: Ast.TYPE_EXPR option }
-
-*)
-
-
-and verifyVarBinding (env:RIB)
-		     (Binding {init, pattern, ty}:VAR_BINDING)
-    : TYPE_ENV =
-    let in
-	case pattern of
-	    IdentifierPattern ident =>
-	    [(ident,SOME (unOptionDefault ty anyType))]
-	    end
-
-and verifyVarBindings (env:RIB)
-		      (vs:VAR_BINDING list)
-    : TYPE_ENV =
-    case vs of
-	[] => []
-      | h::t => (verifyVarBinding env h) @ (verifyVarBindings env t)
-*)
-
-and verifyUnaryExpr (env:RIB)
-		    (unop:UNOP)
-		    (arg:EXPR)
-    : Ast.TYPE_EXPR =
-    let val argType = verifyExpr env arg
-	fun checkNumeric () =
-	    let in
-		checkBicompatible booleanType argType;
-		argType
-	    end
-    in
-	case unop of
-	    Void => (verifyExpr env arg; undefinedType)
-          | Typeof => (verifyExpr env arg; stringType)
-
-	  (* Assume arg is an l-value *)
-          | PreIncrement _  => checkNumeric ()
-          | PostIncrement _ => checkNumeric ()
-          | PreDecrement _  => checkNumeric ()
-          | UnaryPlus _     => checkNumeric ()
-          | UnaryMinus _    => checkNumeric ()
-          | BitwiseNot      =>
-	    let in checkConvertible argType uintType; uintType end
-          | LogicalNot    =>
-	    let in checkConvertible argType booleanType; booleanType end
-
-  (*
-             Delete => (case arg of
-                            Ref {base=NONE,ident=???} =>
-                          | Ref {base=SOME baseExpr,ident=???} =>
-                          | _ => verifyError ["can only delete ref expressions"])
-  *)
-
-(*
-          | MakeNamespace
-          | Type
-*)
-          | _ =>
-	    let in
-		TextIO.print "verifyUnaryExpr incomplete: ";
-		Pretty.ppExpr (UnaryExpr (unop,arg));
-		raise Match
-	    end
-    end
-
-and verifyBinaryExpr (env:RIB) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
-    let
-    in
-	case bop of
-	    _ =>
-	    let in
-		TextIO.print "verifyBinaryExpr incomplete: ";
-		Pretty.ppExpr (BinaryExpr (bop,lhs,rhs));
-		raise Match
-	    end
-    end
-
-and verifyBinaryTypeExpr (env:RIB)
-			 (bop:BINTYPEOP, arg:EXPR, t:Ast.TYPE_EXPR) =
-    let val argType = verifyExpr env arg
-    in
-	verifyTypeExpr env t;
-	case bop of
-	    Cast =>
-	    let in
-		(* TODO: check *)
-		(* checkConvertible argType t; *)
-		t
-	    end
-	  | To =>
-	    let in
-		(* TODO: check *)
-		checkConvertible argType t;
-		t
-	    end
-	  | Is =>
-	    let in
-		(* TODO: check *)
-		checkConvertible argType t;
-		booleanType
-	    end
-    end
-
-
-and verifyTrinaryExpr (env:RIB) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
-    case triop of
-	Cond =>
-	let val aty = verifyExpr env a
-	    val bty = verifyExpr env b
-	    val cty = verifyExpr env c
-	in
-	    checkConvertible aty booleanType;
-	    (*FIXME*)
-	    checkConvertible bty cty;
-	    cty
-	end
-
-(****************************** Verifying Statements ********************************)
-
-and verifyStmts env ss = List.app (fn s => verifyStmt env s) ss
-
-and verifyStmt (env as {this,env,lbls:(Ast.IDENT list),retTy}:RIB) (stmt:STMT) =
-   let
-   in
-       TextIO.print ("type checking stmt: env len " ^ (Int.toString (List.length env)) ^"\n");
-       Pretty.ppStmt stmt;
-       TextIO.print "\n";
-   case stmt of
-    EmptyStmt => ()
-  | ExprStmt e => (verifyExpr env e; ())
-  | IfStmt {cnd,thn,els} =>
-    let in
-	checkCompatible (verifyExpr env cnd) booleanType;
-	verifyStmt env thn;
-	verifyStmt env els
-    end
-
-  | (DoWhileStmt {cond,body,labels,rib} | WhileStmt {cond,body,labels,rib}) =>
-    let in
-	checkCompatible (verifyExpr env cond) booleanType;
-	verifyStmt (withLbls env (labels@lbls)) body
-    end
-
-  | ReturnStmt e =>
-    let in
-	case retTy of
-	    NONE => verifyError ["return not allowed here"]
-          | SOME retTy => checkCompatible (verifyExpr env e) retTy
-    end
-
-  | (BreakStmt NONE | ContinueStmt NONE) =>
-    let in
-	case lbls of
-	    [] => verifyError ["Not in a loop"]
-	  | _ => ()
-    end
-
-  | (BreakStmt (SOME lbl) | ContinueStmt (SOME lbl)) =>
-    let in
-	if List.exists (fn x => x=(lbl)) lbls
-	then ()
-	else verifyError ["No such label"]
-    end
-
-  | BlockStmt b => verifyBlock env b
-
-  | LabeledStmt (lab, s) =>
-	verifyStmt (withLbls env ((lab)::lbls)) s
-
-  | ThrowStmt t =>
-	checkCompatible (verifyExpr env t) exceptionType
-
-(* deprecated due to rib
-  | LetStmt (defns, body) =>
-    let val extensions = List.concat (List.map (fn d => verifyBinding env d) defns)
-    in
-        checkForDuplicateExtension extensions;
-        verifyStmt (withEnv (env, foldl extendEnv env extensions)) body
-    end
-*)
-
-  | ForStmt { defn=_, rib, init, cond, update, labels, body } =>
-    let val extensions = verifyRibOption env rib
-        val env' = withEnvExtn env extensions
-(* NOT USED
-	fun verifyExprs exprs =
-	    let in
-		if List.length exprs = 0
-		then booleanType
-		else List.last (List.map (fn e => verifyExpr env' e) exprs)
-	    end
-*)
-
-    in
-  	verifyStmts env' init;
-	checkCompatible (verifyExpr env' cond) booleanType;
-	verifyExpr env' update;
-	verifyStmt (withLbls env' (labels@lbls)) body
-    end
-
-  | SwitchStmt { cond, cases, ... } =>
-    let val ty = verifyExpr env cond
-    in
-	List.app
-	    (fn {label,body,inits} =>	(* FIXME: verify inits *)
-		let in
-		    (Option.app
-			 (fn e => checkBicompatible ty (verifyExpr env e))
-			 label);
-		    verifyBlock env body
-		end)
-	    cases
-    end
-
-  | TryStmt { block, catches, finally } =>
-    let
-    in
-	verifyBlock env block;
-	case finally of
-	    NONE => ()
-	  | SOME block => verifyBlock env block;
-	List.app
-	(fn {bindings, ty, rib, block} =>
-	    ())
-	catches
-    end
-
-(* TODO: InitStmt for function defn test *)
-
-  | _ => (TextIO.print "verifyStmt incomplete: "; Pretty.ppStmt stmt; raise Match)
-
-(*
-       | ForEachStmt of FOR_ENUM_STMT
-       | ForInStmt of FOR_ENUM_STMT
-       | SuperStmt of EXPR list
-
-       | WithStmt of { obj: EXPR,
-                       body: STMT }
-
-       | TryStmt of { body: BLOCK,
-                      catches: (FORMAL * BLOCK) list,
-                      finally: BLOCK }
-*)
-
-   end
-
-(***************************** Verifying Definitions ****************************************)
-
-
-(*
-and verifyDefn (env as {this,env,lbls,retTy}:RIB) (d:DEFN) : (TYPE_ENV * int list) =
-    let
-    in
-	case d of
-(* FIXME
-	    VariableDefn {bindings,...} =>
-	    (List.concat (List.map (verifyVarBinding env) bindings), [])
-	  |
-*)
-	    FunctionDefn { kind, func,... } =>
-	    let val Func {name, fsig, rib, inits, body } = func
-		val FunctionSignature { typeParams, params, inits,
-					returnType, thisType, hasRest }
-		  = fsig
-		val { kind, ident } = name
-		val env3 = verifyFunctionSignature env fsig
-	    in
-		verifyBlock env3 body;
-		([(ident, SOME (Ast.FunctionType fsig))],[])
-            end
-
-	  | InterfaceDefn {ident,ns,nonnullable,params,extends,body} =>
-	    let val nuEnv = extendEnvWithTypeVars params env
-	    in
-		verifyBlock (withEnv (env,nuEnv)) body;
-		List.app
-		(fn (superi:Ast.IDENT_EXPR) =>
-		    (* need to check that this interface implements _all_ methods of superinterface ident *)
-		    ()
-		)
-		extends;
-		([],[])
-	    end
-
-
-(*
-and INTERFACE_DEFN =
-         { ident: Ast.IDENT,
-           ns: EXPR,
-           nonnullable: bool,
-           params: Ast.IDENT list,
-           extends: Ast.IDENT_EXPR list,
-           body: BLOCK }
-     *)
-
-	  | d => (TextIO.print "verifyDefn incomplete: "; Pretty.ppDefinition d; raise Match)
-    end
-
-
-and verifyDefns env ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
-  | verifyDefns env ((d::ds):DEFN list) : (TYPE_ENV * int list) =
-        let val (extensions1, classes1) = verifyDefn env d
-            val (extensions2, classes2) = verifyDefns env ds
-        in
-            (extensions1 @ extensions2, classes1 @ classes2)
-        end
-*)
-
-(******************** Rib **************************************************)
-
-(* rib at the block level *)
-
-(******************** Blocks **************************************************)
-
-
-
-
-and verifyBlock (env as {env,...})
-
-                (Block {pragmas,defns=_,body,head,loc}) =
-let
-     val SOME (rib,inits) = head
-        val extensions = verifyRib env rib
-        val env' = withEnvExtn env extensions
-    in
-        verifyStmts env' body
-    end
-
-fun verifyProgram (prog as { packages, rib, block }) =
-    let
-    in
-      TextIO.print ("type checking program\n");
-      Pretty.ppRib (!Defn.topRib);
-      TextIO.print "\n";
-      Pretty.ppProgram prog;
-      TextIO.print "\n";
-      verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} block;
-      true
-    end
-
-(* CF: Let this propagate to top-level to see full trace
-    handle VerifyError msg =>
-	   let in
-     	       TextIO.print "Ill typed exception: ";
-     	       TextIO.print msg;
-     	       TextIO.print "\n";
-     	       false
-	   end
-
-*)
-
-end
-
-************************************)

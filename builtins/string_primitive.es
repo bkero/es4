@@ -84,11 +84,7 @@ package
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(value="")
-            value is string ? value : magic::newString(value);
-
-        /* 15.5.2 The string Constructor */
-        function string(value="") 
-            magic::bindString(this, value);
+            (value is string) ? value : new string(value);
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
@@ -303,7 +299,7 @@ package
 
         static function match(self, regexp): Array {
             let S = string(self);
-            let R = regexp is RegExp ? regexp : new RegExp(regexp);
+            let R = (regexp is RegExp) ? regexp : new RegExp(regexp);
 
             if (!R.global)
                 return R.exec(S);  // ie, intrinsic::exec
@@ -337,8 +333,8 @@ package
             string.replace(this, searchValue, replaceValue);
         */
 
-        intrinsic function replace(searchValue: (string,RegExp!),
-                                   replaceValue: (string,function(...):string)) : string
+        intrinsic function replace(searchValue: (string|RegExp!),
+                                   replaceValue: (string|function(...):string)) : string
             string.replace(this, searchValue, replaceValue);
 
         static function replace(self, s, r): string {
@@ -393,8 +389,8 @@ package
             }
 
             let S             = string(self);
-            let replaceString = r is string ? r cast string : null;
-            let replaceFun    = r is Function ? r cast Function : null;
+            let replaceString = (r is string) ? r cast string : null;
+            let replaceFun    = (r is Function) ? r cast Function : null;
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
@@ -476,7 +472,7 @@ package
 
         static function search(self, regexp): double {
             let S = string(self);
-            let R = regexp is RegExp ? regexp : new RegExp(regexp);
+            let R = (regexp is RegExp) ? regexp : new RegExp(regexp);
 
             for ( let i=0, limit=S.length ; i < limit ; i++ )
                 if (R.helper::match(S, i) !== null)
@@ -489,26 +485,37 @@ package
            E262-4 draft proposals:static_generics
          */
         /*
-        prototype function slice(start, end)
-            string.slice(this, start, end);
+        prototype function slice(start, end, step)
+            string.slice(this, start, end, step);
         */
 
-        intrinsic function slice(start: double, end: double): Array
-            string.slice(this, start, end);
+        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): string
+            string.slice(this, start, end, step);
 
-        static function slice(self, s, e): Array {
-            let S     = string(self);
-            let len   = S.length;
-            let start = helper::toInteger(s);
-            let end   = e === undefined ? len : helper::toInteger(e);
+        static function slice(object, start: AnyNumber, end: AnyNumber, step: AnyNumber) {
 
-            let startpos = start < 0 ? Math.max(len+start,0) : Math.min(start,len);
-            let endpos = end < 0 ? Math.max(len+end,0) : Math.min(end,len);
-            let n = Math.max(endpos-startpos,0);
+            let len = uint(object.length);
 
-            return S.substring(startpos, startpos+n);
+            step = int(step);
+            if (step == 0)
+                step = 1;
+
+            if (intrinsic::isNaN(start))
+                start = step > 0 ? 0 : (len-1);
+            else
+                start = helper::clamp(start, len);
+            
+            if (intrinsic::isNaN(end))
+                end = step > 0 ? len : (-1);
+            else
+                end = helper::clamp(end, len);
+            
+            let out = new string();
+            for (let i = start; step > 0 ? i < end : i > end; i += step)
+                out += object[i];
+
+            return out;
         }
-
 
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics
@@ -518,12 +525,12 @@ package
             string.split(this, separator, limit);
         */
 
-        intrinsic function split(separator:(string,RegExp!), limit: uint = uint.MAX_VALUE): Array!
+        intrinsic function split(separator:(string|RegExp!), limit: uint = uint.MAX_VALUE): Array!
             string.split(this, separator, limit)
 
         static function split(self, separator, limit) : Array! {
 
-            type matcher = (string,RegExp!);
+            type matcher = (string|RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
                 switch type (R) {

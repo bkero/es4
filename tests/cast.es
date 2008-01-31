@@ -1,1 +1,1 @@
-x cast (T,U,V)
+x cast (T|U|V)

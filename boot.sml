@@ -72,6 +72,7 @@ fun instantiateRootClass (regs:Mach.REGS)
       val _ = trace ["allocating class ", LogErr.name fullName];
       val closure = Eval.newClsClosure (#scope regs) cls
       val obj = Mach.newObj (Mach.ClassTag cty) Mach.Null (SOME (Mach.Class closure))
+
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
       val Ast.Cls { classRib, ... } = cls
@@ -95,6 +96,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                                        dontEnum = true,
                                        readOnly = true,
                                        isFixed = true } }
+      val _ = Eval.bindAnySpecialIdentity regs obj
   in
       (cls, closure, obj)
   end
@@ -291,11 +293,11 @@ fun boot (baseDir:string) : Mach.REGS =
                         * type uses string's prototype.
                         *)
 
+                       builtin "double.es",
                        builtin "int.es",
                        builtin "uint.es",
                        builtin "byte.es",
                        builtin "decimal.es",
-                       builtin "double.es",
                        builtin "Number.es",
 
                        builtin "string_primitive.es",
@@ -328,13 +330,10 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "RegExp.es",
                        builtin "Date.es",
                        builtin "MetaObjects.es", (* before JSON *)
-                       builtin "JSON.es"
-
-                           (*                            
-                            builtin "Map.es",
-                            builtin "Vector.es"
-                            *)
-
+                       builtin "JSON.es",
+                       builtin "Vector.es",
+                       builtin "Map.es",
+                       builtin "DecimalContext.es"
                  ]
 
         val objFrag = Verify.verifyTopFragment prog true objFrag
@@ -375,9 +374,10 @@ fun boot (baseDir:string) : Mach.REGS =
         completeClassFixtures regs Name.nons_Function funClassObj;
         completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
+        (* NB: order matters here. *)
+        Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
-        Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs ifaceClassObj;
 
         evalFiles regs otherFrags;
@@ -393,6 +393,13 @@ fun boot (baseDir:string) : Mach.REGS =
         Mach.setBooting regs false;
         Mach.resetProfile regs;
         describeGlobal regs;
+
+        (* Do a small bit of rewiring of the root prototype chains. *)
+        Mach.setProto funClassObj (Eval.getPrototype regs funClassObj);
+        Mach.setProto objClassObj (Mach.getProto funClassObj);
+        Mach.setProto classClassObj (Mach.getProto funClassObj);
+        Mach.setProto ifaceClassObj (Mach.getProto funClassObj);
+
         regs
     end
 end

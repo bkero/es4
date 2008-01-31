@@ -52,7 +52,7 @@ package
 
     import JSON.*;
     
-    type EnumerableId = (int, uint, string /*, Name*/);  // FIXME: circularity
+    type EnumerableId = (int|uint|string/*|Name*/);  // FIXME: circularity
     
     dynamic class Object
     {
@@ -65,9 +65,6 @@ package
                 return new Object();
             return new Object(value);
         }
-
-        /* E262-3 15.2.2.1: The Object constructor. */
-        /* The run-time system provides the constructor for Object. */
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
@@ -95,7 +92,7 @@ package
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            magic::hasOwnProperty(this, V is EnumerableId ? V : string(V));
+            magic::hasOwnProperty(this, (V is EnumerableId) ? V : string(V));
 
         intrinsic function hasOwnProperty(V: EnumerableId): boolean
             magic::hasOwnProperty(this, V);
@@ -126,11 +123,11 @@ package
         /* E262-4 draft proposals:enumerability */
         prototype function propertyIsEnumerable(prop, e=undefined)
             private::propertyIsEnumerable(this, 
-                                         prop is EnumerableId ? prop : string(prop), 
-                                         e is (boolean,undefined) ? e : boolean(e));
+                                         (prop is EnumerableId) ? prop : string(prop), 
+                                         (e is (boolean|undefined)) ? e : boolean(e));
 
         intrinsic function propertyIsEnumerable(prop: EnumerableId,
-                                                e:(boolean,undefined) = undefined): boolean 
+                                                e:(boolean|undefined) = undefined): boolean 
             private::propertyIsEnumerable(this, prop, e);
 
         private function propertyIsEnumerable(self, prop, e) {

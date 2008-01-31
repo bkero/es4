@@ -618,7 +618,7 @@ package
                                                     ms));
 
         // 15.9.5.30 Date.prototype.setSeconds (sec [, ms ] )
-        prototype function setSeconds(this:Date, sec, ms = getMilliseconds())
+        prototype function setSeconds(this:Date, sec, ms = this.getMilliseconds())
             this.intrinsic::setSeconds(double(sec), double(ms));
 
         intrinsic function setSeconds(sec:double, ms:double = getMilliseconds()) : double
@@ -629,7 +629,7 @@ package
                                                             ms)));
 
         // 15.9.5.31 Date.prototype.setUTCSeconds (sec [, ms ] )
-        prototype function setUTCSeconds(this:Date, sec, ms = getUTCMilliseconds())
+        prototype function setUTCSeconds(this:Date, sec, ms = this.getUTCMilliseconds())
             this.intrinsic::setUTCSeconds(double(sec), double(ms));
 
         intrinsic function setUTCSeconds(sec:double, ms:double = getUTCMilliseconds()) : double
@@ -640,7 +640,7 @@ package
                                                     ms));
 
         // 15.9.5.33 Date.prototype.setMinutes (min [, sec [, ms ] ] )
-        prototype function setMinutes(this:Date, min, sec = getSeconds(), ms = getMilliseconds())
+        prototype function setMinutes(this:Date, min, sec = this.getSeconds(), ms = this.getMilliseconds())
             this.intrinsic::setMinutes(double(min), double(sec), double(ms));
 
         intrinsic function setMinutes(min:double,
@@ -653,7 +653,10 @@ package
                                                             ms)));
 
         // 15.9.5.34 Date.prototype.setUTCMinutes (min [, sec [, ms ] ] )
-        prototype function setUTCMinutes(this:Date, min, sec = getUTCSeconds(), ms = getUTCMilliseconds())
+        prototype function setUTCMinutes(this:Date, 
+                                         min, 
+                                         sec = this.getUTCSeconds(), 
+                                         ms = this.getUTCMilliseconds())
             this.intrinsic::setUTCMinutes(double(min), double(sec), double(ms));
 
         intrinsic function setUTCMinutes(min:double,
@@ -666,7 +669,11 @@ package
                                                     ms));
 
         // 15.9.5.35 Date.prototype.setHours (hour [, min [, sec [, ms ] ] ] )
-        prototype function setHours(this:Date, hour, min=getMinutes(), sec=getSeconds(), ms=getMilliseconds())
+        prototype function setHours(this:Date, 
+                                    hour, 
+                                    min=this.getMinutes(), 
+                                    sec=this.getSeconds(), 
+                                    ms=this.getMilliseconds())
             this.intrinsic::setHours(double(hour), double(min), double(sec), double(ms));
 
         intrinsic function setHours(hour: double,
@@ -682,9 +689,9 @@ package
         // 15.9.5.36 Date.prototype.setUTCHours (hour [, min [, sec [, ms ] ] ] )
         prototype function setUTCHours(this:Date, 
                                        hour, 
-                                       min=getUTCMinutes(), 
-                                       sec=getUTCSeconds(), 
-                                       ms=getUTCMilliseconds())
+                                       min=this.getUTCMinutes(), 
+                                       sec=this.getUTCSeconds(), 
+                                       ms=this.getUTCMilliseconds())
             this.intrinsic::setUTCHours(double(hour), double(min), double(sec), double(ms));
 
         intrinsic function setUTCHours(hour: double,
@@ -718,7 +725,7 @@ package
 
 
         // 15.9.5.38 Date.prototype.setMonth (month [, date ] )
-        prototype function setMonth(this:Date, month, date=getDate())
+        prototype function setMonth(this:Date, month, date=this.getDate())
             this.intrinsic::setMonth(double(month), double(date));
 
         intrinsic function setMonth(month:double, date:double = getDate()):double
@@ -727,7 +734,7 @@ package
                                            TimeWithinDay(t)));
 
         /* E262-3 15.9.5.39: Date.prototype.setUTCMonth */
-        prototype function setUTCMonth(this:Date, month, date=getUTCDate())
+        prototype function setUTCMonth(this:Date, month, date=this.getUTCDate())
             this.intrinsic::setUTCMonth(double(month), double(date));
 
         intrinsic function setUTCMonth(month:double, date:double = getUTCDate()):double
@@ -736,7 +743,7 @@ package
                                    TimeWithinDay(t));
 
         /* E262-3 15.9.5.40: Date.prototype.setFullYear */
-        prototype function setFullYear(this:Date, year, month=getMonth(), date=getDate())
+        prototype function setFullYear(this:Date, year, month=this.getMonth(), date=this.getDate())
             this.intrinsic::setFullYear(double(year), double(month), double(date));
 
         intrinsic function setFullYear(year:double,
@@ -747,7 +754,7 @@ package
                                            TimeWithinDay(t)));
 
         /* E262-3 15.9.5.41: Date.prototype.setUTCFullYear */
-        prototype function setUTCFullYear(this:Date, year, month=getUTCMonth(), date=getUTCDate())
+        prototype function setUTCFullYear(this:Date, year, month=this.getUTCMonth(), date=this.getUTCDate())
             this.intrinsic::setUTCFullYear(double(year), double(month), double(date));
 
         intrinsic function setUTCFullYear(year:double,

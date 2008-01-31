@@ -60,13 +60,13 @@ package RegExpInternals
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
-        var   source : string;         // expression source, sans leading and trailing /  // FIXME: const.  Ticket #24.
+        const source : string;         // expression source, sans leading and trailing / 
         var   slen : uint;             // source length, retrieved once
         var   idx : uint;              // current character in the source
         var   largest_backref : uint;  // largest back reference seen
-        var   extended : boolean;      // true iff expression has /x flag  // FIXME: const.  Ticket #24.
-        var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
-        var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const.  Ticket #24.
+        const extended : boolean;      // true iff expression has /x flag
+        const names : [string?] = []:[string?];  // capturing names, or null for capturing exprs that are not named
+        var parenIndex : uint = 0;     // number of capturing parens (including those that are named)
 
         function RegExpCompiler( source : string, flags  )
             : extended = flags.x
@@ -162,12 +162,12 @@ package RegExpInternals
                 greedy = false;
                 advance();
             }
-            return [min,max,greedy];
+            return [min,max,greedy] : [double,double,boolean];
         }
 
-        static const star = [0,Infinity];
-        static const plus = [1,Infinity];
-        static const ques = [0,1];
+        static const star = [0,Infinity] : [double,double];
+        static const plus = [1,Infinity] : [double,double];
+        static const ques = [0,1] : [double,double];
 
         function quantifierPrefix() : [double, double]? {
             switch (peekCharCode()) {
@@ -200,7 +200,7 @@ package RegExpInternals
                         match("}");
                     if (isFinite(max) && max < min)
                         fail( SyntaxError, "max quant must be at least as large as min" );
-                    return [min,max];
+                    return [min,max] : [double,double];
                 }
 
             default:
@@ -214,6 +214,7 @@ package RegExpInternals
 
             switch (peekCharCode()) {
             case 0x29u /* ")" */:
+                skip();
                 return null;
 
             case 0x2Eu /* "." */:
@@ -286,11 +287,17 @@ package RegExpInternals
                 match(")");
                 return new Capturing(d, capno);
 
-            case 0x5Bu /* "[" */:
-                return characterClass();
+            case 0x5Bu /* "[" */: {
+                let m : Matcher = characterClass();
+                skip();
+                return m;
+            }
 
-            case 0x5Cu /* "\\" */:
-                return atomEscape();
+            case 0x5Cu /* "\\" */: {
+                let m : Matcher = atomEscape();
+                skip();
+                return m;
+            }
 
             case 0x5Eu /* "^" */:
             case 0x24u /* "$" */:
@@ -301,6 +308,7 @@ package RegExpInternals
             case 0x7Cu /* "|" */:
                 // case 0x7Du /* "}" */:
                 // case 0x5Du /* "]" */:
+                skip();
                 return null;
 
             default: {

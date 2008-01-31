@@ -119,8 +119,8 @@ checklth: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 repl: $(DUMP)
 	perl bin/repl-with-readline.pl
 
-replNoReadline: es4-init.heap.$(HEAP_SUFFIX)
-	$(SMLNJ) @SMLload=es4-init.heap -r
+replNoReadline: $(DUMP)
+	$(RUN_DUMPED) -r
 
 profile: 
 	touch multiname.sml mach.sml eval.sml 
@@ -129,10 +129,10 @@ profile:
 decimal:
 	cd decimal && $(MAKE) decimal && cp decimal ../bin/
 
-es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml version.sml
+es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml version.sml Makefile
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm SMLofNJEntry.main es4-init.heap
 
-$(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
+$(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es) 
 	$(SMLNJ) @SMLload=es4-init.heap -dump
 
 dist/es4.tar.gz: dump decimal clean-dist
@@ -153,13 +153,13 @@ else
 
 compile: $(EXE)
 
-$(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES) version.sml
+$(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES) version.sml Makefile
 	$(MLTON) $(MLTONOPTS) $(MLTONCC) es4.mlb $(DECIMAL_SOURCES)
 
 $(DUMP): $(EXE)
 	./$(EXE) -dump
 
-dist/es4.tar.gz: dump clean-dist
+dist/es4.tar.gz: dump clean-dist 
 	cp $(EXE) dist/es4/run.exe
 	cp $(DUMP) dist/es4/
 	cp bin/es4.bat dist/es4/
@@ -180,6 +180,34 @@ smoketest: $(DUMP)
 	$(RUN_DUMPED) -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Statements/12.6.3-4.js
 	$(RUN_DUMPED) -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
 
+# Spidermonkey test support
+
+SM_CWD:=$(PWD)
+SM_REL=$(patsubst $(SM_CWD)/%,%,$(1))
+SM_CMD=$(call SM_REL,$(RUN_DUMPED) -3 -e tests/spidermonkey/ecma/shell.js $(realpath $(dir $(1))../shell.js $(dir $(1))shell.js) $(1))
+SM_TARGET_DIR=tests/spidermonkey/ecma*/*/*.js
+SPIDERMONKEY_TESTS:=$(call SM_REL,$(sort $(filter-out %/shell.js, $(wildcard $(SM_TARGET_DIR)))))
+SPIDERMONKEY_OUTPUTS:=$(patsubst %.js,%.sm-out,$(SPIDERMONKEY_TESTS))
+SPIDERMONKEY_LOG=spidermonkey-test.log
+
+$(SPIDERMONKEY_LOG): $(SPIDERMONKEY_OUTPUTS)
+	@echo collecting logs into $@
+	@cat $^ >$@
+
+%.sm-out: %.js $(DUMP) Makefile
+	@echo "checking $< > $@"
+	@echo $(call SM_CMD,$<) >$@
+	@$(call SM_CMD,$<) >>$@ 2>&1 || true
+
+checksm: $(SPIDERMONKEY_LOG)
+	perl analyze-spidermonkey-log.pl $<
+
+cleansm:
+	@for i in $(wildcard $(SPIDERMONKEY_OUTPUTS) $(SPIDERMONKEY_LOG)); \
+          do echo rm $$i; \
+          rm $$i; \
+        done
+
 # Obsolete now?
 run: 
 	$(RUN) -e $(TRACE) $(FILE)
@@ -192,7 +220,10 @@ wc:
 	wc $(SOURCES)
 
 clean:
-	rm -rf .cm tools/.cm es4-init.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX) $(EXE) $(DUMP)
+	rm -rf .cm tools/.cm es4-init.heap.$(HEAP_SUFFIX) \
+	tools/gen-pretty.heap.$(HEAP_SUFFIX) \
+	tools/gen-english.heap.$(HEAP_SUFFIX) \
+	$(EXE) $(DUMP)
 
 dump: $(DUMP)
 
@@ -216,13 +247,25 @@ version.sml: VERSION TITLE version.template
 	sed -e "s/%TITLE%/`cat TITLE`/" -e "s/%VERSION%/`cat VERSION`/" version.template > version.sml
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
-	cd tools && $(SMLNJ) @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
+	$(SMLNJ) @SMLload=tools/gen-pretty.heap ast.sml pretty-cvt.sml
 
 tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm tools/gen-convert.sml tools/gen-pretty.sml tools/quasiquote.sml tools/smlast.sml
-	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm GenPretty.main gen-pretty.heap
+	$(MLBUILD) $(MLBUILD_ARGS) $< GenPretty.main $@
+
+tools/gen-english.heap.$(HEAP_SUFFIX): tools/gen-english.cm tools/gen-english.sml tools/smlast.sml
+	$(MLBUILD) $(MLBUILD_ARGS) $< GenEnglish.main $@
+
+tools/gen-cg.heap.$(HEAP_SUFFIX): tools/gen-cg.cm tools/gen-cg.sml tools/smlast.sml
+	$(MLBUILD) $(MLBUILD_ARGS) $< GenCG.main $@
+
+%.cg: tools/gen-cg.heap.$(HEAP_SUFFIX)
+	$(SMLNJ) @SMLload=tools/gen-cg.heap $*.sml | tee $@
+
+english/eval-%.html: eval.sml tools/gen-english.heap.$(HEAP_SUFFIX)
+	$(SMLNJ) @SMLload=tools/gen-english.heap $< $* $@
 
 tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml $(wildcard *.sml) pretty-cvt.sml
-	cd tools && $(MLBUILD) $(MLBUILD_ARGS) unit.cm UnitTests.main unit.heap
+	$(MLBUILD) $(MLBUILD_ARGS) $< UnitTests.main $@
 
 # Automatically regenerate the configure and Makefile files when necessary.
 # http://www.gnu.org/software/autoconf/manual/autoconf-2.57/html_chapter/autoconf_4.html#SEC26

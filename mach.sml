@@ -58,15 +58,6 @@ structure StrMap = SplayMapFn (StrKey);
 
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
-
-structure Word32Key = struct type ord_key = Word32.word val compare = Word32.compare end
-structure Word32Map = SplayMapFn (Word32Key);
-
-structure Word8Key = struct type ord_key = Word8.word val compare = Word8.compare end
-structure Word8Map = SplayMapFn (Word8Key);
-
-structure Int32Key = struct type ord_key = Int32.int val compare = Int32.compare end
-structure Int32Map = SplayMapFn (Int32Key);
           
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
@@ -78,6 +69,7 @@ type ATTRS = { dontDelete: bool,
                isFixed: bool }     
              
 datatype VAL = Object of OBJ
+             | Wrapped of (VAL * Ast.TYPE_EXPR)
              | Null
              | Undef
 
@@ -99,16 +91,16 @@ datatype VAL = Object of OBJ
                 * builtin construction.
                 *)
 
-     and VAL_CACHE = 
-         ValCache of 
+     and OBJ_CACHE = 
+         ObjCache of 
          {
-          real64Cache: (VAL Real64Map.map) ref, (* ref Real64Map.empty *)
-          word32Cache: (VAL Word32Map.map) ref, (* ref Word32Map.empty *)                                              
-          word8Cache: (VAL Word8Map.map) ref, (* ref Word8Map.empty *)                                              
-          int32Cache: (VAL Int32Map.map) ref, (* ref Int32Map.empty *)
-          nsCache: (VAL NsMap.map) ref, (* ref NsMap.empty *)
-          nmCache: (VAL NmMap.map) ref, (* ref NmMap.empty *)
-          strCache: (VAL StrMap.map) ref (* ref StrMap.empty *)
+          doubleCache: (OBJ Real64Map.map) ref,
+          intCache: (OBJ Real64Map.map) ref,
+          uintCache: (OBJ Real64Map.map) ref,
+          byteCache: (OBJ Real64Map.map) ref,
+          nsCache: (OBJ NsMap.map) ref,
+          nmCache: (OBJ NmMap.map) ref,
+          strCache: (OBJ StrMap.map) ref
          }
 
      and PROFILER =
@@ -121,12 +113,16 @@ datatype VAL = Object of OBJ
      and SPECIAL_OBJS = 
          SpecialObjs of 
          { 
+          classClass : (OBJ option) ref,
+          interfaceClass : (OBJ option) ref,
+          namespaceClass : (OBJ option) ref,
+
           objectClass : (OBJ option) ref,
           arrayClass : (OBJ option) ref,
           functionClass : (OBJ option) ref,
 
           stringClass : (OBJ option) ref,
-          publicStringClass : (OBJ option) ref,
+          stringWrapperClass : (OBJ option) ref,
 
           numberClass : (OBJ option) ref,
           intClass : (OBJ option) ref,
@@ -136,11 +132,11 @@ datatype VAL = Object of OBJ
           decimalClass : (OBJ option) ref,
 
           booleanClass : (OBJ option) ref,
-          publicBooleanClass : (OBJ option) ref,
+          booleanWrapperClass : (OBJ option) ref,
 
-          booleanTrue : (VAL option) ref,
-          booleanFalse : (VAL option) ref,
-          doubleNaN : (VAL option) ref
+          booleanTrue : (OBJ option) ref,
+          booleanFalse : (OBJ option) ref,
+          doubleNaN : (OBJ option) ref
          }
 
      and FRAME = 
@@ -153,9 +149,6 @@ datatype VAL = Object of OBJ
 
      and MAGIC =
          Boolean of bool
-       | Byte of Word8.word
-       | UInt of Word32.word
-       | Int of Int32.int
        | Double of Real64.real
        | Decimal of Decimal.DEC
        | String of Ustring.STRING
@@ -178,7 +171,7 @@ datatype VAL = Object of OBJ
        | GlobalScope
        | InstanceScope
        | ActivationScope
-       | TempScope
+       | BlockScope
        | TypeArgScope
 
      and TEMP_STATE = UninitTemp
@@ -223,7 +216,7 @@ datatype VAL = Object of OBJ
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
-          valCache: VAL_CACHE, 
+          objCache: OBJ_CACHE, 
           profiler: PROFILER 
          }
          
@@ -276,12 +269,14 @@ withtype FUN_CLOSURE =
                   state: PROP_STATE,
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = ({ ty: Ast.TY,
-                            state: PROP_STATE,
-                            attrs: ATTRS } (* PROP *)
-                          NameMap.map) ref
-
-
+     and PROP_BINDINGS = { max_seq: int,
+			   bindings: { seq: int,
+				       prop: (* PROP *)
+				       { ty: Ast.TY,   
+					 state: PROP_STATE,
+					 attrs: ATTRS } } NameMap.map } ref 
+			 
+			 
 (* Exceptions for control transfer. *)
 
 exception ContinueException of (Ast.IDENT option)
@@ -294,33 +289,6 @@ exception StopIterationException
 fun isObject (v:VAL) : bool =
     case v of
         Object _ => true
-      | _ => false
-
-
-fun isUInt (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (UInt _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isByte (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Byte _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isInt (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Int _) => true
-           | _ => false)
       | _ => false
 
 
@@ -421,8 +389,6 @@ fun isNumeric (v:VAL) : bool =
         (case !(#magic ob) of
              SOME (Double _) => true
            | SOME (Decimal _) => true
-           | SOME (Int _) => true
-           | SOME (UInt _) => true
            | _ => false)
       | _ => false
 
@@ -460,27 +426,41 @@ fun isSameType (va:VAL) (vb:VAL) : bool =
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS =
-    ref NameMap.empty
+    ref { max_seq = 0, bindings = NameMap.empty }
 
 fun addProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
             (x:PROP)
     : unit =
-    b := NameMap.insert ((!b),n,x)
+    let
+	val { max_seq, bindings } = !b	
+	val s = max_seq + 1
+	val binding = { seq = s, prop = x }
+	val bindings = NameMap.insert (bindings, n, binding)
+    in
+	b := { max_seq = s, bindings = bindings }
+    end
 
 fun delProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
     : unit =
     let
-        val (newmap, _) = NameMap.remove ((!b),n)
+	val { max_seq, bindings } = !b	
+	val (bindings, _) = NameMap.remove (bindings, n)
     in
-        b := newmap
+	b := { max_seq = max_seq, bindings = bindings }
     end
 
 fun findProp (b:PROP_BINDINGS)
              (n:Ast.NAME)
     : PROP option =
-    NameMap.find (!b, n)
+    let
+	val { bindings, ... } = !b
+    in
+	case NameMap.find (bindings, n) of
+	    NONE => NONE
+	  | SOME { prop, ... } => SOME prop
+    end
 
 fun matchProps (fixedProps:bool)
                (b:PROP_BINDINGS)
@@ -581,6 +561,14 @@ fun newObjNoTag _
     : OBJ =
     newObj NoTag Null NONE
 
+fun getProto (ob:OBJ)
+    : VAL =
+    let
+         val Obj {proto, ...} = ob
+    in
+        !proto
+    end
+
 fun setProto (ob:OBJ) (p:VAL)
     : OBJ =
     let
@@ -593,9 +581,16 @@ fun setProto (ob:OBJ) (p:VAL)
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
-    case List.nth ((!temps), n) of
-        (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary ",Int.toString n]
-      | (_, ValTemp v) => v
+    let        
+        val _ = trace ["getTemp ",Int.toString n]                
+    in
+        if n >= length (!temps)
+        then LogErr.machError ["getting out-of-bounds temporary"]
+        else 
+            case List.nth ((!temps), n) of
+                (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary ",Int.toString n]
+              | (_, ValTemp v) => v
+    end
 
 fun defTemp (temps:TEMPS)
             (n:int)
@@ -620,6 +615,32 @@ fun defTemp (temps:TEMPS)
         else temps := replaceNth n (!temps)
     end
 
+
+fun isIntegral d = 
+    let
+        val truncated = Real64.realTrunc d
+    in
+        if Real64.isFinite d
+        then Real64.==(truncated, d)
+        else false
+    end
+         
+fun isInRange (low:Real64.real) 
+              (high:Real64.real) 
+              (d:Real64.real) 
+  : bool = 
+    low <= d andalso d <= high
+                     
+fun fitsInByte (d:Real64.real) 
+    : bool = isIntegral d andalso isInRange 0.0 255.0 d
+
+fun fitsInUInt (d:Real64.real) : bool 
+  = isIntegral d andalso isInRange 0.0 4294967295.0 d
+
+fun fitsInInt (d:Real64.real) : bool 
+  = isIntegral d andalso isInRange (~2147483647.0) 2147483647.0 d
+
+
 (* 
  * Some stringification helpers on low-level values.
  *)
@@ -629,9 +650,6 @@ fun magicToUstring (magic:MAGIC)
     case magic of
         Double n => NumberToString n
       | Decimal d => Ustring.fromString (Decimal.toString d)
-      | Int i => Ustring.fromInt32 i
-      | UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
-      | Byte b => Ustring.fromString (LargeInt.toString (Word8.toLargeInt b))
       | String s => s
       | Boolean true => Ustring.true_
       | Boolean false => Ustring.false_
@@ -758,6 +776,10 @@ fun inspect (v:VAL)
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"
+          | printVal indent n (Wrapped (v, t)) = 
+            (TextIO.print ("wrapped " ^ (typ t) ^ ":\n");
+             printVal (indent+1) n v)
+            
           | printVal indent 0 (Object (Obj ob)) =
             (TextIO.print (case !(#magic ob) of
                                NONE => tag (Obj ob)
@@ -769,7 +791,8 @@ fun inspect (v:VAL)
                 fun subVal i v = printVal (i+1) (n-1) v
                 fun prop np =
                     let
-                        val (n,{ty=ty0,state,attrs}) = np
+			val (n,binding) = np
+			val {prop={ty=ty0, state, attrs}, seq} = binding
                         val indent = indent + 1
                         val stateStr =
                             case state of
@@ -789,6 +812,7 @@ fun inspect (v:VAL)
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
                 val Obj { magic, props, proto, ... } = obj
+		val { bindings, ... } = !props
             in
                 TextIO.print "Obj {\n";
                 (case !magic of
@@ -798,7 +822,7 @@ fun inspect (v:VAL)
                 p indent ["  ident = ", (id obj)]; nl();
                 p indent ["  proto = "]; subVal indent (!proto);
                 p indent ["  props = ["]; nl();
-                NameMap.appi prop (!props);
+                NameMap.appi prop bindings;
                 p indent ["          ] }"]; nl()
             end
     in
@@ -897,34 +921,6 @@ fun needType (v:VAL)
       | _ => (inspect v 1; 
               error ["require type object"])
 
-fun fitsInByte (x:LargeInt.int)
-    : bool =
-    let
-        val byteMax = IntInf.pow(2, 8) - 1
-        val byteMin = IntInf.fromInt 0
-    in
-        byteMin <= x andalso x <= byteMax
-    end
-
-fun fitsInUInt (x:LargeInt.int)
-    : bool =
-    let
-        val uintMax = IntInf.pow(2, 32) - 1
-        val uintMin = IntInf.fromInt 0
-    in
-        uintMin <= x andalso x <= uintMax
-    end
-
-
-fun fitsInInt (x:LargeInt.int)
-    : bool =
-    let
-        val intMax = IntInf.pow(2, 31) - 1
-        val intMin = ~ (IntInf.pow(2, 31))
-    in
-        intMin <= x andalso x <= intMax
-    end
-
 
 (* Call stack and debugging stuff *)
 
@@ -934,6 +930,7 @@ fun approx (arg:VAL)
     case arg of
         Null => "null"
       | Undef => "undefined"
+      | Wrapped (v, t) => "wrapped(" ^ (approx v) ^ ")"
       | Object ob =>
         if hasMagic ob
         then
@@ -1082,11 +1079,15 @@ fun getSpecials (regs:REGS) =
         ss
     end
 
+fun getClassClassSlot (regs:REGS) = (#classClass (getSpecials regs))
+fun getInterfaceClassSlot (regs:REGS) = (#interfaceClass (getSpecials regs))
+fun getNamespaceClassSlot (regs:REGS) = (#namespaceClass (getSpecials regs))
+
 fun getObjectClassSlot (regs:REGS) = (#objectClass (getSpecials regs))
 fun getArrayClassSlot (regs:REGS) = (#arrayClass (getSpecials regs))
 fun getFunctionClassSlot (regs:REGS) = (#functionClass (getSpecials regs))
 fun getStringClassSlot (regs:REGS) = (#stringClass (getSpecials regs))
-fun getPublicStringClassSlot (regs:REGS) = (#publicStringClass (getSpecials regs))
+fun getStringWrapperClassSlot (regs:REGS) = (#stringWrapperClass (getSpecials regs))
 
 fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
 fun getIntClassSlot (regs:REGS) = (#intClass (getSpecials regs))
@@ -1096,7 +1097,7 @@ fun getDoubleClassSlot (regs:REGS) = (#doubleClass (getSpecials regs))
 fun getDecimalClassSlot (regs:REGS) = (#decimalClass (getSpecials regs))
 
 fun getBooleanClassSlot (regs:REGS) = (#booleanClass (getSpecials regs)) 
-fun getPublicBooleanClassSlot (regs:REGS) = (#publicBooleanClass (getSpecials regs)) 
+fun getBooleanWrapperClassSlot (regs:REGS) = (#booleanWrapperClass (getSpecials regs)) 
 
 fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs)) 
 fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
@@ -1104,7 +1105,7 @@ fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs))
 
 fun getCaches (regs:REGS) =
     let 
-        val { aux = Aux { valCache = ValCache vc, ... }, ... } = regs
+        val { aux = Aux { objCache = ObjCache vc, ... }, ... } = regs
     in
         vc
     end
@@ -1132,26 +1133,26 @@ fun updateCache cacheGetter
         else v
     end
 
-fun getReal64Cache (regs:REGS) = (#real64Cache (getCaches regs)) 
-fun getWord32Cache (regs:REGS) = (#word32Cache (getCaches regs)) 
-fun getWord8Cache (regs:REGS) = (#word8Cache (getCaches regs)) 
-fun getInt32Cache (regs:REGS) = (#int32Cache (getCaches regs)) 
+fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
+fun getUIntCache (regs:REGS) = (#uintCache (getCaches regs)) 
+fun getByteCache (regs:REGS) = (#byteCache (getCaches regs)) 
+fun getIntCache (regs:REGS) = (#intCache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
 fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
 
-val findInReal64Cache = findInCache getReal64Cache Real64Map.find
-val findInWord32Cache = findInCache getWord32Cache Word32Map.find
-val findInWord8Cache = findInCache getWord8Cache Word8Map.find
-val findInInt32Cache = findInCache getInt32Cache Int32Map.find
+val findInDoubleCache = findInCache getDoubleCache Real64Map.find
+val findInUIntCache = findInCache getUIntCache Real64Map.find
+val findInByteCache = findInCache getByteCache Real64Map.find
+val findInIntCache = findInCache getIntCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
 val findInStrCache = findInCache getStrCache StrMap.find
 
-val updateReal64Cache = updateCache getReal64Cache Real64Map.numItems Real64Map.insert
-val updateWord32Cache = updateCache getWord32Cache Word32Map.numItems Word32Map.insert
-val updateWord8Cache = updateCache getWord8Cache Word8Map.numItems Word8Map.insert
-val updateInt32Cache = updateCache getInt32Cache Int32Map.numItems Int32Map.insert
+val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
+val updateUIntCache = updateCache getUIntCache Real64Map.numItems Real64Map.insert
+val updateByteCache = updateCache getByteCache Real64Map.numItems Real64Map.insert
+val updateIntCache = updateCache getIntCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
@@ -1175,20 +1176,23 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         val prof = Profiler 
                        { profileMap = ref StrListMap.empty,
                          doProfile = ref NONE }
-        val vcache = ValCache 
-                     { real64Cache = ref Real64Map.empty,
-                       word32Cache = ref Word32Map.empty,                       
-                       word8Cache = ref Word8Map.empty,
-                       int32Cache = ref Int32Map.empty,
+        val ocache = ObjCache 
+                     { doubleCache = ref Real64Map.empty,
+                       uintCache = ref Real64Map.empty,
+                       byteCache = ref Real64Map.empty,
+                       intCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
                        strCache = ref StrMap.empty }
         val specials = SpecialObjs 
-                       { objectClass = ref NONE,
+                       { classClass = ref NONE,
+                         interfaceClass = ref NONE,
+                         namespaceClass = ref NONE,
+                         objectClass = ref NONE,
                          arrayClass = ref NONE,
                          functionClass = ref NONE,
                          stringClass = ref NONE,
-                         publicStringClass = ref NONE,
+                         stringWrapperClass = ref NONE,
                          numberClass = ref NONE,
                          intClass = ref NONE,
                          uintClass = ref NONE,
@@ -1196,7 +1200,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          doubleClass = ref NONE,
                          decimalClass = ref NONE,
                          booleanClass = ref NONE,
-                         publicBooleanClass = ref NONE,
+                         booleanWrapperClass = ref NONE,
 
                          booleanTrue = ref NONE,
                          booleanFalse = ref NONE,
@@ -1204,7 +1208,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         val aux = Aux { booting = ref false,
                         specials = specials,
                         stack = ref [],
-                        valCache = vcache,
+                        objCache = ocache,
                         profiler = prof }
     in        
         { this = glob,

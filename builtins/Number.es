@@ -51,7 +51,7 @@ package
 
     import ECMAScript4_Internal.*;
 
-    __ES4__ type AnyNumber = (byte, int, uint, double, decimal, Number!);
+    __ES4__ type AnyNumber = (byte|int|uint|double|decimal|Number!);
 
     dynamic class Number
     {
@@ -69,7 +69,7 @@ package
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
         meta static function invoke(value=0d) {
-            if (value is (int,uint,double,decimal,Number))
+            if (value is AnyNumber)
                 return value;
             return double(value);
         }
@@ -86,7 +86,7 @@ package
         override intrinsic function toJSONString(pretty: boolean=false) : string
             intrinsic::valueOf().intrinsic::toJSONString(pretty);
 
-        override intrinsic function valueOf(): (int,uint,double,decimal)
+        override intrinsic function valueOf(): (int|uint|double|decimal)
             val;
 
         intrinsic function toFixed(fractionDigits=0): string

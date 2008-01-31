@@ -49,7 +49,7 @@ package
         function Vector(length: uint=0, fixed: boolean=false) 
             : fixed = fixed
         {
-            setLength(length);
+            informative::setLength(length);
         }
 
         meta static function invoke(object) {
@@ -74,19 +74,19 @@ package
         }
 
         meta function get(name): T {
-            if (name is AnyNumber) {
-                let idx = name;
+            let idx : double = double(name);
+            if (!intrinsic::isNaN(idx)) {
                 if (!helper::isIntegral(idx) || idx < 0 || idx >= length)
                     throw new RangeError();
                 return informative::getValue(uint(idx));
             }
             else 
-                this.intrinsic::get(name);
+                intrinsic::get(this,name);
         }
 
         meta function set(name, v) {
-            if (name is AnyNumber) {
-                let idx = name;
+            let idx : double = double(name);
+            if (!intrinsic::isNaN(idx)) {
                 let value: T = v;  // Note, effectful
                 if (!helper::isIntegral(idx) || 
                     idx < 0 || 
@@ -96,13 +96,13 @@ package
                 informative::setValue(uint(idx), value);
             }
             else
-                this.intrinsic::set(name, v);
+                intrinsic::set(this, name, v);
         }
 
-        intrinsic function toString()
+        override intrinsic function toString()
             join();
 
-        intrinsic function toLocaleString() {
+        override intrinsic function toLocaleString() {
             let limit = length;
             let separator = informative::localeSpecificSeparatorString;
             let s = "";
@@ -173,13 +173,12 @@ package
             let s = "";
             let i = 0;
 
-            while (true) {
+            for (let i = 0; i < limit; i++) {
                 let x = this[i];
+                if (i != 0)
+                    s += separator;
                 if (x !== undefined && x !== null)
                     s += string(x);
-                if (++i == limit)
-                    break;
-                s += separator;
             }
             return s;
         }
@@ -233,13 +232,27 @@ package
             return v;
         }
 
-        intrinsic function slice(start: AnyNumber=0, end: AnyNumber=Infinity): Vector.<T> {
-            let first = helper::clamp( start, length );
-            let limit = helper::clamp( end, length );
-            let result = new Vector.<T>;
-            for ( let i=first ; i < limit ; i++ )
-                result.push(this[i]);
-            return result;
+        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): Vector.<T> {
+
+            step = int(step);
+            if (step == 0)
+                step = 1;
+
+            if (intrinsic::isNaN(start))
+                start = step > 0 ? 0 : (length-1);
+            else
+                start = helper::clamp(start, length);
+            
+            if (intrinsic::isNaN(end))
+                end = step > 0 ? len : (-1);
+            else
+                end = helper::clamp(end, length);
+            
+            let out:Vector.<T> = new Vector.<T>;
+            for (let i = start; step > 0 ? i < end : i > end; i += step)
+                out.push(this[i]);
+
+            return out;
         }
 
         intrinsic function some(checker: Checker, thisObj: Object=null): boolean { 
@@ -259,7 +272,8 @@ package
                                         length-1, 
                                         (function (j, k)
                                              comparefn(object[j], object[k])));
-            return this;
+                return this;
+            }
         }
 
         intrinsic function splice(start: AnyNumber, deleteCount: AnyNumber, ...items): Vector.<T>
@@ -315,25 +329,25 @@ package
             this.helper::concat(items);
 
         prototype function every(this:Vector.<*>, checker, thisObj=undefined)
-            this.intrinsic::every(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::every(checker, thisObj is Object) ? thisObj : null);
 
         prototype function filter(this:Vector.<*>, checker, thisObj=undefined)
-            this.intrinsic::filter(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::filter(checker, thisObj is Object) ? thisObj : null);
 
         prototype function forEach(this:Vector.<*>, eacher, thisObj=undefined)
-            this.intrinsic::forEach(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::forEach(checker, thisObj is Object) ? thisObj : null);
 
         prototype function indexOf(this:Vector.<*>, value, from=undefined)
             this.intrinsic::indexOf(value, Number(from));
 
         prototype function join(this:Vector.<*>, separator=undefined)
-            this.intrinsic::indexOf(separator == undefined ? "," : string(separator));
+            this.intrinsic::join(separator == undefined ? "," : string(separator));
 
         prototype function lastIndexOf(this:Vector.<*>, value, from=undefined)
             this.intrinsic::indexOf(value, from == undefined ? Infinity : Number(from));
 
         prototype function map(this:Vector.<*>, mapper, thisObj=undefined)
-            this.intrinsic::map(mapper, thisObj is Object ? thisObj : null);
+            (this.intrinsic::map(mapper, thisObj is Object) ? thisObj : null);
 
         prototype function pop(this:Vector.<*>)
             this.intrinsic::pop();
@@ -347,12 +361,11 @@ package
         prototype function shift(this:Vector.<*>)
             this.intrinsic::shift();
 
-        prototype function slice(this:Vector.<*>, start=undefined, end=undefined)
-            this.intrinsic::slice(start == undefined ? 0 : Number(start), 
-                                  end == undefined ? Infinity : Number(end));
+        prototype function slice(this:Vector.<*>, start, end, step)
+            this.intrinsic::slice(Number(start), Number(end), Number(step));
 
         prototype function some(this:Vector.<*>, checker, thisObj=undefined)
-            this.intrinsic::some(checker, thisObj is Object ? thisObj : null);
+            (this.intrinsic::some(checker, thisObj is Object) ? thisObj : null);
 
         prototype function sort(this:Vector.<*>, comparefn)
             this.intrinsic::sort(comparefn);
@@ -427,7 +440,7 @@ package
         informative function setValue(idx: uint, val: T)
             storage[idx] = val;
 
-        private const storage: T = new [T];
+        private const storage = new Array();
     }
 }
 

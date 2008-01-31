@@ -65,6 +65,7 @@ fun nthAsObj (vals:Mach.VAL list)
     let
         fun f Mach.Undef = error ["Wanted Object, got Undef"]
           | f Mach.Null = error ["Wanted Object, got Null"]
+          | f (Mach.Wrapped (v,t)) = nthAsObj [v] n
           | f (Mach.Object ob) = ob
     in
         nthAsA f vals n
@@ -119,27 +120,19 @@ fun nthAsFn (vals:Mach.VAL list)
     end
 
 
-fun nthAsInt (vals:Mach.VAL list)
+fun nthAsInt (regs:Mach.REGS)
+             (vals:Mach.VAL list)
              (n:int)
     : Int32.int =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.Int n) => n
-          | _ => error ["Wanted int, got other"]
-    end
+    Eval.doubleToInt (Eval.toInt32 regs (rawNth vals n))
 
-fun nthAsUInt (vals:Mach.VAL list)
+
+fun nthAsUInt (regs:Mach.REGS)
+              (vals:Mach.VAL list)
               (n:int)
     : Word32.word =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.UInt n) => n
-          | _ => error ["Wanted uint, got other"]
-    end
+    Eval.doubleToWord (Eval.toUInt32 regs (rawNth vals n))
+
 
 fun nthAsDouble (vals:Mach.VAL list)
                 (n:int)
@@ -164,17 +157,6 @@ fun nthAsBool (vals:Mach.VAL list)
           | _ => error ["Wanted Boolean, got other"]
     end
 
-fun nthAsByte (vals:Mach.VAL list)
-              (n:int)
-    : Word8.word =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.Byte b) => b
-          | _ => error ["Wanted Byte, got other"]
-    end
-
 
 fun propQuery (regs:Mach.REGS)
               (vals:Mach.VAL list)
@@ -191,23 +173,23 @@ fun arrayToList (regs:Mach.REGS)
                 (arr:Mach.OBJ)
     : Mach.VAL list =
     let
-        val len = Word32.toInt
+        val len = Eval.doubleToInt
                       (Eval.toUInt32 regs
-                           (Eval.getValue regs arr Name.nons_length))
+                                     (Eval.getValue regs arr Name.nons_length))
         fun build i vs =
-            if i < 0
+            if (i <  (0:Int32.int))
             then vs
             else
                 let
-                    val n = Name.nons (Ustring.fromInt i)
+                    val n = Name.nons (Ustring.fromInt32 i)
                     val curr = if Eval.hasValue arr n
                                then Eval.getValue regs arr n
                                else Mach.Undef
                 in
-                    build (i-1) (curr::vs)
+                    build (i - (1:Int32.int)) (curr::vs)
                 end
     in
-        build (len-1) []
+        build (len - (1:Int32.int)) []
     end
 
 
@@ -245,8 +227,6 @@ fun getClassName (regs:Mach.REGS)
                     | SOME (Mach.NativeFunction _) => Ustring.Function_
                     | SOME (Mach.String _) => Ustring.String_
                     | SOME (Mach.Decimal _) => Ustring.Number_
-                    | SOME (Mach.Int _) => Ustring.Number_
-                    | SOME (Mach.UInt _) => Ustring.Number_
                     | SOME (Mach.Double _) => Ustring.Number_
                     | SOME (Mach.Boolean _) => Ustring.Boolean_
                     | _ =>
@@ -335,7 +315,7 @@ fun getImplementedInterface (regs:Mach.REGS)
     : Mach.VAL =
     let
         val { cls, env, ... } = Mach.needClass (rawNth vals 0)
-        val k = Word32.toInt (nthAsUInt vals 1)
+        val k = Word32.toInt (nthAsUInt regs vals 1)
         val Ast.Cls { implements, ... } = cls
     in
         if k >= (List.length implements) then
@@ -360,7 +340,7 @@ fun getSuperInterface (regs:Mach.REGS)
     : Mach.VAL =
     let
         val { iface, env, ... } = Mach.needInterface (rawNth vals 0)
-        val k = Word32.toInt(nthAsUInt vals 1)
+        val k = Word32.toInt(nthAsUInt regs vals 1)
         val Ast.Iface { extends, ... } = iface
     in
         if k >= (List.length extends) then
@@ -450,9 +430,7 @@ fun setPropertyIsDontEnum (regs:Mach.REGS)
     : Mach.VAL =
     let
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val id = nthAsUstr vals 1
-        val ns = Ast.Internal Ustring.empty
-        val n = { id = id, ns = ns }
+        val n = nthAsName regs vals 1
         val b = nthAsBool vals 2
     in
         Mach.setPropDontEnum props n b;
@@ -500,87 +478,6 @@ fun convertAndBindMagic (vals:Mach.VAL list)
         Mach.Undef
     end
 
-(*
- * Given a target object and a value, select a magic representation for
- * the value, of the type implied by the function name, and set the
- * target's magic slot to that representation.
- *
- * magic native function bindInt(target : Object!, value : * );
- * magic native function bindUInt(target : Object!, value : * );
- * magic native function bindByte(target : Object!, value : * );
- * magic native function bindBoolean(target : Object!, value : * );
- * magic native function bindDouble(target : Object!, value : * );
- * magic native function bindDecimal(target : Object!, value : * );
- * magic native function bindString(target : Object!, value : * );
- *)
-fun bindUInt (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toUInt32 regs) (Mach.UInt)
-
-fun bindByte (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toByte regs) (Mach.Byte)
-
-fun bindInt (regs:Mach.REGS)
-            (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toInt32 regs) (Mach.Int)
-
-fun bindBoolean (regs:Mach.REGS)
-                (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toBoolean) (Mach.Boolean)
-
-fun bindDouble (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toDouble) (Mach.Double)
-
-fun bindDecimal (regs:Mach.REGS)
-                (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals 
-                        (Eval.toDecimal
-                             {precision = Decimal.defaultPrecision,
-                              mode = Decimal.defaultRoundingMode}) 
-                        (Mach.Decimal)
-    
-fun bindString (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    convertAndBindMagic vals (Eval.toUstring regs) Mach.String
-
-fun newBoolean (regs:Mach.REGS)
-               (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newBoolean regs (Eval.toBoolean (rawNth vals 0))
-
-fun newString (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newString regs (Eval.toUstring regs (rawNth vals 0))
-
-fun newInt (regs:Mach.REGS)
-           (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newInt regs (Eval.toInt32 regs (rawNth vals 0))
-
-fun newUInt (regs:Mach.REGS)
-            (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newUInt regs (Eval.toUInt32 regs (rawNth vals 0))
-
-fun newByte (regs:Mach.REGS)
-            (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newByte regs (Eval.toByte regs (rawNth vals 0))
-
-fun newDouble (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newDouble regs (Eval.toDouble (rawNth vals 0))
 
 (*
  * Given a function object, a this object, and an array of argument
@@ -597,7 +494,7 @@ fun apply (regs:Mach.REGS)
         val argsObj = nthAsObj vals 2
         val argsList = arrayToList regs argsObj
     in
-        Eval.evalCallExpr (Eval.withThis regs thisObj) fnObj argsList
+        Eval.evalCallByObj (Eval.withThis regs thisObj) fnObj argsList
     end
 
 fun fnLength (regs:Mach.REGS)
@@ -612,7 +509,7 @@ fun fnLength (regs:Mach.REGS)
               | SOME (Mach.NativeFunction {length, ...}) => length
                     | _ => error ["wrong kind of magic to fnLength"]
     in
-        Eval.newUInt regs (Word32.fromInt len)
+        Eval.newUInt regs (Real64.fromInt len)
     end
 
 
@@ -627,11 +524,11 @@ fun charCodeAt (regs:Mach.REGS)
     : Mach.VAL =
     let
         val s = nthAsUstr vals 0
-        val i = nthAsUInt vals 1
+        val i = nthAsUInt regs vals 1
     in
         Eval.newUInt 
             regs
-            (Word32.fromInt 
+            (Real64.fromInt 
                  (Ustring.charCodeAt s (Word32.toInt i)))
     end
 
@@ -646,7 +543,7 @@ fun fromCharCode (regs:Mach.REGS)
                  (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val i = nthAsUInt vals 0
+        val i = nthAsUInt regs vals 0
     in
         Eval.newString 
             regs 
@@ -668,7 +565,7 @@ fun stringLength (regs:Mach.REGS)
     let
         val s = nthAsUstr vals 0
     in
-        Eval.newUInt regs (Word32.fromInt (Ustring.stringLength s))
+        Eval.newUInt regs (Real64.fromInt (Ustring.stringLength s))
     end
 
 
@@ -796,6 +693,20 @@ fun set (regs:Mach.REGS)
          false;
      Mach.Undef)
 
+(* 
+ * informative native function objectHash ( ob:Object! ) : uint;
+ *)
+
+
+fun objectHash (regs:Mach.REGS)
+               (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val Mach.Obj { ident, ... } = nthAsObj vals 0
+    in
+       Eval.newUInt regs (Real64.fromInt ident)
+    end
+                    
 (*
  * Return the current time in milliseconds since January 1 1970 00:00:00 UTC.
  *
@@ -854,6 +765,36 @@ fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
                                                               mode = Decimal.defaultRoundingMode}
                                                              (rawNth vals 1))))
 
+fun binaryWord32Fn (f:((Word32.word * Word32.word) -> Word32.word)) :
+    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
+    fn regs => 
+    fn vals => if length vals = 0 orelse length vals = 1
+               then Eval.newUInt regs 0.0
+               else 
+                   let
+                       val a = nthAsUInt regs vals 0
+                       val b = nthAsUInt regs vals 1
+                       val c = f (a, b)
+                       val d = Eval.wordToDouble c
+                   in
+                       Eval.newUInt regs d
+                   end
+
+fun unaryWord32Fn (f:(Word32.word -> Word32.word)) :
+    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
+    fn regs => 
+    fn vals => if length vals = 0 
+               then Eval.newUInt regs 0.0
+               else 
+                   let
+                       val a = nthAsUInt regs vals 0
+                       val b = f a
+                       val c = Eval.wordToDouble b
+                   in
+                       Eval.newUInt regs c
+                   end
+
+
 val ceilDouble = unaryDoubleFn Real64.realCeil
 val ceilDecimal = unaryDecimalFn Decimal.ceil
 val floorDouble = unaryDoubleFn Real64.realFloor
@@ -883,6 +824,58 @@ val tanDouble = unaryDoubleFn Math.tan
 val tanDecimal = unaryDecimalFn Decimal.tan
 val powDouble = binaryDoubleFn Math.pow
 val powDecimal = binaryDecimalFn Decimal.pow
+
+val uint32ops_add = binaryWord32Fn Word32.+
+val uint32ops_sub = binaryWord32Fn Word32.-
+val uint32ops_mul = binaryWord32Fn Word32.*
+val uint32ops_div = binaryWord32Fn Word32.div
+val uint32ops_mod = binaryWord32Fn Word32.mod
+
+val uint32ops_and = binaryWord32Fn Word32.andb
+val uint32ops_or = binaryWord32Fn Word32.orb
+val uint32ops_xor = binaryWord32Fn Word32.xorb
+val uint32ops_not = unaryWord32Fn Word32.notb
+
+fun sar (x:Word32.word, y:Word32.word) = Word32.~>>(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
+fun slr (x:Word32.word, y:Word32.word) = Word32.>>(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
+fun sll (x:Word32.word, y:Word32.word) = Word32.<<(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
+
+fun split_join (x:Word32.word)
+               (left:Word32.word)
+               (right:Word32.word)
+    : Word32.word = 
+    let
+        val right' = Word.fromInt (Word32.toInt right)
+        val left' = Word.fromInt (Word32.toInt left) 
+    in
+        Word32.orb (Word32.<<(x, left'), Word32.>>(x, right'))
+    end
+    
+
+fun ror (x:Word32.word, y:Word32.word) 
+    : Word32.word = 
+    let
+        val right = Word32.mod (y, 0wx20:Word32.word)
+        val left = Word32.- (0wx20:Word32.word, right)
+    in
+        split_join x left right
+    end
+
+fun rol (x:Word32.word, y:Word32.word) 
+    : Word32.word = 
+    let
+        val left = Word32.mod (y, 0wx20:Word32.word)
+        val right = Word32.- (0wx20:Word32.word, left)
+    in
+        split_join x left right
+    end
+
+val uint32ops_sar = binaryWord32Fn sar
+val uint32ops_slr = binaryWord32Fn slr
+val uint32ops_sll = binaryWord32Fn sll
+val uint32ops_ror = binaryWord32Fn ror
+val uint32ops_rol = binaryWord32Fn rol
+
 
 (* Math.pow in smlnj 110.60 has an error of 3.33e~6 on computing 2^32! *)
 
@@ -920,11 +913,11 @@ fun explodeDouble (regs:Mach.REGS)
                   (vals:Mach.VAL list)
     : Mach.VAL =
     let val p1 = nthAsDouble vals 0
-        val p2 = nthAsUInt vals 1
+        val p2 = nthAsUInt regs vals 1
         val r  = Real64.toManExp p1
         val k  = Real64.toLargeInt IEEEReal.TO_ZERO ((#man r) * 9007199254740992.0)
         fun assemble hi lo =
-            Word32.orb(Word32.<<(Word32.fromLargeInt hi, 0w16), Word32.fromLargeInt lo)
+            Eval.wordToDouble (Word32.orb(Word32.<<(Word32.fromLargeInt hi, 0w16), Word32.fromLargeInt lo))
 
     in
         Eval.newUInt regs 
@@ -964,29 +957,24 @@ fun load (regs:Mach.REGS)
          (vals:Mach.VAL list)
     : Mach.VAL =
     let
+        fun str s = Eval.newString regs (Ustring.fromString s)
         val fname = Ustring.toFilename (nthAsUstr vals 0)
-        val frag = 
-            (* (Verify.verifyProgram *) 
-            Defn.defFragment 
-                (Defn.mkTopEnv (#prog regs)) 
-                (Parser.parseFile fname)
-            (* ) *)
-            handle x => 
-                   raise Eval.ThrowException 
-                             (Eval.newString regs
-                                             (Ustring.fromString "error while loading"))
+        val frag = Parser.parseFile fname
+            handle LogErr.LexError le => raise Eval.ThrowException (str le)
+                 | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
+        val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
+                            handle
+                            LogErr.DefnError de => raise Eval.ThrowException (str de))
+        val _ = (Verify.verifyTopFragment prog true frag
+                 handle
+                 LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
+        val regs = Eval.withProg regs prog
     in
-        (* 
-         * FIXME: This is a bit odd. In eval(), we probably -- possibly? -- don't
-         * want the eval'ed string extending the program fixtures. But possibly
-         * we want load() to do so. Or not? Need to discuss.
-         *)
-        Eval.evalFragment (Eval.withProg regs (#prog regs)) frag
-            handle x => 
-                   raise Eval.ThrowException 
-                             (Eval.newString regs
-                                             (Ustring.fromString "error while loading"));
-        Mach.Undef
+        
+        Eval.evalTopFragment regs frag
+        handle 
+        LogErr.NameError ne => raise Eval.ThrowException (str ne)
+      | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
     end
 
 fun readFile (regs:Mach.REGS)
@@ -1038,27 +1026,24 @@ fun assert (regs:Mach.REGS)
 
 fun typename (regs:Mach.REGS)
              (vals:Mach.VAL list)
-    : Mach.VAL =
-    Eval.newString regs
-    (case hd vals of
-        Mach.Null => Ustring.null_
-      | Mach.Undef => Ustring.undefined_
+    : Mach.VAL =    
+    case hd vals of
+        Mach.Null => Eval.newString regs Ustring.null_
+      | Mach.Undef => Eval.newString regs Ustring.undefined_
+      | Mach.Wrapped (v, t) => typename regs [v]
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
-             NONE => Ustring.object_
-           | SOME (Mach.UInt _) => Ustring.uint_
-           | SOME (Mach.Int _) => Ustring.int_
-           | SOME (Mach.Double _) => Ustring.double_
-           | SOME (Mach.Decimal _) => Ustring.decimal_
-           | SOME (Mach.Byte _) => Ustring.byte_
-           | SOME (Mach.String _) => Ustring.string_
-           | SOME (Mach.Boolean _) => Ustring.bool_
-           | SOME (Mach.Namespace _) => Ustring.namespace_
-           | SOME (Mach.Class _) => Ustring.class_
-           | SOME (Mach.Interface _) => Ustring.interface_
-           | SOME (Mach.Function _) => Ustring.function_
-           | SOME (Mach.Type _) => Ustring.type_
-           | SOME (Mach.NativeFunction _) => Ustring.native_function_))
+             NONE => Eval.newString regs Ustring.object_
+           | SOME (Mach.Double _) => Eval.newString regs Ustring.double_
+           | SOME (Mach.Decimal _) => Eval.newString regs Ustring.decimal_
+           | SOME (Mach.String _) => Eval.newString regs Ustring.string_
+           | SOME (Mach.Boolean _) => Eval.newString regs Ustring.bool_
+           | SOME (Mach.Namespace _) => Eval.newString regs Ustring.namespace_
+           | SOME (Mach.Class _) => Eval.newString regs Ustring.class_
+           | SOME (Mach.Interface _) => Eval.newString regs Ustring.interface_
+           | SOME (Mach.Function _) => Eval.newString regs Ustring.function_
+           | SOME (Mach.Type _) => Eval.newString regs Ustring.type_
+           | SOME (Mach.NativeFunction _) => Eval.newString regs Ustring.native_function_)
 
 fun dumpFunc (regs:Mach.REGS)
              (vals:Mach.VAL list)
@@ -1081,7 +1066,7 @@ fun inspect (regs:Mach.REGS)
     : Mach.VAL = 
     let
         val v = rawNth vals 0
-        val d = if length vals > 1 then nthAsInt vals 1 else 1
+        val d = if length vals > 1 then nthAsInt regs vals 1 else 1
     in
         Mach.inspect v d;
         Mach.Undef
@@ -1103,7 +1088,7 @@ fun id (regs:Mach.REGS)
     let
         val Mach.Obj { ident, ... } = nthAsObj vals 0
     in
-        Eval.newInt regs (Int32.fromInt ident)
+        Eval.newInt regs (Real64.fromInt ident)
     end
 
 
@@ -1129,21 +1114,6 @@ fun registerNatives _ =
         addFn 1 Name.magic_isPrimitive isPrimitive;
         addFn 2 Name.magic_defaultValue defaultValue;
 
-        addFn 2 Name.magic_bindInt bindInt;
-        addFn 2 Name.magic_bindUInt bindUInt;
-        addFn 2 Name.magic_bindDouble bindDouble;
-        addFn 2 Name.magic_bindDecimal bindDecimal;
-        addFn 2 Name.magic_bindBoolean bindBoolean;
-        addFn 2 Name.magic_bindString bindString;
-        addFn 2 Name.magic_bindByte bindByte;
-
-        addFn 1 Name.magic_newBoolean newBoolean;
-        addFn 1 Name.magic_newString newString;
-        addFn 1 Name.magic_newInt newInt;
-        addFn 1 Name.magic_newUInt newUInt;
-        addFn 1 Name.magic_newByte newByte;
-        addFn 1 Name.magic_newDouble newDouble;
-
         addFn 3 Name.magic_apply apply;
         addFn 1 Name.magic_fnLength fnLength;
 
@@ -1157,6 +1127,8 @@ fun registerNatives _ =
 
         addFn 2 Name.intrinsic_get get;
         addFn 3 Name.intrinsic_set set;
+
+        addFn 1 Name.informative_objectHash objectHash;
 
         (* FIXME: stubs to get double loading. Implement. *)
         addFn 1 Name.intrinsic_toFixedStep10 (fn regs => fn _ => Eval.newString regs Ustring.empty);
@@ -1199,6 +1171,21 @@ fun registerNatives _ =
         addFn 1 Name.informative_tanDecimal tanDecimal;
 
         addFn 1 Name.intrinsic_random random;
+
+        addFn 2 Name.uint32ops_add uint32ops_add;
+        addFn 2 Name.uint32ops_sub uint32ops_sub;
+        addFn 2 Name.uint32ops_mul uint32ops_mul;
+        addFn 2 Name.uint32ops_div uint32ops_div;
+        addFn 2 Name.uint32ops_mod uint32ops_mod;
+        addFn 2 Name.uint32ops_and uint32ops_and;
+        addFn 2 Name.uint32ops_or uint32ops_or;
+        addFn 2 Name.uint32ops_xor uint32ops_xor;
+        addFn 2 Name.uint32ops_not uint32ops_not;
+        addFn 2 Name.uint32ops_sar uint32ops_sar;
+        addFn 2 Name.uint32ops_slr uint32ops_slr;
+        addFn 2 Name.uint32ops_sll uint32ops_sll;
+        addFn 2 Name.uint32ops_ror uint32ops_ror;
+        addFn 2 Name.uint32ops_rol uint32ops_rol;
 
         addFn 1 Name.intrinsic_print print;
         addFn 1 Name.intrinsic_load load;

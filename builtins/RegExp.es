@@ -66,8 +66,8 @@ package
                 return new RegExp(pattern, flags);
         }
 
-        /* E262-3 15.10.4.1: The RegExp constructor */
-        function RegExp( pattern, flags ) {
+        static function analyzePatternAndFlags (pattern, flags)
+        {
             let src : string = "";
 
             if (pattern is RegExp) {
@@ -95,14 +95,28 @@ package
             }
 
             [matcher,names] = (new RegExpCompiler(src, usedflags)).compile();
+            return {matcher: matcher,
+                    names: names,
+                    source: src,
+                    multiline: usedflags.m,
+                    ignoreCase: usedflags.i,
+                    global: usedflags.g,
+                    extended: usedflags.e,
+                    sticky: usedflags.y}
+        }
 
-            multiline = usedflags.m;
-            ignoreCase = usedflags.i;
-            global = usedflags.g;
-            extended = usedflags.x;
-            sticky = usedflags.y;
-            lastIndex = 0;
-            source = src;
+        /* E262-3 15.10.4.1: The RegExp constructor */
+        function RegExp( pattern, flags )
+            : { matcher: matcher, 
+                names: names, 
+                source: source, 
+                multiline: multiline, 
+                ignoreCase: ignoreCase, 
+                global: global, 
+                extended: extended, 
+                sticky: sticky } = analyzePatternAndFlags(pattern, flags),
+            lastIndex = 0
+        {
         }
 
         /* E262-4 proposals:extend_regexps: RegExp instances are
@@ -162,13 +176,12 @@ package
             this.intrinsic::toString();
 
         /* E262-3 15.10.7: properties of regexp instances */
-        /* FIXME: the flags should be 'const'.  Ticket #24. */
-        var multiline  : boolean;
-        var ignoreCase : boolean;
-        var global     : boolean;
-        var extended   : boolean; // E262-4 proposals:extend_regexps
-        var sticky     : boolean; // E262-4 proposals:extend_regexps
-        var source     : string;
+        const multiline  : boolean;
+        const ignoreCase : boolean;
+        const global     : boolean;
+        const extended   : boolean; // E262-4 proposals:extend_regexps
+        const sticky     : boolean; // E262-4 proposals:extend_regexps
+        const source     : string;
 
         final function get lastIndex() 
             private::lastIndex;
@@ -191,8 +204,8 @@ package
             matcher.nCapturingParens;
 
         /* Internal */
-        private var matcher : RegExpMatcher?;      // The [[Match]] property  // FIXME: const.  Ticket #24.
-        private var names : [string?];            // Named submatches  // FIXME: const.  Ticket #24.
+        private const matcher : RegExpMatcher?;      // The [[Match]] property
+        private const names : [string?];            // Named submatches
 
         /* E262-3 15.10.6.4 probably is meant to require the flags to
          * be returned in lexicographic order for the purposes of

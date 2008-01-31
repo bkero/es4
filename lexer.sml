@@ -409,9 +409,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 				    SOME li => li
 				  | NONE => error ["LexError: error converting int literal"]
 		in
-		    if Mach.fitsInInt n
-		    then IntLiteral (Int32.fromLarge n)
-		    else DoubleLiteral (Real64.fromLargeInt n)
+		    DoubleLiteral (Real64.fromLargeInt n)
 		end
 
             fun countExpChars chars =
@@ -763,8 +761,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "lass"     , Class),
                                              (Ustring.fromSource "onst"     , Const),
                                              (Ustring.fromSource "ase"      , Case),
-                                             (Ustring.fromSource "ast"      , Cast),
-                                             (Ustring.fromSource "all"      , Call)]
+                                             (Ustring.fromSource "ast"      , Cast)]
                       | #"d"  => lexResOrId [(Ustring.fromSource "ebugger"  , Debugger),
                                              (Ustring.fromSource "efault"   , Default),
                                              (Ustring.fromSource "ecimal"   , Decimal),
@@ -781,8 +778,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "alse"     , False),
                                              (Ustring.fromSource "inal"     , Final),
                                              (Ustring.fromSource "or"       , For)]
-                      | #"g"  => lexResOrId [(Ustring.fromSource "oto"      , Goto),
-                                             (Ustring.fromSource "et"       , Get)]
+                      | #"g"  => lexResOrId [(Ustring.fromSource "et"       , Get)]
                       | #"h"  => lexResOrId [(Ustring.fromSource "as"       , Has)]
                       | #"i"  => lexResOrId [(Ustring.fromSource "mplements", Implements),
                                              (Ustring.fromSource "nstanceof", InstanceOf),
@@ -794,7 +790,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "s"        , Is),
                                              (Ustring.fromSource "f"        , If),
                                              (Ustring.fromSource "n"        , In)]
-                      | #"l"  => lexResOrId [(Ustring.fromSource "et"       , Let)]
+                      | #"l"  => lexResOrId [(Ustring.fromSource "et"       , Let),
+					     (Ustring.fromSource "ike"      , Like)]
                       | #"n"  => lexResOrId [(Ustring.fromSource "amespace" , Namespace),
                                              (Ustring.fromSource "ative"    , Native),
                                              (Ustring.fromSource "umber"    , Number),
@@ -823,12 +820,14 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "ry"       , Try),
                                              (Ustring.fromSource "o"        , To)]
                       | #"u"  => lexResOrId [(Ustring.fromSource "ndefined" , Undefined),
+                                             (Ustring.fromSource "nit"      , Unit),
                                              (Ustring.fromSource "int"      , UInt),
                                              (Ustring.fromSource "se"       , Use)]
                       | #"v"  => lexResOrId [(Ustring.fromSource "oid"      , Void),
                                              (Ustring.fromSource "ar"       , Var)]
                       | #"w"  => lexResOrId [(Ustring.fromSource "hile"     , While),
-                                             (Ustring.fromSource "ith"      , With)]
+                                             (Ustring.fromSource "ith"      , With),
+					     (Ustring.fromSource "rap"      , Wrap)]
                       | #"x"  => lexResOrId [(Ustring.fromSource "ml"       , Token.Xml)]
                       | #"y"  => lexResOrId [(Ustring.fromSource "ield"     , Yield)]
                     (* numbers *)

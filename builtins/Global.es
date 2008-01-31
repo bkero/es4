@@ -78,7 +78,7 @@ package
     iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
 
     // FIXME: probably wants to be not iterator-specific; generally useful.
-    iterator type EnumerableId = (int, uint, string, Name);
+    iterator type EnumerableId = (int|uint|string|Name);
 
     // 15.1.2.1 eval (x)
     intrinsic native function eval(s: string);
@@ -229,7 +229,7 @@ package
     helper function isIndex(k): boolean
         (k is int && k >= 0) ||
         (k is uint && k <= 0xFFFFFFFE) ||
-        (k is (double,decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
+        (k is (double|decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
     
     // Note, this rounds toward zero
     helper function toInteger(value): AnyNumber {
@@ -266,24 +266,7 @@ package
     informative var objectIdentities = null;
     informative var nextHash: uint = 0;
 
-    informative function objectHash(x): uint {
-        use namespace informative;
-
-        // Late initialization because Arrays have not been loaded when the
-        // global level is initialized.
-        if (objectIdentities == null)
-            objectIdentities = [];
-
-        for ( let i=0 ; i < objectIdentities.length ; i++ ) {
-            let probe = objectIdentities[i];
-            if (probe.object === x)
-                return probe.hashcode;
-        }
-        let h = nextHash;
-        nextHash = (nextHash + 1) & 0xFFFFFFFF;
-        objectIdentities.push({object: x, hashcode: h});
-        return h;
-    }
+    informative native function objectHash(x:Object!): uint;
 
     __ES4__ const function hashcode(o): uint {
         switch type (o) {

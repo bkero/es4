@@ -98,7 +98,7 @@ package RegExpInternals
     /* MatchResult and State.
      */
 
-    type MatchResult = (State,null);
+    type MatchResult = (State|null);
     const failure : State? = null;
 
     class State!
@@ -118,7 +118,7 @@ package RegExpInternals
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.
     */
-    type CapArray = [(string,undefined)];
+    type CapArray = [(string|undefined)];
 
     function makeCapArray(len: uint): CapArray {
         let a = []: CapArray;
@@ -481,9 +481,9 @@ package RegExpInternals
 
     class CharsetAdhoc! extends CharsetMixin implements CharsetMatcher
     {
-        function CharsetAdhoc(s: string) {
-            cs = explodeString(s);
-        }
+        function CharsetAdhoc(s: string)
+            : cs = explodeString(s) 
+            { }
 
         public function match(ctx: Context, c: string): boolean {
             for ( let i=0 ; i < cs.length ; i++ ) {
@@ -501,7 +501,7 @@ package RegExpInternals
             return cs[0];
         }
 
-        var cs : [string] = [] : [string]; // FIXME: const.  Ticket #24.
+        const cs : [string];
     }
 
     class CharsetUnicodeClass! extends CharsetMixin implements CharsetMatcher

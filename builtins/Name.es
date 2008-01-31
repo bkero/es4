@@ -47,21 +47,28 @@ package
         
         // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
         static function get length() { return 2 }
-        
-        function Name(a, b=undefined) {
+
+        static function analyzeArgs (a, b)
+        {
             if (a is Namespace && b is string) {
-                qualifier = a;
-                identifier = b;                
+                return { qualifier: a, 
+                         identifier: b }
             }
             if (a is Name && b is undefined) {
-                qualifier = a.qualifier;
-                identifier = a.identifier;
+                return { qualifier: a.qualifier, 
+                         identifier: b.identifier }
             }
             if (a is string && b is undefined) {
-                identifier = a;
+                return { qualifier: null, 
+                         identifier: a }
             }
-            throw new TypeError();
+            throw new TypeError();                        
         }
+
+        function Name(a, b=undefined) 
+            : { qualifier: qualifier, 
+                identifier: identifier } = analyzeArgs(a,b)
+        {}
         
         meta static function invoke(a, b=undefined): Name
             new Name(a, b);
@@ -81,8 +88,7 @@ package
         override intrinsic function valueOf() : string
             intrinsic::toString();
         
-        // FIXME #42: use const again when it works
-        public var qualifier  : Namespace,
-                   identifier : string;
+        public const qualifier  : Namespace,
+                     identifier : string;
     }
 }

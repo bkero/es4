@@ -45,6 +45,8 @@ type UNIT_NAME = IDENT list
 
 type RIB_ID = int
 
+type TYPEVAR_NONCE = int
+
 datatype NAMESPACE =
          Intrinsic
        | OperatorNamespace
@@ -63,6 +65,7 @@ type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 datatype BINTYPEOP =
          Cast
        | Is
+       | Wrap
        | To
 
 datatype BINOP =
@@ -141,8 +144,7 @@ datatype PRAGMA =
        | UseStandard
        | Import of
            { package: IDENT list,
-             name: IDENT,
-             alias: IDENT option }
+             name: IDENT }
 
      and FUNC_NAME_KIND =
          Ordinary
@@ -241,10 +243,12 @@ datatype PRAGMA =
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
+       | LikeType of TYPE_EXPR
+       | WrapType of TYPE_EXPR
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }
-       | LamType of 
+       | LamType of
          { params: IDENT list,
            body: TYPE_EXPR }
        | NullableType of 
@@ -262,11 +266,7 @@ datatype PRAGMA =
              static: bool,
              temps: BINDINGS,
              inits: INIT_STEP list }
-       | ClassBlock of
-           { ns: EXPR option,
-             ident: IDENT,
-             name: NAME option,
-             block: BLOCK }
+       | ClassBlock of CLASS_BLOCK                           
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR
        | ReturnStmt of EXPR
@@ -306,10 +306,9 @@ datatype PRAGMA =
          TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
-       | ExpectedTypeExpr of (TYPE_EXPR * EXPR)  (* FIXME: only for option 8, not option 9 *)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TY
-       | ThisExpr
+       | ThisExpr of THIS_KIND option
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
@@ -336,13 +335,16 @@ datatype PRAGMA =
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
-       | SliceExpr of (EXPR * EXPR * EXPR)
        | GetTemp of int
        | GetParam of int
+       | Comprehension of (EXPR * FOR_ENUM_HEAD list * EXPR option)
 
      and INIT_TARGET = Hoisted
                      | Local
                      | Prototype
+
+     and THIS_KIND = FunctionThis
+                   | GeneratorThis
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
@@ -375,7 +377,7 @@ datatype PRAGMA =
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
        | LiteralArray of
-           { exprs:EXPR list,
+           { exprs: EXPR,  (* FIXME: more specific type here *)
              ty:TY option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
@@ -400,7 +402,7 @@ datatype PRAGMA =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
-       | TypeVarFixture
+       | TypeVarFixture of TYPEVAR_NONCE
        | TypeFixture of TY
        | MethodFixture of
            { func: FUNC,
@@ -431,6 +433,7 @@ withtype
 
      and INSTANCE_TYPE =
           {  name: NAME,
+             typeParams: IDENT list,
              typeArgs: TYPE_EXPR list,
              nonnullable: bool,
              superTypes: TYPE_EXPR list,
@@ -503,6 +506,17 @@ withtype
            { ident: IDENT,
              ns: EXPR option,
              init: TYPE_EXPR }
+
+     and CLASS_BLOCK = 
+         { ns: EXPR option,
+           ident: IDENT,
+           name: NAME option,
+             block: BLOCK }
+
+     and FOR_ENUM_HEAD =  (* FIXME: use this in FOR_ENUM_STMT *)
+           { isEach: bool,
+             bindings: (BINDING list * INIT_STEP list),
+             expr: EXPR }
 
      and FOR_ENUM_STMT =
            { isEach: bool,

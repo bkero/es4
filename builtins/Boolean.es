@@ -48,7 +48,7 @@ package
 
     // RI bug: the "this" constraint on methods can't use union types,
     // but the parser allows type names...
-    __ES4__ type AnyBoolean = (boolean,Boolean!);
+    __ES4__ type AnyBoolean = (boolean|Boolean!);
 
     dynamic class Boolean
     {

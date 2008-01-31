@@ -44,6 +44,7 @@ val informativeNS = newAnonNS ()
 val noNS = Ast.Public Ustring.empty
 val ES4NS = Ast.Public Ustring.ES4_
 val intrinsicNS = Ast.Intrinsic
+val uint32opsNS = Ast.Public Ustring.uint32ops_
 
 (*
  * FIXME: mangling a name into a string is bad form. We really want to
@@ -52,7 +53,7 @@ val intrinsicNS = Ast.Intrinsic
  * than the mangled form of their containing class.
  *)
 fun mangle (n:Ast.NAME) : Ast.IDENT =
-    Ustring.fromString (LogErr.name n)
+    Ustring.fromString (LogErr.fullName n)
 
 fun make (id:Ast.IDENT) (ns:Ast.NAMESPACE) : Ast.NAME = { id = id, ns = ns }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
@@ -63,6 +64,7 @@ fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
 fun public (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Public (mangle cls) }
 fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
 fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
+fun uint32ops (id:Ast.IDENT) : Ast.NAME = { id = id, ns = uint32opsNS }
 
 (*
  * To reference a name as a type expression, you need
@@ -195,6 +197,11 @@ val nons_RegExp = nons Ustring.RegExp_
 val JSON_emit = { ns = Ast.Public Ustring.JSON_, id = Ustring.emit_ }
 val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
 
+(* From DecimalContext.es *)
+val ES4_DecimalContext = ES4 Ustring.DecimalContext_
+val nons_precision = nons Ustring.precision_
+val nons_mode = nons Ustring.mode_
+
 
 (*
  * Natives
@@ -233,6 +240,7 @@ val informative_sqrtDouble = informative Ustring.sqrtDouble_
 val informative_sqrtDecimal = informative Ustring.sqrtDecimal_
 val informative_tanDouble = informative Ustring.tanDouble_
 val informative_tanDecimal = informative Ustring.tanDecimal_
+val informative_objectHash = informative Ustring.objectHash_
 val intrinsic_now = intrinsic Ustring.now_
 val intrinsic_toPrecision = intrinsic Ustring.toPrecision_
 val intrinsic_toExponential = intrinsic Ustring.toExponential_
@@ -249,20 +257,6 @@ val magic_fromCharCode = magic Ustring.fromCharCode_
 val magic_charCodeAt = magic Ustring.charCodeAt_
 val magic_fnLength = magic Ustring.fnLength_
 val magic_apply = magic Ustring.apply_
-val magic_bindString = magic Ustring.bindString_
-val magic_bindBoolean = magic Ustring.bindBoolean_
-val magic_bindDecimal = magic Ustring.bindDecimal_
-val magic_bindDouble = magic Ustring.bindDouble_
-val magic_bindUInt = magic Ustring.bindUInt_
-val magic_bindInt = magic Ustring.bindInt_
-val magic_bindByte = magic Ustring.bindByte_
-
-val magic_newString = magic Ustring.newString_
-val magic_newBoolean = magic Ustring.newBoolean_
-val magic_newInt = magic Ustring.newInt_
-val magic_newUInt = magic Ustring.newUInt_
-val magic_newByte = magic Ustring.newByte_
-val magic_newDouble = magic Ustring.newDouble_
 
 val magic_toPrimitive = magic Ustring.toPrimitive_
 val magic_isPrimitive = magic Ustring.isPrimitive_
@@ -278,6 +272,21 @@ val magic_getImplementedInterface = magic Ustring.getImplementedInterface_
 val magic_getClassOfObject = magic Ustring.getClassOfObject_
 val magic_getClassName = magic Ustring.getClassName_
 val magic_construct = magic Ustring.construct_
+
+val uint32ops_add = uint32ops Ustring.add_
+val uint32ops_sub = uint32ops Ustring.sub_
+val uint32ops_mul = uint32ops Ustring.mul_
+val uint32ops_div = uint32ops Ustring.div_
+val uint32ops_mod = uint32ops Ustring.mod_
+val uint32ops_and = uint32ops Ustring.and_
+val uint32ops_or = uint32ops Ustring.or_
+val uint32ops_xor = uint32ops Ustring.xor_
+val uint32ops_not = uint32ops Ustring.not_
+val uint32ops_sar = uint32ops Ustring.sar_
+val uint32ops_slr = uint32ops Ustring.slr_
+val uint32ops_sll = uint32ops Ustring.sll_
+val uint32ops_ror = uint32ops Ustring.ror_
+val uint32ops_rol = uint32ops Ustring.rol_
 
 (*
  * Property names that have special meanings to the interpreter.
@@ -298,7 +307,6 @@ val meta_set = meta Ustring.set_
 val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
 
-val this = nons Ustring.this_
 val arguments = nons Ustring.arguments_
 val empty = nons Ustring.empty
 

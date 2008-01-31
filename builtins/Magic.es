@@ -96,52 +96,24 @@ package
     magic native function getPrototype(o : Object!) : Object;
 
     /* Return true iff o has a local property named by p. */
-    magic native function hasOwnProperty(o : Object!, p : (Name,string)) : boolean;
+    magic native function hasOwnProperty(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontEnum bit is set */
-    magic native function getPropertyIsDontEnum(o : Object!, p : (Name,string)) : boolean;
+    magic native function getPropertyIsDontEnum(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontDelete bit is set */
-    magic native function getPropertyIsDontDelete(o : Object!, p : (Name,string)) : boolean;
+    magic native function getPropertyIsDontDelete(o : Object!, p : (Name|string)) : boolean;
 
     /* Provided that the property p exists locally on o, set its DontEnum
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    magic native function setPropertyIsDontEnum(o : Object!, p : (Name,string), f : boolean) : void;
+    magic native function setPropertyIsDontEnum(o : Object!, p : (Name|string), f : boolean) : void;
 
     magic native function isPrimitive(v:*) : boolean;
     magic native function toPrimitive(v:*, hint:string) : *;
     magic native function defaultValue(ob:Object!, hint:string) : *;
-
-    /*
-     * Given a target object and a value, select a magic
-     * representation for the value, of the type implied by the
-     * function name, and set the target's magic slot to that
-     * representation.
-     */
-
-    magic native function bindInt(target:Object!, value:*) : void;
-    magic native function bindByte(target:Object!, value:*) : void;
-    magic native function bindUInt(target:Object!, value:*) : void;
-    magic native function bindDouble(target:Object!, value:*) : void;
-    magic native function bindDecimal(target:Object!, value:*) : void;
-    magic native function bindBoolean(target:Object!, value:*) : void;
-    magic native function bindString(target:Object!, value:*) : void;
-
-    /*
-     * Construction functions that access internal object caches in
-     * the runtime. This is not at all normative, it's just an
-     * important speed optimization.
-     */
-    magic native function newString(value:*) : string;
-    magic native function newBoolean(value:*) : boolean;
-    magic native function newInt(value:*) : int;
-    magic native function newUInt(value:*) : uint;
-    magic native function newByte(value:*) : byte;
-    magic native function newDouble(value:*) : double;
-
 
     /* ----------------------------------------------------------------
 
