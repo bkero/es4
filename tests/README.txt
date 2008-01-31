@@ -1,16 +1,20 @@
 Notes for running testcases on es4 ri.
 
-Requirements:
+REQUIREMENTS:
+
 - some basic python in your path
 - the es4 ri monotone repository synced
 
-Setup instructions:
+SETUP:
+
 - build ri
 $ cd com.mozilla.es4.smlnj
 $ make clean
 $ make
 $ sml @SMLload=es4-init.heap -dump es4-dump.heap
 
+
+BUILTINS:
 To run builtins tests
 $ cd test
 $ ./runtests.py builtins/
@@ -29,6 +33,12 @@ failures             : 0
 expected failures    : 5
 Results were written to 2007-11-08.1.html
 
+SMOKES:
+To run smoke tests:
+$ ./runtests.py smokes/
+...
+
+TEST CONFIGURATION:
 The file testconfig.txt contains a description of known failures.  All known failures should
 have trac issue numbers http://bugs.ecmascript.org.  Marking a failure as known is a way
 to account for active issues.
