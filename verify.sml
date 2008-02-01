@@ -95,20 +95,6 @@ fun error ss = LogErr.verifyError ss
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
-
-(*
-fun verifyTopFragment (prog:Fixture.PROGRAM)
-                      (strict:bool) 
-                      (frag:Ast.FRAGMENT) 
-  : Ast.FRAGMENT = 
-    frag
-*)
-
-
-(*
-fun typeToString ty = ...
-*)
-
 fun fmtType ty = if !doTrace
                  then LogErr.ty ty
                  else ""
@@ -166,6 +152,74 @@ fun newEnv (prog:Fixture.PROGRAM)
       TypeType = Type.getNamedGroundType prog Name.intrinsic_Type
      }
     }
+
+
+(******************* Utilities for dealing with ribs *********************)
+
+fun resolveMnameToFixture (env:ENV)
+			  (mname:Ast.MULTINAME)
+    : Ast.FIXTURE option =
+    case Multiname.resolveInRibs mname (#ribs env) of 
+        NONE => NONE
+      | SOME (ribs, n) =>
+        SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
+
+(* 
+ * FIXME: It'd be nice to unify this with the namespace-expr resolver in 
+ * defn.sml; unfortunately that uses ribId-based lookup not rib-list lookup,
+ * and we have dropped the ribIds by here. Maybe we should save them in the
+ * ribs?
+ *)
+
+fun resolveIdentExprToMname (env:ENV)
+			    (ie:Ast.IDENT_EXPR)
+    : Ast.MULTINAME = 
+    case ie of                     
+	Ast.Identifier { ident, openNamespaces } => 
+	{ id = ident, nss = openNamespaces }
+      | Ast.QualifiedIdentifier { qual, ident } => 
+	{ id = ident, 
+	  nss = [[resolveExprToNamespace env qual]] }
+      | _ => error ["unhandled type of lexical reference"]
+	     
+and resolveExprToNamespace (env:ENV)
+                           (expr:Ast.EXPR)
+    : Ast.NAMESPACE =
+    case expr of
+        Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
+      | Ast.LexicalRef {ident, loc } =>
+        let
+            val _ = LogErr.setLoc loc
+            val mname = resolveIdentExprToMname env ident
+        in
+            case resolveMnameToFixture env mname of
+                SOME (Ast.NamespaceFixture ns) => ns
+              | _ => error ["namespace expression did not resolve ",
+			    "to namespace fixture"]
+        end
+      | _ => error ["unexpected expression type ",
+		    "in namespace context"]
+
+(* 
+ * Note:this resolves a multiname to the type *of* the fixture denoted by that
+ * multiname. It does not fetch a type named by a multiname; that's done 
+ * by the general type normalizer in type.sml.
+ *)
+fun resolveMnameToFixtureTy (env:ENV)
+			    (mname:Ast.MULTINAME)
+    : Ast.TY = 
+    case resolveMnameToFixture env mname of 	
+	(* 
+	 * FIXME: classtypes should be turned into instancetypes of 
+	 * the static-class type, so we can look up static props on them
+	 * correctly. Abusing object types like this is no good.
+	 *)
+	SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
+      | SOME (Ast.ValFixture { ty, ... }) => ty	
+      | SOME (Ast.VirtualValFixture { ty, ... }) => ty        
+      | SOME (Ast.TypeFixture _) => makeTy (#TypeType (#stdTypes env))
+      | _ => makeTy anyType
+
 
 
 (******************* Subtyping and Compatibility *************************)
@@ -362,11 +416,8 @@ and verifyExpr (env:ENV)
                 then 
                     let
                     in
-                        (*
                          checkMatch t1 expectedType1;
                          checkMatch t2 expectedType2
-                         *)
-                        ()
                     end
                 else ();
                 resultType
@@ -536,7 +587,11 @@ and verifyExpr (env:ENV)
                                 List.app (fn (formal, actual) => checkMatch actual formal)
                                          (ListPair.zip (params, ts))
                       | Ast.SpecialType Ast.Any => ()
-                      | _ => error ["ill-typed call"]
+		      (* 
+		       * FIXME: Actually have to handle instance types here, and hook into
+		       * their meta::invoke slot as well.
+		       *)
+                      | _ => error ["ill-typed call to type ", LogErr.ty t]
                 else 
                     ();
                 resultType
@@ -582,41 +637,19 @@ and verifyExpr (env:ENV)
             end
 
           | Ast.LexicalRef { ident, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-
-                fun resolveToFixture (mname:Ast.MULTINAME)
-                    : Ast.FIXTURE option =     
-                    case Multiname.resolveInRibs mname (#ribs env) of 
-                        NONE => NONE
-                      | SOME (ribs, n) =>
-                        SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
-                        
-                fun resolveToType id nss = 
-                    case resolveToFixture { id = id, nss = nss } of 
-
-                        SOME (Ast.TypeFixture ty) => 
-                        verifyTypeExpr env ty
-
-                      | SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => 
-                        verifyTypeExpr env classType
-
-                      | SOME (Ast.ValFixture { ty, ... }) => 
-                        verifyTypeExpr env ty
-
-                      | SOME (Ast.VirtualValFixture { ty, ... }) => 
-                        verifyTypeExpr env ty
-                        
-                      | _ => anyType
-            in
-                LogErr.setLoc loc;
-                case ident of                     
-                    Ast.Identifier { ident, openNamespaces } => 
-                    resolveToType ident openNamespaces
-                    
-                  (* FIXME: handle qualified identifiers here. *)
-                  | _ => anyType
-            end
+	    if 
+		strict
+	    then 
+		let
+                    val _ = LogErr.setLoc loc
+		    val mname = resolveIdentExprToMname env ident
+		    val ty = resolveMnameToFixtureTy env mname
+		in
+                    LogErr.setLoc loc;
+		    verifyTypeExpr env ty
+		end
+	    else 
+		anyType
 
           | Ast.SetExpr (a, le, re) =>
             let
@@ -834,16 +867,24 @@ and verifyCatchClause (env:ENV)
         verifyBlock blockEnv block
     end
 
-
+and strictness (curr:bool) [] = curr
+  | strictness (curr:bool) ((x:Ast.PRAGMA)::xs) = 
+    case x of 
+	Ast.UseStrict => strictness true xs
+      | Ast.UseStandard => strictness false xs
+      | _ => strictness curr xs
+	     
 and verifyBlock (env:ENV)
                 (b:Ast.BLOCK)
     : unit =
     let
         val Ast.Block { head, body, loc, pragmas, ... } = b
-        val (Ast.Head (rib, _)) = valOf head
-        val env = withRib env rib
+	val env = withStrict env (strictness (#strict env) pragmas)
+        val ribOpt = case head of 
+			 NONE => NONE
+		       | SOME (Ast.Head (rib, _)) => SOME rib
+        val env = withRibOpt env ribOpt
     in 
-        (* FIXME: pragmas *)
         LogErr.setLoc loc;
         Option.app (verifyHead env) head;
         List.app (verifyStmt env) body

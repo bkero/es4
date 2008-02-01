@@ -48,7 +48,6 @@ package
     // There is a bug in the definer.
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import JSON.*;
     

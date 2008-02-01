@@ -75,7 +75,6 @@ package
     import ECMAScript4_Internal.*;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     __ES4__ class Map.<K,V>
     {

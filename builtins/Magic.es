@@ -59,7 +59,6 @@ package
 {
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     /* --------------------------------------------------------------
 

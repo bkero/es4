@@ -44,7 +44,6 @@ package
     use default namespace public;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     // RI bug: the "this" constraint on methods can't use union types,
     // but the parser allows type names...

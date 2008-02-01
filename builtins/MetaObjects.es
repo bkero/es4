@@ -40,7 +40,6 @@ package
     use namespace helper;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
     
     helper function numberconversion(t)
         numbertypes.indexOf(t) != -1;

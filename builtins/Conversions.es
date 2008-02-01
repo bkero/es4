@@ -42,7 +42,6 @@ package
 {
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     // Unused functions have been commented out.  lth / 2007-09-07
 
