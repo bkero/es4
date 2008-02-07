@@ -7,7 +7,7 @@ import random
 import sys
 from pprint import pprint
 import getopt
-
+import os
 
 # Config
 debug = False
@@ -28,14 +28,15 @@ def main(argv=None):
     startNode = 'Program'
     scope = []
     outFile = None
+    reps = 1
     fbn = False
     seed = None
     #DEBUG
-    seed = random.randint(0,9000000)
+    seed = random.randint(0,90000000)
     
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hf:dr:',['help','file=','debug','findBrokenNodes','seed='])
+        opts, args = getopt.getopt(sys.argv[1:], 'hf:dr:',['help','file=','debug','findBrokenNodes','seed=','reps='])
     except getopt.GetoptError:
         usage(2)
     for o,a in opts:
@@ -58,6 +59,9 @@ def main(argv=None):
                 seed = int(a)
             except:
                 print 'cant parse seed'
+        if o == '--reps':
+            if outFile:
+                reps = int(a)
     try:
         startNode = args[0]
     except IndexError:
@@ -75,13 +79,16 @@ def main(argv=None):
     if seed:
         random.seed(seed)
     
-    #if debug:
-    print 'Random Seed: %s' % seed
+    if debug:
+        print 'Random Seed: %s' % seed
     
     if outFile:
+        (name, ext) = os.path.splitext(outFile)
         try:
-            f = open(outFile,'w')
-            f.writelines(getNodeStr(startNode,scope))
+            for i in range(reps):
+              f = open('%s-%s%s' % (name,i,ext),'w')
+              f.writelines(getNodeStr(startNode,scope))
+              f.close()
         except IOError:
             print 'IOError - please check filename'
             sys.exit(2)
@@ -98,6 +105,7 @@ def usage(exitCode=None):
     print 'options:'
     print '\t-h, --help\t\t show this help and exit'
     print '\t-f FILE, --file=FILE\t write output to FILE'
+    print '\t--reps REPS\t number of files to output (file must be specified)'
     print '\t-d, --debug\t\t output debug info'
     print '\t-r LEVEL\t\t set maximum recursion depth (default = %s)' % maxRecursionDepth
     print '\t\t\t\t (this controls the output length)'
