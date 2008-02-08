@@ -39,7 +39,6 @@ package
 {
     use default namespace public;
     use namespace __ES4__;
-    use strict;
     
     __ES4__ final class DecimalContext
     {

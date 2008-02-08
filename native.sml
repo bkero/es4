@@ -494,7 +494,7 @@ fun apply (regs:Mach.REGS)
         val argsObj = nthAsObj vals 2
         val argsList = arrayToList regs argsObj
     in
-        Eval.evalCallExpr (Eval.withThis regs thisObj) fnObj argsList
+        Eval.evalCallByObj (Eval.withThis regs thisObj) fnObj argsList
     end
 
 fun fnLength (regs:Mach.REGS)
@@ -618,7 +618,7 @@ fun eval (regs:Mach.REGS)
                     val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
                                         handle
                                         LogErr.DefnError de => raise Eval.ThrowException (str de))
-                    val _ = (Verify.verifyTopFragment prog true frag
+                    val _ = (Verify.verifyTopFragment prog false frag
                              handle
                              LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
@@ -965,7 +965,7 @@ fun load (regs:Mach.REGS)
         val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
                             handle
                             LogErr.DefnError de => raise Eval.ThrowException (str de))
-        val _ = (Verify.verifyTopFragment prog true frag
+        val _ = (Verify.verifyTopFragment prog false frag
                  handle
                  LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
         val regs = Eval.withProg regs prog

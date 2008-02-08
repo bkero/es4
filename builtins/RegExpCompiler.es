@@ -52,7 +52,6 @@ package RegExpInternals
 {
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import Unicode.*;
 
@@ -60,13 +59,13 @@ package RegExpInternals
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
-        var   source : string;         // expression source, sans leading and trailing /  // FIXME: const.  Ticket #24.
+        const source : string;         // expression source, sans leading and trailing / 
         var   slen : uint;             // source length, retrieved once
         var   idx : uint;              // current character in the source
         var   largest_backref : uint;  // largest back reference seen
-        var   extended : boolean;      // true iff expression has /x flag  // FIXME: const.  Ticket #24.
-        var   names : [string?] = []:[string?];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
-        var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const.  Ticket #24.
+        const extended : boolean;      // true iff expression has /x flag
+        const names : [string?] = []:[string?];  // capturing names, or null for capturing exprs that are not named
+        var parenIndex : uint = 0;     // number of capturing parens (including those that are named)
 
         function RegExpCompiler( source : string, flags  )
             : extended = flags.x

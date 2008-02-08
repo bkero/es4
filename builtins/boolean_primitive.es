@@ -44,7 +44,6 @@ package
     use default namespace public;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import JSON.*;
 

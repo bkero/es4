@@ -37,7 +37,6 @@ package JSON
 {
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     public function formatObject(object, pretty=false): string {
         pp = pretty;

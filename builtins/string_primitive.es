@@ -70,7 +70,6 @@ package
     use default namespace public;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import Unicode.*
     import RegExpInternals.*
@@ -333,8 +332,8 @@ package
             string.replace(this, searchValue, replaceValue);
         */
 
-        intrinsic function replace(searchValue: (string,RegExp!),
-                                   replaceValue: (string,function(...):string)) : string
+        intrinsic function replace(searchValue: (string|RegExp!),
+                                   replaceValue: (string|function(...):string)) : string
             string.replace(this, searchValue, replaceValue);
 
         static function replace(self, s, r): string {
@@ -525,12 +524,12 @@ package
             string.split(this, separator, limit);
         */
 
-        intrinsic function split(separator:(string,RegExp!), limit: uint = uint.MAX_VALUE): Array!
+        intrinsic function split(separator:(string|RegExp!), limit: uint = uint.MAX_VALUE): Array!
             string.split(this, separator, limit)
 
         static function split(self, separator, limit) : Array! {
 
-            type matcher = (string,RegExp!);
+            type matcher = (string|RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
                 switch type (R) {

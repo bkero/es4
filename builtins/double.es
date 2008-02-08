@@ -51,7 +51,6 @@ package
     use default namespace public;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import ECMAScript4_Internal.*;
     import JSON.*;
@@ -142,7 +141,7 @@ package
            x must be positive, f is in the range [0,20]. */
 
         // FIXME: really informative, not intrinsic
-        native intrinsic function toFixedStep10(x : (double,decimal), f : int) : int;
+        native intrinsic function toFixedStep10(x : (double|decimal), f : int) : int;
 
         intrinsic function toExponential(fractionDigits=undefined) : string {
             return "**toExponential: FIXME**";

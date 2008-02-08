@@ -37,7 +37,6 @@ package Unicode
 {
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     /* Unicode line break characters */
     public const linebreaks = "\u000A\u000D\u0085\u2028\u2029";
@@ -330,12 +329,12 @@ package Unicode
         isUnicodeCo(cc) ||
         isUnicodeCn(cc);
 
-    public function toUpperCaseCharCode(i: uint) : (uint,[/*uint*/]) {
+    public function toUpperCaseCharCode(i: uint) : (uint|[/*uint*/]) {
         var c = toUpperTbl(i);
         return c ? c : i;
     }
 
-    public function toLowerCaseCharCode(i: uint) : (uint,[/*uint*/]) {
+    public function toLowerCaseCharCode(i: uint) : (uint|[/*uint*/]) {
         var c = toLowerTbl(i);
         return c ? c : i;
     }

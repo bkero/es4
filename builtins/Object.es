@@ -48,11 +48,10 @@ package
     // There is a bug in the definer.
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import JSON.*;
     
-    type EnumerableId = (int, uint, string /*, Name*/);  // FIXME: circularity
+    type EnumerableId = (int|uint|string/*|Name*/);  // FIXME: circularity
     
     dynamic class Object
     {
@@ -124,10 +123,10 @@ package
         prototype function propertyIsEnumerable(prop, e=undefined)
             private::propertyIsEnumerable(this, 
                                          (prop is EnumerableId) ? prop : string(prop), 
-                                         (e is (boolean,undefined)) ? e : boolean(e));
+                                         (e is (boolean|undefined)) ? e : boolean(e));
 
         intrinsic function propertyIsEnumerable(prop: EnumerableId,
-                                                e:(boolean,undefined) = undefined): boolean 
+                                                e:(boolean|undefined) = undefined): boolean 
             private::propertyIsEnumerable(this, prop, e);
 
         private function propertyIsEnumerable(self, prop, e) {

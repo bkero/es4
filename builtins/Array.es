@@ -43,7 +43,6 @@ package
     use default namespace public;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import ECMAScript4_Internal.*;
     import JSON.*;
@@ -58,7 +57,7 @@ package
 
     // INFORMATIVE: this is an implementation that meets the spec, but the spec
     // allows for different sort implementations (quicksort is not required)
-    type Comparator = (function (*,*):AnyNumber, undefined);
+    type Comparator = (function (*,*):AnyNumber|undefined);
 
     dynamic class Array
     {

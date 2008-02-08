@@ -45,12 +45,11 @@ package MathInternals
 {
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import ECMAScript4_Internal.*;
 
-    type AnyNumber = (int,uint,double,decimal);
-    type FloatNumber = (double,decimal);
+    type AnyNumber = (int|uint|double|decimal);
+    type FloatNumber = (double|decimal);
 
     helper function toAnyNumber(x): AnyNumber {
         if (x is AnyNumber)
@@ -147,11 +146,11 @@ package MathInternals
     informative native function tanDecimal(x: decimal):decimal;
 
     // y > 0
-    informative function powInt(x: int, y: int): (int,uint,double)
+    informative function powInt(x: int, y: int): (int|uint|double)
         informative::exponentiate(x,y);
 
     // y > 0
-    informative function powUInt(x: uint, y: uint): (uint, double)
+    informative function powUInt(x: uint, y: uint): (uint|double)
         informative::exponentiate(x,y);
 
     informative function exponentiate(x, y) {
@@ -164,14 +163,14 @@ package MathInternals
     }
 
     // x >= 0
-    informative function sqrtInt(x: int): (int,double) {
+    informative function sqrtInt(x: int): (int|double) {
         let r = informative::sqrtDouble(double(x));
         if (helper::isIntegral(r))
             return int(r);
         return r;
     }
 
-    informative function sqrtUint(x: uint): (uint,double) {
+    informative function sqrtUint(x: uint): (uint|double) {
         let r = informative::sqrtDouble(double(x));
         if (helper::isIntegral(r))
             return uint(r);
@@ -214,7 +213,7 @@ package MathInternals
 
         intrinsic function acos(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::acos(double(n));
             }
             case (n: double) { 
@@ -232,7 +231,7 @@ package MathInternals
 
         intrinsic function asin(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::asin(double(n));
             }
             case (n: double) { 
@@ -250,7 +249,7 @@ package MathInternals
 
         intrinsic function atan(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::atan(double(n));
             }
             case (n: double) { 
@@ -304,7 +303,7 @@ package MathInternals
 
         intrinsic function ceil(x: AnyNumber): AnyNumber {
             switch type (x) {
-            case (n: (int,uint)) { 
+            case (n: (int|uint)) { 
                 return n;
             }
             case (n: double) {
@@ -322,7 +321,7 @@ package MathInternals
 
         intrinsic function cos(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::cos(double(n));
             }
             case (n: double) {
@@ -340,7 +339,7 @@ package MathInternals
 
         intrinsic function exp(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::exp(double(n));
             }
             case (n: double) { 
@@ -362,7 +361,7 @@ package MathInternals
 
         intrinsic function floor(x: AnyNumber): AnyNumber {
             switch type (x) {
-            case (n: (int,uint)) { 
+            case (n: (int|uint)) { 
                 return n;
             }
             case (n: double) {
@@ -380,7 +379,7 @@ package MathInternals
 
         intrinsic function log(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) { 
+            case (n: (int|uint)) { 
                 return intrinsic::log(double(n));
             }
             case (n: double) {
@@ -405,7 +404,7 @@ package MathInternals
             if (isNaN(y)) return y;
             if (x > y) return x;
             if (y > x) return y;
-            if (x is (int,uint) || x != 0) return x;
+            if (x is (int|uint) || x != 0) return x;
 
             let x_sign = informative::sign(x),
                 y_sign = informative::sign(y);
@@ -419,7 +418,7 @@ package MathInternals
             if (isNaN(y)) return y;
             if (x < y) return x;
             if (y < x) return y;
-            if (x is (int,uint) || x != 0) return x;
+            if (x is (int|uint) || x != 0) return x;
 
             let x_sign = informative::sign(x),
                 y_sign = informative::sign(y);
@@ -430,7 +429,7 @@ package MathInternals
 
         intrinsic function pow(x: AnyNumber, y: AnyNumber): AnyNumber {
             if (x is int) {
-                if (y is (int,uint) && y >= 0) {
+                if (y is (int|uint) && y >= 0) {
                     if (y == 0) return 1;
                     if (x == 0) {
                         if (y > 0) return 0;
@@ -442,7 +441,7 @@ package MathInternals
                     x = double(x);
             }
             else if (x is uint) {
-                if (y is (int,uint) && y >= 0) {
+                if (y is (int|uint) && y >= 0) {
                     if (y == 0) return 1u;
                     if (x == 0) {
                         if (y > 0) return 0u;
@@ -569,7 +568,7 @@ package MathInternals
 
         intrinsic function round(x: AnyNumber): AnyNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return n;
             }
             case (n: double) {
@@ -590,7 +589,7 @@ package MathInternals
 
         intrinsic function sin(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::sin(double(n));
             }
             case (n: double) {
@@ -630,7 +629,7 @@ package MathInternals
 
         intrinsic function tan(x: AnyNumber): FloatNumber {
             switch type (x) {
-            case (n: (int,uint)) {
+            case (n: (int|uint)) {
                 return intrinsic::tan(double(n));
             }
             case (n: double) {

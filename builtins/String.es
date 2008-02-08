@@ -60,12 +60,11 @@ package
     use default namespace public;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     import ECMAScript4_Internal.*;
     import JSON.*;
 
-    __ES4__ type AnyString = (string, String!);
+    __ES4__ type AnyString = (string|String!);
 
     /* The January 2007 meeting resolved that String is open and
      * dynamic.
@@ -177,7 +176,7 @@ package
         static function replace(self, searchValue, replaceValue) : string
             string.replace(self, searchValue, replaceValue);
 
-        intrinsic function replace(s: (RegExp!,AnyString), r: (AnyString,function(...):AnyString)) : string
+        intrinsic function replace(s: (RegExp!|AnyString), r: (AnyString|function(...):AnyString)) : string
             string.replace(val, searchValue, replaceValue);
 
 
@@ -207,7 +206,7 @@ package
         static function split(self, separator, limit): Array!
             string.split(self, separator, limit);
 
-        intrinsic function split(separator:(AnyString,RegExp!), limit: uint = uint.MAX_VALUE) : Array!
+        intrinsic function split(separator:(AnyString|RegExp!), limit: uint = uint.MAX_VALUE) : Array!
             string.split(val, separator, limit);
 
 

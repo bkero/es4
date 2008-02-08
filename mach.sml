@@ -171,7 +171,7 @@ datatype VAL = Object of OBJ
        | GlobalScope
        | InstanceScope
        | ActivationScope
-       | TempScope
+       | BlockScope
        | TypeArgScope
 
      and TEMP_STATE = UninitTemp
@@ -581,9 +581,16 @@ fun setProto (ob:OBJ) (p:VAL)
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
-    case List.nth ((!temps), n) of
-        (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary ",Int.toString n]
-      | (_, ValTemp v) => v
+    let        
+        val _ = trace ["getTemp ",Int.toString n]                
+    in
+        if n >= length (!temps)
+        then LogErr.machError ["getting out-of-bounds temporary"]
+        else 
+            case List.nth ((!temps), n) of
+                (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary ",Int.toString n]
+              | (_, ValTemp v) => v
+    end
 
 fun defTemp (temps:TEMPS)
             (n:int)

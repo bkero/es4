@@ -361,7 +361,7 @@ fun addToRib (env:ENV)
                     then ribId
                     else NONE
     in
-        Fixture.extendRib (#program env) ribId additions (Type.isCompatibleEqual (#program env) [])
+        Fixture.extendRib (#program env) ribId additions (Type.matches (#program env) [])
     end
 
 
@@ -369,7 +369,7 @@ fun mergeRibs (program:Fixture.PROGRAM)
               (oldRib:Ast.RIB)
               (newRib:Ast.RIB)
     : Ast.RIB = 
-    Fixture.mergeRibs (Type.isCompatibleEqual program []) oldRib newRib
+    Fixture.mergeRibs (Type.matches program []) oldRib newRib
 
 
 fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
@@ -1327,13 +1327,6 @@ and defFuncSig (env:ENV)
                     NONE => Ast.SpecialType Ast.Any
                   | SOME x => defTypeExpr env x
 
-            val thisBinding:(Ast.FIXTURE_NAME * Ast.FIXTURE) = 
-                (Ast.PropName Name.this,
-                 Ast.ValFixture
-                     { ty = (makeTy env thisType),
-                       readOnly = true })
-
-
             fun isTempFixture (n:Ast.FIXTURE_NAME, _) : bool =
                 case n of
                    Ast.TempName _ => true
@@ -1347,7 +1340,7 @@ and defFuncSig (env:ENV)
                       | NONE => (([],[]),[])
             val settingsRib = List.filter isTempFixture settingsRib
         in
-            (thisBinding::paramRib,
+            (paramRib,
              paramInits,
              defaults,
              settingsRib,

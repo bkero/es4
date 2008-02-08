@@ -53,7 +53,6 @@ package
     use namespace informative;
     use namespace intrinsic;
     use namespace __ES4__;
-    use strict;
 
     const NOARG = {};
 
