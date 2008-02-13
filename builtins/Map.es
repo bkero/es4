@@ -84,12 +84,12 @@ package
          * predicates must always agree: if two objects are equal,
          * they must hash to the same value.
          */
-        function Map(equals=function(x,y) { return x === y; } 
-		     /* 
-		      * FIXME: '===' is not an identifier token as far as the parser is concerned,
-		      * =intrinsic::=== 
-		      */, 
-		     hashcode=hashcode) 
+        function Map(equals=function(x:K,y:K):boolean { return x === y; } 
+					 /* 
+					  * FIXME: '===' is not an identifier token as far as the parser is concerned,
+					  * =intrinsic::=== 
+					  */, 
+					 hashcode=function(x:K):uint { return hashcode(x); } ) 
             : equals = equals
             , hashcode = hashcode
             , element_count = 0
@@ -193,7 +193,8 @@ package
             // Documented behavior: the key in the table is the left
             // operand, while the key we're looking for is the right
             // operand.
-            for ( let l=tbl[this.hashcode(key) % limit] ; l && !this.equals(l.key,key) ; l=l.next )
+			let l = null;
+            for (l=tbl[this.hashcode(key) % limit] ; l && !this.equals(l.key,key) ; l=l.next )
                 ;
             return l;
         }
@@ -204,7 +205,7 @@ package
             let box = new Box.<K,V>(key, this.hashcode(key), value);
             let h = box.hash % limit;
             box.prev = null;
-            box.next = tbl[h];
+            box.next = (tbl[h] || null);
             tbl[h] = box;
         }
 
@@ -226,7 +227,7 @@ package
 
             element_count = 0;
             limit = grow ? limit * 2 : limit / 2;
-            tbl = informative::newTbl(limit);
+            tbl = Map.informative::newTbl.<K,V>(limit);
 
             informative::allElements( oldtbl, oldlimit, function (k,v) { ++element_count; informative::insert(k, v) } );
         }
@@ -261,7 +262,7 @@ package
 	 * hash table : FIXME: should be "limit" but fixture is not visible during init (?)
 	 *               Also might want to fiddle with the static/instance scope of type params.
 	 */
-        private var tbl: [internal::Box.<K,V>] = Map.informative::newTbl.<K,V>(10);    
+        private var tbl: [internal::Box.<K,V>] = Map.informative::newTbl.<K,V>(10);
     }
 
     internal class Box.<K,V> 

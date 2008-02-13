@@ -202,7 +202,7 @@ package
             if (length == 0)
                 return undefined;
 
-            let v = this[length];
+            let v = this[length-1];
             length--;
             return v;
         }

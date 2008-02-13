@@ -1,3 +1,37 @@
+2008-02-12 - 0.0M2
+
+- Newly supported constructs:
+  - Super expressions
+  - Like types
+  - Wrappers (preliminary)
+  - Slice expressions
+  - __ES4__::Map.<K,V>
+  - __ES4__::Vector.<T>
+  - __ES4__::hashcode()
+  - __ES4__::DecimalContext, new decimal pragma
+  - uint32ops::*
+
+- Corrected behavior:
+  - Overhaul type system to conform to "valleyscript" model
+  - Strictness pragmas
+  - Cyclic type term prevention
+  - Type parameter scoping
+  - Property enumeration order
+  - Builtin prototype chains
+  - Builtin constructors
+  - Builtin conversions
+  - Builtin non-magic wrapper types
+  - Prototype property shadowing
+  - Scope rules for let expressions
+  - Arithmetic rules
+  - Function self-name binding
+  - Union types use "|" rather than ","
+  - Regexp character class bug
+  - Hoisting bug
+  - Property-enumerability bug
+  - Nullability enforcement
+  - REPL error handling
+
 2007-11-02 - 0.0M1
 - Many updates to evaluator
 - Binaries for Windows and Linux
