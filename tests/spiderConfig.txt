@@ -35,6 +35,11 @@ tests/spidermonkey/ecma/Array/15.4.5.1-2 : a\.length = 38, es4ri, expectedfail, 
 tests/spidermonkey/ecma/Array/15.4.5.1-2 : a\["5000000000"\] = 5; a\.length = 38, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Array/15.4.5.1-2 : a\["-2"\] = -3; a\.length = 38, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Array/15.4.5.2-2 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean(null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean(void(0)), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean(x=null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.2 : (new Boolean(null)).valueOf(), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.2 : (new Boolean(void 0)).valueOf(), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
 tests/spidermonkey/ecma/Boolean/15.6.3.1 : Boolean\.prototype\.valueOf\(\) = \[object Object\], es4ri, expectedfail, http://bugs.ecmascript.org/ticket/316
 tests/spidermonkey/ecma/Boolean/15.6.4-1 : Boolean\.prototype\.toString = Object\.prototype\.toString; Boolean\.prototype\.toString\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Boolean/15.6.4-1 : Boolean\.prototype\.valueOf\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
@@ -43,6 +48,13 @@ tests/spidermonkey/ecma/Boolean/15.6.4.2-4-n : tostr=Boolean\.prototype\.toStrin
 tests/spidermonkey/ecma/Boolean/15.6.4.3-4-n : valof=Boolean\.prototype\.valueOf; x=new String\( 'hello' \); x\.valueOf=valof;x\.valueOf\(\) = hello, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Boolean/15.6.4 : Boolean\.prototype == false = false, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Boolean/15.6.4 : Boolean\.prototype\.toString = Object\.prototype\.toString; Boolean\.prototype\.toString\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Boolean/15.6.4.2-1 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean(null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean(void(0)), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean(x=null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean(null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean(void(0)), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean(x=null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
 tests/spidermonkey/ecma/Date/15.9.3.1-1 : new Date\( 1969\,11\,31\,15\,59\,59\,999\)\.getUTCMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
 tests/spidermonkey/ecma/Date/15.9.3.1-1 : new Date\( 1969\,11\,31\,15\,59\,59\,999\)\.getMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
 tests/spidermonkey/ecma/Date/15.9.3.1-1 : new Date\( 1969\,11\,31\,23\,59\,59\,999\)\.getUTCMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
@@ -59,312 +71,312 @@ tests/spidermonkey/ecma/Date/15.9.3.1-4 : new Date\(1899\,11\,31\,23\,59\,59\,99
 tests/spidermonkey/ecma/Date/15.9.3.1-4 : new Date\(1899\,11\,31\,23\,59\,59\,999\)\.getMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
 tests/spidermonkey/ecma/Date/15.9.3.1-4 : new Date\(1900\,0\,1\,0\,0\,0\,1\)\.getUTCMilliseconds\(\) = -999, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
 tests/spidermonkey/ecma/Date/15.9.3.1-4 : new Date\(1900\,0\,1\,0\,0\,0\,1\)\.getMilliseconds\(\) = -999, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getTime\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.valueOf\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getFullYear\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMonth\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getDate\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getDay\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getHours\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMinutes\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getSeconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMilliseconds\(\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-1 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT" \)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 00:00:00 GMT\+0000" \)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-2 : new Date\("Thu\, 01 Jan 1970 08:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 08:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-3 : new Date\("Sat\, 01 Jan 2000 00:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 00:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-4 : new Date\("Tue\, 29 Feb 2000 08:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT\+0000"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 00:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getTime\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.valueOf\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getUTCMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getFullYear\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMonth\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getDate\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getDay\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getHours\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
 tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 12:30 AM'\)\.toString\(\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
 tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 12:30 PM'\)\.toString\(\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
 tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 13:30 AM'\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
@@ -464,7 +476,7 @@ tests/spidermonkey/ecma/Expressions/11.13.2-3 : VAR1 = -1; VAR2= Infinity; VAR1 
 tests/spidermonkey/ecma/Expressions/11.13.2-3 : VAR1 = -1; VAR2= -Infinity; VAR1 %= VAR2;VAR1 = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.13.2-3 : VAR1 = 1; VAR2= -Infinity; VAR1 %= VAR2;VAR1 = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.2.1-1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.2.1-2 : NaN\.toString\(\), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Expressions/11.2.1-2 : NaN\.toString\(\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/354
 tests/spidermonkey/ecma/Expressions/11.2.1-3-n :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.2.1-4-n :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.2.2-1-n :, es4ri, expectedfail, auto-generated error
@@ -480,72 +492,69 @@ tests/spidermonkey/ecma/Expressions/11.2.2-9-n :, es4ri, expectedfail, auto-gene
 tests/spidermonkey/ecma/Expressions/11.2.3-2-n :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.2.3-3-n :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.2.3-4-n :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new Boolean\(true\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR='0Xf';MYVAR\+\+ = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=''; MYVAR\+\+ = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR='0xf';MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR='';MYVAR\+\+;MYVAR = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('string'\);MYVAR\+\+ = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('12345'\);MYVAR\+\+ = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('-12345'\);MYVAR\+\+ = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('0Xf'\);MYVAR\+\+ = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('077'\);MYVAR\+\+ = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('string'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('12345'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('-12345'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('0xf'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('077'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new Boolean\(true\);MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR='0Xf';MYVAR-- = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=''; MYVAR-- = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR='0xf';MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR='';MYVAR--;MYVAR = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('string'\);MYVAR-- = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('12345'\);MYVAR-- = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('-12345'\);MYVAR-- = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('0Xf'\);MYVAR-- = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('077'\);MYVAR-- = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('string'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('12345'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('-12345'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('0xf'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('077'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.3 : typeof\(null\) = null, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.3 : typeof\(Math\.PI\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new Boolean\(true\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR='0Xf';\+\+MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=''; \+\+MYVAR = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR='0xf';\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR='';\+\+MYVAR;MYVAR = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('string'\);\+\+MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('12345'\);\+\+MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('-12345'\);\+\+MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('0Xf'\);\+\+MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('077'\);\+\+MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('string'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('12345'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('-12345'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('0xf'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('077'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new Boolean\(true\);--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR='0Xf';--MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=''; --MYVAR = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR='0xf';--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR='';--MYVAR;MYVAR = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('string'\);--MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('12345'\);--MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('-12345'\);--MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('0Xf'\);--MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('077'\);--MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('string'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('12345'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('-12345'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('0xf'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('077'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.6 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.4.8 :, es4ri, expectedfail, Strange math is happening in the expected answers generation - works fine in js
-tests/spidermonkey/ecma/Expressions/11.4.9 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new Boolean\(true\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR='0Xf';MYVAR\+\+ = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=''; MYVAR\+\+ = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR='0xf';MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR='';MYVAR\+\+;MYVAR = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('string'\);MYVAR\+\+ = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('12345'\);MYVAR\+\+ = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('-12345'\);MYVAR\+\+ = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('0Xf'\);MYVAR\+\+ = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('077'\);MYVAR\+\+ = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('string'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('12345'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('-12345'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('0xf'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.1 : var MYVAR=new String\('077'\);MYVAR\+\+;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new Boolean\(true\);MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR='0Xf';MYVAR-- = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=''; MYVAR-- = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR='0xf';MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR='';MYVAR--;MYVAR = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('string'\);MYVAR-- = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('12345'\);MYVAR-- = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('-12345'\);MYVAR-- = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('0Xf'\);MYVAR-- = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('077'\);MYVAR-- = 0, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('string'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('12345'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('-12345'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('0xf'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.3.2 : var MYVAR=new String\('077'\);MYVAR--;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.1 :, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.3 : typeof\(null\) = null, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.3 : typeof\(Math\.PI\) = undefined, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new Boolean\(true\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR='0Xf';\+\+MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=''; \+\+MYVAR = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR='0xf';\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR='';\+\+MYVAR;MYVAR = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('string'\);\+\+MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('12345'\);\+\+MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('-12345'\);\+\+MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('0Xf'\);\+\+MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('077'\);\+\+MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('string'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('12345'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('-12345'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('0xf'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.4 : var MYVAR=new String\('077'\);\+\+MYVAR;MYVAR = 1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new Boolean\(true\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR='0Xf';--MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=''; --MYVAR = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR='0xf';--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR='';--MYVAR;MYVAR = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('string'\);--MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('12345'\);--MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('-12345'\);--MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('0Xf'\);--MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('077'\);--MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('string'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('12345'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('-12345'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('0xf'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('077'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
 tests/spidermonkey/ecma/Expressions/11.5.2 : Number\.POSITIVE_INFINITY / -0 = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.5.2 : Number\.NEGATIVE_INFINITY / -0 = -Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.5.2 : 1 / -0 = Infinity, es4ri, expectedfail, auto-generated error
@@ -594,17 +603,16 @@ tests/spidermonkey/ecma/Expressions/11.7.1 :, es4ri, expectedfail, auto-generate
 tests/spidermonkey/ecma/Expressions/11.7.2 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.7.3 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.9.1 : 255 == '0xff' = false, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.9.1 : 0 ==, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Expressions/11.9.1 : 0 == ', es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.9.2 : 255 !=, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.9.2 : 0 !=, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Expressions/11.9.2 : 0 != ', es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.9.3 : 255 ==, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Expressions/11.9.3 : 0 ==, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Expressions/11.9.3 : 0 == ', es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.10-1: 1 & 8388607, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.10-1 : 1 & 16777215, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.10-1 : 1 & 268435455, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.10-1 : 1 & 1073741823, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc1\.arguments = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : var MYPROPS = ''; for \( var p in myfunc1\.prototype \) \{ MYPROPS \+= p; \}; MYPROPS = constructor, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc2\.arguments = undefined, es4ri, expectedfail, auto-generated error
@@ -727,7 +735,7 @@ tests/spidermonkey/ecma/Math/15.8.1 : Math\.LOG2E = undefined, es4ri, expectedfa
 tests/spidermonkey/ecma/Math/15.8.1 : typeof Math\.LOG2E = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.1 : Math\.LOG10E = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.1 : typeof Math\.LOG10E = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.1 : Math\.PI = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.1 : Math\.PI = undefined, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
 tests/spidermonkey/ecma/Math/15.8.1 : typeof Math\.PI = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.1 : Math\.SQRT1_2 = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.1 : typeof Math\.SQRT1_2 = undefined, es4ri, expectedfail, auto-generated error
@@ -735,29 +743,19 @@ tests/spidermonkey/ecma/Math/15.8.1 : Math\.SQRT2 = undefined, es4ri, expectedfa
 tests/spidermonkey/ecma/Math/15.8.1 : typeof Math\.SQRT2 = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.1 : var MATHPROPS='';for\( p in Math \)\{ MATHPROPS \+=p; \};MATHPROPS = absacosasinatanatan2ceilcosexpfloorlogmaxminpowrandomroundsinsqrttan, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(true\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\('1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\('Infinity'\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(true\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\(false\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\('0'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\('1'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.10 : Math\.log\('Infinity'\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\.length = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\(void 0\, 1\), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\(void 0\, void 0\), es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\(-1\, null\) = null, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\(true\, false\), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\('-99'\,'99'\), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\('a string'\, 0\), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.11 : Math\.max\('a string'\,Infinity\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.11 : Infinity/Math\.max\(-0\,-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.12 : Math\.min\.length = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.12 : Math\.min\(void 0\, 1\), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.12 : Math\.min\(void 0\, void 0\), es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.12 : Math\.min\(null\, 1\) = null, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.12 : Math\.min\(true\, false\), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.12 : Math\.min\('-99'\,'99'\), es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.12 : Infinity/Math\.min\(0\,-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.12 : Infinity/Math\.min\(-0\,-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.13 : Math\.pow\(\) = 1, es4ri, expectedfail, auto-generated error
@@ -769,74 +767,74 @@ tests/spidermonkey/ecma/Math/15.8.2.13 : Infinity/Math\.pow\(-0\, 1\) = Infinity
 tests/spidermonkey/ecma/Math/15.8.2.13 : Infinity/Math\.pow\(-0\, 3\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.13 : Math\.pow\(-0\, -1\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.13 : Math\.pow\(-0\, -10001\) = Infinity, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(true\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\('\.99999'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\('12345e-2'\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(true\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(false\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\('\.99999'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\('12345e-2'\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.15 : Infinity/Math\.round\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.15 : Math\.round\(0\.5\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.15 : Infinity/Math\.round\(-0\.49\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.15 : Infinity/Math\.round\(-0\.5\) = Infinity, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\('2\.356194490192'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\('225'\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\(false\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.16 : Math\.sin\('2\.356194490192'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(false\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\('225'\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.17 : Infinity/Math\.sqrt\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(2\) = 1\.4142135623731, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.17 : Math\.sqrt\(0\.5\) = 0\.707106781186548, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(false\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(false\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(Math\.PI/4\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(3\*Math\.PI/4\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(Math\.PI\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(Math\.PI\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(5\*Math\.PI/4\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(7\*Math\.PI/4\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Infinity/Math\.tan\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(3\*Math\.PI/2\) >= 5443000000000000 = false, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.18 : Math\.tan\(Math\.PI/2\) >= 5443000000000000 = false, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(a string\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(-1\) = 3\.14159265358979, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(0\) = 1\.5707963267949, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(-0\) = 1\.5707963267949, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(Math\.SQRT1_2\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(a string\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('0'\) , es4ri, expectedfail,http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('1'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(-1\) = 3\.14159265358979, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(0\) = 1\.5707963267949, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(-0\) = 1\.5707963267949, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(Math\.SQRT1_2\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(0\.9999619230642\) = 0\.00872664625667415, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('string'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('-1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(Math\.SQRT1_2\+''\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(-Math\.SQRT1_2\+''\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Infinity/Math\.asin\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(void 0\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(null\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('string'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('0'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('1'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\('-1'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(Math\.SQRT1_2\+''\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(-Math\.SQRT1_2\+''\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.3 : Infinity/Math\.asin\(-0\) = Infinity, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
 tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(1\) = 1\.5707963267949, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(-1\) = -1\.5707963267949, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(Math\.SQRT1_2\)\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('a string'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('-1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('Infinity\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('-Infinity\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.3 : Math\.asin\(Math\.SQRT1_2\)\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('a string'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('0'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('1'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('-1'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('Infinity\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\('-Infinity\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.4 : Infinity/Math\.atan\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(Infinity\) = 1\.5707963267949, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(-Infinity\) = -1\.5707963267949, es4ri, expectedfail, auto-generated error
@@ -869,47 +867,47 @@ tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(Infinity\, -Infinity\) = 2\
 tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(-Infinity\, Infinity\) = -0\.785398163397448, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(-Infinity\, -Infinity\) = -2\.35619449019234, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(-1\, 1\) = -0\.785398163397448, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\('-0'\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\('0'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.6 : Math\.ceil\('-0'\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.6 : Infinity/Math\.ceil\('0'\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.6 : Infinity/Math\.ceil\('-0'\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.6 : Infinity/Math\.ceil\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.6 : Infinity/Math\.ceil\(-Number\.MIN_VALUE\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.6 : Infinity/Math\.ceil\(-0\.9\) = Infinity, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\('Infinity'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\('3\.14159265359'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI\*2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI/2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(3\*Math\.PI/2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI\*2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-Math\.PI/2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-Math\.PI\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-3\*Math\.PI/2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-Math\.PI\*2\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(void 0\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(false\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(null\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\('0'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\('Infinity'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\('3\.14159265359'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI\*2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI/2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(3\*Math\.PI/2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(Math\.PI\*2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-Math\.PI/2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-Math\.PI\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-3\*Math\.PI/2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.7 : Math\.cos\(-Math\.PI\*2\) = NaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(void 0\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(1\) = 2\.71828182845905, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\('0'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(void 0\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(null\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(true\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(false\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('1\.1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('-1\.1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('0\.1'\) = undefined, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('-0\.1'\) = undefined, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(false\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\('0'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(void 0\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(null\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(true\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(false\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('1\.1'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('-1\.1'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('0\.1'\) , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\('-0\.1'\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.9 : Infinity/Math\.floor\(-0\) = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Number/15.7.1 : Number\(''\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Number/15.7.1 : Number\(Infinity\) = NaN, es4ri, expectedfail, auto-generated error
@@ -938,8 +936,6 @@ tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\(Number\.NEGATIVE_INFINI
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\(Number\.NaN\)\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\('a string'\)\.valueOf\(\) = a string, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\(''\)\.valueOf\(\) =, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/ObjectObjects/15.2.2.1 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\( '\\'\\"\\' \)\.valueOf, es4ri, expectedfail, should pass - works independently
 tests/spidermonkey/ecma/ObjectObjects/15.2.2.1 : \(new Object\('string'\)\.valueOf\(\) = string, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.2.1 : \(new Object\(''\)\.valueOf\(\) =, es4ri, expectedfail, auto-generated error
@@ -955,8 +951,6 @@ tests/spidermonkey/ecma/ObjectObjects/15.2.2.1 : myfunction = new Function\(\); 
 tests/spidermonkey/ecma/ObjectObjects/15.2.4.2 : myvar = this;  myvar\.toString = Object\.prototype\.toString; myvar\.toString\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.4.2 : var MYVAR = new Object\( this \); MYVAR\.toString\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Statements/12.10-1 : with\( new Number\(\) \) \{ this \+'' \} = 0, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Statements/12.5-1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Statements/12.5-2 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Statements/12.6.2-9-n :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Statements/12.6.3-1 : var x; Number\.prototype\.foo = 34; for \( j in 7 \) x = j; x = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Statements/12.6.3-2 : Boolean\.prototype\.foo = 34; for \( j in Boolean \) Boolean\[j\] = undefined, es4ri, expectedfail, auto-generated error
@@ -1139,8 +1133,10 @@ tests/spidermonkey/ecma/String/15.5.4 : String\.prototype \+'' = \[object Object
 tests/spidermonkey/ecma/String/15.5.4 : String\.prototype\.length = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/String/15.5.4 : String\.prototype has no enumerable properties = constructor, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean\(Math\.PI\) = false, es4ri, expectedfail, auto-generated error
-#This is going to give unexpected passes
-tests/spidermonkey/ecma/TypeConversion/9.3-1 : , es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(var x), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(void 0), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(null), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(Math.PI), es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number\(new Number\(Number\.NaN\)\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number\(new Number\(true\)\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number\(new Boolean\(true\)\) = 0, es4ri, expectedfail, auto-generated error
@@ -1234,8 +1230,6 @@ tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(Math\.PI\); td\.va
 tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(-Math\.PI\);td\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(new Number\(Math\.PI\)\); td\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(new Number\(Math\.PI\)\); td\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.5-2 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.6 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.7 : String\.fromCharCode\(Math\.pow, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.7 : String\.fromCharCode\(65536\)\.charCodeAt\(0\) = 65536, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.7 : String\.fromCharCode\(65537\)\.charCodeAt\(0\) = 65537, es4ri, expectedfail, auto-generated error
@@ -1274,7 +1268,6 @@ tests/spidermonkey/ecma/TypeConversion/9.9-1 : Object\(Number\.NEGATIVE_INFINITY
 tests/spidermonkey/ecma/TypeConversion/9.9-1 : Object\(Number\.NaN\)\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.9-1 : Object\('a string'\)\.valueOf\(\) = a string, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.9-1 : Object\(''\)\.valueOf\(\) =, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.9-1 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.9-1 : Object\( '\\'\\"\\' \)\.valueOf\(\) = '"\\, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.9-1 : \(Object\( new MyObject\(true\) \)\)\.toString\(\) = function \(\) \{ \}, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Exceptions/boolean-001 : Assigning Boolean\.prototype\.toString to a String object \(threw No exception thrown\) = Failed, es4ri, expectedfail, auto-generated error
@@ -1302,11 +1295,9 @@ tests/spidermonkey/ecma_2/LexicalConventions/keywords-001 : using the expression
 tests/spidermonkey/ecma_2/RegExp/hex-001 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/RegExp/octal-003 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/RegExp/properties-001 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma_2/RegExp/properties-002 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/RegExp/regexp-enumerate-001 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma_2/RegExp/regress-001 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/forin-002 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers.  input is 4, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers\.  input is true = 124, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers\.  input is false = 126, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers\.  input is 0, es4ri, expectedfail, auto-generated error
