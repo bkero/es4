@@ -35,11 +35,11 @@ tests/spidermonkey/ecma/Array/15.4.5.1-2 : a\.length = 38, es4ri, expectedfail, 
 tests/spidermonkey/ecma/Array/15.4.5.1-2 : a\["5000000000"\] = 5; a\.length = 38, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Array/15.4.5.1-2 : a\["-2"\] = -3; a\.length = 38, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Array/15.4.5.2-2 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean(null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean(void(0)), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean(x=null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.2 : (new Boolean(null)).valueOf(), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.2 : (new Boolean(void 0)).valueOf(), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean\(null\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean\(void\(0\)\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.1 : Boolean\(x=null\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.2 : \(new Boolean\(null\)\)\.valueOf, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.2 : \(new Boolean\(void 0\)\)\.valueOf, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
 tests/spidermonkey/ecma/Boolean/15.6.3.1 : Boolean\.prototype\.valueOf\(\) = \[object Object\], es4ri, expectedfail, http://bugs.ecmascript.org/ticket/316
 tests/spidermonkey/ecma/Boolean/15.6.4-1 : Boolean\.prototype\.toString = Object\.prototype\.toString; Boolean\.prototype\.toString\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Boolean/15.6.4-1 : Boolean\.prototype\.valueOf\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
@@ -49,12 +49,12 @@ tests/spidermonkey/ecma/Boolean/15.6.4.3-4-n : valof=Boolean\.prototype\.valueOf
 tests/spidermonkey/ecma/Boolean/15.6.4 : Boolean\.prototype == false = false, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Boolean/15.6.4 : Boolean\.prototype\.toString = Object\.prototype\.toString; Boolean\.prototype\.toString\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Boolean/15.6.4.2-1 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean(null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean(void(0)), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean(x=null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean(null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean(void(0)), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
-tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean(x=null), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean\(null\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean\(void\(0\)\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3-1 : new Boolean\(x=null\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean\(null\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean\(void\(0\)\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
+tests/spidermonkey/ecma/Boolean/15.6.4.3 : new Boolean\(x=null\), es4ri, expectedfail, http://bugs.ecmascript.org/ticket/351
 tests/spidermonkey/ecma/Date/15.9.3.1-1 : new Date\( 1969\,11\,31\,15\,59\,59\,999\)\.getUTCMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
 tests/spidermonkey/ecma/Date/15.9.3.1-1 : new Date\( 1969\,11\,31\,15\,59\,59\,999\)\.getMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
 tests/spidermonkey/ecma/Date/15.9.3.1-1 : new Date\( 1969\,11\,31\,23\,59\,59\,999\)\.getUTCMilliseconds\(\) = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/341
@@ -377,10 +377,7 @@ tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 
 tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMinutes\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
 tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getSeconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
 tests/spidermonkey/ecma/Date/15.9.3.8-5 : new Date\("Mon\, 01 Jan 1900 08:00:00 GMT"\)\.getMilliseconds\(\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 12:30 AM'\)\.toString\(\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 12:30 PM'\)\.toString\(\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 13:30 AM'\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
-tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date\('1/1/1999 13:30 PM'\) = undefined\, aN undefined NaN aN:aN:aN GMT\+aNaN, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
+tests/spidermonkey/ecma/Date/15.9.4.2-1 : new Date, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/340
 tests/spidermonkey/ecma/Date/15.9.5.10-2 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Date/15.9.5.11-2 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Date/15.9.5.12-2 :, es4ri, expectedfail, auto-generated error
@@ -555,6 +552,9 @@ tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('12345'\);--M
 tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('-12345'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
 tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('0xf'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
 tests/spidermonkey/ecma/Expressions/11.4.5 : var MYVAR=new String\('077'\);--MYVAR;MYVAR = -1, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/355
+tests/spidermonkey/ecma/Expressions/11.4.6 :, es4ri, expectedfail, need to investigate
+tests/spidermonkey/ecma/Expressions/11.4.8 :, es4ri, expectedfail, need to investigate
+tests/spidermonkey/ecma/Expressions/11.4.9 : !\(Math\.PI\),es4ri, expectedfail, Math.PI not defined
 tests/spidermonkey/ecma/Expressions/11.5.2 : Number\.POSITIVE_INFINITY / -0 = Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.5.2 : Number\.NEGATIVE_INFINITY / -0 = -Infinity, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.5.2 : 1 / -0 = Infinity, es4ri, expectedfail, auto-generated error
@@ -613,6 +613,10 @@ tests/spidermonkey/ecma/Expressions/11.10-1 : 1 & 16777215, es4ri, expectedfail,
 tests/spidermonkey/ecma/Expressions/11.10-1 : 1 & 268435455, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Expressions/11.10-1 : 1 & 1073741823, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-1 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc1\.prototype\.toString, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc2\.prototype\.toString, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc3\.prototype\.toString, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc3\.prototype\.valueOf, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc1\.arguments = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : var MYPROPS = ''; for \( var p in myfunc1\.prototype \) \{ MYPROPS \+= p; \}; MYPROPS = constructor, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/FunctionObjects/15.3.1.1-2 : myfunc2\.arguments = undefined, es4ri, expectedfail, auto-generated error
@@ -808,6 +812,7 @@ tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(null\) , es4ri, expectedfail
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(a string\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('0'\) , es4ri, expectedfail,http://bugs.ecmascript.org/ticket/352
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('1'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
+tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\('-1'\) , es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(-1\) = 3\.14159265358979, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(0\) = 1\.5707963267949, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
 tests/spidermonkey/ecma/Math/15.8.2.2 : Math\.acos\(-0\) = 1\.5707963267949, es4ri, expectedfail, http://bugs.ecmascript.org/ticket/352
@@ -897,6 +902,8 @@ tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(\) , es4ri, expectedfail, aut
 tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(null\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(void 0\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(1\) = 2\.71828182845905, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\('1'\) = 2\.71828182845905, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(true\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\(false\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.8 : Math\.exp\('0'\) , es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.9 : Math\.floor\(\) , es4ri, expectedfail, auto-generated error
@@ -1133,10 +1140,12 @@ tests/spidermonkey/ecma/String/15.5.4 : String\.prototype \+'' = \[object Object
 tests/spidermonkey/ecma/String/15.5.4 : String\.prototype\.length = undefined, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/String/15.5.4 : String\.prototype has no enumerable properties = constructor, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean\(Math\.PI\) = false, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(var x), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(void 0), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(null), es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean(Math.PI), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean\(var x\), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean\(void 0\), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean\(null\), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.2 : Boolean\(Math.PI\), es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number,es4ri, expectedfail, may cause false positives
+tests/spidermonkey/ecma/TypeConversion/9.3-1 : typeof,es4ri, expectedfail, may cause false positives 
 tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number\(new Number\(Number\.NaN\)\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number\(new Number\(true\)\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.3-1 : Number\(new Boolean\(true\)\) = 0, es4ri, expectedfail, auto-generated error
@@ -1230,6 +1239,8 @@ tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(Math\.PI\); td\.va
 tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(-Math\.PI\);td\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(new Number\(Math\.PI\)\); td\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.4-2 : td = new Date\(new Number\(Math\.PI\)\); td\.valueOf\(\) = NaN, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.5-2 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/TypeConversion/9.6 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.7 : String\.fromCharCode\(Math\.pow, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.7 : String\.fromCharCode\(65536\)\.charCodeAt\(0\) = 65536, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/TypeConversion/9.7 : String\.fromCharCode\(65537\)\.charCodeAt\(0\) = 65537, es4ri, expectedfail, auto-generated error
@@ -1295,9 +1306,10 @@ tests/spidermonkey/ecma_2/LexicalConventions/keywords-001 : using the expression
 tests/spidermonkey/ecma_2/RegExp/hex-001 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/RegExp/octal-003 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/RegExp/properties-001 :, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma_2/RegExp/properties-002 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/RegExp/regexp-enumerate-001 :, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/forin-002 :, es4ri, expectedfail, auto-generated error
-tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers.  input is 4, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers\.  input is true = 124, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers\.  input is false = 126, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma_2/Statements/switch-001 : switch with no breaks\, case expressions are numbers\.  input is 0, es4ri, expectedfail, auto-generated error
