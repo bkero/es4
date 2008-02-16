@@ -1980,10 +1980,10 @@ and evalExpr (regs:Mach.REGS)
         evalListExpr regs es
 
       | Ast.LexicalRef { ident, loc } =>
-        evalLexicalRef regs ident loc
+        evalLexicalRefExpr regs ident loc
 	
       | Ast.ObjectRef { base, ident, loc } =>
-        evalObjectRef regs base ident loc
+        evalObjectRefExpr regs base ident loc
 
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr regs (valOf head) body
@@ -2038,29 +2038,29 @@ and evalExpr (regs:Mach.REGS)
       | _ => LogErr.unimplError ["unhandled expression type"]    
 
 
-and evalLexicalRef (regs:Mach.REGS)
-                   (ident:Ast.IDENT_EXPR)
-                   (loc:Ast.LOC option) 
+and evalLexicalRefExpr (regs:Mach.REGS)
+                  (ident:Ast.IDENT_EXPR)
+                  (loc:Ast.LOC option) 
     : Mach.VAL =
     let
         val _ = LogErr.setLoc loc;
         val expr = Ast.LexicalRef { ident = ident, loc = loc }
-        val (obj, name) = evalRefExpr regs expr true
+        val (obj, name) = evalLexicalRef regs expr true
         val _ = LogErr.setLoc loc;
     in
         getValue regs obj name
     end
 
 
-and evalObjectRef (regs:Mach.REGS)
-                  (base:Ast.EXPR)
-                  (ident:Ast.IDENT_EXPR)
-                  (loc:Ast.LOC option)
+and evalObjectRefExpr (regs:Mach.REGS)
+                     (base:Ast.EXPR)
+                     (ident:Ast.IDENT_EXPR)
+                     (loc:Ast.LOC option)
     : Mach.VAL =
     let
         val _ = LogErr.setLoc loc
         val expr = Ast.ObjectRef { base = base, ident = ident, loc = loc }
-        val (obj, name) = evalRefExpr regs expr false
+        val (_, (obj, name)) = evalObjectRef regs expr false
         val _ = LogErr.setLoc loc
     in
         getValue regs obj name
@@ -2669,7 +2669,7 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          * wrapper object.
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
-        val (thisObjOpt, r) = evalRefExprFull regs func true
+        val (thisObjOpt, r) = evalRefExpr regs func true
         val thisObj = case thisObjOpt of 
                           NONE => (#this regs)
                         | SOME obj => obj
@@ -2750,7 +2750,7 @@ and evalSetExpr (regs:Mach.REGS)
     : Mach.VAL =
     let
         val _ = trace ["evalSetExpr"]
-        val (thisOpt, (obj, name)) = evalRefExprFull regs lhs false
+        val (thisOpt, (obj, name)) = evalRefExpr regs lhs false
         val v =
             let
                 fun modifyWith bop =
@@ -2830,7 +2830,7 @@ and evalCrement (regs:Mach.REGS)
                 (expr:Ast.EXPR)
     : Mach.VAL = 
     let
-        val (obj, name) = evalRefExpr regs expr false
+        val (_, (obj, name)) = evalRefExpr regs expr false
         val v = getValue regs obj name
         val v' = toNumeric regs v
         val i = numberOfSimilarType regs v' 1.0
@@ -2842,7 +2842,16 @@ and evalCrement (regs:Mach.REGS)
         else v'
     end        
         
-    
+and evalDeleteOp (regs: Mach.REGS)
+                 (expr: Ast.EXPR)
+    : Mach.VAL =
+    let
+        val (_, (Mach.Obj {props, ...}, name)) = evalRefExpr regs expr true
+    in
+        if (#dontDelete (#attrs (Mach.getProp props name)))
+        then newBoolean regs false
+        else (Mach.delProp props name; newBoolean regs true)		    
+    end
 
 and evalUnaryOp (regs:Mach.REGS)
                 (unop:Ast.UNOP)
@@ -2851,15 +2860,7 @@ and evalUnaryOp (regs:Mach.REGS)
     let
     in
         case unop of
-            Ast.Delete =>
-            let
-                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr true
-            in
-                if (#dontDelete (#attrs (Mach.getProp props name)))
-                then newBoolean regs false
-                else (Mach.delProp props name; newBoolean regs true)		    
-            end
-
+            Ast.Delete => evalDeleteOp regs expr
           | Ast.PreIncrement => evalCrement regs Ast.Plus true expr
           | Ast.PreDecrement => evalCrement regs Ast.Minus true expr
           | Ast.PostIncrement => evalCrement regs Ast.Plus false expr
@@ -3601,7 +3602,7 @@ and evalExprToNamespace (regs:Mach.REGS)
         fun evalRefNamespace _ =
             let
                 val _ = trace ["evaluating ref to namespace"];
-                val (obj, name) = evalRefExpr regs expr true
+                val (_, (obj, name)) = evalRefExpr regs expr true
                 val Mach.Obj { props, ... } = obj
             in
                 case (#state (Mach.getProp props name)) of
@@ -3660,21 +3661,11 @@ and evalIdentExpr (regs:Mach.REGS)
  * ES-262-3 11.2.1: Resolving member expressions to REFs.
  *)
 
-and evalRefExpr (regs:Mach.REGS)
-                (expr:Ast.EXPR)
-                (errIfNotFound:bool)
+
+and evalLexicalRef (regs:Mach.REGS)
+                   (expr:Ast.EXPR)
+                   (errIfNotFound:bool)
     : REF =
-    let
-        val (_, r) = evalRefExprFull regs expr errIfNotFound
-    in
-        r
-    end
-
-
-and evalRefExprFull (regs:Mach.REGS)
-                    (expr:Ast.EXPR)
-                    (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
     let
         fun defaultRef obj nomn =
             case nomn of
@@ -3695,10 +3686,24 @@ and evalRefExprFull (regs:Mach.REGS)
                                     then (throwRefErr regs ["unresolved lexical reference ", nomnToStr nomn]; dummyRef)
                                     else defaultRef (#global regs) nomn
             in
-                (NONE, r)
+                r
             end
 
-          | Ast.ObjectRef { base, ident, loc } =>
+          | _ => error regs ["need lexical reference expression"]
+    end
+
+and evalObjectRef (regs:Mach.REGS)
+                  (expr:Ast.EXPR)
+                  (errIfNotFound:bool)
+    : (Mach.OBJ option * REF) =
+    let
+        fun defaultRef obj nomn =
+            case nomn of
+                Multiname mname => (obj, Name.nons (#id mname))
+              | Name name => (obj, name)
+    in
+        case expr of
+            Ast.ObjectRef { base, ident, loc } =>
             let
                 val _ = LogErr.setLoc loc
                 val v = evalExpr regs base
@@ -3732,6 +3737,18 @@ and evalRefExprFull (regs:Mach.REGS)
                 (SOME ob, r)
             end
 
+          | _ => error regs ["need object reference expression"]
+    end
+
+and evalRefExpr (regs:Mach.REGS)
+                (expr:Ast.EXPR)
+                (errIfNotFound:bool)
+    : (Mach.OBJ option * REF) =
+    let
+    in
+        case expr of
+            Ast.LexicalRef _ => (NONE, evalLexicalRef regs expr errIfNotFound)
+          | Ast.ObjectRef _ => evalObjectRef regs expr errIfNotFound
           | _ => error regs ["need lexical or object-reference expression"]
     end
 

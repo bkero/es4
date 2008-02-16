@@ -1385,7 +1385,6 @@ and defFuncSig (env:ENV)
       s=[{f=[j],i=[],
         s=[i=10,j=20]}]}
 *)
-
              
 and defFunc (env:ENV) 
             (func:Ast.FUNC)
@@ -1443,7 +1442,6 @@ and defFunc (env:ENV)
     an assignment expression in the preamble of the defining block.
 
 *)
-
 
 and defFuncDefn (env:ENV) 
                 (f:Ast.FUNC_DEFN)
@@ -1507,7 +1505,6 @@ and defFuncDefn (env:ENV)
             [(newName, fixture)]
         end
 
-
 and defCtor (env:ENV) (ctor:Ast.CTOR)
     : Ast.CTOR =
     let
@@ -1516,7 +1513,6 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
     in
         Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc}
     end
-
 
 (*
     PRAGMA list
@@ -1634,7 +1630,6 @@ and defIdentExpr (env:ENV)
 
 
     end
-
 
 and defLiteral (env:ENV)
                (lit:Ast.LITERAL)
