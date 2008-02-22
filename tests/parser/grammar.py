@@ -33,89 +33,89 @@ full = ['full']
 ### Lexical Structure ###
 
 nn('ReservedIdentifier')
-ac('','break',True)
-ac('','case',True)
-ac('','cast',True)
-ac('','catch',True)
-ac('','class',True)
-ac('','continue',True)
-ac('','debugger',True)
-ac('','default',True)
-ac('','delete',True)
-ac('','do',True)
-ac('','else',True)
-ac('','enum',True)
-ac('','extends',True)
-ac('','false',True)
-ac('','finally',True)
-ac('','for',True)
-ac('','function',True)
-ac('','if',True)
-ac('','in',True)
-ac('','instanceof',True)
-ac('','internal',True)
-ac('','is',True)
-ac('','new',True)
-ac('','null',True)
-ac('','private',True)
-ac('','protected',True)
-ac('','public',True)
-ac('','return',True)
-ac('','super',True)
-ac('','switch',True)
-ac('','this',True)
-ac('','throw',True)
-ac('','true',True)
-ac('','try',True)
-ac('','typeof',True)
-ac('','var',True)
-ac('','void',True)
-ac('','while',True)
-ac('','with',True)
-ac('','wrap',True)
+ac(3,'','break',True)
+ac(3,'','case',True)
+ac(3,'','cast',True)
+ac(3,'','catch',True)
+ac(3,'','class',True)
+ac(3,'','continue',True)
+ac(3,'','debugger',True)
+ac(3,'','default',True)
+ac(3,'','delete',True)
+ac(3,'','do',True)
+ac(3,'','else',True)
+ac(3,'','enum',True)
+ac(3,'','extends',True)
+ac(3,'','false',True)
+ac(3,'','finally',True)
+ac(3,'','for',True)
+ac(3,'','function',True)
+ac(3,'','if',True)
+ac(3,'','in',True)
+ac(3,'','instanceof',True)
+ac(3,'','internal',True)
+ac(3,'','is',True)
+ac(3,'','new',True)
+ac(3,'','null',True)
+ac(3,'','private',True)
+ac(3,'','protected',True)
+ac(3,'','public',True)
+ac(3,'','return',True)
+ac(3,'','super',True)
+ac(3,'','switch',True)
+ac(3,'','this',True)
+ac(3,'','throw',True)
+ac(3,'','true',True)
+ac(3,'','try',True)
+ac(3,'','typeof',True)
+ac(3,'','var',True)
+ac(3,'','void',True)
+ac(3,'','while',True)
+ac(3,'','with',True)
+ac(3,'','wrap',True)
 
 nn('ContextuallyReservedIdentifier')
-ac('','const',True)
-ac('','decimal',True)
-ac('','double',True)
-ac('','dynamic',True)
-ac('','each',True)
-ac('','eval',True)
-ac('','final',True)
-ac('','generator',True)
-ac('','generic',True)
-ac('','get',True)
-ac('','has',True)
-ac('','implements',True)
-ac('','import',True)
-ac('','int',True)
-ac('','interface',True)
-ac('','intrinsic',True)
-ac('','let',True)
-ac('','namespace',True)
-ac('','native',True)
-ac('','Number',True)
-ac('','override',True)
-ac('','package',True)
-ac('','precision',True)
-ac('','prototype',True)
-ac('','rounding',True)
-ac('','set',True)
-ac('','standard',True)
-ac('','static',True)
-ac('','strict',True)
-ac('','to',True)
-ac('','type',True)
-ac('','uint',True)
-ac('','undefined',True)
-ac('','unit',True)
-ac('','use',True)
-ac('','xml',True)
-ac('','yield',True)
+ac(3,'','const',True)
+ac(3,'','decimal',True)
+ac(3,'','double',True)
+ac(3,'','dynamic',True)
+ac(3,'','each',True)
+ac(3,'','eval',True)
+ac(3,'','final',True)
+ac(3,'','generator',True)
+ac(3,'','generic',True)
+ac(3,'','get',True)
+ac(3,'','has',True)
+ac(3,'','implements',True)
+ac(3,'','import',True)
+ac(3,'','int',True)
+ac(3,'','interface',True)
+ac(3,'','intrinsic',True)
+ac(3,'','let',True)
+ac(3,'','namespace',True)
+ac(3,'','native',True)
+ac(3,'','Number',True)
+ac(3,'','override',True)
+ac(3,'','package',True)
+ac(3,'','precision',True)
+ac(3,'','prototype',True)
+ac(3,'','rounding',True)
+ac(3,'','set',True)
+ac(3,'','standard',True)
+ac(3,'','static',True)
+ac(3,'','strict',True)
+ac(3,'','to',True)
+ac(3,'','type',True)
+ac(3,'','uint',True)
+ac(3,'','undefined',True)
+ac(3,'','unit',True)
+ac(3,'','use',True)
+ac(3,'','xml',True)
+ac(3,'','yield',True)
 
 #TODO: Implement virtual ; behavior
 nn('VirtualSemicolon')
-ac('',';',True)
+ac(3,'',';',True)
 
 # Not fully fleshed out as per E262 7.6
 nn('LexIdentifier') #renamed from Identifier in E262
@@ -131,7 +131,7 @@ def RandomTextIdentifier():
     except IndexError:
         str = 'haha'
     return str     
-ac('RandomTextIdentifier',RandomTextIdentifier,True) 
+ac(3,'RandomTextIdentifier',RandomTextIdentifier,True) 
 
 #TODO: Do I need to use E262 7.8.4 here or is this adequate?
 nn('StringLiteral')
@@ -146,105 +146,105 @@ def RandomStringLiteral():
     else:
         str = "'"+str+"'"
     return str
-ac('RandomStringLiteral',RandomStringLiteral,True)
+ac(3,'RandomStringLiteral',RandomStringLiteral,True)
 
 
 # NuberLiteral
 nn('NumberLiteral')
-ac('DecimalLiteral')
-ac('HexIntegerLiteral')
+ac(3,'DecimalLiteral')
+ac(3,'HexIntegerLiteral')
 
 nn('DecimalLiteral')
-ac([('DecimalIntegerLiteral'),('DecimalDigits'),('ExponentPart')],'%s.%s%s')
-ac([('DecimalIntegerLiteral'),('DecimalDigits')],'%s.%s')
-ac([('DecimalIntegerLiteral'),('ExponentPart')],'%s%s')
-ac('DecimalIntegerLiteral')
-ac([('DecimalDigits'),('ExponentPart')],'.%s%s')
-ac(('DecimalDigits'),'.%s')
-ac([('DecimalIntegerLiteral'),('ExponentPart')],'%s%s')
-ac([('DecimalIntegerLiteral')])
+ac(3,[('DecimalIntegerLiteral'),('DecimalDigits'),('ExponentPart')],'%s.%s%s')
+ac(3,[('DecimalIntegerLiteral'),('DecimalDigits')],'%s.%s')
+ac(3,[('DecimalIntegerLiteral'),('ExponentPart')],'%s%s')
+ac(3,'DecimalIntegerLiteral')
+ac(3,[('DecimalDigits'),('ExponentPart')],'.%s%s')
+ac(3,('DecimalDigits'),'.%s')
+ac(3,[('DecimalIntegerLiteral'),('ExponentPart')],'%s%s')
+ac(3,[('DecimalIntegerLiteral')])
 
 nn('DecimalIntegerLiteral')
-ac('zero','0',True)
-ac([('NonZeroDigit'),('DecimalDigits')],'%s%s')
-ac('NonZeroDigit')
+ac(3,'zero','0',True)
+ac(3,[('NonZeroDigit'),('DecimalDigits')],'%s%s')
+ac(3,'NonZeroDigit')
 
 nn('DecimalDigits')
-ac('DecimalDigit')
-ac([('DecimalDigits'),('DecimalDigit')],'%s%s')
+ac(3,'DecimalDigit')
+ac(3,[('DecimalDigits'),('DecimalDigit')],'%s%s')
 
 nn('DecimalDigit')
-ac('',lambda : str(random.randint(0,9)),True)
+ac(3,'',lambda : str(random.randint(0,9)),True)
 
 nn('NonZeroDigit')
-ac('',lambda : str(random.randint(1,9)),True)
+ac(3,'',lambda : str(random.randint(1,9)),True)
 
 nn('ExponentPart')
-ac([('ExponentIndicator'),('SignedInteger')],'%s%s')
+ac(3,[('ExponentIndicator'),('SignedInteger')],'%s%s')
 
 nn('ExponentIndicator')
-ac('',lambda : random.choice('eE'), True)
+ac(3,'',lambda : random.choice('eE'), True)
 
 nn('SignedInteger')
-ac('DecimalDigits')
-ac('DecimalDigits', '+%s')
-ac('DecimalDigits', '-%s')
+ac(3,'DecimalDigits')
+ac(3,'DecimalDigits', '+%s')
+ac(3,'DecimalDigits', '-%s')
 
 nn('HexDigit')
-ac('',lambda : random.choice('0123456789abcdefABCDEF'),True)
+ac(3,'',lambda : random.choice('0123456789abcdefABCDEF'),True)
 
 nn('HexIntegerLiteral')
-ac('HexDigit','0x%s')
-ac('HexDigit','0X%s')
-ac([('HexIntegerLiteral'),('HexDigit')],'%s%s')
+ac(3,'HexDigit','0x%s')
+ac(3,'HexDigit','0X%s')
+ac(3,[('HexIntegerLiteral'),('HexDigit')],'%s%s')
 # End NumberLiteral
 
 #RegularExpression
 nn('RegularExpression')
-ac('RegularExpressionLiteral')
+ac(3,'RegularExpressionLiteral')
 
 #[see Ecma-262 section 7.8.5]
 nn('RegularExpressionLiteral')
-ac([('RegularExpressionBody'),('RegularExpressionFlags')],'/ %s / %s')
+ac(3,[('RegularExpressionBody'),('RegularExpressionFlags')],'/ %s / %s')
 
 nn('RegularExpressionBody')
-ac([('RegularExpressionFirstChar'),('RegularExpressionChars')])
+ac(3,[('RegularExpressionFirstChar'),('RegularExpressionChars')])
 
 nn('RegularExpressionChars')
-ac('Empty')
-ac([('RegularExpressionChars'),('RegularExpressionChar')])
+ac(3,'Empty')
+ac(3,[('RegularExpressionChars'),('RegularExpressionChar')])
 
 nn('RegularExpressionFirstChar')
 #NonTerminator but not * or \ or / 
-ac('', lambda : replaceChars(getNodeStr('NonTerminator'),('*\\/'),'$'),True)
-ac('BackslashSequence')
+ac(3,'', lambda : replaceChars(getNodeStr('NonTerminator'),('*\\/'),'$'),True)
+ac(3,'BackslashSequence')
 
 nn('RegularExpressionChar')
 #NonTerminator but not \ or / 
-ac('', lambda : replaceChars(getNodeStr('NonTerminator'),'\\/','$'),True)
-ac('BackslashSequence')
+ac(3,'', lambda : replaceChars(getNodeStr('NonTerminator'),'\\/','$'),True)
+ac(3,'BackslashSequence')
 
 nn('BackslashSequence')
-ac('NonTerminator','\ %s')
+ac(3,'NonTerminator','\ %s')
 
 nn('NonTerminator')
 #SourceCharacter but not LineTerminator
 #TODO: SourceCharacterr does not have any LineTerminator in it, so don't bother w/ replace
 # getting some strange infinite loop w/ replaceChars code below
-#ac('',lambda : replaceChars(getNodeStr('SourceCharacter'),getNodeStr('LineTerminator'),'a'),True)
-ac('SourceCharacter')
+#ac(3,'',lambda : replaceChars(getNodeStr('SourceCharacter'),getNodeStr('LineTerminator'),'a'),True)
+ac(3,'SourceCharacter')
 
 nn('RegularExpressionFlags')
-ac('Empty')
-ac([('RegularExpressionFlags'),('IdentifierPart')])
+ac(3,'Empty')
+ac(3,[('RegularExpressionFlags'),('IdentifierPart')])
 
 nn('IdentifierPart')
-ac('', lambda : random.choice('bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$'),True)
+ac(3,'', lambda : random.choice('bcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$'),True)
 
 #Add LineTerminator since that isn't specified otherwise
 nn('LineTerminator')
-ac('linefeed','\n',True)
-ac('carriageReturn','\r',True)
+ac(3,'linefeed','\n',True)
+ac(3,'carriageReturn','\r',True)
 #line separator
 #paragraph separator
 
@@ -254,97 +254,97 @@ ac('carriageReturn','\r',True)
 
 #have to implement SourceCharacter for XML
 nn('SourceCharacters')
-ac([('SourceCharacter'),('SourceCharacters')])
-ac('SourceCharacter')
+ac(0,[('SourceCharacter'),('SourceCharacters')])
+ac(0,'SourceCharacter')
 
 nn('SourceCharacter') #changed from spec - no unicode
-ac('',lambda : random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$_~!@#%^&*()-=+`/{}\\|;:<>,.?'),True)
+ac(0,'',lambda : random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$_~!@#%^&*()-=+`/{}\\|;:<>,.?'),True)
 
 nn('XMLMarkup') 
-ac('XMLComment')
-ac('XMLCDATA')
-ac('XMLPI')
+ac(0,'XMLComment')
+ac(0,'XMLCDATA')
+ac(0,'XMLPI')
 
 nn('XMLTagCharacters')
 # SourceCharacters but no embedded XMLTagPunctuator 
 #or left-curly { or quote ' or double-quote " or forward-slash / or XMLWhitespaceCharacter 
-ac('',lambda : replaceChars(getNodeStr('SourceCharacters'),'{/','*'),True) #replace w/ a char to avoid empty string
+ac(0,'',lambda : replaceChars(getNodeStr('SourceCharacters'),'{/','*'),True) #replace w/ a char to avoid empty string
 
 nn('XMLWhitespaceCharacter')
-ac('',' ',True) #<SP>
-ac('','\t',True) #<TAB>
-ac('','\r',True) #<CR>
-ac('','\n',True) #<LF>
+ac(0,'',' ',True) #<SP>
+ac(0,'','\t',True) #<TAB>
+ac(0,'','\r',True) #<CR>
+ac(0,'','\n',True) #<LF>
 
 nn('XMLWhitespace')
-ac('XMLWhitespaceCharacter')
-ac([('XMLWhitespace'),('XMLWhitespaceCharacter')])
+ac(0,'XMLWhitespaceCharacter')
+ac(0,[('XMLWhitespace'),('XMLWhitespaceCharacter')])
  
 nn('XMLText')
 # SourceCharacters but no embedded left-curly { or less-than < 
-ac('',lambda : replaceChars(getNodeStr('SourceCharacters'),'{<','*'),True)
+ac(0,'',lambda : replaceChars(getNodeStr('SourceCharacters'),'{<','*'),True)
  
 #TODO: Proper Unicode chars
 nn('UnicodeLetter')
-ac('',lambda : random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),True)
+ac(0,'',lambda : random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),True)
 
 nn('UnicodeDigit')
-ac('',lambda : random.choice('0123456789'),True)
+ac(0,'',lambda : random.choice('0123456789'),True)
 
 nn('XMLName')
-ac('XMLNameStart')
-ac([('XMLName'),('XMLNamePart')])
+ac(0,'XMLNameStart')
+ac(0,[('XMLName'),('XMLNamePart')])
  
 nn('XMLNameStart')
-ac('UnicodeLetter')
-ac('underscore','_',True)
-ac('colon',':',True)
+ac(0,'UnicodeLetter')
+ac(0,'underscore','_',True)
+ac(0,'colon',':',True)
  
 nn('XMLNamePart')
-ac('UnicodeLetter')
-ac('UnicodeDigit')
-ac('period','.',True) 
-ac('hyphen','-',True) 
-ac('underscore','_',True)
-ac('colon',':',True) 
+ac(0,'UnicodeLetter')
+ac(0,'UnicodeDigit')
+ac(0,'period','.',True) 
+ac(0,'hyphen','-',True) 
+ac(0,'underscore','_',True)
+ac(0,'colon',':',True) 
  
 nn('XMLComment')
-ac('emptyComments','<!--  -->',True)
-ac('XMLCommentCharacters','<!-- %s -->')
+ac(0,'emptyComments','<!--  -->',True)
+ac(0,'XMLCommentCharacters','<!-- %s -->')
  
 nn('XMLCommentCharacters')
 # SourceCharacters but no embedded sequence -- 
-ac('',lambda : getNodeStr('SourceCharacters').replace('--','$'),True)
+ac(0,'',lambda : getNodeStr('SourceCharacters').replace('--','$'),True)
  
 nn('XMLCDATA')
-ac('','<![CDATA[  ]]>',True)
-ac('XMLCDATACharacters','<![CDATA[ %s ]]>')
+ac(0,'','<![CDATA[  ]]>',True)
+ac(0,'XMLCDATACharacters','<![CDATA[ %s ]]>')
  
 nn('XMLCDATACharacters')
 #SourceCharacters but no embedded sequence ]]> 
-ac('',lambda : getNodeStr('SourceCharacters').replace(']]>','$'),True)
+ac(0,'',lambda : getNodeStr('SourceCharacters').replace(']]>','$'),True)
  
 nn('XMLPI')
-ac('','<?  ?>',True)
-ac('XMLPICharacters','<? %s ?>')
+ac(0,'','<?  ?>',True)
+ac(0,'XMLPICharacters','<? %s ?>')
  
 nn('XMLPICharacters')
 #SourceCharacters but no embedded sequence ?>
-ac('',lambda : getNodeStr('SourceCharacters').replace('?>','$'),True)
+ac(0,'',lambda : getNodeStr('SourceCharacters').replace('?>','$'),True)
  
 nn('XMLAttributeValue')
 #" XMLDoubleStringCharactersopt " 
-ac('XMLDoubleStringCharacters','" %s "')
+ac(0,'XMLDoubleStringCharacters','" %s "')
 #' XMLSingleStringCharactersopt ' 
-ac('XMLSingleStringCharacters',"' %s '")
+ac(0,'XMLSingleStringCharacters',"' %s '")
  
 nn('XMLDoubleStringCharacters')
 #SourceCharacters but no embedded double-quote " 
-ac('',lambda : getNodeStr('SourceCharacters').replace('"','$'),True)
+ac(0,'',lambda : getNodeStr('SourceCharacters').replace('"','$'),True)
  
 nn('XMLSingleStringCharacters')
 #SourceCharacters but no embedded single-quote ' 
-ac('',lambda : getNodeStr('SourceCharacters').replace("'",'$'),True)
+ac(0,'',lambda : getNodeStr('SourceCharacters').replace("'",'$'),True)
 
 ## End XML
 
@@ -1168,7 +1168,8 @@ ac(4,'','...',True)
 ac(4,'Parameter','... %s')
 
 nn('ResultType')
-ac(4,'Empty')
+#TODO - empty changed to 3 due to FunctionSig issue in grammar
+ac(3,'Empty')
 ac(4,'',':  void',True)
 ac(4,'TypeAnnotation',': %s')
 
