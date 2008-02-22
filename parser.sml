@@ -1006,7 +1006,7 @@ and literalField (ts:TOKENS)
                       name=nd1,
                       init=Ast.LiteralExpr
                                (Ast.LiteralFunction
-                                    (Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
+                                    (Ast.Func {name={kind=Ast.Set,ident=Ustring.empty},
                                                fsig=fsig,
                                                block=SOME block,
                                                native=false,

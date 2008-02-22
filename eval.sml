@@ -2541,6 +2541,44 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                       constructStandardWithTag regs objectClass objectClassClosure [] tag
                     | _ => error regs ["Error in constructing array literal"]
         val (Mach.Obj {props, ...}) = obj
+
+        fun getPropState (v:Mach.VAL) : Mach.PROP_STATE =
+            case v of
+                Mach.Object (Mach.Obj ob) =>
+                (case !(#magic ob) of
+                    SOME (Mach.Function closure) => 
+                        let 
+                            val Ast.Func { name, ... } = (#func closure)
+                            val kind = (#kind name)
+                        in
+                            if kind = Ast.Get
+                            then Mach.VirtualValProp { getter = SOME closure,
+                                                       setter = NONE }
+                            else if kind = Ast.Set
+                            then Mach.VirtualValProp { getter = NONE,
+                                                       setter = SOME closure }
+                            else Mach.ValProp v
+                        end
+                   | _ => Mach.ValProp v)
+              | _ => Mach.ValProp v
+
+        fun mergePropState (existingProp:Mach.PROP option) (newState:Mach.PROP_STATE) : Mach.PROP_STATE =
+            let
+                fun merge existing new =
+                    case new of
+                        SOME a => new
+                      | NONE => existing
+            in
+                case newState of
+                    Mach.VirtualValProp { getter = ng, setter = ns } => 
+                        (case existingProp of
+                             SOME { state = Mach.VirtualValProp { getter = eg, setter = es }, ... } =>
+                                 Mach.VirtualValProp { getter = merge eg ng,
+                                                       setter = merge es ns }
+                           | _ => newState)
+                  | _ => newState
+                end  
+
         fun processField {kind, name, init} =
             let
                 val const = case kind of
@@ -2552,13 +2590,15 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                           | Multiname n => Name.nons (#id n)
                 val v = evalExpr regs init
                 val ty = makeTy (searchFieldTypes (#id n) tyExprs)
+                val attrs = { dontDelete = false,
+                              dontEnum = false,
+                              readOnly = const,
+                              isFixed = false }
+                val state = getPropState v
+                val existingProp = Mach.findProp props n
                 val prop = { ty = ty,
-                             (* FIXME: handle virtuals *)
-                             state = Mach.ValProp v,
-                             attrs = { dontDelete = false,
-                                       dontEnum = false,
-                                       readOnly = const,
-                                       isFixed = false } }
+                             attrs = attrs,
+                             state = mergePropState existingProp state }
             in
                 Mach.addProp props n prop
             end
