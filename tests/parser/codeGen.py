@@ -21,7 +21,7 @@ lastNodeAdded = None
 lastNodeListIndex = 0
 recursionDepth = 0
 SCOPES = ['global','class','interface','local']
-version = 3
+version = 4
 
 def main(argv=None):
     global debug
