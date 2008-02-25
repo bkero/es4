@@ -895,16 +895,30 @@ and objectLiteral (ts0: TOKENS, alpha: ALPHA)
         (LeftBrace, _) :: _ =>
             let
                 val (ts1,nd1) = fieldList (tl ts0)
-            in case (ts1, alpha) of
-                ((RightBrace, _) :: (Colon, _) :: _, AllowColon) =>
-                    let
-                        val (ts2,nd2) = typeExpression (tl (tl ts1))
-                    in
-                        (ts2,Ast.LiteralObject {expr=nd1,ty=SOME nd2})
-                    end
-              | ((RightBrace, _) :: _, _) =>
-                    (tl ts1,Ast.LiteralObject {expr=nd1,ty=NONE})
-              | _ => error ["unknown token in objectLiteral ",tokenname (hd ts1)]
+                fun isVirtualField (f:Ast.FIELD) =
+                    case f of
+                        {init=Ast.LiteralExpr (Ast.LiteralFunction (Ast.Func {name={kind=Ast.Get, ...}, ...})), ...} => true
+                      | {init=Ast.LiteralExpr (Ast.LiteralFunction (Ast.Func {name={kind=Ast.Set, ...}, ...})), ...} => true
+                      | _ => false
+                (* Checks for properties that have been defined both normally and vitually. Could be more efficient... *)
+                fun validObjectFields (f::fs) =
+                    if isVirtualField f
+                    then not (List.exists (fn x => ((#name x) = (#name f) andalso (not (isVirtualField x)))) fs)
+                    else not (List.exists (fn x => ((#name x) = (#name f) andalso (isVirtualField x))) fs)
+                  | validObjectFields _ = true
+            in 
+                if validObjectFields nd1
+                then case (ts1, alpha) of
+                         ((RightBrace, _) :: (Colon, _) :: _, AllowColon) =>
+                             let
+                                 val (ts2,nd2) = typeExpression (tl (tl ts1))
+                             in
+                                 (ts2,Ast.LiteralObject {expr=nd1,ty=SOME nd2})
+                             end
+                       | ((RightBrace, _) :: _, _) =>
+                             (tl ts1,Ast.LiteralObject {expr=nd1,ty=NONE})
+                       | _ => error ["unknown token in objectLiteral ",tokenname (hd ts1)]
+                else error ["in object literal, property is defined both as virtual (getter/setter) and as normal value"]
             end
       | _ => error ["unknown token in objectLiteral ",tokenname (hd ts0)]
     end

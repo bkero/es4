@@ -1114,7 +1114,8 @@ and setValueOrVirtual (regs:Mach.REGS)
                     if doVirtual
                     then 
                         case setter of 
-                            NONE => () (* ignore it *)
+                            NONE => throwTypeErr regs ["attempting to write to a virtual property without a setter: ",
+                                                       LogErr.name name]
                           | SOME s => (invokeFuncClosure (withThis regs obj) s [v]; ())
                     else 
                         write ()
