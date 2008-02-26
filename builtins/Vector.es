@@ -66,9 +66,7 @@ package
         function set length(len: AnyNumber) {
             if (fixed)
                 throw new RangeError();
-            if (!helper::isIntegral(len) ||
-                len < 0 ||
-                len > 0xFFFFFFFF)
+            if (!isIntegral(len) || len < 0 || len > 0xFFFFFFFF) 
                 throw new RangeError();
             informative::setLength(uint(len));
         }
@@ -76,7 +74,7 @@ package
         meta function get(name): T {
             let idx : double = double(name);
             if (!intrinsic::isNaN(idx)) {
-                if (!helper::isIntegral(idx) || idx < 0 || idx >= length)
+                if (!isIntegral(idx) || idx < 0 || idx >= length)
                     throw new RangeError();
                 return informative::getValue(uint(idx));
             }
@@ -88,7 +86,7 @@ package
             let idx : double = double(name);
             if (!intrinsic::isNaN(idx)) {
                 let value: T = v;  // Note, effectful
-                if (!helper::isIntegral(idx) || 
+                if (!isIntegral(idx) || 
                     idx < 0 || 
                     fixed && idx >= length || 
                     !fixed && idx > length)

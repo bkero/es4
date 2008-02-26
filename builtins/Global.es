@@ -55,6 +55,7 @@ package
     intrinsic const Infinity = 1.0/0.0;
     intrinsic const undefined = void(0);
 
+    // FIXME: intrinsic or __ES4__??
     __ES4__ const global = this;
 
     namespace iterator;
@@ -95,7 +96,7 @@ package
      * to 8, but instead to default to radix 10 in all cases
      * except when the string starts with '0x' or '0X'.
      */
-    intrinsic function parseInt(s: string, r: int=0): AnyNumber {
+    intrinsic const function parseInt(s: string, r: int=0): AnyNumber {
         let i;
 
         for ( i=0 ; i < s.length && Unicode.isTrimmableSpace(s[i]) ; i++ )
@@ -171,7 +172,7 @@ package
     intrinsic native function parseFloat(s: string);
 
     /*  No reason most of this has to be native.
-    intrinsic function parseFloat(s: string) {
+    intrinsic const function parseFloat(s: string) {
         FIXME: Needs implementation
     }
     */
@@ -181,7 +182,7 @@ package
 
 
     // 15.1.2.4 isNaN (v)
-    intrinsic function isNaN(n: AnyNumber): boolean
+    intrinsic const function isNaN(n: AnyNumber): boolean
         (!(n === n));
 
     function isNaN(number)
@@ -193,14 +194,14 @@ package
     // reduced to an expression; however, the function works if
     // typed at the repl even in its simplified form, so something
     // is definitely very wrong.
-    intrinsic function isFinite(n: AnyNumber): boolean {
+    intrinsic const function isFinite(n: AnyNumber): boolean {
         return !isNaN(n) && n != -Infinity && n != Infinity;
     }
 
     function isFinite(x)
         intrinsic::isFinite(Number(x));
 
-    helper function isIntegral(v:*):boolean {
+    intrinsic const function isIntegral(v:AnyNumber):boolean {
         switch type (v) {
         case (v:int) { return true; }
         case (v:uint) { return true; }
@@ -217,14 +218,59 @@ package
                     Math.floor(v) == v);
         }
         case (v:Number) {
-            return helper::isIntegral(double(v));
-        }
-        case (v:*) {
-            return false;
+            return isIntegral(double(v));
         }
         }
     }
 
+    function isIntegral(v)
+        intrinsic::isIntegral(Number(v));
+
+    // Returns x with the sign of y
+    intrinsic const function copysign(x:AnyNumber, y:AnyNumber): AnyNumber {
+        if (isNaN(x)) 
+            return x;
+
+        let s = sign(y);
+        if (x < 0) {
+            if (s < 0)
+                return x;
+            else 
+                return -x;
+        }
+        else if (x > 0) {
+            if (s < 0)
+                return -x;
+            else
+                return x;
+        }
+        else {
+            if (s < 0)
+                return -0.0;
+            else
+                return +0.0;
+        }
+    }
+
+    function copysign(x,y)
+        intrinsic::copysign(Number(x), Number(y));
+
+    // Returns -1 for negative, 1 for positive, 0 for nan
+    intrinsic const function sign(x:AnyNumber) {
+        if (isNaN(x))
+            return 0;
+        if (x < 0)
+            return -1;
+        if (x > 0)
+            return 1;
+        if (1/x < 0)
+            return -1;
+        return 1;
+    }
+
+    function sign(x)
+        intrinsic::sign(Number(x));
+        
     helper function isIndex(k): boolean
         (k is int && k >= 0) ||
         (k is uint && k <= 0xFFFFFFFE) ||
@@ -237,8 +283,7 @@ package
             return 0;
         if (value === 0 || !isFinite(value))
             return value;
-        var sign = value < 0 ? -1 : 1;
-        return sign * Math.floor(Math.abs(value));
+        return sign(value) * Math.floor(Math.abs(value));
     }
 
     // Return a hash code for the string.
@@ -267,7 +312,7 @@ package
 
     informative native function objectHash(x:Object!): uint;
 
-    __ES4__ const function hashcode(o): uint {
+    intrinsic const function hashcode(o): uint {
         switch type (o) {
         case (x: null)      { return 0u }
         case (x: undefined) { return 0u }
@@ -430,7 +475,7 @@ package
 
 
     /* E262-3 15.1.3.1 decodeURI (encodedURI) */
-    intrinsic function decodeURI(encodedURI: string)
+    intrinsic const function decodeURI(encodedURI: string)
         helper::decode(encodedURI, helper::uriReserved + "#");
 
     function decodeURI(encodedURI)
@@ -438,7 +483,7 @@ package
 
 
     /* E262-3 15.1.3.2 decodeURIComponent (encodedURIComponent) */
-    intrinsic function decodeURIComponent(encodedURIComponent)
+    intrinsic const function decodeURIComponent(encodedURIComponent)
         helper::decode(encodedURIComponent, "");
 
     function decodeURIComponent(encodedURIComponent)
@@ -446,7 +491,7 @@ package
 
 
     /* E262-3 15.1.3.3 encodeURI (uri) */
-    intrinsic function encodeURI(uri: string): string
+    intrinsic const function encodeURI(uri: string): string
         helper::encode(uri, helper::uriReserved + helper::uriUnescaped + "#")
 
     function encodeURI(uri)
@@ -454,7 +499,7 @@ package
 
 
     /* E262-3 15.1.3.4 encodeURIComponent (uriComponent) */
-    intrinsic function encodeURIComponent(uriComponent: string): string
+    intrinsic const function encodeURIComponent(uriComponent: string): string
         helper::encode(uri, helper::uriReserved);
 
     function encodeURIComponent(uriComponent)

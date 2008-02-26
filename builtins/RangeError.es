@@ -73,7 +73,7 @@ package
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Numeric value out of range";
+        prototype var message = "Number value out of range";
     }
 
 }

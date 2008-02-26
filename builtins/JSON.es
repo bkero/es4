@@ -38,40 +38,63 @@ package JSON
     use namespace intrinsic;
     use namespace __ES4__;
 
-    public function formatObject(object, pretty=false): string {
+    // JSON formatting with cycle checking.
+
+    public function formatObject(object:Object, pretty=false): string {
         pp = pretty;
         return fmtObject(object);
     }
 
-    public function formatArray(array, pretty=false): string {
+    public function formatArray(array:Array, pretty=false): string {
         pp = pretty;
         return fmtArray(array);
     }
 
-    public function formatDate(date, pretty=false): string
+    public function formatDate(date:Date, pretty=false): string
         '"' + date.intrinsic::toISOString() + '"';
 
-    public function formatString(s, pretty=false): string {
-        // FIXME
-        return "\"" + s + "\"";
+    public function formatString(s:string, pretty=false): string {
+        // It's implementation-dependent whether eg BACKSLASH is
+        // serialized as "\\" or "\u005C".  That implementation
+        // dependency is not expressed here, but it could be expressed
+        // by factoring out formatting for BACKSLASH QUOTATION
+        // BACKSPACE FORMFEED NEWLINE RETURN TAB as an informative
+        // function.
+        //
+        // In the same vein it's actually implementation-dependent
+        // whether the letter "A" is serialized as "A" or as "\u0040",
+        // so in principle we should factor that too?
+        //
+        // FIXME: Must deal with unicode outside BMP by splitting
+        // as a surrogate pair.
+        let s = '"';
+        for ( let i=0, limit=s.length ; i < limit ; i++ ) {
+            let c = s.charCodeAt(i);
+            if (c < 0x20 || c == 0x22 || c == 0x5C) {
+                let t = c.toString(16);
+                if (t.length == 1)
+                    t = '0' + t;
+                s += "\\u00" + t;
+            }
+            else
+                s += c.charAt(i);
+        }
+        s += '"';
+        return s;
     }
 
-    public function formatNumber(n, pretty=false): string {
+    public function formatNumber(n:AnyNumber, pretty=false): string {
         if (isNaN(n) || !isFinite(n))
             return "null";
         return string(n);
     }
 
-    public function formatBoolean(bool, pretty=false): string
+    public function formatBoolean(bool:boolean, pretty=false): string
         bool ? "true" : "false";
 
-    public function parse(s: string, filter) {
-        // FIXME
-        return {};
-    }
 
     var pp = false;    // true for pretty-printing
-    var level = 0;    // indentation level
+    var level = 0;     // indentation level
     var active = new ObjectMap;
 
     // The only way to ask if something is of a specific type (and not
@@ -178,5 +201,150 @@ package JSON
                 throw new Error("Internal error: object not in active list!");
             active.slice(probe, 1);
         }
+    }
+
+
+    // JSON parsing with full error checking.
+
+    // FIXME: implement filter
+    public function parse(s: string, filter=undefined) {
+        let len = s.length;
+        let i = 0;
+
+        let white = " \t\n\r";
+        let punct = "{},:[]";
+
+        function ws() {
+            while (i < len && white.indexOf(s[i]) != -1)
+                i++;
+        }
+
+        function stop(c)
+            white.indexOf(s[i]) != -1 || punct.indexOf(s[i]) != -1;
+
+        function eat(c) {
+            ws();
+            if (i < len && s[i] == c) {
+                ++i;
+                ws();
+                return true;
+            }
+            return false;
+        }
+
+        function match(c) {
+            if (!eat(c))
+                throw new EncodingError();
+        }
+
+        function parseObject() {
+            // Initial { has been consumed
+            let obj = {};
+            if (eat('}'))
+                return obj;
+            while (true) {
+                let x = parseValue();
+                if (!(x is string))
+                    throw new EncodingError();
+                match(':');
+                let v = parseValue();
+                obj[x] = v;
+                if (eat('}'))
+                    return obj;
+                match(',');
+            }
+        }
+
+        function parseArray() {
+            // Initial [ has been consumed
+            let array = [];
+            let idx = 0;
+            if (eat(']'))
+                return array;
+            while (true) {
+                array[idx++] = parseValue();
+                if (eat(']'))
+                    return array;
+                match(',');
+            }
+        }
+
+        function parseString() {
+            // Initial quote has been consumed
+            let str = "";
+            while (true) {
+                if (i == len)
+                    throw new EncodingError();
+                if (i == '"')
+                    return str;
+                if (s[i] == '\\') {
+                    i++;
+                    if (i == len)
+                        throw new EncodingError();
+                    switch (s[i]) {
+                    case '\\': str += '\\'; break;
+                    case '"':  str += '"'; break;
+                    case '/':  str += '/'; break;
+                    case 'b':  str += '\x08'; break;
+                    case 'f':  str += '\x0C'; break;
+                    case 'n':  str += '\x0A'; break;
+                    case 'r':  str += '\x0D'; break;
+                    case 't':  str += '\x09'; break;
+                    case 'u': {
+                        ++i;
+                        if (len - i < 4)
+                            throw new EncodingError();
+                        let v = s.substring(i,i+4);
+                        i += 4;
+                        if (/[A-Fa-f0-9]{4}/.exec(v) == null)
+                            throw new EncodingError();
+                        let chr = parseInt(v, 16);
+                        // If chr is the first half of a surrogate pair, then look
+                        // for the second one.  If found, and on a 21-bit Unicode system,
+                        // then join them as one character; otherwise place chr and perhaps
+                        // the next one individually into the string.
+                        // FIXME.
+                        str += chr;
+                    }
+                    default:
+                        throw new EncodingError();
+                    }
+                }
+                else
+                    str += s.charAt(i++);
+            }
+        }
+
+        function parseValue() {
+            if (eat('{'))
+                return parseObject();
+            if (eat('['))
+                return parseArray();
+            if (i < len && s[i] == '"') {
+                i++;
+                return parseString();
+            }
+
+            let start = i-1;
+            while (i < len && !stop(s[i]))
+                i++;
+            let token = s.substring(start, i);
+            if (token === "true")
+                return true;
+            if (token === "false")
+                return false;
+            if (token === "null")
+                return null;
+            if (/^-?[0-9]+(?:\.[0-9]+)(?:[Ee][+-]?[0-9]+)$/.exec(token))
+                return parseFloat(token);
+            throw new EncodingError();
+        }
+
+        if (eat('{'))
+            return parseObject();
+        if (eat('['))
+            return parseArray();
+
+        throw new EncodingError();
     }
 }

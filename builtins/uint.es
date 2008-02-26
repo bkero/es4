@@ -67,11 +67,7 @@ package
         override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (typeof radix === "number" && 
-                radix >= 2 && 
-                radix <= 36 && 
-                helper::isIntegral(radix)) 
-            {
+            if (radix is AnyNumber && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 radix = int(radix);
                 let v = this;
                 var q = "";

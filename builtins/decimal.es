@@ -81,8 +81,7 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (radix is AnyNumber && 
-                radix >= 2 && radix <= 36 && helper::isIntegral(radix))
+            if (radix is AnyNumber && radix >= 2 && radix <= 36 && isIntegral(radix))
                 return informative::toString(int(radix));
             throw new TypeError("Invalid radix argument to decimal.toString");
         }
