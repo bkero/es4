@@ -140,7 +140,7 @@ themselves as functions in the ''informative'' namespace, as in the
 definition of the intrinsic global function ''hashcode'':
 
 {{{
-intrinsic function hashcode(o): uint {
+intrinsic const function hashcode(o): uint {
     switch type (o) {
     <LDOTS>
     case (x: String)    { return informative::stringHash(string(x)) }
@@ -161,7 +161,7 @@ them.  Helper functions and properties manifest themselves as
 definitions in the ''helper'' namespace, as in the definition of the
 global ''encodeURI'' function:
 
-<INCLUDE file="Global.es" name="intrinsic function encodeURI">
+<INCLUDE file="Global.es" name="intrinsic const function encodeURI">
 
 <p>Helper functions and properties are defined where they are first
 used, but are sometimes referenced from multiple sections in this

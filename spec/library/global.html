@@ -95,16 +95,16 @@ const Math: Object = <LDOTS>
 
 __ES4__ const global: Object = <LDOTS>
 
-intrinsic function eval(s: string) <LDOTS>
-intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric <LDOTS>
-intrinsic function parseFloat(s: string): Numeric <LDOTS>
-intrinsic function isNaN(n: Numeric): boolean <LDOTS>
-intrinsic function isFinite(n: Numeric): boolean <LDOTS>
-intrinsic function decodeURI(s: string): string <LDOTS>
-intrinsic function decodeURIComponent(s: string): string <LDOTS>
-intrinsic function encodeURI(s: string): string <LDOTS>
-intrinsic function encodeURIComponent(s: string): string <LDOTS>
-intrinsic function hashcode(x): uint <LDOTS>
+intrinsic const function eval(s: string) <LDOTS>
+intrinsic const function parseInt(s: string, r: (int,undefined)=undefined): Numeric <LDOTS>
+intrinsic const function parseFloat(s: string): Numeric <LDOTS>
+intrinsic const function isNaN(n: Numeric): boolean <LDOTS>
+intrinsic const function isFinite(n: Numeric): boolean <LDOTS>
+intrinsic const function decodeURI(s: string): string <LDOTS>
+intrinsic const function decodeURIComponent(s: string): string <LDOTS>
+intrinsic const function encodeURI(s: string): string <LDOTS>
+intrinsic const function encodeURIComponent(s: string): string <LDOTS>
+intrinsic const function hashcode(x): uint <LDOTS>
 
 function eval(x) <LDOTS>
 function parseInt(s, r=undefined) <LDOTS>
@@ -241,7 +241,7 @@ with the character pairs 0x or 0X.
 <RETN> The intrinsic ''parseInt'' function returns a number.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function parseInt">
+<INCLUDE file="Global.es" name="intrinsic const function parseInt">
 
 <P> The helper function ''isDigitForRadix(c,r)'' computes whether
 ''c'' is a valid digit for the radix ''r'', see <XREF
@@ -294,7 +294,7 @@ decimal literal.
 <RETN> The intrinsic ''parseFloat'' function returns a number.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function parseFloat">
+<INCLUDE file="Global.es" name="intrinsic const function parseFloat">
 
 <NOTE>''parseFloat'' may interpret only a leading portion of //s// as a
 number value; it ignores any characters that cannot be interpreted as
@@ -321,7 +321,7 @@ IEEE not-a-number value.
 **true** if //number// is **NaN**, and otherwise returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function isNaN">
+<INCLUDE file="Global.es" name="intrinsic const function isNaN">
 
 === isNaN (number) ===
 
@@ -344,7 +344,7 @@ finite (neither not-a-number nor an infinity).
 finite, and otherwise returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function isFinite">
+<INCLUDE file="Global.es" name="intrinsic const function isFinite">
 
 
 === isFinite (number) ===
@@ -526,7 +526,7 @@ not have been introduced by ''encodeURI'' are not replaced.
 <RETN> The intrinsic ''decodeURI'' function returns a decoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function decodeURI">
+<INCLUDE file="Global.es" name="intrinsic const function decodeURI">
 
 <NOTE>The character "''#''" is not decoded from escape sequences even
 though it is not a reserved URI character.
@@ -552,7 +552,7 @@ function is replaced with the character that it represents.
 <RETN> The intrinsic ''decodeURIComponent'' function returns a decoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function decodeURIComponent">
+<INCLUDE file="Global.es" name="intrinsic const function decodeURIComponent">
 
 ==== decodeURIComponent (encodedURIComponent) ====
 
@@ -575,7 +575,7 @@ character.
 <RETN> The intrinsic ''encodeURI'' function returns a encoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function encodeURI">
+<INCLUDE file="Global.es" name="intrinsic const function encodeURI">
 
 <NOTE>The character "''#''" is not encoded to an escape sequence
 even though it is not a reserved or unescaped URI character.
@@ -601,7 +601,7 @@ encoding of the character.
 <RETN> The intrinsic ''encodeURIComponent'' function returns a encoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function encodeURIComponent">
+<INCLUDE file="Global.es" name="intrinsic const function encodeURIComponent">
 
 ==== encodeURIComponent (uriComponent) ====
 
@@ -631,7 +631,7 @@ zero.
 <RETN> The intrinsic ''hashcode'' function returns an unsigned integer.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function hashcode">
+<INCLUDE file="Global.es" name="intrinsic const function hashcode">
 
 <P> The informative functions ''stringHash'' and ''objectHash''
 compute hash values for strings and arbitrary objects, respectively.
