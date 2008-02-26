@@ -73,4 +73,5 @@ H4 {
 
 @media print {
     H1 { page-break-before: always }
+    .copyright { page-break-before: always }
 }

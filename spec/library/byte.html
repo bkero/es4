@@ -1,0 +1,75 @@
+<H1 id="class int"> The class ''byte'' </h1>
+
+<pre>
+FILE:                       spec/library/byte.html
+DRAFT STATUS:               DRAFT 1 - VERY ROUGH - 2007-09-20
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+
+<P> The class ''byte'' is a final, non-nullable, non-dynamic direct
+subclass of ''Object'' that represents two's complement unsigned 8-bit
+integer values in the range 0 to 255 inclusive.
+
+<P> The class ''byte'' is unusual in that it cannot be instantiated;
+byte values are always represented as ''uint'' in computations.
+Instead, ''byte'' is intended to be used as an annotation on variables
+and as the element type of ''Vector''.  Used as an annotation it
+causes the truncation of other number values to the ''byte'' range,
+and used as the element type in ''Vector'' some implementations will
+store byte data efficiently.
+
+<COMP> The class ''byte'' is new in the 4th Edition of this Standard.
+
+== Synopsis ==
+
+<P> The class ''byte'' provides the following interface:
+
+{{{
+final class byte!
+{
+    <SIGNATURE file="int.es" name="meta static function invoke">
+    
+    static const MAX_VALUE: byte = 255
+    static const MIN_VALUE: byte = 0
+    static const length: uint = 1
+}
+}}}
+
+<P> The ''byte'' class has no instance methods or variables, since no
+instances are ever created.
+
+<P> The ''byte'' prototype object is identical to the ''Number''
+prototype object (<XREF target="Number.prototype">).
+
+== Methods on the ''byte'' class object ==
+
+=== int( value=<LDOTS> ) ===
+
+<DESC> When the ''byte'' class object is called as a function it
+performs a type conversion: it converts //value// (which defaults
+to 0) to an unsigned integer.
+
+<RETN> The ''byte'' class object called as a function returns a
+''uint''.
+
+<SHORTIMPL>
+<INCLUDE file="byte.es" name="meta static function invoke">
+
+== Value properties on the ''int'' class object ==
+
+=== MAX_VALUE ===
+
+<P> The value of ''MAX_VALUE'' is the largest positive integer value
+represented by the ''byte'' class.  Its value is 2<SUP>8</SUP>-1.
+
+=== MIN_VALUE ===
+
+<P> The value of ''MIN_VALUE'' is the smallest value
+represented by the ''int'' class.  Its value is 0.
+
+<!-- End of int.html -->

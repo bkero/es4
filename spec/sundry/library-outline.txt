@@ -1,0 +1,107 @@
+Note, the library spec is mostly written.  The working paper will
+concentrate on the following.
+
+  * Purpose
+
+    * Fundamental stuff ("magic"): Object, Function, int, uint,
+      double, decimal, string, boolean, name, namespace; eval,
+      iterator stuff; global object
+
+    * Wrappers (because they tie in with fundamentals): Number, String, Boolean
+
+    * Stuff that in most current implementations needs to be
+      implemented in native code to have acceptable performance:
+      Array, RegExp, Math; double/decimal.explode, double/decimal.implode
+
+    * Otherwise trivial stuff that the language depends on (error classes, 
+      EnumerableID)
+
+    * Stuff that is useful in many programs (Date, Map, Vector, JSON,
+      AnyNumber, AnyString, AnyBoolean, ...); many, many methods
+      (parseInt, parseFloat, toExponential, ...)
+
+    * But not too much stuff, because small systems matter, a few
+      fundamental structures that fit the language go a long way, ES4
+      supports a library ecosystem in various ways, etc.
+
+    In general, if a class is predefined then its useful methods are
+    also predefined because the marginal cost of providing more
+    functionality is slight and because there are internal, unexposed
+    APIs that can be used, eg, unicode functionality can be used by
+    eval (for lexing), string methods, regexp methods.  (Probably an
+    argument in favor of exposing some unicode stuff, but -- then
+    there will be a call to generalize.)
+
+  * Must have
+    * compatibility with ES3
+    * self-hosting for all non-magic aspects (but why?) (maybe this 
+      is just "good", the requirement for self-hosting is imposed on 
+      the language; self-hosting here follows)
+    * 
+
+  * How the predefined types can and cannot be captured by ES4 facilities
+     * classes, "prototype", meta::invoke, ... facilitate compatibility
+     * shared prototypes, constructors, primitive values, wrapping, ... are still outside the language
+
+  * Principles for the predefined types
+     * type conversion cliches
+     * prototype/intrinsic/static methods
+     * call forwarding between the prototype and class hierarchies
+     * wrappers vs primitives
+     * namespaces __ES4__, reflect, intrinsic, iterator, meta
+     * ...
+     * underpinnings of reflect (Ungar/Bracha)
+     * underpinnings of iterators (?)
+     * sharing of built-in types (but not type objects) across 
+       global environments
+
+  * Details (every single one) for changes/additions to the types
+     * Global
+       * new functions isIntegral, copySign, sign
+       * new types, bindings
+       * constant bindings
+       * __ECMASCRIPT_VERSION__
+     * Object
+       * propertyIsEnumerable
+     * Function
+       * static call, apply methods
+       * meta::invoke
+     * GenericFunction
+       * ???
+     * Name
+     * Namespace
+     * Array
+       * static generic methods
+       * new methods every, ...
+       * type preservation for structural types
+     * String, string
+     * Vector
+     ...
+
+  * RI issues
+     * hiding shared internal functionality
+     * namespaces for tagging
+     * ...
+
+----
+
+Consider:
+
+  o = { Object: int }
+  with (o) {
+    function f(x: Object) {
+      if (x is Object) {
+        ...
+      }
+    }
+  }
+
+With the change to "is" the innermost test is not redundant, since the
+outer "with" introduces a binding observable to "is" but not to the
+annotation.
+
+(Or is it the case that the annotation must test, at run-time, that
+the binding of "Object" is the original binding, if there is an
+intervening "with"?)
+
+
