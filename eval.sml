@@ -1575,6 +1575,7 @@ and toUstring (regs:Mach.REGS)
         Mach.Undef => Ustring.undefined_
       | Mach.Null => Ustring.null_
       | Mach.Wrapped (v, ty) => toUstring regs v
+      | Mach.Splat v => toUstring regs v
       | Mach.Object obj =>
         let
             val Mach.Obj ob = obj
@@ -1594,6 +1595,7 @@ and toBoolean (v:Mach.VAL) : bool =
         Mach.Undef => false
       | Mach.Null => false
       | Mach.Wrapped (v, ty) => toBoolean v
+      | Mach.Splat v => toBoolean v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Boolean b) => b
@@ -1682,6 +1684,7 @@ and toNumeric (regs:Mach.REGS)
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
           | Mach.Wrapped (v, ty) => toNumeric regs v
+          | Mach.Splat v => toNumeric regs v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
                  SOME (Mach.Double _) => v
@@ -1714,6 +1717,7 @@ and toDecimal (ctxt:Mach.DECIMAL_CONTEXT)
         Mach.Undef => Decimal.NaN
       | Mach.Null => Decimal.zero
       | Mach.Wrapped (v, ty) => toDecimal ctxt v
+      | Mach.Splat v => toDecimal ctxt v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Double d) =>
@@ -1751,6 +1755,7 @@ and toDouble (v:Mach.VAL)
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
           | Mach.Wrapped (v, ty) => toDouble v
+          | Mach.Splat v => toDouble v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
                  SOME (Mach.Double d) => d
@@ -2078,30 +2083,73 @@ and evalThisExpr (regs:Mach.REGS)
         Mach.Object this
     end
 
+and arrayToList (regs:Mach.REGS)
+                (arr:Mach.OBJ)
+    : Mach.VAL list =
+    let
+        val len = doubleToInt
+                      (toUInt32 regs
+                                (getValue regs arr Name.nons_length))
+        fun build i vs =
+            if (i <  (0:Int32.int))
+            then vs
+            else
+                let
+                    val n = Name.nons (Ustring.fromInt32 i)
+                    val curr = if hasValue arr n
+                               then getValue regs arr n
+                               else Mach.Undef
+                in
+                    build (i - (1:Int32.int)) (curr::vs)
+                end
+    in
+        build (len - (1:Int32.int)) []
+    end
+
+and evalArgs (regs:Mach.REGS)
+             (actuals:Ast.EXPR list) 
+    : (Mach.VAL list) = 
+    let 
+        val args = map (evalExpr regs) actuals
+    in
+        case args of
+            nil => args
+          | _ => case (List.last args) of
+                     (Mach.Splat (Mach.Object obj))
+                     => let 
+                         val idx = length args - 1
+                         val prefix = List.take (args, idx)
+                         val suffix = arrayToList regs obj
+                     in
+                         prefix @ suffix
+                     end
+                   | _ => args
+    end
+
 
 and evalCallExpr (regs:Mach.REGS)
                  (func:Ast.EXPR)
                  (actuals:Ast.EXPR list)
     : Mach.VAL = 
     let
-        fun evalArgs _ = map (evalExpr regs) actuals
+        fun args _ = evalArgs regs actuals
     in
         case func of
-            Ast.LexicalRef _ => evalCallMethodByExpr regs func (evalArgs ())
+            Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
                                 
-		  | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
-		    evalSuperCall regs (#this regs) ident (evalArgs())
+	      | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
+		    evalSuperCall regs (#this regs) ident (args ())
 
-		  | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
-		    evalSuperCall regs (needObj regs (evalExpr regs b)) ident (evalArgs())
+	      | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
+		    evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args ())
             
-          | Ast.ObjectRef _ => evalCallMethodByExpr regs func (evalArgs ())
+          | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
                                
           | _ =>
             let
                 val funcVal = evalExpr regs func
                 val funcObj = needObj regs funcVal
-                val args = evalArgs ()
+                val args = args ()
             in
                 evalCallByObj regs funcObj args
             end
@@ -2113,7 +2161,7 @@ and evalNewExpr (regs:Mach.REGS)
                 (actuals:Ast.EXPR list)
     : Mach.VAL = 
     let
-        fun args _ = map (evalExpr regs) actuals
+        fun args _ = evalArgs regs actuals
         val rhs = evalExpr regs obj
     in
         case rhs of
@@ -2931,6 +2979,23 @@ and evalUnaryOp (regs:Mach.REGS)
 
           | Ast.Void => Mach.Undef
 
+          | Ast.Splat =>
+            (* 
+             * A Splat expression is only allowed at the end of a list of function arguments, 
+             * but that is enforced by the parser.
+             * The expression must evaluate to an array or arguments object, 
+             * and that value must be spliced into the actual function arguments.
+             *
+             * Note: currently, the arguments object appears to be unimplemented.
+             *)
+            let
+                val v = evalExpr regs expr
+            in
+                case v of
+                    (Mach.Object (Mach.Obj {tag = (Mach.ArrayTag ty), ...})) => (Mach.Splat v)
+                  | _ => error regs ["splat expression does not evaluate to array or arguments"]
+            end
+
           | Ast.Type =>
             (*
              * FIXME: not clear what this operator does; I thought it just
@@ -2948,6 +3013,7 @@ and evalUnaryOp (regs:Mach.REGS)
                         Mach.Null => Ustring.object_
                       | Mach.Undef => Ustring.undefined_
                       | Mach.Wrapped (v, ty) => typeNameOfVal v
+                      | Mach.Splat v => typeNameOfVal v
                       | Mach.Object (Mach.Obj ob) =>
                         let
                             val n = Mach.nominalBaseOfTag (#tag ob)
@@ -3417,6 +3483,7 @@ and typeOfVal (regs:Mach.REGS)
                      Mach.Undef => Ast.SpecialType Ast.Undefined
                    | Mach.Null => Ast.SpecialType Ast.Null
                    | Mach.Wrapped (_,t) => t
+                   | Mach.Splat v => typeOfVal regs v
                    | Mach.Object obj => 
                      let 
                          val tag = getObjTag obj
@@ -3532,6 +3599,7 @@ and hasInstance (regs:Mach.REGS)
                 Mach.Null => false
               | Mach.Undef => false
               | Mach.Wrapped (v, ty) => hasInstance regs obj v
+              | Mach.Splat v => hasInstance regs obj v
               | Mach.Object ob =>
                 if getObjId ob = targId
                 then true
@@ -3751,6 +3819,7 @@ and evalRefExprFull (regs:Mach.REGS)
                         case v of
                             Mach.Object ob => ob
                           | Mach.Wrapped (v',t) => extractFrom v'
+                          | Mach.Splat v' => extractFrom v'
                           | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
                           | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
                 in
@@ -4518,6 +4587,8 @@ and specialObjectConstructor (regs:Mach.REGS)
           | (Mach.Null :: _) => instantiate ()
           | (Mach.Undef :: _) => instantiate ()
           | (Mach.Wrapped (v,t) :: rest) => specialObjectConstructor regs classObj classClosure (v::rest)
+          | (Mach.Splat v :: rest) => error regs ["splat encountered in specialObjectConstructor; ",
+                                                  "this should never happen"]
           | (Mach.Object obj :: _) =>
             case Mach.getObjMagic obj of
                 NONE => obj
@@ -5276,6 +5347,8 @@ and evalIterable (regs:Mach.REGS)
               | Mach.Wrapped (v',t) => finishWith v'
               | Mach.Undef => newObj regs
               | Mach.Null => newObj regs            
+              | Mach.Splat v => error regs ["evalIterable called with splat argument; ",
+                                            "this should never happen"]
     in
         (*
          * Implement the IE JScript quirk where for (i in null) and

@@ -123,6 +123,7 @@ datatype UNOP =
        | BitwiseNot
        | LogicalNot
        | Type
+       | Splat
 
 datatype VAR_DEFN_TAG =
          Const
