@@ -460,6 +460,7 @@ and verifyExpr (env:ENV)
                       | Ast.UnaryMinus => AnyNumberType
                       | Ast.BitwiseNot => AnyNumberType
                       | Ast.LogicalNot => booleanType
+                      | Ast.Splat => Ast.ArrayType [anyType]
                       (* TODO: isn't this supposed to be the prefix of a type expression? *)
                       | Ast.Type => TypeType
             in

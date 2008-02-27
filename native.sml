@@ -66,6 +66,7 @@ fun nthAsObj (vals:Mach.VAL list)
         fun f Mach.Undef = error ["Wanted Object, got Undef"]
           | f Mach.Null = error ["Wanted Object, got Null"]
           | f (Mach.Wrapped (v,t)) = nthAsObj [v] n
+          | f (Mach.Splat v) = nthAsObj [v] n
           | f (Mach.Object ob) = ob
     in
         nthAsA f vals n
@@ -169,29 +170,6 @@ fun propQuery (regs:Mach.REGS)
         Eval.newBoolean regs (f props n)
     end
 
-fun arrayToList (regs:Mach.REGS)
-                (arr:Mach.OBJ)
-    : Mach.VAL list =
-    let
-        val len = Eval.doubleToInt
-                      (Eval.toUInt32 regs
-                                     (Eval.getValue regs arr Name.nons_length))
-        fun build i vs =
-            if (i <  (0:Int32.int))
-            then vs
-            else
-                let
-                    val n = Name.nons (Ustring.fromInt32 i)
-                    val curr = if Eval.hasValue arr n
-                               then Eval.getValue regs arr n
-                               else Mach.Undef
-                in
-                    build (i - (1:Int32.int)) (curr::vs)
-                end
-    in
-        build (len - (1:Int32.int)) []
-    end
-
 
 (*
  * Given a class object, run the standard object-construction
@@ -205,7 +183,7 @@ fun construct (regs:Mach.REGS)
     : Mach.VAL =
     let
         val (obj, cls) = nthAsObjAndCls vals 0
-        val args = arrayToList regs (nthAsObj vals 1)
+        val args = Eval.arrayToList regs (nthAsObj vals 1)
     in
         Eval.constructClassInstance regs obj cls args
     end
@@ -492,7 +470,7 @@ fun apply (regs:Mach.REGS)
         val fnObj = nthAsObj vals 0
         val thisObj = nthAsObj vals 1
         val argsObj = nthAsObj vals 2
-        val argsList = arrayToList regs argsObj
+        val argsList = Eval.arrayToList regs argsObj
     in
         Eval.evalCallByObj (Eval.withThis regs thisObj) fnObj argsList
     end
@@ -1031,6 +1009,7 @@ fun typename (regs:Mach.REGS)
         Mach.Null => Eval.newString regs Ustring.null_
       | Mach.Undef => Eval.newString regs Ustring.undefined_
       | Mach.Wrapped (v, t) => typename regs [v]
+      | Mach.Splat v => typename regs [v]
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              NONE => Eval.newString regs Ustring.object_
