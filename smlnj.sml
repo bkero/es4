@@ -40,6 +40,15 @@ structure SMLofNJEntry = struct
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor
-        (fn () => Main.main SMLofNJ.exportML)
-
+        (fn () =>
+            let
+                fun readLine prompt =
+                    let
+                        open TextIO
+                    in
+                        print prompt; inputLine stdIn
+                    end
+            in
+                Main.main SMLofNJ.exportML readLine
+            end)
 end
