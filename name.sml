@@ -146,6 +146,7 @@ val intrinsic_assert = intrinsic Ustring.assert_
 val intrinsic_typename = intrinsic Ustring.typename_
 val intrinsic_readFile = intrinsic Ustring.readFile_
 val intrinsic_writeFile = intrinsic Ustring.writeFile_
+val intrinsic_readHTTP = intrinsic Ustring.readHTTP_
 val intrinsic_explodeDouble = intrinsic Ustring.explodeDouble_
 
 (* From Function.es *)

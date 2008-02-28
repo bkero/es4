@@ -983,6 +983,66 @@ fun readFile (regs:Mach.REGS)
         Eval.newString regs (Ustring.fromString str)
     end
 
+fun readHTTP (regs:Mach.REGS)
+             (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val server = Ustring.toAscii (nthAsUstr vals 0)
+        val port = nthAsUInt regs vals 1
+        val page = Ustring.toAscii (nthAsUstr vals 2)
+        val method = Ustring.toAscii (nthAsUstr vals 3)
+        val headers = Ustring.toAscii (nthAsUstr vals 4)
+
+        fun str s = Eval.newString regs (Ustring.fromString s)
+
+        val addr = case NetHostDB.getByName server of
+                       SOME ip => INetSock.toAddr (NetHostDB.addr ip, Word32.toInt port)
+                     | NONE => raise Eval.ThrowException (str "unknown host")
+        val sock = INetSock.TCP.socket ()
+
+        fun close () =
+            Socket.close sock handle OS.SysErr _ => ()
+        fun throw s = (close(); raise Eval.ThrowException (str s))
+
+        val bufSize = 16384
+        val buf = Word8Array.array (bufSize, Word8.fromInt 0)
+
+        fun send s =
+            Socket.sendVec (sock, Word8VectorSlice.full (Byte.stringToBytes s))
+        fun recv () =
+            Socket.recvArr (sock, Word8ArraySlice.full buf)
+
+        fun slicePrefix n = Word8ArraySlice.slice (buf, 0, SOME n)
+        fun sliceSource slice =
+            let
+                fun cons (b, ls) = (Char.chr (Word8.toInt b))::ls
+                val chars = Word8ArraySlice.foldr cons [] slice
+            in
+                Ustring.fromSource (String.implode chars)
+            end
+
+        fun reader () : Ustring.SOURCE option =
+            (case recv () of
+                 0 => NONE
+               | bytesRead => SOME (sliceSource (slicePrefix bytesRead)))
+
+        fun readSrc (chunks:Ustring.SOURCE list)
+            : Ustring.SOURCE =
+            (case reader() of
+                 NONE => (close(); List.concat (List.rev chunks))
+               | SOME chunk => readSrc (chunk::chunks))
+    in
+        let
+            val _ = Socket.connect (sock, addr)
+            val _ = send (method ^ " " ^ page ^ " HTTP/1.0\r\n")
+            val _ = send headers
+            val _ = send "\r\n"
+        in
+            str (implode (map Ustring.wcharToChar (readSrc [])))
+        end
+        handle OS.SysErr (msg, _) => (close(); throw ("socket error: " ^ msg))
+    end
+
 fun writeFile (regs:Mach.REGS)
               (vals:Mach.VAL list)
     : Mach.VAL =
@@ -1170,6 +1230,7 @@ fun registerNatives _ =
         addFn 1 Name.intrinsic_load load;
         addFn 1 Name.intrinsic_readFile readFile;
         addFn 2 Name.intrinsic_writeFile writeFile;
+        addFn 5 Name.intrinsic_readHTTP readHTTP;
 
         addFn 1 Name.intrinsic_explodeDouble explodeDouble;
         addFn 1 Name.intrinsic_assert assert;
