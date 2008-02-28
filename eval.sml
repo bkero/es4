@@ -2115,8 +2115,8 @@ and evalArgs (regs:Mach.REGS)
         case args of
             nil => args
           | _ => case (List.last args) of
-                     (Mach.Splat (Mach.Object obj))
-                     => let 
+                     (Mach.Splat (Mach.Object obj)) => 
+                     let 
                          val idx = length args - 1
                          val prefix = List.take (args, idx)
                          val suffix = arrayToList regs obj
@@ -2942,11 +2942,13 @@ and evalUnaryOp (regs:Mach.REGS)
         case unop of
             Ast.Delete =>
             let
-                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr true
+                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr false
             in
-                if (#dontDelete (#attrs (Mach.getProp props name)))
-                then newBoolean regs false
-                else (Mach.delProp props name; newBoolean regs true)		    
+                if (Mach.hasProp props name)
+                then if (#dontDelete (#attrs (Mach.getProp props name)))
+                     then newBoolean regs false
+                     else (Mach.delProp props name; newBoolean regs true)
+                else newBoolean regs true
             end
 
           | Ast.PreIncrement => evalCrement regs Ast.Plus true expr
@@ -2986,14 +2988,18 @@ and evalUnaryOp (regs:Mach.REGS)
              * The expression must evaluate to an array or arguments object, 
              * and that value must be spliced into the actual function arguments.
              *
-             * Note: currently, the arguments object appears to be unimplemented.
+             * Note: splat expression should allow an array or arguments object as its operand.
+             * Currently, an arguments object *is* an array...
              *)
             let
                 val v = evalExpr regs expr
+                val arrObj = needObj regs (getValue regs (#global regs) Name.nons_Array)
             in
-                case v of
-                    (Mach.Object (Mach.Obj {tag = (Mach.ArrayTag ty), ...})) => (Mach.Splat v)
-                  | _ => error regs ["splat expression does not evaluate to array or arguments"]
+                if (hasInstance regs arrObj v)
+                then Mach.Splat v
+                else (throwTypeErr regs ["splat expression requires an array or arguments object as its operand; ",
+                                         "found instead: ", LogErr.ty (typeOfVal regs v)];
+                      dummyVal)
             end
 
           | Ast.Type =>
@@ -4424,7 +4430,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                     traceConstruct ["evaluating settings"];
                     evalObjInits varRegs instanceObj settings;
                     traceConstruct ["initializing and constructing superclass of ", fmtName name];
-                    initializeAndConstructSuper (map (evalExpr varRegs) superArgs);
+                    initializeAndConstructSuper (evalArgs varRegs superArgs);
                     traceConstruct ["entering constructor for ", fmtName name];
                     (case block of 
                          NONE => Mach.Undef
