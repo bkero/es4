@@ -1663,7 +1663,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
                     val (ts3, nd3, _) = listExpression (ts0, AllowColon, AllowIn)
                 in
                     case ts3 of 
-                        (RightBracket, _) :: _ => (tl ts0, asSlice nd1 nd2 nd3)
+                        (RightBracket, _) :: _ => (tl ts3, asSlice nd1 nd2 nd3)
                       | _ => error ["unknown token in slice"]                                                    
                 end
 
@@ -1677,7 +1677,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
                 in
                     case ts1 of
                         (RightBracket, _) :: _ => (tl ts1, asSlice nd0 nd1 none)
-                      | (Colon, _) :: _ => slice2 (tl ts0) nd0 nd1
+                      | (Colon, _) :: _ => slice2 (tl ts1) nd0 nd1
                       | _ => error ["unknown token in slice"]
                 end
     in
