@@ -60,16 +60,14 @@ package
 
     namespace iterator;
 
-    /*
-    type IterableType.<T> = {
-        iterator::get: function (boolean=) : iterator::IteratorType.<T>
-    };
-      
-    type IteratorType.<T> = {
+    iterator type IteratorType.<T> = {
         next: function () : T
     };
-    */
 
+    iterator type IterableType.<T> = {
+        /* iterator::get: function (boolean=) : iterator::IteratorType.<T>*/
+    };
+      
     iterator class StopIterationClass {
         function toString() : string 
             "[object StopIteration]";
