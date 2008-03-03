@@ -85,6 +85,11 @@ package
         meta static function invoke(value="")
             (value is string) ? value : new string(value);
 
+        /* Don't remove this
+        function string(value="")
+            magic::newString(value)
+        */
+
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */

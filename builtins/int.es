@@ -60,6 +60,11 @@ package
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;
 
+        /* Don't remove this
+        function int(value=false)
+            magic::newInt(value)
+        */
+
         /* E262-4 draft: The int Constructor Called as a Function */
         meta static function invoke(x=0)
             (x is int) ? x : new int(x);

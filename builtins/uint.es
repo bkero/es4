@@ -60,6 +60,11 @@ package
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 
+        /* Don't remove this
+        function uint(value=false)
+            magic::newUInt(value)
+        */
+
         /* E262-4 draft: The uint Constructor Called as a Function */
         meta static function invoke(x=0u)
             (x is uint) ? x : new uint(x);

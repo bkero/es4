@@ -77,6 +77,11 @@ package
         static const SQRT1_2: double = 0.7071067811865476;/* Approximately */
         static const SQRT2: double = 1.4142135623730951;  /* Approximately */
 
+        /* Don't remove this
+        function double(value=false)
+            magic::newDouble(value)
+        */
+
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
         meta static function invoke(x=0d)
             (x is double) ? x : new double(x);
