@@ -93,8 +93,8 @@ final class Vector.<T>
 
     static const length = 2;
 
-    <SIGNATURE file="Vector.es" name="intrinsic function toString">
-    <SIGNATURE file="Vector.es" name="intrinsic function toLocaleString">
+    <SIGNATURE file="Vector.es" name="override intrinsic function toString">
+    <SIGNATURE file="Vector.es" name="override intrinsic function toLocaleString">
     <SIGNATURE file="Vector.es" name="intrinsic function concat">
     <SIGNATURE file="Vector.es" name="intrinsic function every">
     <SIGNATURE file="Vector.es" name="intrinsic function filter">
@@ -197,7 +197,7 @@ object with no argument.
 <RETN> The ''toString'' method returns a ''string''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="intrinsic function toString">
+<INCLUDE file="Vector.es" name="override intrinsic function toString">
 
 === intrinsic::toLocaleString ( ) ===
 
@@ -215,7 +215,7 @@ intended to be locale-specific.
 <RETN> The ''toLocaleString'' method returns a ''string''.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="intrinsic function toLocaleString">
+<INCLUDE file="Vector.es" name="override intrinsic function toLocaleString">
 
 <NOTE> The first parameter to this method is likely to be used in a
 future version of this standard; it is recommended that

@@ -63,6 +63,7 @@
 import re, sys, os, os.path
 
 DEBUG = False
+LINELIM = 1000
 
 htmlcomment = re.compile(r"<!--(?:.|\s)*?-->")
 wikiheader = re.compile(r"^(\=+)\s+(.*?)\s+\1", re.M)
@@ -203,10 +204,10 @@ def extractES(fn, name, isSignature, isContextual):
 	s = re.sub(r" native", "", s)
 	if s[len(s)-1] == "{" or s[len(s)-1] == ";":
 	    s = s[:len(s)-1].rstrip()
-	if len(s) >= 80:
+	if len(s) >= LINELIM:
 	    i = len(s)-1;
 	    while i >= 0 and s[i] != ')':
-		if s[i] == ':':
+		if s[i] == ':' and (i == 0 or s[i-1] == ' ' or s[i-1] == ')'):
 		    s = s[:i] + "\n        " + s[i:]
 		    break
 		i = i - 1
