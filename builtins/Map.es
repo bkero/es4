@@ -71,62 +71,64 @@
 
 package
 {
-    use default namespace public;
     import ECMAScript4_Internal.*;
-    use namespace intrinsic;
-    use namespace __ES4__;
 
-    __ES4__ class Map.<K,V>
+    __ES4__ dynamic class Map.<K,V>
     {
-        static const length = 2;
+        static public const length = 2;
 
         /* Create the map.  Note that the equality and hashcode
          * predicates must always agree: if two objects are equal,
          * they must hash to the same value.
          */
-        function Map(equals=function(x:K,y:K):boolean { return x === y; } 
-					 /* 
-					  * FIXME: '===' is not an identifier token as far as the parser is concerned,
-					  * =intrinsic::=== 
-					  */, 
-					 hashcode=function(x:K):uint { return hashcode(x); } ) 
+        /* FIXME: #153, #XXX: support "function" as a type meaning "any function" */
+        public function Map(equals   /*: function*/ = (function (x,y) x === y), 
+                            hashcode /*: function*/ = intrinsic::hashcode)
             : equals = equals
-            , hashcode = hashcode
-            , element_count = 0
+            , hashcode = function (k) uint(hashcode(k) cast AnyNumber)
+            , population = 0
         {
         }
 
-        meta static function invoke(x : Object!) {
-            let d = new Map.<EnumerableId,V>;
-            for ( let n in x )
-                if (x.hasOwnProperty(n))
-                    d.put(n, x[n]);
+        static meta function invoke(object: Object): Map.<EnumerableId,*> {
+            if (object is Map.<*,*>)
+                return object;
+            let d = new Map.<EnumerableId,*>;
+            for (let n in object)
+                if (object.intrinsic::hasOwnProperty(n))
+                    d.put(n, object[n]);
             return d;
         }
 
         /* Return the number of mappings in the dictionary */
         intrinsic function size() : uint
-            element_count;
+            population;
 
-        /* Return the value associated with 'key', or null if 'key' does
-         * not exist in the dictionary
+        /* Return the value associated with 'key', or the default
+         * value if 'key' does not exist in the dictionary
          */
-        intrinsic function get(key: K) : V? {
+        intrinsic function get(key: K, notfound: (V|undefined)=undefined) : (V|undefined) {
             let probe = informative::find(key);
-            return probe ? probe.value : null;
+            return probe ? probe.value : notfound;
         }
 
         /* Associate 'value' with 'key', overwriting any previous
-         * association for 'key'
+         * association for 'key'.  Return the previous associated
+         * value, or the default value if 'key' does not exist in the
+         * dictionary.
          */
-        intrinsic function put(key:K, value:V) : void {
+        intrinsic function put(key: K, value: V, notfound: (V|undefined)=undefined) : (V|undefined) {
+            let oldvalue = notfound;
             let probe = informative::find(key);
-            if (probe)
+            if (probe) {
+                oldvalue = probe.value;
                 probe.value = value;
-            else {
-                ++element_count;
-                informative::insert( key, value );
             }
+            else {
+                ++population;
+                informative::insert(key, value);
+            }
+            return oldvalue;
         }
 
         /* Return true iff the dictionary has an association for 'key'
@@ -142,11 +144,20 @@ package
         intrinsic function remove(key:K) : boolean {
             let probe = informative::find(key);
             if (probe) {
-                --element_count;
+                --population;
                 informative::eject(probe);
                 return true;
             }
             return false;
+        }
+
+        /* Remove all associations.  Note that this implementation is
+         * normative; subclasses that override remove() or
+         * iterator::get will be able to observe the calls.
+         */
+        intrinsic function clear() : void {
+            for (let k in this)
+                intrinsic::remove(k);
         }
 
         prototype function size(this: Map.<*,*>)
@@ -164,8 +175,11 @@ package
         prototype function remove(this: Map.<*,*>, key)
             this.intrinsic::remove(key);
 
+        prototype function clear(this: Map.<*,*>)
+            this.intrinsic::clear();
+
         iterator function get(deep: boolean = false) : iterator::IteratorType.<K>
-            getKeys(deep);
+            iterator::getKeys(deep);
 
         iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<K>
             helper::iterate.<K>(function (a,k,v) { a.push(k) });
@@ -177,32 +191,34 @@ package
             helper::iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
 
         helper function iterate.<T>(f: function(*,*,*):*) {
-            let a = [] : [T];
-            informative::allElements( tbl, limit, function (k,v) { f(a,k,v) } );
-            let i = 0;
+            let a = [];
+            informative::allElements(function (k,v) { f(a,k,v) });
             return {
-                next: function () : T {
-                    if (i === a.length)
-                        throw iterator::StopIteration;
-                    return a[i++];
-                }
-            };
+                const next:
+                    let (i=0, limit=a.length)
+                        function () : T {
+                            if (i < limit)
+                                return a[i++];
+                            throw iterator::StopIteration;
+                        }
+            } : iterator::IteratorType.<T>;
         }
 
+        // Documented behavior: the key in the table is the left
+        // operand, while the key we're looking for is the right
+        // operand.
+
         informative function find(key:K): Box.<K,V> {
-            // Documented behavior: the key in the table is the left
-            // operand, while the key we're looking for is the right
-            // operand.
-			let l = null;
-            for (l=tbl[this.hashcode(key) % limit] ; l && !this.equals(l.key,key) ; l=l.next )
+            let l = null;
+            for (l=tbl[hashcode(key) % limit] ; l && !equals(l.key,key) ; l=l.next )
                 ;
             return l;
         }
 
         informative function insert(key:K, value:V) : void {
-            if (element_count > limit*REHASH_UP)
+            if (population > limit*REHASH_UP)
                 informative::rehash(true);
-            let box = new Box.<K,V>(key, this.hashcode(key), value);
+            let box = new Box.<K,V>(key, hashcode(key), value);
             let h = box.hash % limit;
             box.prev = null;
             box.next = (tbl[h] || null);
@@ -216,7 +232,7 @@ package
                 tbl[box.hash % limit] = box.next;
             if (box.next)
                 box.next.prev = box.prev;
-            if (element_count < limit*REHASH_DOWN)
+            if (population < limit*REHASH_DOWN)
                 informative::rehash(false);
         }
 
@@ -225,16 +241,21 @@ package
             let oldtbl = tbl;
             let oldlimit = limit;
 
-            element_count = 0;
+            population = 0;
             limit = grow ? limit * 2 : limit / 2;
             tbl = Map.informative::newTbl.<K,V>(limit);
 
-            informative::allElements( oldtbl, oldlimit, function (k,v) { ++element_count; informative::insert(k, v) } );
+            informative::allElementsCore(oldtbl, 
+                                         oldlimit, 
+                                         function (k,v) { ++population; informative::insert(k, v) });
         }
 
-        informative function allElements(tbl: [box], limit: uint, fn: function (K,V):*) {
-            for ( let i=0 ; i < limit ; i++ )
-                for ( let p=tbl[i] ; p ; p = p.link )
+        informative function allElements(fn)
+            informative::allElementsCore(tbl, limit, fn);
+
+        informative function allElementsCore(tbl, limit, fn) {
+            for (let i=0 ; i < limit ; i++)
+                for (let p=tbl[i] ; p ; p = p.next)
                     fn(p.key, p.value);
         }
 
@@ -246,15 +267,16 @@ package
 
         /* These are part of the spec */
 
-        private var hashcode : function(K):uint;      // key hash function (should be const?)
-        private var equals : function (K,K):boolean;  // key equality tester (should be const?)
-        private var element_count: uint = 0;             // number of elements in the table */
+        /* FIXME: #153, #XXX: support "function" as a type here */
+        private const hashcode /*: function*/;        // key hash function
+        private const equals /*: function*/;          // key equality tester
+        private var population: uint = 0;             // number of elements in the table */
 
         /* These are private to the implementation */
         /* We need to have REHASH_UP > REHASH_DOWN*2 for things to work */
 
-        private const REHASH_UP = 1;                  /* rehash if element_count > REHASH_UP*limit */
-        private const REHASH_DOWN = 1/3;              /* rehash if element_count < REHASH_DOWN*limit */
+        private const REHASH_UP = 1;                  /* rehash if population > REHASH_UP*limit */
+        private const REHASH_DOWN = 1/3;              /* rehash if population < REHASH_DOWN*limit */
 
         private var limit: uint = 10;                 /* number of buckets in the table */
 
@@ -282,19 +304,4 @@ package
         var prev: Box.<K,V>;
         var next: Box.<K,V>;
     }
-
-    /* FIXME: Do we really want this to be parameterized? */
-//     public interface ObjectIdentity.<T>
-//     {
-//         function equals(that: ObjectIdentity.<T>): boolean;
-//         function hashcode(): uint;
-//     }
-
-//     public class IdentityMap.<K /* implements ObjectIdentity.<K> */, V> extends Map.<K,V> {
-//         function IdentityMap() 
-//             : super(function (x: ObjectIdentity.<K>, y: ObjectIdentity.<K>): boolean { return x.equals(y) },
-//                     function (x: ObjectIdentity.<K>): uint { return x.hashcode() })
-//         {
-//         }
-//     }
 }
