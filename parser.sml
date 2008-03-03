@@ -895,30 +895,17 @@ and objectLiteral (ts0: TOKENS, alpha: ALPHA)
         (LeftBrace, _) :: _ =>
             let
                 val (ts1,nd1) = fieldList (tl ts0)
-                fun isVirtualField (f:Ast.FIELD) =
-                    case f of
-                        {init=Ast.LiteralExpr (Ast.LiteralFunction (Ast.Func {name={kind=Ast.Get, ...}, ...})), ...} => true
-                      | {init=Ast.LiteralExpr (Ast.LiteralFunction (Ast.Func {name={kind=Ast.Set, ...}, ...})), ...} => true
-                      | _ => false
-                (* Checks for properties that have been defined both normally and vitually. Could be more efficient... *)
-                fun validObjectFields (f::fs) =
-                    if isVirtualField f
-                    then not (List.exists (fn x => ((#name x) = (#name f) andalso (not (isVirtualField x)))) fs)
-                    else not (List.exists (fn x => ((#name x) = (#name f) andalso (isVirtualField x))) fs)
-                  | validObjectFields _ = true
             in 
-                if validObjectFields nd1
-                then case (ts1, alpha) of
-                         ((RightBrace, _) :: (Colon, _) :: _, AllowColon) =>
-                             let
-                                 val (ts2,nd2) = typeExpression (tl (tl ts1))
-                             in
-                                 (ts2,Ast.LiteralObject {expr=nd1,ty=SOME nd2})
-                             end
-                       | ((RightBrace, _) :: _, _) =>
-                             (tl ts1,Ast.LiteralObject {expr=nd1,ty=NONE})
-                       | _ => error ["unknown token in objectLiteral ",tokenname (hd ts1)]
-                else error ["in object literal, property is defined both as virtual (getter/setter) and as normal value"]
+                case (ts1, alpha) of
+                    ((RightBrace, _) :: (Colon, _) :: _, AllowColon) =>
+                    let
+                        val (ts2,nd2) = typeExpression (tl (tl ts1))
+                    in
+                        (ts2,Ast.LiteralObject {expr=nd1,ty=SOME nd2})
+                    end
+                  | ((RightBrace, _) :: _, _) =>
+                    (tl ts1,Ast.LiteralObject {expr=nd1,ty=NONE})
+                  | _ => error ["unknown token in objectLiteral ",tokenname (hd ts1)]
             end
       | _ => error ["unknown token in objectLiteral ",tokenname (hd ts0)]
     end
@@ -1480,16 +1467,19 @@ and arguments (ts0: TOKENS)
 (*
     ArgumentList
         AssignmentExpression(AllowColon, AllowIn)
-        ArgumentList  ,  AssignmentExpression(AllowColon, AllowIn)
+        AssignmentExpression(AllowColon, AllowIn)  ,  ArgumentList
+        SplatArgument
 
     refactored:
 
     ArgumentList
         AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
+        SplatArgument
 
     ArgumentListPrime
         empty
-        ,  AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
+        , AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
+        , SplatArgument
 *)
 
 and argumentList (ts0: TOKENS)
@@ -1498,7 +1488,13 @@ and argumentList (ts0: TOKENS)
         fun argumentList' (ts0) : (TOKENS * Ast.EXPR list) =
             let val _ = trace ([">> argumentList' with next=", tokenname (hd (ts0))])
             in case ts0 of
-                (Comma, _) :: _ =>
+                (Comma, _) :: (TripleDot, _) :: ts1 =>
+                    let
+                        val (ts2, nd1) = assignmentExpression (ts1, AllowColon, AllowIn)
+                    in
+                        (ts2, [Ast.UnaryExpr (Ast.Splat, nd1)])
+                    end
+              | (Comma, _) :: _ =>
                     let
                         val (ts1, nd1) = assignmentExpression (tl ts0, AllowColon, AllowIn)
                         val (ts2, nd2) = argumentList' (ts1)
@@ -1511,10 +1507,21 @@ and argumentList (ts0: TOKENS)
                 (trace ["*syntax error*: expect '", tokenname (RightParen, 0), "' before '", tokenname (hd ts0), "'"];
                  error ["unknown token in argumentList"])
             end
-        val (ts1, nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
-        val (ts2, nd2) = argumentList' (ts1)
     in
-        (ts2, nd1::nd2)
+        case ts0 of
+            (TripleDot, _) :: ts1 =>
+                let
+                    val (ts2, nd1) = assignmentExpression (ts1, AllowColon, AllowIn)
+                in
+                    (ts2, [Ast.UnaryExpr (Ast.Splat, nd1)])
+                end
+          | _ =>
+            let
+                val (ts1, nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
+                val (ts2, nd2) = argumentList' (ts1)
+            in
+                (ts2, nd1::nd2)
+            end
     end
 
 (*
@@ -1656,7 +1663,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
                     val (ts3, nd3, _) = listExpression (ts0, AllowColon, AllowIn)
                 in
                     case ts3 of 
-                        (RightBracket, _) :: _ => (tl ts0, asSlice nd1 nd2 nd3)
+                        (RightBracket, _) :: _ => (tl ts3, asSlice nd1 nd2 nd3)
                       | _ => error ["unknown token in slice"]                                                    
                 end
 
@@ -1670,7 +1677,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
                 in
                     case ts1 of
                         (RightBracket, _) :: _ => (tl ts1, asSlice nd0 nd1 none)
-                      | (Colon, _) :: _ => slice2 (tl ts0) nd0 nd1
+                      | (Colon, _) :: _ => slice2 (tl ts1) nd0 nd1
                       | _ => error ["unknown token in slice"]
                 end
     in

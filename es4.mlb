@@ -34,6 +34,7 @@ local
     boot.sml
     version.sml
     main.sml
+    ml-editline/editline.mlb
     mlton.sml
 in
     (*structure Ast*)
