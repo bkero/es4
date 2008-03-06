@@ -1,14 +1,21 @@
 <h1 id="class Function"> The class ''Function'' </h1>
 
+<hr>
 <pre>
 FILE:                       spec/library/Function.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
+SOURCES:                    ?
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
+IMPLEMENTATION STATUS:      ?
+
+REFERENCES
+
 </pre>
+<hr>
 
 <P> The class ''Function'' is a dynamic non-final subclass of
 ''Object'' (see <XREF target="class Object">).
@@ -32,24 +39,25 @@ target="Host objects">).
 {{{
 dynamic class Function extends Object
 {
-    <SIGNATURE file="Function.es" name="function Function">
-    <SIGNATURE file="Function.es" name="meta static function invoke">
+    <SIGNATURE file="Function.es" name="public function Function">
+    <SIGNATURE file="Function.es" name="static meta function invoke">
 
-    <SIGNATURE file="Function.es" name="static function apply">
-    <SIGNATURE file="Function.es" name="static function call">
+    <SIGNATURE file="Function.es" name="public static function apply">
+    <SIGNATURE file="Function.es" name="public static function bind">
+    <SIGNATURE file="Function.es" name="public static function call">
 
-    static const length = 1
+    static public const length = 1
 
     meta final function invoke( <LDOTS> ) <LDOTS>
 
     <SIGNATURE file="Function.es" name="override intrinsic function toString">
 
     <SIGNATURE file="Function.es" name="intrinsic function apply">
+    <SIGNATURE file="Function.es" name="intrinsic function bind">
     <SIGNATURE file="Function.es" name="intrinsic function call">
-    <SIGNATURE file="Function.es" name="intrinsic function HasInstance">
 
-    const length = <LDOTS>
-    var   prototype = <LDOTS>
+    public const length = <LDOTS>
+    public var   prototype = <LDOTS>
 }
 }}}
 
@@ -58,6 +66,7 @@ dynamic class Function extends Object
 {{{
     toString:    function () <LDOTS> ,
     apply:       function(thisArg, argArray) <LDOTS> ,
+    bind:        function(thisArg, ...args) <LDOTS> ,
     call:        function(thisArg, ...args) <LDOTS> ,
 }}}
 
@@ -83,11 +92,11 @@ the grammar in section <XREF target="ECMAScript grammar">).
 
 <SHORTIMPL>
 
-<INCLUDE file="Function.es" name="function Function">
+<INCLUDE file="Function.es" name="public function Function">
 <INCLUDE file="Function.es" name="helper function createFunction">
 
 <P> The helper function ''createFunction'' is also used by the
-''invoke'' method (see <XREF target="Function: meta static invoke">).
+''invoke'' method (see <XREF target="Function: static meta invoke">).
 
 <p> The magic function ''initializeFunction'' initializes the function
 object ''this'' from the list of parameters and the body, as specified
@@ -163,10 +172,20 @@ exception is thrown.
 
 <SHORTIMPL>
 
-<INCLUDE file="Function.es" name="static function apply">
+<INCLUDE file="Function.es" name="public static function apply">
 
 <p> The magic ''apply'' function performs the actual invocation (see
 <XREF target="magic::apply">).
+
+
+=== bind ( ... ) ===
+
+<DESC> FIXME
+
+<RETN> FIXME
+
+<SHORTIMPL>
+<INCLUDE file="Function.es" name="public static function bind">
 
 
 === call ( fn, thisArg=<LDOTS>, ...args ) ===
@@ -182,7 +201,8 @@ is thrown.
 <RETN> The ''call'' method returns the value returned by //fn//.
 
 <SHORTIMPL>
-<INCLUDE file="Function.es" name="static function call">
+<INCLUDE file="Function.es" name="public static function call">
+
 
 
 == Methods on Function instances ==
@@ -252,6 +272,15 @@ with the current value of ''this'' as the first argument.
 <SHORTIMPL>
 <INCLUDE file="Function.es" name="intrinsic function apply">
 
+=== intrinsic::bind ( thisObj=<LDOTS>, ...args) ===
+
+<DESC>
+
+<RETN>
+
+<SHORTIMPL>
+<INCLUDE file="Function.es" name="intrinsic function bind">
+
 === intrinsic::call ( thisObj=<LDOTS>, ...args) ===
 
 <DESC>The intrinsic ''call'' method calls the static ''apply'' method
@@ -301,6 +330,7 @@ of arguments.  The behaviour of a function when invoked on a number of
 arguments other than the number specified by its length property
 depends on the function.
 
+
 === prototype ===
 
 <P> The initial value of the ''prototype'' property is a fresh
@@ -310,6 +340,7 @@ depends on the function.
 internal [[Prototype]] property of a newly created object before the
 ''Function'' instance is invoked as a constructor for that newly
 created object.
+
 
 == Invoking the ''Function'' prototype object ==
 
@@ -326,6 +357,7 @@ intrinsic counterparts:
 
 <INCLUDE file="Function.es" name="prototype function toString">
 <INCLUDE file="Function.es" name="prototype function apply">
+<INCLUDE file="Function.es" name="prototype function bind">
 <INCLUDE file="Function.es" name="prototype function call">
 
 <p> The Function prototype object does not have a ''valueOf'' property

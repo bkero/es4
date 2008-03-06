@@ -8,6 +8,18 @@ library.html: stitch.py part3.html es4.css library/*.html ../builtins/*.es ../*.
 
 LIBDEPS=stitch.py es4.css ../builtins/*.es ../*.sml
 
+output/Object.html: Object.html library/Object.html $(LIBDEPS) 
+	python stitch.py Object.html output/Object.html
+
+output/Function.html: Function.html library/Function.html $(LIBDEPS) 
+	python stitch.py Function.html output/Function.html
+
+output/Name.html: Name.html library/Name.html $(LIBDEPS) 
+	python stitch.py Name.html output/Name.html
+
+output/Namespace.html: Namespace.html library/Namespace.html $(LIBDEPS) 
+	python stitch.py Namespace.html output/Namespace.html
+
 output/Vector.html: Vector.html library/Vector.html $(LIBDEPS) 
 	python stitch.py Vector.html output/Vector.html
 

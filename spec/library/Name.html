@@ -1,44 +1,71 @@
 <H1 id="class Name"> The class ''Name'' </H1>
 
+<HR>
 <pre>
 FILE:                       spec/library/Name.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-18
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
+SOURCES:                    REFERENCES [1], [2]
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
-REVIEWED AGAINST PROPOSALS: NO
-REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      YES
+IMPLEMENTATION STATUS:      ES4 RI
+
+
+CHANGES SINCE DRAFT 1 (2008-03-05)
+
+  * Compatibility note in intro.
+
+
+OPEN ISSUES
+
+  * intrinsic::valueOf returns a string, but should it return the Name
+    object instead?  (The original proposal returns a string.)
+
+  * The constructor accepts combinations of arguments deemed to be
+    useful (a convenient but restrained superset of the types in
+    EnumerableId).  It's pretty ad-hoc, though.  Any better proposals?
+
+
+REFERENCES
+
+[1] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:name_objects
+[2] builtins/Name.es in the ES4 RI
 </pre>
+<HR>
 
 <P> The class ''Name'' is a final, nullable, non-dynamic, direct
 subclass of ''String'' that reflects a property name as a pair of
 ''Namespace'' and ''string'' values.
+
+<COMP> The ''Namespace'' class is new in the 4th Edition of this Standard.
 
 == Synopsis ==
 
 <P> The class ''Name'' provides the following interface:
 
 {{{
-final class Name extends String
+__ES4__ final class Name extends String
 {
-    <SIGNATURE file="Name.es" name="function Name">
-    <SIGNATURE file="Name.es" name="meta static function invoke">
+    <SIGNATURE file="Name.es" name="public function Name">
+    <SIGNATURE file="Name.es" name="static meta function invoke">
     
-    static const length = 2;
+    public static const length = 2
 
     <SIGNATURE file="Name.es" name="override intrinsic function toString">
     <SIGNATURE file="Name.es" name="override intrinsic function valueOf">
 
-    const qualifier:  Namespace
-    const identifier: string
+    public const qualifier:  Namespace
+    public const identifier: string
 }
 }}}
 
-<P> The ''Name'' prototype object provides the following direct interfaces:
+<P> The ''Name'' prototype object provides the following direct properties:
 
 {{{
-    toString: function (this:Name) <LDOTS>
-    valueOf:  function (this:Name) <LDOTS>
+    toString: function (this: Name) <LDOTS>
+    valueOf:  function (this: Name) <LDOTS>
 }}}
 
 == Methods on the ''Name'' class object ==
@@ -46,13 +73,15 @@ final class Name extends String
 === new Name( a, b=<LDOTS> ) ===
 
 <DESC> The ''Name'' constructor initializes a new ''Name'' object.
-Three combinations of the two arguments //a// and //b// are allowed.
-If //a// is a ''string'' or a ''Name'' then //b// must be
-**undefined**.  Otherwise, if //a// is a ''Namespace'' then //b// must
-be a ''string''.
+Various combinations of the two arguments //a// and //b// are allowed.
+If //a// is a string, a ''Name'', or an integer in the range
+[0,2<SUP>32</SUP>) then //b// must be **undefined**.  Otherwise, if
+//a// is a ''Namespace'' then //b// must be a string or an integer in
+the range [0,2<SUP>32</SUP>).
 
 <SHORTIMPL>
-<INCLUDE file="Name.es" name="function Name">
+<INCLUDE file="Name.es" name="public function Name">
+<INCLUDE file="Name.es" name="static helper function analyzeArgs">
 
 === Name (a, b=<LDOTS>) ===
 
@@ -64,7 +93,7 @@ be a ''string''.
 ''Name'' object.
 
 <SHORTIMPL>
-<INCLUDE file="Name.es" name="meta static function invoke">
+<INCLUDE file="Name.es" name="static meta function invoke">
 
 
 == Methods on ''Name'' instances ==
