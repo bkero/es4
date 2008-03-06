@@ -1,14 +1,28 @@
 <h1 id="class Object"> The class ''Object'' </h1>
 
+<hr>
 <pre>
 FILE:                       spec/library/Object.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
-REVIEWED AGAINST ES3:       NO
-REVIEWED AGAINST ERRATA:    NO
-REVIEWED AGAINST BASE DOC:  NO
-REVIEWED AGAINST PROPOSALS: NO
-REVIEWED AGAINST CODE:      NO
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
+SOURCES:                    REFERENCES [1], [2]
+REVIEWED AGAINST ES3:       YES
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  YES
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      YES
+IMPLEMENTATION STATUS:      ES4 RI
+
+CHANGES SINCE DRAFT 1 (2008-03-05)
+
+  * Added SOURCES, IMPLEMENTATION STATUS, REFERENCES.
+
+
+REFERENCES
+
+[1] [1] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:enumerability
+[2] builtins/Name.es in the ES4 RI
 </pre>
+<hr>
 
 <P> The class ''Object'' is a dynamic non-final class that does not
 subclass any other objects: it is the root of the class hierarchy.
@@ -26,16 +40,15 @@ target="Host objects">).
 <p>The class ''Object'' provides this interface:
 
 {{{
-dynamic class Object
+public dynamic class Object
 {
-    function Object(value=undefined) <LDOTS>
-    <SIGNATURE file="Object.es" name="meta static function invoke">
+    <SIGNATURE file="Object.es" name="public function Object">
+    <SIGNATURE file="Object.es" name="static meta function invoke">
 
-    static const length = 1
+    static public const length = 1
 
     <SIGNATURE file="Object.es" name="intrinsic function toString">
     <SIGNATURE file="Object.es" name="intrinsic function toLocaleString">
-    <SIGNATURE file="Object.es" name="intrinsic function toJSONString">
     <SIGNATURE file="Object.es" name="intrinsic function valueOf">
     <SIGNATURE file="Object.es" name="intrinsic function hasOwnProperty">
     <SIGNATURE file="Object.es" name="intrinsic function isPrototypeOf">
@@ -47,7 +60,6 @@ dynamic class Object
 {{{
     toString:             function () <LDOTS> ,
     toLocaleString:       function () <LDOTS> ,
-    toJSONString:         function () <LDOTS> ,
     valueOf:              function () <LDOTS> ,
     hasOwnProperty:       function (V) <LDOTS> ,
     isPrototypeOf:        function (V) <LDOTS> ,
@@ -76,32 +88,32 @@ defined on a class in the language whose result may be a value of a
 different class than the one in which the constructor is defined.
 
 <IMPL> The ''Object'' constructor can't be expressed as a regular
-ECMAScript constructor.  Instead it is presented below as a function
-''makeObject'' that the ECMAScript implementation will invoke when
-it evaluates ''new Object''.
+ECMAScript constructor.  Instead it is presented below as a helper
+function ''makeObject'' that the ECMAScript implementation will invoke
+when it evaluates ''new Object''.
 
-<P> The function ''makeObject'' is only invoked on native ECMAScript
+<P> The helper function ''makeObject'' only is invoked on native ECMAScript
 values.  If ''new Object'' is evaluated on a host object, then actions
 are taken and a result is returned in an implementation dependent
 manner that may depend on the host object.
 
 {{{
-function makeObject(value=undefined) {
+helper function makeObject(value=undefined) {
     switch type (value) {
-    case (s:string) { 
+    case (s: string) {
         return new String(s);
     }
-    case (b:boolean) { 
+    case (b: boolean) { 
         return new Boolean(b);
     }
-    case (n:(int,uint,double,decimal)) { 
+    case (n: (int|uint|double|decimal)) { 
         return new Number(n);
     }
-    case (o:Object) {
-        return o;
-    }
-    case (x:(null,undefined)) { 
+    case (x: (null|undefined)) { 
         return magic::createObject();
+    }
+    case (o: Object) {
+        return o;
     }
     }
 }
@@ -116,8 +128,7 @@ or one arguments it performs a type conversion.
 <RETN> It returns the converted value.
 
 <SHORTIMPL>
-<INCLUDE file="Object.es" name="meta static function invoke">
-
+<INCLUDE file="Object.es" name="static meta function invoke">
 
 
 == Methods on ''Object'' instances ==
@@ -128,7 +139,7 @@ or one arguments it performs a type conversion.
 to a string.
 
 <RETN> The intrinsic ''toString'' method returns the concatenation of
-''"["'', ''"Object"'', the class name of the object, and ''"]"''.
+''"["'', ''"object"'', the class name of the object, and ''"]"''.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function toString">
@@ -157,6 +168,8 @@ implementations do not use this parameter position for anything else.
 <INCLUDE file="Object.es" name="intrinsic function toLocaleString">
 
 
+<!-- JSON not approved 
+
 === intrinsic::toJSONString ( pretty=<LDOTS> ) ===
 
 <DESC> The intrinsic ''toJSONString'' method convert this object to
@@ -177,8 +190,8 @@ The value **null** is serialized as the unquoted string ''null''.
 
 <P> An **EncodingError** exception will be thrown if this object
 contains a cyclical (sub)structure.  Recurring objects that do not
-cause cycles are allowed, but will produce a complete text for each
-occurrence.
+cause cycles are allowed, but will produce a complete text encoding
+for each occurrence.
 
 <P> If //pretty// is true, then linefeeds are inserted after each left
 curly brace and comma and before a right curly brace, and multiples of
@@ -192,6 +205,7 @@ is inserted between the tokens.
 
 <FIXME> (Ticket #201.)  Only cycle finding need be
 implementation-dependent, we should have code here.
+-->
 
 === intrinsic::valueOf ( ) ===
 
@@ -203,7 +217,7 @@ implementation-defined whether ''valueOf'' returns its ''this'' value
 or another value such as the host object originally passed to the
 constructor.
 
-<RETN> The intrinsic ''toLocaleString'' method returns an object value.
+<RETN> The intrinsic ''valueOf'' method returns an object value.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function valueOf">
@@ -215,7 +229,7 @@ constructor.
 ''this'' object contains a property with a certain //name//, without
 considering the prototype chain.
 
-<NOTE>Unlike [[HasProperty]] (<XREF target="HasProperty-defn">), this
+<NOTE>Unlike [[HasProperty]] (see <XREF target="HasProperty-defn">), this
 method does not consider objects in the prototype chain.
 
 <RETN> The intrinsic ''hasOwnProperty'' method returns ''true'' if the
@@ -227,6 +241,13 @@ object contains the property, otherwise it returns ''false''.
 <p> The function ''magic::hasOwnProperty'' tests whether the object
 contains the named property on its local property list (the prototype
 chain is not considered).  See <XREF target="magic:hasOwnProperty">.
+
+<p> The helper function ''toEnumerableId'' returns its argument if it
+is one of the member types of ''EnumerableId'' (''int'', ''uint'',
+''string'', and ''Name'') and otherwise converts the argument to
+''string''.
+
+<INCLUDE file="Global.es" name="helper function toEnumerableId">
 
 
 === intrinsic::isPrototypeOf ( obj ) ===
@@ -240,6 +261,7 @@ returns ''false''.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function isPrototypeOf">
+<INCLUDE file="Object.es" name="helper function isPrototypeOf">
 
 <p> The function ''magic::getPrototype'' extracts the [[Prototype]] property
 from the object.  See <XREF target="magic:getPrototype">.
@@ -252,6 +274,9 @@ optionally sets, the enumerability flag for a property with a certain
 //name// on the ''this'' object, without considering the prototype
 chain.
 
+<COMP> The functionality to set the enumerability flag is new in the
+4th Edition of this Standard.
+
 <NOTE> This method does not consider objects in the prototype chain.
 
 <RETN> The intrinsic ''propertyIsEnumerable'' method returns ''false''
@@ -261,6 +286,7 @@ any change was made.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function propertyIsEnumerable">
+<INCLUDE file="Object.es" name="helper function propertyIsEnumerable">
 
 <p> The function ''magic::hasOwnProperty'' tests whether the object
 contains the named property on its local property list.  See <XREF
@@ -287,7 +313,7 @@ methods return.
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="prototype function toString">
 <INCLUDE file="Object.es" name="prototype function toLocaleString">
-<INCLUDE file="Object.es" name="prototype function toJSONString">
+<!-- <INCLUDE file="Object.es" name="prototype function toJSONString"> -->
 <INCLUDE file="Object.es" name="prototype function valueOf">
 <INCLUDE file="Object.es" name="prototype function hasOwnProperty">
 <INCLUDE file="Object.es" name="prototype function isPrototypeOf">

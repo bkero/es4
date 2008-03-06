@@ -1,27 +1,57 @@
 <H1 id="class Namespace"> The class ''Namespace'' </H1>
 
+<HR>
 <pre>
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
+SOURCES:                    REFERENCES [1], [2]
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
-REVIEWED AGAINST BASE DOC:  NO
-REVIEWED AGAINST PROPOSALS: NO
-REVIEWED AGAINST CODE:      NO
-</pre>
+REVIEWED AGAINST BASE DOC:  YES
+REVIEWED AGAINST PROPOSALS: N/A
+REVIEWED AGAINST CODE:      YES
+IMPLEMENTATION STATUS:      ES4 RI
 
-<P> The class ''Namespace'' is a final, nullable, non-dynamic, direct
-subclass of ''Object''.  It represents objects that are created by the
-evaluation of the ''namespace'' pragma.
+
+CHANGES SINCE DRAFT 1 (2008-03-05)
+
+  * Presentation: added an explicit "extends Object" clause
+
+
+OPEN ISSUES
+
+  * Namespace objects in ES4 are more opaque than the Namespace
+    objects in the base document and in E4X, both of which expose
+    "prefix" and "name" properties.  ES4 is not supporting E4X, and
+    the base document was probably influenced by E4X, so this
+    may not be a big deal, but it should be discussed.
+
+
+REFERENCES
+
+[1] Section 4.2.10.4 of the base document: http:&#x2f;&#x2f;wiki.ecmascript.org/lib/exe/fetch.php?id=resources%3Aresources&cache=cache&media=resources:as3lang.doc
+[2] builtins/Namespace.es in the ES4 RI
+</pre>
+<HR>
+
+<P> The class ''Namespace'' is a final, non-dynamic, direct subclass
+of ''Object''.  It reflects a namespace as an opaque datum.
+
+<NOTE> Namespaces are created as a result of the evaluation of the
+''namespace'' pragma, which defines a new namespace and creates a
+binding for it.  Namespaces are reflected as ''Namespace'' objects
+when namespace bindings are referenced in expressions.
+
+<COMP> The ''Namespace'' class is new in the 4th Edition of this Standard.
 
 == Synopsis ==
 
 <P> The class ''Namespace'' provides the following interface:
 
 {{{
-final class Namespace
+__ES4__ final class Namespace extends Object
 {
-    intrinsic function toString();
+    intrinsic function toString(): string <LDOTS>
 }
 }}}
 
@@ -38,6 +68,7 @@ properties:
 particular, the class ''Namespace'' does not have a publicly
 accessible constructor.
 
+
 == Methods on ''Namespace'' instances ==
 
 === intrinsic::toString() ===
@@ -46,17 +77,21 @@ accessible constructor.
 object to a string.  If the ''Namespace'' object was created with an
 explicit name then the string contains that name as a substring.
 
+<NOTE>A ''Namespace'' object can be created with an explicit name by
+providing the name as a string in the ''namespace'' pragma.
+
 <RETN> The ''toString'' method returns an implementation-defined string.
 
 <IMPL> The ''toString'' method is implementation-defined.
-
+    
 
 == Methods on the ''Namespace'' prototype object ==
 
-=== toString() ==
+<DESC> The methods on the ''Namespace'' prototype object delegate to
+their corresponding intrinsic methods.
 
-<RETN> The ''toString'' method returns what the intrinsic ''toString''
-method returns.
+<RETN> The methods on the ''Namespace'' prototype object return what
+their corresponding intrinsic methods return.
 
 <SHORTIMPL>
 {{{

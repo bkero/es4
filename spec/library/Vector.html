@@ -1,23 +1,64 @@
 <H1 id="class Vector"> The class ''Vector'' </h1>
 
+<hr>
 <pre>
 FILE:                       spec/library/Vector.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-03-03
+IMPLEMENTATION STATUS:      ES4 RI
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
+
+CHANGES SINCE DRAFT 1 (2008-03-03)
+
+  * Presentation: added an explicit "extends Object" clause.
+
+
+KNOWN DISCREPANCIES AGAINST PROPOSALS
+
+  * Proposals call for a method 'setSlice' supposedly specified in
+    JS1.8.  But the JS1.8 docs do not define it.
+
+
+OPEN ISSUES
+
+  * Should 'filter', 'map', and 'slice' return a vector whose 'fixed'
+    property is true if the 'fixed' property of the vector they were
+    generated from is true?
+
+
+NOTES
+
+  * The proposal uses the phrase "default value appropriate to the
+    base type T" in a few places.  This is the value 0 for numeric
+    types; the empty string for string types; false for boolean types;
+    undefined for the undefined type; and null for all other types.
+    A function that takes a type object and computes the correct
+    default value is expressible in ES4 and may be incorporated
+    into the library spec later.
+
+  * No namespaces are explicitly opened in the scope surrounding the
+    definition of Vector.  If the normative fragments do not show an
+    explicit qualification on a name then the name referenced is the
+    public one.
+
+  * As a general rule, when invoking methods on objects passed as
+    arguments, the Vector methods (like other methods in the library)
+    invoke public methods on the received objects.  For example, the
+    'toLocaleString' method is careful to call the public
+    'toLocaleString' method on its arguments, and 'every', 'filter',
+    'forEach', 'map', and so on call the public 'call' methods on
+    their function arguments.
+
 </pre>
+<hr>
 
-<P> The class ''Vector'' is a parameterized, final, dynamic, direct
-subclass of ''Object''.  It represents dense, typed, 0-based,
-one-dimensional arrays with bounds checking and optionally fixed
-length.
 
-<FIXME> (Ticket #196.) It may not be necessary for ''Vector'' to be
-final, as long as the catchall getters and setters and the getters and
-setters for ''length'' are final.
+<P> The class ''Vector'' is a parameterized, dynamic, direct subclass
+of ''Object''.  It represents dense, typed, 0-based, one-dimensional
+arrays with bounds checking and optionally fixed length.
 
 <P> The class ''Vector'' provides two benefits.  One is optimization:
 the restrictions placed on the class---denseness and a predefined
@@ -26,21 +67,23 @@ implement it particularly efficiently.  The other is error checking:
 ''Vector'' provides stronger type checking and bounds checking than
 ''Array''.
 
-<COMP> The class ''Vector'' is new in the 4th Edition of this Standard.
+<COMP> The class ''Vector'' is new in the 4th Edition of this
+Standard.
 
 <P> The class ''Vector'' provides a method suite that is largely
 compatible with the class ''Array''.
 
-<NOTE> It is likely that many current uses of ''Array'' can switch to
-use ''Vector'' without much work, and receive the benefits of stronger
-type and bounds checking.
+<NOTE> It is likely that many current uses of ''Array'' can be
+switched over to ''Vector'' without much work, and programs that can
+be switched will receive the benefits of stronger type and bounds
+checking.
 
 <P> The type parameter of the ''Vector'' is called its //base type//.
 
 <P> As the ''Vector'' class is dynamic, new properties can be added to
 its instances but any property whose name is a number (an instance of
-any class in the type ''Numbers'') is handled specially.  These
-properties are called //indexed properties//.
+any class in the union type ''AnyNumber'') is handled specially.
+These properties are called //indexed properties//.
 
 <P> Only indexed properties named by nonnegative integers less than
 the value of the property ''length'' are defined, and only indexed
@@ -57,17 +100,17 @@ value of ''length'', the current value of ''length'' is not
 **true**.
 
 <P> The property ''fixed'' is a flag that determines whether the
-vector has a fixed length or not.  Any attempt to update the value of
+vector has fixed length or not.  Any attempt to update the value of
 ''length'' fails if the ''fixed'' property has the value **true**.
 
 <NOTE> If ''v'' is a ''Vector'' then reading and writing ''v[3.14]''
 or ''v[-3]'' will always fail, though reading and writing
 ''v["3.14"]'' or ''v["-3"]'' will succeed.  
 
-<P class="note"> This deviates from the 3rd Edition, where strings and
-numbers are interchangeable as property names.  But that's no longer
-quite true in 4th Edition anyway (we have name spaces and Name
-objects).
+<P class="note"> This behavior deviates from the 3rd Edition, where
+strings and numbers are interchangeable as property names.  But that's
+no longer quite true in 4th Edition anyway, which has have namespaces
+and ''Name'' objects.
 
 <P class="note">Most attempts to set or get properties that are named
 by numbers that are not valid array indices are probably errors,
@@ -76,20 +119,21 @@ the end of an Array are probably errors.  And in a number of cases,
 attempts to write beyond the end of an Array are probably errors too.
 The ''Vector'' class makes it possible to discover these errors.
 
-<P> A vector does not have "holes" in its index range: all indexed
-properties named by nonnegative integers less than ''length'' are
-always defined.
+<P> All indexed properties named by nonnegative integers less than
+''length'' are always defined.
 
+<NOTE> As a consequence, a ''Vector'' does not have "holes" in its
+index range in the way an ''Array'' does.
 
 == Synopsis ==
 
 <P> The class ''Vector'' provides the following interface:
 
 {{{
-final class Vector.<T>
+__ES4__ dynamic class Vector.<T> extends Object
 {
-    <SIGNATURE file="Vector.es" name="function Vector">
-    <SIGNATURE file="Vector.es" name="meta static function invoke">
+    <SIGNATURE file="Vector.es" name="public function Vector">
+    <SIGNATURE file="Vector.es" name="static meta function invoke">
 
     static const length = 2;
 
@@ -105,6 +149,8 @@ final class Vector.<T>
     <SIGNATURE file="Vector.es" name="intrinsic function map">
     <SIGNATURE file="Vector.es" name="intrinsic function pop">
     <SIGNATURE file="Vector.es" name="intrinsic function push">
+    <SIGNATURE file="Vector.es" name="intrinsic function reduce">
+    <SIGNATURE file="Vector.es" name="intrinsic function reduceRight">
     <SIGNATURE file="Vector.es" name="intrinsic function reverse">
     <SIGNATURE file="Vector.es" name="intrinsic function shift">
     <SIGNATURE file="Vector.es" name="intrinsic function slice">
@@ -118,13 +164,15 @@ final class Vector.<T>
     <SIGNATURE file="Vector.es" name="iterator function getValues">
     <SIGNATURE file="Vector.es" name="iterator function getItems">
 
-    <SIGNATURE file="Vector.es" name="var fixed">
+    <SIGNATURE file="Vector.es" name="public var fixed">
 
-    <SIGNATURE file="Vector.es" name="function get length">
-    <SIGNATURE file="Vector.es" name="function set length">
+    <SIGNATURE file="Vector.es" name="public final function get length">
+    <SIGNATURE file="Vector.es" name="public final function set length">
 
-    <SIGNATURE file="Vector.es" name="meta function get">
-    <SIGNATURE file="Vector.es" name="meta function set">
+    <SIGNATURE file="Vector.es" name="meta final function get">
+    <SIGNATURE file="Vector.es" name="meta final function set">
+    <SIGNATURE file="Vector.es" name="meta final function has">
+    <SIGNATURE file="Vector.es" name="meta final function delete">
 }
 }}}
 
@@ -146,6 +194,8 @@ final class Vector.<T>
     map:            function (mapper, thisObj) <LDOTS>
     pop:            function () <LDOTS>
     push:           function (...items) <LDOTS>
+    reduce:         function (callback, initialValue) <LDOTS>
+    reduceRight:    function (callback, initialValue) <LDOTS>
     reverse:        function () <LDOTS>
     shift:          function () <LDOTS>
     slice:          function (start, end) <LDOTS>
@@ -164,8 +214,8 @@ final class Vector.<T>
 
 <P> //Length// is the inital value of the ''length'' property.  Its
 default value is zero.  Every indexed element of the new vector below
-//length// is initialized to **undefined** cast to the base type
-//T//.
+//length// is initialized to a default value that is appropriate to
+the base type ''T''.
 
 <P> //Fixed// is the initial value of the ''fixed'' property.  Its
 default value is **false**.
@@ -173,17 +223,19 @@ default value is **false**.
 <IMPL> The ''Vector'' constructor is implementation-defined.
 
 
-=== Vector.&lt;T&gt;( object ) ===
+=== Vector( object ) ===
 
-<DESC> When the ''Vector'' class object is called as a function, it creates a new
-variable-length ''Vector'' object of the requested base type, giving it the initial
-length of the ''length'' property of //object// and initial element values extracted
-from //object// between indices ''0'' and //object//''.length''.
+<DESC> When the ''Vector'' class object is called as a function, it
+creates a new variable-length ''Vector'' object of type ''*'', giving
+it the initial length of the ''length'' property of //object// and
+initial element values extracted from //object// between indices ''0''
+and //object//''.length''.
 
-<RETN> The ''Vector'' class object called as a function returns a new ''Vector'' object.
+<RETN> The ''Vector'' class object called as a function returns a new
+''Vector'' object.
 
 <SHORTIMPL>
-<INCLUDE file="Vector.es" name="meta static function invoke">
+<INCLUDE file="Vector.es" name="static meta function invoke">
 
 
 == Methods on ''Vector'' instances ==
@@ -204,7 +256,7 @@ object with no argument.
 <DESC> The intrinsic ''toLocaleString'' method converts the ''Vector''
 to a string in the following manner.
 
-Elements of this ''Vector'' are converted to strings using their
+<P>Elements of this ''Vector'' are converted to strings using their
 public ''toLocaleString'' methods, and these strings are then
 concatenated, separated by occurrences of a separator string that has
 been derived in an implementation-defined locale-specific way.  The
@@ -236,6 +288,10 @@ same base type as ''this''.
 <INCLUDE file="Vector.es" name="intrinsic function concat">
 <INCLUDE file="Vector.es" name="helper function concat">
 
+<FIXME> Need to check a detail of the type system, namely whether
+''Vector.&lt;T&gt;'' is a subtype of Vector.&lt;U&gt; if T is a
+subtype of U and U is not ''*''.
+
 === intrinsic::every ( checker, thisObj=<LDOTS> ) ===
 
 <DESC> The intrinsic ''every'' method calls //checker// on every
@@ -243,8 +299,8 @@ vector element of ''this'' in increasing index order, stopping as soon
 as any call returns **false**.
 
 <P>//Checker// is called with three arguments: the vector element
-value, the vector element index, and ''this'' itself.  //ThisObj//
-is used as the ''this'' object in the call.
+value, the vector element index, and ''this''.  //ThisObj// is used as
+the ''this'' object in the call.
 
 <RETN> The ''every'' method returns **true** if all the calls to
 //checker// returned true values, otherwise it returns **false**.
@@ -259,12 +315,13 @@ vector element of ''this'' in increasing index order, collecting all
 the vector elements for which checker returns a true value.
 
 <P> //Checker// is called with three arguments: the vector element
-value, the vector element index, and ''this'' itself.  //ThisObj// is
-used as the ''this'' object in the call.
+value, the vector element index, and ''this''.  //ThisObj// is used as
+the ''this'' object in the call.
 
 <RETN> The ''filter'' method returns a new ''Vector'' object with the
 same base type as ''this'', containing the elements that were
-collected, in the order they were collected.
+collected, in the order they were collected.  The length of the new
+''Vector'' is equal to the number of values that were collected.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function filter">
@@ -283,6 +340,15 @@ the ''this'' object in the call.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function forEach">
+
+<P> The helper function ''clamp'' performs clamping of ''from'' to the
+length of this ''Vector''.
+
+<INCLUDE file="Array.es" name="helper function clamp">
+
+<NOTE> The helper function ''toInteger'', used by ''clamp'', is
+described elsewhere; it performs the ''ToInteger'' operation of the
+3rd Edition.
 
 === intrinsic::indexOf ( value, from=<LDOTS> ) ===
 
@@ -334,16 +400,16 @@ found.
 
 <DESC> The intrinsic ''map'' method calls //mapper// on each vector
 element of ''this'' in increasing numerical index order, collecting
-the return values from //mapper// in a new ''Vector'' object with the
-same base type as ''this''.
+the return values from //mapper//.
 
 <P>//Mapper// is called with three arguments: the vector element
 value, the vector element index, and ''this''.  //ThisObj// is used as
 the ''this'' object in the call.
 
-<RETN> The ''map'' method returns a new ''Vector'' object where the
-vector element at index //i// is the value returned from the call to
-//mapper// on ''this''//[i]//.
+<RETN> The ''map'' method returns a new ''Vector'' object of the same
+base type and length as this ''Vector''.  The element at index //i//
+in the new vector is the value collected from the call to //mapper//
+on ''this[''//i//'']''.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function map">
@@ -354,21 +420,22 @@ vector element at index //i// is the value returned from the call to
 from ''this'' and removes it by decreasing the value of the ''length''
 property of ''this'' by 1.
 
-<RETN> The ''pop'' method returns the removed element, or
-**undefined** cast to the base type of ''this'' if there are no
-elements.
+<RETN> The ''pop'' method returns the removed element, or the
+appropriate default value for the base type of ''this'' if there are
+no elements.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function pop">
 
 === intrinsic::push ( ...items ) ===
 
-<DESC> The intrinsic ''push'' method appends the values in //items// to
-the end of the vector elements of ''this'', in the order in which
-they appear, in the process updating the ''length'' property of ''this''.
+<DESC> The intrinsic ''push'' method appends the values in //items//
+to this ''Vector'', in the order in which they appear in //items//.
+The ''length'' property of this ''Vector'' will be incremented by the
+length of //items//.
 
 <RETN> The ''push'' method returns the new value of the ''length''
-property of ''this''.
+property of this ''Vector''.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function push">
@@ -397,15 +464,19 @@ decrements the ''length'' property of ''this'' by 1.
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function shift">
 
-=== intrinsic::slice ( start=<LDOTS>, end=<LDOTS> ) ===
+=== intrinsic::slice ( start=<LDOTS>, end=<LDOTS>, step=<LDOTS> ) ===
 
-<DESC> The intrinsic ''slice'' method extracts the subrange of array elements
-from ''this'' between //start// (inclusive) and //end// (exclusive)
-into a new Array.
+<DESC> The intrinsic ''slice'' method extracts the subrange of array
+elements from ''this'' between //start// (inclusive) and //end//
+(exclusive) into a new Array.  Each //step// element is taken.
 
-<P> If //start// is negative, it is treated as
-''//object//.length+//start//''.  If //end// is negative, it is
-treated as ''//object//.length+//end//''. 
+<P> The default value of //start// is 0.  If it is negative, it is
+treated as ''//object//.length+//start//''.
+
+<P> The default value of //end// is Infinity.  If it is negative, it
+is treated as ''//object//.length+//end//''.
+
+<P> The default value of //step// is 1.  If it is 0, it is set to 1.
 
 <RETN> The ''slice'' method returns a new ''Vector'' object with the
 same base type as ''this'', containing the extracted vector elements.
@@ -456,6 +527,9 @@ function to compare elements of //this//.
 
 <NOTE> For a description of the informative ''sortEngine'' method, see
 <XREF target="sorting-logic">.
+
+<FIXME> The signature of ''comparefn'' is probably too constraining,
+it will require the client to pass a strongly-typed function.
 
 === intrinsic::splice ( start, deleteCount, ...items ) ===
 
@@ -516,7 +590,7 @@ removed from the vector.
 
 <P> When ''length'' is given a new value that is greater than its old
 value then the elements in the vector at the old length and beyond are
-given the value **undefined** cast to the base type ''T''.
+given a default value that is appropriate to the base type ''T''.
 
 <P> If an attempt is made to set ''length'' when the ''fixed'' property
 is **true** then a **RangeError** is thrown.
@@ -529,7 +603,7 @@ thrown.
 === fixed ===
 
 <P> The boolean property ''fixed'' determines whether the ''Vector''
-has a fixed length.
+has fixed length.
 
 <P> If ''fixed'' has the value **true** then any attempt to change
 ''length'' will result in in a **RangeError** being thrown.
@@ -541,7 +615,7 @@ length and variable length at different times.
 === Numerically named properties ===
 
 <P> A ''Vector'' contains all properties whose names are nonnegative
-integers below the value of ''length''.
+integers below the value of the ''Vector'''s ''length'' property.
 
 <P> If an attempt is made to read a property whose name is a number that
 is not a nonnegative integer below ''length'' then a **RangeError** is thrown.
@@ -550,11 +624,12 @@ is not a nonnegative integer below ''length'' then a **RangeError** is thrown.
 a nonnegative integer below ''length'' then one of two things happen:
 <UL>
   <LI> If the ''fixed'' property has the value ''true'', or if the
-  number is not a nonnegative integer, or if it is a nonnegative number but
-  not the value ''length'', or if ''length'' is already 2<SUP>32</SUP>-1,
-  then a **RangeError** is thrown.
-  <LI> Otherwise, the property is defined on the vector and the ''length'' property
-  is incremented by 1.
+  number is not a nonnegative integer, or if the number is nonnegative but
+  not the same value as the value of ''length'', or if ''length'' is 
+  already 2<SUP>32</SUP>-1, then a **RangeError** is thrown.
+
+  <LI> Otherwise, the property is defined on the vector and 
+  the ''length'' property is incremented by 1.
 </UL>
 
 == Methods on the ''Vector'' prototype object ==
