@@ -1,0 +1,426 @@
+<html>
+<head>
+<title>The class "Object"</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+@media print {
+/*    H1 { page-break-before: always } */
+    .copyright { page-break-before: always }
+}
+
+</style>
+</head>
+
+<body>
+<h1 id="class Object"> The class <code>Object</code> </h1>
+
+<hr>
+<pre>
+FILE:                       spec/library/Object.html
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
+REVIEWED AGAINST ES3:       YES
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  YES
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      YES
+</pre>
+<hr>
+
+<P><span class="pcounter"></span> The class <code>Object</code> is a dynamic non-final class that does not
+subclass any other objects: it is the root of the class hierarchy.
+
+<P><span class="pcounter"></span> All values in ECMAScript except <b>undefined</b> and <b>null</b> are
+instances of the class <code>Object</code> or one of its subclasses.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Host objects may not be instances of <code>Object</code> or its
+subclasses, but must to some extent behave as if they are (see <span class="xref">Host objects</span>).
+
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span>The class <code>Object</code> provides this interface:
+
+<PRE>
+public dynamic class Object
+{
+    public function Object(value=undefined) &#x0085
+    static meta function invoke(value=undefined) &#x0085
+
+    static public const length = 1
+
+    intrinsic function toString() : string &#x0085
+    intrinsic function toLocaleString() : string &#x0085
+    intrinsic function valueOf() : Object &#x0085
+    intrinsic function hasOwnProperty(name: EnumerableId): boolean &#x0085
+    intrinsic function isPrototypeOf(obj): boolean &#x0085
+    intrinsic function propertyIsEnumerable(name: EnumerableId, flag: (boolean|undefined) = undefined): boolean &#x0085
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>Object</code> prototype object provides these direct properties:
+<PRE>
+    toString:             function () &#x0085; ,
+    toLocaleString:       function () &#x0085; ,
+    valueOf:              function () &#x0085; ,
+    hasOwnProperty:       function (V) &#x0085; ,
+    isPrototypeOf:        function (V) &#x0085; ,
+    propertyIsEnumerable: function (name, flag=undefined) &#x0085; ,
+</PRE>
+
+<P><span class="pcounter"></span> The <code>Object</code> prototype object is itself an instance of the class
+<code>Object</code>, with the exception that the value of its <code>[[Prototype]]</code>
+property is <b>null</b>.
+
+
+<h2>Methods on the <code>Object</code> class object</h2>
+
+<h3>new&nbsp;Object&nbsp;(&nbsp;value=&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Object</code> constructor is called with an argument
+<i>value</i> (defaulting to <b>undefined</b>) as part of a <code>new</code>
+expression, it transforms the <i>value</i> to an object in a way that
+depends on the type of <i>value</i>.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Object</code> constructor returns an object (an instance of
+<code>Object</code> or one of its subclasses, or a host object).
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The <code>Object</code> constructor is the only constructor function
+defined on a class in the language whose result may be a value of a
+different class than the one in which the constructor is defined.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span> The <code>Object</code> constructor can't be expressed as a regular
+ECMAScript constructor.  Instead it is presented below as a helper
+function <code>makeObject</code> that the ECMAScript implementation will invoke
+when it evaluates <code>new Object</code>.
+
+<P><span class="pcounter"></span> The helper function <code>makeObject</code> only is invoked on native ECMAScript
+values.  If <code>new Object</code> is evaluated on a host object, then actions
+are taken and a result is returned in an implementation dependent
+manner that may depend on the host object.
+
+<PRE>
+helper function makeObject(value=undefined) {
+    switch type (value) {
+    case (s: string) {
+        return new String(s);
+    }
+    case (b: boolean) { 
+        return new Boolean(b);
+    }
+    case (n: (int|uint|double|decimal)) { 
+        return new Number(n);
+    }
+    case (x: (null|undefined)) { 
+        return magic::createObject();
+    }
+    case (o: Object) {
+        return o;
+    }
+    }
+}
+</PRE>
+
+
+<h3>Object&nbsp;(&nbsp;value=&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Object</code> class object is called as a function with zero
+or one arguments it performs a type conversion.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> It returns the converted value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(value=undefined)
+    new Object(value);
+</PRE>
+
+
+<h2>Methods on <code>Object</code> instances</h2>
+
+<h3>intrinsic::toString&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method converts the <code>this</code> object
+to a string.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns the concatenation of
+<code>"["</code>, <code>"object"</code>, the class name of the object, and <code>"]"</code>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function toString() : string
+    "[object " + magic::getClassName(this) + "]";
+</PRE>
+
+<P><span class="pcounter"></span> The function <code>magic::getClassName</code> extracts the class name
+from the object.  See <span class="xref">magic:getClassName</span>.
+
+
+<h3>intrinsic::toLocaleString&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>toLocaleString</code> method calls the public
+<code>toString</code> method on the <code>this</code> object.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  This method is provided to give all objects a generic
+<code>toLocaleString</code> interface, even though not all may use it.
+Currently, <code>Array</code>, <code>Number</code>, and <code>Date</code> provide their own
+locale-sensitive <code>toLocaleString</code> methods.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The first parameter to this function is likely to be used in a
+future version of this standard; it is recommended that
+implementations do not use this parameter position for anything else.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toLocaleString</code> method returns a string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function toLocaleString() : string
+    this.toString();
+</PRE>
+
+
+
+
+<h3>intrinsic::valueOf&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>valueOf</code> method returns its <code>this</code> value.
+
+<P><span class="pcounter"></span> If the object is the result of calling the Object constructor with
+a host object (<span class="xref">Host objects</span>), it is
+implementation-defined whether <code>valueOf</code> returns its <code>this</code> value
+or another value such as the host object originally passed to the
+constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>valueOf</code> method returns an object value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function valueOf() : Object
+    this;
+</PRE>
+
+
+<h3>intrinsic::hasOwnProperty&nbsp;(&nbsp;name&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>hasOwnProperty</code> method determines whether the
+<code>this</code> object contains a property with a certain <i>name</i>, without
+considering the prototype chain.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; Unlike <code>[[HasProperty]]</code> (see <span class="xref">HasProperty-defn</span>), this
+method does not consider objects in the prototype chain.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>hasOwnProperty</code> method returns <code>true</code> if the
+object contains the property, otherwise it returns <code>false</code>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function hasOwnProperty(name: EnumerableId): boolean
+    magic::hasOwnProperty(this, name);
+</PRE>
+
+<P><span class="pcounter"></span> The function <code>magic::hasOwnProperty</code> tests whether the object
+contains the named property on its local property list (the prototype
+chain is not considered).  See <span class="xref">magic:hasOwnProperty</span>.
+
+<P><span class="pcounter"></span> The helper function <code>toEnumerableId</code> returns its argument if it
+is one of the member types of <code>EnumerableId</code> (<code>int</code>, <code>uint</code>,
+<code>string</code>, and <code>Name</code>) and otherwise converts the argument to
+<code>string</code>.
+
+<PRE>
+helper function toEnumerableId(x) {
+    switch type (x) {
+    case (x: EnumerableId) { return x; }
+    case (x: *)            { return string(x); }
+    }
+}
+</PRE>
+
+
+<h3>intrinsic::isPrototypeOf&nbsp;(&nbsp;obj&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>isPrototypeOf</code> method determines whether its
+<code>this</code> object is a prototype object of the argument <i>obj</i>.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>isPrototypeOf</code> method returns <code>true</code> if the
+<code>this</code> object is on the prototype chain of <i>obj</i>, otherwise it
+returns <code>false</code>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function isPrototypeOf(obj): boolean
+    helper::isPrototypeOf(this, obj);
+
+helper function isPrototypeOf(self, obj): boolean {
+    if (!(obj is Object))
+        return false;
+
+    while (true) {
+        obj = magic::getPrototype(obj);
+        if (obj === null || obj === undefined)
+            return false;
+        if (obj === self)
+            return true;
+    }
+}
+</PRE>
+
+<P><span class="pcounter"></span> The function <code>magic::getPrototype</code> extracts the <code>[[Prototype]]</code> property
+from the object.  See <span class="xref">magic:getPrototype</span>.
+
+
+<h3>intrinsic::propertyIsEnumerable&nbsp;(&nbsp;name,&nbsp;flag=&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>propertyIsEnumerable</code> method retrieves, and
+optionally sets, the enumerability flag for a property with a certain
+<i>name</i> on the <code>this</code> object, without considering the prototype
+chain.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The functionality to set the enumerability flag is new in the
+4th Edition of this Standard.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  This method does not consider objects in the prototype chain.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>propertyIsEnumerable</code> method returns <code>false</code>
+if the property does not exist on the <code>this</code> object; otherwise it
+returns the value of the enumerability flag for the property before
+any change was made.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function propertyIsEnumerable(name: EnumerableId, flag: (boolean|undefined) = undefined): boolean
+    helper::propertyIsEnumerable(this, name, flag);
+
+helper function propertyIsEnumerable(self, name, flag) {
+    if (!magic::hasOwnProperty(self, name))
+        return false;
+
+    let oldval = !magic::getPropertyIsDontEnum(self, name);
+    if (!magic::getPropertyIsDontDelete(self, name))
+        if (flag !== undefined) {
+            print("setting: " + flag);
+            magic::setPropertyIsDontEnum(self, name, !flag);
+        }
+    return oldval;
+}
+</PRE>
+
+<P><span class="pcounter"></span> The function <code>magic::hasOwnProperty</code> tests whether the object
+contains the named property on its local property list.  See <span class="xref">magic:hasOwnProperty</span>.
+
+<P><span class="pcounter"></span> The function <code>magic::getPropertyIsDontEnum</code> gets the DontEnum
+flag of the property.  See <span class="xref">magic:getPropertyIsDontEnum</span>.
+
+<P><span class="pcounter"></span> The function <code>magic::getPropertyIsDontDelete</code> gets the DontDelete
+flag of the property.  See <span class="xref">magic:getPropertyIsDontDelete</span>.
+
+<P><span class="pcounter"></span> The function <code>magic::setPropertyIsDontEnum</code> sets the DontEnum
+flag of the property.  See <span class="xref">magic:setPropertyIsDontEnum</span>.
+
+
+<h2>Methods on the <code>Object</code> prototype object</h2>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The methods on the <code>Object</code> prototype object all call the
+corresponding intrinsic methods of the <code>Object</code> class.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The prototype methods return what their corresponding intrinsic
+methods return.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+prototype function toString()
+    this.intrinsic::toString();
+
+prototype function toLocaleString()
+    this.intrinsic::toLocaleString();
+
+prototype function valueOf()
+    this.intrinsic::valueOf();
+
+prototype function hasOwnProperty(name)
+    this.intrinsic::hasOwnProperty(helper::toEnumerableId(name));
+
+prototype function isPrototypeOf(obj)
+    this.intrinsic::isPrototypeOf(obj);
+
+prototype function propertyIsEnumerable(name, flag=undefined)
+    this.intrinsic::propertyIsEnumerable(helper::toEnumerableId(name), flag);
+</PRE>
+
+
+
+
+
+</body>
+</html>

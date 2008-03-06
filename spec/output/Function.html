@@ -1,0 +1,478 @@
+<html>
+<head>
+<title>The class "Function"</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+@media print {
+/*    H1 { page-break-before: always } */
+    .copyright { page-break-before: always }
+}
+
+</style>
+</head>
+
+<body>
+<h1 id="class Function"> The class <code>Function</code> </h1>
+
+<hr>
+<pre>
+FILE:                       spec/library/Function.html
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
+SOURCES:                    ?
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+IMPLEMENTATION STATUS:      ?
+
+REFERENCES
+
+</pre>
+<hr>
+
+<P><span class="pcounter"></span> The class <code>Function</code> is a dynamic non-final subclass of
+<code>Object</code> (see <span class="xref">class Object</span>).
+
+<P><span class="pcounter"></span> All objects defined by <code>function</code> definitions or expressions in
+ECMAScript are instances of the class <code>Function</code>.
+
+<P><span class="pcounter"></span> Not all objects that can be called as functions are instances of
+subclasses of the <code>Function</code> class, however.  Any object that has a
+<code>meta invoke</code> method can be called as a function.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Host functions may also not be instances of <code>Function</code> or its
+subclasses, but must to some extent behave as if they are (see <span class="xref">Host objects</span>).
+
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> The class <code>Function</code> provides the following interface:
+
+<PRE>
+dynamic class Function extends Object
+{
+    public function Function(...args) &#x0085
+    static meta function invoke(...args) &#x0085
+
+    public static function apply(fn: helper::Invokable, thisArg: Object=null, argArray: Object=null) &#x0085
+    public static function bind(method: helper::Invokable, thisObj: Object=null, ...args) &#x0085
+    public static function call(fn: helper::Invokable, thisObj: Object=null, ...args) &#x0085
+
+    static public const length = 1
+
+    meta final function invoke( &#x0085; ) &#x0085;
+
+    override intrinsic function toString() : string &#x0085
+
+    intrinsic function apply(thisArg: Object=null, argArray: Object=null) &#x0085
+    intrinsic function bind(thisObj: Object=null, ...args) &#x0085
+    intrinsic function call(thisObj: Object=null, ...args) &#x0085
+
+    public const length = &#x0085;
+    public var   prototype = &#x0085;
+}
+</PRE>
+
+<P><span class="pcounter"></span>The <code>Function</code> prototype object provides these direct properties:
+
+<PRE>
+    toString:    function () &#x0085; ,
+    apply:       function(thisArg, argArray) &#x0085; ,
+    bind:        function(thisArg, ...args) &#x0085; ,
+    call:        function(thisArg, ...args) &#x0085; ,
+</PRE>
+
+
+<h2>Methods on the <code>Function</code> class object</h2>
+
+<H3 id="Function: constructor"> new Function (p1, p2, &#x0085; , pn, body) </h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Function</code> constructor is called with some arguments as
+part of a <code>new</code> expression, it creates a new <code>Function</code> instance
+whose parameter list is given by the concatenation of the <i>p<SUB>i</SUB></i>
+arguments and whose executable code is given by the <i>body</i> argument.
+
+<P><span class="pcounter"></span> There may be no <i>p<SUB>i</SUB></i> arguments, and <i>body</i> is optional too,
+defaulting to the empty string.
+
+<P><span class="pcounter"></span> If the list of parameters is not parsable as a
+<i>FormalParameterList<sub>opt</sub></i>, or if the body is not parsable
+as a <i>FunctionBody</i>, then a <b>SyntaxError</b> exception is thrown (see
+the grammar in section <span class="xref">ECMAScript grammar</span>).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Function</code> constructor returns a new <code>Function</code> instance.
+
+<P class="implsection"><b>Implementation</b>
+
+<PRE>
+public function Function(...args)
+    helper::createFunction(args);
+
+helper function createFunction(args) {
+    let parameters = "";
+    let body = "";
+    if (args.length > 0) {
+        body = args[args.length-1];
+        args.length = args.length-1;
+        parameters = args.join(",");
+    }
+    body = string(body);
+    magic::initializeFunction(this, intrinsic::global, parameters, body);
+}
+</PRE>
+
+<P><span class="pcounter"></span> The helper function <code>createFunction</code> is also used by the
+<code>invoke</code> method (see <span class="xref">Function: static meta invoke</span>).
+
+<P><span class="pcounter"></span> The magic function <code>initializeFunction</code> initializes the function
+object <code>this</code> from the list of parameters and the body, as specified
+in section <span class="xref">translation:FunctionExpression</span>.  The global
+object is passed in as the Scope parameter.
+
+<P><span class="pcounter"></span>A <code>prototype</code> property is automatically created for every function, to
+provide for the possibility that the function will be used as a
+constructor.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  It is permissible but not necessary to have one argument for
+each formal parameter to be specified. For example, all three of the
+following expressions produce the same result:
+
+<PRE>
+new Function("a", "b", "c", "return a+b+c")
+
+new Function("a, b, c", "return a+b+c")
+
+new Function("a,b", "c", "return a+b+c")
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #172.)  Type annotations?  The RI barfs (looks like an
+incomplete or incorrect set of namespaces is provided during
+construction).
+
+<p class="fixme"> Return type annotations?  No way to specify this using the
+current shape of the constructor.
+
+<p class="fixme"> Default values?  The RI says yes.
+
+<p class="fixme"> Rest arguments?  The RI says yes.
+
+<p class="fixme"> One possibility is to extend the syntax, s.t. the
+<i>p<SUB>i</SUB></i> concatenated can form a syntactically valid
+parameter list bracketed by <code>(</code> and <code>)</code>; this creates the
+possibility that a return type annotation can follow the <code>)</code>.
+
+
+<h3 id="Function: meta static invoke">Function&nbsp;(p1,&nbsp;p2,&nbsp;&#x0085;&nbsp;,&nbsp;pn,&nbsp;body)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Function</code> class object is called as a function it
+creates and initialises a new <code>Function</code> object.  Thus the function
+call <code>Function(&#x0085;)</code> is equivalent to the object creation
+expression <code>new Function(&#x0085;)</code> with the same arguments.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Function</code> class object called as a function returns a
+new <code>Function</code> instance.
+
+<P class="implsection"><b>Implementation</b>
+
+
+<PRE>
+meta static function invoke(...args)
+    helper::createFunction(args)
+</PRE>
+
+<P><span class="pcounter"></span> The helper function <code>createFunction</code> was defined along with the
+<code>Function</code> constructor (see <span class="xref">Function: constructor</span>).
+
+
+<h3>apply&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;argArray=&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>apply</code> method takes arguments <i>fn</i>, <i>thisArg</i>, and
+<i>argArray</i>, and performs a function call using the <code>[[Call]]</code> property
+of <i>fn</i>, passing <i>thisArg</i> as the value for <code>this</code> and the
+members of <i>argArray</i> as the individual argument values.
+
+<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>[[Call]]</code> property, a <b>TypeError</b>
+exception is thrown.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>apply</code> method returns the value returned by <i>fn</i>.
+
+<P class="implsection"><b>Implementation</b>
+
+<PRE>
+public static function apply(fn: helper::Invokable, thisArg: Object=null, argArray: Object=null) {
+    if (thisArg === null)
+        thisArg = global;
+    if (argArray === null)
+        argArray = [];
+    else if (!(argArray is Array || informative::isArgumentsObject(argArray)))
+        throw new TypeError();
+    return magic::apply(fn, thisArg, argArray);
+}
+</PRE>
+
+<P><span class="pcounter"></span> The magic <code>apply</code> function performs the actual invocation (see
+<span class="xref">magic::apply</span>).
+
+
+<h3>call&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;...args&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>call</code> method takes arguments <i>fn</i> and <i>thisArg</i> and
+optionally some <i>args</i>, and performs a function call using the
+<code>[[Call]]</code> property of <i>fn</i>, passing <i>thisArg</i> as the value for <code>this</code>
+and the members of <i>args</i> as the individual argument values.
+
+<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>[[Call]]</code> property, a <b>TypeError</b> exception
+is thrown.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>call</code> method returns the value returned by <i>fn</i>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public static function call(fn: helper::Invokable, thisObj: Object=null, ...args)
+    Function.apply(fn, thisObj, args);
+</PRE>
+
+<h3>bind&nbsp;(&nbsp;...&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> FIXME
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> FIXME
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public static function bind(method: helper::Invokable, thisObj: Object=null, ...args)
+    helper::bind(method, thisObj, args);
+</PRE>
+
+
+<h2>Methods on Function instances</h2>
+
+<h3>meta::invoke&nbsp;(&nbsp;&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The meta method <code>invoke</code> is specialized to the individual
+function object.  When called, it evaluates the executable code for
+the function.
+
+<P><span class="pcounter"></span> The meta method <code>invoke</code> is typically called by the ECMAScript
+implementation as part of the function invocation and object
+construction protocols.  When a function or method is invoked, the
+<code>invoke</code> method of the function or method object provides the code
+to run.  When a function is used to construct a new object, the
+<code>invoke</code> method provides the code for the constructor function.
+
+<P><span class="pcounter"></span> The signature of the meta method <code>invoke</code> is determined when the
+<code>Function</code> instance is created, and is determined by the text that
+defines the function being created.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The meta method <code>invoke</code> is <code>final</code>; therefore subclasses
+can add properties and methods but can't override the function calling
+behavior.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #173.)  While it is necessary that the <code>invoke</code>
+method is completely magic in <code>Function</code> instances, it's not clear
+it needs to be magic for instances of subclasses of <code>Function</code>,
+because these can be treated like other objects that have <code>invoke</code>
+methods (and which already work just fine).  Therefore it should not
+be <code>final</code>.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The meta method <code>invoke</code> returns the result of evaluating the
+executable code for the function represented by this <code>Function</code>
+object.
+
+
+<h3>intrinsic::toString&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method converts the executable code
+of the function to a string representation.  This representation has
+the syntax of a <i>FunctionDeclaration</i> or <i>FunctionExpression</i>.
+Note in particular that the use and placement of white space, line
+terminators, and semicolons within the representation string is
+implementation-dependent.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns a string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function toString(): string
+    informative::source;
+</PRE>
+
+<P><span class="pcounter"></span> The informative property <code>source</code> holds a string representation
+of this function object.
+
+
+<h3>intrinsic::apply&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;args=&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>apply</code> method calls the static <code>apply</code> method
+with the current value of <code>this</code> as the first argument.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>apply</code> method returns the result of the static
+<code>apply</code> method.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function apply(thisArg: Object=null, argArray: Object=null)
+    Function.apply(this, thisArg, argArray);
+</PRE>
+
+<h3>intrinsic::call&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;...args)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>call</code> method calls the static <code>apply</code> method
+with the current value of <code>this</code> as the first argument.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>call</code> method returns the result of the static
+<code>call</code> method.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function call(thisObj: Object=null, ...args)
+    Function.apply(this, thisObj, args);
+</PRE>
+
+
+
+
+
+<h2>Properties of <code>Function</code> instances</h2>
+
+<P><span class="pcounter"></span> In addition to the required internal properties, every function
+instance has a <code>[[Call]]</code> property, a <code>[[Construct]]</code> property and a
+<code>[[Scope]]</code> property (see sections 8.6.2 and 13.2).
+
+
+<h3>length</h3>
+
+<P><span class="pcounter"></span> The value of the constant <code>length</code> property is the number of
+non-rest arguments accepted by the function.
+
+<P><span class="pcounter"></span> The value of the <code>length</code> property is an integer that indicates
+the "typical" number of arguments expected by the function.  However,
+the language permits the function to be invoked with some other number
+of arguments.  The behaviour of a function when invoked on a number of
+arguments other than the number specified by its length property
+depends on the function.
+
+
+<h3>prototype</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>prototype</code> property is a fresh
+<code>Object</code> instance.
+
+<P><span class="pcounter"></span> The value of the <code>prototype</code> property is used to initialise the
+internal <code>[[Prototype]]</code> property of a newly created object before the
+<code>Function</code> instance is invoked as a constructor for that newly
+created object.
+
+
+<h2>Invoking the <code>Function</code> prototype object</h2>
+
+<P><span class="pcounter"></span> When the <code>Function</code> prototype object is invoked it accepts any
+arguments and returns <b>undefined</b>:
+
+<PRE>
+meta prototype function invoke(...args)
+    undefined;
+</PRE>
+
+
+<h2>Methods on the <code>Function</code> prototype object</h2>
+
+<P><span class="pcounter"></span> The methods on the <code>Function</code> prototype object call their
+intrinsic counterparts:
+
+<PRE>
+prototype function toString(this:Function)
+    "function () { }";
+
+prototype function apply(thisArg=undefined, argArray=undefined)
+    Function.apply(this,
+                   thisArg === undefined ? null : thisArg,
+                   argArray === undefined ? null : argArray);
+
+prototype function call(this: helper::Invokable, thisObj=undefined, ...args)
+    Function.apply(this, thisObj === undefined ? null : thisObj, args);
+</PRE>
+
+<P><span class="pcounter"></span> The Function prototype object does not have a <code>valueOf</code> property
+of its own; however, it inherits the <code>valueOf</code> property from the
+<code>Object</code> prototype object.
+
+
+
+
+
+</body>
+</html>
