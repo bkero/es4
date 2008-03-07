@@ -845,6 +845,7 @@ tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(Infinity\) = 1\.570796326794
 tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(-Infinity\) = -1\.5707963267949, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(1\) = 0\.785398163397448, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.4 : Math\.atan\(-1\) = -0\.785398163397448, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Math/15.8.2.5 :,es4ri, expectedfail, not compiling for some reason - investigating
 tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(void 0\, void 0\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(\) = 0, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Math/15.8.2.5 : Math\.atan2\(1\, 0\) = 1\.5707963267949, es4ri, expectedfail, auto-generated error
@@ -930,6 +931,12 @@ tests/spidermonkey/ecma/Number/15.7.4.2-3-n : o = new String\(\); o\.toString = 
 tests/spidermonkey/ecma/Number/15.7.4.2-4 : o = 3; o\.toString = Number\.prototype\.toString, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Number/15.7.4.3-1 : Number\.prototype\.valueOf\(\) = \[object Object\], es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/Number/15.7.4.3-3-n : v = Number\.prototype\.valueOf; o = new String\('Infinity'\); o\.valueOf = v; o\.valueOf\(\) = Infinity, es4ri, expectedfail, auto-generated error
+tests/spidermonkey/ecma/Number/15.7.3.2-3 :,es4ri, expectedfail,not compiling - investigating
+tests/spidermonkey/ecma/Number/15.7.3.3-3 :,es4ri, expectedfail,not compiling - investigating
+tests/spidermonkey/ecma/Number/15.7.3.4-3 :,es4ri, expectedfail,not compiling - investigating
+tests/spidermonkey/ecma/Number/15.7.3.5-3 :,es4ri, expectedfail,not compiling - investigating
+tests/spidermonkey/ecma/Number/15.7.3.6-3 :,es4ri, expectedfail,not compiling - investigating
+tests/spidermonkey/ecma/String/15.5.5.1 :,es4ri, expectedfail,not compiling - investigating
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\(true\)\.valueOf\(\) = true, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\(false\)\.valueOf\(\) = false, es4ri, expectedfail, auto-generated error
 tests/spidermonkey/ecma/ObjectObjects/15.2.1.1 : Object\(0\)\.valueOf\(\) = 0, es4ri, expectedfail, auto-generated error
