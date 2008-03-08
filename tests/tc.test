@@ -116,3 +116,6 @@ let (f:function(y)=function f(x:int):int {return x}) f(3);
 %% [fn56] verify, pass
 let (f:function(int):int=function f(x) {return x}) f(3);
 
+%% [classInNamespace] verify, pass
+namespace N { class C {} };
+

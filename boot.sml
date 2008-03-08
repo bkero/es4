@@ -168,11 +168,13 @@ fun loadFiles (prog:Fixture.PROGRAM)
         f prog [] fs
     end
 
+val verifyBuiltins = true
+
 fun verifyFiles prog fs =
     let
         fun ver (file, frag) =
             (trace ["verifying boot file ", file];
-             (file, Verify.verifyTopFragment prog false frag))
+             (file, Verify.verifyTopFragment prog verifyBuiltins frag))
     in
         map ver fs
     end
@@ -336,7 +338,7 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "DecimalContext.es"
                  ]
 
-        val objFrag = Verify.verifyTopFragment prog false objFrag
+        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
 
         val glob = 
             let
@@ -346,9 +348,9 @@ fun boot (baseDir:string) : Mach.REGS =
                 Mach.newObj objTag Mach.Null NONE
             end
 
-        val clsFrag = Verify.verifyTopFragment prog false clsFrag
-        val funFrag = Verify.verifyTopFragment prog false funFrag
-        val ifaceFrag = Verify.verifyTopFragment prog false ifaceFrag
+        val clsFrag = Verify.verifyTopFragment prog verifyBuiltins clsFrag
+        val funFrag = Verify.verifyTopFragment prog verifyBuiltins funFrag
+        val ifaceFrag = Verify.verifyTopFragment prog verifyBuiltins ifaceFrag
         val otherProgs = verifyFiles prog otherFrags
 
         val regs = Mach.makeInitialRegs prog glob

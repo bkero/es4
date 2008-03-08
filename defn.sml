@@ -2484,9 +2484,12 @@ and defDefn (env:ENV)
       | Ast.ClassDefn cd =>
             let
                 val _ = trace ["defClass"]
-                val _ = if Fixture.inGeneralRib (#program env) (#ribId env)
+(* FIXME: we use classes inside statements 
+                val _ = 
+                    if Fixture.inGeneralRib (#program env) (#ribId env)
                         then error ["ClassDefn inside general rib"]
                         else ()
+*)
                 val (hoisted,def) = defClass env cd
             in
                 ([],hoisted,[])

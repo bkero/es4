@@ -89,9 +89,12 @@ fun withRibOpt { returnType, strict, prog, ribs, stdTypes} extn =
 
 val doTrace = ref false
 val doTraceFrag = ref false
-fun log ss = LogErr.log ("[verify] " :: ss)
+val Any =  Ast.SpecialType Ast.Any
+fun log ss = LogErr.log ("[verify] " ::
+                         ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.verifyError ss
+fun warning ss = LogErr.log("STRICT-MODE WARNING: " :: ss)
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
@@ -111,10 +114,14 @@ fun normalize (prog:Fixture.PROGRAM)
     : Ast.TY = 
     Type.normalize prog [] ty
     handle LogErr.TypeError e => 
-           if strict 
-           then error [e, " while normalizing ", 
-                       LogErr.ty (AstQuery.typeExprOf ty)]
-           else ty
+           let in
+               if strict 
+               then 
+                   warning [e, " while normalizing ", 
+                            LogErr.ty (AstQuery.typeExprOf ty)]
+               else ();
+               ty
+           end
                                 
 fun makeTy (tyExpr:Ast.TYPE_EXPR) 
     : Ast.TY =
@@ -180,7 +187,7 @@ fun resolveIdentExprToMname (env:ENV)
       | Ast.QualifiedIdentifier { qual, ident } => 
 	{ id = ident, 
 	  nss = [[resolveExprToNamespace env qual]] }
-      | _ => error ["unhandled type of lexical reference"]
+      | _ =>  error ["unhandled type of lexical reference"]
 	     
 and resolveExprToNamespace (env:ENV)
                            (expr:Ast.EXPR)
@@ -231,10 +238,12 @@ fun (tleft ~< tright) = Type.groundMatches tleft tright
 fun checkMatch (t1:Ast.TYPE_EXPR) (* assignment src *)
 		       (t2:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
-    if t1 ~< t2
-    then ()
-    else error ["checkMatch failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
-
+    let in
+        trace ["checkMatch ", LogErr.ty t1, " vs. ", LogErr.ty t2]; 
+        if t1 ~< t2
+        then ()
+        else warning ["checkMatch failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+    end
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
                     (t2:Ast.TYPE_EXPR)
@@ -384,6 +393,7 @@ and verifyExpr (env:ENV)
                  * we know we don't know enough *)
                 val AdditionType = anyType
                 val CompareType = anyType
+                val LogicalType = anyType
                 (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
                     case b of
@@ -398,8 +408,8 @@ and verifyExpr (env:ENV)
                        | Ast.BitwiseAnd => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.BitwiseOr => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.BitwiseXor => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.LogicalAnd => (booleanType, booleanType, booleanType)
-                       | Ast.LogicalOr => (booleanType, booleanType, booleanType)
+                       | Ast.LogicalAnd => (booleanType, LogicalType, LogicalType)
+                       | Ast.LogicalOr => (booleanType, LogicalType, LogicalType)
                        | Ast.InstanceOf => (anyType, anyType, booleanType)
                        | Ast.In => (anyType, anyType, booleanType)
                        | Ast.Equals => (anyType, anyType, booleanType)
@@ -578,12 +588,12 @@ and verifyExpr (env:ENV)
                         if 
                             (List.length actuals) < minArgs 
                         then 
-                            error ["too few actuals"]
+                            warning ["too few actuals"]
                         else 
                             if (not hasRest) andalso
                                ((List.length actuals) > (List.length params))
                             then
-                                error ["too many actuals"]
+                                warning ["too many actuals"]
                             else
                                 List.app (fn (formal, actual) => checkMatch actual formal)
                                          (ListPair.zip (params, ts))
@@ -591,8 +601,9 @@ and verifyExpr (env:ENV)
 		      (* 
 		       * FIXME: Actually have to handle instance types here, and hook into
 		       * their meta::invoke slot as well.
+               * do not print error msgs for now, too noisy
 		       *)
-                      | _ => error ["ill-typed call to type ", LogErr.ty t]
+                      | _ => trace (* warning *) ["ill-typed call to type ", LogErr.ty t]
                 else 
                     ();
                 resultType
@@ -623,7 +634,7 @@ and verifyExpr (env:ENV)
                 val ts = verifySubList actuals
             in
                 (* FIXME: implement *)
-                t
+                anyType
             end
 
           | Ast.ObjectRef { base, ident, loc } =>
@@ -999,8 +1010,12 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
     let 
         val env = newEnv prog strict
     in
+        (* print "verifyTopFragment\n"; *)
         verifyFragment env frag;
-        trace ["verification complete"];
+        trace ["verification complete ",
+              (if strict then "strict " else "nonstrict ")];
+
+
         frag
     end
 

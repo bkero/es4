@@ -48,7 +48,7 @@ val anyType         = Ast.SpecialType Ast.Any
 fun assert b s = if b then () else (raise Fail s)
 
 fun fmtName n = if !doTrace
-                then LogErr.name n
+                then LogErr.name n  
                 else ""
 
 fun fmtMname n = if !doTrace
@@ -709,6 +709,14 @@ fun groundMatchesGeneric (b:BICOMPAT)
                   (ty2:Ast.TYPE_EXPR)
 
     : bool = 
+    let in
+        case findSpecialConversion ty1 ty2 of 
+              SOME _ =>
+              let in
+                  trace ["findSpecialConversion ", LogErr.ty ty1, " vs. ", LogErr.ty ty2];
+                  true
+              end
+            | NONE =>
     case (b, v, ty1, ty2) of 
 
         (* A-WRAP-COV *)
@@ -728,6 +736,7 @@ fun groundMatchesGeneric (b:BICOMPAT)
         groundMatchesGeneric b v ty1 lt2
 
       (* A-GENERIC *)
+      (* FIXME: need to alpha-rename so have consistent parameters *)
       | (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
         groundMatchesGeneric b v (#body lt1) (#body lt2)
 
@@ -755,8 +764,11 @@ fun groundMatchesGeneric (b:BICOMPAT)
         hasRest1 = hasRest2 andalso
         minArgs1 = minArgs2
 
-      (* A-DYN *)
+      (* A-DYN1 *)
       | (_, _, _, Ast.SpecialType Ast.Any) => true
+
+      (* A-DYN2 *)
+      | (Bicompat, _, Ast.SpecialType Ast.Any, _) => true
 
       (* A-INSTANCE -- generalized from A-INT *)
       | (_, _, Ast.InstanceType it1, Ast.InstanceType it2) =>
@@ -797,11 +809,9 @@ fun groundMatchesGeneric (b:BICOMPAT)
 	List.exists (Mach.nameEq name) [ Name.nons_Function, 
 					 Name.nons_Object ]
 
-      (* A-SPECIAL-CONVERSION -- generalized from A-INT-BOOL *)
-      | _ => 
-        (case findSpecialConversion ty1 ty2 of 
-             NONE => false
-           | SOME _ => true)
+    | _ => false
+
+    end
 
 and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
                           (tyExpr2:Ast.TYPE_EXPR) 

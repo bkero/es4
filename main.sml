@@ -201,7 +201,7 @@ fun verify prog argvRest =
         val (prog, frags) = define prog argvRest
         fun f prog accum (frag::frags) = 
             let 
-                val frag' = Verify.verifyTopFragment prog false frag
+                val frag' = Verify.verifyTopFragment prog true frag
             in
                 f prog (frag'::accum) frags
             end
@@ -320,7 +320,7 @@ fun repl (regs:Mach.REGS)
                         if not (!doDefn) then () else
                         let
                             val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                            val frag = Verify.verifyTopFragment prog false frag
+                            val frag = Verify.verifyTopFragment prog true frag
                         in
                             regsCell := Eval.withProg regs prog;
                             if not (!doEval) then () else
