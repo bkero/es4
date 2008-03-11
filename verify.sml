@@ -87,6 +87,7 @@ fun withRibOpt { returnType, strict, prog, ribs, stdTypes} extn =
 
 (* Local tracing machinery *)
 
+val warningsAreFailures = ref false
 val doTrace = ref false
 val doTraceFrag = ref false
 val Any =  Ast.SpecialType Ast.Any
@@ -94,7 +95,10 @@ fun log ss = LogErr.log ("[verify] " ::
                          ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.verifyError ss
-fun warning ss = LogErr.log("STRICT-MODE WARNING: " :: ss)
+fun warning ss = 
+    if !warningsAreFailures 
+    then error ss
+    else LogErr.log("STRICT-MODE WARNING: " :: ss)
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
@@ -310,13 +314,13 @@ fun verifyTypeExpr (env:ENV)
         te
     end
 
-
 (*
     HEAD
 *)
 
 and verifyInits (env:ENV) (inits:Ast.INITS)
     : unit =
+    (* FIXME - check type of name *)
     (List.map (fn (name, expr) => verifyExpr env expr) inits; ())
 
 
@@ -341,6 +345,80 @@ and verifyHead (env:ENV)
         verifyInits env inits
     end
 
+(*
+and verifyBinaryExpr (env:ENV)
+                     (e1:Ast.EXPR)
+                     (e2:Ast.EXPR)
+    : Ast.TYPE_EXPR =
+    let
+        val { prog, 
+              strict, 
+              stdTypes = 
+              { AnyNumberType, 
+                doubleType,
+                decimalType,
+                intType,
+                uintType,
+                byteType,
+
+                AnyStringType,
+                stringType,
+
+                AnyBooleanType, 
+                booleanType, 
+
+                RegExpType,
+
+                TypeType,
+                NamespaceType }, ... } = env
+        val t1 = verifyExpr env e1
+        val t2 = verifyExpr env e2
+        (* FIXME: these are way wrong. For the time being, just jam in star everywhere
+         * we know we don't know enough *)
+        val AdditionType = anyType
+        val CompareType = anyType
+        val LogicalType = anyType
+        (* FIXME: need to deal with operator overloading *)
+        val (expectedType1, expectedType2, resultType) =
+            case b of
+                Ast.Plus => (AdditionType, AdditionType, AdditionType)
+              | Ast.Minus => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.Times => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.Divide => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.Remainder => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.LeftShift => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.RightShift => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.RightShiftUnsigned => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.BitwiseAnd => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.BitwiseOr => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.BitwiseXor => (AnyNumberType, AnyNumberType, AnyNumberType)
+              | Ast.LogicalAnd => (booleanType, LogicalType, LogicalType)
+              | Ast.LogicalOr => (booleanType, LogicalType, LogicalType)
+              | Ast.InstanceOf => (anyType, anyType, booleanType)
+              | Ast.In => (anyType, anyType, booleanType)
+              | Ast.Equals => (anyType, anyType, booleanType)
+              | Ast.NotEquals => (anyType, anyType, booleanType)
+              | Ast.StrictEquals => (anyType, anyType, booleanType)
+              | Ast.StrictNotEquals => (anyType, anyType, booleanType)
+              | Ast.Less => (CompareType, CompareType, booleanType)
+              | Ast.LessOrEqual => (CompareType, CompareType, booleanType)
+              | Ast.Greater => (CompareType, CompareType, booleanType)
+              | Ast.GreaterOrEqual => (CompareType, CompareType, booleanType)
+              | Ast.Comma => (anyType, anyType, t2)
+    in
+        if strict
+        then 
+            let
+            in
+                checkMatch t1 expectedType1;
+                checkMatch t2 expectedType2
+            end
+        else ();
+        resultType
+    end
+*)
+
+and checkLvalue (expr : Ast.EXPR) = () (* FIXME *)
 
 and verifyExpr (env:ENV)
                (expr:Ast.EXPR)
@@ -366,35 +444,16 @@ and verifyExpr (env:ENV)
 
                 TypeType,
                 NamespaceType }, ... } = env
+        val _ = trace ["Verifying expr"]
 
         fun verifySub (e:Ast.EXPR) : Ast.TYPE_EXPR = verifyExpr env e
         fun verifySubList (es:Ast.EXPR list) : Ast.TYPE_EXPR list = verifyExprs env es
         fun verifySubOption (eo:Ast.EXPR option) : Ast.TYPE_EXPR option = Option.map verifySub eo
-    in
-        case expr of
-            Ast.TernaryExpr (e1, e2, e3) =>
+        fun binaryOpType (b:Ast.BINOP) t1 t2 : Ast.TYPE_EXPR =
             let
-                val t1:Ast.TYPE_EXPR = verifySub e1
-                val t2:Ast.TYPE_EXPR = verifySub e2
-                val t3:Ast.TYPE_EXPR = verifySub e3
-            in
-                if strict
-                then checkMatch t1 booleanType
-                else ();
-                (* FIXME: this produces a union type. is that right? *)
-                leastUpperBound t2 t3
-            end
-
-          | Ast.BinaryExpr (b, e1, e2) =>
-            let
-                val t1 = verifySub e1
-                val t2 = verifySub e2
-                (* FIXME: these are way wrong. For the time being, just jam in star everywhere
-                 * we know we don't know enough *)
                 val AdditionType = anyType
                 val CompareType = anyType
                 val LogicalType = anyType
-                (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
                     case b of
                          Ast.Plus => (AdditionType, AdditionType, AdditionType)
@@ -430,6 +489,35 @@ and verifyExpr (env:ENV)
                          checkMatch t2 expectedType2
                     end
                 else ();
+                resultType
+            end
+    in
+        case expr of
+            Ast.TernaryExpr (e1, e2, e3) =>
+            let
+                val t1:Ast.TYPE_EXPR = verifySub e1
+                val t2:Ast.TYPE_EXPR = verifySub e2
+                val t3:Ast.TYPE_EXPR = verifySub e3
+            in
+                if strict
+                then checkMatch t1 booleanType
+                else ();
+                (* FIXME: this produces a union type. is that right? *)
+                leastUpperBound t2 t3
+            end
+
+          | Ast.BinaryExpr (b, e1, e2) =>
+            let
+                val t1 = verifySub e1
+                val t2 = verifySub e2
+                (* FIXME: these are way wrong. For the time being, just jam in star everywhere
+                 * we know we don't know enough *)
+                val AdditionType = anyType
+                val CompareType = anyType
+                val LogicalType = anyType
+                (* FIXME: need to deal with operator overloading *)
+                val resultType = binaryOpType b t1 t2
+            in
                 resultType
             end
 
@@ -649,27 +737,51 @@ and verifyExpr (env:ENV)
             end
 
           | Ast.LexicalRef { ident, loc } =>
-	    if 
-		strict
-	    then 
-		let
+	        if 
+		        strict
+	        then 
+		        let
                     val _ = LogErr.setLoc loc
-		    val mname = resolveIdentExprToMname env ident
-		    val ty = resolveMnameToFixtureTy env mname
-		in
+		            val mname = resolveIdentExprToMname env ident
+		            val ty = resolveMnameToFixtureTy env mname
+		        in
                     LogErr.setLoc loc;
-		    verifyTypeExpr env ty
-		end
-	    else 
-		anyType
-
+		            verifyTypeExpr env ty
+		        end
+	        else 
+		        anyType
+                
           | Ast.SetExpr (a, le, re) =>
             let
                 val t1 = verifySub le
                 val t2 = verifySub re
+                val _ = checkLvalue le;
+                val resultType =
+                    case a of
+                        Ast.Assign => t2
+                      | _ =>
+                        let val binop = 
+                                case a of
+                                    Ast.AssignPlus => Ast.Plus
+                                  | Ast.AssignMinus => Ast.Minus
+                                  | Ast.AssignTimes => Ast.Times
+                                  | Ast.AssignDivide  => Ast.Divide
+                                  | Ast.AssignRemainder => Ast.Remainder
+                                  | Ast.AssignLeftShift => Ast.LeftShift
+                                  | Ast.AssignRightShift => Ast.RightShift
+                                  | Ast.AssignRightShiftUnsigned => Ast.RightShiftUnsigned
+                                  | Ast.AssignBitwiseAnd => Ast.BitwiseAnd
+                                  | Ast.AssignBitwiseOr => Ast.BitwiseOr
+                                  | Ast.AssignBitwiseXor => Ast.BitwiseXor
+                                  | Ast.AssignLogicalAnd => Ast.LogicalAnd
+                                  | Ast.AssignLogicalOr => Ast.LogicalOr
+                                  | Ast.Assign => Ast.LogicalOr (* unreachable *)
+                        in 
+                            binaryOpType binop t1 t2
+                        end
             in
-                (* FIXME: implement *)
-                anyType
+                checkMatch resultType t1;
+                t1
             end
 
           | Ast.GetTemp n =>
@@ -1010,7 +1122,14 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
     let 
         val env = newEnv prog strict
     in
-        (* print "verifyTopFragment\n"; *)
+        print "verifyTopFragment\n";
+        if !doTraceFrag then
+            let in
+                print "verifyTopFragment:printing\n";
+                Pretty.ppFragment frag;
+                TextIO.print "\n"
+            end
+        else ();
         verifyFragment env frag;
         trace ["verification complete ",
               (if strict then "strict " else "nonstrict ")];
