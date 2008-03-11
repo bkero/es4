@@ -1122,7 +1122,7 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
     let 
         val env = newEnv prog strict
     in
-        print "verifyTopFragment\n";
+        (* print "verifyTopFragment\n";  *)
         if !doTraceFrag then
             let in
                 print "verifyTopFragment:printing\n";

@@ -709,14 +709,16 @@ fun groundMatchesGeneric (b:BICOMPAT)
                   (ty2:Ast.TYPE_EXPR)
 
     : bool = 
-    let in
-        case findSpecialConversion ty1 ty2 of 
-              SOME _ =>
-              let in
-                  trace ["findSpecialConversion ", LogErr.ty ty1, " vs. ", LogErr.ty ty2];
-                  true
-              end
-            | NONE =>
+    if b=Bicompat andalso
+       (case findSpecialConversion ty1 ty2 of 
+              SOME _ => true
+            | NONE => false)
+    then
+        let in
+            trace ["findSpecialConversion ", LogErr.ty ty1, " vs. ", LogErr.ty ty2];
+            true
+        end
+    else
     case (b, v, ty1, ty2) of 
 
         (* A-WRAP-COV *)
@@ -811,7 +813,7 @@ fun groundMatchesGeneric (b:BICOMPAT)
 
     | _ => false
 
-    end
+    
 
 and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
                           (tyExpr2:Ast.TYPE_EXPR) 
