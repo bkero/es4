@@ -2,22 +2,55 @@
 
 <hr>
 <pre>
+NAME:                       "The class 'Function'"
 FILE:                       spec/library/Function.html
-DRAFT STATUS:               DRAFT 1 - 2008-03-05
-SOURCES:                    ?
+CATEGORY:                   Pre-defined classes
+SOURCES:                    REFERENCES [1], [2], [3], [5]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-03-07
 REVIEWED AGAINST ES3:       NO
-REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  NO
-REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+
+NOTES
+
+  * The annotation "/*: function*/" in below looks like that because
+    the reference implementation does not yet accept plain "function"
+    as a type annotation to mean "anything callable" (ticket #153).
+
+  * The meaning of the [[Scope]] property on 'Function' objects is
+    defined elsewhere; it holds the captured scope chain of the
+    'Function'.
+
+  * The meaning of the [[Construct]] property on 'Function' objects is
+    defined elsewhere; it holds executable code that constructs a new
+    object instance and invokes the code of the 'Function' with the
+    new object as 'this'.
+
+  * The [[Call]] protocol of the 3rd Edition Specification has been
+    abandoned in favor of a protocol based on 'meta::invoke'.  This
+    simplifies the case for native objects but muddies it for callable
+    host objects that do not implement 'meta::invoke'.
+
 
 REFERENCES
+
+[1] ECMAScript 3rd Edition specification section 15.3
+[2] http:&#x2F;&#x2F;wiki.ecmascript.org/doku.php?id=proposals:static_generics
+[2] http:&#x2F;&#x2F;bugs.ecmascript.org/ticket/172
+[4] http:&#x2F;&#x2F;bugs.ecmascript.org/ticket/173
+[5] http:&#x2F;&#x2F;bugs.ecmascript.org/ticket/174
 
 </pre>
 <hr>
 
-<P> The class ''Function'' is a dynamic non-final subclass of
+<P> The class ''Function'' is a dynamic, non-final, direct subclass of
 ''Object'' (see <XREF target="class Object">).
 
 <P> All objects defined by ''function'' definitions or expressions in
@@ -25,11 +58,12 @@ ECMAScript are instances of the class ''Function''.
 
 <P> Not all objects that can be called as functions are instances of
 subclasses of the ''Function'' class, however.  Any object that has a
-''meta invoke'' method can be called as a function.
+''meta::invoke'' method can be called as a function.
 
 <NOTE> Host functions may also not be instances of ''Function'' or its
 subclasses, but must to some extent behave as if they are (see <XREF
-target="Host objects">).
+target="Host objects">).  However, host functions need not provide
+''meta::invoke'' methods to be callable.  Any 
 
 
 == Synopsis ==
@@ -42,9 +76,9 @@ dynamic class Function extends Object
     <SIGNATURE file="Function.es" name="public function Function">
     <SIGNATURE file="Function.es" name="static meta function invoke">
 
-    <SIGNATURE file="Function.es" name="public static function apply">
-    <SIGNATURE file="Function.es" name="public static function bind">
-    <SIGNATURE file="Function.es" name="public static function call">
+    <SIGNATURE file="Function.es" name="static public function apply">
+    <SIGNATURE file="Function.es" name="static public function bind">
+    <SIGNATURE file="Function.es" name="static public function call">
 
     static public const length = 1
 
@@ -65,9 +99,9 @@ dynamic class Function extends Object
 
 {{{
     toString:    function () <LDOTS> ,
-    apply:       function(thisArg, argArray) <LDOTS> ,
-    bind:        function(thisArg, ...args) <LDOTS> ,
-    call:        function(thisArg, ...args) <LDOTS> ,
+    apply:       function(thisArg, argArray) <LDOTS>
+    bind:        function(thisArg, ...args) <LDOTS>
+    call:        function(thisArg, ...args) <LDOTS>
 }}}
 
 
@@ -75,28 +109,39 @@ dynamic class Function extends Object
 
 <H3 id="Function: constructor"> new Function (p1, p2, <LDOTS> , pn, body) </h3>
 
-<DESC> When the ''Function'' constructor is called with some arguments as
-part of a ''new'' expression, it creates a new ''Function'' instance
-whose parameter list is given by the concatenation of the //p<SUB>i</SUB>//
-arguments and whose executable code is given by the //body// argument.
+<DESC> When the ''Function'' constructor is called with some arguments
+as part of a ''new'' expression, it creates a new ''Function''
+instance whose parameter list is given by the concatenation of the
+//p<SUB>i</SUB>// arguments separated by "," and whose executable code
+is given by the //body// argument.
 
 <P> There may be no //p<SUB>i</SUB>// arguments, and //body// is optional too,
 defaulting to the empty string.
 
-<p> If the list of parameters is not parsable as a
-//FormalParameterList<sub>opt</sub>//, or if the body is not parsable
-as a //FunctionBody//, then a **SyntaxError** exception is thrown (see
-the grammar in section <XREF target="ECMAScript grammar">).
+<p> If the first character of the comma-separated concatenation of the
+//p<SUB>i</SUB>// is a left parenthesis then the list of parameters
+must be parseable as a //FormalParameterList<sub>opt</sub>// enclosed
+in parentheses and optionally followed by a colon and a return type.
+
+<p> Otherwise, the list of parameters must be parsable as a
+//FormalParameterList<sub>opt</sub>//.
+
+<p> If the list of parameters is not parseable as outlined in the
+previous two paragraphs, or if the body is not parsable as a
+//FunctionBody//, then a **SyntaxError** exception is thrown (see the
+grammar in section <XREF target="ECMAScript grammar">).
+
+<P> Regardless of the form of the parameter list, it may include type
+annotations, default parameter values, and rest arguments.
 
 <RETN> The ''Function'' constructor returns a new ''Function'' instance.
 
 <SHORTIMPL>
-
 <INCLUDE file="Function.es" name="public function Function">
 <INCLUDE file="Function.es" name="helper function createFunction">
 
-<P> The helper function ''createFunction'' is also used by the
-''invoke'' method (see <XREF target="Function: static meta invoke">).
+<P> The helper function ''createFunction'' is also used by the static
+''meta::invoke'' method (see <XREF target="Function: static meta invoke">).
 
 <p> The magic function ''initializeFunction'' initializes the function
 object ''this'' from the list of parameters and the body, as specified
@@ -119,22 +164,6 @@ new Function("a, b, c", "return a+b+c")
 new Function("a,b", "c", "return a+b+c")
 }}}
 
-<FIXME> (Ticket #172.)  Type annotations?  The RI barfs (looks like an
-incomplete or incorrect set of namespaces is provided during
-construction).
-
-<p class="fixme"> Return type annotations?  No way to specify this using the
-current shape of the constructor.
-
-<p class="fixme"> Default values?  The RI says yes.
-
-<p class="fixme"> Rest arguments?  The RI says yes.
-
-<p class="fixme"> One possibility is to extend the syntax, s.t. the
-//p<SUB>i</SUB>// concatenated can form a syntactically valid
-parameter list bracketed by ''('' and '')''; this creates the
-possibility that a return type annotation can follow the '')''.
-
 
 <h3 id="Function: meta static invoke"> Function (p1, p2, <LDOTS> , pn, body) </h3>
 
@@ -151,7 +180,7 @@ new ''Function'' instance.
 <!-- Faking it until we get the RI right -->
 {{{
 meta static function invoke(...args)
-    helper::createFunction(args)
+    new Function(...args);
 }}}
 
 <P> The helper function ''createFunction'' was defined along with the
@@ -160,48 +189,54 @@ meta static function invoke(...args)
 
 === apply ( fn, thisArg=<LDOTS>, argArray=<LDOTS> ) ===
 
-<DESC> The static ''apply'' method takes arguments //fn//, //thisArg//, and
-//argArray//, and performs a function call using the [[Call]] property
-of //fn//, passing //thisArg// as the value for ''this'' and the
-members of //argArray// as the individual argument values.
+<DESC> The static ''apply'' method takes arguments //fn//,
+//thisArg//, and //argArray//, and performs a function call using the
+''meta::invoke'' method of //fn//, passing //thisArg// as the value
+for ''this'' and the members of //argArray// as the individual
+argument values.
 
-<p> If //fn// does not have a [[Call]] property, a **TypeError**
+<p> If //fn// does not have a ''meta::invoke'' method, a **TypeError**
 exception is thrown.
 
 <RETN> The ''apply'' method returns the value returned by //fn//.
 
 <SHORTIMPL>
 
-<INCLUDE file="Function.es" name="public static function apply">
+<INCLUDE file="Function.es" name="static public function apply">
 
 <p> The magic ''apply'' function performs the actual invocation (see
 <XREF target="magic::apply">).
 
 
-=== bind ( ... ) ===
+=== bind ( fn, thisArg=<LDOTS>, ...args ) ===
 
-<DESC> FIXME
+<DESC> The static ''bind'' method takes arguments //fn//, //thisArg//,
+and optionally some //args//.
 
-<RETN> FIXME
+<RETN> The ''bind'' method returns a ''Function'' object that accepts
+some arguments //moreargs// and which calls //fn// with //thisArg// as
+the ''this'' object and the values of //args// and //moreargs// as
+actual arguments.
 
 <SHORTIMPL>
-<INCLUDE file="Function.es" name="public static function bind">
+<INCLUDE file="Function.es" name="static public function bind">
+<INCLUDE file="Function.es" name="static helper function bind">
 
 
 === call ( fn, thisArg=<LDOTS>, ...args ) ===
 
 <DESC> The static ''call'' method takes arguments //fn// and //thisArg// and
 optionally some //args//, and performs a function call using the
-[[Call]] property of //fn//, passing //thisArg// as the value for ''this''
+''meta::invoke'' method of //fn//, passing //thisArg// as the value for ''this''
 and the members of //args// as the individual argument values.
 
-<P> If //fn// does not have a [[Call]] property, a **TypeError** exception
+<P> If //fn// does not have a ''meta::invoke'' method, a **TypeError** exception
 is thrown.
 
 <RETN> The ''call'' method returns the value returned by //fn//.
 
 <SHORTIMPL>
-<INCLUDE file="Function.es" name="public static function call">
+<INCLUDE file="Function.es" name="static public function call">
 
 
 
@@ -235,8 +270,9 @@ because these can be treated like other objects that have ''invoke''
 methods (and which already work just fine).  Therefore it should not
 be ''final''.
 
-<RETN> The meta method ''invoke'' returns the result of evaluating the
-executable code for the function represented by this ''Function''
+<RETN> The meta method ''invoke'' returns the value produces by the
+first ''return'' statement that is evaluated during the evaluation of
+the executable code for the function represented by this ''Function''
 object.
 
 
@@ -252,13 +288,9 @@ implementation-dependent.
 <RETN> The intrinsic ''toString'' method returns a string.
 
 <SHORTIMPL>
-{{{
-intrinsic function toString(): string
-    informative::source;
-}}}
+<INCLUDE file="Function.es" name="override intrinsic function toString">
 
-<p> The informative property ''source'' holds a string representation
-of this function object.
+<P> The private function ''toString'' is implementation-dependent.
 
 
 === intrinsic::apply ( thisObj=<LDOTS>, args=<LDOTS> ) ===
@@ -272,14 +304,18 @@ with the current value of ''this'' as the first argument.
 <SHORTIMPL>
 <INCLUDE file="Function.es" name="intrinsic function apply">
 
+
 === intrinsic::bind ( thisObj=<LDOTS>, ...args) ===
 
-<DESC>
+<DESC> The intrinsic ''bind'' method calls the static ''bind'' method
+with the current value of ''this'' as the first argument.
 
-<RETN>
+<RETN> The intrinsic ''bind'' method returns the result of the static
+''bind'' method.
 
 <SHORTIMPL>
 <INCLUDE file="Function.es" name="intrinsic function bind">
+
 
 === intrinsic::call ( thisObj=<LDOTS>, ...args) ===
 
@@ -293,28 +329,10 @@ with the current value of ''this'' as the first argument.
 <INCLUDE file="Function.es" name="intrinsic function call">
 
 
-<!--
-=== %%[[HasInstance]]%% (V) ===
-
-<FIXME> Is this what we want?
-
-<DESC>The [[HasInstance]] method of a ''Function'' object called with
-a value //V// determines if //V// is an instance of the ''Function'' object.
-
-<RETN> A boolean value.
-
-<SHORTIMPL>
-<INCLUDE file="Function.es" name="intrinsic function HasInstance">
-
-<p> The magic ''getPrototype'' function extracts the [[Prototype]] property
-from the object (see <XREF target="magic:getPrototype">).
--->
-
-
 == Properties of ''Function'' instances ==
 
 <p> In addition to the required internal properties, every function
-instance has a [[Call]] property, a [[Construct]] property and a
+instance has a ''meta::invoke'' property, a [[Construct]] property and a
 [[Scope]] property (see sections 8.6.2 and 13.2).
 
 
@@ -347,13 +365,14 @@ created object.
 <P> When the ''Function'' prototype object is invoked it accepts any
 arguments and returns **undefined**:
 
-<INCLUDE file="Function.es" name="meta prototype function invoke">
+<INCLUDE file="Function.es" name="prototype meta function invoke">
 
 
 == Methods on the ''Function'' prototype object ==
 
-<p> The methods on the ''Function'' prototype object call their
-intrinsic counterparts:
+<p> The methods on the ''Function'' prototype object perform simple
+type adjustments and then perform the same actions as their intrinsic
+counterparts:
 
 <INCLUDE file="Function.es" name="prototype function toString">
 <INCLUDE file="Function.es" name="prototype function apply">

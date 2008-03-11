@@ -2,20 +2,40 @@
 
 <HR>
 <pre>
+NAME:                       "The class 'Name'"
 FILE:                       spec/library/Name.html
-DRAFT STATUS:               DRAFT 1 - 2008-03-05
+CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-03-05
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
 REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   NO
 IMPLEMENTATION STATUS:      ES4 RI
+TEST CASE STATUS:           ?
 
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
 
   * Compatibility note in intro.
+
+  * More elaborate status block above.
+
+  * Prototype and intrinsic methods forward to private methods now.
+
+  * The Name constructor is allowed to hash-cons.
+
+  * The Name converter is required to return its first argument if it
+    is a Name object and the second parameter is undefined.
+
+
+NOTES
+
+  * Due to an RI bug (#368), the namespace 'Private' is used instead
+    of 'private'.
 
 
 OPEN ISSUES
@@ -79,15 +99,27 @@ If //a// is a string, a ''Name'', or an integer in the range
 //a// is a ''Namespace'' then //b// must be a string or an integer in
 the range [0,2<SUP>32</SUP>).
 
-<SHORTIMPL>
-<INCLUDE file="Name.es" name="public function Name">
+<P> The ''Name'' constructor is not required to construct a new,
+unique object every time it is called.
+
+<IMPL> The ''Name'' constructor is implementation-dependent.
+
+<P> The helper function ''analyzeArgs'', called by the ''Name''
+constructor, takes the two values //a// and //b// that were passed to
+the ''Name'' constructor and returns an object containing a ''qualifier''
+in the form of a namespace (which may be **null**) and an ''identifier''
+in the form of a string.  The qualifier and identifier are used to
+create the ''Name'' object.
+
 <INCLUDE file="Name.es" name="static helper function analyzeArgs">
 
 === Name (a, b=<LDOTS>) ===
 
-<DESC> The ''Name'' class object called as a function creates a new
-''Name'' object by passing its arguments //a// and //b// to the
-''Name'' constructor.
+<DESC> When the ''Name''class object called as a function it creates a
+''Name'' object.  If ''a'' is a ''Name'' object and ''b'' is
+**undefined** then ''a'' is returned.  Otherwise, a ''Name'' object is
+created by invoking the ''Name'' constructor on the parameters //a//
+and //b//.
 
 <RETN> The ''Name'' class object called as a function returns a
 ''Name'' object.
@@ -107,10 +139,11 @@ to a string.
 
 <SHORTIMPL>
 <INCLUDE file="Name.es" name="override intrinsic function toString">
+<INCLUDE file="Name.es" name="Private function toString">
 
 === intrinsic::valueOf ( ) ===
 
-<RETN> The intrinsic ''valueOf'' method returns what the intrinsic
+<RETN> The intrinsic ''valueOf'' method returns what the private
 ''toString'' method returns.
 
 <SHORTIMPL>
@@ -131,8 +164,8 @@ to a string.
 
 == Methods on the ''Name'' prototype object ==
 
-<DESC> The methods on the ''Name'' prototype object delegate to their
-corresponding intrinsic methods.
+<DESC> The methods on the ''Name'' prototype object perform the same
+operations as their corresponding intrinsic methods perform.
 
 <RETN> The methods on the ''Name'' prototype object return what their
 corresponding intrinsic methods return.
@@ -141,3 +174,4 @@ corresponding intrinsic methods return.
 <INCLUDE file="Name.es" name="prototype function toString">
 <INCLUDE file="Name.es" name="prototype function valueOf">
 
+<!-- end -->

@@ -2,30 +2,34 @@
 
 <hr>
 <pre>
+NAME:                       "The class 'Map'"
 FILE:                       spec/library/Map.html
+CATEGORY:                   Pre-defined classes
+SOURCES:                    REFERENCES [1], [2], [3]
+SPEC AUTHOR:                Lars
 DRAFT STATUS:               DRAFT 2 - 2008-03-03
-IMPLEMENTATION STATUS:      ES4 RI
-TEST CASE STATUS:           Unknown
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
 REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
+IMPLEMENTATION STATUS:      ES4 RI
+TEST CASE STATUS:           Unknown
 
 CHANGES SINCE DRAFT 2 (2008-03-03)
 
   * The prototype 'get' and 'put' methods also accept a 'notfound'
     parameter.
 
-  * Presentation: section headers for intrinsic methods now use the
-    syntax 'intrinsic::foo()' instead of just 'foo'.
-
-  * Presentation: compatibility note ("new in 4th edition")
-
-  * Presentation: added an explicit "extends Object" clause.
-
-  * Presentation: The informative method 'allElements' was renamed as
-    'allItems'.
+  * Presentation:
+    - section headers for intrinsic methods now use the syntax
+      'intrinsic::foo()' instead of just 'foo'.
+    - compatibility note ("new in 4th edition")
+    - added an explicit "extends Object" clause.
+    - the informative method 'allElements' was renamed as 'allItems'.
+    - corrected a typo
+    - common fields in the status block above
 
 
 CHANGES SINCE DRAFT 1 (2008-02-29)
@@ -62,6 +66,11 @@ OPEN ISSUES
     that observe or modify iteration and removal to work during
     clearing as well).  But is it desirable?
 
+REFERENCES
+
+[1] http:&#x2F;&#x2F;wiki.ecmascript.org/doku.php?id=proposals:dictionary
+[2] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/146
+[3] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/203
 </pre>
 <hr>
 
@@ -134,7 +143,7 @@ actual keys //k1// and //k2//.  The default value for //equals// is a
 function that compares the two keys using the ''==='' operator.
 
 <P> The optional //hashcode// argument is a function that takes a key
-and returns a numeric value for it; this key is converte to a ''uint''
+and returns a numeric value for it; this key is converted to a ''uint''
 //hash value// for the key.  The hash value may be used to find
 associations more quickly in the map.  Two calls to //hashcode// on
 the same key value must always result in the same hash value, and a

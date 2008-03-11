@@ -26,6 +26,9 @@ output/Vector.html: Vector.html library/Vector.html $(LIBDEPS)
 output/Map.html: Map.html library/Map.html $(LIBDEPS)
 	python stitch.py Map.html output/Map.html
 
+output/Error.html: Error.html library/Error.html $(LIBDEPS)
+	python stitch.py Error.html output/Error.html
+
 typesystem.html: stitch.py parttypes.html es4.css typesystem/*.html ../builtins/*.es ../*.sml
 	python stitch.py parttypes.html typesystem.html
 

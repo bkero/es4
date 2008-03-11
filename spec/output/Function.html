@@ -88,22 +88,55 @@ H4 {
 
 <hr>
 <pre>
+NAME:                       "The class 'Function'"
 FILE:                       spec/library/Function.html
-DRAFT STATUS:               DRAFT 1 - 2008-03-05
-SOURCES:                    ?
+CATEGORY:                   Pre-defined classes
+SOURCES:                    REFERENCES [1], [2], [3], [5]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-03-07
 REVIEWED AGAINST ES3:       NO
-REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  NO
-REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+
+NOTES
+
+  * The annotation "/*: function*/" in below looks like that because
+    the reference implementation does not yet accept plain "function"
+    as a type annotation to mean "anything callable" (ticket #153).
+
+  * The meaning of the <code>[[Scope]]</code> property on 'Function' objects is
+    defined elsewhere; it holds the captured scope chain of the
+    'Function'.
+
+  * The meaning of the <code>[[Construct]]</code> property on 'Function' objects is
+    defined elsewhere; it holds executable code that constructs a new
+    object instance and invokes the code of the 'Function' with the
+    new object as 'this'.
+
+  * The <code>[[Call]]</code> protocol of the 3rd Edition Specification has been
+    abandoned in favor of a protocol based on 'meta::invoke'.  This
+    simplifies the case for native objects but muddies it for callable
+    host objects that do not implement 'meta::invoke'.
+
 
 REFERENCES
+
+[1] ECMAScript 3rd Edition specification section 15.3
+[2] http:&#x2F;&#x2F;wiki.ecmascript.org/doku.php?id=proposals:static_generics
+[2] http:&#x2F;&#x2F;bugs.ecmascript.org/ticket/172
+[4] http:&#x2F;&#x2F;bugs.ecmascript.org/ticket/173
+[5] http:&#x2F;&#x2F;bugs.ecmascript.org/ticket/174
 
 </pre>
 <hr>
 
-<P><span class="pcounter"></span> The class <code>Function</code> is a dynamic non-final subclass of
+<P><span class="pcounter"></span> The class <code>Function</code> is a dynamic, non-final, direct subclass of
 <code>Object</code> (see <span class="xref">class Object</span>).
 
 <P><span class="pcounter"></span> All objects defined by <code>function</code> definitions or expressions in
@@ -111,10 +144,11 @@ ECMAScript are instances of the class <code>Function</code>.
 
 <P><span class="pcounter"></span> Not all objects that can be called as functions are instances of
 subclasses of the <code>Function</code> class, however.  Any object that has a
-<code>meta invoke</code> method can be called as a function.
+<code>meta::invoke</code> method can be called as a function.
 
 <p class="note"><b>NOTE</b>&nbsp;&nbsp;  Host functions may also not be instances of <code>Function</code> or its
-subclasses, but must to some extent behave as if they are (see <span class="xref">Host objects</span>).
+subclasses, but must to some extent behave as if they are (see <span class="xref">Host objects</span>).  However, host functions need not provide
+<code>meta::invoke</code> methods to be callable.  Any 
 
 
 <h2>Synopsis</h2>
@@ -127,9 +161,9 @@ dynamic class Function extends Object
     public function Function(...args) &#x0085
     static meta function invoke(...args) &#x0085
 
-    public static function apply(fn: helper::Invokable, thisArg: Object=null, argArray: Object=null) &#x0085
-    public static function bind(method: helper::Invokable, thisObj: Object=null, ...args) &#x0085
-    public static function call(fn: helper::Invokable, thisObj: Object=null, ...args) &#x0085
+    static public function apply(fn /*: function*/, thisArg: Object=null, argArray: Object=null) &#x0085
+    static public function bind(method /*: function*/, thisObj: Object=null, ...args) &#x0085
+    static public function call(fn /*: function*/, thisObj: Object=null, ...args) &#x0085
 
     static public const length = 1
 
@@ -150,9 +184,9 @@ dynamic class Function extends Object
 
 <PRE>
     toString:    function () &#x0085; ,
-    apply:       function(thisArg, argArray) &#x0085; ,
-    bind:        function(thisArg, ...args) &#x0085; ,
-    call:        function(thisArg, ...args) &#x0085; ,
+    apply:       function(thisArg, argArray) &#x0085;
+    bind:        function(thisArg, ...args) &#x0085;
+    call:        function(thisArg, ...args) &#x0085;
 </PRE>
 
 
@@ -160,23 +194,34 @@ dynamic class Function extends Object
 
 <H3 id="Function: constructor"> new Function (p1, p2, &#x0085; , pn, body) </h3>
 
-<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Function</code> constructor is called with some arguments as
-part of a <code>new</code> expression, it creates a new <code>Function</code> instance
-whose parameter list is given by the concatenation of the <i>p<SUB>i</SUB></i>
-arguments and whose executable code is given by the <i>body</i> argument.
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Function</code> constructor is called with some arguments
+as part of a <code>new</code> expression, it creates a new <code>Function</code>
+instance whose parameter list is given by the concatenation of the
+<i>p<SUB>i</SUB></i> arguments separated by "," and whose executable code
+is given by the <i>body</i> argument.
 
 <P><span class="pcounter"></span> There may be no <i>p<SUB>i</SUB></i> arguments, and <i>body</i> is optional too,
 defaulting to the empty string.
 
-<P><span class="pcounter"></span> If the list of parameters is not parsable as a
-<i>FormalParameterList<sub>opt</sub></i>, or if the body is not parsable
-as a <i>FunctionBody</i>, then a <b>SyntaxError</b> exception is thrown (see
-the grammar in section <span class="xref">ECMAScript grammar</span>).
+<P><span class="pcounter"></span> If the first character of the comma-separated concatenation of the
+<i>p<SUB>i</SUB></i> is a left parenthesis then the list of parameters
+must be parseable as a <i>FormalParameterList<sub>opt</sub></i> enclosed
+in parentheses and optionally followed by a colon and a return type.
+
+<P><span class="pcounter"></span> Otherwise, the list of parameters must be parsable as a
+<i>FormalParameterList<sub>opt</sub></i>.
+
+<P><span class="pcounter"></span> If the list of parameters is not parseable as outlined in the
+previous two paragraphs, or if the body is not parsable as a
+<i>FunctionBody</i>, then a <b>SyntaxError</b> exception is thrown (see the
+grammar in section <span class="xref">ECMAScript grammar</span>).
+
+<P><span class="pcounter"></span> Regardless of the form of the parameter list, it may include type
+annotations, default parameter values, and rest arguments.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Function</code> constructor returns a new <code>Function</code> instance.
 
 <P class="implsection"><b>Implementation</b>
-
 <PRE>
 public function Function(...args)
     helper::createFunction(args);
@@ -190,12 +235,12 @@ helper function createFunction(args) {
         parameters = args.join(",");
     }
     body = string(body);
-    magic::initializeFunction(this, intrinsic::global, parameters, body);
+    magic::initializeFunction(this, __ES4__::global, parameters, body);
 }
 </PRE>
 
-<P><span class="pcounter"></span> The helper function <code>createFunction</code> is also used by the
-<code>invoke</code> method (see <span class="xref">Function: static meta invoke</span>).
+<P><span class="pcounter"></span> The helper function <code>createFunction</code> is also used by the static
+<code>meta::invoke</code> method (see <span class="xref">Function: static meta invoke</span>).
 
 <P><span class="pcounter"></span> The magic function <code>initializeFunction</code> initializes the function
 object <code>this</code> from the list of parameters and the body, as specified
@@ -218,22 +263,6 @@ new Function("a, b, c", "return a+b+c")
 new Function("a,b", "c", "return a+b+c")
 </PRE>
 
-<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #172.)  Type annotations?  The RI barfs (looks like an
-incomplete or incorrect set of namespaces is provided during
-construction).
-
-<p class="fixme"> Return type annotations?  No way to specify this using the
-current shape of the constructor.
-
-<p class="fixme"> Default values?  The RI says yes.
-
-<p class="fixme"> Rest arguments?  The RI says yes.
-
-<p class="fixme"> One possibility is to extend the syntax, s.t. the
-<i>p<SUB>i</SUB></i> concatenated can form a syntactically valid
-parameter list bracketed by <code>(</code> and <code>)</code>; this creates the
-possibility that a return type annotation can follow the <code>)</code>.
-
 
 <h3 id="Function: meta static invoke">Function&nbsp;(p1,&nbsp;p2,&nbsp;&#x0085;&nbsp;,&nbsp;pn,&nbsp;body)</h3>
 
@@ -250,7 +279,7 @@ new <code>Function</code> instance.
 
 <PRE>
 meta static function invoke(...args)
-    helper::createFunction(args)
+    new Function(...args);
 </PRE>
 
 <P><span class="pcounter"></span> The helper function <code>createFunction</code> was defined along with the
@@ -259,12 +288,13 @@ meta static function invoke(...args)
 
 <h3>apply&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;argArray=&#x0085;&nbsp;)</h3>
 
-<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>apply</code> method takes arguments <i>fn</i>, <i>thisArg</i>, and
-<i>argArray</i>, and performs a function call using the <code>[[Call]]</code> property
-of <i>fn</i>, passing <i>thisArg</i> as the value for <code>this</code> and the
-members of <i>argArray</i> as the individual argument values.
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>apply</code> method takes arguments <i>fn</i>,
+<i>thisArg</i>, and <i>argArray</i>, and performs a function call using the
+<code>meta::invoke</code> method of <i>fn</i>, passing <i>thisArg</i> as the value
+for <code>this</code> and the members of <i>argArray</i> as the individual
+argument values.
 
-<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>[[Call]]</code> property, a <b>TypeError</b>
+<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>meta::invoke</code> method, a <b>TypeError</b>
 exception is thrown.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>apply</code> method returns the value returned by <i>fn</i>.
@@ -272,12 +302,13 @@ exception is thrown.
 <P class="implsection"><b>Implementation</b>
 
 <PRE>
-public static function apply(fn: helper::Invokable, thisArg: Object=null, argArray: Object=null) {
+static public function apply(fn /*: function*/, thisArg: Object=null, argArray: Object=null) {
     if (thisArg === null)
         thisArg = global;
     if (argArray === null)
         argArray = [];
-    else if (!(argArray is Array || informative::isArgumentsObject(argArray)))
+
+    else if (!(argArray is Array || magic::isArgumentsObject(argArray)))
         throw new TypeError();
     return magic::apply(fn, thisArg, argArray);
 }
@@ -287,35 +318,45 @@ public static function apply(fn: helper::Invokable, thisArg: Object=null, argArr
 <span class="xref">magic::apply</span>).
 
 
+<h3>bind&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;...args&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>bind</code> method takes arguments <i>fn</i>, <i>thisArg</i>,
+and optionally some <i>args</i>.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>bind</code> method returns a <code>Function</code> object that accepts
+some arguments <i>moreargs</i> and which calls <i>fn</i> with <i>thisArg</i> as
+the <code>this</code> object and the values of <i>args</i> and <i>moreargs</i> as
+actual arguments.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static public function bind(method /*: function*/, thisObj: Object=null, ...args)
+    helper::bind(method, thisObj, args);
+
+static helper function bind(method, thisObj, args)
+    function (...moreargs)
+        method.apply(thisObj, args.concat(...moreargs));
+</PRE>
+
+
 <h3>call&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;...args&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>call</code> method takes arguments <i>fn</i> and <i>thisArg</i> and
 optionally some <i>args</i>, and performs a function call using the
-<code>[[Call]]</code> property of <i>fn</i>, passing <i>thisArg</i> as the value for <code>this</code>
+<code>meta::invoke</code> method of <i>fn</i>, passing <i>thisArg</i> as the value for <code>this</code>
 and the members of <i>args</i> as the individual argument values.
 
-<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>[[Call]]</code> property, a <b>TypeError</b> exception
+<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>meta::invoke</code> method, a <b>TypeError</b> exception
 is thrown.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>call</code> method returns the value returned by <i>fn</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-public static function call(fn: helper::Invokable, thisObj: Object=null, ...args)
+static public function call(fn /*: function*/, thisObj: Object=null, ...args)
     Function.apply(fn, thisObj, args);
 </PRE>
 
-<h3>bind&nbsp;(&nbsp;...&nbsp;)</h3>
-
-<P class="section"><b>Description</b> <P><span class="pcounter"></span> FIXME
-
-<P class="section"><b>Returns</b> <P><span class="pcounter"></span> FIXME
-
-<P class="implsection"><b>Implementation</b>
-<PRE>
-public static function bind(method: helper::Invokable, thisObj: Object=null, ...args)
-    helper::bind(method, thisObj, args);
-</PRE>
 
 
 <h2>Methods on Function instances</h2>
@@ -348,8 +389,9 @@ because these can be treated like other objects that have <code>invoke</code>
 methods (and which already work just fine).  Therefore it should not
 be <code>final</code>.
 
-<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The meta method <code>invoke</code> returns the result of evaluating the
-executable code for the function represented by this <code>Function</code>
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The meta method <code>invoke</code> returns the value produces by the
+first <code>return</code> statement that is evaluated during the evaluation of
+the executable code for the function represented by this <code>Function</code>
 object.
 
 
@@ -366,12 +408,11 @@ implementation-dependent.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function toString(): string
-    informative::source;
+override intrinsic function toString() : string
+    Private::toString();
 </PRE>
 
-<P><span class="pcounter"></span> The informative property <code>source</code> holds a string representation
-of this function object.
+<P><span class="pcounter"></span> The private function <code>toString</code> is implementation-dependent.
 
 
 <h3>intrinsic::apply&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;args=&#x0085;&nbsp;)</h3>
@@ -388,6 +429,22 @@ intrinsic function apply(thisArg: Object=null, argArray: Object=null)
     Function.apply(this, thisArg, argArray);
 </PRE>
 
+
+<h3>intrinsic::bind&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;...args)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>bind</code> method calls the static <code>bind</code> method
+with the current value of <code>this</code> as the first argument.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>bind</code> method returns the result of the static
+<code>bind</code> method.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic function bind(thisObj: Object=null, ...args)
+    Function.helper::bind(this, thisObj, args);
+</PRE>
+
+
 <h3>intrinsic::call&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;...args)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>call</code> method calls the static <code>apply</code> method
@@ -403,13 +460,10 @@ intrinsic function call(thisObj: Object=null, ...args)
 </PRE>
 
 
-
-
-
 <h2>Properties of <code>Function</code> instances</h2>
 
 <P><span class="pcounter"></span> In addition to the required internal properties, every function
-instance has a <code>[[Call]]</code> property, a <code>[[Construct]]</code> property and a
+instance has a <code>meta::invoke</code> property, a <code>[[Construct]]</code> property and a
 <code>[[Scope]]</code> property (see sections 8.6.2 and 13.2).
 
 
@@ -443,27 +497,35 @@ created object.
 arguments and returns <b>undefined</b>:
 
 <PRE>
-meta prototype function invoke(...args)
+prototype meta function invoke(...args)
     undefined;
 </PRE>
 
 
 <h2>Methods on the <code>Function</code> prototype object</h2>
 
-<P><span class="pcounter"></span> The methods on the <code>Function</code> prototype object call their
-intrinsic counterparts:
+<P><span class="pcounter"></span> The methods on the <code>Function</code> prototype object perform simple
+type adjustments and then perform the same actions as their intrinsic
+counterparts:
 
 <PRE>
 prototype function toString(this:Function)
-    "function () { }";
+    this.Private::toString();
 
-prototype function apply(thisArg=undefined, argArray=undefined)
+prototype function apply(/*this: function, */ thisArg=undefined, argArray=undefined)
     Function.apply(this,
                    thisArg === undefined ? null : thisArg,
                    argArray === undefined ? null : argArray);
 
-prototype function call(this: helper::Invokable, thisObj=undefined, ...args)
-    Function.apply(this, thisObj === undefined ? null : thisObj, args);
+prototype function bind(/*this: function, */ thisObj=undefined, ...args)
+    Function.helper::bind(this,
+                          thisObj === undefined ? null : thisObj,
+                          args);
+
+prototype function call(/*this: function, */ thisObj=undefined, ...args)
+    Function.apply(this,
+                   thisObj === undefined ? null : thisObj,
+                   args);
 </PRE>
 
 <P><span class="pcounter"></span> The Function prototype object does not have a <code>valueOf</code> property
