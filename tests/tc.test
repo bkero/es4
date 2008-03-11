@@ -146,6 +146,16 @@ f = function(g:int):* { return g; };
 %% [generic1] verify, pass
 var f : function.<X>(int):int;
 
+%% [generic1] verify, pass
+class C.<T> {
+      function get() : C.<T> {
+         return new C.<T>();
+      }
+}
+
+
+
+
 
 
 

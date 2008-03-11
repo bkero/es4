@@ -351,7 +351,7 @@ and ty2norm (prog:Fixture.PROGRAM)
             : TY_NORM = 
             if isGroundType e 
             then { exprs = [e], nullable = nullable, ribId = ribId }
-            else error ["internal error: non-ground term is not simple"]
+            else error ["internal error: simple type is not ground: ", LogErr.ty e]
                  
 
         (* Use 'subTerm2Norm' to evaluate a TYPE_EXPR in the same environment
@@ -636,17 +636,19 @@ and ty2norm (prog:Fixture.PROGRAM)
                         baseNorm
                       | _ => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
                 end
-
+(*
               | Ast.LamType { params, body } =>
                 (* FIXME: add params to env, may shadow other vars *)
                 let in
                     case subTerm body of
                         SOME body' =>
-                        Ast.LamType { params=params,
-                                      body=body' }
+                        { exprs = [ Ast.LamType { params=params, body=body' } ],
+                          nullable = false,
+                          ribId = ribId }
+
                       | _ => repackage ty 
                 end
-                
+  *)              
               | _ => repackage ty
 
         fun nonNull (Ast.SpecialType Ast.Null) = false
