@@ -2674,7 +2674,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                           | Multiname n => Name.nons (#id n)
                 val v = evalExpr regs init
                 val ty = makeTy (searchFieldTypes (#id n) tyExprs)
-                val attrs = { dontDelete = false,
+                val attrs = { dontDelete = const,
                               dontEnum = false,
                               readOnly = const,
                               isFixed = false }
