@@ -116,7 +116,7 @@ fun normalize (prog:Fixture.PROGRAM)
               (strict:bool)              
               (ty:Ast.TY)
     : Ast.TY = 
-    Type.normalize prog [] ty
+    Type.normalize prog [] ty 
     handle LogErr.TypeError e => 
            let in
                if strict 
@@ -235,18 +235,14 @@ fun resolveMnameToFixtureTy (env:ENV)
 
 (******************* Subtyping and Compatibility *************************)
 
-infix 4 ~<;
-
-fun (tleft ~< tright) = Type.groundMatches tleft tright
-
-fun checkMatch (t1:Ast.TYPE_EXPR) (* assignment src *)
-		       (t2:Ast.TYPE_EXPR) (* assignment dst *)
+fun checkMatch (src:Ast.TYPE_EXPR) (* assignment src *)
+		       (dst:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
     let in
-        trace ["checkMatch ", LogErr.ty t1, " vs. ", LogErr.ty t2]; 
-        if t1 ~< t2
+        trace ["checkMatch ", LogErr.ty src, " vs. ", LogErr.ty dst]; 
+        if Type.groundMatches src dst
         then ()
-        else warning ["checkMatch failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+        else warning ["checkMatch failed: ", LogErr.ty src, " vs. ", LogErr.ty dst]
     end
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
@@ -254,9 +250,9 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
     in
-        if t1 ~< t2 then
+        if Type.groundIsCompatibleSubtype t1 t2 then (* FIXME *)
             t2
-        else if t2 ~< t1 then
+        else if Type.groundIsCompatibleSubtype t2 t1 then
             t1
         else
             Ast.UnionType [t1, t2]
@@ -265,11 +261,21 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
 
 (******************** Verification **************************************************)
 
+(*
 fun verifyType (env:ENV)
                (ty:Ast.TY)
     : (Ast.TY * Ast.TYPE_EXPR) =
 
     (* 
+     * Verification converts a (non-closed) TY into a 
+     * (closed, aka grounded) TYPE_EXPR.
+     * It is a static error if a type cannot be closed.
+     * We return the closed type, since it may later be propogated
+     * outside of its current environment env.
+     *
+     * verifyType only called by verifyTy and verifyTypeExpr;
+     * result of verifyTy never used.
+     * -----
      * Verification, if it runs, is obliged to come up with a best
      * guess ground type expression for every type it sees. It does
      * this because it performs some static reasoning and leaves
@@ -291,18 +297,13 @@ fun verifyType (env:ENV)
         (norm, 
          if Type.isGroundTy norm
          then (AstQuery.typeExprOf norm)
-         else anyType)
+         else 
+             let in
+                 warning ["Type could not be closed: ", LogErr.ty (AstQuery.typeExprOf norm)];
+                 anyType
+             end)
     end
-
-fun verifyTy (env:ENV)
-             (ty:Ast.TY)
-    : Ast.TY =
-    
-    let
-        val (ty,te) = verifyType env ty
-    in
-        ty
-    end
+*)
 
 fun verifyTypeExpr (env:ENV)
                    (ty:Ast.TY)
@@ -313,6 +314,26 @@ fun verifyTypeExpr (env:ENV)
     in
         te
     end
+
+
+fun verifyTy (env:ENV)
+             (ty:Ast.TY)
+    : Ast.TYPE_EXPR = 
+
+(*
+verifyTypeExpr env ty
+*)
+(*
+fun verifyTy (env:ENV)
+             (ty:Ast.TY)
+    : Ast.TY =
+    
+    let
+        val (ty,te) = verifyType env ty
+    in
+        ty
+    end
+*)
 
 (*
     HEAD
