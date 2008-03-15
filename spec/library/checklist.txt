@@ -1,11 +1,11 @@
 component           pri   status     
 
 Intro
-Global               -    Draft 1 2008-03-12 / a couple of comments
-Object               -    Draft 2 2008-03-10 / minor fixes to go out later, plus propertyIsEnumerable war
-Function             -    Draft 1 2008-03-10 / minor fixes to go out later
-Name                 +    Draft 2 2008-03-10 / many comments from waldemar, brendan
-Namespace            +    Draft 1 2008-03-05 / comments from waldemar
+Global               *    Draft 1 2008-03-12 / Draft 2 ready
+Object               *    Draft 2 2008-03-10 / Draft 3 ready
+Function             *    Draft 1 2008-03-10 / Draft 2 ready
+Name                 *    Draft 2 2008-03-10 / Draft 3 ready
+Namespace            *    Draft 1 2008-03-05 / Draft 2 ready
 Array                +
 String
 string

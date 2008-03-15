@@ -3,7 +3,7 @@
 <HR>
 <pre>
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 1 - 2008-03-05
+DRAFT STATUS:               DRAFT 2 - 2008-03-14
 SOURCES:                    REFERENCES [1], [2]
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
@@ -17,8 +17,19 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
 
   * Presentation: added an explicit "extends Object" clause
 
+  * Namespaces are explicitly designated non-nullable with a
+    system-provided default value.
+
+  * The behavior of the 'toString' method has been tightly
+    specified to allow Namespace objects to be compared
+    predictably.
+
 
 OPEN ISSUES
+
+  * Namespaces are defined here as non-nullable with a default value
+    that is the "compatibility namespace" noNS.  This has not been
+    discussed extensively in the WG.
 
   * Namespace objects in ES4 are more opaque than the Namespace
     objects in the base document and in E4X, both of which expose
@@ -31,18 +42,28 @@ REFERENCES
 
 [1] Section 4.2.10.4 of the base document: http:&#x2f;&#x2f;wiki.ecmascript.org/lib/exe/fetch.php?id=resources%3Aresources&cache=cache&media=resources:as3lang.doc
 [2] builtins/Namespace.es in the ES4 RI
+[3] Language definition, section on Names (forthcoming).
 </pre>
 <HR>
 
-<P> The class ''Namespace'' is a final, non-dynamic, direct subclass
-of ''Object''.  It reflects a namespace as an opaque datum.
+<P> The class ''Namespace'' is a final, non-dynamic, non-nullable,
+direct subclass of ''Object''.  It reflects a namespace as an opaque
+datum.
+
+<P> The default value for properties of type ''Namespace'' is the
+object representing the compatibility namespace, ''noNS'' (see 
+<XREF target="Language:Names">).
 
 <NOTE> Namespaces are created as a result of the evaluation of the
 ''namespace'' pragma, which defines a new namespace and creates a
 binding for it.  Namespaces are reflected as ''Namespace'' objects
 when namespace bindings are referenced in expressions.
 
-<COMP> The ''Namespace'' class is new in the 4th Edition of this Standard.
+<NOTE>A ''Namespace'' object can be created with an explicit name by
+providing the name as a string in the ''namespace'' pragma.
+
+<COMP> The ''Namespace'' class is new in the 4th Edition of this
+Standard.
 
 == Synopsis ==
 
@@ -62,6 +83,14 @@ properties:
     toString: function () <LDOTS>
 }}}
 
+== Operators ==
+
+<P> The operators ''=='' and ''==='' compare as equal two non-opaque
+''Namespace'' objects that are separately created from the same string;
+similarly, the operators ''!='' and ''!=='' compare as not equal two
+''Namespace'' objects that are separately created from dissimilar strings.
+
+
 == Methods on the ''Namespace'' class object ==
 
 <P> There are no methods on the ''Namespace'' class object.  In
@@ -77,13 +106,19 @@ accessible constructor.
 object to a string.  If the ''Namespace'' object was created with an
 explicit name then the string contains that name as a substring.
 
-<NOTE>A ''Namespace'' object can be created with an explicit name by
-providing the name as a string in the ''namespace'' pragma.
+<RETN> The ''toString'' method returns an implementation-defined
+string.  
 
-<RETN> The ''toString'' method returns an implementation-defined string.
+<P> Suppose the intrinsic ''toString'' method is invoked on two
+namespaces //N1// and //N2// yielding strings //T1// and //T2//,
+respectively.  //T1// and //T2// are equal if and only if //N1// is
+equal to //N2// (by ''==='' or ''=='').
 
-<IMPL> The ''toString'' method is implementation-defined.
-    
+<P> Suppose the intrinsic ''toString'' method is invoked on two
+different non-opaque namespaces //N1// and //N2// created from strings
+//S1// and //S2//, yielding strings //T1// and //T2//, respectively.
+//T1// and //T2// have the same relationship (determined by the
+relational operators) as //S1// and //S2//.
 
 == Methods on the ''Namespace'' prototype object ==
 

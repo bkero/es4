@@ -124,7 +124,7 @@ package
 
 
         /* E262-3 15.3.4.3: Function.prototype.apply */
-        prototype function apply(/*this: function,*/ thisArg=undefined, argArray=undefined)
+        prototype function apply(/*this: Callable,*/ thisArg=undefined, argArray=undefined)
             Function.apply(this,
                            thisArg === undefined ? null : thisArg, 
                            argArray === undefined ? null : argArray);
@@ -136,7 +136,7 @@ package
            Function object, and everyone eventually ends up in
            Function.apply().
         */
-        static public function apply(fn/*: function*/, thisArg: Object=null, argArray: Object=null) {
+        static public function apply(fn/*: Callable*/, thisArg: Object=null, argArray: Object=null) {
             if (thisArg === null)
                 thisArg = global;
             if (argArray === null)
@@ -150,7 +150,7 @@ package
            "length" of the function, so the length of
            Function.prototype.call is 1, which is what we want.
         */
-        prototype function call(/*this: function,*/ thisObj=undefined, ...args)
+        prototype function call(/*this: Callable,*/ thisObj=undefined, ...args)
             Function.apply(this, 
                            thisObj === undefined ? null : thisObj, 
                            args);
@@ -160,20 +160,20 @@ package
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object. */
-        static public function call(fn/*: function*/, thisObj: Object=null, ...args)
+        static public function call(fn/*: Callable*/, thisObj: Object=null, ...args)
             Function.apply(fn, thisObj, args);
 
 
         /* E262-4 draft: "bind" is a static method on the Function object and
            also a method on function objects.
         */
-        prototype function bind(/*this: function,*/ thisObj, ...args)
+        prototype function bind(/*this: Callable,*/ thisObj, ...args)
             Function.helper::bind(this, thisObj, args);
 
         intrinsic function bind(thisObj: Object, ...args)
             Function.helper::bind(this, thisObj, args);
 
-        static public function bind(method/*: function*/, thisObj: Object, ...args)
+        static public function bind(method/*: Callable*/, thisObj: Object, ...args)
             helper::bind(method, thisObj, args);
 
         static helper function bind(method, thisObj, args) {

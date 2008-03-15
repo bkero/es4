@@ -317,6 +317,12 @@ package
         return h;
     }
 
+    informative function namespaceHash(x)
+        informativ::stringHash(x);
+
+    informative function nameHash(x)
+        informativ::stringHash(x);
+
     // Return a hash code for the object.
 
     informative native function objectHash(x:Object!): double;
@@ -328,6 +334,8 @@ package
         case (x: AnyBoolean) { return Number(x) }
         case (x: AnyNumber)  { return intrinsic::toUint(x) }
         case (x: AnyString)  { return informative::stringHash(x) }
+        case (x: Namespace)  { return informative::namespaceHash(x) }
+        case (x: Name)       { return informative::nameHash(x) }
         case (x: *)          { return informative::objectHash(x) }
         }
     }

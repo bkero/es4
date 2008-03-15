@@ -7,7 +7,7 @@ FILE:                       spec/library/global.html
 CATEGORY:                   Pre-defined objects (E262-3 Chapter 15)
 SOURCES:                    See REFERENCES section below
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 1 - 2008-03-12
+DRAFT STATUS:               DRAFT 2 - 2008-03-14
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -16,6 +16,11 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   NO
 IMPLEMENTATION STATUS:      ?
 TEST CASE STATUS:           ?
+
+CHANGES SINCE DRAFT 1 (2008-03-12)
+
+  * Fixed a bug in the definition of AnyBoolean.
+
 
 OPEN ISSUES
 
@@ -153,6 +158,7 @@ __ES4__ type EnumerableId = <LDOTS>
 __ES4__ type AnyNumber = <LDOTS>
 __ES4__ type AnyString = <LDOTS>
 __ES4__ type AnyBoolean = <LDOTS>
+__ES4__ type Callable = <LDOTS>
 
 intrinsic const function eval(s: string) <LDOTS>
 intrinsic const function parseInt(s: string, r: double=0): AnyNumber <LDOTS>
@@ -1169,15 +1175,16 @@ below 2<SUP>32</SUP>.
 <SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic const function hashcode">
 
-<P> The informative functions ''stringHash'' and ''objectHash''
-compute hash values for strings and arbitrary objects, respectively.
-They can take into account their arguments' immutable structure only.
+<P> The informative functions ''stringHash'', ''namespaceHash'',
+''nameHash'', and ''objectHash'' compute hash values for strings,
+namespaces, names, and arbitrary objects, respectively.  They can take
+into account their arguments' immutable structure only.
 
 <P> The implementation should strive to compute different hashcodes
-for objects that are not the same by ''intrinsic::==='', as the
-utility of this function depends on that property.  (The user program
-should be able to expect that the hashcodes of objects that are not
-the same are different with high probability.)
+for values that are not the same by ''intrinsic::==='', as the utility
+of this function depends on that property.  (The user program should
+be able to expect that the hashcodes of objects that are not the same
+are different with high probability.)
 
 <NOTE> A typical implementation of ''stringHash'' will make use of the
 string's character sequence and its length.
@@ -1257,8 +1264,16 @@ __ES4__ type AnyString = (string|String);
 types that are treated as booleans by the language:
 
 {{{
-__ES4__ type AnyString = (boolean|Boolean);
+__ES4__ type AnyBoolean = (boolean|Boolean);
 }}}
 
+=== Callable ===
+
+<P> The type ''Callable'' is a record type describing any object that
+can be called as a function:
+
+{{{
+__ES4__ type Callable = { meta::invoke: * }
+}}}
 
 <!-- End of global.html -->

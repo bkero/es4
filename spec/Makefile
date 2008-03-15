@@ -6,8 +6,8 @@ language.html: stitch.py part2.html es4.css language/*.html ../builtins/*.es ../
 library.html: stitch.py part3.html es4.css library/*.html ../builtins/*.es ../*.sml
 	python stitch.py part3.html library.html
 
-lib-march-2008.html: stitch.py build-march-2008/lib-template.html es4.css library/*.html ../builtins/*.es ../*.sml
-	python stitch.py build-march-2008/lib-template.html lib-march-2008.html
+lib-march-2008.html: stitch.py lib-march-2008-template.html es4.css library/*.html ../builtins/*.es ../*.sml
+	python stitch.py lib-march-2008-template.html lib-march-2008.html
 
 LIBDEPS=stitch.py es4.css ../builtins/*.es ../*.sml
 

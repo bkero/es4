@@ -7,7 +7,7 @@ FILE:                       spec/library/Object.html
 CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 2 - 2008-03-10
+DRAFT STATUS:               DRAFT 3 - 2008-03-14
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -19,12 +19,15 @@ TEST CASE STATUS:           ?
 
 CHANGES SINCE DRAFT 2 (2008-03-10)
 
-  * Removed a "note".
+  * Removed a "note" below
 
   * Fixed the spec for Object.prototype.toString (there needs to be a
-    space preceding the class name).
+    space preceding the class name)
 
   * Removed the optional second argument on 'propertyIsEnumerable'
+
+  * Added the method __createProperty__
+
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
 
@@ -33,15 +36,15 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
   * Prototype methods do not delegate to the corresponding intrinsic
     methods, but to shared private methods that are also called by the
     intrinsic method.  In this fashion, prototype method behavior is
-    invariant of subclassing.
+    invariant of subclassing
 
   * Introduction of a specification-only protocol helper::getClassName
-    for overriding class names for ES3 compatibility.
+    for overriding class names for ES3 compatibility
 
 NOTES
 
   * The use of 'Private' instead of 'private' below is a workaround
-    for a bug in the reference implementation (#368).
+    for a bug in the reference implementation (#368)
 
 
 REFERENCES
@@ -80,17 +83,19 @@ public dynamic class Object
     <SIGNATURE file="Object.es" name="intrinsic function hasOwnProperty">
     <SIGNATURE file="Object.es" name="intrinsic function isPrototypeOf">
     <SIGNATURE file="Object.es" name="intrinsic function propertyIsEnumerable">
+    <SIGNATURE file="Object.es" name="intrinsic function __createProperty__">
 }
 }}}
 
 <P> The ''Object'' prototype object provides these direct properties:
 {{{
-    toString:             function () <LDOTS> ,
-    toLocaleString:       function () <LDOTS> ,
-    valueOf:              function () <LDOTS> ,
-    hasOwnProperty:       function (name) <LDOTS> ,
-    isPrototypeOf:        function (value) <LDOTS> ,
-    propertyIsEnumerable: function (name) <LDOTS> ,
+    toString:             function () <LDOTS>
+    toLocaleString:       function () <LDOTS>
+    valueOf:              function () <LDOTS>
+    hasOwnProperty:       function (name) <LDOTS>
+    isPrototypeOf:        function (value) <LDOTS>
+    propertyIsEnumerable: function (name) <LDOTS>
+    __createProperty__:   function (name, value, dontEnum=undefined, dontDelete=undefined, readOnly=undefined) <LDOTS>
 }}}
 
 <P> The ''Object'' prototype object is itself an instance of the class
@@ -292,6 +297,48 @@ target="magic:hasOwnProperty">.
 flag of the property.  See <XREF target="magic:getPropertyIsDontEnum">.
 
 
+=== intrinsic::__createProperty__ ( name, value, enumerable=<LDOTS>, removable=<LDOTS>, writable=<LDOTS>) ===
+
+<DESC> The intrinsic ''__createProperty__'' method creates a new
+dynamic property named //name// on this object, giving it the value
+//value// and attributes determined by the parameters //enumerable//,
+//removable//, and //writable//.  If the property already exists, or
+if a non-writable property with the same name exists on an object in
+the prototype chain of this object, then a **TypeError** exception is
+thrown.
+
+<NOTE> The name ''__createProperty__'' (with the leading and trailing
+underscores) has been chosen in order to minimize the risk of name
+collisions with existing content on the web.
+
+<RETN> The intrinsic ''__createProperty__'' method returns nothing.
+
+<SHORTIMPL>
+<INCLUDE file="Object.es" name="intrinsic function __createProperty__">
+<INCLUDE file="Object.es" name="Private function __createProperty__">
+
+<p> The function ''magic::hasOwnProperty'' tests whether the object
+contains the named property on its local property list.  See <XREF
+target="magic:hasOwnProperty">.
+
+<p> The function ''magic::getPrototype'' extracts the [[Prototype]] property
+from the object.  See <XREF target="magic:getPrototype">.
+
+<p> The functions ''magic::getPropertyIsDontEnum'',
+''magic::getPropertyIsDontDelete'', and ''magic::getPropertyIsReadOnly''
+retrieve the attribute flags of the property.  See 
+<XREF target="magic:getPropertyIsDontEnum">,
+<XREF target="magic:getPropertyIsDontDelete">, and
+<XREF target="magic:getPropertyIsReadOnly">.
+
+<p> The functions ''magic::setPropertyIsDontEnum'',
+''magic::setPropertyIsDontDelete'', and ''magic::setPropertyIsReadOnly''
+set the attribute flags of the property.  See 
+<XREF target="magic:setPropertyIsDontEnum">,
+<XREF target="magic:setPropertyIsDontDelete">, and
+<XREF target="magic:setPropertyIsReadOnly">.
+
+
 == Methods on the ''Object'' prototype object ==
 
 <DESC> The methods on the ''Object'' prototype object all perform
@@ -308,6 +355,7 @@ methods return.
 <INCLUDE file="Object.es" name="prototype function hasOwnProperty">
 <INCLUDE file="Object.es" name="prototype function isPrototypeOf">
 <INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
+<INCLUDE file="Object.es" name="prototype function __createProperty__">
 
 
 <!-- End of Object.html -->

@@ -189,5 +189,32 @@ package
             return oldval;
         }
         */
+
+        prototype function __createProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
+            this.Private::__createProperty__(helper::toEnumerableId(name),
+                                             value,
+                                             enumerable === undefined ? true : boolean(enumerable),
+                                             removable === undefined ? true : boolean(removable),
+                                             writable === undefined ? true : boolean(writable));
+
+        intrinsic function __createProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void
+            Private::__createProperty__(name, value, enumerable, removable, writable);
+
+        Private function __createProperty__(name, value, enumerable, removable, writable) {
+            if (!magic::hasOwnProperty(this, name))
+                throw new TypeError(/* Property exists */);
+
+            let obj = magic::getPrototype(this);
+            while (obj != null) {
+                if (magic::hasOwnProperty(obj, name) && magic::getPropertyIsReadOnly(obj, name))
+                    throw new TypeError(/* Property is ReadOnly in prototype chain */);
+                obj = magic::getPrototype(obj);
+            }
+
+            this[name] = value;
+            magic::setPropertyIsDontEnum(this, name, !enumerable);
+            magic::setPropertyIsDontDelete(this, name, !removable);
+            magic::setPropertyIsReadOnly(this, name, !writable);
+        }
     }
 }

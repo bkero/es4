@@ -75,11 +75,6 @@ H4 {
     counter-reset: para;
 }
 
-@media print {
-/*    H1 { page-break-before: always } */
-    .copyright { page-break-before: always }
-}
-
 </style>
 </head>
 
@@ -89,7 +84,7 @@ H4 {
 <HR>
 <pre>
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 1 - 2008-03-05
+DRAFT STATUS:               DRAFT 2 - 2008-03-14
 SOURCES:                    REFERENCES [1], [2]
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
@@ -99,7 +94,23 @@ REVIEWED AGAINST CODE:      YES
 IMPLEMENTATION STATUS:      ES4 RI
 
 
+CHANGES SINCE DRAFT 1 (2008-03-05)
+
+  * Presentation: added an explicit "extends Object" clause
+
+  * Namespaces are explicitly designated non-nullable with a
+    system-provided default value.
+
+  * The behavior of the 'toString' method has been tightly
+    specified to allow Namespace objects to be compared
+    predictably.
+
+
 OPEN ISSUES
+
+  * Namespaces are defined here as non-nullable with a default value
+    that is the "compatibility namespace" noNS.  This has not been
+    discussed extensively in the WG.
 
   * Namespace objects in ES4 are more opaque than the Namespace
     objects in the base document and in E4X, both of which expose
@@ -112,25 +123,35 @@ REFERENCES
 
 [1] Section 4.2.10.4 of the base document: http:&#x2f;&#x2f;wiki.ecmascript.org/lib/exe/fetch.php?id=resources%3Aresources&cache=cache&media=resources:as3lang.doc
 [2] builtins/Namespace.es in the ES4 RI
+[3] Language definition, section on Names (forthcoming).
 </pre>
 <HR>
 
-<P><span class="pcounter"></span> The class <code>Namespace</code> is a final, non-dynamic, direct subclass
-of <code>Object</code>.  It reflects a namespace as an opaque datum.
+<P><span class="pcounter"></span> The class <code>Namespace</code> is a final, non-dynamic, non-nullable,
+direct subclass of <code>Object</code>.  It reflects a namespace as an opaque
+datum.
+
+<P><span class="pcounter"></span> The default value for properties of type <code>Namespace</code> is the
+object representing the compatibility namespace, <code>noNS</code> (see 
+<span class="xref">Language:Names</span>).
 
 <p class="note"><b>NOTE</b>&nbsp;&nbsp;  Namespaces are created as a result of the evaluation of the
 <code>namespace</code> pragma, which defines a new namespace and creates a
 binding for it.  Namespaces are reflected as <code>Namespace</code> objects
 when namespace bindings are referenced in expressions.
 
-<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The <code>Namespace</code> class is new in the 4th Edition of this Standard.
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; A <code>Namespace</code> object can be created with an explicit name by
+providing the name as a string in the <code>namespace</code> pragma.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The <code>Namespace</code> class is new in the 4th Edition of this
+Standard.
 
 <h2>Synopsis</h2>
 
 <P><span class="pcounter"></span> The class <code>Namespace</code> provides the following interface:
 
 <PRE>
-__ES4__ final class Namespace
+__ES4__ final class Namespace extends Object
 {
     intrinsic function toString(): string &#x0085;
 }
@@ -142,6 +163,14 @@ properties:
 <PRE>
     toString: function () &#x0085;
 </PRE>
+
+<h2>Operators</h2>
+
+<P><span class="pcounter"></span> The operators <code>==</code> and <code>===</code> compare as equal two non-opaque
+<code>Namespace</code> objects that are separately created from the same string;
+similarly, the operators <code>!=</code> and <code>!==</code> compare as not equal two
+<code>Namespace</code> objects that are separately created from dissimilar strings.
+
 
 <h2>Methods on the <code>Namespace</code> class object</h2>
 
@@ -158,21 +187,27 @@ accessible constructor.
 object to a string.  If the <code>Namespace</code> object was created with an
 explicit name then the string contains that name as a substring.
 
-<p class="note"><b>NOTE</b>&nbsp;&nbsp; A <code>Namespace</code> object can be created with an explicit name by
-providing the name as a string in the <code>namespace</code> pragma.
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>toString</code> method returns an implementation-defined
+string.  
 
-<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>toString</code> method returns an implementation-defined string.
+<P><span class="pcounter"></span> Suppose the intrinsic <code>toString</code> method is invoked on two
+namespaces <i>N1</i> and <i>N2</i> yielding strings <i>T1</i> and <i>T2</i>,
+respectively.  <i>T1</i> and <i>T2</i> are equal if and only if <i>N1</i> is
+equal to <i>N2</i> (by <code>===</code> or <code>==</code>).
 
-<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span> The <code>toString</code> method is implementation-defined.
-    
+<P><span class="pcounter"></span> Suppose the intrinsic <code>toString</code> method is invoked on two
+different non-opaque namespaces <i>N1</i> and <i>N2</i> created from strings
+<i>S1</i> and <i>S2</i>, yielding strings <i>T1</i> and <i>T2</i>, respectively.
+<i>T1</i> and <i>T2</i> have the same relationship (determined by the
+relational operators) as <i>S1</i> and <i>S2</i>.
 
 <h2>Methods on the <code>Namespace</code> prototype object</h2>
 
-<P class="section"><b>Description</b> <P><span class="pcounter"></span> The methods on the <code>Namespace</code> prototype object delegate to their
-corresponding intrinsic methods.
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The methods on the <code>Namespace</code> prototype object delegate to
+their corresponding intrinsic methods.
 
-<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The methods on the <code>Namespace</code> prototype object return what their
-corresponding intrinsic methods return.
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The methods on the <code>Namespace</code> prototype object return what
+their corresponding intrinsic methods return.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>

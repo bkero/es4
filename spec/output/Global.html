@@ -75,11 +75,6 @@ H4 {
     counter-reset: para;
 }
 
-@media print {
-/*    H1 { page-break-before: always } */
-    .copyright { page-break-before: always }
-}
-
 </style>
 </head>
 
@@ -93,7 +88,7 @@ FILE:                       spec/library/global.html
 CATEGORY:                   Pre-defined objects (E262-3 Chapter 15)
 SOURCES:                    See REFERENCES section below
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 1 - 2008-03-12
+DRAFT STATUS:               DRAFT 2 - 2008-03-14
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -102,6 +97,11 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   NO
 IMPLEMENTATION STATUS:      ?
 TEST CASE STATUS:           ?
+
+CHANGES SINCE DRAFT 1 (2008-03-12)
+
+  * Fixed a bug in the definition of AnyBoolean.
+
 
 OPEN ISSUES
 
@@ -239,6 +239,7 @@ __ES4__ type EnumerableId = &#x0085;
 __ES4__ type AnyNumber = &#x0085;
 __ES4__ type AnyString = &#x0085;
 __ES4__ type AnyBoolean = &#x0085;
+__ES4__ type Callable = &#x0085;
 
 intrinsic const function eval(s: string) &#x0085;
 intrinsic const function parseInt(s: string, r: double=0): AnyNumber &#x0085;
@@ -647,13 +648,15 @@ it may be presented as Standard ML code.)
          if there is a second A then convert it to int to yield K, else let K=3
          evaluate the program denoted by the first A as follows:
            if K &#60;= 3
-             the scope chain is the lexical chain in effect at the point of invocation of M
-             the variable object is the innermost variable object in effect (which is to
-                 say that it excludes binding objects introduced for "let", "catch", named
-                 function expressions, and "switch type"
+             the scope chain is the lexical chain in effect at 
+                 the point of invocation of M
+             the variable object is the innermost variable object in effect
+                 (which is to say that it excludes binding objects 
+                 introduced for "let", "catch", named function expressions, 
+                 and "switch type")
            else
-             the scope chain is the lexical chain in effect at the point of invocation of M,
-                 extended by a new variable object W
+             the scope chain is the lexical chain in effect at the point of
+                 invocation of M, extended by a new variable object W
              the variable object is W
            fi
            the value of "this" is the global object O
@@ -770,7 +773,8 @@ intrinsic const function parseInt(s: string, r: double=0): AnyNumber {
     else if (r &#60; 2 || r > 36)
         return NaN;
 
-    if (maybe_hexadecimal && s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+    if (maybe_hexadecimal &&
+        s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
         r = 16;
         s = s.intrinsic::substring(2);
     }
@@ -821,10 +825,9 @@ helper function isDigitForRadix(c, r) {
     c = c.intrinsic::toUpperCase();
     if (c >= '0' && c &#60;= '9')
         return (c.intrinsic::charCodeAt(0) - '0'.intrinsic::charCodeAt(0)) &#60; r;
-    else if (c >= 'A' && c &#60;= 'Z')
+    if (c >= 'A' && c &#60;= 'Z')
         return (c.intrinsic::charCodeAt(0) - 'A'.intrinsic::charCodeAt(0) + 10) &#60; r;
-    else
-        return false;
+    return false;
 }
 </PRE>
 
@@ -855,7 +858,6 @@ decimal literal.
 <P class="implsection"><b>Implementation</b>
 <PRE>
 intrinsic const function parseFloat(s: string) {
-    /* Implement this according to E262-3 */
 }
 </PRE>
 
@@ -1257,7 +1259,8 @@ helper function decode(s: string, reservedSet: string): string {
 helper function decodeHexEscape(s, k) {
     if (k + 2 >= s.length ||
         s[k] != "%" ||
-        !helper::isDigitForRadix(s[k+1], 16) && !helper::isDigitForRadix(s[k+1], 16))
+        (!helper::isDigitForRadix(s[k+1], 16) &&
+         !helper::isDigitForRadix(s[k+1], 16)))
         throw new URIError(/* Invalid escape sequence */);
     return intrinsic::parseInt(s.intrinsic::substring(k+1, k+3), 16);
 }
@@ -1517,20 +1520,23 @@ intrinsic const function hashcode(o): double {
     case (x: AnyBoolean) { return Number(x) }
     case (x: AnyNumber)  { return intrinsic::toUint(x) }
     case (x: AnyString)  { return informative::stringHash(x) }
+    case (x: Namespace)  { return informative::namespaceHash(x) }
+    case (x: Name)       { return informative::nameHash(x) }
     case (x: *)          { return informative::objectHash(x) }
     }
 }
 </PRE>
 
-<P><span class="pcounter"></span> The informative functions <code>stringHash</code> and <code>objectHash</code>
-compute hash values for strings and arbitrary objects, respectively.
-They can take into account their arguments' immutable structure only.
+<P><span class="pcounter"></span> The informative functions <code>stringHash</code>, <code>namespaceHash</code>,
+<code>nameHash</code>, and <code>objectHash</code> compute hash values for strings,
+namespaces, names, and arbitrary objects, respectively.  They can take
+into account their arguments' immutable structure only.
 
 <P><span class="pcounter"></span> The implementation should strive to compute different hashcodes
-for objects that are not the same by <code>intrinsic::===</code>, as the
-utility of this function depends on that property.  (The user program
-should be able to expect that the hashcodes of objects that are not
-the same are different with high probability.)
+for values that are not the same by <code>intrinsic::===</code>, as the utility
+of this function depends on that property.  (The user program should
+be able to expect that the hashcodes of objects that are not the same
+are different with high probability.)
 
 <p class="note"><b>NOTE</b>&nbsp;&nbsp;  A typical implementation of <code>stringHash</code> will make use of the
 string's character sequence and its length.
@@ -1610,9 +1616,17 @@ __ES4__ type AnyString = (string|String);
 types that are treated as booleans by the language:
 
 <PRE>
-__ES4__ type AnyString = (boolean|Boolean);
+__ES4__ type AnyBoolean = (boolean|Boolean);
 </PRE>
 
+<h3>Callable</h3>
+
+<P><span class="pcounter"></span> The type <code>Callable</code> is a record type describing any object that
+can be called as a function:
+
+<PRE>
+__ES4__ type Callable = { meta::invoke: * }
+</PRE>
 
 
 

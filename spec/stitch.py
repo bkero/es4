@@ -142,8 +142,8 @@ def unComment(s):
     return s
 
 def adHocFixFunctionType(s):
-    s = re.sub(r"/\*: function\*/", ": function", s)
-    s = re.sub(r"/\*this: function,\*/", "this: function,", s)
+    s = re.sub(r"/\*: Callable\*/", ": Callable", s)
+    s = re.sub(r"/\*this: Callable,\*/", "this: Callable,", s)
     return s
 
 def extractES(fn, name, isSignature, isContextual):
