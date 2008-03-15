@@ -1650,10 +1650,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
                                      loc = locOf ts0 },
               actuals = [ a, b, c ] }
 
-        val none = Ast.LexicalRef { ident = Ast.QualifiedIdentifier { ident = Ustring.NaN_,
-                                                                      qual = intrinsic },
-                                    loc = locOf ts0 }
-
+        val none = Ast.LiteralExpr (Ast.LiteralDouble (0.0 / 0.0))  (* NaN *)
 
         fun slice2 ts0 nd1 nd2 = 
             case ts0 of 
