@@ -123,25 +123,38 @@ namespace N
 var x:int;
 x="string";
 
-%% [generic1] verify, pass
+%% [fns1] verify, pass
 var f : function(int):int;
 f = function(g:int):int { return g; };
 
-%% [generic2] verify, pass
+%% [fns2] verify, pass
 var f : function(int):*;
 f = function(g:int):int { return g; };
 
-%% [generic3] verify, pass
+%% [fns3] verify, pass
 var f : function(*):int;
 f = function(g:int):int { return g; };
 
-%% [generic4] verify, pass
+%% [fns4] verify, pass
 var f : function(*):*;
 f = function(g:int):int { return g; };
 
-%% [generic5] verify, pass
+%% [fns5] verify, pass
 var f : function(int):int;
 f = function(g:int):* { return g; };
+
+%% [generic1] verify, pass
+var f : function.<X>(int):int;
+
+%% [generic1] verify, pass
+class C.<T> {
+      function get() : C.<T> {
+         return new C.<T>();
+      }
+}
+
+
+
 
 
 

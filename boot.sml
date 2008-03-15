@@ -168,7 +168,7 @@ fun loadFiles (prog:Fixture.PROGRAM)
         f prog [] fs
     end
 
-val verifyBuiltins = true
+val verifyBuiltins = false (* FIXME *)
 
 fun verifyFiles prog fs =
     let

@@ -102,7 +102,8 @@ type ENV =
        className: Ast.IDENT,
        packageName: Ast.IDENT list,
        defaultNamespace: Ast.NAMESPACE,
-       program: Fixture.PROGRAM }    
+       program: Fixture.PROGRAM,
+       func: Ast.FUNC option }    
 
 
 fun dumpEnv (e:ENV) : unit =
@@ -299,7 +300,7 @@ fun enterFragment (env:ENV)
     let
         val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
-              defaultNamespace, program } = env                                           
+              defaultNamespace, program, func } = env                                           
         val newRibId = 
             case frag of 
                     Ast.Unit _ => 
@@ -327,7 +328,8 @@ fun enterFragment (env:ENV)
           className = className,
           packageName = newPkgName,
           defaultNamespace = newDefaultNs,
-          program = program }
+          program = program,
+          func = func }
     end
 
     
@@ -337,7 +339,7 @@ fun extendEnvironment (env:ENV)
     let
         val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
-              defaultNamespace, program } = env
+              defaultNamespace, program, func } = env
         val newRibId = SOME (Fixture.allocGeneralRib program (#ribId env))
     in
         Fixture.saveRib program newRibId rib;
@@ -348,7 +350,8 @@ fun extendEnvironment (env:ENV)
           className = className,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
-          program = program }
+          program = program,
+          func = func }
     end
 
 
@@ -382,7 +385,7 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
     let
         val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
-              defaultNamespace, program } = env
+              defaultNamespace, program, func } = env
     in
         { ribId = ribId,
           tempOffset = newTempOffset,
@@ -391,7 +394,8 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
           className = className,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
-          program = program  }
+          program = program,
+          func = func }
     end
 
 
@@ -400,7 +404,7 @@ fun clearPackageName (env:ENV)
     let
         val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
-              defaultNamespace, program } = env
+              defaultNamespace, program, func } = env
     in
         { ribId = ribId,
           tempOffset = tempOffset,
@@ -409,7 +413,8 @@ fun clearPackageName (env:ENV)
           className = className,
           packageName = [],
           defaultNamespace = defaultNamespace,
-          program = program }
+          program = program,
+          func = func }
     end
 
 
@@ -418,7 +423,7 @@ fun enterClass (env:ENV) (newClassName:Ast.NAME)
     let
         val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
-              defaultNamespace, program } = env
+              defaultNamespace, program, func } = env
         val className = Name.mangle newClassName
     in
         { ribId = ribId,
@@ -428,8 +433,28 @@ fun enterClass (env:ENV) (newClassName:Ast.NAME)
           className = className,
           packageName = packageName,
           defaultNamespace = defaultNamespace,
-          program = program }
+          program = program,
+          func = func }
     end
+
+fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
+    : ENV = 
+    let
+        val { ribId, tempOffset, openNamespaces, 
+              labels, className, packageName, 
+              defaultNamespace, program, func } = env    
+    in
+        { ribId = ribId,
+          tempOffset = tempOffset,
+          openNamespaces = [Ast.Private className]::openNamespaces,
+          labels = labels,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          program = program,
+          func = SOME newFunc }
+    end
+
 
 fun dumpLabels (labels : LABEL list) = 
     trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id) ^ " ") labels)]
@@ -452,7 +477,7 @@ fun addLabel ((label:LABEL),(env:ENV))
         let
             val { ribId, tempOffset, openNamespaces, 
                   labels, className, packageName, 
-                  defaultNamespace, program } = env
+                  defaultNamespace, program, func } = env
             val (labelId,labelKnd) = label
         in
             dumpLabels labels;
@@ -469,7 +494,8 @@ fun addLabel ((label:LABEL),(env:ENV))
               className = className,
               packageName = packageName,
               defaultNamespace = defaultNamespace,
-              program = program }
+              program = program,
+              func = func }
         end
 
 
@@ -1408,6 +1434,7 @@ and defFunc (env:ENV)
         val (paramRib, paramInits, defaults, settingsRib, settingsInits, superArgs, thisType) = defFuncSig env fsig
         val defaults = defExprs env defaults
         val env = extendEnvironment env paramRib
+        val env = enterFuncBody env func
         val (blockOpt:Ast.BLOCK option, hoisted:Ast.RIB) = 
             case block of 
                 NONE => (NONE, [])
@@ -1546,7 +1573,8 @@ and defPragmas (env:ENV)
               className = (#className env),
               packageName = (#packageName env),
               defaultNamespace = !defaultNamespace,
-              program = (#program env) }
+              program = (#program env),
+              func = (#func env) }
 
         fun defPragma x =
             case x of
@@ -1819,7 +1847,16 @@ and defExpr (env:ENV)
             Ast.TypeExpr (defTyFromTy env t)
 
           | Ast.ThisExpr k =>
-            Ast.ThisExpr k
+            (case k of
+                 SOME Ast.FunctionThis =>
+                 (case (#func env) of
+                      SOME (Ast.Func { name = { kind, ident }, ...}) => 
+                      (case kind of
+                           Ast.Get => error ["'this function' not allowed in getter"]
+                         | Ast.Set => error ["'this function' not allowed in setter"]
+                         | _ => Ast.ThisExpr k)
+                    | _ => error ["'this function' not allowed in non-function context"])
+               | _ => Ast.ThisExpr k)
 
           | Ast.YieldExpr eo =>
             (case eo of
@@ -2650,7 +2687,8 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       className = Ustring.fromString "",
       packageName = [],
       defaultNamespace = Name.noNS,
-      program = prog }
+      program = prog,
+      func = NONE }
 
 and summarizeFragment (Ast.Unit { name, fragments }) = 
     let

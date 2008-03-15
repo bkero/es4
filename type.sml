@@ -132,11 +132,15 @@ fun liftOption (f:'a -> 'a option)
  *
  * A type *should* evaluate to a "ground" term if its unit is closed. We leave
  * that fact up to the various callers of normalization, though.
+ *
+ * A "ground type" is one that is closed, but, for example,
+ *  function.<X>(X):X  is still considered a ground type.
  *)
 
-fun isGroundType (t:Ast.TYPE_EXPR) 
+fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
     : bool = 
     let
+        fun isGroundType t = isGroundTypeEnv e t
         fun isGroundField { name, ty } = isGroundType ty
         fun isGroundOption NONE = true
           | isGroundOption (SOME t) = isGroundType t
@@ -145,23 +149,29 @@ fun isGroundType (t:Ast.TYPE_EXPR)
             Ast.SpecialType _ => true
           | Ast.InstanceType it => 
             (length (#typeParams it) = length (#typeArgs it))
-
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+            if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
+            then (trace ["bound var in ground type"]; true)
+            else (trace ["free var in ground type"]; false)
           | Ast.TypeName _ => false
           | Ast.ElementTypeRef _ => false
           | Ast.FieldTypeRef _ => false
           | Ast.AppType _ => false
-          | Ast.LamType _ => false
-                             
+          | Ast.LamType {params, body} => isGroundTypeEnv (params @ e) body
           | Ast.NullableType { expr, ... } => isGroundType expr
           | Ast.ObjectType fields => List.all isGroundField fields
-          | Ast.LikeType t => isGroundType t
+          | Ast.LikeType t => isGroundTypeEnv e t
           | Ast.UnionType tys => List.all isGroundType tys
           | Ast.ArrayType tys =>List.all isGroundType tys
-          | Ast.FunctionType { params, result, thisType, ... } => 
-            List.all isGroundType params andalso
-            isGroundType result andalso
-            isGroundOption thisType
+              | Ast.FunctionType { params, result, thisType, ... } => 
+                List.all isGroundType params andalso
+                isGroundType result andalso
+                isGroundOption thisType
     end
+
+fun isGroundType  (t:Ast.TYPE_EXPR) 
+    : bool = 
+    isGroundTypeEnv [] t
 
 fun isGroundTy (ty:Ast.TY) 
     : bool =
@@ -341,7 +351,7 @@ and ty2norm (prog:Fixture.PROGRAM)
             : TY_NORM = 
             if isGroundType e 
             then { exprs = [e], nullable = nullable, ribId = ribId }
-            else error ["internal error: non-ground term is not simple"]
+            else error ["internal error: simple type is not ground: ", LogErr.ty e]
                  
 
         (* Use 'subTerm2Norm' to evaluate a TYPE_EXPR in the same environment
@@ -626,8 +636,19 @@ and ty2norm (prog:Fixture.PROGRAM)
                         baseNorm
                       | _ => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
                 end
-                
-                
+(*
+              | Ast.LamType { params, body } =>
+                (* FIXME: add params to env, may shadow other vars *)
+                let in
+                    case subTerm body of
+                        SOME body' =>
+                        { exprs = [ Ast.LamType { params=params, body=body' } ],
+                          nullable = false,
+                          ribId = ribId }
+
+                      | _ => repackage ty 
+                end
+  *)              
               | _ => repackage ty
 
         fun nonNull (Ast.SpecialType Ast.Null) = false
