@@ -1,0 +1,1621 @@
+<html>
+<head>
+<title>The global object</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+@media print {
+/*    H1 { page-break-before: always } */
+    .copyright { page-break-before: always }
+}
+
+</style>
+</head>
+
+<body>
+<h1>The Global Object</h1>
+
+<HR>
+<pre>
+NAME:                       "The global object"
+FILE:                       spec/library/global.html
+CATEGORY:                   Pre-defined objects (E262-3 Chapter 15)
+SOURCES:                    See REFERENCES section below
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-03-12
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  YES
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+OPEN ISSUES
+
+  * The (re)design of 'eval', discussed at length below, is an obvious
+    attempt at killing 'eval' by a thousand cuts (yet remaining
+    backward compatible!)  The resulting design is not awfully
+    baroque, but it does seem a little bit arbitrary when considered
+    as a whole.  Insights appreciated.
+
+
+NOTES
+
+  * The following globally visible facilities will be defined in other
+    draft specs that will eventually be cross-referenced from the
+    present spec:
+
+     - Iterator and generator facilities
+     - Reflection facilities
+     - ControlInspector
+
+  * It's probable that ES4 will upgrade the Unicode support in the
+    language in various ways, but nothing is quite definite yet
+    (backward compatibility constraints are causing trouble).  If the
+    Unicode support is in fact upgraded then changes will likely be
+    made to the URI encoding and decoding functions defined in the
+    present spec.
+
+  * Due to the uniform implementer sentiment against the types 'int'
+    and 'uint' in John Resig's ES4 tracking spreadsheet, I have
+    removed those classes from the global object in this draft, and I
+    have removed some of the uses of 'int' and 'uint' throughout the
+    document.  I have also introduced the top-level functions isInt,
+    isUint, toInt, and toUint to provide some of the functionality
+    that is lost along with 'int' and 'uint'.  See [19] for a
+    discussion.
+
+    If the change to 'int' and 'uint' sticks, then the numerous other
+    uses of 'int' and 'uint' that remain in this and other draft specs
+    will be cleaned up fairly soon.
+
+
+REFERENCES
+
+  Most of the following references simply call for a new top-level
+  property of some kind or other, they have no direct bearing on the
+  semantics of the global object or the functions defined in the
+  present spec.  The exceptions are [6a]-[6d], which pin down 'eval'
+  in various ways; [9a]-[9c], which calls for making some global
+  bindings read-only; [11], which call for new namespaces to hide new
+  global bindings; and [8a] and [8b], which deal with changes
+  resulting from updates to how Unicode is handled in the language.
+
+[1] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:builtin_classes
+[2] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:numbers
+[3] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:intrinsic_namespace
+[4] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:iterators_and_generators
+[5] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:name_objects
+[6a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:resurrected_eval
+[6b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/226
+[6c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/235
+[6d] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/297
+[7] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:decimal
+[8a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:update_unicode
+[8b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/148
+[9a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:bug_fixes
+[9b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/123
+[9c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/220
+[10] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:globals
+[11] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:versioning
+[12] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:meta_objects
+[13a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:hashcodes
+[13b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/152
+[14] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:dictionary
+[15] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:vector
+[16] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:stack_inspection
+[17a] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/8
+[17b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/83
+[17c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/171
+[18] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/152
+[19] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/371
+</pre>
+<HR>
+
+<P><span class="pcounter"></span> The global object is an instance of an implementation-dependent
+class.  In particular, the name of this class and the contents of
+the class's prototype object are implementation-dependent.
+
+<P><span class="pcounter"></span> The class describing the global object does not have an accessible
+constructor function; it is not possible to use the global object as a
+constructor with the <code>new</code> operator.
+
+<P><span class="pcounter"></span> The class describing the global object does not have a
+<code>meta::invoke</code> method; it is not possible to call the global object
+as a function.
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span>The global object contains the following properties, functions,
+types, and class definitions.
+
+<PRE>
+namespace __ES4__
+
+__ES4__ namespace intrinsic = &#x0085;
+__ES4__ namespace iterator = &#x0085;
+__ES4__ namespace reflect = &#x0085;
+__ES4__ namespace meta = &#x0085;
+
+class Object &#x0085;
+class Function &#x0085;
+class Array &#x0085;
+class String &#x0085;
+class Boolean &#x0085;
+class Number &#x0085;
+class Date &#x0085;
+class RegExp &#x0085;
+class Error &#x0085;
+class EvalError &#x0085;
+class RangeError &#x0085;
+class ReferenceError &#x0085;
+class SyntaxError &#x0085;
+class TypeError &#x0085;
+class URIError &#x0085;
+
+__ES4__ class string &#x0085;
+__ES4__ class boolean
+__ES4__ class double &#x0085;
+__ES4__ class decimal &#x0085;
+__ES4__ class Name &#x0085;
+__ES4__ class Namespace &#x0085;
+__ES4__ class Map.&#60;K,V> &#x0085;
+__ES4__ class Vector.&#60;T> &#x0085;
+
+__ES4__ type EnumerableId = &#x0085;
+__ES4__ type AnyNumber = &#x0085;
+__ES4__ type AnyString = &#x0085;
+__ES4__ type AnyBoolean = &#x0085;
+
+intrinsic const function eval(s: string) &#x0085;
+intrinsic const function parseInt(s: string, r: double=0): AnyNumber &#x0085;
+intrinsic const function parseFloat(s: string): AnyNumber &#x0085;
+intrinsic const function isNaN(n: AnyNumber): boolean &#x0085;
+intrinsic const function isFinite(n: AnyNumber): boolean &#x0085;
+intrinsic const function isIntrinsic(n: AnyNumber): boolean &#x0085;
+intrinsic const function isInt(n: AnyNumber): boolean &#x0085;
+intrinsic const function isUint(n: AnyNumber): boolean &#x0085;
+intrinsic const function toInt(n: AnyNumber): double &#x0085;
+intrinsic const function toUint(n: AnyNumber): double &#x0085;
+intrinsic const function decodeURI(s: string): string &#x0085;
+intrinsic const function decodeURIComponent(s: string): string &#x0085;
+intrinsic const function encodeURI(s: string): string &#x0085;
+intrinsic const function encodeURIComponent(s: string): string &#x0085;
+intrinsic const function hashcode(x): double &#x0085;
+
+function eval(x) &#x0085;
+function parseInt(s, r=undefined) &#x0085;
+function parseFloat(s) &#x0085;
+function isNaN(x) &#x0085;
+function isFinite(x) &#x0085;
+function decodeURI(x) &#x0085;
+function decodeURIComponent(x) &#x0085;
+function encodeURI(x) &#x0085;
+function encodeURIComponent(x) &#x0085;
+__ES4__ function isInt(n: AnyNumber): boolean &#x0085;
+__ES4__ function isUint(n: AnyNumber): boolean &#x0085;
+__ES4__ function toInt(n: AnyNumber): double &#x0085;
+__ES4__ function toUint(n: AnyNumber): double &#x0085;
+
+const NaN: double = &#x0085;
+const Infinity: double = &#x0085;
+const undefined: undefined = &#x0085;
+const Math: helper::MathType = &#x0085;
+const __ECMASCRIPT_VERSION__: double = &#x0085;
+__ES4__ const global = &#x0085;
+</PRE>
+
+<h2>Namespace Properties on the Global Object</h2>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; The namespace properties are all new in the 4th Edition of this
+Standard.
+
+<h3>__ES4__</h3>
+
+<P><span class="pcounter"></span> The namespace <code>__ES4__</code> is used to tag all names introduced in
+the global object in the 4th Edition of this Standard, except for two:
+<code>__ES4__</code> and <code>__ECMASCRIPT_VERSION__</code>.
+
+<P><span class="pcounter"></span> The namespace <code>__ES4__</code> is automatically opened by the
+implementation for code that is to be treated as 4th Edition code, but
+not for code that is to be treated as 3rd Edition code.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The risk of polluting the name space for 3rd Edition code with
+new names is deemed too great to always open the <code>__ES4__</code> name
+space.
+
+<P><span class="pcounter"></span> The means by which an implementation determines whether to treat
+code according to 3rd Edition or 4th Edition is outside the scope of
+this Standard.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  This standard makes recommendations for how mime types should
+be used to tag script content in a web browser.  (See <span class="xref">appendix-mime-types</span>.)
+
+<h3>intrinsic</h3>
+
+<P><span class="pcounter"></span> The namespace <code>intrinsic</code> is used to tag pre-defined types,
+properties, and methods.  
+
+<P><span class="pcounter"></span> The namespace <code>intrinsic</code> is reserved by the language.  Except
+in the case where a method tagged <code>intrinsic</code> overrides an intrinsic
+method inherited from a pre-defined class, it is an error for user
+code to introduce new bindings in the <code>intrinsic</code> namespace.
+
+<P><span class="pcounter"></span> The bindings in the <code>intrinsic</code> namespace are always constant
+fixtures.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  A <i>fixture</i> is a binding that is not deletable and which
+takes precedence over dynamic names during lexical name lookup.
+
+<h3>reflect</h3>
+
+<P><span class="pcounter"></span> The namespace <code>reflect</code> is used to tag pre-defined interfaces in
+the reflection subsystem.
+
+<P><span class="pcounter"></span> The namespace <code>reflect</code> is reserved by the language.  It is an
+error for user code to introduce new bindings in the <code>reflect</code>
+namespace.
+
+<h3>meta</h3>
+
+<P><span class="pcounter"></span> The namespace <code>meta</code> is used to tag methods that participate in
+the language's protocols for invocation and property access.
+
+<P><span class="pcounter"></span> The namespace <code>meta</code> is reserved by the language.  Except in the
+case where a class definition uses it to tag (possibly static) methods
+called <code>invoke</code>, <code>get</code>, <code>set</code>, <code>has</code>, or <code>delete</code>, it is an
+error for user code to introduce new bindings in the <code>meta</code>
+namespace.
+
+<h3>iterator</h3>
+
+<P><span class="pcounter"></span> The namespace <code>iterator</code> is used for the iteration protocol,
+which is defined elsewhere.  (See <span class="xref">iterators</span>.)
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Unlike the namespaces <code>__ES4__</code>, <code>intrinsic</code>, <code>reflect</code>, and
+<code>meta</code>, the namespace <code>iterator</code> is not reserved by the system.
+
+
+<h2>Value Properties on the Global Object</h2>
+
+<h3>__ECMASCRIPT_VERSION__</h3>
+
+<P><span class="pcounter"></span> The value of the constant property <code>__ECMASCRIPT_VERSION__</code> is
+an integer denoting the version of this Standard to which the
+implementation conforms.  For this 4th Edition of the Standard, the
+value of <code>__ECMASCRIPT_VERSION__</code> is 4.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  This property is new in the 4th Edition of this Standard.  It
+is one of two properties introduced in the 4th Edition of this
+Standard that is not in the <code>__ES4__</code> namespace.  (The other is
+<code>__ES4__</code>.)
+
+<h3>NaN</h3>
+
+<P><span class="pcounter"></span> The value of the constant property <code>NaN</code> is <b>NaN</b> (see <span class="xref">nan-value</span>).
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+const NaN : double = &#x0085;
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>NaN</code> was not constant in the 3rd Edition of this Standard.
+
+<h3>Infinity</h3>
+
+<P><span class="pcounter"></span>The value of <code>Infinity</code> is +&#x221E; (see <span class="xref">infinity-value</span>).
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+const Infinity : double = &#x0085;
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>Infinity</code> was not constant in the 3rd Edition of this Standard.
+
+<h3>undefined</h3>
+
+<P><span class="pcounter"></span>The value of <code>undefined</code> is <b>undefined</b> (see <span class="xref">undefined-value</span>).
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+const undefined : undefined = &#x0085;
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>undefined</code> was not constant in the 3rd Edition of this Standard.
+
+<h3>Math</h3>
+
+<P><span class="pcounter"></span>The value of <code>Math</code> is the Math object (see <span class="xref">math-object</span>). 
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+const Math : helper::MathType = &#x0085;
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>Math</code> was not constant in the 3rd Edition of this Standard.
+
+<P><span class="pcounter"></span> The helper type <code>MathType</code> (see <span class="xref">MathType</span>) is a
+structural record type that includes a property for every intrinsic
+method and public constant property defined on the Math object.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The type of <code>Math</code> impacts strict mode type checking.
+
+
+<h3>global</h3>
+
+<P><span class="pcounter"></span>The value of <code>global</code> is the global object that contains the
+property <code>global</code>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  There may be multiple global objects in a program, and these
+objects may share values or immutable state: for example, their
+<code>isNaN</code> properties may hold the same function object.  However, each
+global object has separate mutable state, and a separate value for the
+intrinsic <code>global</code> property.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+const global = &#x0085;
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>global</code> is new in the 4th Edition of this Standard.
+
+
+<h2>Function Properties of the Global Object</h2>
+
+<h3>eval</h3>
+
+<P><span class="pcounter"></span> <i>It is likely that the description in this section needs to be
+broken up and scattered over several parts of the final specification,
+but for the time being it's best if everything is centralized here.
+I've added more expository and background material than the spec
+really ought to have; we'll clean this up by and by.   --lars</i>
+
+<h4>Overview and background</h4>
+
+<P><span class="pcounter"></span> The global object has properties named <code>eval</code> and
+<code>intrinsic::eval</code>.  Those properties initially hold the same value,
+a function, and that function -- the <code>eval</code> function -- can be
+called in all the ways that any other function in the language can be
+called.  There are however some run-time restrictions (described
+below) on when those calls are valid.
+
+<P><span class="pcounter"></span> In addition, there is an operator in the language that is also
+known under the names <code>eval</code> and <code>intrinsic::eval</code>.  The <code>eval</code>
+operator has access to the lexical environment of its context; it can
+look up and introduce bindings in the environment of its context.
+
+<P><span class="pcounter"></span> Together, the <code>eval</code> function and the <code>eval</code> operator provide
+run-time evaluation functionality that (a) is compatible with the
+functionality mandated for <code>eval</code> by the 3rd Edition and (b) handles
+all important known uses of <code>eval</code> on the web.
+
+<P><span class="pcounter"></span> The 3rd Edition only mandates the equivalent of the operator form
+of the 4th Edition, yet it describes <code>eval</code> as a function that has
+the ability to inspect and modify its caller's lexical environment.
+In practice, an implementation that supports only the functionality
+mandated by the 3rd Edition will not support the web well, and as a
+consequence several implementations of ECMAScript in web browsers
+provide <code>eval</code> as a true function that actually has the ability to
+inspect and modify its caller's environment, no matter who the caller
+of <code>eval</code> is and regardless of the name under which <code>eval</code> has
+been called.
+
+<P><span class="pcounter"></span> In other words, the 3rd Edition form of <code>eval</code>, implemented in
+full generality, makes it generally impossible to know if any
+particular scope contains a binding for any particular name, since any
+function call in the scope may be a call to <code>eval</code>, which may
+introduce new names in the scope.
+
+<P><span class="pcounter"></span> As an illustration, the following program prints "20" in Mozilla 
+Firefox, even though casual inspection of the program would lead one to
+conclude that the <code>x</code> referenced in the body of <code>g</code> is the constant
+binding in the outer scope:
+<PRE>
+   const x = 10;
+   function g(f,s) {
+       f(s);
+       return x;
+   }
+
+   document.writeln(g(eval,"var x=20"));
+</PRE>
+
+<P><span class="pcounter"></span> In conclusion, the primary reason for splitting the definition of
+<code>eval</code> into function and operator forms in the 4th Edition is in
+order to be able to control the extent to which <code>eval</code> can introduce
+new names in scopes, while at the same time remaining compatible with
+existing programs.
+
+<P><span class="pcounter"></span> The secondary reason for splitting the definition of <code>eval</code> into
+function and operator forms is that the behavior illustrated above
+largely precludes some standard code generation strategies.  A typical
+approach in lexically scoped languages is to translate variable
+references at compile time to <i>(rib,offset)</i> pairs; at run-time,
+scope object number <i>rib</i> (where the innermost is number zero) is
+fetched and property number <i>offset</i> is fetched out of it.  That
+approach is only possible if the environment is known at compile time.
+If there is a chance that <code>eval</code> can introduce new names into a
+scope at run-time then lookup in that scope must always be by name;
+with an operator form of <code>eval</code> it is possible to know at compile
+time whether a scope may be thus affected.
+
+<P><span class="pcounter"></span> Several other features and clarifications have been incorporated
+into the 4th Edition in an attempt to constrain the effects of
+<code>eval</code>.  While the splitting of <code>eval</code> into an operator form and a
+function form makes it clearer when a non-global environment might
+have new bindings introduced, it does not prevent such bindings from
+being introduced.
+
+<P><span class="pcounter"></span> The additional features and clarifications are:
+<UL>
+
+<LI> If the version number passed as the second argument to <code>eval</code>
+     is greater than 3, then the program being evaluated is given a
+     fresh variable object in which it can create bindings; as a
+     consequence, no bindings can be introduced into the caller's
+     environment (except by assignment to non-existent global
+     variables).
+
+<LI> <code>eval</code> is prevented from changing the DontDelete attribute on
+      existing bindings when a binding form is evaluated.
+
+<LI> The operator form of <code>eval</code> is disallowed inside classes.
+
+<LI> The operator form of <code>eval</code> is disallowed in strict mode.
+</UL> 
+
+<h4>eval&nbsp;(program,&nbsp;version=&#x0085;)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The eval function and the eval operator (described fully below)
+are invoked on a <i>program</i>, which is a value of any type, and a
+<i>version</i>, which is intended to be a nonnegative integer (defaulting
+to 3).
+
+<P><span class="pcounter"></span> If the <i>program</i> is a string then it must represent valid source
+code according to the nonterminal <i>Program</i> (see <span class="xref">Grammar</span>), with
+the proviso that the keyword set recognized during lexical analysis is
+determined by <i>version</i>, as follows.  Convert version to an integer
+as with the ToInt32 operation.  If the converted value of <i>version</i>
+is 3 or less then the keyword set is the set of reserved words in the
+3rd Edition of this Standard (E262-3 section 7.5.2).  Otherwise, if
+the converted value of <i>version</i> is <i>n</i> then the keyword set is
+the set of reserved and contextually reserved words in the <i>n</i>th
+Edition of this Standard.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Program arguments to <code>eval</code> that use e.g. <code>let</code> as an
+identifier will continue to work in a 4th Edition implementation
+(where <code>let</code> is a keyword) as long as no <i>version</i> is passed to
+<code>eval</code>, or the value of the version passed is 3 or less.
+
+<P><span class="pcounter"></span> If the converted value of <i>version</i> is 4 or greater then the
+evaluation takes place in a fresh variable object.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  In other words, <code>eval</code> will be unable to introduce bindings
+in its caller's variable object if <i>version</i> is 4 or greater.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  Unlike in the 3rd Edition of this Standard, <code>eval</code> is not
+allowed to change a property from being DontDelete to being deletable.
+That restriction belongs in the section on adding bindings to the
+variable object (10.1.3 in 3rd Ed) and is only mentioned here for the
+time being.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> If the <i>program</i> is a string then the result of compiling and
+evaluating <i>program</i> as a <i>Program</i> is returned.  Otherwise,
+<i>program</i> is returned unchanged.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+function eval( program, version=3 ) &#x0085;
+</PRE>
+
+<h4>The <code>eval</code> operator</h4>
+
+<P><span class="pcounter"></span> <i>There are two possible designs for the operator form.  One is
+that an expression of the form <code>eval(s)</code> is </i>always<i> taken as the
+operator form, regardless of the binding of <code>eval</code> in the context of
+the expression; the other is that an expression of that form </i>may<i>
+be the operator form, and that it is the operator form only if the
+binding of <code>eval</code> is the original, global binding.  Since the former
+design would be incompatible with 3rd Edition, we use the latter.</i>
+
+<P><span class="pcounter"></span> It will always be lexically apparent when <code>eval</code> is <i>possibly</i>
+being used as an operator, but in the general case it is not possible
+to determine until run-time whether it is <i>actually</i> being used as
+an operator.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  For the intrinsic form of the operator it is possible to
+determine this at compile time, in the absence of the use of <code>with</code>
+in the enclosing context.
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The operator form is <i>possibly</i> being used in an expression <i>E</i> if
+<i>E</i> has the form of a <i>CallExpression</i> (including the parentheses
+bracketing the arguments) and the <i>MemberExpression</i> that denotes
+the function to be called has the form of the unqualified identifier
+<code>eval</code> or the qualified identifier <code>intrinsic::eval</code>.  That is,
+apart from any superflous parentheses, <i>E</i> has the form <i>M(P, ...)</i>.
+
+<P><span class="pcounter"></span> If the possible use of the operator form of <code>eval</code> appears in
+any context inside a class, a <b>SyntaxError</b> is thrown.
+
+<P><span class="pcounter"></span> If the possible use of the operator form of <code>eval</code> appears in
+any context inside block in which strict mode is in effect (even
+inside a block that overrides strict mode by decreeing standard mode),
+a <b>SyntaxError</b> is thrown.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The purpose of these restriction is partly to avoid
+inconsistencies (in strict mode) and partly to signal that the use of
+the <code>eval</code> operator is potentially harmful to program integrity.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  A less restrictive, but equally safe, alternative would be to
+allow <code>eval</code> to be used inside a class provided that a version
+parameter was being passed and its value was a constant known to be 4
+or greater.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The eval operator returns an ECMAScript value.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span> In the case that a possible use of the operator form is
+detected, <i>M(P, ...)</i> is evaluated as follows.
+
+<P><span class="pcounter"></span> (The implementation of the <code>eval</code> operator is presented as
+pseudo-code because it is not expressible in ECMAScript.  Eventually,
+it may be presented as Standard ML code.)
+
+<PRE>
+  look up M in the environment yielding the value V
+  if V is the pre-defined eval function and
+     the binding object O holding V is an ES global object and
+     the global object on the scope chain of V is O then
+       invoke eval as follows:
+         evaluate the P in order to yield argument value A
+         if there are no A values, then 
+           return undefined
+         if the first A value is not a string, then 
+           return the first A
+         if there is a second A then convert it to int to yield K, else let K=3
+         evaluate the program denoted by the first A as follows:
+           if K &#60;= 3
+             the scope chain is the lexical chain in effect at the point of invocation of M
+             the variable object is the innermost variable object in effect (which is to
+                 say that it excludes binding objects introduced for "let", "catch", named
+                 function expressions, and "switch type"
+           else
+             the scope chain is the lexical chain in effect at the point of invocation of M,
+                 extended by a new variable object W
+             the variable object is W
+           fi
+           the value of "this" is the global object O
+           the keyword set is determined by K
+  else
+    evaluate the P in order to yield a list of arguments A
+    invoke V as a function on the arguments A
+  fi
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The requirement that the global object of V be O precludes
+sharing of <code>eval</code> functions among multiple global environments.  It
+is possible that that requirement is not actually needed for
+consistent operation.
+
+<h4>The <code>eval</code> function</h4>
+
+<P><span class="pcounter"></span> If the operator form is not detected syntactically then <code>eval</code>
+is either being called as a function under a different name or it is
+being invoked as a method on an object.  The implementation does not
+need to handle this case syntactically; it is handled as a regular
+function call.
+
+<P><span class="pcounter"></span> The following description applies to both the public <code>eval</code>
+function and the intrinsic <code>eval</code> function, both defined in the
+global object.
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The global <code>eval</code> function evaluates its first argument as a
+program in the global scope of the <code>eval</code> function.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The global <code>eval</code> function returns the value computed by
+the program that is evaluated, or its first argument if the first
+argument is not a string.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span> The body of the pre-defined <code>eval</code> function <i>V</i> is
+evaluated in the context of a list of argument values <i>A</i> as
+follows.
+
+<P><span class="pcounter"></span> (The implementation of the <code>eval</code> function is presented as
+pseudo-code because it is not expressible in ECMAScript.  Eventually,
+it may be presented as ECMAScript code with the addition of "magic"
+run-time system hooks.)
+
+<PRE>
+  if the "this" object O is an ES global object and
+     the global object on the scope chain of V is O then
+       if there are no A values, then 
+         return undefined
+       if the first A value is not a string, then 
+         return the first A
+       if there is a second A then convert it to int to yield K, else let K=3
+       evaluate the program denoted by the first A as follows:
+         if K&#60;=3 then
+           the scope chain holds O only
+           the variable object is O
+         else
+           the scope chain holds O extended by a new variable object W
+           the variable object is W
+         fi
+         the value of "this" is O
+         the keyword set is determined by K
+  else
+    throw EvalError
+  fi
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The requirement that the global object of V be O precludes
+sharing of <code>eval</code> functions among multiple global environments.  It
+is possible that that requirement is not actually needed for
+consistent operation.
+
+
+<h4>Restrictions on the use of the <code>eval</code> property</h4>
+
+<P><span class="pcounter"></span> If the global <code>eval</code> property is assigned to, an <code>EvalError</code>
+exception may be thrown.
+
+
+<h3>intrinsic::parseInt&nbsp;(s,&nbsp;r=&#x0085;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>parseInt</code> function computes an integer value
+dictated by interpretation of the contents of the string argument
+<i>s</i> according to the specified radix <i>r</i> (which defaults to zero).
+Leading whitespace in <i>s</i> is ignored.  If <i>r</i> is zero, the radix is
+assumed to be 10 except when the number begins with the character
+pairs 0x or 0X, in which case a radix of 16 is assumed.  Any radix-16
+number may also optionally begin with the character pairs 0x or 0X.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>parseInt</code> function returns a number.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function parseInt(s: string, r: double=0): AnyNumber {
+    let i;
+
+    for ( i=0 ; i &#60; s.length && helper::isTrimmableSpace(s[i]) ; i++ )
+        ;
+    s = s.intrinsic::substring(i);
+
+    let sign = 1;
+    if (s.length >= 1 && s[0] == '-')
+        sign = -1;
+    if (s.length >= 1 && (s[0] == '-' || s[0] == '+'))
+        s = s.intrinsic::substring(1);
+
+    let maybe_hexadecimal = false;
+    r = intrinsic::toInt(r);
+    if (r == 0) {
+        r = 10;
+        maybe_hexadecimal = true;
+    }
+    else if (r == 16)
+        maybe_hexadecimal = true;
+    else if (r &#60; 2 || r > 36)
+        return NaN;
+
+    if (maybe_hexadecimal && s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        r = 16;
+        s = s.intrinsic::substring(2);
+    }
+
+    for ( i=0 ; i &#60; s.length && helper::isDigitForRadix(s[i], r) ; i++ )
+        ;
+    s = s.intrinsic::substring(0,i);
+
+    if (s == "")
+        return NaN;
+
+    return sign * informative::numericValue(s, r);
+}
+</PRE>
+
+<P><span class="pcounter"></span> The helper function <code>isDigitForRadix(c,r)</code> computes whether
+<code>c</code> is a valid digit for the radix <code>r</code>, see <span class="xref">helper:isDigitForRadix</span>.
+
+<P><span class="pcounter"></span> The helper function <code>isTrimmableSpace(c)</code> computes whether
+<code>c</code> is a space character that can be trimmed off the beginning
+of the string, see <span class="xref">helper:isTrimmableSpace</span>.
+
+<P><span class="pcounter"></span>The informative function <code>numericValue(s, r)</code> computes the
+numeric value of a radix-<code>r</code> string <code>s</code>.  If <code>r</code> is 10 and <code>s</code>
+contains more than 20 significant digits, every significant digit
+after the 20th may be replaced by a 0 digit, at the option of the
+implementation; and if <code>r</code> is not 2, 4, 8, 10, 16, or 32, then the
+returned value may be an implementation-dependent approximation to the
+mathematical integer value that is represented by <code>s</code> in radix-<code>r</code>
+notation.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; In the 3rd Edition of this Standard, the <code>parseInt</code> function was
+allowed to, though not encouraged to, interpret a string with a
+leading <code>0</code> but no leading <code>0x</code> or <code>0X</code> as a base-8 number if
+the radix was not supplied in the call or was supplied as zero.  This
+is no longer allowed; the function must interpret such a number as a
+base-10 number.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; <code>parseInt</code> may interpret only a leading portion of the string as an
+integer value; it ignores any characters that cannot be interpreted as
+part of the notation of an integer, and no indication is given that
+any such characters were ignored.
+
+<h4 id="helper:isDigitForRadix">isDigitForRadix </h4>
+
+<PRE>
+helper function isDigitForRadix(c, r) {
+    c = c.intrinsic::toUpperCase();
+    if (c >= '0' && c &#60;= '9')
+        return (c.intrinsic::charCodeAt(0) - '0'.intrinsic::charCodeAt(0)) &#60; r;
+    else if (c >= 'A' && c &#60;= 'Z')
+        return (c.intrinsic::charCodeAt(0) - 'A'.intrinsic::charCodeAt(0) + 10) &#60; r;
+    else
+        return false;
+}
+</PRE>
+
+
+<h3>parseInt&nbsp;(&nbsp;s,&nbsp;r=&#x0085;&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>parseInt</code> function converts its first argument to
+<code>string</code> and its second argument to <code>double</code>, and then calls its
+intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>parseInt</code> function returns a number.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function parseInt(s, r=0)
+    intrinsic::parseInt(string(s), double(r));
+</PRE>
+
+
+<h3>intrinsic::parseFloat&nbsp;(s)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>parseFloat</code> function computes a number value
+dictated by interpretation of the contents of the string argument <i>s</i> as a
+decimal literal.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>parseFloat</code> function returns a number.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function parseFloat(s: string) {
+    /* Implement this according to E262-3 */
+}
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; <code>parseFloat</code> may interpret only a leading portion of <i>s</i> as a
+number value; it ignores any characters that cannot be interpreted as
+part of the notation of an decimal literal, and no indication is given
+that any such characters were ignored.
+
+<h3>parseFloat&nbsp;(s)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>parseFloat</code> function converts its argument to <code>string</code>,
+then calls its intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>parseFloat</code> function returns a number.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function parseFloat(s)
+    intrinsic::parseFloat(string(s));
+</PRE>
+
+
+<h3>intrinsic::isNaN&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>isNaN</code> function tests whether a numeric value <i>n</i> is an
+IEEE not-a-number value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>isNaN</code> function returns 
+<b>true</b> if <i>n</i> is <b>NaN</b>, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function isNaN(n: AnyNumber): boolean
+    (!(n === n));
+</PRE>
+
+<h3>isNaN&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>isNaN</code> function converts its argument to a number, then
+calls its intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>isNaN</code> function returns <b>true</b> if <i>x</i> converted to a
+number is <b>NaN</b>, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function isNaN(x)
+    intrinsic::isNaN(Number(x));
+</PRE>
+
+
+<h3>intrinsic::isFinite&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>isFinite</code> function tests whether a numeric
+value <i>n</i> is finite (neither not-a-number nor an infinity).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>isFinite</code> function returns <b>true</b> if <i>n</i> is
+finite, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function isFinite(n: AnyNumber): boolean
+    (!intrinsic::isNaN(n) && n != -Infinity && n != Infinity);
+</PRE>
+
+
+<h3>isFinite&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>isFinite</code> function converts its argument to a number,
+then calls its intrinsic counterpart on the converted value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>isFinite</code> function returns <b>true</b> if <i>x</i> converted to
+a number is finite, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function isFinite(x)
+    intrinsic::isFinite(Number(x));
+</PRE>
+
+
+<h3>intrinsic::isIntegral&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>isIntegral</code> function tests whether a numeric
+value <i>n</i> is integral (a finite integer).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>isIntegral</code> function returns <b>true</b> if <i>n</i> is
+integral, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function isIntegral(v:AnyNumber): boolean
+    intrinsic::isFinite(v) && Math.intrinsic::floor(v) == v;
+</PRE>
+
+<h3>isIntegral&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>isIntegral</code> function converts its argument <i>x</i> to a number,
+then calls the intrinsic <code>isIntegral</code> function on the converted value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>isIntegral</code> function returns <b>true</b> if <i>x</i> converted
+to a number is integral, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+__ES4__ function isIntegral(v)
+    intrinsic::isIntegral(Number(v));
+</PRE>
+
+<h3>intrinsic::isInt&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>isInt</code> function tests whether a numeric value
+<i>n</i> is an <code>int</code> value (a finite integer in the range
+-2<SUP>31</SUP> to 2<SUP>31</SUP>-1, inclusive).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>isInt</code> function returns <b>true</b> if <i>n</i>
+is an <code>int</code> value, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function isInt(n:AnyNumber) : boolean
+    intrinsic::isIntegral(n) && n >= -0x7FFFFFFF && n &#60;= 0x7FFFFFFF;
+</PRE>
+
+<h3>isInt&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>isInt</code> function converts its argument <i>x</i> to a number,
+then calls the intrinsic <code>isInt</code> function on the converted value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>isInt</code> function returns <b>true</b> if <i>x</i> converted
+to a number is an <code>int</code> value, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+__ES4__ function isInt(x)
+    intrinsic::isInt(Number(x));
+</PRE>
+
+<h3>intrinsic::isUint&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>isUint</code> function tests whether the numeric
+value <i>n</i> is a <code>uint</code> value (a finite integer in the range 0 to
+2<SUP>32</SUP>-1, inclusive).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>isUint</code> function returns <b>true</b> if <i>n</i>
+is a <code>uint</code> value, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function isUint(n:AnyNumber) : boolean
+    intrinsic::isIntegral(n) && n >= 0 && n &#60;= 0xFFFFFFFF;
+</PRE>
+
+<h3>isUint&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>isUint</code> function converts its argument <i>x</i> to a number,
+then calls the intrinsic <code>isUint</code> function on the converted value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>isUint</code> function returns <b>true</b> if <i>x</i> converted
+to a number is a <code>uint</code> value, and otherwise returns <b>false</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+__ES4__ function isUint(x)
+    intrinsic::isUint(Number(x));
+</PRE>
+
+<h3>intrinsic::toInt&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>toInt</code> function converts its argument <i>n</i> to an <code>int</code> value
+using the ToInt32 algorithm (see <span class="xref">ToInt32</span>).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>toInt</code> function returns an <code>int</code> value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function toInt(n:AnyNumber) : double
+    n | 0;
+</PRE>
+
+<h3>toInt&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>toInt</code> function converts its argument <i>x</i> to a number, then
+calls the intrinsic <code>toInt</code> function on the converted value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>toInt</code> function returns an <code>int</code> value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+__ES4__ function toInt(x)
+    intrinsic::toInt(Number(x));
+</PRE>
+
+<h3>intrinsic::toUint&nbsp;(n)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>toUint</code> function converts its argument <i>n</i> to a <code>uint</code> value
+using the ToUint32 algorithm (see <span class="xref">ToUint32</span>).
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>toUint</code> function returns a <code>uint</code> value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function toUint(n:AnyNumber) : double
+    n >>> 0;
+</PRE>
+
+<h3>toUint&nbsp;(x)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>toUint</code> function converts its argument <i>x</i> to a number, then
+calls the intrinsic <code>toUint</code> function on the converted value.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>toUint</code> function returns a <code>uint</code> value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+__ES4__ function toUint(x) : boolean
+    intrinsic::toUint(Number(x));
+</PRE>
+
+
+<h3>URI Handling Function Properties</h3>
+
+<P><span class="pcounter"></span>Uniform Resource Identifiers, or URIs, are strings that identify
+resources (e.g. web pages or files) and transport protocols by which
+to access them (e.g. HTTP or FTP) on the Internet. The ECMAScript
+language itself does not provide any support for using URIs except for
+functions that encode and decode URIs as described in sections <span class="xref">decodeURI</span>, <span class="xref">decodeURIComponent</span>, <span class="xref">encodeURI</span>, and <span class="xref">encodeURIComponent</span>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; Many implementations of ECMAScript provide additional
+functions and methods that manipulate web pages; these functions are
+beyond the scope of this standard.
+
+<P><span class="pcounter"></span>A URI is composed of a sequence of components separated by component separators. The general form is:
+<div class="indented">
+<i>Scheme <code>:</code> First <code>/</code> Second <code>;</code> Third <code>?</code> Fourth</i>
+</div>
+
+<P><span class="pcounter"></span>where the italicised names represent components and the ":", "/",
+";" and "?" are reserved characters used as separators.  The
+<code>encodeURI</code> and <code>decodeURI</code> functions are intended to work with
+complete URIs; they assume that any reserved characters in the URI are
+intended to have special meaning and so are not encoded.  The
+<code>encodeURIComponent</code> and <code>decodeURIComponent</code> functions are
+intended to work with the individual component parts of a URI; they
+assume that any reserved characters represent text and so must be
+encoded so that they are not interpreted as reserved characters when
+the component is part of a complete URI.  The following lexical
+grammar specifies the form of encoded URIs.
+
+<div class="grammar">
+<div class="nonterm">uri :::</div>
+<div class="indented">uriCharacters<sub>opt</sub></div>
+
+<div class="nonterm">uriCharacters :::</div>
+<div class="indented">uriCharacter uriCharacters<sub>opt</sub></div>
+
+<div class="nonterm">uriCharacter :::</div>
+<div class="indented">uriReserved<br>
+uriUnescaped<br>
+uriEscaped</div>
+
+<div class="nonterm">uriReserved ::: <b>one of</b></div>
+<div class="indented"><code>; / ? : @ & = + $ ,</code></div>
+
+<div class="nonterm">uriUnescaped :::</div>
+<div class="indented">uriAlpha<br>
+DecimalDigit<br>
+uriMark</div>
+
+<div class="nonterm">uriEscaped :::</div>
+<div class="indented">% HexDigit HexDigit</div>
+
+<div class="nonterm">uriAlpha ::: <b>one of</b></div>
+<div class="indented"><code>a b c d e f g h i j k l m n o p q r s t u v w x y z</code><br>
+<code>A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</code></div>
+
+<div class="nonterm">uriMark ::: <b>one of</b></div>
+<div class="indented"><code>- _ . ! ~ * ' ( )</code></div>
+</div>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #170.)  Upgrade to Unicode 5 in the following
+sections, and upgrade to handling the entire (21-bit) Unicode
+character set.
+
+<P><span class="pcounter"></span>When a character to be included in a URI is not listed above or is
+not intended to have the special meaning sometimes given to the
+reserved characters, that character must be encoded. The character is
+first transformed into a sequence of octets using the UTF-8
+transformation, with surrogate pairs first transformed from their
+UCS-2 to UCS-4 encodings. (Note that for code points in the range
+[0,127] this results in a single octet with the same value.)  The
+resulting sequence of octets is then transformed into a string with
+each octet represented by an escape sequence of the form "<code>%xx</code>".
+
+<P><span class="pcounter"></span>The encoding and escaping process is described by the helper
+function <code>encode</code> taking two string arguments <code>s</code> and
+<code>unescapedSet</code>.
+
+<PRE>
+helper function encode(s: string, unescapedSet: string): string {
+    let R = "";
+    let k = 0;
+
+    while (k != s.length) {
+        let C = s[k];
+
+        if (unescapedSet.intrinsic::indexOf(C) != -1) {
+            R = R + C;
+            k = k + 1;
+            continue;
+        }
+
+        let V = C.intrinsic::charCodeAt(0);
+        if (V >= 0xDC00 && V &#60;= 0xDFFF)
+            throw new URIError(/* Invalid code */);
+        if (V >= 0xD800 && V &#60;= 0xDBFF) {
+            k = k + 1;
+            if (k == s.length)
+                throw new URIError(/* Truncated code */);
+            let V2 = s[k].intrinsic::charCodeAt(0);
+            V = (V - 0xD800) * 0x400 + (V2 - 0xDC00) + 0x10000;
+        }
+
+        let octets = helper::toUTF8(V);
+        for ( let j=0 ; j &#60; octets.length ; j++ )
+            R = R + "%" + helper::twoHexDigits(octets[j]);
+        k = k + 1;
+    }
+    return R;
+}
+
+helper function twoHexDigits(B) {
+    let s = "0123456789ABCDEF";
+    return s[B >> 4] + s[B & 15];
+}
+</PRE>
+
+<P><span class="pcounter"></span>The unescaping and decoding process is described by the helper
+function <code>decode</code> taking two string arguments <code>s</code> and
+<code>reservedSet</code>.
+
+<PRE>
+helper function decode(s: string, reservedSet: string): string {
+    let R = "";
+    let k = 0;
+    while (k != s.length) {
+        if (s[k] != "%") {
+            R = R + s[k];
+            k = k + 1;
+            continue;
+        }
+
+        let start = k;
+        let B = helper::decodeHexEscape(s, k);
+        k = k + 3;
+
+        if ((B & 0x80) == 0) {
+            let C = string.intrinsic::fromCharCode(B);
+            if (reservedSet.intrinsic::indexOf(C) != -1)
+                R = R + s.intrinsic::substring(start, k);
+            else
+                R = R + C;
+            continue;
+        }
+
+        let n = 1;
+        while (((B &#60;&#60; n) & 0x80) == 1)
+            ++n;
+        if (n == 1 || n > 4)
+            throw new URIError(/* Invalid encoded character */);
+
+        let octets = [B];
+        for ( let j=1 ; j &#60; n ; ++j ) {
+            let B = helper::decodeHexEscape(s, k);
+            if ((B & 0xC0) != 0x80)
+                throw new URIError(/* Invalid encoded character */);
+            k = k + 3;
+            octets.intrinsic::push(B);
+        }
+        let V = helper::fromUTF8(octets);
+        if (V > 0x10FFFF)
+            throw new URIError(/* Invalid Unicode code point */);
+        if (V > 0xFFFF) {
+            L = ((V - 0x10000) & 0x3FF) + 0xD800;
+            H = (((V - 0x10000) >> 10) & 0x3FF) + 0xD800;
+            R = R + string.intrinsic::fromCharCode(H, L);
+        }
+        else {
+            let C = string.intrinsic::fromCharCode(V);
+            if (reservedSet.intrinsic::indexOf(C))
+                R = R + s.intrinsic::substring(start, k);
+            else
+                R = R + C;
+        }
+    }
+    return R;
+}
+
+helper function decodeHexEscape(s, k) {
+    if (k + 2 >= s.length ||
+        s[k] != "%" ||
+        !helper::isDigitForRadix(s[k+1], 16) && !helper::isDigitForRadix(s[k+1], 16))
+        throw new URIError(/* Invalid escape sequence */);
+    return intrinsic::parseInt(s.intrinsic::substring(k+1, k+3), 16);
+}
+</PRE>
+
+<P><span class="pcounter"></span>The helper function <code>isDigitForRadix</code> was defined in section
+<span class="xref">helper:isDigitForRadix</span>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; The syntax of Uniform Resource Identifiers is given in
+RFC2396.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; A formal description and implementation of UTF-8 is
+given in the Unicode Standard, Version 2.0, Appendix A.  In UTF-8,
+characters are encoded using sequences of 1 to 6 octets. The only
+octet of a "sequence" of one has the higher-order bit set to 0, the
+remaining 7 bits being used to encode the character value. In a
+sequence of n octets, n>1, the initial octet has the n higher-order
+bits set to 1, followed by a bit set to 0. The remaining bits of that
+octet contain bits from the value of the character to be encoded. The
+following octets all have the higher-order bit set to 1 and the
+following bit set to 0, leaving 6 bits in each to contain bits from
+the character to be encoded. The possible UTF-8 encodings of
+ECMAScript characters are:
+
+<center>
+<table border="1">
+  <tr><th>Code Point Value</th><th>Representation</th>    <th>1st Octet</th><th>2nd Octet</th><th>3rd Octet</th><th>4th Octet</th></tr>
+  <tr><td>0x0000 - 0x007F</td> <td>00000000 0zzzzzzz</td> <td>0zzzzzzz</td></tr>
+  <tr><td>0x0080 - 0x07FF</td> <td>00000yyy yyzzzzzz</td> <td>110yyyyy</td> <td>10zzzzzz</td></tr>
+  <tr><td>0x0800 - 0xD7FF</td> <td>xxxxyyyy yyzzzzzz</td> <td>1110xxxx</td> <td>10yyyyyy</td><td>10zzzzzz</td></tr>
+  <tr><td>0xD800 - 0xDBFF<br>
+          followed by<br>
+          0xDC00 - 0xDFFF</td> <td>110110vv vvwwwwxx<br>
+                                   followed by<br>
+                                   110111yy yyzzzzzz</td> <td>11110uuu</td> <td>10uuwwww</td> <td>10xxyyyy</td> <td>10zzzzzz</td></tr>
+  <tr><td>0xD800 - 0xDBFF<br>
+      not followed by<br>
+      0xDC00 - 0xDFFF</td>     <td>causes URIError</td></tr>
+  <tr><td>0xDC00 - 0xDFFF</td> <td>causes URIError</td></tr>
+  <tr><td>0xE000 - 0xFFFF</td> <td>xxxxyyyy yyzzzzzz</td> <td>1110xxxx</td> <td>10yyyyyy</td> <td>10zzzzzz</td></tr>
+</table>
+</center>
+
+<P><span class="pcounter"></span>Where
+<div class="indented">uuuuu = vvvv + 1</div>
+<P><span class="pcounter"></span>to account for the addition of 0x10000 as in section 3.7,
+Surrogates of the Unicode Standard version 2.0.
+
+<P><span class="pcounter"></span>The range of code point values 0xD800-0xDFFF is used to encode
+surrogate pairs; the above transformation combines a UCS-2 surrogate
+pair into a UCS-4 representation and encodes the resulting 21-bit
+value in UTF-8. Decoding reconstructs the surrogate pair.
+
+<P><span class="pcounter"></span>The helper functions <code>encode</code> and <code>decode</code>, defined above, use
+the helper functions <code>toUTF8</code> and <code>fromUTF8</code> to convert code
+points to UTF-8 sequences and to convert UTF-8 sequences to code
+points, respectively.
+
+<PRE>
+helper function toUTF8(v) {
+    if (v &#60;= 0x7F)
+        return [v];
+    if (v &#60;= 0x7FF)
+        return [0xC0 | ((v >> 6) & 0x3F),
+                0x80 | (v & 0x3F)];
+    if (v &#60;= 0xD7FF || v >= 0xE000 && v &#60;= 0xFFFF)
+        return [0xE0 | ((v >> 12) & 0x0F),
+                0x80 | ((v >> 6) & 0x3F),
+                0x80 | (v & 0x3F)];
+    if (v >= 0x10000)
+        return [0xF0 | ((v >> 18) & 0x07),
+                0x80 | ((v >> 12) & 0x3F),
+                0x80 | ((v >> 6) & 0x3F),
+                0x80 | (v & 0x3F)];
+    throw URIError(/* Unconvertible code */);
+}
+
+helper function fromUTF8(octets) {
+    let B = octets[0];
+    let V;
+    if ((B & 0x80) == 0)
+        V = B;
+    else if ((B & 0xE0) == 0xC0)
+        V = B & 0x1F;
+    else if ((B & 0xF0) == 0xE0)
+        V = B & 0x0F;
+    else if ((B & 0xF8) == 0xF0)
+        V = B & 0x07;
+    for ( let j=1 ; j &#60; octets.length ; j++ )
+        V = (V &#60;&#60; 6) | (octets[j] & 0x3F);
+    return V;
+}
+</PRE>
+
+<P><span class="pcounter"></span>Several helper strings are defined based on the grammar shown
+previously:
+
+<PRE>
+helper const uriReserved = ";/?:@&=+$,";
+
+helper const uriAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+helper const uriDigit = "0123456789";
+
+helper const uriMark = "-_.!~*'()";
+
+helper const uriUnescaped = helper::uriAlpha + helper::uriDigit + helper::uriMark;
+</PRE>
+
+
+<h4>intrinsic::decodeURI&nbsp;(encodedURI)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>decodeURI</code> function computes a new version of
+a URI in which each escape sequence and UTF-8 encoding of the sort
+that might be introduced by the <code>encodeURI</code> function is replaced
+with the character that it represents.  Escape sequences that could
+not have been introduced by <code>encodeURI</code> are not replaced.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>decodeURI</code> function returns a decoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function decodeURI(encodedURI: string)
+    helper::decode(encodedURI, helper::uriReserved + "#");
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; The character "<code>#</code>" is not decoded from escape sequences even
+though it is not a reserved URI character.
+
+<h4>decodeURI&nbsp;(encodedURI)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>decodeURI</code> function converts its argument to <code>string</code>, then
+calls its intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>decodeURI</code> function returns a decoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function decodeURI(encodedURI)
+    intrinsic::decodeURI(string(encodedURI));
+</PRE>
+
+
+<h4>intrinsic::decodeURIComponent&nbsp;(encodedURIComponent)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>decodeURIComponent</code> function computes a new
+version of a URI in which each escape sequence and UTF-8 encoding of
+the sort that might be introduced by the <code>encodeURIComponent</code>
+function is replaced with the character that it represents.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>decodeURIComponent</code> function returns a decoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function decodeURIComponent(encodedURIComponent)
+    helper::decode(encodedURIComponent, "");
+</PRE>
+
+<h4>decodeURIComponent&nbsp;(encodedURIComponent)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>decodeURIComponent</code> function converts its argument to
+<code>string</code>, then calls its intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>decodeURIComponent</code> function returns a decoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function decodeURIComponent(encodedURIComponent)
+    intrinsic::decodeURIComponent(string(encodedURIComponent));
+</PRE>
+
+
+<h4>intrinsic::encodeURI&nbsp;(uri)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>encodeURI</code> function computes a new version of
+a URI in which each instance of certain characters is replaced by one,
+two, three, or four escape sequences representing the UTF-8 encoding of the
+character.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>encodeURI</code> function returns a encoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function encodeURI(uri: string): string
+    helper::encode(uri, helper::uriReserved + helper::uriUnescaped + "#")
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; The character "<code>#</code>" is not encoded to an escape sequence
+even though it is not a reserved or unescaped URI character.
+
+<h4>encodeURI&nbsp;(uri)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>encodeURI</code> function converts its argument to string, then
+calls its intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>encodeURI</code> function returns a encoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function encodeURI(uri)
+    intrinsic::encodeURI(string(uri));
+</PRE>
+
+
+<h4>intrinsic::encodeURIComponent&nbsp;(uriComponent)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>encodeURIComponent</code> function computes a new
+version of a URI in which each instance of certain characters is
+replaced by one, two, three, or four escape sequences representing the
+UTF-8 encoding of the character.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>encodeURIComponent</code> function returns a encoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function encodeURIComponent(uriComponent: string): string
+    helper::encode(uri, helper::uriReserved);
+</PRE>
+
+<h4>encodeURIComponent&nbsp;(uriComponent)</h4>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span>The <code>encodeURIComponent</code> function converts its
+argument to string, then calls its intrinsic counterpart.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>encodeURIComponent</code> function returns a encoded string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function encodeURIComponent(uriComponent)
+    intrinsic::encodeURIComponent(string(uriComponent));
+</PRE>
+
+
+<h3>intrinsic::hashcode&nbsp;(x)</h3>
+
+
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>hashcode</code> function computes a numeric value
+for its argument such that if two values <code>v1</code> and <code>v2</code> are equal
+by the operator <code>intrinsic::===</code> then <code>hashcode(v1)</code> is
+numerically equal to <code>hashcode(v2)</code>.
+
+<P><span class="pcounter"></span> The hashcode of any value for which <code>isNaN</code> returns <b>true</b> is
+zero.
+
+<P><span class="pcounter"></span> The hashcode computed for an object does not change over time.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>hashcode</code> function returns a nonnegative integer
+below 2<SUP>32</SUP>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+intrinsic const function hashcode(o): double {
+    switch type (o) {
+    case (x: null)       { return 0 }
+    case (x: undefined)  { return 0 }
+    case (x: AnyBoolean) { return Number(x) }
+    case (x: AnyNumber)  { return intrinsic::toUint(x) }
+    case (x: AnyString)  { return informative::stringHash(x) }
+    case (x: *)          { return informative::objectHash(x) }
+    }
+}
+</PRE>
+
+<P><span class="pcounter"></span> The informative functions <code>stringHash</code> and <code>objectHash</code>
+compute hash values for strings and arbitrary objects, respectively.
+They can take into account their arguments' immutable structure only.
+
+<P><span class="pcounter"></span> The implementation should strive to compute different hashcodes
+for objects that are not the same by <code>intrinsic::===</code>, as the
+utility of this function depends on that property.  (The user program
+should be able to expect that the hashcodes of objects that are not
+the same are different with high probability.)
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  A typical implementation of <code>stringHash</code> will make use of the
+string's character sequence and its length.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  A typical implementation of <code>objectHash</code> may make use of the
+object's address in memory if the object, or it may maintain a
+separate table mapping objects to hash codes.
+
+<p class="note"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; The intrinsic <code>hashcode</code> function should not return
+pointer values cast to integers, even in implementations that do not
+use a moving garbage collector.  Exposing memory locations of objects
+may make security vulnerabilities in the host environment
+significantly worse.  Implementations -- in particular those which
+read network input -- should return numbers unrelated to memory
+addresses if possible, or at least use memory addresses subject to
+some cryptographically strong one-way transformation, or sequence
+numbers, cookies, or similar.
+
+
+<h2>Class and Interface Properties of the Global Object</h2>
+
+<P><span class="pcounter"></span>The class properties of the global object are defined in later sections of this Standard:
+<ul>
+  <li> The <code>Object</code> class is defined in section <span class="xref">class Object</span>
+  <li> The <code>Function</code> class is defined in section <span class="xref">class Function</span>
+  <li> The <code>Name</code> class is defined in section <span class="xref">class Name</span>
+  <li> The <code>Namespace</code> class is defined in section <span class="xref">class Namespace</span>
+  <li> The <code>Array</code> class is defined in section <span class="xref">class Array</span>
+  <li> The <code>String</code> and <code>string</code> classes are defined in sections <span class="xref">class String</span> and <span class="xref">class string</span>, respectively.
+  <li> The <code>Boolean</code> and <code>boolean</code> classes are defined in sections <span class="xref">class Boolean</span> and <span class="xref">class boolean</span>, respectively.
+  <li> The <code>Number</code>, <code>double</code>, and <code>decimal</code> classes are defined in sections <span class="xref">class Number</span>, <span class="xref">class double</span>, and <span class="xref">class decimal</span>, respectively.
+  <li> The <code>Date</code> class is defined in section <span class="xref">class Date</span>
+  <li> The <code>RegExp</code> class is defined in section <span class="xref">class RegExp</span>
+  <li> The <code>Map</code> class is defined in section <span class="xref">class Map</span>
+  <li> The <code>Vector</code> class is defined in section <span class="xref">class Vector</span>
+  <li> The <code>Error</code> class and its subclasses <code>EvalError</code>, <code>RangeError</code>, <code>ReferenceError</code>, <code>SyntaxError</code>, <code>TypeError</code>, and <code>URIError</code> are defined in sections <span class="xref">class Error</span>, <span class="xref">class EvalError</span>, <span class="xref">class RangeError</span>, <span class="xref">class ReferenceError</span>,  <span class="xref">class SyntaxError</span>, <span class="xref">class TypeError</span>, and <span class="xref">class URIError</span>, respectively.
+</ul>
+
+
+<h2>Type Properties on the Global Object</h2>
+
+<h3>EnumerableId</h3>
+
+<P><span class="pcounter"></span>The type <code>EnumerableId</code> is a union type of all the nominal types
+that are treated as property names by the iteration protocol and the
+pre-defined objects:
+
+<PRE>
+__ES4__ type EnumerableId = (int|uint|string|Name);
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Removed <code>int</code> and <code>uint</code> from this type if/when we agree that
+that's the right thing.
+
+
+<h3>AnyNumber</h3>
+
+<P><span class="pcounter"></span>The type <code>AnyNumber</code> is a union type of all the nominal
+types that are treated as numbers by the language:
+
+<PRE>
+__ES4__ type AnyNumber = (double|decimal|Number);
+</PRE>
+
+<h3>AnyString</h3>
+
+<P><span class="pcounter"></span>The type <code>AnyString</code> is a union type of all the nominal
+types that are treated as strings by the language:
+
+<PRE>
+__ES4__ type AnyString = (string|String);
+</PRE>
+
+<h3>AnyBoolean</h3>
+
+<P><span class="pcounter"></span>The type <code>AnyBoolean</code> is a union type of all the nominal
+types that are treated as booleans by the language:
+
+<PRE>
+__ES4__ type AnyString = (boolean|Boolean);
+</PRE>
+
+
+
+
+
+</body>
+</html>

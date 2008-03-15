@@ -1,13 +1,13 @@
-<h1 id="class Map"> The class ''Map'' </h1>
+<H1 id="class Map"> The class ''Map'' </H1>
 
 <hr>
 <pre>
 NAME:                       "The class 'Map'"
 FILE:                       spec/library/Map.html
-CATEGORY:                   Pre-defined classes
+CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2], [3]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 2 - 2008-03-03
+DRAFT STATUS:               DRAFT 3 - 2008-03-11
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -16,6 +16,15 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4 RI
 TEST CASE STATUS:           Unknown
+
+
+OPEN ISSUES
+
+  * 'intrinsic::clear' uses 'iterator::get' and 'intrinsic::remove' to
+    perform removal.  That is by design (it allows overridden methods
+    that observe or modify iteration and removal to work during
+    clearing as well).  But is it desirable?
+
 
 CHANGES SINCE DRAFT 2 (2008-03-03)
 
@@ -50,21 +59,25 @@ CHANGES SINCE DRAFT 1 (2008-02-29)
     an explicit type, fixing the next field.
 
 
-NOTE ON INFORMATIVE METHODS
+NOTES
 
-(This note belongs in a general preface to the library.)
+  * Informative methods:
 
-Informative methods on ''Map'' do not call public or protected methods
-on their ''this'' object except as explicitly specified in this
-document.
+    Informative methods on ''Map'' do not call program-visible (i.e.,
+    public, protected, intrinsic, reflect, meta, iterator, or
+    prototype) methods on their 'this' object except as explicitly
+    specified in this document.
 
+    (The above clarification belongs in a general preface to the
+    library.)
 
-OPEN ISSUES
+  * Subtyping for parameterized classes: We've agreed that for a
+    parameterized type Cls and type T, Cls.&lt;T&gt; is a subtype of
+    Cls.&lt;*&gt;.  That has yet to be fully formalized.  The Map
+    class relies on that subtyping rule for its 'this' constraints on
+    prototype methods, and for type testing in the static
+    'meta::invoke' method.
 
-  * 'intrinsic::clear' uses 'iterator::get' and 'intrinsic::remove' to
-    perform removal.  That is by design (it allows overridden methods
-    that observe or modify iteration and removal to work during
-    clearing as well).  But is it desirable?
 
 REFERENCES
 
@@ -189,9 +202,9 @@ object.
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="static meta function invoke">
 
-<FIXME> (Tickets #247, #289, and e-mail discussion.) This method may
+<FIXME> (Tickets #247, #289, and e-mail discussion.) This method will
 change if we change the meaning of statics in parameterized classes:
-the map would be to the type ''V'' instead of to ''*''.
+the map would be from ''K'' to ''V'' instead of from ''EnumerableId'' to ''*''.
 
 
 == Methods on ''Map'' instances ==

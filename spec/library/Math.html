@@ -27,6 +27,22 @@ type AnyNumber = (int,uint,double,decimal);
 type FloatNumber = (double,decimal);
 }}}
 
+<!-- used in global.html -->
+{{{
+helper type MathType =
+{
+    intrinsic::abs: function(AnyNumber): AnyNumber,
+    intrinsic::acos: function(AnyNumber): FloatNumber,
+    intrinsic::asin: function(AnyNumber): FloatNumber,
+    intrinsic::atan: function(AnyNumber): FloatNumber,
+    intrinsic::atan2: function(AnyNumber,AnyNumber): FloatNumber,
+    ... and so on
+    E: double,
+    LN10: double,
+    ... and so on
+}
+}}}
+
 <P> The intrinsic methods on the math object are restricted to
 arguments of the type ''AnyNumber''.
 

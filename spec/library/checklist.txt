@@ -1,13 +1,11 @@
 component           pri   status     
 
 Intro
-Global               +
-Object                    Draft 1 / fixes pending for "Private"
-Function            +++   Draft 1 / awaiting review + publication
-Name                      Draft 1 / fixes incorporated, draft 2 awaiting publication
-Namespace                 Draft 1
-NamespaceSet
-NamespaceSetList
+Global               -    Draft 1 2008-03-12 / a couple of comments
+Object               -    Draft 2 2008-03-10 / minor fixes to go out later, plus propertyIsEnumerable war
+Function             -    Draft 1 2008-03-10 / minor fixes to go out later
+Name                 +    Draft 2 2008-03-10 / many comments from waldemar, brendan
+Namespace            +    Draft 1 2008-03-05 / comments from waldemar
 Array                +
 String
 string
@@ -15,14 +13,18 @@ Boolean
 boolean
 Number
 double
-int
-uint
 decimal
 Math
 Date
 RegExp
-Error, ...                Draft 1
-Map                       Draft 2 / fixes incorporated, draft 3 awaiting publication
-Vector                    Draft 1 (incomplete) / completion pending
+Error, ...                Draft 1 2008-03-06 / line number & file name debate, nothing conclusive or concrete
+Map                  -    Draft 3 2008-03-10 / fix to static meta::invoke pending
+Vector               +    Draft 1 (incomplete) / completion pending, comments to incorporate
 Reflection
 uint32ops
+
+
+
+line continuation    *    Last call / good to go, I think
+line terminator norm *    Last call / good to go
+triple quoting            Pending / Brendan

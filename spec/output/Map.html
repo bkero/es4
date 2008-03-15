@@ -88,17 +88,46 @@ H4 {
 
 <hr>
 <pre>
+NAME:                       "The class 'Map'"
 FILE:                       spec/library/Map.html
-DRAFT STATUS:               DRAFT 2 - 2008-03-03
-IMPLEMENTATION STATUS:      ES4 RI
-TEST CASE STATUS:           Unknown
+CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
+SOURCES:                    REFERENCES [1], [2], [3]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 3 - 2008-03-11
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
 REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
+IMPLEMENTATION STATUS:      ES4 RI
+TEST CASE STATUS:           Unknown
 
-CHANGES SINCE DRAFT 1
+
+OPEN ISSUES
+
+  * 'intrinsic::clear' uses 'iterator::get' and 'intrinsic::remove' to
+    perform removal.  That is by design (it allows overridden methods
+    that observe or modify iteration and removal to work during
+    clearing as well).  But is it desirable?
+
+
+CHANGES SINCE DRAFT 2 (2008-03-03)
+
+  * The prototype 'get' and 'put' methods also accept a 'notfound'
+    parameter.
+
+  * Presentation:
+    - section headers for intrinsic methods now use the syntax
+      'intrinsic::foo()' instead of just 'foo'.
+    - compatibility note ("new in 4th edition")
+    - added an explicit "extends Object" clause.
+    - the informative method 'allElements' was renamed as 'allItems'.
+    - corrected a typo
+    - common fields in the status block above
+
+
+CHANGES SINCE DRAFT 1 (2008-02-29)
 
   * The value returned by 'hashcode' is constrained to be a number and
     is always explicitly converted to uint
@@ -116,22 +145,31 @@ CHANGES SINCE DRAFT 1
     an explicit type, fixing the next field.
 
 
-NOTE ON INFORMATIVE METHODS
+NOTES
 
-(This note belongs in a general preface to the library.)
+  * Informative methods:
 
-Informative methods on <code>Map</code> do not call public or protected methods
-on their <code>this</code> object except as explicitly specified in this
-document.
+    Informative methods on <code>Map</code> do not call program-visible (i.e.,
+    public, protected, intrinsic, reflect, meta, iterator, or
+    prototype) methods on their 'this' object except as explicitly
+    specified in this document.
+
+    (The above clarification belongs in a general preface to the
+    library.)
+
+  * Subtyping for parameterized classes: We've agreed that for a
+    parameterized type Cls and type T, Cls.&lt;T&gt; is a subtype of
+    Cls.&lt;*&gt;.  That has yet to be fully formalized.  The Map
+    class relies on that subtyping rule for its 'this' constraints on
+    prototype methods, and for type testing in the static
+    'meta::invoke' method.
 
 
-OPEN ISSUES
+REFERENCES
 
-  * 'intrinsic::clear' uses 'iterator::get' and 'intrinsic::remove' to
-    perform removal.  That is by design (it allows overridden methods
-    that observe or modify iteration and removal to work during
-    clearing as well).  But is it desirable?
-
+[1] http:&#x2F;&#x2F;wiki.ecmascript.org/doku.php?id=proposals:dictionary
+[2] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/146
+[3] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/203
 </pre>
 <hr>
 
@@ -139,6 +177,8 @@ OPEN ISSUES
 subclass of <code>Object</code> that provides a reliable, efficient, mutable,
 and iterable map from keys to values.  Keys and values may be of
 arbitrary types.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The class <code>Map</code> is new in the 4th Edition of this Standard.
 
 <P><span class="pcounter"></span> A <code>Map</code> is realized as a hash table.  When the <code>Map</code> is
 constructed the caller may provide specialized functions that compare
@@ -149,7 +189,7 @@ keys and compute hash values for keys.
 <P><span class="pcounter"></span> The class <code>Map</code> provides the following interface:
 
 <PRE>
-__ES4__ dynamic class Map.&#60;K,V>
+__ES4__ dynamic class Map.&#60;K,V> extends Object
 {
     public function Map(equals:   function = (function(a,b) a === b),
                         hashcode: function = intrinsic::hashcode) &#x0085;
@@ -179,8 +219,8 @@ __ES4__ dynamic class Map.&#60;K,V>
 
 <PRE>
     size:   function () &#x0085;
-    get:    function (key) &#x0085;
-    put:    function (key, value) &#x0085;
+    get:    function (key, notfound) &#x0085;
+    put:    function (key, value, notfound) &#x0085;
     has:    function (key) &#x0085;
     remove: function (key) &#x0085;
     clear:  function () &#x0085;
@@ -202,7 +242,7 @@ actual keys <i>k1</i> and <i>k2</i>.  The default value for <i>equals</i> is a
 function that compares the two keys using the <code>===</code> operator.
 
 <P><span class="pcounter"></span> The optional <i>hashcode</i> argument is a function that takes a key
-and returns a numeric value for it; this key is converte to a <code>uint</code>
+and returns a numeric value for it; this key is converted to a <code>uint</code>
 <i>hash value</i> for the key.  The hash value may be used to find
 associations more quickly in the map.  Two calls to <i>hashcode</i> on
 the same key value must always result in the same hash value, and a
@@ -266,14 +306,14 @@ static meta function invoke(object: Object): Map.&#60;EnumerableId,*> {
 }
 </PRE>
 
-<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Tickets #247, #289, and e-mail discussion.) This method may
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Tickets #247, #289, and e-mail discussion.) This method will
 change if we change the meaning of statics in parameterized classes:
-the map would be to the type <code>V</code> instead of to <code>*</code>.
+the map would be from <code>K</code> to <code>V</code> instead of from <code>EnumerableId</code> to <code>*</code>.
 
 
 <h2>Methods on <code>Map</code> instances</h2>
 
-<h3>size&nbsp;(&nbsp;)</h3>
+<h3>intrinsic::size&nbsp;(&nbsp;)</h3>
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic method <code>size</code> returns the number of associations in the map.
 
@@ -283,7 +323,7 @@ intrinsic function size() : uint
     population;
 </PRE>
 
-<h3>get&nbsp;(&nbsp;key,&nbsp;notfound=&#x0085;&nbsp;)</h3>
+<h3>intrinsic::get&nbsp;(&nbsp;key,&nbsp;notfound=&#x0085;&nbsp;)</h3>
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic method <code>get</code> returns the value associated with
 <i>key</i>, or <i>notfound</i> if there is no such association.
@@ -306,7 +346,7 @@ and writing to it updates the association in the <code>Map</code>.)
 informative function find(key: K): like { key: K, value: V } &#x0085;
 </PRE>
 
-<h3>put&nbsp;(&nbsp;key,&nbsp;value,&nbsp;notfound=&#x0085;&nbsp;)</h3>
+<h3>intrinsic::put&nbsp;(&nbsp;key,&nbsp;value,&nbsp;notfound=&#x0085;&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic method <code>put</code> creates an association between
 <i>key</i> and <i>value</i>, or overwrites an existing association if there
@@ -339,7 +379,7 @@ intrinsic function put(key: K, value: V, notfound: (V|undefined)=undefined) : (V
 informative function insert(key: K, value: V): void &#x0085;
 </PRE>
 
-<h3>has&nbsp;(&nbsp;key&nbsp;)</h3>
+<h3>intrinsic::has&nbsp;(&nbsp;key&nbsp;)</h3>
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic method <code>has</code> returns <b>true</b> if there exists
 an association for <i>key</i>, or <b>false</b> otherwise.
@@ -352,7 +392,7 @@ intrinsic function has(key:K) : boolean {
 }
 </PRE>
 
-<h3>remove&nbsp;(&nbsp;key&nbsp;)</h3>
+<h3>intrinsic::remove&nbsp;(&nbsp;key&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic method <code>remove</code> removes any association for <i>key</i>.
 
@@ -379,7 +419,7 @@ intrinsic function remove(key:K) : boolean {
 informative function eject(box: like { key: K, value: V }): void &#x0085;
 </PRE>
 
-<h3>clear&nbsp;()</h3>
+<h3>intrinsic::clear&nbsp;(&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic method <code>clear</code> removes all associations from the map.
 
@@ -401,9 +441,9 @@ methods and then returns an object that provides the correct <code>next</code>
 method:
 
 <PRE>
-helper function iterate.&#60;T>(f: function(*,*,*):*) {
+helper function iterate.&#60;T>(f) {
     let a = [];
-    informative::allElements(function (k,v) { f(a,k,v) });
+    informative::allItems(function (k,v) { f(a,k,v) });
     return {
         const next:
             let (i=0, limit=a.length)
@@ -416,11 +456,11 @@ helper function iterate.&#60;T>(f: function(*,*,*):*) {
 }
 </PRE>
 
-<P><span class="pcounter"></span> The informative function <code>allElements</code> calls its function
+<P><span class="pcounter"></span> The informative function <code>allItems</code> calls its function
 argument on every key/value pair in the <code>Map</code>:
 
 <PRE>
-informative function allElements(fn: function): void &#x0085;
+informative function allItems(fn: function): void &#x0085;
 </PRE>
 
 <P><span class="pcounter"></span> The iterator methods <code>getKeys</code>, <code>getValues</code>, and <code>getItems</code>
@@ -453,11 +493,11 @@ corresponding intrinsic method on their <code>this</code> object.
 prototype function size(this: Map.&#60;*,*>)
     this.intrinsic::size();
 
-prototype function get(this: Map.&#60;*,*>, key)
-    this.intrinsic::get(key);
+prototype function get(this: Map.&#60;*,*>, key, notfound)
+    this.intrinsic::get(key, notfound);
 
-prototype function put(this: Map.&#60;*,*>, key, value)
-    this.intrinsic::put(key, value);
+prototype function put(this: Map.&#60;*,*>, key, value, notfound)
+    this.intrinsic::put(key, value, notfound);
 
 prototype function has(this: Map.&#60;*,*>, key)
     this.intrinsic::has(key);
