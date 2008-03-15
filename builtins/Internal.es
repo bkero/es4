@@ -39,6 +39,11 @@ package ECMAScript4_Internal  // private to the implementation
     use default namespace public;
 
     //    namespace informative;
-    namespace helper;
+    public namespace helper = "helper";
+
+    public class None {
+    }
+
+    public const NONE = new None;
 }
 
