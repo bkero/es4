@@ -88,7 +88,7 @@ FILE:                       spec/library/Name.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-14
+DRAFT STATUS:               DRAFT 3 - 2008-03-17
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -108,9 +108,6 @@ CHANGES SINCE DRAFT 2 (2008-03-10)
 
   * The constructor interface spec has been broken up into one and two
     argument cases, for the sake of clarity.
-
-  * The qualifier field is never null; if the namespace passed to
-    the constructor is null then the qualifier field is noNS.
 
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
@@ -185,9 +182,8 @@ created from (qualifier,identifier) pairs.
 <h3>new&nbsp;Name&nbsp;(&nbsp;id&nbsp;)</h3>
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> When the <code>Name</code> constructor is called with one argument
-<i>id</i> it returns a <code>Name</code> object whose <code>qualifier</code> is the
-compatibility namespace <b>noNS</b> and whose <code>identifier</code> is <i>id</i>
-converted to <code>string</code>.
+<i>id</i> it returns a <code>Name</code> object whose <code>qualifier</code> is null
+and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
@@ -200,8 +196,7 @@ public function Name( id ) &#x0085;
 <i>ns</i> and <i>id</i> it returns a <code>Name</code> object whose <code>qualifier</code> is
 <i>ns</i> and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
 
-<P><span class="pcounter"></span> <i>ns</i> may be <b>null</b>, in which case the <code>qualifier</code> will be
-the compatibility namespace <b>noNS</b>.
+<P><span class="pcounter"></span> <i>ns</i> may be <b>null</b>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
@@ -250,7 +245,8 @@ Private function toString() : string {
 <h3>qualifier</h3>
 
 <P><span class="pcounter"></span> The <code>qualifier</code> property holds the namespace value for this
-<code>Name</code> object.  It is never null.
+<code>Name</code> object.  If <code>qualifier</code> is null then the implied namespace
+is the compatibility namespace <b>noNS</b>.
 
 <h3>identifier</h3>
 

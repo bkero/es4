@@ -1,11 +1,11 @@
 component           pri   status     
 
 Intro
-Global               *    Draft 1 2008-03-12 / Draft 2 ready
-Object               *    Draft 2 2008-03-10 / Draft 3 ready
-Function             *    Draft 1 2008-03-10 / Draft 2 ready
-Name                 *    Draft 2 2008-03-10 / Draft 3 ready
-Namespace            *    Draft 1 2008-03-05 / Draft 2 ready
+Global               *    Draft 1 2008-03-12 / Draft 2 ready(?)
+Object                    Draft 3 2008-03-14
+Function                  Draft 2 2008-03-14
+Name                      Draft 3 2008-03-17
+Namespace                 Draft 2 2008-03-17
 Array                +
 String
 string
@@ -25,6 +25,6 @@ uint32ops
 
 
 
-line continuation    *    Last call / good to go, I think
-line terminator norm *    Last call / good to go
+line continuation    !    Closed
+line terminator norm !    Closed
 triple quoting            Pending / Brendan

@@ -3,33 +3,32 @@
 <HR>
 <pre>
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 2 - 2008-03-14
+DRAFT STATUS:               DRAFT 2 - 2008-03-17
 SOURCES:                    REFERENCES [1], [2]
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  YES
 REVIEWED AGAINST PROPOSALS: N/A
 REVIEWED AGAINST CODE:      YES
-IMPLEMENTATION STATUS:      ES4 RI
+IMPLEMENTATION STATUS:      ES4 RI (partly)
 
+
+CHANGES SINCE DRAFT 2 (2008-03-17)
+
+  * The 'toString' method is tagged "override"
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
 
   * Presentation: added an explicit "extends Object" clause
 
-  * Namespaces are explicitly designated non-nullable with a
-    system-provided default value.
+  * Namespaces are explicitly designated nullable and a null value is
+    tied to the compatibility namespace noNS.
 
-  * The behavior of the 'toString' method has been tightly
-    specified to allow Namespace objects to be compared
-    predictably.
+  * The behavior of the 'toString' method has been tightly specified
+    to allow Namespace objects to be compared predictably.
 
 
 OPEN ISSUES
-
-  * Namespaces are defined here as non-nullable with a default value
-    that is the "compatibility namespace" noNS.  This has not been
-    discussed extensively in the WG.
 
   * Namespace objects in ES4 are more opaque than the Namespace
     objects in the base document and in E4X, both of which expose
@@ -46,21 +45,20 @@ REFERENCES
 </pre>
 <HR>
 
-<P> The class ''Namespace'' is a final, non-dynamic, non-nullable,
+<P> The class ''Namespace'' is a final, non-dynamic, nullable,
 direct subclass of ''Object''.  It reflects a namespace as an opaque
 datum.
-
-<P> The default value for properties of type ''Namespace'' is the
-object representing the compatibility namespace, ''noNS'' (see 
-<XREF target="Language:Names">).
 
 <NOTE> Namespaces are created as a result of the evaluation of the
 ''namespace'' pragma, which defines a new namespace and creates a
 binding for it.  Namespaces are reflected as ''Namespace'' objects
 when namespace bindings are referenced in expressions.
 
-<NOTE>A ''Namespace'' object can be created with an explicit name by
+<NOTE> A ''Namespace'' object can be created with an explicit name by
 providing the name as a string in the ''namespace'' pragma.
+
+<NOTE> Generally a **null** namespace value is used to denote the
+compatibility namespace **noNS**.
 
 <COMP> The ''Namespace'' class is new in the 4th Edition of this
 Standard.
@@ -72,7 +70,7 @@ Standard.
 {{{
 __ES4__ final class Namespace extends Object
 {
-    intrinsic function toString(): string <LDOTS>
+    override intrinsic function toString(): string <LDOTS>
 }
 }}}
 

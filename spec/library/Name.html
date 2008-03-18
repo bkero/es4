@@ -7,7 +7,7 @@ FILE:                       spec/library/Name.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-14
+DRAFT STATUS:               DRAFT 3 - 2008-03-17
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -16,6 +16,11 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4 RI
 TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 3 (2008-03-17)
+
+  * "static public" => "public static"
 
 
 CHANGES SINCE DRAFT 2 (2008-03-10)
@@ -27,9 +32,6 @@ CHANGES SINCE DRAFT 2 (2008-03-10)
 
   * The constructor interface spec has been broken up into one and two
     argument cases, for the sake of clarity.
-
-  * The qualifier field is never null; if the namespace passed to
-    the constructor is null then the qualifier field is noNS.
 
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
@@ -75,7 +77,7 @@ __ES4__ final class Name extends Object
     public function Name(...args) <LDOTS>
     static meta function invoke(...args): Name <LDOTS>
     
-    public static const length = 2
+    static public const length = 2
 
     <SIGNATURE file="Name.es" name="override intrinsic function toString">
 
@@ -104,9 +106,8 @@ created from (qualifier,identifier) pairs.
 === new Name ( id ) ===
 
 <RETN> When the ''Name'' constructor is called with one argument
-//id// it returns a ''Name'' object whose ''qualifier'' is the
-compatibility namespace **noNS** and whose ''identifier'' is //id//
-converted to ''string''.
+//id// it returns a ''Name'' object whose ''qualifier'' is null
+and whose ''identifier'' is //id// converted to ''string''.
 
 <SHORTIMPL>
 {{{
@@ -119,8 +120,7 @@ public function Name( id ) <LDOTS>
 //ns// and //id// it returns a ''Name'' object whose ''qualifier'' is
 //ns// and whose ''identifier'' is //id// converted to ''string''.
 
-<P> //ns// may be **null**, in which case the ''qualifier'' will be
-the compatibility namespace **noNS**.
+<P> //ns// may be **null**.
 
 <SHORTIMPL>
 {{{
@@ -161,7 +161,8 @@ to a string.
 === qualifier ===
 
 <P> The ''qualifier'' property holds the namespace value for this
-''Name'' object.  It is never null.
+''Name'' object.  If ''qualifier'' is null then the implied namespace
+is the compatibility namespace **noNS**.
 
 === identifier ===
 

@@ -7,7 +7,7 @@ FILE:                       spec/library/global.html
 CATEGORY:                   Pre-defined objects (E262-3 Chapter 15)
 SOURCES:                    See REFERENCES section below
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 2 - 2008-03-14
+DRAFT STATUS:               DRAFT 2 - 2008-03-17
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -19,7 +19,18 @@ TEST CASE STATUS:           ?
 
 CHANGES SINCE DRAFT 1 (2008-03-12)
 
-  * Fixed a bug in the definition of AnyBoolean.
+  * Fixed a bug in the definition of 'AnyBoolean'
+
+  * 'intrinsic::hashcode' now handles 'Name' and 'Namespace' objects
+    specially (since '===' does, see drafts for 'Name' and 'Namespace')
+
+  * Added a definition for the type 'Callable' (ticket #153)
+
+  * Added a restriction to the 'eval' operator, preventing it from
+    introducing classes, interfaces, packages, namespaces, types, and
+    program units
+
+  * Minor wording and editing changes
 
 
 OPEN ISSUES
@@ -101,6 +112,7 @@ REFERENCES
 [17c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/171
 [18] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/152
 [19] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/371
+[20] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/153
 </pre>
 <HR>
 
@@ -542,10 +554,23 @@ a **SyntaxError** is thrown.
 inconsistencies (in strict mode) and partly to signal that the use of
 the ''eval'' operator is potentially harmful to program integrity.
 
-<FIXME> A less restrictive, but equally safe, alternative would be to
-allow ''eval'' to be used inside a class provided that a version
-parameter was being passed and its value was a constant known to be 4
-or greater.
+<FIXME> A less restrictive, but probably equally safe, alternative
+would be to allow ''eval'' to be used inside a class provided that a
+version parameter was being passed and its value was a constant known
+to be 4 or greater.
+
+<P> If the //program// operand to ''eval'' contains definitions for
+classes, interfaces, packages, namespaces, types, or units, then a
+''SyntaxError'' is thrown (even if the use of the ''eval'' operator is
+at the outer program's top level where these forms would normally be
+allowed).
+
+<FIXME> Should that be EvalError?
+
+<FIXME> It seems it would not be entirely unreasonable to lift that
+restriction if the //version// is greater than 3, but it's unclear as
+yet what the problems might be with e.g. allowing classes to have
+elaborate scope chains around them.
 
 <RETN> The eval operator returns an ECMAScript value.
 
@@ -567,7 +592,7 @@ it may be presented as Standard ML code.)
            return undefined
          if the first A value is not a string, then 
            return the first A
-         if there is a second A then convert it to int to yield K, else let K=3
+         if there is a second A then let K=int(A), else let K=3
          evaluate the program denoted by the first A as follows:
            if K <= 3
              the scope chain is the lexical chain in effect at 
@@ -629,7 +654,7 @@ run-time system hooks.)
          return undefined
        if the first A value is not a string, then 
          return the first A
-       if there is a second A then convert it to int to yield K, else let K=3
+       if there is a second A then let K=int(A), else let K=3
        evaluate the program denoted by the first A as follows:
          if K<=3 then
            the scope chain holds O only
