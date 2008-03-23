@@ -1,0 +1,152 @@
+= Fixtures =
+
+<hr>
+<pre>
+FILE:                       spec/language/names.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-03-16
+AUTHOR:                     Jeff, Graydon
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+<hr>
+
+<p>ECMAScript provides for bindings that are either fixed and dynamic. 
+
+<p>An expando (dynamic property) is introduced at runtime by an assignment to a non-existant 
+property. Expandos are untyped and deleteable.
+
+<p>A fixture (fixed property), on the other hand, is introduced by a static declaration and is
+not deletable, has a storage type, and cannot be shadowed by dynamic bindings. Fixtures are
+introduced by one of various forms including: //VariableDefinition//, //ClassDefinition//, 
+//InterfaceDefinition//, and //TypeDefinition//.
+
+<p>This section discusses the behaviors that are specific to fixtures. A more general discussion
+of properties is provided in //section ..: ObjectType//
+
+== Fixture Attributes ==
+
+<p>Recall that object properties have four attributes: DD (don't delete), DE (don't enumerate),
+RO (read only), and FX (fixed). Fixtures always have their DD and FX attributes set to **true**,
+and always have their DE attribute initially set to **true**, and have their RO attribute set to 
+**true** except when introduced by a non-const //VariableDefinition// or //FunctionDefinition//.
+
+== Fixture Allocation ==
+
+<p>Unlike expandos that are be allocated by an expression, fixtures are allocated upon entry to 
+the lexical scope that they are defined in, and deallocated upon exit of that scope.
+
+<p>Except for the timing of their creation, the allocation of fixtures is very much like the allocation
+of expandos. Both fixtures and expandos have a binding that associates a name with a property value
+that has four boolean attributes, a storage type (always ''*'' for expandos), and some property
+state. (See //section ..: ObjectType// for details)
+
+== Fixture Storage Type ==
+
+<p>Each fixture has a storage type derived from its declaration. Value fixtures have a type that is 
+explicitly declared with a type annotation. Other kinds of fixtures have a type that is implicitly
+defined by its declaration. For example a function definition introduces a fixture that has
+a function type with parameter types and result type as declared in the function definition. A
+class definition introduces a fixture that has a anonymous structural (nominal?) type that describes 
+the class object that is stored in that fixture.
+
+== Fixture State ==
+
+<p>Fixtures come in various forms but all express, explicitly or implicitly,
+the initial state of the properties they represent. This state includes the four
+attributes (DontEnum, DontDelete, ReadOnly, and Fixed), a type, and and an initial value.
+The DontEnum, DontDelete and Fixed attributes are all set to true by default.
+
+<p>The ReadOnly attribute is implicitly set to true for all but value fixtures.
+The value of the RO attribute in this case is determined by the kind of definition
+that the fixture represents. For example, a ''const'' definition results in
+properties with their RO attribute set to true while a ''var'' definition results 
+properties with their RO attribute set to false.
+
+== Fixture Name Resolution ==
+
+<p>Usability and soundness require that fixtures shadow expandos.
+This is to say that the meaning of a name that can be resolved
+ahead-of-time as per the static properties of programs must not be able to
+change at runtime. Examples of such a forbidden changes are raising an 
+ambiguous reference error or resolving a name to a different property.
+
+<p>The //section ..: Names// describes the name lookup algorithm that operates on
+a search chain of objects. To ensure that references don't change meaning
+over time, this algorithm must be executed twice, the first time ignoring 
+expandos. If this first phase completes
+with a unique successful match or an error, the search is complete. If the
+first phase complete without producing a unique successful match or an error,
+the second phase begins.
+
+<p>In the second phase, the multiname algorithm is run again with the same
+starting conditions as the first phase. The difference with the second phase
+is that every property is examined regardless of whether it is fixed or not.
+
+=== Efficiency of two-phase lookup ===
+
+<p>While this modified two-phase algorithm appears to double the amount
+of work to do, in practical implementations it does the opposite,
+greatly reducing the cost of multiname resolution. The reason is that
+the set of fixtures visible in many contexts can be calculated
+statically during parsing and compilation, and multiname references
+can be resolved to names once during this stage, and never again at
+runtime.
+
+<p>Even if multiname resolution is delayed until runtime, a successful
+multiname resolution to a fixture can frequently be cached -- for
+example in cases of unqualified lexical references, or unqualified
+object references on typed objects -- because no new fixtures may be
+introduced at runtime that would make a successful fixture match
+ambiguous.
+
+=== Fixture often implies ReadOnly ===
+
+<p>In addition to consts -- discussed elsewhere -- the fixtures
+introduced by four significant families of ES4 declaration are
+implicitly RO. These fixtures are:
+
+<pre>
+      type, class, interface, namespace
+</pre>
+
+<p>The fact that these fixtures are implicitly RO, combined with the fact
+that multiname references to these fixtures can be resolved early or
+cached (see section 4 above), means that many related runtime
+calculations that depend on knowledge of these fixtures can also be
+either performed early or cached.
+
+<p>Crucially, the fact that namespace fixtures are constant permits
+optimized resolution of namespace references and optimized execution
+of the multiname algorithm in various contexts: those contexts
+described in the namespace implementation note that require references
+to namespace fixtures, rather than references to general namespace
+values.
+
+<p>None of these optimizations are mandatory, nor is any particular
+balance or mixture of them implied by the model. The aim of the
+fixture flag is to keep the door open for multiple efficient
+implementation strategies.
+
+== Fixture Hoisting ==
+
+<p>Hoisting is a feature of ES by which a fixture might reside in a scope represented by a block outside of the block it is defined in. Except if defined by a &lsquo;let&rsquo; definition, a name is hoisted to the nearest enclosing global, class, or function (regional) scope. Inside of a class, static definitions are hoisted to the implicit class scope, and instance definitions are hoisted to the implicit instance scope.
+</p>
+<p>
+The principle of domination is used to constrain the syntactic location of definitions. A name dominates a point in a program if, before hoisting, there is no path to that point in the program that does not pass through that definition.  
+</p>
+<ul>
+<li class="level1"><div class="li"> class and inteface fixtures shall dominate the end of the program</div>
+</li>
+<li class="level1"><div class="li"> namespace and type fixtures shall dominate the end of the region</div>
+</li>
+<li class="level1"><div class="li"> class static and instance fixtures shall dominate the end of the class</div>
+</li>
+<li class="level1"><div class="li"> function fixtures shall dominate the end of the region</div>
+</li>
+</ul>
+
+<p>There are no domination constraints on value (var and const) fixtures.
+</p>
