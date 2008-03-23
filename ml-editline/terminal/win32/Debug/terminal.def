@@ -1,0 +1,8 @@
+
+IMPORTS
+
+    terminal.dll.FillOutput
+    terminal.dll.GetPosition
+    terminal.dll.GetWindowSize
+    terminal.dll.ReadKey
+    terminal.dll.SetPosition

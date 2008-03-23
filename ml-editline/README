@@ -1,0 +1,55 @@
+ML-editline, version 0.1
+Copyright (c) 2007 David Herman
+http://www.ccs.neu.edu/home/dherman/editline.html
+
+See the LICENSE file for legal information.
+
+ML-editline is a Standard ML library for adding command-line editing
+functionality to applications akin to GNU Readline. ML-editline does not link
+statically to or redistribute any GPL software, however, and is provided with a
+permissive MIT license.
+
+See the files in example/ for an example of how to write and build a program
+that uses ml-editline.
+
+Features:
+
+- arrow keys
+- emacs keybindings (currently hard-wired):
+  * ctrl-a, ctrl-b, ctrl-d, ctrl-e, ctrl-f, ctrl-k, ctrl-n, ctrl-p, ctrl-y
+  * meta-backspace, meta-b, meta-d, meta-f
+- EOF (on empty input): ctrl-d, ctrl-z (native Windows only)
+- Unix signals (all platforms but native Windows): ctrl-c (SIGINT), ctrl-z (SIGSTOP)
+
+Platforms:
+
+- Cygwin, native Windows console, Linux, MacOS X
+- quite possibly others
+
+Terminals:
+
+- native Windows console
+- xterm, xterm-color, vt100, cygwin
+- quite possibly others
+
+Known bugs and limitations:
+
+- resizing console window currently wreaks havoc
+- suspending (SIGSTOP) and restoring (SIGCONT) a process
+  does not redraw the current prompt and input
+- rxvt support appears to be hopeless, at least in Windows
+
+To do:
+
+- audit all uses of flush
+- bell e.g. when attempting to fall off the end the line
+- transpose (ctrl-t, alt-t)
+- undo (ctrl-/)
+- transform case (alt-c, alt-l, alt-u)
+- API for merging top history entries
+- optimize refresh logic to avoid unnecessary redrawing
+
+Long term wishes:
+
+- .inputrc support
+- history commands (see GNU History)

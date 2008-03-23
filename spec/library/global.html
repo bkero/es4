@@ -1,17 +1,123 @@
 = The Global Object =
 
+<HR>
 <pre>
+NAME:                       "The global object"
 FILE:                       spec/library/global.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
+CATEGORY:                   Pre-defined objects (E262-3 Chapter 15)
+SOURCES:                    See REFERENCES section below
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 2 - 2008-03-17
 REVIEWED AGAINST ES3:       NO
-REVIEWED AGAINST ERRATA:    NO
-REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  YES
 REVIEWED AGAINST PROPOSALS: NO
-REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+CHANGES SINCE DRAFT 1 (2008-03-12)
+
+  * Fixed a bug in the definition of 'AnyBoolean'
+
+  * 'intrinsic::hashcode' now handles 'Name' and 'Namespace' objects
+    specially (since '===' does, see drafts for 'Name' and 'Namespace')
+
+  * Added a definition for the type 'Callable' (ticket #153)
+
+  * Added a restriction to the 'eval' operator, preventing it from
+    introducing classes, interfaces, packages, namespaces, types, and
+    program units
+
+  * Minor wording and editing changes
+
+
+OPEN ISSUES
+
+  * The (re)design of 'eval', discussed at length below, is an obvious
+    attempt at killing 'eval' by a thousand cuts (yet remaining
+    backward compatible!)  The resulting design is not awfully
+    baroque, but it does seem a little bit arbitrary when considered
+    as a whole.  Insights appreciated.
+
+
+NOTES
+
+  * The following globally visible facilities will be defined in other
+    draft specs that will eventually be cross-referenced from the
+    present spec:
+
+     - Iterator and generator facilities
+     - Reflection facilities
+     - ControlInspector
+
+  * It's probable that ES4 will upgrade the Unicode support in the
+    language in various ways, but nothing is quite definite yet
+    (backward compatibility constraints are causing trouble).  If the
+    Unicode support is in fact upgraded then changes will likely be
+    made to the URI encoding and decoding functions defined in the
+    present spec.
+
+  * Due to the uniform implementer sentiment against the types 'int'
+    and 'uint' in John Resig's ES4 tracking spreadsheet, I have
+    removed those classes from the global object in this draft, and I
+    have removed some of the uses of 'int' and 'uint' throughout the
+    document.  I have also introduced the top-level functions isInt,
+    isUint, toInt, and toUint to provide some of the functionality
+    that is lost along with 'int' and 'uint'.  See [19] for a
+    discussion.
+
+    If the change to 'int' and 'uint' sticks, then the numerous other
+    uses of 'int' and 'uint' that remain in this and other draft specs
+    will be cleaned up fairly soon.
+
+
+REFERENCES
+
+  Most of the following references simply call for a new top-level
+  property of some kind or other, they have no direct bearing on the
+  semantics of the global object or the functions defined in the
+  present spec.  The exceptions are [6a]-[6d], which pin down 'eval'
+  in various ways; [9a]-[9c], which calls for making some global
+  bindings read-only; [11], which call for new namespaces to hide new
+  global bindings; and [8a] and [8b], which deal with changes
+  resulting from updates to how Unicode is handled in the language.
+
+[1] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:builtin_classes
+[2] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:numbers
+[3] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:intrinsic_namespace
+[4] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:iterators_and_generators
+[5] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:name_objects
+[6a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:resurrected_eval
+[6b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/226
+[6c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/235
+[6d] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/297
+[7] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:decimal
+[8a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:update_unicode
+[8b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/148
+[9a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:bug_fixes
+[9b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/123
+[9c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/220
+[10] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:globals
+[11] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:versioning
+[12] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:meta_objects
+[13a] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:hashcodes
+[13b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/152
+[14] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:dictionary
+[15] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:vector
+[16] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:stack_inspection
+[17a] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/8
+[17b] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/83
+[17c] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/171
+[18] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/152
+[19] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/371
+[20] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/153
 </pre>
+<HR>
 
 <P> The global object is an instance of an implementation-dependent
-class.  In particular, its the name of this class and the contents of
+class.  In particular, the name of this class and the contents of
 the class's prototype object are implementation-dependent.
 
 <P> The class describing the global object does not have an accessible
@@ -29,6 +135,11 @@ types, and class definitions.
 
 {{{
 namespace __ES4__
+
+__ES4__ namespace intrinsic = <LDOTS>
+__ES4__ namespace iterator = <LDOTS>
+__ES4__ namespace reflect = <LDOTS>
+__ES4__ namespace meta = <LDOTS>
 
 class Object <LDOTS>
 class Function <LDOTS>
@@ -48,63 +159,34 @@ class URIError <LDOTS>
 
 __ES4__ class string <LDOTS>
 __ES4__ class boolean
-__ES4__ class int <LDOTS>
-__ES4__ class uint <LDOTS>
 __ES4__ class double <LDOTS>
 __ES4__ class decimal <LDOTS>
 __ES4__ class Name <LDOTS>
 __ES4__ class Namespace <LDOTS>
-__ES4__ class ByteArray <LDOTS>
 __ES4__ class Map.<K,V> <LDOTS>
 __ES4__ class Vector.<T> <LDOTS>
-__ES4__ class EncodingError <LDOTS>
 
 __ES4__ type EnumerableId = <LDOTS>
-__ES4__ type Numeric = <LDOTS>
-__ES4__ type Strings = <LDOTS>
-__ES4__ type Booleans = <LDOTS>
+__ES4__ type AnyNumber = <LDOTS>
+__ES4__ type AnyString = <LDOTS>
+__ES4__ type AnyBoolean = <LDOTS>
+__ES4__ type Callable = <LDOTS>
 
-__ES4__ namespace intrinsic = <LDOTS>
-
-intrinsic interface Field <LDOTS>
-intrinsic interface FieldValue <LDOTS>
-intrinsic interface Type <LDOTS>
-intrinsic interface NominalType <LDOTS>
-intrinsic interface InterfaceType <LDOTS>
-intrinsic interface ClassType <LDOTS>
-intrinsic interface AnyType <LDOTS>
-intrinsic interface NullType <LDOTS>
-intrinsic interface UndefinedType <LDOTS>
-intrinsic interface UnionType <LDOTS>
-intrinsic interface RecordType <LDOTS>
-intrinsic interface FunctionType <LDOTS>
-intrinsic interface ArrayType <LDOTS>
-
-intrinsic type FieldIterator = <LDOTS>
-intrinsic type FieldValueIterator = <LDOTS>
-intrinsic type TypeIterator = <LDOTS>
-intrinsic type InterfaceIterator = <LDOTS>
-
-intrinsic class ControlInspector.<T> <LDOTS>
-
-const NaN: double = <LDOTS>
-const Infinity: double = <LDOTS>
-const undefined: undefined = <LDOTS>
-const __ECMASCRIPT_VERSION__ = <LDOTS>
-const Math: Object = <LDOTS>
-
-__ES4__ const global: Object = <LDOTS>
-
-intrinsic function eval(s: string) <LDOTS>
-intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric <LDOTS>
-intrinsic function parseFloat(s: string): Numeric <LDOTS>
-intrinsic function isNaN(n: Numeric): boolean <LDOTS>
-intrinsic function isFinite(n: Numeric): boolean <LDOTS>
-intrinsic function decodeURI(s: string): string <LDOTS>
-intrinsic function decodeURIComponent(s: string): string <LDOTS>
-intrinsic function encodeURI(s: string): string <LDOTS>
-intrinsic function encodeURIComponent(s: string): string <LDOTS>
-intrinsic function hashcode(x): uint <LDOTS>
+intrinsic const function eval(s: string) <LDOTS>
+intrinsic const function parseInt(s: string, r: double=0): AnyNumber <LDOTS>
+intrinsic const function parseFloat(s: string): AnyNumber <LDOTS>
+intrinsic const function isNaN(n: AnyNumber): boolean <LDOTS>
+intrinsic const function isFinite(n: AnyNumber): boolean <LDOTS>
+intrinsic const function isIntrinsic(n: AnyNumber): boolean <LDOTS>
+intrinsic const function isInt(n: AnyNumber): boolean <LDOTS>
+intrinsic const function isUint(n: AnyNumber): boolean <LDOTS>
+intrinsic const function toInt(n: AnyNumber): double <LDOTS>
+intrinsic const function toUint(n: AnyNumber): double <LDOTS>
+intrinsic const function decodeURI(s: string): string <LDOTS>
+intrinsic const function decodeURIComponent(s: string): string <LDOTS>
+intrinsic const function encodeURI(s: string): string <LDOTS>
+intrinsic const function encodeURIComponent(s: string): string <LDOTS>
+intrinsic const function hashcode(x): double <LDOTS>
 
 function eval(x) <LDOTS>
 function parseInt(s, r=undefined) <LDOTS>
@@ -115,19 +197,35 @@ function decodeURI(x) <LDOTS>
 function decodeURIComponent(x) <LDOTS>
 function encodeURI(x) <LDOTS>
 function encodeURIComponent(x) <LDOTS>
+__ES4__ function isInt(n: AnyNumber): boolean <LDOTS>
+__ES4__ function isUint(n: AnyNumber): boolean <LDOTS>
+__ES4__ function toInt(n: AnyNumber): double <LDOTS>
+__ES4__ function toUint(n: AnyNumber): double <LDOTS>
 
-__ES4__ function hashcode(x) <LDOTS>
+const NaN: double = <LDOTS>
+const Infinity: double = <LDOTS>
+const undefined: undefined = <LDOTS>
+const Math: helper::MathType = <LDOTS>
+const __ECMASCRIPT_VERSION__: double = <LDOTS>
+__ES4__ const global = <LDOTS>
 }}}
 
-== Namespace for types ==
+== Namespace Properties on the Global Object ==
 
-<p> All new classes and type definitions in the global object are
-defined in the namespace ''__ES4__''.  This namespace is automatically
-opened by the implementation for code that is to be treated as 4th
-Edition code, but not for code that is to be treated as 3rd Edition
-code.
+<COMP>The namespace properties are all new in the 4th Edition of this
+Standard.
 
-<NOTE> The risk of polluting the name space for 3rd Edition code with
+=== __ES4__ ===
+
+<P> The namespace ''__ES4__'' is used to tag all names introduced in
+the global object in the 4th Edition of this Standard, except for two:
+''__ES4__'' and ''__ECMASCRIPT_VERSION__''.
+
+<P> The namespace ''__ES4__'' is automatically opened by the
+implementation for code that is to be treated as 4th Edition code, but
+not for code that is to be treated as 3rd Edition code.
+
+<COMP> The risk of polluting the name space for 3rd Edition code with
 new names is deemed too great to always open the ''__ES4__'' name
 space.
 
@@ -136,116 +234,475 @@ code according to 3rd Edition or 4th Edition is outside the scope of
 this Standard.
 
 <NOTE> This standard makes recommendations for how mime types should
-be used to tag script content in a web browser.  See <XREF
-target="appendix-mime-types">.
+be used to tag script content in a web browser.  (See <XREF
+target="appendix-mime-types">.)
+
+=== intrinsic ===
+
+<P> The namespace ''intrinsic'' is used to tag pre-defined types,
+properties, and methods.  
+
+<P> The namespace ''intrinsic'' is reserved by the language.  Except
+in the case where a method tagged ''intrinsic'' overrides an intrinsic
+method inherited from a pre-defined class, it is an error for user
+code to introduce new bindings in the ''intrinsic'' namespace.
+
+<P> The bindings in the ''intrinsic'' namespace are always constant
+fixtures.
+
+<NOTE> A //fixture// is a binding that is not deletable and which
+takes precedence over dynamic names during lexical name lookup.
+
+=== reflect ===
+
+<P> The namespace ''reflect'' is used to tag pre-defined interfaces in
+the reflection subsystem.
+
+<P> The namespace ''reflect'' is reserved by the language.  It is an
+error for user code to introduce new bindings in the ''reflect''
+namespace.
+
+=== meta ===
+
+<P> The namespace ''meta'' is used to tag methods that participate in
+the language's protocols for invocation and property access.
+
+<P> The namespace ''meta'' is reserved by the language.  Except in the
+case where a class definition uses it to tag (possibly static) methods
+called ''invoke'', ''get'', ''set'', ''has'', or ''delete'', it is an
+error for user code to introduce new bindings in the ''meta''
+namespace.
+
+=== iterator ===
+
+<P> The namespace ''iterator'' is used for the iteration protocol,
+which is defined elsewhere.  (See <XREF target="iterators">.)
+
+<NOTE> Unlike the namespaces ''__ES4__'', ''intrinsic'', ''reflect'', and
+''meta'', the namespace ''iterator'' is not reserved by the system.
 
 
-== Value Properties of the Global Object ==
-
-=== NaN ===
-
-<P>The value of ''NaN'' is **NaN** (section 8.5).
-
-<COMP>This property was not marked ReadOnly in 3rd Edition.
-
-=== Infinity ===
-
-<P>The value of ''Infinity'' is +<INFINITY> (section 8.5).
-
-<COMP>This property was not marked ReadOnly in 3rd Edition.
-
-=== undefined ===
-
-<P>The value of undefined is **undefined** (section 8.1).
-
-<COMP>This property was not marked ReadOnly in 3rd Edition.
+== Value Properties on the Global Object ==
 
 === __ECMASCRIPT_VERSION__ ===
 
-<P>The value of ''__ECMASCRIPT_VERSION__'' is the version of this
-Standard to which the implementation conforms.  For this 4th Edition
-of the Standard, the value of ''__ECMASCRIPT_VERSION__'' is 4.
+<P> The value of the constant property ''__ECMASCRIPT_VERSION__'' is
+an integer denoting the version of this Standard to which the
+implementation conforms.  For this 4th Edition of the Standard, the
+value of ''__ECMASCRIPT_VERSION__'' is 4.
 
-<NOTE>This property is new in 4th Edition.
+<COMP> This property is new in the 4th Edition of this Standard.  It
+is one of two properties introduced in the 4th Edition of this
+Standard that is not in the ''__ES4__'' namespace.  (The other is
+''__ES4__''.)
+
+=== NaN ===
+
+<P> The value of the constant property ''NaN'' is **NaN** (see <XREF
+target="nan-value">).
+
+<SHORTIMPL>
+{{{
+const NaN : double = <LDOTS>
+}}}
+
+<COMP>''NaN'' was not constant in the 3rd Edition of this Standard.
+
+=== Infinity ===
+
+<P>The value of ''Infinity'' is +<INFINITY> (see <XREF target="infinity-value">).
+
+<SHORTIMPL>
+{{{
+const Infinity : double = <LDOTS>
+}}}
+
+<COMP>''Infinity'' was not constant in the 3rd Edition of this Standard.
+
+=== undefined ===
+
+<P>The value of ''undefined'' is **undefined** (see <XREF target="undefined-value">).
+
+<SHORTIMPL>
+{{{
+const undefined : undefined = <LDOTS>
+}}}
+
+<COMP>''undefined'' was not constant in the 3rd Edition of this Standard.
+
+=== Math ===
+
+<P>The value of ''Math'' is the Math object (see <XREF
+target="math-object">). 
+
+<SHORTIMPL>
+{{{
+const Math : helper::MathType = <LDOTS>
+}}}
+
+<COMP>''Math'' was not constant in the 3rd Edition of this Standard.
+
+<P> The helper type ''MathType'' (see <XREF target="MathType">) is a
+structural record type that includes a property for every intrinsic
+method and public constant property defined on the Math object.
+
+<NOTE> The type of ''Math'' impacts strict mode type checking.
+
+
+=== global ===
+
+<p>The value of ''global'' is the global object that contains the
+property ''global''.
+
+<NOTE> There may be multiple global objects in a program, and these
+objects may share values or immutable state: for example, their
+''isNaN'' properties may hold the same function object.  However, each
+global object has separate mutable state, and a separate value for the
+intrinsic ''global'' property.
+
+<SHORTIMPL>
+{{{
+const global = <LDOTS>
+}}}
+
+<COMP>''global'' is new in the 4th Edition of this Standard.
 
 
 == Function Properties of the Global Object ==
 
 === eval ===
 
+<P> //It is likely that the description in this section needs to be
+broken up and scattered over several parts of the final specification,
+but for the time being it's best if everything is centralized here.
+I've added more expository and background material than the spec
+really ought to have; we'll clean this up by and by.   --lars//
+
+==== Overview and background ====
+
+<P> The global object has properties named ''eval'' and
+''intrinsic::eval''.  Those properties initially hold the same value,
+a function, and that function -- the ''eval'' function -- can be
+called in all the ways that any other function in the language can be
+called.  There are however some run-time restrictions (described
+below) on when those calls are valid.
+
+<P> In addition, there is an operator in the language that is also
+known under the names ''eval'' and ''intrinsic::eval''.  The ''eval''
+operator has access to the lexical environment of its context; it can
+look up and introduce bindings in the environment of its context.
+
+<P> Together, the ''eval'' function and the ''eval'' operator provide
+run-time evaluation functionality that (a) is compatible with the
+functionality mandated for ''eval'' by the 3rd Edition and (b) handles
+all important known uses of ''eval'' on the web.
+
+<P> The 3rd Edition only mandates the equivalent of the operator form
+of the 4th Edition, yet it describes ''eval'' as a function that has
+the ability to inspect and modify its caller's lexical environment.
+In practice, an implementation that supports only the functionality
+mandated by the 3rd Edition will not support the web well, and as a
+consequence several implementations of ECMAScript in web browsers
+provide ''eval'' as a true function that actually has the ability to
+inspect and modify its caller's environment, no matter who the caller
+of ''eval'' is and regardless of the name under which ''eval'' has
+been called.
+
+<P> In other words, the 3rd Edition form of ''eval'', implemented in
+full generality, makes it generally impossible to know if any
+particular scope contains a binding for any particular name, since any
+function call in the scope may be a call to ''eval'', which may
+introduce new names in the scope.
+
+<P> As an illustration, the following program prints "20" in Mozilla 
+Firefox, even though casual inspection of the program would lead one to
+conclude that the ''x'' referenced in the body of ''g'' is the constant
+binding in the outer scope:
+{{{
+   const x = 10;
+   function g(f,s) {
+       f(s);
+       return x;
+   }
+
+   document.writeln(g(eval,"var x=20"));
+}}}
+
+<P> In conclusion, the primary reason for splitting the definition of
+''eval'' into function and operator forms in the 4th Edition is in
+order to be able to control the extent to which ''eval'' can introduce
+new names in scopes, while at the same time remaining compatible with
+existing programs.
+
+<P> The secondary reason for splitting the definition of ''eval'' into
+function and operator forms is that the behavior illustrated above
+largely precludes some standard code generation strategies.  A typical
+approach in lexically scoped languages is to translate variable
+references at compile time to //(rib,offset)// pairs; at run-time,
+scope object number //rib// (where the innermost is number zero) is
+fetched and property number //offset// is fetched out of it.  That
+approach is only possible if the environment is known at compile time.
+If there is a chance that ''eval'' can introduce new names into a
+scope at run-time then lookup in that scope must always be by name;
+with an operator form of ''eval'' it is possible to know at compile
+time whether a scope may be thus affected.
+
+<P> Several other features and clarifications have been incorporated
+into the 4th Edition in an attempt to constrain the effects of
+''eval''.  While the splitting of ''eval'' into an operator form and a
+function form makes it clearer when a non-global environment might
+have new bindings introduced, it does not prevent such bindings from
+being introduced.
+
+<P> The additional features and clarifications are:
+<UL>
+
+<LI> If the version number passed as the second argument to ''eval''
+     is greater than 3, then the program being evaluated is given a
+     fresh variable object in which it can create bindings; as a
+     consequence, no bindings can be introduced into the caller's
+     environment (except by assignment to non-existent global
+     variables).
+
+<LI> ''eval'' is prevented from changing the DontDelete attribute on
+      existing bindings when a binding form is evaluated.
+
+<LI> The operator form of ''eval'' is disallowed inside classes.
+
+<LI> The operator form of ''eval'' is disallowed in strict mode.
+</UL> 
+
+==== eval (program, version=<LDOTS>) ====
+
+<DESC> The eval function and the eval operator (described fully below)
+are invoked on a //program//, which is a value of any type, and a
+//version//, which is intended to be a nonnegative integer (defaulting
+to 3).
+
+<P> If the //program// is a string then it must represent valid source
+code according to the nonterminal //Program// (see <XREF target="Grammar">), with
+the proviso that the keyword set recognized during lexical analysis is
+determined by //version//, as follows.  Convert version to an integer
+as with the ToInt32 operation.  If the converted value of //version//
+is 3 or less then the keyword set is the set of reserved words in the
+3rd Edition of this Standard (E262-3 section 7.5.2).  Otherwise, if
+the converted value of //version// is //n// then the keyword set is
+the set of reserved and contextually reserved words in the //n//th
+Edition of this Standard.
+
+<NOTE> Program arguments to ''eval'' that use e.g. ''let'' as an
+identifier will continue to work in a 4th Edition implementation
+(where ''let'' is a keyword) as long as no //version// is passed to
+''eval'', or the value of the version passed is 3 or less.
+
+<P> If the converted value of //version// is 4 or greater then the
+evaluation takes place in a fresh variable object.
+
+<NOTE> In other words, ''eval'' will be unable to introduce bindings
+in its caller's variable object if //version// is 4 or greater.
+
+<COMP> Unlike in the 3rd Edition of this Standard, ''eval'' is not
+allowed to change a property from being DontDelete to being deletable.
+That restriction belongs in the section on adding bindings to the
+variable object (10.1.3 in 3rd Ed) and is only mentioned here for the
+time being.
+
+<RETN> If the //program// is a string then the result of compiling and
+evaluating //program// as a //Program// is returned.  Otherwise,
+//program// is returned unchanged.
+
+<SHORTIMPL>
+{{{
+function eval( program, version=3 ) <LDOTS>
+}}}
+
 ==== The ''eval'' operator ====
 
-<DESC> When the intrinsic and non-intrinsic ''eval'' functions are called
-directly by name (that is, by the explicit use of the name ''eval'' as
-an unqualified Identifier which is the MemberExpression in a
-CallExpression) they are treated like operators in the language.  See
-<XREF target="eval-operator">.
+<P> //There are two possible designs for the operator form.  One is
+that an expression of the form ''eval(s)'' is //always// taken as the
+operator form, regardless of the binding of ''eval'' in the context of
+the expression; the other is that an expression of that form //may//
+be the operator form, and that it is the operator form only if the
+binding of ''eval'' is the original, global binding.  Since the former
+design would be incompatible with 3rd Edition, we use the latter.//
 
-<RETN> The ''eval'' operator returns an ECMAScript value.
+<P> It will always be lexically apparent when ''eval'' is //possibly//
+being used as an operator, but in the general case it is not possible
+to determine until run-time whether it is //actually// being used as
+an operator.
 
-==== intrinsic::eval (s) ====
+<NOTE> For the intrinsic form of the operator it is possible to
+determine this at compile time, in the absence of the use of ''with''
+in the enclosing context.
 
-<DESC> When the intrinsic ''eval'' function is called as a method on
-the global objects in whose scope it is closed then it evaluates its
-argument as a program in the global scope that is the receiver object
-in the call.
+<DESC> The operator form is //possibly// being used in an expression //E// if
+//E// has the form of a //CallExpression// (including the parentheses
+bracketing the arguments) and the //MemberExpression// that denotes
+the function to be called has the form of the unqualified identifier
+''eval'' or the qualified identifier ''intrinsic::eval''.  That is,
+apart from any superflous parentheses, //E// has the form //M(P, ...)//.
 
-<p> When the intrinsic ''eval'' function is called as an ordinary
-function under other names than ''eval'' then it evaluates its
-argument as a program in a global scope that is the scope in which the
-''eval'' function was closed.
+<P> If the possible use of the operator form of ''eval'' appears in
+any context inside a class, a **SyntaxError** is thrown.
 
-<RETN> The intrinsic ''eval'' function returns the value computed by
-the program that's evaluated.
+<P> If the possible use of the operator form of ''eval'' appears in
+any context inside block in which strict mode is in effect (even
+inside a block that overrides strict mode by decreeing standard mode),
+a **SyntaxError** is thrown.
 
-<IMPL> The ''eval'' method is implementation-dependent.
+<NOTE> The purpose of these restriction is partly to avoid
+inconsistencies (in strict mode) and partly to signal that the use of
+the ''eval'' operator is potentially harmful to program integrity.
 
-==== eval (s) ====
+<FIXME> A less restrictive, but probably equally safe, alternative
+would be to allow ''eval'' to be used inside a class provided that a
+version parameter was being passed and its value was a constant known
+to be 4 or greater.
 
-<DESC> The non-intrinsic ''eval'' function can be called as a method
-on the global object in whose scope it is closed, or it can be called
-as an ordinary function under another name, just like the intrinsic
-''eval'' function.
+<P> If the //program// operand to ''eval'' contains definitions for
+classes, interfaces, packages, namespaces, types, or units, then a
+''SyntaxError'' is thrown (even if the use of the ''eval'' operator is
+at the outer program's top level where these forms would normally be
+allowed).
 
-<P> If the argument to ''eval'' is a string, then the program
-represented by that string is evaluated.  Otherwise the argument is
-returned unchanged.
+<FIXME> Should that be EvalError?
 
-<INCLUDE file="Global.es" name="function eval">
+<FIXME> It seems it would not be entirely unreasonable to lift that
+restriction if the //version// is greater than 3, but it's unclear as
+yet what the problems might be with e.g. allowing classes to have
+elaborate scope chains around them.
 
-<NOTE> The behavior of this function depends on the fact that the
-non-intrinsic ''eval'' function is closed in the same global object as
-the intrinsic ''eval'' function.  Thus there's no need to capture and
-pass the ''this'' parameter.
+<RETN> The eval operator returns an ECMAScript value.
+
+<IMPL> In the case that a possible use of the operator form is
+detected, //M(P, ...)// is evaluated as follows.
+
+<P> (The implementation of the ''eval'' operator is presented as
+pseudo-code because it is not expressible in ECMAScript.  Eventually,
+it may be presented as Standard ML code.)
+
+{{{
+  look up M in the environment yielding the value V
+  if V is the pre-defined eval function and
+     the binding object O holding V is an ES global object and
+     the global object on the scope chain of V is O then
+       invoke eval as follows:
+         evaluate the P in order to yield argument value A
+         if there are no A values, then 
+           return undefined
+         if the first A value is not a string, then 
+           return the first A
+         if there is a second A then let K=int(A), else let K=3
+         evaluate the program denoted by the first A as follows:
+           if K <= 3
+             the scope chain is the lexical chain in effect at 
+                 the point of invocation of M
+             the variable object is the innermost variable object in effect
+                 (which is to say that it excludes binding objects 
+                 introduced for "let", "catch", named function expressions, 
+                 and "switch type")
+           else
+             the scope chain is the lexical chain in effect at the point of
+                 invocation of M, extended by a new variable object W
+             the variable object is W
+           fi
+           the value of "this" is the global object O
+           the keyword set is determined by K
+  else
+    evaluate the P in order to yield a list of arguments A
+    invoke V as a function on the arguments A
+  fi
+}}}
+
+<NOTE> The requirement that the global object of V be O precludes
+sharing of ''eval'' functions among multiple global environments.  It
+is possible that that requirement is not actually needed for
+consistent operation.
+
+==== The ''eval'' function ====
+
+<P> If the operator form is not detected syntactically then ''eval''
+is either being called as a function under a different name or it is
+being invoked as a method on an object.  The implementation does not
+need to handle this case syntactically; it is handled as a regular
+function call.
+
+<P> The following description applies to both the public ''eval''
+function and the intrinsic ''eval'' function, both defined in the
+global object.
+
+<DESC> The global ''eval'' function evaluates its first argument as a
+program in the global scope of the ''eval'' function.
+
+<RETN> The global ''eval'' function returns the value computed by
+the program that is evaluated, or its first argument if the first
+argument is not a string.
+
+<IMPL> The body of the pre-defined ''eval'' function //V// is
+evaluated in the context of a list of argument values //A// as
+follows.
+
+<P> (The implementation of the ''eval'' function is presented as
+pseudo-code because it is not expressible in ECMAScript.  Eventually,
+it may be presented as ECMAScript code with the addition of "magic"
+run-time system hooks.)
+
+{{{
+  if the "this" object O is an ES global object and
+     the global object on the scope chain of V is O then
+       if there are no A values, then 
+         return undefined
+       if the first A value is not a string, then 
+         return the first A
+       if there is a second A then let K=int(A), else let K=3
+       evaluate the program denoted by the first A as follows:
+         if K<=3 then
+           the scope chain holds O only
+           the variable object is O
+         else
+           the scope chain holds O extended by a new variable object W
+           the variable object is W
+         fi
+         the value of "this" is O
+         the keyword set is determined by K
+  else
+    throw EvalError
+  fi
+}}}
+
+<NOTE> The requirement that the global object of V be O precludes
+sharing of ''eval'' functions among multiple global environments.  It
+is possible that that requirement is not actually needed for
+consistent operation.
+
 
 ==== Restrictions on the use of the ''eval'' property  ====
 
-<p> If the value of the ''eval'' property is used in any way other
-than than the three listed previously, or if the ''eval'' property is
-assigned to, an ''EvalError'' exception may be thrown.
-
-<COMP> The 3rd Edition of this Standard restricted the use of ''eval''
-to the first case listed previously.
+<p> If the global ''eval'' property is assigned to, an ''EvalError''
+exception may be thrown.
 
 
 === intrinsic::parseInt (s, r=<LDOTS>) ===
 
 <DESC> The intrinsic ''parseInt'' function computes an integer value
 dictated by interpretation of the contents of the string argument
-//s// according to the specified radix //r// (which defaults to zero).  Leading whitespace in
-//s// is ignored.  If //r// is zero, it is assumed to be 10 except when
-the number begins with the character pairs 0x or 0X, in which case a
-radix of 16 is assumed.  Any radix-16 number may also optionally begin
-with the character pairs 0x or 0X.
+//s// according to the specified radix //r// (which defaults to zero).
+Leading whitespace in //s// is ignored.  If //r// is zero, the radix is
+assumed to be 10 except when the number begins with the character
+pairs 0x or 0X, in which case a radix of 16 is assumed.  Any radix-16
+number may also optionally begin with the character pairs 0x or 0X.
 
 <RETN> The intrinsic ''parseInt'' function returns a number.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function parseInt">
+<INCLUDE file="Global.es" name="intrinsic const function parseInt">
 
 <P> The helper function ''isDigitForRadix(c,r)'' computes whether
-''c'' is a valid digit for the radix ''r'', see <XREF
-target="helper:isDigitForRadix">.
+''c'' is a valid digit for the radix ''r'', see <XREF target="helper:isDigitForRadix">.
+
+<P> The helper function ''isTrimmableSpace(c)'' computes whether
+''c'' is a space character that can be trimmed off the beginning
+of the string, see <XREF target="helper:isTrimmableSpace">.
 
 <p>The informative function ''numericValue(s, r)'' computes the
 numeric value of a radix-''r'' string ''s''.  If ''r'' is 10 and ''s''
@@ -276,13 +733,13 @@ any such characters were ignored.
 === parseInt ( s, r=<LDOTS> ) ===
 
 <DESC>The ''parseInt'' function converts its first argument to
-''string'' and its second argument to ''int'', and then calls its
+''string'' and its second argument to ''double'', and then calls its
 intrinsic counterpart.
 
 <RETN>The ''parseInt'' function returns a number.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function parseInt">
+<INCLUDE file="Global.es" name="public function parseInt">
 
 
 === intrinsic::parseFloat (s) ===
@@ -294,7 +751,7 @@ decimal literal.
 <RETN> The intrinsic ''parseFloat'' function returns a number.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function parseFloat">
+<INCLUDE file="Global.es" name="intrinsic const function parseFloat">
 
 <NOTE>''parseFloat'' may interpret only a leading portion of //s// as a
 number value; it ignores any characters that cannot be interpreted as
@@ -309,54 +766,163 @@ then calls its intrinsic counterpart.
 <RETN>The ''parseFloat'' function returns a number.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function parseFloat">
+<INCLUDE file="Global.es" name="public function parseFloat">
 
 
-=== intrinsic::isNaN (number) ===
+=== intrinsic::isNaN (n) ===
 
-<DESC>The intrinsic ''isNaN'' function tests whether a numeric value //number// is an
+<DESC>The intrinsic ''isNaN'' function tests whether a numeric value //n// is an
 IEEE not-a-number value.
 
 <RETN>The intrinsic ''isNaN'' function returns 
-**true** if //number// is **NaN**, and otherwise returns **false**.
+**true** if //n// is **NaN**, and otherwise returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function isNaN">
+<INCLUDE file="Global.es" name="intrinsic const function isNaN">
 
-=== isNaN (number) ===
+=== isNaN (x) ===
 
 <DESC>The ''isNaN'' function converts its argument to a number, then
 calls its intrinsic counterpart.
 
-<RETN>The ''isNaN'' function returns **true** if //number// is
-**NaN**, and otherwise returns **false**.
+<RETN>The ''isNaN'' function returns **true** if //x// converted to a
+number is **NaN**, and otherwise returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function isNaN">
+<INCLUDE file="Global.es" name="public function isNaN">
 
 
-=== intrinsic::isFinite (number) ===
+=== intrinsic::isFinite (n) ===
 
-<DESC>The intrinsic ''isFinite'' function tests whether a numeric value //number// is
-finite (neither not-a-number nor an infinity).
+<DESC>The intrinsic ''isFinite'' function tests whether a numeric
+value //n// is finite (neither not-a-number nor an infinity).
 
-<RETN>The intrinsic ''isFinite'' function returns **true** if //number// is
+<RETN>The intrinsic ''isFinite'' function returns **true** if //n// is
 finite, and otherwise returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function isFinite">
+<INCLUDE file="Global.es" name="intrinsic const function isFinite">
 
 
-=== isFinite (number) ===
+=== isFinite (x) ===
 
 <DESC>The ''isFinite'' function converts its argument to a number,
-then calls its intrinsic counterpart.
+then calls its intrinsic counterpart on the converted value.
 
-<RETN>The ''isFinite'' function returns **true** if //number// is
-finite, and otherwise returns **false**.
+<RETN>The ''isFinite'' function returns **true** if //x// converted to
+a number is finite, and otherwise returns **false**.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function isFinite">
+<INCLUDE file="Global.es" name="public function isFinite">
+
+
+=== intrinsic::isIntegral (n) ===
+
+<DESC>The intrinsic ''isIntegral'' function tests whether a numeric
+value //n// is integral (a finite integer).
+
+<RETN>The intrinsic ''isIntegral'' function returns **true** if //n// is
+integral, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="intrinsic const function isIntegral">
+
+=== isIntegral (x) ===
+
+<DESC>The ''isIntegral'' function converts its argument //x// to a number,
+then calls the intrinsic ''isIntegral'' function on the converted value.
+
+<RETN>The ''isIntegral'' function returns **true** if //x// converted
+to a number is integral, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="__ES4__ function isIntegral">
+
+=== intrinsic::isInt (n) ===
+
+<DESC>The intrinsic ''isInt'' function tests whether a numeric value
+//n// is an ''int'' value (a finite integer in the range
+-2<SUP>31</SUP> to 2<SUP>31</SUP>-1, inclusive).
+
+<RETN>The intrinsic ''isInt'' function returns **true** if //n//
+is an ''int'' value, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="intrinsic const function isInt">
+
+=== isInt (x) ===
+
+<DESC>The ''isInt'' function converts its argument //x// to a number,
+then calls the intrinsic ''isInt'' function on the converted value.
+
+<RETN>The ''isInt'' function returns **true** if //x// converted
+to a number is an ''int'' value, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="__ES4__ function isInt">
+
+=== intrinsic::isUint (n) ===
+
+<DESC>The intrinsic ''isUint'' function tests whether the numeric
+value //n// is a ''uint'' value (a finite integer in the range 0 to
+2<SUP>32</SUP>-1, inclusive).
+
+<RETN>The intrinsic ''isUint'' function returns **true** if //n//
+is a ''uint'' value, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="intrinsic const function isUint">
+
+=== isUint (x) ===
+
+<DESC>The ''isUint'' function converts its argument //x// to a number,
+then calls the intrinsic ''isUint'' function on the converted value.
+
+<RETN>The ''isUint'' function returns **true** if //x// converted
+to a number is a ''uint'' value, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="__ES4__ function isUint">
+
+=== intrinsic::toInt (n) ===
+
+<DESC>The intrinsic ''toInt'' function converts its argument //n// to an ''int'' value
+using the ToInt32 algorithm (see <XREF target="ToInt32">).
+
+<RETN>The intrinsic ''toInt'' function returns an ''int'' value.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="intrinsic const function toInt">
+
+=== toInt (x) ===
+
+<DESC>The ''toInt'' function converts its argument //x// to a number, then
+calls the intrinsic ''toInt'' function on the converted value.
+
+<RETN>The ''toInt'' function returns an ''int'' value.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="__ES4__ function toInt">
+
+=== intrinsic::toUint (n) ===
+
+<DESC>The intrinsic ''toUint'' function converts its argument //n// to a ''uint'' value
+using the ToUint32 algorithm (see <XREF target="ToUint32">).
+
+<RETN>The intrinsic ''toUint'' function returns a ''uint'' value.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="intrinsic const function toUint">
+
+=== toUint (x) ===
+
+<DESC>The ''toUint'' function converts its argument //x// to a number, then
+calls the intrinsic ''toUint'' function on the converted value.
+
+<RETN>The ''toUint'' function returns a ''uint'' value.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="__ES4__ function toUint">
 
 
 === URI Handling Function Properties ===
@@ -526,7 +1092,7 @@ not have been introduced by ''encodeURI'' are not replaced.
 <RETN> The intrinsic ''decodeURI'' function returns a decoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function decodeURI">
+<INCLUDE file="Global.es" name="intrinsic const function decodeURI">
 
 <NOTE>The character "''#''" is not decoded from escape sequences even
 though it is not a reserved URI character.
@@ -539,7 +1105,7 @@ calls its intrinsic counterpart.
 <RETN> The ''decodeURI'' function returns a decoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function decodeURI">
+<INCLUDE file="Global.es" name="public function decodeURI">
 
 
 ==== intrinsic::decodeURIComponent (encodedURIComponent) ====
@@ -552,7 +1118,7 @@ function is replaced with the character that it represents.
 <RETN> The intrinsic ''decodeURIComponent'' function returns a decoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function decodeURIComponent">
+<INCLUDE file="Global.es" name="intrinsic const function decodeURIComponent">
 
 ==== decodeURIComponent (encodedURIComponent) ====
 
@@ -562,20 +1128,20 @@ function is replaced with the character that it represents.
 <RETN> The ''decodeURIComponent'' function returns a decoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function decodeURIComponent">
+<INCLUDE file="Global.es" name="public function decodeURIComponent">
 
 
 ==== intrinsic::encodeURI (uri) ====
 
 <DESC> The intrinsic ''encodeURI'' function computes a new version of
 a URI in which each instance of certain characters is replaced by one,
-two or three escape sequences representing the UTF-8 encoding of the
+two, three, or four escape sequences representing the UTF-8 encoding of the
 character.
 
 <RETN> The intrinsic ''encodeURI'' function returns a encoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function encodeURI">
+<INCLUDE file="Global.es" name="intrinsic const function encodeURI">
 
 <NOTE>The character "''#''" is not encoded to an escape sequence
 even though it is not a reserved or unescaped URI character.
@@ -588,20 +1154,20 @@ calls its intrinsic counterpart.
 <RETN> The ''encodeURI'' function returns a encoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function encodeURI">
+<INCLUDE file="Global.es" name="public function encodeURI">
 
 
 ==== intrinsic::encodeURIComponent (uriComponent) ====
 
 <DESC> The intrinsic ''encodeURIComponent'' function computes a new
 version of a URI in which each instance of certain characters is
-replaced by one, two or three escape sequences representing the UTF-8
-encoding of the character.
+replaced by one, two, three, or four escape sequences representing the
+UTF-8 encoding of the character.
 
 <RETN> The intrinsic ''encodeURIComponent'' function returns a encoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="intrinsic function encodeURIComponent">
+<INCLUDE file="Global.es" name="intrinsic const function encodeURIComponent">
 
 ==== encodeURIComponent (uriComponent) ====
 
@@ -611,7 +1177,7 @@ argument to string, then calls its intrinsic counterpart.
 <RETN> The ''encodeURIComponent'' function returns a encoded string.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="function encodeURIComponent">
+<INCLUDE file="Global.es" name="public function encodeURIComponent">
 
 
 === intrinsic::hashcode (x) ===
@@ -628,20 +1194,22 @@ zero.
 
 <P> The hashcode computed for an object does not change over time.
 
-<RETN> The intrinsic ''hashcode'' function returns an unsigned integer.
+<RETN> The intrinsic ''hashcode'' function returns a nonnegative integer
+below 2<SUP>32</SUP>.
 
 <SHORTIMPL>
-<INCLUDE file="Global.es" name="__ES4__ const function hashcode">
+<INCLUDE file="Global.es" name="intrinsic const function hashcode">
 
-<P> The informative functions ''stringHash'' and ''objectHash''
-compute hash values for strings and arbitrary objects, respectively.
-They can take into account their arguments' immutable structure only.
+<P> The informative functions ''stringHash'', ''namespaceHash'',
+''nameHash'', and ''objectHash'' compute hash values for strings,
+namespaces, names, and arbitrary objects, respectively.  They can take
+into account their arguments' immutable structure only.
 
 <P> The implementation should strive to compute different hashcodes
-for objects that are not the same by ''intrinsic::==='', as the
-utility of this function depends on that property.  (The user program
-should be able to expect that the hashcodes of objects that are not
-the same are different with high probability.)
+for values that are not the same by ''intrinsic::==='', as the utility
+of this function depends on that property.  (The user program should
+be able to expect that the hashcodes of objects that are not the same
+are different with high probability.)
 
 <NOTE> A typical implementation of ''stringHash'' will make use of the
 string's character sequence and its length.
@@ -660,18 +1228,6 @@ addresses if possible, or at least use memory addresses subject to
 some cryptographically strong one-way transformation, or sequence
 numbers, cookies, or similar.
 
-<!--
-
-=== Operator functions ===
-
-<P> These are defined as implementing the primitive functionality of each
-operator, bypassing any user overloading.  They can be referenced by
-prefixing them with a namespace, eg ''intrinsic::===''.
-
-<P> These may be obsolete now that we've killed the operator
-overloading proposal and not yet accepted the generic function proposal.
-
--->
 
 == Class and Interface Properties of the Global Object ==
 
@@ -684,84 +1240,65 @@ overloading proposal and not yet accepted the generic function proposal.
   <li> The ''Array'' class is defined in section <XREF target="class Array">
   <li> The ''String'' and ''string'' classes are defined in sections <XREF target="class String"> and <XREF target="class string">, respectively.
   <li> The ''Boolean'' and ''boolean'' classes are defined in sections <XREF target="class Boolean"> and <XREF target="class boolean">, respectively.
-  <li> The ''Number'', ''int'', ''uint'', ''double'', and ''decimal'' classes are defined in sections <XREF target="class Number">, <XREF target="class int">, <XREF target="class uint">, <XREF target="class double">, and <XREF target="class decimal">, respectively.
+  <li> The ''Number'', ''double'', and ''decimal'' classes are defined in sections <XREF target="class Number">, <XREF target="class double">, and <XREF target="class decimal">, respectively.
   <li> The ''Date'' class is defined in section <XREF target="class Date">
   <li> The ''RegExp'' class is defined in section <XREF target="class RegExp">
   <li> The ''Map'' class is defined in section <XREF target="class Map">
   <li> The ''Vector'' class is defined in section <XREF target="class Vector">
-  <li> The ''ByteArray'' class is defined in section <XREF target="class ByteArray">
-  <li> The ''ControlInspector'' class is defined in section <XREF target="class ControlInspector">
   <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in sections <XREF target="class Error">, <XREF target="class EvalError">, <XREF target="class RangeError">, <XREF target="class ReferenceError">,  <XREF target="class SyntaxError">, <XREF target="class TypeError">, and <XREF target="class URIError">, respectively.
 </ul>
-
 
 
 == Type Properties on the Global Object ==
 
 === EnumerableId ===
 
-<p>The type ''EnumerableId'' is a union type that collects all nominal
-types that are treated as property names by the iteration protocol and the
-built-in objects:
+<p>The type ''EnumerableId'' is a union type of all the nominal types
+that are treated as property names by the iteration protocol and the
+pre-defined objects:
 
 {{{
-__ES4__ type EnumerableId = (int,uint,Name,string);
+__ES4__ type EnumerableId = (int|uint|string|Name);
 }}}
 
-=== Numeric ===
+<FIXME> Removed ''int'' and ''uint'' from this type if/when we agree that
+that's the right thing.
 
-<p>The type ''Numeric'' is a union type that collects all nominal
-types that are treated as numbers by the implementation:
+
+=== AnyNumber ===
+
+<p>The type ''AnyNumber'' is a union type of all the nominal
+types that are treated as numbers by the language:
 
 {{{
-__ES4__ type Numeric = (int,uint,double,decimal,Number);
+__ES4__ type AnyNumber = (double|decimal|Number);
 }}}
 
+=== AnyString ===
 
-== Meta-Object Interface and Type Properties of the Global Object ==
+<p>The type ''AnyString'' is a union type of all the nominal
+types that are treated as strings by the language:
 
-<P> The interface types ''Field'', ''FieldValue'', ''Type'',
-''NominalType'', ''InterfaceType'', ''ClassType'', ''UnionType'',
-''RecordType'', ''FunctionType'', and ''ArrayType'', as well as the
-structural types ''FieldIterator'', ''FieldValueIterator'',
-''TypeIterator'', and ''InterfaceIterator'', are defined in section
-<XREF target="meta-objects">.
+{{{
+__ES4__ type AnyString = (string|String);
+}}}
 
+=== AnyBoolean ===
 
-== Other Properties of the Global Object ==
+<p>The type ''AnyBoolean'' is a union type of all the nominal
+types that are treated as booleans by the language:
 
-=== Math ===
+{{{
+__ES4__ type AnyBoolean = (boolean|Boolean);
+}}}
 
-<P> See section <XREF target="math-object">.
+=== Callable ===
 
-<FIXME> (Ticket #171.) Currently we have a single ''const'' math
-object that has some intrinsic fixture methods and some nonintrinsic
-dynamic methods, as per E262-3.  When the user opens ''intrinsic'' the
-intrinsic methods will be perferred, but only because the
-implementation knows the type of the Math object in the global
-environment.  This type is not exposed in the spec.  Thus the math
-object can't be passed around as a strongly typed parameter (should we
-wish for it).
+<P> The type ''Callable'' is a record type describing any object that
+can be called as a function:
 
-<P class="fixme"> Alternative approaches are to (a) expose that type
-and (b) separate the intrinsic bindings from the nonintrinsic global
-bindings by having two bindings for Math, one of them intrinsic, the
-other not.  (And in case (b) we'd expose that type, and it'd be final
-and nondynamic.)
-
-=== global ===
-
-<!-- [[proposals:globals]] -->
-
-<p>The intrinsic ''global'' property holds a reference to the global
-object that contains that property.
-
-<NOTE>There may be multiple global objects in a program, but these
-objects may share values or immutable state: for example, their
-''isNaN'' properties may hold the same function object.  However, each
-global object has separate mutable state, and a separate value for the
-intrinsic ''global'' property.
-
-<NOTE>This property is new in 4th Edition.
+{{{
+__ES4__ type Callable = { meta::invoke: * }
+}}}
 
 <!-- End of global.html -->

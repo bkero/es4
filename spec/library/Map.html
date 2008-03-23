@@ -1,49 +1,131 @@
-<h1 id="class Map"> The class ''Map'' </h1>
+<H1 id="class Map"> The class ''Map'' </H1>
 
+<hr>
 <pre>
+NAME:                       "The class 'Map'"
 FILE:                       spec/library/Map.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-18
+CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
+SOURCES:                    REFERENCES [1], [2], [3]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 3 - 2008-03-11
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
-REVIEWED AGAINST PROPOSALS: NO
-REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
+IMPLEMENTATION STATUS:      ES4 RI
+TEST CASE STATUS:           Unknown
+
+
+OPEN ISSUES
+
+  * 'intrinsic::clear' uses 'iterator::get' and 'intrinsic::remove' to
+    perform removal.  That is by design (it allows overridden methods
+    that observe or modify iteration and removal to work during
+    clearing as well).  But is it desirable?
+
+
+CHANGES SINCE DRAFT 2 (2008-03-03)
+
+  * The prototype 'get' and 'put' methods also accept a 'notfound'
+    parameter.
+
+  * Presentation:
+    - section headers for intrinsic methods now use the syntax
+      'intrinsic::foo()' instead of just 'foo'.
+    - compatibility note ("new in 4th edition")
+    - added an explicit "extends Object" clause.
+    - the informative method 'allElements' was renamed as 'allItems'.
+    - corrected a typo
+    - common fields in the status block above
+
+
+CHANGES SINCE DRAFT 1 (2008-02-29)
+
+  * The value returned by 'hashcode' is constrained to be a number and
+    is always explicitly converted to uint
+
+  * Map(x) returns x if x is a Map
+
+  * 'get' and 'put' have (V|undefined) return types
+
+  * 'get' and 'put' accept an optional value (defaulting to undefined)
+    which is returned if the association was not found in the map
+
+  * There is a new method 'clear' to clear the map
+
+  * The object returned from helper::iterate has been annotated with
+    an explicit type, fixing the next field.
+
+
+NOTES
+
+  * Informative methods:
+
+    Informative methods on ''Map'' do not call program-visible (i.e.,
+    public, protected, intrinsic, reflect, meta, iterator, or
+    prototype) methods on their 'this' object except as explicitly
+    specified in this document.
+
+    (The above clarification belongs in a general preface to the
+    library.)
+
+  * Subtyping for parameterized classes: We've agreed that for a
+    parameterized type Cls and type T, Cls.&lt;T&gt; is a subtype of
+    Cls.&lt;*&gt;.  That has yet to be fully formalized.  The Map
+    class relies on that subtyping rule for its 'this' constraints on
+    prototype methods, and for type testing in the static
+    'meta::invoke' method.
+
+
+REFERENCES
+
+[1] http:&#x2F;&#x2F;wiki.ecmascript.org/doku.php?id=proposals:dictionary
+[2] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/146
+[3] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/203
 </pre>
+<hr>
 
 <P> The class ''Map'' is a parameterized, dynamic, non-final, direct
-subclass of ''Object'' that provides a reliable and efficient map from
-keys to values.  Keys and values may be of arbitrary types.
+subclass of ''Object'' that provides a reliable, efficient, mutable,
+and iterable map from keys to values.  Keys and values may be of
+arbitrary types.
+
+<COMP> The class ''Map'' is new in the 4th Edition of this Standard.
 
 <P> A ''Map'' is realized as a hash table.  When the ''Map'' is
-constructed the client program may provide functions that compare keys
-and compute hash values for keys.
-
+constructed the caller may provide specialized functions that compare
+keys and compute hash values for keys.
 
 == Synopsis ==
 
 <P> The class ''Map'' provides the following interface:
 
 {{{
-class Map.<K,V>
+__ES4__ dynamic class Map.<K,V> extends Object
 {
-    <SIGNATURE file="Map.es" name="function Map">
+    public function Map(equals:   function = (function(a,b) a === b),
+                        hashcode: function = intrinsic::hashcode) <LDOTS>
 
-    static const length = 2;
+    <SIGNATURE file="Map.es" name="static meta function invoke">
+    static public const length = 2;
 
     <SIGNATURE file="Map.es" name="intrinsic function size">
     <SIGNATURE file="Map.es" name="intrinsic function get">
     <SIGNATURE file="Map.es" name="intrinsic function put">
     <SIGNATURE file="Map.es" name="intrinsic function has">
     <SIGNATURE file="Map.es" name="intrinsic function remove">
+    <SIGNATURE file="Map.es" name="intrinsic function clear">
 
     <SIGNATURE file="Map.es" name="iterator function get">
     <SIGNATURE file="Map.es" name="iterator function getKeys">
     <SIGNATURE file="Map.es" name="iterator function getValues">
     <SIGNATURE file="Map.es" name="iterator function getItems">
 
-    private const equals = <LDOTS>
-    private const hashcode = <LDOTS>
-    private var population = <LDOTS>
+    private const equals   : function = <LDOTS>
+    private const hashcode : function = <LDOTS>
+    private var population : uint = <LDOTS>
 }
 }}}
 
@@ -51,10 +133,11 @@ class Map.<K,V>
 
 {{{
     size:   function () <LDOTS>
-    get:    function (key) <LDOTS>
-    put:    function (key, value) <LDOTS>
+    get:    function (key, notfound) <LDOTS>
+    put:    function (key, value, notfound) <LDOTS>
     has:    function (key) <LDOTS>
     remove: function (key) <LDOTS>
+    clear:  function () <LDOTS>
 }}}
 
 
@@ -68,42 +151,75 @@ and value type //V//.
 <P> The optional //equals// argument is a function that compares two
 keys and returns **true** if they are equal and **false** if they are
 not.  This function must implement a reflexive, transitive, and
-symmetric relation, and //equals(k1,k2)// must be constant.  The
-default value for //equals// is a function that compares the two keys
-using the ''==='' operator.
+symmetric relation, and //equals(k1,k2)// must be constant for any two
+actual keys //k1// and //k2//.  The default value for //equals// is a
+function that compares the two keys using the ''==='' operator.
 
 <P> The optional //hashcode// argument is a function that takes a key
-and returns a hash code for it.  This code may be used to find
-associations more quickly in the map.  Two calls to the //hashcode//
-function on the same key value must return the same hash value, and
-the //hashcode// function must always return the same value for two
-objects that compare equal by the //equals// function.  The default
+and returns a numeric value for it; this key is converted to a ''uint''
+//hash value// for the key.  The hash value may be used to find
+associations more quickly in the map.  Two calls to //hashcode// on
+the same key value must always result in the same hash value, and a
+call to //hashcode// must always result in the same hash value for two
+key values that compare equal by the //equals// function.  The default
 value for //hashcode// is the intrinsic global function ''hashcode''.
 
-<NOTE> The constraints that //equals// and //hashcode// return
-constant values do not apply to key values that are not in a ''Map''
+<NOTE> The constraint that //equals// and //hashcode// return
+constant values does not apply to key values that are not in a ''Map''
 nor referenced from an activation of any method on ''Map''.
 
-<IMPL> The ''Map'' constructor initializes the ''Map'' object by
-saving its parameters in private storage and initializing the element
-count to zero.
+<NOTE> There is no requirement that the values returned from
+//hashcode// for two unequal keys must be different.
 
-<INCLUDE file="Map.es" name="function Map">
+<NOTE> The operator ''=='' is not a valid comparator for the global
+intrinsic function ''hashcode'' because ''=='' will consider some
+values to be equal for which ''hashcode'' returns different hash
+values.
+
+<IMPL> The ''Map'' constructor initializes the ''Map'' object by
+saving its parameters in private storage and initializing the count of
+the number of associations in the table to zero.
+
+<INCLUDE file="Map.es" name="public function Map">
+
+<FIXME> (Ticket #153) The parameters to the ''Map'' constructor should
+be constrained to be ''function'', but not any more than that (because
+that would be bad UI for scripts).  Currently the RI does not support
+''function'' as a type annotation, so the current implementation of
+the constructor is unconstrained.
+
+=== Map( object ) ===
+
+<DESC> When the ''Map'' class object is called as a function, it
+returns a ''Map'' object.  If //object// is already a ''Map'' object
+of any type then it is returned.  Otherwise, a new ''Map'' object from
+''EnumerableId'' to ''*'' is created and is populated with the own
+properties of //object//.
+
+<RETN> The ''Map'' class object called as a function returns a ''Map''
+object.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="static meta function invoke">
+
+<FIXME> (Tickets #247, #289, and e-mail discussion.) This method will
+change if we change the meaning of statics in parameterized classes:
+the map would be from ''K'' to ''V'' instead of from ''EnumerableId'' to ''*''.
 
 
 == Methods on ''Map'' instances ==
 
-=== size ( ) ===
+=== intrinsic::size ( ) ===
 
 <RETN> The intrinsic method ''size'' returns the number of associations in the map.
 
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="intrinsic function size">
 
-=== get ( key ) ===
+=== intrinsic::get ( key, notfound=<LDOTS> ) ===
 
-<RETN> The intrinsic method ''get'' returns the value associated with //key//, or **null** if
-there's no such association.
+<RETN> The intrinsic method ''get'' returns the value associated with
+//key//, or //notfound// if there is no such association.
 
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="intrinsic function get">
@@ -111,19 +227,21 @@ there's no such association.
 <P> The informative function ''find'' searches for //key// in the
 ''Map'' and returns an object containing at least the properties
 ''key'' and ''value'' if the association was found, or otherwise
-**null**.
+**null**.  (The returned object is part of the ''Map'' data structure,
+and writing to it updates the association in the ''Map''.)
 
 {{{
 informative function find(key: K): like { key: K, value: V } <LDOTS>
 }}}
 
-=== put ( key, value ) ===
+=== intrinsic::put ( key, value, notfound=<LDOTS> ) ===
 
 <DESC> The intrinsic method ''put'' creates an association between
 //key// and //value//, or overwrites an existing association if there
-is one.
+is one.  
 
-<RETN> The ''put'' method returns nothing.
+<RETN> The ''put'' method returns the old value of the association if
+there was one, otherwise it returns //notfound//.
 
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="intrinsic function put">
@@ -135,15 +253,15 @@ is one.
 informative function insert(key: K, value: V): void <LDOTS>
 }}}
 
-=== has ( key ) ===
+=== intrinsic::has ( key ) ===
 
-<RETN> The intrinsic method ''has'' returns **true** if there exists an association for //key//,
-or **false** otherwise.
+<RETN> The intrinsic method ''has'' returns **true** if there exists
+an association for //key//, or **false** otherwise.
 
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="intrinsic function has">
 
-=== remove ( key ) ===
+=== intrinsic::remove ( key ) ===
 
 <DESC> The intrinsic method ''remove'' removes any association for //key//.
 
@@ -160,6 +278,15 @@ or **false** otherwise.
 informative function eject(box: like { key: K, value: V }): void <LDOTS>
 }}}
 
+=== intrinsic::clear ( ) ===
+
+<DESC> The intrinsic method ''clear'' removes all associations from the map.
+
+<RETN> The ''clear'' method returns nothing.
+
+<SHORTIMPL>
+<INCLUDE file="Map.es" name="intrinsic function clear">
+
 == Iteration protocol on ''Map'' instances ==
 
 <P> The iterator protocol makes use of a helper method ''iterate''
@@ -169,24 +296,22 @@ method:
 
 <INCLUDE file="Map.es" name="helper function iterate">
 
-<P> The informative function ''allElements'' calls the function passed
-as its third argument on every key/value pair in the table:
+<P> The informative function ''allItems'' calls its function
+argument on every key/value pair in the ''Map'':
 
 {{{
-informative function allElements(<LDOTS>, function (K,V):*): void <LDOTS>
+informative function allItems(fn: function): void <LDOTS>
 }}}
 
-<P> As per normal, the iterator methods ''getKeys'', ''getValues'', and ''getItems''
-return iterator objects that iterate over keys, values, and key/value pairs, respectively.
+<P> The iterator methods ''getKeys'', ''getValues'', and ''getItems''
+return iterator objects that iterate over keys, values, and key/value
+pairs, respectively.  The iterator method ''get'' iterates over keys
+(like ''getKeys'').
 
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="iterator function getKeys">
 <INCLUDE file="Map.es" name="iterator function getValues">
 <INCLUDE file="Map.es" name="iterator function getItems">
-
-<P> The iterator method ''get'' iterates over keys (like ''getKeys'').
-
-<SHORTIMPL>
 <INCLUDE file="Map.es" name="iterator function get">
 
 == Methods on the ''Map'' prototype object ==
@@ -200,5 +325,6 @@ corresponding intrinsic method on their ''this'' object.
 <INCLUDE file="Map.es" name="prototype function put">
 <INCLUDE file="Map.es" name="prototype function has">
 <INCLUDE file="Map.es" name="prototype function remove">
+<INCLUDE file="Map.es" name="prototype function clear">
 
 <!-- End of Map.html -->

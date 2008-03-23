@@ -48,7 +48,7 @@ val anyType         = Ast.SpecialType Ast.Any
 fun assert b s = if b then () else (raise Fail s)
 
 fun fmtName n = if !doTrace
-                then LogErr.name n
+                then LogErr.name n  
                 else ""
 
 fun fmtMname n = if !doTrace
@@ -132,11 +132,15 @@ fun liftOption (f:'a -> 'a option)
  *
  * A type *should* evaluate to a "ground" term if its unit is closed. We leave
  * that fact up to the various callers of normalization, though.
+ *
+ * A "ground type" is one that is closed, but, for example,
+ *  function.<X>(X):X  is still considered a ground type.
  *)
 
-fun isGroundType (t:Ast.TYPE_EXPR) 
+fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
     : bool = 
     let
+        fun isGroundType t = isGroundTypeEnv e t
         fun isGroundField { name, ty } = isGroundType ty
         fun isGroundOption NONE = true
           | isGroundOption (SOME t) = isGroundType t
@@ -145,23 +149,29 @@ fun isGroundType (t:Ast.TYPE_EXPR)
             Ast.SpecialType _ => true
           | Ast.InstanceType it => 
             (length (#typeParams it) = length (#typeArgs it))
-
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+            if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
+            then (trace ["bound var in ground type"]; true)
+            else (trace ["free var in ground type"]; false)
           | Ast.TypeName _ => false
           | Ast.ElementTypeRef _ => false
           | Ast.FieldTypeRef _ => false
           | Ast.AppType _ => false
-          | Ast.LamType _ => false
-                             
+          | Ast.LamType {params, body} => isGroundTypeEnv (params @ e) body
           | Ast.NullableType { expr, ... } => isGroundType expr
           | Ast.ObjectType fields => List.all isGroundField fields
-          | Ast.LikeType t => isGroundType t
+          | Ast.LikeType t => isGroundTypeEnv e t
           | Ast.UnionType tys => List.all isGroundType tys
           | Ast.ArrayType tys =>List.all isGroundType tys
-          | Ast.FunctionType { params, result, thisType, ... } => 
-            List.all isGroundType params andalso
-            isGroundType result andalso
-            isGroundOption thisType
+              | Ast.FunctionType { params, result, thisType, ... } => 
+                List.all isGroundType params andalso
+                isGroundType result andalso
+                isGroundOption thisType
     end
+
+fun isGroundType  (t:Ast.TYPE_EXPR) 
+    : bool = 
+    isGroundTypeEnv [] t
 
 fun isGroundTy (ty:Ast.TY) 
     : bool =
@@ -341,7 +351,7 @@ and ty2norm (prog:Fixture.PROGRAM)
             : TY_NORM = 
             if isGroundType e 
             then { exprs = [e], nullable = nullable, ribId = ribId }
-            else error ["internal error: non-ground term is not simple"]
+            else error ["internal error: simple type is not ground: ", LogErr.ty e]
                  
 
         (* Use 'subTerm2Norm' to evaluate a TYPE_EXPR in the same environment
@@ -626,8 +636,19 @@ and ty2norm (prog:Fixture.PROGRAM)
                         baseNorm
                       | _ => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
                 end
-                
-                
+(*
+              | Ast.LamType { params, body } =>
+                (* FIXME: add params to env, may shadow other vars *)
+                let in
+                    case subTerm body of
+                        SOME body' =>
+                        { exprs = [ Ast.LamType { params=params, body=body' } ],
+                          nullable = false,
+                          ribId = ribId }
+
+                      | _ => repackage ty 
+                end
+  *)              
               | _ => repackage ty
 
         fun nonNull (Ast.SpecialType Ast.Null) = false
@@ -709,6 +730,16 @@ fun groundMatchesGeneric (b:BICOMPAT)
                   (ty2:Ast.TYPE_EXPR)
 
     : bool = 
+    if b=Bicompat andalso
+       (case findSpecialConversion ty1 ty2 of 
+              SOME _ => true
+            | NONE => false)
+    then
+        let in
+            trace ["findSpecialConversion ", LogErr.ty ty1, " vs. ", LogErr.ty ty2];
+            true
+        end
+    else
     case (b, v, ty1, ty2) of 
 
         (* A-WRAP-COV *)
@@ -728,6 +759,7 @@ fun groundMatchesGeneric (b:BICOMPAT)
         groundMatchesGeneric b v ty1 lt2
 
       (* A-GENERIC *)
+      (* FIXME: need to alpha-rename so have consistent parameters *)
       | (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
         groundMatchesGeneric b v (#body lt1) (#body lt2)
 
@@ -755,8 +787,11 @@ fun groundMatchesGeneric (b:BICOMPAT)
         hasRest1 = hasRest2 andalso
         minArgs1 = minArgs2
 
-      (* A-DYN *)
+      (* A-DYN1 *)
       | (_, _, _, Ast.SpecialType Ast.Any) => true
+
+      (* A-DYN2 *)
+      | (Bicompat, _, Ast.SpecialType Ast.Any, _) => true
 
       (* A-INSTANCE -- generalized from A-INT *)
       | (_, _, Ast.InstanceType it1, Ast.InstanceType it2) =>
@@ -797,11 +832,9 @@ fun groundMatchesGeneric (b:BICOMPAT)
 	List.exists (Mach.nameEq name) [ Name.nons_Function, 
 					 Name.nons_Object ]
 
-      (* A-SPECIAL-CONVERSION -- generalized from A-INT-BOOL *)
-      | _ => 
-        (case findSpecialConversion ty1 ty2 of 
-             NONE => false
-           | SOME _ => true)
+    | _ => false
+
+    
 
 and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
                           (tyExpr2:Ast.TYPE_EXPR) 

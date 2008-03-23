@@ -4,7 +4,6 @@
  *
  * E262-3 15.2
  * E262-4 proposals:builtin_classes
- * E262-4 draft proposals:json_encoding_and_decoding
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
@@ -41,111 +40,181 @@
  * Status: Complete; Not reviewed against spec.
  */
 
+// Unspeakably vile hack, part the first.
+//
+// There are several language and RI bugs being worked around here.
+//
+// The first (#368) is that "private" is not open in prototype methods,
+// so we define our own "Private" namespace to hack around that.
+//
+// The second is that nothing can precede package definitions in
+// a file, so we hack around that by putting the definition inside
+// a package that's private to this file (by virtue of having
+// a distinguished name).
+
+package org.ecmascript.vilehack.Object {
+    public namespace Private = "Object private";
+}
+
 package
 {
-    use default namespace public;
-    // FIXME: this needs to be here to open the intrinsic namespace in the class.
-    // There is a bug in the definer.
-    use namespace intrinsic;
+    import org.ecmascript.vilehack.Object.*;
+
     use namespace __ES4__;
 
-    import JSON.*;
-    
-    type EnumerableId = (int|uint|string/*|Name*/);  // FIXME: circularity
-    
-    dynamic class Object
+    // IMPLEMENTATION ARTIFACT.
+    //
+    // Importing EcmaScript4_Internal here is not good enough,
+    // probably because it's probably loaded later in boot.sml.  So
+    // redefine the namespace locally with the right public tag; this
+    // causes no problems.
+
+    namespace helper = "helper";
+
+    public dynamic class Object
     {
         // IMPLEMENTATION ARTIFACT: A getter because Object is loaded before int.
-        static function get length() { return 1 }
+        public static function get length() { return 1 }
+
+        /* Do not remove this, it's used by the spec
+        public function Object(value=undefined) {
+        }
+        */
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        meta static function invoke(value=undefined) {
-            if (value === null || value === undefined)
-                return new Object();
-            return new Object(value);
-        }
+        static meta function invoke(value=undefined)
+            new Object(value);
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
-            "[object " + magic::getClassName(this) + "]";
+            this.Private::toString();
 
         intrinsic function toString() : string
-            "[object " + magic::getClassName(this) + "]";
+            Private::toString();
 
+        Private function toString(): string
+            "[object " + helper::getClassName() + "]";
+
+        helper function getClassName()
+            magic::getClassName(this);
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         prototype function toLocaleString()
-            this.public::toString();
+            this.Private::toLocaleString();
 
         intrinsic function toLocaleString() : string
-            this.public::toString();
+            Private::toLocaleString();
+
+        Private function toLocaleString()
+            this.toString();
 
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
         prototype function valueOf()
-            this;
+            this.Private::valueOf();
 
-        intrinsic function valueOf() : Object!
+        intrinsic function valueOf() : Object
+            Private::valueOf();
+
+        Private function valueOf(): Object
             this;
 
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
-        prototype function hasOwnProperty(V)
-            magic::hasOwnProperty(this, (V is EnumerableId) ? V : string(V));
+        prototype function hasOwnProperty(name)
+            this.Private::hasOwnProperty(helper::toEnumerableId(name));
 
-        intrinsic function hasOwnProperty(V: EnumerableId): boolean
-            magic::hasOwnProperty(this, V);
+        // Bootstrapping barfs if this does not go directly to the magic,
+        // though I don't know why.  Could be that Object is not fully
+        // set up yet when it's called.
+        intrinsic function hasOwnProperty(name: EnumerableId): boolean
+            magic::hasOwnProperty(this, name);
+
+        Private function hasOwnProperty(name: EnumerableId): boolean
+            magic::hasOwnProperty(this, name);
 
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
-        prototype function isPrototypeOf(V)
-            private::isPrototypeOf(this,V);
+        prototype function isPrototypeOf(value)
+            this.Private::isPrototypeOf(value);
 
-        intrinsic function isPrototypeOf(V): boolean
-            private::isPrototypeOf(this,V);
+        intrinsic function isPrototypeOf(value): boolean
+            Private::isPrototypeOf(value);
 
-        private function isPrototypeOf(self, V): boolean {
-            if (!(V is Object))
+        Private function isPrototypeOf(value): boolean {
+            if (!(value is Object))
                 return false;
 
+            let obj = value;
             while (true) {
-                V = magic::getPrototype(V);
-                if (V === null || V === undefined)
+                obj = magic::getPrototype(obj);
+                if (obj === null || obj === undefined)
                     return false;
-                if (V === self)
+                if (obj === this)
                     return true;
             }
         }
 
-
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
         /* E262-4 draft proposals:enumerability */
-        prototype function propertyIsEnumerable(prop, e=undefined)
-            private::propertyIsEnumerable(this, 
-                                         (prop is EnumerableId) ? prop : string(prop), 
-                                         (e is (boolean|undefined)) ? e : boolean(e));
 
-        intrinsic function propertyIsEnumerable(prop: EnumerableId,
-                                                e:(boolean|undefined) = undefined): boolean 
-            private::propertyIsEnumerable(this, prop, e);
+        prototype function propertyIsEnumerable(name)
+            this.Private::propertyIsEnumerable(helper::toEnumerableId(name));
 
-        private function propertyIsEnumerable(self, prop, e) {
-            if (!magic::hasOwnProperty(self,prop))
+        intrinsic function propertyIsEnumerable(name: EnumerableId): boolean 
+            Private::propertyIsEnumerable(name);
+
+        Private function propertyIsEnumerable(name) {
+            if (!magic::hasOwnProperty(this, name))
                 return false;
-
-            let oldval = !magic::getPropertyIsDontEnum(self, prop);
-            if (!magic::getPropertyIsDontDelete(self, prop))
-                if (e is boolean)
-                    magic::setPropertyIsDontEnum(self, prop, !e);
-            return oldval;
+            return !magic::getPropertyIsDontEnum(this, name);
         }
 
+        /* Old code
+        prototype function propertyIsEnumerable(name, flag=undefined)
+            this.Private::propertyIsEnumerable(helper::toEnumerableId(name), 
+                                               flag === undefined ? flag : boolean(flag));
 
-        /* E262-4 draft proposals:json_encoding_and_decoding */
-        prototype function toJSONString(pretty=false)
-            JSON.formatObject(this, pretty);
+        intrinsic function propertyIsEnumerable(name: EnumerableId, flag: (boolean|undefined) = undefined): boolean 
+            Private::propertyIsEnumerable(name, flag);
 
-        intrinsic function toJSONString(pretty: boolean=false) : string
-            JSON.formatObject(this, pretty);
+        Private function propertyIsEnumerable(name, flag) {
+            if (!magic::hasOwnProperty(this, name))
+                return false;
+
+            let oldval = !magic::getPropertyIsDontEnum(this, name);
+            if (!magic::getPropertyIsDontDelete(this, name))
+                if (flag !== undefined) 
+                    magic::setPropertyIsDontEnum(this, name, !flag);
+            return oldval;
+        }
+        */
+
+        prototype function __createProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
+            this.Private::__createProperty__(helper::toEnumerableId(name),
+                                             value,
+                                             enumerable === undefined ? true : boolean(enumerable),
+                                             removable === undefined ? true : boolean(removable),
+                                             writable === undefined ? true : boolean(writable));
+
+        intrinsic function __createProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void
+            Private::__createProperty__(name, value, enumerable, removable, writable);
+
+        Private function __createProperty__(name, value, enumerable, removable, writable) {
+            if (!magic::hasOwnProperty(this, name))
+                throw new TypeError(/* Property exists */);
+
+            let obj = magic::getPrototype(this);
+            while (obj != null) {
+                if (magic::hasOwnProperty(obj, name) && magic::getPropertyIsReadOnly(obj, name))
+                    throw new TypeError(/* Property is ReadOnly in prototype chain */);
+                obj = magic::getPrototype(obj);
+            }
+
+            this[name] = value;
+            magic::setPropertyIsDontEnum(this, name, !enumerable);
+            magic::setPropertyIsDontDelete(this, name, !removable);
+            magic::setPropertyIsReadOnly(this, name, !writable);
+        }
     }
 }

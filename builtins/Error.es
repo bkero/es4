@@ -49,25 +49,54 @@
  * verified.
  */
 
+// Vile hack.  See Object.es for documentation
+package org.ecmascript.vilehack.Error {
+    public namespace Private = "Error private";
+}
+
 package
 {
-    use default namespace public;
-    use namespace intrinsic;
+    import org.ecmascript.vilehack.Error.*;
+
     use namespace __ES4__;
 
-    /* E262-3 15.11 */
-    dynamic class Error
-    {
-        static const length = 1;
+    helper function isExactlyType(obj, t) {
+        // FIXME.  What we want is
+        //
+        //    let (ot = reflect::typeOf(obj))
+        //      t.reflect::isSubtypeOf(ot) && ot.reflect::isSubtypeOf(t)
+        if (t === EvalError) return obj is EvalError;
+        if (t === RangeError) return obj is RangeError;
+        if (t === ReferenceError) return obj is ReferenceError;
+        if (t === SyntaxError) return obj is SyntaxError;
+        if (t === TypeError) return obj is TypeError;
+        if (t === URIError) return obj is URIError;
+    }
 
-        meta static function invoke(message)
+    /* E262-3 15.11 */
+    public dynamic class Error
+    {
+        static public const length = 1;
+
+        static meta function invoke(message)
             new Error(message);
 
-        function Error(message) {
+        public function Error(message) {
             if (message !== undefined)
-                this.public::message = string(message);
+                this.message = string(message);
         }
 
+        override helper function getClassName() {
+            if (helper::isExactlyType(this, EvalError) ||
+                helper::isExactlyType(this, RangeError) ||
+                helper::isExactlyType(this, ReferenceError) ||
+                helper::isExactlyType(this, SyntaxError) ||
+                helper::isExactlyType(this, TypeError) ||
+                helper::isExactlyType(this, URIError))
+                return "Error";
+            return super.helper::getClassName();
+        }
+                
         /* E262-3 15.11.4.2: "name" property on prototype */
         prototype var name = "Error";
 
@@ -76,15 +105,20 @@ package
         prototype var message = "Generic error";
 
         /* E262-3 15.11.4.4: toString */
-        prototype function toString(this:Error)
-            this.intrinsic::toString();
+        prototype function toString(this: Error)
+            this.Private::toString();
 
         /* INFORMATIVE */
-        override intrinsic function toString() {
-            if (this.public::message !== undefined)
-                return this.public::name + ": " + this.public::message;   // "this" qualification in case they've been deleted
+        // Explicit "this" qualification is required, in case they've been deleted
+        // from the prototype.
+        override intrinsic function toString()
+            Private::toString();
+
+        Private function toString() {
+            if (this.message !== undefined)
+                return string(this.name) + ": " + string(this.message);
             else
-                return this.public::name;
+                return string(this.name);
         }
     }
 }

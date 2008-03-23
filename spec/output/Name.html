@@ -1,0 +1,275 @@
+<html>
+<head>
+<title>The class "Name"</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<H1 id="class Name"> The class <code>Name</code> </H1>
+
+<HR>
+<pre>
+NAME:                       "The class 'Name'"
+FILE:                       spec/library/Name.html
+CATEGORY:                   Pre-defined classes
+SOURCES:                    REFERENCES [1], [2]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 3 - 2008-03-17
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
+IMPLEMENTATION STATUS:      ES4 RI
+TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 2 (2008-03-10)
+
+  * Name is now a subclass of 'Object' (not of 'String')
+
+  * The 'valueOf' method has been removed; 'Name' inherits the method
+    from the class 'Object'
+
+  * The constructor interface spec has been broken up into one and two
+    argument cases, for the sake of clarity.
+
+
+CHANGES SINCE DRAFT 1 (2008-03-05)
+
+  * Compatibility note in intro.
+
+  * More elaborate status block above.
+
+  * Prototype and intrinsic methods forward to private methods now.
+
+  * The Name constructor is allowed to hash-cons.
+
+  * The Name converter is required to return its first argument if it
+    is a Name object and the second parameter is undefined.
+
+
+NOTES
+
+  * Due to an RI bug (#368), the namespace 'Private' is used instead
+    of 'private'.
+
+
+REFERENCES
+
+[1] http:&#x2f;&#x2f;wiki.ecmascript.org/doku.php?id=proposals:name_objects
+[2] builtins/Name.es in the ES4 RI
+</pre>
+<HR>
+
+<P><span class="pcounter"></span> The class <code>Name</code> is a final, nullable, non-dynamic, direct
+subclass of <code>Object</code> that reflects a property name as a pair of
+<code>Namespace</code> and <code>string</code> values.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The <code>Namespace</code> class is new in the 4th Edition of this Standard.
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> The class <code>Name</code> provides the following interface:
+
+<PRE>
+__ES4__ final class Name extends Object
+{
+    public function Name(...args) &#x0085;
+    static meta function invoke(...args): Name &#x0085;
+    
+    public static const length = 2
+
+    override intrinsic function toString() : string &#x0085
+
+    public const qualifier:  Namespace
+    public const identifier: string
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>Name</code> prototype object provides the following direct properties:
+
+<PRE>
+    toString: function (this: Name) &#x0085;
+</PRE>
+
+<h2>Operators</h2>
+
+<P><span class="pcounter"></span> The operators <code>==</code> and <code>===</code> compare as equal two <code>Name</code>
+objects that are separately created from the same
+(qualifier,identifier) pair; similarly, the operators <code>!=</code> and
+<code>!==</code> compare as not equal two <code>Name</code> objects that are separately
+created from (qualifier,identifier) pairs.
+
+
+<h2>Methods on the <code>Name</code> class object</h2>
+
+<h3>new&nbsp;Name&nbsp;(&nbsp;id&nbsp;)</h3>
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> When the <code>Name</code> constructor is called with one argument
+<i>id</i> it returns a <code>Name</code> object whose <code>qualifier</code> is null
+and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function Name( id ) &#x0085;
+</PRE>
+
+<h3>new&nbsp;Name(&nbsp;ns,&nbsp;id&nbsp;)</h3>
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> When the <code>Name</code> constructor is called with two arguments
+<i>ns</i> and <i>id</i> it returns a <code>Name</code> object whose <code>qualifier</code> is
+<i>ns</i> and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
+
+<P><span class="pcounter"></span> <i>ns</i> may be <b>null</b>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function Name( ns: Namespace?, id ) &#x0085;
+</PRE>
+
+<h3>Name&nbsp;(&nbsp;...args&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The <code>Name</code> class object called as a function creates a
+<code>Name</code> object by invoking the <code>Name</code> constructor on its
+argumen(s)
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Name</code> class object called as a function returns a
+<code>Name</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke( ...args )
+    new Name(...args);
+</PRE>
+
+<h2>Methods on <code>Name</code> instances</h2>
+
+<h3>intrinsic::toString&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method converts this <code>Name</code> object
+to a string.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns a string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+override intrinsic function toString() : string
+    Private::toString();
+
+Private function toString() : string {
+    if (qualifier === null)
+        return identifier;
+    return string(qualifier) + "::" + identifier;
+}
+</PRE>
+
+
+<h2>Value properties of <code>Name</code> instances</h2>
+
+<h3>qualifier</h3>
+
+<P><span class="pcounter"></span> The <code>qualifier</code> property holds the namespace value for this
+<code>Name</code> object.  If <code>qualifier</code> is null then the implied namespace
+is the compatibility namespace <b>noNS</b>.
+
+<h3>identifier</h3>
+
+<P><span class="pcounter"></span> The <code>identifier</code> property holds the identifier value for this
+<code>Name</code> object.  It is never null.
+
+
+<h2>Methods on the <code>Name</code> prototype object</h2>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The methods on the <code>Name</code> prototype object perform the same
+operations as their corresponding intrinsic methods perform.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The methods on the <code>Name</code> prototype object return what their
+corresponding intrinsic methods return.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+prototype function toString(this : Name)
+    this.Private::toString();
+</PRE>
+
+
+
+
+</body>
+</html>

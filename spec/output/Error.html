@@ -1,0 +1,723 @@
+<html>
+<head>
+<title>Error classes</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+@media print {
+/*    H1 { page-break-before: always } */
+    .copyright { page-break-before: always }
+}
+
+</style>
+</head>
+
+<body>
+
+
+<h1>Error classes</h1>
+
+<hr>
+<pre>
+NAME:                       "Error classes"
+FILE:                       spec/library/Error.html
+CATEGORY:                   Pre-defined classes
+SOURCES:                    REFERENCE [1]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-03-06
+REVIEWED AGAINST ES3:       YES
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  YES
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      YES
+REVIEWS:                    (none)
+IMPLEMENTATION STATUS:      ES4 RI
+
+NOTES
+
+  * Due to a bug [2] in the reference implementation, the private
+    methods in the error classes are currently in the namespace
+    "Private", not in "private".  This will be changed eventually.
+
+REFERENCES
+
+[1] ECMAScript 3rd Edition Specification
+[2] http:&#x2f;&#x2f;bugs.ecmascript.org/ticket/368
+
+</pre>
+<hr>
+
+<P><span class="pcounter"></span> ECMAScript provides a hierarchy of standard pre-defined error classes
+rooted at the class <code>Error</code> (see <span class="xref">class Error</span>).
+
+<P><span class="pcounter"></span> The ECMAScript implementation throws a new instance of one of
+the pre-defined error classes when it detects certain run-time errors.  The
+conditions under which run-time errors are detected are explained
+throughout this Standard.  The description of each of the pre-defined error
+classes contains a summary of the conditions under which an instance
+of that particular error class is thrown.
+
+<P><span class="pcounter"></span> The class <code>Error</code> serves as the base class for all the classes
+describing standard errors thrown by the ECMAScript implementation:
+<code>EvalError</code>, <code>RangeError</code>, <code>ReferenceError</code>, <code>SyntaxError</code>,
+<code>TypeError</code>, and <code>URIError</code>.
+(See <span class="xref">class EvalError</span>, <span class="xref">class RangeError</span>,
+<span class="xref">class ReferenceError</span>, <span class="xref">class SyntaxError</span>,
+<span class="xref">class TypeError</span>, <span class="xref">class URIError</span>.)
+
+<P><span class="pcounter"></span> The class <code>Error</code> as well as all its pre-defined subclasses are
+non-final and dynamic and may be subclassed by user-defined exception
+classes.
+
+<P><span class="pcounter"></span> All the pre-defined subclasses of <code>Error</code> share the same structure.
+
+
+<H1 id="class Error"> The class <code>Error</code> </h1>
+
+<P><span class="pcounter"></span> The class <code>Error</code> is a dynamic, non-final subclass of <code>Object</code>.
+Instances of <code>Error</code> are not thrown by the implementation; rather,
+<code>Error</code> is intended to serve as a base class for other error classes
+whose instances represent specific classes of run-time errors.
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> The class <code>Error</code> provides the following interface:
+
+<PRE>
+dynamic class Error extends Object 
+{
+    public function Error(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+    
+    override intrinsic function toString() &#x0085
+    override helper function getClassName() &#x0085
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>Error</code> prototype object provides these direct properties:
+
+<PRE>
+    toString: function () &#x0085;
+    name:     "Error"
+    message:  &#x0085;
+</PRE>
+
+<h2>Methods on the <code>Error</code> class</h2>
+
+<h3>new&nbsp;Error&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Error</code> constructor is called as part of a
+<code>new&nbsp;Error</code> expression it initialises the newly created object:
+If <i>message</i> is not <b>undefined</b>, the dynamic <code>message</code> property
+of the newly constructed <code>Error</code> object is set to <code>string(<i>message</i>)</code>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function Error(message) {
+    if (message !== undefined)
+        this.message = string(message);
+}
+</PRE>
+
+<h3>Error&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Error</code> class object is called as a function, it
+creates and initialises a new <code>Error</code> object by invoking the
+<code>Error</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Error</code> class object called as a function returns a new
+<code>Error</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new Error(message);
+</PRE>
+
+
+<h2>Methods on <code>Error</code> instances</h2>
+
+<h3>intrinsic::toString&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method converts the <code>Error</code> object
+to an implementation-defined string.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> A <code>string</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+override intrinsic function toString()
+    Private::toString();
+</PRE>
+
+<P><span class="pcounter"></span> The private function <code>toString</code> is implementation-defined.
+
+<h3>helper::getClassName&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The helper method <code>getClassName</code> overrides the method defined
+in <code>Object</code> and makes the pre-defined subclasses of <code>Error</code> appear
+to have the <code>[[Class]]</code> value <code>"Error"</code>.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The helper method <code>getClassName</code> is a specification artifact.
+The protocol it defines for overriding <code>[[Class]]</code> is not available to
+user code.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The helper method <code>getClassName</code> returns a string.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+override helper function getClassName() {
+    if (helper::isExactlyType(this, EvalError) ||
+        helper::isExactlyType(this, RangeError) ||
+        helper::isExactlyType(this, ReferenceError) ||
+        helper::isExactlyType(this, SyntaxError) ||
+        helper::isExactlyType(this, TypeError) ||
+        helper::isExactlyType(this, URIError))
+        return "Error";
+    return super.helper::getClassName();
+}
+
+helper function isExactlyType(obj, cls)
+    let (objtype = reflect::typeOf(obj))
+        cls.reflect::isSubtypeOf(objtype) && objtype.reflect::isSubtypeOf(cls);
+</PRE>
+
+
+<h2>Methods on the <code>Error</code> prototype object</h2>
+
+<h3>toString&nbsp;(&nbsp;)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The prototype <code>toString</code> method calls the private <code>toString</code> method.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The prototype <code>toString</code> method returns a <code>string</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+prototype function toString(this: Error)
+    this.Private::toString();
+</PRE>
+
+<h2>Value properties on the <code>Error</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string
+"<code>Error</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an
+implementation-defined string.
+
+
+
+
+<H1 id="class EvalError"> The class <code>EvalError</code> </H1>
+
+<P><span class="pcounter"></span> The implementation throws a new <code>EvalError</code> instance when it
+detects that the global function <code>eval</code> was used in a way that is
+incompatible with its definition.  See sections XXX.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Clean up the section references when we reach final draft.
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> The <code>EvalError</code> class provides this interface:
+
+<PRE>
+dynamic class EvalError extends Error
+{
+    public function EvalError(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>EvalError</code> prototype object provides these direct properties:
+<PRE>
+    name:    "EvalError"
+    message: &#x0085;
+</PRE>
+
+<h2>Methods on the <code>EvalError</code> class</h2>
+
+<h3>new&nbsp;EvalError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>EvalError</code> constructor is called as part of a
+<code>new&nbsp;EvalError</code> expression it initialises the newly created
+object by delegating to the <code>Error</code> constructor.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function EvalError(message)
+    : super(message)
+{
+}
+</PRE>
+
+
+<h3>EvalError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>EvalError</code> class object is called as a function, it
+creates and initialises a new <code>EvalError</code> object by invoking the
+<code>EvalError</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>EvalError</code> class object called as a function returns a
+new <code>EvalError</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new EvalError(message);
+</PRE>
+
+
+<h2>Value properties on the <code>EvalError</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string "<code>EvalError</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an implementation-defined string.
+
+
+
+
+<H1 id="class RangeError"> The class <code>RangeError</code> </H1>
+
+<P><span class="pcounter"></span> The implementation throws a new <code>RangeError</code> instance when it
+detects that a numeric value has exceeded the allowable range.  See
+sections XXX.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Clean up the section references when we reach final draft.
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> The <code>RangeError</code> class provides this interface:
+
+<PRE>
+dynamic class RangeError extends Error
+{
+    public function RangeError(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>RangeError</code> prototype object provides these direct properties:
+<PRE>
+    name:    "RangeError"
+    message: &#x0085;
+</PRE>
+
+<h2>Methods on the <code>RangeError</code> class</h2>
+
+<h3>new&nbsp;RangeError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>RangeError</code> constructor is called as part of a
+<code>new&nbsp;RangeError</code> expression it initialises the newly created
+object by delegating to the <code>Error</code> constructor.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function RangeError(message)
+    : super(message)
+{
+}
+</PRE>
+
+
+<h3>RangeError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>RangeError</code> class object is called as a function, it
+creates and initialises a new <code>RangeError</code> object by invoking the
+<code>RangeError</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>RangeError</code> class object called as a function returns a
+new <code>RangeError</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new RangeError(message);
+</PRE>
+
+
+<h2>Value properties on the <code>RangeError</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string "<code>RangeError</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an implementation-defined string.
+
+
+
+
+<H1 id="class ReferenceError"> The class <code>ReferenceError</code> </H1>
+
+<P><span class="pcounter"></span> The implementation throws a new <code>ReferenceError</code> instance when it
+detects an invalid reference value. See sections XXX.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Clean up the section references when we reach final draft.
+
+<h2>Synopsis</h2>
+
+<PRE>
+dynamic class ReferenceError extends Error
+{
+    public function ReferenceError(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>ReferenceError</code> prototype object provides these direct properties:
+<PRE>
+    name:    "ReferenceError"
+    message: &#x0085;
+</PRE>
+
+<h2>Methods on the <code>ReferenceError</code> class</h2>
+
+<h3>new&nbsp;ReferenceError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>ReferenceError</code> constructor is called as part of a
+<code>new&nbsp;ReferenceError</code> expression it initialises the newly created
+object by delegating to the <code>Error</code> constructor.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function ReferenceError(message)
+    : super(message)
+{
+}
+</PRE>
+
+
+<h3>ReferenceError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>ReferenceError</code> class object is called as a function, it
+creates and initialises a new <code>ReferenceError</code> object by invoking the
+<code>ReferenceError</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>ReferenceError</code> class object called as a function returns a
+new <code>ReferenceError</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new ReferenceError(message);
+</PRE>
+
+
+<h2>Value properties on the <code>ReferenceError</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string "<code>ReferenceError</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an implementation-defined string.
+
+
+
+
+<H1 id="class SyntaxError"> The class <code>SyntaxError</code> </H1>
+
+<P><span class="pcounter"></span> The implementation throws a new <code>SyntaxError</code> instance when a
+parsing error has occurred. See sections XXX.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Clean up the section references when we reach final draft.
+
+<h2>Synopsis</h2>
+
+<PRE>
+dynamic class SyntaxError extends Error
+{
+    public function SyntaxError(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>SyntaxError</code> prototype object provides these direct properties:
+<PRE>
+    name:    "SyntaxError"
+    message: &#x0085;
+</PRE>
+
+<h2>Methods on the <code>SyntaxError</code> class</h2>
+
+<h3>new&nbsp;SyntaxError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>SyntaxError</code> constructor is called as part of a
+<code>new&nbsp;SyntaxError</code> expression it initialises the newly created
+object by delegating to the <code>Error</code> constructor.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function SyntaxError(message)
+    : super(message)
+{
+}
+</PRE>
+
+
+<h3>SyntaxError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>SyntaxError</code> class object is called as a function, it
+creates and initialises a new <code>SyntaxError</code> object by invoking the
+<code>SyntaxError</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>SyntaxError</code> class object called as a function returns a
+new <code>SyntaxError</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new SyntaxError(message);
+</PRE>
+
+
+<h2>Value properties on the <code>SyntaxError</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string "<code>SyntaxError</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an implementation-defined string.
+
+
+
+
+<h1 id="class TypeError"> The class <code>TypeError</code> </H1>
+
+<P><span class="pcounter"></span> The implementation throws a new <code>TypeError</code> instance when it has
+detected that the actual type of an operand is different than the
+expected type. See sections XXX.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Clean up the section references when we reach final draft.
+
+<h2>Synopsis</h2>
+
+<PRE>
+dynamic class TypeError extends Error
+{
+    public function TypeError(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>TypeError</code> prototype object provides these direct properties:
+<PRE>
+    name:    "TypeError"
+    message: &#x0085;
+</PRE>
+
+<h2>Methods on the <code>TypeError</code> class</h2>
+
+<h3>new&nbsp;TypeError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>TypeError</code> constructor is called as part of a
+<code>new&nbsp;TypeError</code> expression it initialises the newly created
+object by delegating to the <code>Error</code> constructor.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function TypeError(message)
+    : super(message)
+{
+}
+</PRE>
+
+
+<h3>TypeError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>TypeError</code> class object is called as a function, it
+creates and initialises a new <code>TypeError</code> object by invoking the
+<code>TypeError</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>TypeError</code> class object called as a function returns a
+new <code>TypeError</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new TypeError(message);
+</PRE>
+
+
+<h2>Value properties on the <code>TypeError</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string "<code>TypeError</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an implementation-defined string.
+
+
+
+
+<H1 id="class URIError"> The class <code>URIError</code> </H1>
+
+<P><span class="pcounter"></span> The implementation throws a new <code>URIError</code> when one of the global
+URI handling functions was used in a way that is incompatible with its
+definition. See sections XXX.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Clean up the section references when we reach final draft.
+
+<h2>Synopsis</h2>
+
+<PRE>
+dynamic class URIError extends Error
+{
+    public function URIError(message) &#x0085
+    static meta function invoke(message) &#x0085
+    
+    static public const length = 1
+}
+</PRE>
+
+<P><span class="pcounter"></span> The <code>URIError</code> prototype object provides these direct properties:
+<PRE>
+    name:    "URIError"
+    message: &#x0085;
+</PRE>
+
+<h2>Methods on the <code>URIError</code> class</h2>
+
+<h3>new&nbsp;URIError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>URIError</code> constructor is called as part of a
+<code>new&nbsp;URIError</code> expression it initialises the newly created
+object by delegating to the <code>Error</code> constructor.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+public function URIError(message)
+    : super(message)
+{
+}
+</PRE>
+
+
+<h3>URIError&nbsp;(message)</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>URIError</code> class object is called as a function, it
+creates and initialises a new <code>URIError</code> object by invoking the
+<code>URIError</code> constructor.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>URIError</code> class object called as a function returns a
+new <code>URIError</code> object.
+
+<P class="implsection"><b>Implementation</b>
+<PRE>
+static meta function invoke(message)
+    new URIError(message);
+</PRE>
+
+
+<h2>Value properties on the <code>URIError</code> prototype object</h2>
+
+<h3>name</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>name</code> prototype property is the string "<code>URIError</code>".
+
+<h3>message</h3>
+
+<P><span class="pcounter"></span> The initial value of the <code>message</code> prototype property is an implementation-defined string.
+
+
+
+
+</body>
+</html>

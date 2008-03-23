@@ -46,24 +46,29 @@
  * just fine.
  */
 
+// Vile hack.  See Object.es for documentation
+package org.ecmascript.vilehack.Function {
+    public namespace Private = "Function private";
+}
+
 package
 {
-    use default namespace public;
-    use namespace intrinsic;
+    import org.ecmascript.vilehack.Function.*;
+
     use namespace __ES4__;
 
-    dynamic class Function
+    public dynamic class Function
     {
         // IMPLEMENTATION ARTIFACT: A getter because Function is loaded before int.
         static function get length() { return 1 }
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-        meta static function invoke(...args)
+        static meta function invoke(...args)
             magic::construct(Function, args);
 
         /* The following is for the benefit of the specification, don't remove it.
 
-        function Function(...args)
+        public function Function(...args)
             helper::createFunction(args);
 
         helper function createFunction(args) {
@@ -75,7 +80,7 @@ package
                 parameters = args.join(",");
             }
             body = string(body);
-            magic::initializeFunction(this, intrinsic::global, parameters, body);
+            magic::initializeFunction(this, __ES4__::global, parameters, body);
         }
 
         */
@@ -102,42 +107,40 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        meta prototype function invoke(...args)
+        prototype meta function invoke(...args)
             undefined;
-
-        /* FIXME #64: This is bogus */
-        prototype var source : string = "function () { }";
 
         prototype var length : uint = 0;
 
         /* XXX: Function.prototype.toString */
-        prototype function toString()
-            this.source;
+        prototype function toString(this: Function)
+            this.Private::toString();
 
         override intrinsic function toString() : string
-            source;
+            Private::toString();
+
+        Private function toString(): string
+            source || "function ( ) { }";
+
 
         /* E262-3 15.3.4.3: Function.prototype.apply */
-        prototype function apply(thisArg, argArray)
-            Function.apply(this, thisArg, argArray);
+        prototype function apply(/*this: Callable,*/ thisArg=undefined, argArray=undefined)
+            Function.apply(this,
+                           thisArg === undefined ? null : thisArg, 
+                           argArray === undefined ? null : argArray);
 
-        intrinsic function apply(thisArg=undefined, argArray=undefined)
+        intrinsic function apply(thisArg: Object=null, argArray: Object=null)
             Function.apply(this, thisArg, argArray);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object, and everyone eventually ends up in
            Function.apply().
-
-           Note ES4 bug fix: the arguments object is an 'Array', so the test
-           for applicability of argArray is simpler than in ES3.
         */
-        static function apply(fn : Function!, thisArg=undefined, argArray=undefined) {
-            if (thisArg === undefined || thisArg === null)
+        static public function apply(fn/*: Callable*/, thisArg: Object=null, argArray: Object=null) {
+            if (thisArg === null)
                 thisArg = global;
-            if (argArray === undefined || argArray === null)
+            if (argArray === null)
                 argArray = [];
-            else if (!(argArray is Array))
-                throw new TypeError("argument array to 'apply' must be Array");
             return magic::apply(fn, thisArg, argArray);
         }
 
@@ -147,16 +150,39 @@ package
            "length" of the function, so the length of
            Function.prototype.call is 1, which is what we want.
         */
-        prototype function call(thisObj, ...args)
-            Function.apply(this, thisObj, args);
+        prototype function call(/*this: Callable,*/ thisObj=undefined, ...args)
+            Function.apply(this, 
+                           thisObj === undefined ? null : thisObj, 
+                           args);
 
-        intrinsic function call(thisObj=undefined, ...args)
+        intrinsic function call(thisObj: Object=null, ...args)
             Function.apply(this, thisObj, args);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object. */
-        static function call(fn, thisObj=undefined, ...args:Array):*
+        static public function call(fn/*: Callable*/, thisObj: Object=null, ...args)
             Function.apply(fn, thisObj, args);
+
+
+        /* E262-4 draft: "bind" is a static method on the Function object and
+           also a method on function objects.
+        */
+        prototype function bind(/*this: Callable,*/ thisObj, ...args)
+            Function.helper::bind(this, thisObj, args);
+
+        intrinsic function bind(thisObj: Object, ...args)
+            Function.helper::bind(this, thisObj, args);
+
+        static public function bind(method/*: Callable*/, thisObj: Object, ...args)
+            helper::bind(method, thisObj, args);
+
+        static helper function bind(method, thisObj, args) {
+            if (thisObj === null)
+                throw new TypeError();
+            return function (...moreargs) 
+                       method.apply(thisObj, args.concat(moreargs));
+        }
+
 
         /* E262-3 15.3.5.3: [[HasInstance]] */
         intrinsic function HasInstance(V) {
@@ -182,13 +208,15 @@ package
         prototype function toSource()
             this.source;
 
+        // IMPLEMENTATION ARTIFACT
+
         // This is a getter because 'uint' is not defined by the time we
         // start constructing Functions.
-        function get length()
+        public function get length()
             magic::fnLength(this);
 
         // 'length' is logically a read-only property, so setting it should fail silently
-        function set length(x) {
+        public function set length(x) {
             // ignore it
         }
     }

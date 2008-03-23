@@ -104,8 +104,9 @@ fun findTraceOption (tname:string)
       | "construct" => SOME (Eval.doTraceConstruct) 
       | "ns" => SOME (LogErr.doNamespaces) 
       | "stack" => SOME (Mach.traceStack) 
-      (* FIXME: add "fixture" *)
+      (* FIXME: add "fixture" 
       | _ => NONE
+*)
 
 fun consumeOption (opt:string) : bool =
     case explode opt of                                  
@@ -201,7 +202,7 @@ fun verify prog argvRest =
         val (prog, frags) = define prog argvRest
         fun f prog accum (frag::frags) = 
             let 
-                val frag' = Verify.verifyTopFragment prog false frag
+                val frag' = Verify.verifyTopFragment prog true frag
             in
                 f prog (frag'::accum) frags
             end
@@ -233,7 +234,10 @@ fun getProgDir() =
             dir
     end
 
-fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
+fun repl (regs:Mach.REGS)
+         (dump:string -> bool)
+         (readLine:string -> string option)
+    : unit =
     let
         val regsCell = ref regs
 
@@ -248,10 +252,12 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
 
         fun doLine (accum:Ustring.SOURCE list) : unit =
             let
+(*
                 val _ = (case accum of
                              [] =>  if !interactive then print ">> " else print "<SMLREADY>\n"
                            | _ => ())
-                val line = case TextIO.inputLine TextIO.stdIn of
+*)
+                val line = case readLine (if !interactive then ">> " else "<SMLREADY>\n") of
                                NONE => raise quitException
                              | SOME s => s
                 val toks = String.tokens Char.isSpace line
@@ -315,7 +321,7 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
                         if not (!doDefn) then () else
                         let
                             val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
-                            val frag = Verify.verifyTopFragment prog false frag
+                            val frag = Verify.verifyTopFragment prog true frag
                         in
                             regsCell := Eval.withProg regs prog;
                             if not (!doEval) then () else
@@ -350,7 +356,9 @@ fun repl (regs:Mach.REGS) (dump:string -> bool) : unit =
         handle quitException => print "bye\n"
     end
 
-and main (dump:string -> bool) : 'a =
+and main (dump:string -> bool)
+         (readLine:string -> string option)
+    : 'a =
     let
         fun resume (regs:Mach.REGS option) =
             let
@@ -376,7 +384,7 @@ and main (dump:string -> bool) : 'a =
                 progDir := SOME dir;
                 case processOptions (CommandLine.arguments()) of
                     HelpCommand => (usage (); success)
-                  | ReplCommand => (repl (getRegs()) dump; success)
+                  | ReplCommand => (repl (getRegs()) dump readLine; success)
                   | ParseCommand files => (parse files; success)
                   | DefineCommand files => (define (#prog (getRegs())) files; success)
                   | VerifyCommand files => (verify (#prog (getRegs())) files; success)

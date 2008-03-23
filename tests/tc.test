@@ -85,7 +85,6 @@ let (f=function f() {}) f(3);
 %% [fn5] verify, pass
 let (f:function(int):int=function f(x:int):int {return x}) f(3);
 
-
 %% [fn7] verify, pass
 (function f(...x):int { return 1 }) (4);
 
@@ -115,4 +114,49 @@ let (f:function(y)=function f(x:int):int {return x}) f(3);
 
 %% [fn56] verify, pass
 let (f:function(int):int=function f(x) {return x}) f(3);
+
+%% [classInStmt] verify, pass
+namespace N 
+{ class C {} };
+
+%% [badtype] verify, fail
+var x:int;
+x="string";
+
+%% [fns1] verify, pass
+var f : function(int):int;
+f = function(g:int):int { return g; };
+
+%% [fns2] verify, pass
+var f : function(int):*;
+f = function(g:int):int { return g; };
+
+%% [fns3] verify, pass
+var f : function(*):int;
+f = function(g:int):int { return g; };
+
+%% [fns4] verify, pass
+var f : function(*):*;
+f = function(g:int):int { return g; };
+
+%% [fns5] verify, pass
+var f : function(int):int;
+f = function(g:int):* { return g; };
+
+%% [generic1] verify, pass
+var f : function.<X>(int):int;
+
+%% [generic1] verify, pass
+class C.<T> {
+      function get() : C.<T> {
+         return new C.<T>();
+      }
+}
+
+
+
+
+
+
+
 

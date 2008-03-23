@@ -66,56 +66,17 @@ package MathInternals
     }
 
     helper function isPositiveZero(n)
-        n == 0 && informative::sign > 0;
+        n == 0 && intrinsic::sign(n) > 0;
 
     helper function isNegativeZero(n)
-        n == 0 && informative::sign > 0;
+        n == 0 && intrinsic::sign(n) < 0;
 
     helper function isPositive(n)
-        n > 0 || n == 0 && informative::sign(n) > 0;
+        n > 0 || isPositiveZero(n);
 
     helper function isOddInteger(n)
-        helper::isIntegral(n) && n % 2 == 1;
+        intrinsic::isIntegral(n) && n % 2 == 1;
             
-    // Returns x with the sign of y
-    informative function copysign(x, y) {
-        if (isNaN(x)) 
-            return x;
-
-        let sign = informative::sign(y);
-        if (x < 0) {
-            if (sign < 0)
-                return x;
-            else 
-                return -x;
-        }
-        else if (x > 0) {
-            if (sign < 0)
-                return -x;
-            else
-                return x;
-        }
-        else {
-            if (sign < 0)
-                return -0.0;
-            else
-                return +0.0;
-        }
-    }
-
-    // Returns -1 for negative, 1 for positive, 0 for nan
-    informative function sign(x) {
-        if (isNaN(x))
-            return 0;
-        if (x < 0)
-            return -1;
-        if (x > 0)
-            return 1;
-        if (1/x < 0)
-            return -1;
-        return 1;
-    }
-
     informative native function acosDouble(x: double): double;
     informative native function acosDecimal(x: decimal): decimal;
     informative native function asinDouble(x: double): double;
@@ -165,14 +126,14 @@ package MathInternals
     // x >= 0
     informative function sqrtInt(x: int): (int|double) {
         let r = informative::sqrtDouble(double(x));
-        if (helper::isIntegral(r))
+        if (intrinsic::isIntegral(r))
             return int(r);
         return r;
     }
 
     informative function sqrtUint(x: uint): (uint|double) {
         let r = informative::sqrtDouble(double(x));
-        if (helper::isIntegral(r))
+        if (intrinsic::isIntegral(r))
             return uint(r);
         return r;
     }
@@ -193,12 +154,12 @@ package MathInternals
                 return n;
             }
             case (n: double) {
-                if (isNaN(n)) return n;
+                if (intrinsic::isNaN(n)) return n;
                 if (x == 0d) return 0d;  // Handle -0 => 0
                 return n < 0d ? -n : n;
             }
             case (n: decimal) {
-                if (isNaN(n)) return n;
+                if (intrinsic::isNaN(n)) return n;
                 if (x == 0m) return 0m;  // Handle -0 => 0
                 return n < 0m ? -n : n;
             }
@@ -217,12 +178,12 @@ package MathInternals
                 return intrinsic::acos(double(n));
             }
             case (n: double) { 
-                if (isNaN(n) || n > 1d || n < -1d) return NaN;
+                if (intrinsic::isNaN(n) || n > 1d || n < -1d) return NaN;
                 if (n == 1d) return 0d;
                 return informative::acosDouble(n);
             }
             case (n: decimal) {
-                if (isNaN(n) || n > 1m || n < 1m) return decimal.NaN;
+                if (intrinsic::isNaN(n) || n > 1m || n < 1m) return decimal.NaN;
                 if (n == 1m) return 0m;
                 return informative::acosDecimal(n);
             }
@@ -235,12 +196,12 @@ package MathInternals
                 return intrinsic::asin(double(n));
             }
             case (n: double) { 
-                if (isNaN(n) || n > 1d || n < -1d) return NaN;
+                if (intrinsic::isNaN(n) || n > 1d || n < -1d) return NaN;
                 if (n == 0d) return n; // Note, preserves -0
                 return informative::asinDouble(n);
             }
             case (n: decimal) {
-                if (isNaN(n) || n > 1m || n < 1m) return decimal.NaN;
+                if (intrinsic::isNaN(n) || n > 1m || n < 1m) return decimal.NaN;
                 if (n == 0m) return n; // Note, preserves -0
                 return informative::asinDecimal(n);
             }
@@ -253,15 +214,15 @@ package MathInternals
                 return intrinsic::atan(double(n));
             }
             case (n: double) { 
-                if (isNaN(n) || n == 0d) return n; // Note, preserves -0
+                if (intrinsic::isNaN(n) || n == 0d) return n; // Note, preserves -0
                 if (!isFinite(n)) 
-                    return informative::copysign(double.PI / 2d, n);
+                    return intrinsic::copysign(double.PI / 2d, n);
                 return informative::atanDouble(n);
             }
             case (n: decimal) {
-                if (isNaN(n) || n == 0m) return n; // Note, preserves -0
+                if (intrinsic::isNaN(n) || n == 0m) return n; // Note, preserves -0
                 if (!isFinite(n))
-                    return informative::copysign(decimal.PI / 2m, n);
+                    return intrinsic::copysign(decimal.PI / 2m, n);
                 return informative::atanDecimal(n);
             }
             }
@@ -277,7 +238,7 @@ package MathInternals
 
             let Type = (x is double) ? double : decimal;
 
-            if (isNaN(x) || isNaN(y)) 
+            if (intrinsic::isNaN(x) || intrinsic::isNaN(y)) 
                 return Type.NaN;
             if (y > 0 && x == 0) 
                 return Type.PI/2;
@@ -288,13 +249,13 @@ package MathInternals
             if (y < 0 && x == 0) 
                 return -Type.PI/2;
             if (y != 0 && isFinite(y) && !isFinite(x) && x > 0)
-                return Type(informative::copysign(0, y));
+                return Type(intrinsic::copysign(0, y));
             if (y != 0 && isFinite(y) && !isFinite(x) && x < 0)
-                return informative::copysign(Type.PI, y);
+                return intrinsic::copysign(Type.PI, y);
             if (!isFinite(y) && isFinite(x)) 
-                return informative::copysign(Type.PI/2, y);
+                return intrinsic::copysign(Type.PI/2, y);
             if (!isFinite(y) && !isFinite(x)) 
-                return informative::copysign(x > 0 ? Type.PI/4 : 3*Type.PI/4, y);
+                return intrinsic::copysign(x > 0 ? Type.PI/4 : 3*Type.PI/4, y);
 
             if (Type == double)
                 return informative::atan2Double(y, x);
@@ -406,22 +367,22 @@ package MathInternals
             if (y > x) return y;
             if (x is (int|uint) || x != 0) return x;
 
-            let x_sign = informative::sign(x),
-                y_sign = informative::sign(y);
+            let x_sign = intrinsic::sign(x),
+                y_sign = intrinsic::sign(y);
             if (x_sign > y_sign) return x;
             if (y_sign > x_sign) return y;
             return x;
         }
 
         intrinsic function min(x: AnyNumber, y: AnyNumber): AnyNumber {
-            if (isNaN(x)) return x;
-            if (isNaN(y)) return y;
+            if (intrinsic::isNaN(x)) return x;
+            if (intrinsic::isNaN(y)) return y;
             if (x < y) return x;
             if (y < x) return y;
             if (x is (int|uint) || x != 0) return x;
 
-            let x_sign = informative::sign(x),
-                y_sign = informative::sign(y);
+            let x_sign = intrinsic::sign(x),
+                y_sign = intrinsic::sign(y);
             if (x_sign < y_sign) return x;
             if (y_sign < x_sign) return y;
             return x;
@@ -456,9 +417,9 @@ package MathInternals
             [x,y] = helper::coerceToCommonFloatNumber(x,y);
             let Type = (x is double) ? double : decimal;
 
-            if (isNaN(y)) return Type.NaN;
+            if (intrinsic::isNaN(y)) return Type.NaN;
             if (y == 0) return Type(1);
-            if (isNaN(x) && y != 0) return Type.NaN;
+            if (intrinsic::isNaN(x) && y != 0) return Type.NaN;
             if (abs(x) > 1 && y == Infinity) return Type.POSITIVE_INFINITY;
             if (abs(x) > 1 && y == -Infinity) return Type(+0);
             if (abs(x) == 1 && y == Infinity) return Type.NaN;
@@ -477,7 +438,7 @@ package MathInternals
             if (helper::isNegativeZero(x) && y > 0 && !helper::isOddInteger(y)) return Type(+0);
             if (helper::isNegativeZero(x) && y < 0 && helper::isOddInteger(y)) return Type.NEGATIVE_INFINITY;
             if (helper::isNegativeZero(x) && y < 0 && !isOddInteger(y)) return Type.POSITIVE_INFINITY;
-            if (x < 0 && isFinite(x) && isFinite(y) && !helper::isIntegral(y)) return Type.NaN;
+            if (x < 0 && isFinite(x) && isFinite(y) && !intrinsic::isIntegral(y)) return Type.NaN;
 
             if (Type == double)
                 return informative::powDouble(x, y);
@@ -502,13 +463,13 @@ package MathInternals
             }
             else if (x == -Infinity) {
                 if (y > 0) {
-                    if (helper::isIntegral(y) && y % 2 == 0)
+                    if (isIntegral(y) && y % 2 == 0)
                         res = -Infinity;
                     else
                         res = Infinity;
                 }
                 else {
-                    if (helper::isIntegral(y) && y % 2 == 0)
+                    if (isIntegral(y) && y % 2 == 0)
                         res = -0;
                     else
                         res = +0;
@@ -533,7 +494,7 @@ package MathInternals
                     res = Infinity;
             }
             else if (x == 0) {
-                if (informative::sign(x) > 0) {
+                if (sign(x) > 0) {
                     if (y > 0)
                         res = +0;
                     else
@@ -541,13 +502,13 @@ package MathInternals
                 }
                 else {
                     if (y > 0) {
-                        if (helper::isIntegral(y) && y % 2 == 0)
+                        if (isIntegral(y) && y % 2 == 0)
                             res = -0;
                         else
                             res = +0;
                     }
                     else if (y < 0) {
-                        if (helper::isIntegral(y) && y % 2 == 0)
+                        if (isIntegral(y) && y % 2 == 0)
                             res = -Infinity;
                         else
                             res = Infinity;
@@ -615,12 +576,12 @@ package MathInternals
                 return informative::sqrtUint(n);
             }
             case (n: double) {
-                if (isNaN(n) || n < 0d) return NaN;
+                if (intrinsic::isNaN(n) || n < 0d) return NaN;
                 if (n == 0d || n == Infinity) return n;  // Preserves -0
                 return informative::sqrtDouble(n);
             }
             case (n: decimal) {
-                if (isNaN(n) || n < 0m) return decimal.NaN;
+                if (intrinsic::isNaN(n) || n < 0m) return decimal.NaN;
                 if (n == 0m || n == decimal.POSITIVE_INFINITY) return n;  // Preserves -0
                 return informative::sqrtDecimal(n);
             }
@@ -742,7 +703,7 @@ package
             let result = helper::toAnyNumber(xs[0]);
             for ( let i=1 ; i < xs.length; ++i ) {
                 result = intrinsic::Math.intrinsic::max(result, helper::toAnyNumber(xs[i]));
-                if (isNaN(result))
+                if (intrinsic::isNaN(result))
                     break;
             }
             return result;
@@ -759,7 +720,7 @@ package
             let result = helper::toAnyNumber(xs[0]);
             for ( let i=1 ; i < xs.length; ++i ) {
                 result = intrinsic::Math.intrinsic::min(result, helper::toAnyNumber(xs[i]));
-                if (isNaN(result))
+                if (intrinsic::isNaN(result))
                     break;
             }
             return result;
