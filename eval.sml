@@ -3001,7 +3001,7 @@ and evalUnaryOp (regs:Mach.REGS)
         case unop of
             Ast.Delete =>
             let
-                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr false
+                val (_, (Mach.Obj {props, ...}, name)) = evalRefExpr regs expr false
             in
                 if (Mach.hasProp props name)
                 then if (#dontDelete (#attrs (Mach.getProp props name)))
