@@ -1,0 +1,1026 @@
+
+datatype ALPHA = AllowColon | NoColon
+datatype BETA = AllowIn | NoIn
+datatype GAMMA = AllowExpr | NoExpr
+
+rul Identifier () : IDENT =
+    Identifier => Identifier
+  | ContextuallyReservedIdentifier => ContextuallyReservedIdentifier
+
+rul Qualifier () : EXPR =
+    * => reserved ()
+  | Identifier => LexicalRef (Identifier (Identifier, openNamespaces))
+  | ReservedNamespace => LiteralExpr (LiteralNamespace (ReservedNamespace ()))
+
+rul ReservedNamespace  () : NAMESPACE =
+    internal => InternalNamespace (getPackageIdentifier ())
+  | private => Namespace (getClassPrivateIdentifier ())
+  | protected => Namespace (getClassProtectedIdentifier ())
+  | public => PublicNamespace (getPackageIdentifier ())
+
+rul QualifiedNameIdentifier (ns: EXPR) : IDENT_EXPR =
+    Identifier => QualifiedIdentifier (ns, Identifier ())
+  | ReservedIdentifier => QualifiedIdentifier (ns, ReservedIdentifier)
+  | StringLiteral => QualifiedIdentifier (ns, StringLiteral)
+  | NumberLiteral => QualifiedIdentifier (ns, toString (NumberLiteral))
+  | Brackets => QualifiedExpression (ns, Brackets())
+
+rul QualifiedName () : IDENT_EXPR =
+    Identifier => Identifier (Identifier ())
+  | Qualifier :: QualifiedNameIdentifier => QualifiedNameIdentifier (Qualifier ())
+  | ParenListExpression :: QualifiedNameIdentifier => QualifiedNameIdentifier (ParenListExpression ())
+  | QualifiedName :: QualifiedNameIdentifier =>  QualifiedNameIdentifier (Ast.LexicalRef QualifiedName ())
+
+rul AttributeName () : IDENT_EXPR =
+    @ Brackets => reserved ()
+  | @ QualfiedName => reserved ()
+    
+rul PropertyName  () : IDENT_EXPR =
+    AttributeName => AttributeName ()
+  | QualifiedName => QualifiedName ()
+
+rul PrimaryName () : IDENT_EXPR =
+    Path . QualfiedName => Path (Path (), QualfiedName ())
+  | QualifiedName => QualifiedName ()
+  | AttributeName => AttributeName ()
+
+rul Path () : IDENT list =
+    Identifier => (Identifier ()) :: []
+  | Path . Identifier => (Path ()) @ (Identifier () :: [])
+
+rul ParenExpression () : EXPR =
+    ( AssignmentExpression ) => AssignmentExpression (AllowColon, AllowIn)
+
+rul ParenListExpression () : EXPR =
+    ( ListExpression ) => ListExpression (ListExpression (AllowColon, AllowIn))
+
+rul FunctionExpression (a, b) : LITERAL =
+    function Identifier FunctionSignature FunctionExpressionBody => 
+        let
+            val ident = Identifier ()
+            val {params, vars, defaults, type, ...}  = FunctionSignature ()
+            val block = FunctionExpressionBody (a, b)
+        in
+             LiteralFunction (Func (ident, false, params, vars, defaults, type, block))
+        end
+  | function FunctionSignature FunctionExpressionBody => 
+        let
+            val ident = NONE
+            val {params, vars, defaults, type, ...}  = FunctionSignature ()
+            val block = FunctionExpressionBody (a, b)
+        in
+             LiteralFunction (Func (ident, false, params, vars, defaults, type, block))
+        end
+
+rul FunctionExpressionBody (a, b) : BLOCK =
+    Block => Block (Local)
+  | AssignmentExpression => Block ([], ReturnStmt (AssignmentExpression (a, b) :: []))
+
+rul ObjectLiteral (NoColon) : LITERAL =
+    { FieldList } => LiteralObject (FieldList (), NONE)
+
+rul ObjectLiteral (AllowColon) : LITERAL =
+    { FieldList } => LiteralObject (FieldList (), NONE)
+  | { FieldList } : TypeExpression => LiteralObject (FieldList (), TypeExpression ())
+    
+rul FieldList () : FIELD list =
+    empty => []
+  | LiteralField => LiteralField () :: []
+  | LiteralField , FieldList => LiteralField () :: FieldList ()
+
+rul LiteralField () : FIELD =
+    FieldKind FieldName : AssignmentExpressionallowColon, allowIn => VarField (FieldKind (), FieldName (), AssignmentExpression (AllowColon, AllowIn))
+  | get FieldName FunctionSignature FunctionExpressionBody => GetField (FieldName (), FunctionSignature (), FunctionExpressionBody (AllowColon, AllowIn))
+  | set FieldName FunctionSignature FunctionExpressionBody => SetField (FieldName (), FunctionSignature (), FunctionExpressionBody (AllowColon, AllowIn))
+
+rul FieldKind () : VAR_DEFN_KIND =
+    empty => Var
+  | const => Const
+    
+rul FieldName () : IDENT_EXPR =
+    QualifiedName => QualifiedName ()
+  | StringLiteral => Identifier (StringLiteral)
+  | NumberLiteral => Identifier (NumberLiteral)
+  | ReservedIdentifier => Identifier (ReservedIdentifier)
+
+rul ArrayLiteral (NoColon) : =
+    [  Elements  ] => Elements ()
+
+rul ArrayLiteral (AllowColon) : =
+    [ Elements ] => ArrayLiteral (Elements (), NONE)
+  | [ Elements ] : TypeExpression => ArrayLiteral (Elements (), TypeExpression ())
+
+rul Elements () : =
+    ElementList => ElementList ()
+  | ElementComprehension => ElementComprehension ()
+    
+rul ElementList () : =
+    empty => []
+  | LiteralElement => LiteralElement ()
+  | , ElementList => ElementList ()
+  | LiteralElement , ElementList => (LiteralElement ()) :: (ElementList ())
+
+rul LiteralElement () : =
+    AssignmentExpression => AssignmentExpression (AllowColon, AllowIn)
+
+// break
+
+rul ElementComprehension () : =
+    LiteralElement ForInExpressionList OptionalIfCondition => LiteralElement  ForInExpressionList  OptionalIfCondition
+    
+rul ForInExpressionList () : =
+    ForInExpression
+  | ForInExpressionList  ForInExpression
+    
+rul ForInExpression () : =
+    for  (  ForInBinding  in  ListExpressionallowColon, allowIn  )
+  | for  each  (  ForInBinding  in  ListExpressionallowColon, allowIn  )
+    
+rul OptionalIfCondition () : =
+    empty
+  | if ParenListExpression
+    
+rul XMLInitialiser () : =
+    XMLMarkup
+  | XMLElement
+  | <  >  XMLElementContent  </  >
+    
+rul XMLElementContent () : =
+    {  ListExpressionallowColon, allowIn  }  XMLElementContent
+  | XMLMarkup  XMLElementContent
+  | XMLText  XMLElementContent
+  | XMLElement  XMLElementContent
+  | empty
+    
+rul XMLElement () : =
+    <  XMLTagContent  XMLWhitespaceopt  />
+  | <  XMLTagContent  XMLWhitespaceopt  >  XMLElementContent
+                  </  XMLTagName  XMLWhitespaceopt  >
+    
+rul XMLTagContent () : =
+    XMLTagName  XMLAttributes
+    
+rul XMLTagName () : =
+    {  ListExpressionallowColon, allowIn  }
+  | XMLName
+    
+rul XMLAttributes () : =
+    XMLWhitespace  {  ListExpressionallowColon, allowIn  }
+  | XMLAttribute  XMLAttributes
+  | empty
+    
+rul XMLAttribute () : =
+    XMLWhitespace  XMLName  XMLWhitespaceopt  =  XMLWhitespaceopt  {  ListExpressionallowColon, allowIn  }
+  | XMLWhitespace  XMLName  XMLWhitespaceopt  =  XMLWhitespaceopt  XMLAttributeValue
+
+rul PrimaryExpression (a, b) : =
+    null
+  | true => true
+  | false => false
+  | NumberLiteral => NumberLiteral
+  | StringLiteral => StringLiteral
+  | RegularExpression => RegularExpression
+  | XMLInitialiser => XMLInitialiser
+  | ArrayLiterala => ArrayLiterala
+  | ObjectLiterala
+  | FunctionExpressiona, b
+  | ThisExpression
+  | ParenListExpression
+  | LetExpressiona, b
+  | PrimaryName
+  | ReservedNamespace
+
+rul ThisExpression () : =
+    this
+  | this  function
+  | this  generator
+    
+rul LetExpression (a,b) : =
+    let  (  LetBindingList  )  AssignmentExpressiona, b
+    
+rul LetBindingList () : =
+    empty
+  | NonemptyLetBindingList
+    
+rul NonemptyLetBindingList () : =
+    VariableBindingallowIn
+  | VariableBindingallowIn  ,  NonemptyLetBindingList
+    
+rul SuperExpression () : =
+    super
+  | super  ParenExpression
+    
+rul Arguments () : =
+    (  )
+  | (  ArgumentList  )
+    
+rul ArgumentList () : =
+    AssignmentExpressionallowColon, allowIn
+  | ArgumentList  ,  AssignmentExpressionallowColon, allowIn
+    
+rul PropertyOperator () : =
+    .  ReservedIdentifier
+  | .  PropertyName
+  | ..  QualifiedName
+  | .  ParenListExpression
+  | .  ParenListExpression  ::  QualifiedNameIdentifier
+  | BracketsOrSlice
+  | TypeApplication
+    
+rul Brackets () : =
+    [  ListExpressionallowColon, allowIn  ]
+    
+rul BracketsOrSlice () : =
+    [  ListExpressionallowColon, allowIn  ]
+    [  SliceExpression   ]
+    
+rul SliceExpression () : =
+    OptionalExpression  :  OptionalExpression
+    OptionalExpression  :  OptionalExpression  :  OptionalExpression
+
+rul OptionalExpression () : =
+    ListExpression => ListExpression (AllowColon, AllowIn)
+  | empty
+
+rul TypeApplication () : =
+    .<  TypeExpressionList  > => .<  TypeExpressionList  >
+
+rul MemberExpression (a, b) : =
+    PrimaryExpression => PrimaryExpressiona, b
+  | new MemberExpression Arguments => new  MemberExpressiona, b  Arguments
+  | SuperExpression PropertyOperator => SuperExpression  PropertyOperator
+  | MemberExpression PropertyOperator => MemberExpressiona, b  PropertyOperator
+
+rul CallExpression (a, b) : =    
+    MemberExpression Arguments => MemberExpression(a, b)  Arguments
+  | CallExpression Arguments => CallExpression(a, b)  Arguments
+  | CallExpression PropertyOperator => CallExpression(a, b)  PropertyOperator
+
+rul NewExpression (a, b) : =
+    MemberExpression => MemberExpression (a, b)
+  | new  NewExpression => new  NewExpression (a, b)
+
+rul LeftHandSideExpression (a, b) : =
+    NewExpression => NewExpression (a, b)
+  | CallExpression => CallExpression (a, b)
+    
+rul PostfixExpression (a, b) : =
+    LeftHandSideExpression => LeftHandSideExpression (a, b)
+  | LeftHandSideExpression [no line break] ++ => LeftHandSideExpression (a, b)  [no line break]  ++
+  | LeftHandSideExpression [no line break] -- => LeftHandSideExpression (a, b)  [no line break]  --
+    
+rul UnaryExpression (a, b) : =
+    PostfixExpression => PostfixExpression (a, b)
+  | delete PostfixExpression => delete  PostfixExpression (a, b)
+  | void UnaryExpression => void  UnaryExpression (a, b)
+  | typeof UnaryExpression => typeof  UnaryExpression (a, b)
+  | ++  PostfixExpression => ++   PostfixExpression (a, b)
+  | -- PostfixExpression => --  PostfixExpression (a, b)
+  | + UnaryExpression => +  UnaryExpression (a, b)
+  | - UnaryExpression => -  UnaryExpression (a, b)
+  | ~ UnaryExpression => ~  UnaryExpression (a, b)
+  | ! UnaryExpression => !  UnaryExpression (a, b)
+
+rul MultiplicativeExpression (a, b) : EXPR =
+    UnaryExpression => UnaryExpression (a, b)
+  | MultiplicativeExpression * UnaryExpression => MultiplicativeExpression (a, b)  *  UnaryExpression (a, b)
+  | MultiplicativeExpression / UnaryExpression => MultiplicativeExpression (a, b)  /  UnaryExpression (a, b)
+  | MultiplicativeExpression % UnaryExpression => MultiplicativeExpression (a, b)  %  UnaryExpression (a, b)
+
+rul AdditiveExpression (a, b) : =
+    MultiplicativeExpression => MultiplicativeExpression (a, b)
+  | AdditiveExpression + MultiplicativeExpression => AdditiveExpression (a, b)  +  MultiplicativeExpression (a, b)
+  | AdditiveExpression - MultiplicativeExpression => AdditiveExpression (a, b)  -  MultiplicativeExpression (a, b)
+
+rul ShiftExpression (a, b) : =
+    AdditiveExpression => AdditiveExpression (a, b)
+  | ShiftExpression << AdditiveExpression => ShiftExpression (a, b)  <<  AdditiveExpression (a, b)
+  | ShiftExpression >> AdditiveExpression => ShiftExpression (a, b)  >>  AdditiveExpression (a, b)
+  | ShiftExpression >>> AdditiveExpression => ShiftExpression (a, b)  >>>  AdditiveExpression (a, b)
+
+rul RelationalExpression (a, AllowIn) : =
+    ShiftExpression => ShiftExpression (b)
+  | RelationalExpression < ShiftExpression => RelationalExpression (a, allowIn)  <  ShiftExpression (a, b)
+  | RelationalExpression > ShiftExpression => RelationalExpression (a, allowIn)  >  ShiftExpression (a, b)
+  | RelationalExpression <= ShiftExpression => RelationalExpression (a, allowIn)  <=  ShiftExpression (a, b)
+  | RelationalExpression >= ShiftExpression => RelationalExpressiona, allowIn  >=  ShiftExpressiona, b
+  | RelationalExpression in ShiftExpression => RelationalExpressiona, allowIn  in  ShiftExpressiona, b
+  | RelationalExpression instanceof ShiftExpression => RelationalExpressiona, allowIn  instanceof  ShiftExpressiona, b
+  | RelationalExpression cast TypeExpression => RelationalExpression (a, allowIn)  cast  TypeExpression
+  | RelationalExpression is TypeExpression => RelationalExpression (a, allowIn)  is  TypeExpression
+  | RelationalExpression wrap TypeExpression => RelationalExpression (a, allowIn)  wrap  TypeExpression
+
+rul RelationalExpression (a, noIn) : =
+    ShiftExpression  =>  ShiftExpression (a, b)
+  | RelationalExpression  <  ShiftExpression => RelationalExpression (a, b) <  ShiftExpression (a, b)
+  | RelationalExpression  >  ShiftExpression => RelationalExpression (a, noIn)  >  ShiftExpression (a, b)
+  | RelationalExpression  <=  ShiftExpression => RelationalExpression (a, noIn)  <=  ShiftExpression (a, b)
+  | RelationalExpression  >=  ShiftExpression => RelationalExpression (a, noIn)  >=  ShiftExpression (a, b)
+  | RelationalExpression  instanceof  ShiftExpression => RelationalExpression (a, noIn)  instanceof  ShiftExpression (a, b)
+  | RelationalExpression  cast  TypeExpression => RelationalExpression (a, noIn)  cast  TypeExpression
+  | RelationalExpression  is  TypeExpression => RelationalExpression (a, noIn)  is  TypeExpression
+  | RelationalExpression  wrap  TypeExpression => RelationalExpression (a, noIn)  wrap  TypeExpression
+    
+rul EqualityExpression (a, b) : =
+    RelationalExpressiona, b
+  | EqualityExpressiona, b  ==  RelationalExpressiona, b
+  | EqualityExpressiona, b  !=  RelationalExpressiona, b
+  | EqualityExpressiona, b  ===  RelationalExpressiona, b
+  | EqualityExpressiona, b  !==  RelationalExpressiona, b
+    
+rul BitwiseAndExpression (a, b) : =
+    EqualityExpressiona, b
+  | BitwiseAndExpressiona, b  &  EqualityExpressiona, b
+    
+rul BitwiseXorExpression (a, b) : =
+    BitwiseAndExpressiona, b
+    BitwiseXorExpressiona, b  ^  BitwiseAndExpressiona, b
+    
+rul BitwiseOrExpression (a, b) : =
+    BitwiseXorExpressiona, b
+    BitwiseOrExpressiona,  b  |  BitwiseXorExpressiona, b
+    
+rul LogicalAndExpression (a, b) : =
+    BitwiseOrExpressiona, b => BitwiseOrExpression (a, b)
+    LogicalAndExpressiona, b  &&  BitwiseOrExpressiona, b => LogicalAndExpressiona, b  &&  BitwiseOrExpressiona, b
+    
+rul LogicalOrExpression (a, b) : =
+    LogicalAndExpressiona, b => LogicalAndExpressiona, b
+    LogicalOrExpressiona, b  ||  LogicalOrExpressiona, b => LogicalOrExpressiona, b  ||  LogicalOrExpressiona, b
+    
+rul ConditionalExpression (a, b) : =
+    UnaryTypeExpressiona, b
+    YieldExpressiona, b
+    LogicalOrExpressiona, b
+    LogicalOrExpressiona, b  ?  AssignmentExpressionnoColon, b  
+                                           :  AssignmentExpressiona, b
+    
+rul NonAssignmentExpression (a, b) : =
+    UnaryTypeExpressiona, b
+    YieldExpressiona, b
+    LogicalOrExpressiona, b
+    LogicalOrExpressiona, b  ?  NonAssignmentExpressionnoColon, b  
+                                           :  NonAssignmentExpressiona, b
+    
+rul UnaryTypeExpression (a, b) : =
+    type  TypeExpression => type  TypeExpression
+    
+rul YieldExpression (a, b) : =
+    yield => yield
+    yield  [no line break]  AssignmentExpressiona, b => yield  [no line break]  AssignmentExpressiona, b
+    
+rul AssignmentExpression (a, b) : =
+    ConditionalExpressiona, b => ConditionalExpressiona, b
+    Patterna, b, allowExpr  =  AssignmentExpressiona, b => Patterna, b, allowExpr  =  AssignmentExpressiona, b
+    SimplePatterna, b, allowExpr  CompoundAssignmentOperator  AssignmentExpressiona, b => SimplePatterna, b, allowExpr  CompoundAssignmentOperator  AssignmentExpressiona, b
+    
+rul CompoundAssignmentOperator () : =
+    *= => *=
+    /= => /=
+    %= => %=
+    += => +=
+    -= => -=
+    <<= => <<=
+    >>= => >>=
+    >>>= => >>>=
+    &= => &=
+    ^= => ^=
+    |= => |=
+    &&= => &&=
+    ||= => ||=
+
+rul ListExpression (a, b) : =
+    AssignmentExpression => AssignmentExpression (a, b)
+    ListExpression  ,  AssignmentExpression => ListExpression(a, b)  ,  AssignmentExpression(a, b)
+
+(* PATTERNS *)
+
+rul Patterna, b, g
+    SimplePatterna, b, g
+    ObjectPatterna, b, g
+    ArrayPatterng
+    
+SimplePatterna, b, noExpr    
+    Identifier
+    
+SimplePatterna, b, allowExpr    
+    LeftHandSideExpressiona, b
+    
+ObjectPatterng    
+    {  FieldListPatterng  }
+    
+FieldListPatterng    
+    «empty»
+    FieldPatterng
+    FieldListPatterng  ,  FieldPatterng
+    
+FieldPatterng    
+    FieldName
+    FieldName  :  PatternallowColon, allowIn, g
+    
+ArrayPatterng    
+    [  ElementListPatterng  ]
+    
+ElementListPatterng    
+    «empty»
+    ElementPatterng
+    , ElementListPatterng
+    ElementPatterng  ,  ElementListPatterng
+    
+ElementPatterng    
+    PatternallowColon, allowIn, g
+    
+TypedIdentifier    
+    SimplePatternallowColon, allowIn, noExpr
+    SimplePatternallowColon, allowIn, noExpr  :  TypeAnnotation
+    
+TypedPatternb    
+    PatternallowColon, b, noExpr
+    PatternallowColon, b, noExpr  :  TypeAnnotation
+    
+TypeAnnotation    
+    TypeExpression
+    wrap  TypeExpression
+    
+(* TYPE EXPRESSIONS *)
+    
+TypeExpression    
+    NullableTypeExpression
+    like  NullableTypeExpression
+    
+NullableTypeExpression    
+    BasicTypeExpression
+    BasicTypeExpression  ?
+    BasicTypeExpression  !
+    
+BasicTypeExpression    
+    *
+    null
+    undefined
+    FunctionType
+    UnionType
+    RecordType
+    ArrayType
+    PrimaryName
+    
+FunctionType    
+    function  FunctionSignatureType
+    
+FunctionSignatureType    
+    TypeParameters  (  ParametersType  )  ResultType
+    TypeParameters  (  this  :  PrimaryName  )  ResultType
+    TypeParameters  (  this  :  PrimaryName  ,  NonemptyParametersType  )  ResultType
+    
+ParametersType    
+    «empty»
+    NonemptyParametersType
+    
+NonemptyParametersType    
+    ParameterInitType
+    ParameterInitType  ,  NonemptyParametersType
+    RestParameterType
+    
+ParameterInitType    
+    ParameterType
+    ParameterType  =
+    
+ParameterType    
+    TypeExpression
+    
+RestParameterType    
+    ...
+    ...  ParameterType
+    
+UnionType    
+    (  TypeUnionList  )
+    
+TypeUnionList    
+    «empty»
+    NonemptyTypeUnionList
+    
+NonemptyTypeUnionList    
+    TypeExpression
+    TypeExpression  |  NonemptyTypeUnionList
+    
+RecordType    
+    {  FieldTypeList  }
+    
+FieldTypeList    
+    «empty»
+    NonemptyFieldTypeList
+    
+NonemptyFieldTypeList    
+    FieldType
+    FieldType  ,  NonemptyFieldTypeList
+    
+FieldType    
+    FieldName  :  TypeExpression
+    
+ArrayType    
+    [  ElementTypeList  ]
+    
+ElementTypeList    
+    «empty»
+    TypeExpression
+    ,  ElementTypeList
+    TypeExpression  ,  ElementTypeList
+    
+TypeExpressionList    
+    TypeExpression
+    TypeExpressionList  ,  TypeExpression
+    
+STATEMENTS
+
+w =  {Abbrev, NoShortIf, Full}    
+
+rul Statement (t, w) : STMT =
+    BlockStatement => BlockStatement (t)
+  | BreakStatement Semicolon => Semicolon (BreakStatement (), w)
+  | ContinueStatement Semicolon => Semicolon (ContinueStatement (), w)
+  | DefaultXMLNamespaceStatement Semicolon => Semicolon (DefaultXMLNamespaceStatement (), w)
+  | DoStatement Semicolon => Semicolon (DoStatement (), w)
+  | ExpressionStatement Semicolon => Semicolon (ExpressionStatement (), w)
+  | ForStatement => ForStatement (w)
+  | IfStatement => IfStatement (w)
+  | LabeledStatement => LabeledStatement (w)
+  | LetStatement => LetStatement (w)
+  | ReturnStatement Semicolon => Semicolon (ReturnStatement (), w)
+  | SwitchStatement => SwitchStatement ()
+  | SwitchTypeStatement => SwitchTypeStatement ()
+  | ThrowStatement Semicolon => Semicolon (ThrowStatement (), w)
+  | TryStatement => TryStatement ()
+  | WhileStatement => WhileStatement (w)
+  | WithStatement => WithStatement (w)
+    
+rul Substatement (w) : STMT = 
+    EmptyStatement => EmptyStatement ()
+  | Statement => Statement (Local, w)
+    
+rul Semicolon (stmt, Abbrev) : STMT =
+    ; => stmt
+  | VirtualSemicolon => stmt
+  | empty => stmt
+    
+rul Semicolon (stmt, NoShortIf) : STMT =    
+    ; => stmt
+  | VirtualSemicolon => stmt
+  | empty => stmt
+    
+rul Semicolon (stmt, Full) : STMT =    
+    ; => stmt
+  | VirtualSemicolon => stmt
+
+rul EmptyStatement () : STMT =
+    ; => Ast.EmptyStmt
+    
+rul ExpressionStatement () : STMT =
+    [lookahead !{ function, let, { }] ListExpression => 
+             Ast.ExprStmt (ListExpression (AllowColon, AllowIn))
+    
+rul BlockStatement (t) : STMT =
+    Block => Ast.BlockStmt (Block (t))
+
+rul LabeledStatement (w)
+    Identifier  :  Substatementw => Ast.LabeledStmt (Identifier (), Substatement (w))
+    
+rul IfStatement (Abbrev) : STMT =
+    if ParenListExpression Substatement => 
+           Ast.IfStmt (ParenListExpression (), Substatement (Abbrev))
+  | if ParenListExpression Substatement else Substatement => 
+           Ast.IfStmt (ParenListExpression (), Substatement (NoShortIf), Substatement (Abbrev))
+    
+rul IfStatement (Full) : STMT =    
+    if ParenListExpression Substatement => 
+           Ast.IfStmt (ParenListExpression (), Substatement (Full))
+  | if ParenListExpression Substatement else Substatement => 
+           Ast.IfStmt (ParenListExpression (), Substatement (NoShortIf), Substatement (Full))
+    
+rul IfStatement (NoShortIf) : STMT =
+    if ParenListExpression Substatement else Substatement => 
+           Ast.IfStmt (ParenListExpression (), Substatement (NoShortIf), Substatement (NoShortIf))
+    
+rul WithStatement (w)    
+    with  ParenListExpression  Substatement => 
+           Ast.WithStmt (ParenListExpression (), Substatement (w))
+
+rul SwitchStatement    
+    switch  ParenListExpression  {  CaseElements  } => 
+           Ast.SwitchStmt (ParenListExpression (), CaseElements ())
+    
+rul CaseElements () : CASE list =    
+    empty => []
+  | CaseLabel => CaseLabel ()
+  | CaseLabel  CaseElementsPrefix  CaseLabel => 
+           CaseElementsPrefix (CaseLabel ()) @ (CaseLabel () :: [])
+  | CaseLabel  CaseElementsPrefix  Directive => 
+           CaseElementPrefix (CaseLabel ()) @ (Directive (Local, Abbrev) :: [])
+    
+rul CaseElementsPrefix (cse) : CASE list =
+    empty => cse :: []
+  | CaseLabel CaseElementsPrefix => cse :: CaseElementsPrefix (Ast.Case (CaseLabel (), []))
+  | Directive CaseElementsPrefix => CaseElementsPrefix (cse.append (Directive (Local)))
+
+rul CaseLabel () : CASE_LABEL =
+    case ListExpression : => Ast.CaseLabel (ListExpression (allowColon, allowIn))
+  | default : => Ast.CaseLabel (NONE)
+    
+rul SwitchTypeStatement () : STMT =    
+    switch type ParenListExpression { TypeCaseElements } => 
+            Ast.SwitchTypeStatement (ParenListExpression (), TypeCaseElements ())
+    
+rul TypeCaseElements () : TYPE_CASE list =
+    TypeCaseElement => TypeCaseElement () :: []
+  | TypeCaseElements TypeCaseElement => TypeCaseElement () :: TypeCaseElements' ()
+
+rul TypeCaseElements' () : TYPE_CASE list =
+    empty => []
+  | TypeCaseElement TypeCaseElements' => TypeCaseElement () :: TypeCaseElements ()
+    
+rul TypeCaseElement () : TYPE_CASE =
+    case ( TypedPattern ) Block => (TypedPattern (AllowColon, AllowIn), Block (Local))
+    
+rul DoStatement () : STMT =   
+    do Substatement while ParenListExpression => Ast.DoStmt (Substatement (Abbrev), ParenListExpression ())
+    
+rul WhileStatement (w) : STMT =    
+    while ParenListExpression Substatement => Ast.WhileStmt (ParenListExpression (), Substatement (w))
+    
+rul ForStatement (w) : STMT =   
+    for ( ForInitialiser ;  OptionalExpression ;  OptionalExpression ) Substatementw => 
+            Ast.ForStmt (ForInitialiser (), OptionalExpression (), OptionalExpression ())
+  | for ( ForInBinding in  ListExpression ) Substatement => 
+            Ast.ForInStmt (ForInBinding (), ListExpression (AllowColon, AllowIn), Substatement (w))
+  | for each ( ForInBinding in ListExpression ) Substatement => 
+            Ast.ForEachStmt (ForInBinding (), ListExpression (AllowColon, AllowIn), Substatement (w))
+    
+rul ForInitialiser () : EXPR option =     
+    empty => NONE
+  | ListExpression => ListExpression (AllowColon, NoIn)
+  | VariableDefinition => let (VariableDefinition (NoIn))
+
+ForInBinding    
+    PatternallowColon, noIn, allowExpr
+    VariableDefinitionKind VariableBindingnoIn
+    
+rul LetStatement (w) : STMT =
+    let ( LetBindingList )  Blocklocal => Ast.LetStmt (LetBindingList (), Block (local))
+    
+ContinueStatement    
+    continue
+    continue [no line break] Identifier
+    
+BreakStatement    
+    break
+    break [no line break] Identifier
+    
+ReturnStatement    
+    return
+    return ListExpressionallowColon, allowIn
+    
+ThrowStatement     
+    throw  ListExpressionallowColon, allowIn
+    
+TryStatement    
+    try  Blocklocal  CatchClauses
+    try  Blocklocal  CatchClauses  finally  Blocklocal
+    try  Blocklocal  finally  Blocklocal
+    
+CatchClauses    
+    CatchClause
+    CatchClauses CatchClause
+    
+CatchClause    
+    catch  (  Parameter  )  Blocklocal
+    
+DefaultXMLNamespaceStatement    
+    default  xml  namespace  =  NonAssignmentExpressionallowColon, allowIn
+    
+DIRECTIVES    
+
+t = { Global, Class, Interface, Local }    
+    
+rul Directives (t) : =    
+    empty =>
+  | DirectivesPrefix (t)  Directive(t, abbrev) =>
+    
+rul DirectivesPrefix (t)
+    empty
+  | Pragmas
+  | DirectivesPrefix(t)  Directive(t, full)
+    
+rul Directive (t, w)    
+    EmptyStatement
+    Statement (t, w)
+    AnnotatableDirective (t, w)
+    
+AnnotatableDirectiveglobal, w    
+    Attributeglobal  [no line break]  AnnotatableDirectiveglobal, w
+    VariableDefinitionallowIn, w Semicolonw
+    FunctionDefinitionglobal, w
+    ClassDefinition
+    InterfaceDefinition
+    NamespaceDefinition  Semicolonw
+    TypeDefinition  Semicolonw
+    PackageDefinition
+    
+AnnotatableDirectiveclass, w    
+    Attributeglobal  [no line break]  AnnotatableDirectiveclass, w
+    VariableDefinitionallowIn, w
+    FunctionDefinitionclass, w
+    NamespaceDefinitionw
+    TypeDefinitionw
+    
+AnnotatableDirectiveinterface, w    
+    Attributeinterface  [no line break]  AnnotatableDirectiveinterface, w
+    FunctionDeclarationw
+    TypeDefinitionw
+    
+AnnotatableDirectivelocal, w    
+    VariableDefinitionallowIn, w
+    FunctionDefinitionlocal, w
+    NamespaceDefinitionw
+    TypeDefinitionw
+    
+Attributeglobal    
+    NamespaceAttributeglobal
+    dynamic
+    final
+    native
+    [  AssignmentExpressionallowColon, allowIn  ]
+    
+Attributeclass    
+    NamespaceAttributeclass
+    final
+    native
+    override
+    prototype
+    static
+    [  AssignmentExpressionallowColon, allowIn  ]
+    
+Attributeinterface    
+    NamespaceAttribute
+    
+Attributelocal    
+    NamespaceAttribute
+    
+NamespaceAttributeglobal    
+    public
+    internal
+    intrinsic
+    PrimaryName
+    
+NamespaceAttributeclass    
+    ReservedNamespace
+    PrimaryName
+    
+(* DEFINITIONS *)   
+
+rul VariableDefinition (b, t, ns, isPrototype, isStatic) : STMT list =
+    VariableDefinitionKind VariableBindingList => 
+        let
+            val (it, ro) = VariableDefinitionKind ()
+            val (fxtrs, exprs) = VariableBindingList (b, ns, it, ro)
+        in case (tau, it) of
+            (_, Ast.LetInit) => addLetFixtures (fxtrs); Ast.ExprStmt (Ast.ListExpr exprs)
+          | (Ast.ClassBlk, _) => addVarFixtures (fxtrs, isStatic); addVarInits (exprs, isStatic); []
+        end
+
+rul VariableDefinitionKind () : (INIT_TARGET, bool (*isReadOnly*)) =
+    const => (Ast.VarInit, true)
+  | let => (Ast.LetInit, false)
+  | let const => (Ast.LetInit, true)
+  | var => (Ast.VarInit, false)
+
+rul VariableBindingList (b, ns, (it, ro)) : (FIXTURE list * EXPR list) =
+    VariableBinding => VariableBinding (b, ns, it, ro) :: []
+  | VariableBindingList , VariableBinding => VariableBinding (b, ns, it, ro) :: VariableBindingList (b, ns, it, ro)
+
+rul VariableBinding (b, ns, it, ro) : (FIXTURE list * EXPR list) =
+    TypedIdentifier => desugarBindingPattern (TypedIdentifier (), null, ns, it, ro)
+  | TypedPattern VariableInitialisation => 
+        desugarBindingPattern (TypedPattern (b), VariableInitialisation (b), ns, it, ro)
+
+rul VariableInitialisation (b) :  EXPR =
+    = AssignmentExpression => AssignmentExpression (AllowColon, b)
+
+rul FunctionDeclaration (ns) : () =
+    function FunctionName FunctionSignature => addMethodFixture (ns, FunctionName (), FunctionSignature (), NONE)
+    
+rul FunctionDefinition (Class, w) : () =
+    function Identifier [identifier == outer classname] ConstructorSignature Blocklocal
+  | function  FunctionName  FunctionSignature  FunctionBodyallowIn, w
+    
+rul FunctionDefinition (t, w, ns) : () =
+    function FunctionName FunctionSignature FunctionBody => 
+        addMethodFixture (makeMethodFixture (FunctionName (), FunctionSignature (), FunctionBody (AllowIn, w)))
+  | let function FunctionName FunctionSignature  FunctionBody => 
+        addMethodFixture (makeMethodFixture (FunctionName (), FunctionSignature (), FunctionBody (AllowIn, w)))
+  | const function FunctionName FunctionSignature FunctionBody => 
+        addMethodFixture (makeMethodFixture (FunctionName (), FunctionSignature (), FunctionBody (AllowIn, w)))
+
+rul FunctionName () : (FUNC_KIND * IDENT) =
+    Identifier => (Ast.Ordinary, Identifier ())
+  | get Identifier => (Ast.Get, Identifier ())
+  | set Identifier => (Ast.Set, Identifier ())
+
+rul FunctionSignature () : (IDENT list * TYPE_EXPR * PARAM list * TYPE_EXPR) =
+    TypeParameters ( Parameters ) ResultType => (TypeParameters (), NONE, Parameters (), ResultType ())
+  | TypeParameters ( this : PrimaryName ) ResultType => 
+        (TypeParameters (), TypeName (PrimaryName ()), Parameters (), ResultType ())
+  | TypeParameters ( this : PrimaryName , NonemptyParameters ) ResultType => 
+        (TypeParameters (), TypeName (PrimaryName ()), Parameters (), ResultType ())
+
+rul TypeParameters () : IDENT list =
+    empty => []
+  | .< TypeParameterList > => TypeParameterList ()
+
+rul TypeParameterList () : IDENT list =
+    Identifier => Identifier () :: []
+  | Identifier , TypeParameterList => Identifier () :: TypeParameterList ()
+
+rul Parameters () : PARAM list = 
+    empty => []
+  | NonemptyParameters => NonemptyParameters ()
+    
+rul NonemptyParameters () : PARAM list =
+    ParameterInit => ParameterInit () :: []
+  | ParameterInit  ,  NonemptyParameters => ParameterInit () :: NonemptyParameters ()
+  | RestParameter => RestParameter () :: []
+
+rul ParameterInit () : (EXPR option * TYPE_EXPR)
+    Parameter => 
+        let
+            val (isReadOnly, (ptrn, type)) = Parameter ()
+            val (fxtrs, inits) = desugarBindingPattern (ptrn, type, Ast.GetParam n, null, Ast.Let, isReadOnly)
+        in
+            addVarFixtures (fxtrs);
+            addVarInits (inits);
+            (NONE, type)
+        end
+  | Parameter = NonAssignmentExpression =>
+        let
+            val (isReadOnly, (ptrn, type)) = Parameter ()
+            val default = NonAssignmentExpression (AllowIn)
+            val (fxtrs, inits) = desugarBindingPattern (ptrn, type, Ast.GetParam n, null, Ast.Let, isReadOnly)
+        in
+            addVarFixtures (fxtrs);
+            addVarInits (inits);
+            (default, type)
+        end
+
+rul Parameter () : (bool * (PATTERN * TYPE_EXPR))
+    ParameterKind TypedPattern => (ParameterKind (), TypedPattern (AllowIn))
+
+rul ParameterKind () : bool =
+    empty => false
+  | const => true
+    
+rul RestParameter    
+    ... => (false, (Ast.IdentifierPattern "", NONE))
+  | ... Parameter => Parameter ()
+    
+rul ResultType () : TYPE_EXPR =
+    empty => Ast.SpecialType Ast.Any
+  | : void => Ast.SpecialType Ast.NoType
+  | : TypeAnnotation => TypeAnnotation ()
+    
+rul ConstructorSignature () : (IDENT list * PARAM list * EXPR list * EXPR list) =
+    TypeParameters ( Parameters ) => (TypeParameters (), Parameters (), [], [])
+  | TypeParameters (  Parameters ) : ConstructorInitialiser => 
+        let
+            val tparams = TypeParameters ()
+            val params = Parameters ()
+            val (settings, superArgs) = ConstructorInitialiser ()
+        in
+            (typeParams, params, settings, superArgs)
+        end
+
+rul ConstructorInitialiser () : (EXPR list * EXPR list) = (* settings, super args *)
+    SettingList => (SettingList (), [])
+  | SettingList , SuperInitialiser => (SettingList (), SuperInitialiser ())
+  | SuperInitialiser => ([], SuperInitialiser ())
+
+rul SettingList () : EXPR list =
+    Setting => Setting () :: []
+  | SettingList , Setting => Setting () :: SettingList ()
+
+rul Setting () : EXPR = (* LetExpr that does initialization *)
+    Pattern VariableInitialisation => 
+        let
+            val (_,inits) = desugarBindingPattern (Pattern(AllowIn, AllowExpr), Ast.Special Ast.Any,
+                                                   VariableInitialisation(AllowIn),
+                                                   null, Ast.Hoisted, false)
+        in
+	    inits
+        end
+
+rul SuperInitialiser () : EXPR list =
+    super Arguments => Arguments ()
+
+rul FunctionBody (a, b, w) : BLOCK =
+    Block => Block (Local)
+  | AssignmentExpression Semicolon => 
+        Ast.Block (Ast.Head ([], []), Ast.ReturnStmt (Semicolon (w, AssignmentExpression (a, b))) :: [])
+
+rul ClassDefinition (ns) : STMT list =
+    class Identifier TypeParameters ClassInheritance ClassBody =>
+            addClassFixture ((ns, Identifier ()), TypeParameters (), ClassInheritance (), ClassBody ())
+    
+rul ClassInheritance () : (TYPE option * TYPE list) =   
+    empty => (NONE, [])
+  | extends TypeReference => (TypeReference (), [])
+  | implements TypeReferenceList => (NONE, TypeReferenceList ())
+  | extends TypeReference implements TypeReferenceList => (TypeReference (), TypeReferenceList ())
+    
+rul TypeReferenceList () : TYPE_EXPR list
+    TypeReference => TypeReference ()
+  | TypeReference , TypeReferenceList => TypeReference (); TypeReferenceList ()
+    
+rul TypeReference () : TYPE_EXPR =  (* FIXME could be more specific, TYPE_REF? *)
+    PrimaryName => Ast.TypeRef (PrimaryName ())  (* FIXME TypeName in the RI *)
+  | PrimaryName TypeApplication => TypeApplication (PrimaryName ())
+
+rul ClassBody () : BLOCK =
+    Block => Block (Class)
+
+rul InterfaceDefinition () : () =
+    interface Identifier TypeParameters InterfaceInheritance InterfaceBody =>
+            addInterfaceFixture ((ns, Identifier ()), TypeParameters (), InterfaceInheritance (), InterfaceBody ())
+    
+rul InterfaceInheritance () : TYPE list =
+    empty => []
+  | extends TypeReferenceList => TypeReferenceList ()
+    
+rul InterfaceBody () : BLOCK =    
+    Block => Block (Interface)
+    
+rul NamespaceDefinition (ns) : () =
+    namespace Identifier NamespaceInitialisation => addNamespaceFixture ((ns, Identifier ()), NamespaceInitialisation ())
+    
+rul NamespaceInitialisation () : NAMESPACE =
+    empty => Ast.UnforgeableNamespace (getNamespaceID ())
+  | = StringLiteral => Ast.ForgeableNamespace (StringLiteral ())
+  | = PrimaryName => Ast.NamespaceRef (PrimaryName ())
+    
+rul TypeDefinition (ns) : () =
+    type Identifier TypeParameters TypeInitialisation => 
+            addTypeFixture ((ns, Identifier ()), Ast.TypeLambda (TypeParameters (), TypeInitialization))
+    
+rul TypeInitialisation () : TYPE_EXPR =   
+    = TypeExpression => TypeExpression ()
+    
+rul PackageDefinition () : PACKAGE =
+    PackageAttribute package PackageNameOpt PackageBody => 
+             Ast.PackageBlock ( PackageAttribute (), PackageNameOpt (), PackageBody () ) 
+    
+rul PackageAttribute () : IDENT =    
+    internal => "internal"
+  | empty => "public"
+    
+rul PackageNameOpt () : IDENT list option =
+    empty => NONE
+  | PackageName => PackageName ()
+    
+rul PackageName () : IDENT list =
+    Identifier => Identifier () :: []
+  | PackageName . Identifier => PackageName () @ (Identifier () :: [])
+    
+rul PackageBody () : BLOCK =    
+    Block => Ast.Block (Global)
+    
+(* PRAGMAS *)    
+
+rul Pragmas () : () =
+    Pragma => Pragma ()
+  | Pragmas Pragma => Pragma(); Pragmas ()
+    
+rul Pragma () : () =
+    UsePragma Semicolon => Semicolon (Full, UsePragma())    
+  | ImportPragma  Semicolon => Semicolon (Full, UsePragma())
+    
+rul UsePragma () : () =
+    use PragmaItems => PragmaItems ()
+
+rul PragmaItems () : () =
+    PragmaItem => PragmaItems ()
+  | PragmaItems , PragmaItem => PragmaItems (); PragmaItem ()
+    
+rul PragmaItem () : () =
+    default namespace PrimaryName => useDefaultNamespace (PrimaryName ())
+  | namespace PrimaryName => useNamespace (PrimaryName ())
+  | strict => useStrict ()
+    
+rul ImportPragma () : () =   
+    import ImportName => import (ImportName ())
+    
+rul ImportName () : (IDENT list, IDENT) =    
+    PackageName . * => (PackageName (), "*")
+  | PackageName . Identifier => (PackageName (), Identifier ())
+    
+(* BLOCKS AND PROGRAMS *)
+    
+rul Block (t)    
+    { Directives } => Directives (t)
+    
+rul Program () : PROGRAM =
+    Directives => Directives (Global)

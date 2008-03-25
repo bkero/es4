@@ -73,6 +73,8 @@ package
 {
     import ECMAScript4_Internal.*;
 
+    use namespace __ES4__;
+
     __ES4__ dynamic class Map.<K,V>
     {
         static public const length = 2;
@@ -90,8 +92,8 @@ package
         {
         }
 
-        static meta function invoke(object: Object): Map.<EnumerableId,*> {
-            if (object is Map.<*,*>)
+        static meta function invoke(object: Object=null): Map.<EnumerableId,*> {
+            if (object != null && object is Map.<*,*>)
                 return object;
             let d = new Map.<EnumerableId,*>;
             for (let n in object)
@@ -163,11 +165,11 @@ package
         prototype function size(this: Map.<*,*>)
             this.intrinsic::size();
 
-        prototype function get(this: Map.<*,*>, key)
-            this.intrinsic::get(key);
+        prototype function get(this: Map.<*,*>, key, notfound)
+            this.intrinsic::get(key, notfound);
 
-        prototype function put(this: Map.<*,*>, key, value)
-            this.intrinsic::put(key, value);
+        prototype function put(this: Map.<*,*>, key, value, notfound)
+            this.intrinsic::put(key, value, notfound);
 
         prototype function has(this: Map.<*,*>, key)
             this.intrinsic::has(key);
@@ -190,9 +192,9 @@ package
         iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[K,V]>
             helper::iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
 
-        helper function iterate.<T>(f: function(*,*,*):*) {
+        helper function iterate.<T>(f) {
             let a = [];
-            informative::allElements(function (k,v) { f(a,k,v) });
+            informative::allItems(function (k,v) { f(a,k,v) });
             return {
                 const next:
                     let (i=0, limit=a.length)
@@ -215,7 +217,7 @@ package
             return l;
         }
 
-        informative function insert(key:K, value:V) : void {
+        informative function insert(key: K, value: V) : void {
             if (population > limit*REHASH_UP)
                 informative::rehash(true);
             let box = new Box.<K,V>(key, hashcode(key), value);
@@ -245,15 +247,15 @@ package
             limit = grow ? limit * 2 : limit / 2;
             tbl = Map.informative::newTbl.<K,V>(limit);
 
-            informative::allElementsCore(oldtbl, 
-                                         oldlimit, 
-                                         function (k,v) { ++population; informative::insert(k, v) });
+            informative::allItemsCore(oldtbl, 
+                                      oldlimit, 
+                                      function (k,v) { ++population; informative::insert(k, v) });
         }
 
-        informative function allElements(fn)
-            informative::allElementsCore(tbl, limit, fn);
+        informative function allItems(fn)
+            informative::allItemsCore(tbl, limit, fn);
 
-        informative function allElementsCore(tbl, limit, fn) {
+        informative function allItemsCore(tbl, limit, fn) {
             for (let i=0 ; i < limit ; i++)
                 for (let p=tbl[i] ; p ; p = p.next)
                     fn(p.key, p.value);

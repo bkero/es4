@@ -51,19 +51,17 @@
 
 package
 {
-    use default namespace public;
-    use namespace intrinsic;
     use namespace __ES4__;
 
     /* E262-3 15.11.6.4; 15.11.7 */
-    dynamic class SyntaxError extends Error
+    public dynamic class SyntaxError extends Error
     {
-        static const length = 1;
+        static public const length = 1;
 
-        meta static function invoke(message)
+        static meta function invoke(message)
             new SyntaxError(message);
 
-        function SyntaxError(message) 
+        public function SyntaxError(message) 
             : super(message)
         {
         }

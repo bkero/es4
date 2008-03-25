@@ -1,0 +1,472 @@
+= Values =
+
+<hr>
+<pre>
+FILE:                       spec/language/values.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-03-17
+SPEC AUTHORS:               Jeff
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+SCOPE:                      The structure and behavior of objects, including the
+                            and conversions of primitive object values.
+</pre>
+<hr>
+
+<p>A value is one of three fundamental types: ''Undefined'', ''Null'', and ''Object''.
+
+<IMPL>
+<pre>
+datatype VALUE = 
+         Undefined
+       | Null
+       | Object of OBJECT
+</pre>
+
+== Undefined == 
+
+<p>The ''Undefined'' type has exactly one value called **undefined**.
+Any variable of type ''*'' that has not been assigned a value has 
+the value **undefined**.
+
+<NOTE>As with earlier editions of the language, ''undefined'' is not a
+reserved word and so might be shadowed by a user defined property with
+the same name identifier.
+
+== Null ==
+
+<p>The ''Null'' type has exactly one value called **null**. Any 
+variable with type ''Object'' that has not been assigned a value 
+has the value **null**.
+
+<NOTE>While ''null'' and ''undefined'' have similar meanings, they have 
+different conventions of use. **null** is often used to mean a missing ''Object''
+value, while ''Undefined'' is used to mean a missing or undefined property.
+These meanings are generally not enforced by the language semantics.
+
+== Objects ==
+
+<p>The ''Object'' type includes all values except **null** and **undefined**.
+
+<p>An object value contains a list of property bindings, object identifier, 
+value tag, a prototype reference, and an optional reference to internal data.
+
+<IMPL>
+<pre>
+datatype OBJECT =
+         Obj of { ident: OBJ_IDENT
+                , tag: VAL_TAG
+                , props: PROP_BINDING list
+                , proto: VAL ref
+                , magic: (MAGIC option) ref }
+</pre>
+
+<p>The object identifier uniquely identifies each object value.
+
+<IMPL>
+<pre>
+type OBJECT_ID = <LDOTS>
+</pre>
+
+<p>The object value tag represents the allocated type of an
+object.
+
+<IMPL>
+<pre>
+datatype VALUE_TAG = 
+         ObjectTag of Ast.FIELD_TYPE list
+       | ArrayTag of Ast.TYPE_EXPR list
+       | FunctionTag of Ast.FUNC_TYPE
+       | ClassTag of Ast.INSTANCE_TYPE
+       | NoTag (*
+                * NoTag objects are made for scopes and
+                * temporaries passed as arguments during
+                * builtin construction.
+                *)
+</pre>
+
+<p>Property bindings that maps names to properties.
+
+<IMPL>
+<pre>
+type PROPERTY_BINDING = (NAME * PROPERTY)
+</pre>
+
+<p>A property contains a type, a set of attributes and a value.
+
+<IMPL>
+<pre>
+type PROPERTY = { ty: Ast.TYPE
+                , attrs: ATTRIBUTESS
+                , state: PROPERTY_STATE }
+</pre>
+
+<pre>
+type ATTRIBUTES = { Removable: bool
+                  , Enumerable: bool
+                  , Writable: bool
+                  , Fixed: bool }
+</pre>
+
+<p>A property value is represented by one of various property
+state values.
+
+<IMPL>
+<pre>
+datatype PROPERTY_STATE = ValueState of VALUE
+</pre>
+
+== Primitive Values ==
+
+<p>There are primitive object values whose state cannot be readily expressed
+in the generic structure defined for objects. We define the internal ("magic") state
+of these primitive values here.
+
+<IMPL>
+<pre>
+datatype MAGIC =
+         Boolean of bool
+       | String of Ustring.STRING
+       | Double of Real64.real
+       | Namespace of Ast.NAMESPACE
+       | Function of FUN_CLOSURE
+</pre>
+
+=== Boolean Values ===
+
+<p>The Boolean type represents a logical entity having two values, called **true** and **false**.
+
+=== String Values ===
+
+<FIXME>This text, extracted from ES3, needs to be updated to be compatible with Unicode 5.
+
+<p>The String type is the set of all finite ordered sequences of zero or more 16-bit unsigned integer values ("elements"). The String type is generally used to represent textual data in a running ECMAScript program, in which case each element in the string is treated as a code point value (see section 6). Each element is regarded as occupying a position within the sequence. These positions are indexed with nonnegative integers. The first element (if any) is at position 0, the next element (if any) at position 1, and so on. The length of a string is the number of elements (i.e., 16-bit values) within it. The empty string has length zero and therefore contains no elements.
+
+<p>When a string contains actual textual data, each element is considered to be a single UTF-16 unit. Whether or not this is the actual storage format of a String, the characters within a String are numbered as though they were represented using UTF-16. All operations on Strings (except as otherwise stated) treat them as sequences of undifferentiated 16-bit unsigned integers; they do not ensure the resulting string is in normalised form, nor do they ensure language-sensitive results.
+
+<NOTE> The rationale behind these decisions was to keep the implementation of Strings as simple and high-performing as possible. The intent is that textual data coming into the execution environment from outside (e.g., user input, text read from a file or received over the network, etc.) be converted to Unicode Normalised Form C before the running program sees it. Usually this would occur at the same time incoming text is converted from its original character encoding to Unicode (and would impose no additional overhead). Since it is recommended that ECMAScript source code be in Normalised Form C, string literals are guaranteed to be normalised (if source text is guaranteed to be normalised), as long as they do not contain any Unicode escape sequences.
+
+=== Double Values ===
+
+<p>The Double type has exactly 18437736874454810927 (that is, 2<sup>64</sup>-2<sup>53</sup>+3) values,
+representing the double-precision 64 bit format IEEE 754 values as specified in the IEEE Standard
+for Binary Floating-Point Arithmetic, except that the 9007199254740990 (that is, 2<sup>53</sup>-2) distinct
+"Not-a-Number" values of the IEEE Standard are represented in ECMAScript as a single special **NaN** value.
+
+<FIXME>Copy here and edit the text from ES3 describing Number values
+
+=== Namespace Values ===
+
+<p>Namespace values distinguished by a kind (internal, public, other) and an identifier. Namespaces
+that can compare equal to other namespace values have a string identifier. Namespaces that never
+compare equal to another value have a unique integer identifier. Two forgable namespace values are equal if
+their identifiers are equal.
+
+{{{
+datatype NAMESPACE =
+         UnforgeableNamespace of NAMESPACE_ID
+       | ForgeableNamespace of IDENTIFIER
+}}}
+{{{
+datatype NAMESPACE_ID = <LDOTS>
+}}}
+
+=== Function Values ===
+
+<p>Function values represent the definition of the function object, including
+the internal procedure for invoking the function, an optional reference to
+the ''this'' object, and the lexical scope of the function. 
+
+<IMPL>
+<pre>
+type FUN_CLOSURE = { function: FUNCTION
+                   , this: OBJECT option
+                   , env:  SCOPE }
+</pre>
+
+<p>The function definition contains a name, a block, parameters, 
+default parameter value expressions, variables and a type. The
+type of a function value is derived from the surface form of the 
+function. The precise translation of the surface syntax to the 
+abstract function definition is given in //section ..: Syntax//
+
+<IMPL>
+<pre>
+datatype FUNCTION =
+         Function of { name: FUNC_NAME
+                     , block: BLOCK
+                     , param: HEAD
+                     , vars: HEAD
+                     , defaults: EXPR list
+                     , ty: TYPE }
+</pre>
+
+== Conversions ==
+
+<p>There are three object types that have implicit conversions from values
+of other types. These types are ''boolean'', ''double'' and ''string''.
+
+=== Boolean Conversions ===
+
+<p>Conversion to the ''boolean'' type results in **false** if the original value is one of: **false**, **undefined**,
+**null**, **+0**, **-0**, or **NaN**. Otherwise the result is **true**.
+
+<IMPL>
+<pre>
+fun toBoolean (v:VALUE) : bool =
+    case v of
+        Mach.Undefined => false
+      | Mach.Null => false
+      | Mach.Object (Mach.Obj ob) =>
+        let
+            val {magic, ...} = ob
+        in case !magic of
+            SOME (Mach.Boolean b) => b
+          | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
+                                         orelse
+                                         Real64.isNan x)
+          | SOME (Mach.Decimal x) => not ((x = Decimal.zero)
+                                          orelse
+                                          (Decimal.isNaN x))
+          | SOME (Mach.String s) => not (Ustring.stringLength s = 0)
+          | _ => true
+        end
+</pre>
+
+=== Double Conversions ===
+
+<FIXME>This section is incomplete
+
+<p>Conversion to double...
+
+<IMPL>
+<pre>
+and toDouble (v:Mach.VAL)
+    : Real64.real =
+    let
+        fun NaN _ = (Real64.posInf / Real64.posInf)
+        fun zero _ = (Real64.fromInt 0)
+        fun one _ = (Real64.fromInt 1)
+    in
+        case v of
+            Mach.Undef => NaN ()
+          | Mach.Null => zero ()
+          | Mach.Object (Mach.Obj ob) =>
+            let
+               val {magic, ...} = ob
+            in case (!magic) of
+                (SOME (Mach.Double d)) => d
+              | (SOME (Mach.Boolean false)) => zero ()
+              | (SOME (Mach.Boolean true)) => one ()
+              | (SOME (Mach.String us)) => stringToDouble (us)
+              | _ => zero ())
+            end
+    end
+</pre>
+
+==== String to Double ====
+
+<FIXME>This section is incomplete
+
+<IMPL>
+<pre>
+fun stringToDouble (ustr)
+    : Real64.real =
+    let
+        fun NaN _ = (Real64.posInf / Real64.posInf)
+    in case Real64.fromString ustr of  (* FIXME I doubt this matches ES3 9.3.1 *)
+        SOME r => r
+      | NONE => NaN ()
+    end
+</pre>
+
+=== Int32 Conversions ===
+
+<FIXME>This section is incomplete
+
+<IMPL>
+<pre>
+and toInt32 (regs:Mach.REGS)
+            (v:Mach.VAL)
+    : Real64.real =
+    let
+        val v' = toNumeric regs v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then 0.0
+        else
+            let
+                val l31 = IntInf.pow (2, 31)
+                val l32 = IntInf.pow (2, 32)
+                val v'' = IntInf.mod (signFloorAbs v', l32)
+            in
+                Real64.fromLargeInt (if LargeInt.>= (v'', l31)
+                                     then LargeInt.- (v'', l32)
+                                     else v'')
+            end
+    end
+</pre>
+
+=== UInt Conversions ===
+
+<FIXME>This section is incomplete
+
+<IMPL>
+<pre>
+and toUIntNN (regs:Mach.REGS)
+             (nn:int)
+             (v:Mach.VAL)
+    : Real64.real =
+    let
+        val v' = toNumeric regs v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then 0.0
+        else
+            let
+                val mask = IntInf.pow (2, nn)
+            in
+                Real64.fromLargeInt (LargeInt.mod (signFloorAbs v', mask))
+            end
+    end
+</pre>
+
+=== String Conversions ===
+
+<FIXME>This section is incomplete
+
+<p> The undefined value ''undefined'' value converts to string ''"undefined"''.
+
+<p> The null value ''null'' value converts to string ''"null"''.
+
+<p> The boolean values ''true'' and ''false'' convert to strings ''"true"'' and ''"false"'', respectively.
+
+<p> The object values are converted to string values by ...
+
+==== Double to String ====
+
+<p> The double values are converted to string values by the following ''NumberToString'' function
+
+<IMPL>
+<pre>
+and doubleToString (r:Real64.real)
+    : Ustring.STRING =
+    if Real64.isNan r
+    then Ustring.NaN_
+    else
+        if Real64.==(0.0, r) orelse Real64.==(~0.0, r)
+        then Ustring.zero
+        else
+            if Real64.<(r, 0.0)
+            then Ustring.append [Ustring.dash, NumberToString (Real64.~(r))]
+            else
+                if Real64.==(Real64.posInf, r)
+                then Ustring.Infinity_
+                else
+                    let
+                        (*
+                         * Unfortunately SML/NJ has a pretty deficient selection of the numerical
+                         * primitives; about the best we can get from it is a high-precision SCI
+                         * conversion that we then parse. This is significantly more fun than
+                         * writing your own dtoa.
+                         *)
+                        val x = Real64.fmt (StringCvt.SCI (SOME 30)) r
+
+                        val (mantissaSS,expSS) = Substring.splitr (fn c => not (c = #"E")) (Substring.full x)
+                        val mantissaSS = Substring.dropr (fn c => (c = #"E") orelse (c = #"0")) mantissaSS
+                        val (preDot,postDot) = Substring.position "." mantissaSS
+                        val postDot = Substring.triml 1 postDot
+
+                        val exp = valOf (Int.fromString (Substring.string expSS))
+                        val digits = (Substring.explode preDot) @ (Substring.explode postDot)
+                        val k = length digits
+                        val n = exp + 1
+
+                        fun zeroes z = List.tabulate (z, (fn _ => #"0"))
+                        fun expstr _ = (#"e" ::
+                                        (if (n-1) < 0 then #"-" else #"+") ::
+                                        (String.explode (Int.toString (Int.abs (n-1)))))
+                    in
+                        Ustring.fromString
+                        (String.implode
+                         (if k <= n andalso n <= 21
+                          then digits @ (zeroes (n-k))
+                          else
+                              if 0 < n andalso n <= 21
+                              then (List.take (digits, n)) @ [#"."] @ (List.drop (digits, n))
+                              else
+                                  if ~6 < n andalso n <= 0
+                                  then [#"0", #"."] @ (zeroes (~n)) @ digits
+                                  else
+                                      if k = 1
+                                      then digits @ (expstr())
+                                      else (hd digits) :: #"." :: ((tl digits) @ expstr())))
+                    end
+
+
+</pre>
+
+=== Primitive Conversions ===
+
+<p>Conversion to a primitive value results in the original value if that value is a
+primitive value, otherwise the values default value is the result.
+
+
+<IMPL>
+<pre>
+and toPrimitive (regs:Mach.REGS)
+                (v:Mach.VAL) 
+                (hint:Ustring.STRING)
+    : Mach.VAL =
+    if isPrimitive v
+    then v
+    else defaultValue regs (needObj regs v) hint
+</pre>
+
+<p>The default value of an object results from calling either the ''valueOf'' or
+''toString'' functions on that object. The order that these functions are called
+depends on the preferred type of the result as indicated by the optional hint string
+argument.
+
+<pre>
+and defaultValue (regs:Mach.REGS)
+                 (obj:Mach.OBJ)
+                 (preferredType:Ustring.STRING)
+    : Mach.VAL =
+    let
+        val (na, nb) = if preferredType = Ustring.String_
+                       then (Name.nons_toString, Name.nons_valueOf)
+                       else (Name.nons_valueOf, Name.nons_toString)
+        val va = if hasValue obj na
+                 then evalNamedMethodCall regs obj na []
+                 else Mach.Undef
+        val vb = if not (isPrimitive va) andalso hasValue obj nb
+                 then evalNamedMethodCall regs obj nb []
+                 else va
+    in
+        if isPrimitive vb
+        then vb
+        else (throwTypeErr regs ["defaultValue"]; dummyVal)
+    end
+</pre>
+
+<pre>
+and isPrimitive (v:Mach.VAL)
+    : bool =
+    Mach.isNull v orelse
+    Mach.isUndef v orelse
+    Mach.isNumeric v orelse
+    Mach.isString v orelse
+    Mach.isBoolean v
+</pre>
+

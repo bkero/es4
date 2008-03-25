@@ -51,19 +51,17 @@
 
 package
 {
-    use default namespace public;
-    use namespace intrinsic;
     use namespace __ES4__;
 
     /* E262-3 15.11.6.5; 15.11.7 */
-    dynamic class TypeError extends Error
+    public dynamic class TypeError extends Error
     {
-        static const length = 1;
+        static public const length = 1;
 
-        meta static function invoke(message)
+        static meta function invoke(message)
             new TypeError(message);
 
-        function TypeError(message) 
+        public function TypeError(message) 
             : super(message)
         {
         }

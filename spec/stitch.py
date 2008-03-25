@@ -141,6 +141,11 @@ def unComment(s):
 	    i = i - 1
     return s
 
+def adHocFixFunctionType(s):
+    s = re.sub(r"/\*: Callable\*/", ": Callable", s)
+    s = re.sub(r"/\*this: Callable,\*/", "this: Callable,", s)
+    return s
+
 def extractES(fn, name, isSignature, isContextual):
     f = open(os.path.normpath(es_dir + "/" + fn), 'r')
     outside = True
@@ -155,6 +160,7 @@ def extractES(fn, name, isSignature, isContextual):
     prev = ""
     inContext = False
     for line in f:
+        line = adHocFixFunctionType(line)
 	if outside:
 	    if isContextual and not inContext:
 		m = starting2.search(line)

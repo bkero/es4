@@ -81,7 +81,9 @@ package
             string(value);
 
         /* 15.5.2 The String Constructor */
-        function String(value="") : val = string(value) {}
+        // Ticket #364, this does not work when called as Name's base class constructor
+        //function String(value="") : val = string(value) {}
+        function String(value="") { val = string(value) }
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
