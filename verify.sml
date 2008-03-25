@@ -261,7 +261,6 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
 
 (******************** Verification **************************************************)
 
-(*
 fun verifyType (env:ENV)
                (ty:Ast.TY)
     : (Ast.TY * Ast.TYPE_EXPR) =
@@ -303,7 +302,6 @@ fun verifyType (env:ENV)
                  anyType
              end)
     end
-*)
 
 fun verifyTypeExpr (env:ENV)
                    (ty:Ast.TY)
@@ -316,14 +314,9 @@ fun verifyTypeExpr (env:ENV)
     end
 
 
-fun verifyTy (env:ENV)
-             (ty:Ast.TY)
-    : Ast.TYPE_EXPR = 
-
 (*
 verifyTypeExpr env ty
 *)
-(*
 fun verifyTy (env:ENV)
              (ty:Ast.TY)
     : Ast.TY =
@@ -333,7 +326,6 @@ fun verifyTy (env:ENV)
     in
         ty
     end
-*)
 
 (*
     HEAD
