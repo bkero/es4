@@ -197,6 +197,10 @@ fun mathOp (v:Mach.VAL)
           | _ => default
     end
 
+(*
+  Extend a scope object (p) with object (ob) of kind (kind)
+*)
+
 fun extendScope (p:Mach.SCOPE)
                 (ob:Mach.OBJ)
                 (kind:Mach.SCOPE_KIND)
@@ -212,6 +216,10 @@ fun extendScope (p:Mach.SCOPE)
                      kind = kind,
                      decimal = decimal }
     end
+
+(*
+    Extend the scope in registers (r) with object (ob) of kind (kind)
+*)
 
 fun extendScopeReg (r:Mach.REGS)
                    (ob:Mach.OBJ)
@@ -1416,7 +1424,7 @@ and newByte (regs:Mach.REGS)
       | NONE => newBuiltin regs Name.ES4_byte (SOME (Mach.Double b))
 
 and newBooleanWrapper (regs:Mach.REGS)
-                     (b:bool)
+                      (b:bool)
     : Mach.VAL =
     newBuiltin regs Name.nons_Boolean (SOME (Mach.Boolean b))
 
@@ -2947,7 +2955,7 @@ and evalUnaryOp (regs:Mach.REGS)
 and evalTypeExpr (regs:Mach.REGS)
                  (te:Ast.TYPE_EXPR)
     : Mach.VAL =
-    case te of 
+    case te of
         Ast.SpecialType st => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
       | Ast.ArrayType a => Mach.Null (* FIXME *)
@@ -3835,6 +3843,7 @@ and resolveName (obj:Mach.OBJ)
             case (!proto) of
                 Mach.Object ob => SOME ob
               | _ => NONE
+        fun getObjProps (Mach.Obj {props, ...}) = props
     in
         case nomn of
             Name name => findValue obj name
@@ -4958,8 +4967,9 @@ and constructClassInstance (regs:Mach.REGS)
  * FIXME: no idea if this makes the most sense given
  * the ES-262-3 meaning of the operation.
  *)
+
 and get (regs:Mach.REGS)
-(obj:Mach.OBJ)
+        (obj:Mach.OBJ)
         (n:Ast.NAME)
     : Mach.VAL =
     let
@@ -4975,6 +4985,7 @@ and get (regs:Mach.REGS)
     in
         tryObj obj
     end
+
 
 and evalPragmas (regs:Mach.REGS)
                 (pragmas:Ast.PRAGMA list)
@@ -5013,7 +5024,14 @@ and evalPragmas (regs:Mach.REGS)
       | [] => regs
 
 (*
- HEAD
+    Evaluate a block head (head) in the environment (regs).
+    - destructure head into its fixture bindings (rib) and initializers (inits)
+    - create a new object to become the scope object
+    - extend the environment (reg) scope with object (obj) and kind (Mach.BlockScope)
+    - allocate property bindings for fixture bindings (rib) in the extended environment (newRegs)
+    - initialize properties of target object (obj) with initializers (inits) in environment (regs)
+      with temporaries (getScopeTemps scope)
+    - return the updated environment (newRegs)
  *)
 
 and evalHead (regs:Mach.REGS)
