@@ -70,8 +70,3 @@ H4:before {
 H4 {
     counter-reset: para;
 }
-
-@media print {
-/*    H1 { page-break-before: always } */
-    .copyright { page-break-before: always }
-}

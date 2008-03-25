@@ -35,57 +35,69 @@
  *
  */
 
+// Vile hack.  See Object.es for documentation
+package org.ecmascript.vilehack.Name {
+    public namespace Private = "Name private";
+}
+
 package 
 {
-    use default namespace public;
-    use namespace intrinsic;
+    import org.ecmascript.vilehack.Name.*;
+
     use namespace __ES4__;
-    
+
     __ES4__ final class Name extends String 
     {
-        
         // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
-        static function get length() { return 2 }
+        static public function get length() { return 2 }
 
-        static function analyzeArgs (a, b)
-        {
-            if (a is Namespace && b is string) {
-                return { qualifier: a, 
-                         identifier: b }
-            }
-            if (a is Name && b is undefined) {
-                return { qualifier: a.qualifier, 
-                         identifier: b.identifier }
-            }
-            if (a is string && b is undefined) {
-                return { qualifier: null, 
-                         identifier: a }
+        // FIXME, "is undefined" would be better than "=== undefined"
+        // but doesn't work, ticket #364 I think.
+
+        static helper function analyzeArgs (a, b) {
+            if (a is Namespace)
+                return analyzeWithNamespace(a, b);
+            if (b === undefined) {
+                if (a is Name)
+                    return a;
+                return analyzeWithNamespace(null, a);
             }
             throw new TypeError();                        
+        
+            function analyzeWithNamespace(ns, x) {
+                if (x is AnyNumber && isIntegral(x) && x > 0 && x <= 0xFFFFFFFF || x is AnyString)
+                    return { qualifier: ns, identifier: string(x) };
+                throw TypeError();
+            }
         }
 
-        function Name(a, b=undefined) 
+        // FIXME: use abbreviations here when they are supported
+
+        public function Name(a, b=undefined) 
             : { qualifier: qualifier, 
-                identifier: identifier } = analyzeArgs(a,b)
+                identifier: identifier } = helper::analyzeArgs(a,b)
         {}
         
-        meta static function invoke(a, b=undefined): Name
+        static meta function invoke(a, b=undefined): Name
             new Name(a, b);
         
         prototype function toString(this : Name)
-            this.intrinsic::toString();
+            this.Private::toString();
         
-        override intrinsic function toString() : string {
+        override intrinsic function toString() : string
+            Private::toString();
+
+        Private function toString() : string {
             if (qualifier === null)
                 return identifier;
             return string(qualifier) + "::" + identifier;
         }
         
         prototype function valueOf(this : Name)
-            this.intrinsic::valueOf();
+            this.Private::toString();
         
         override intrinsic function valueOf() : string
-            intrinsic::toString();
+            Private::toString();
         
         public const qualifier  : Namespace,
                      identifier : string;

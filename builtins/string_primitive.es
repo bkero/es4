@@ -493,10 +493,10 @@ package
             string.slice(this, start, end, step);
         */
 
-        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): string
+        intrinsic function slice(start: AnyNumber=NaN, end: AnyNumber=NaN, step: AnyNumber=1): string
             string.slice(this, start, end, step);
 
-        static function slice(object, start: AnyNumber, end: AnyNumber, step: AnyNumber) {
+        static function slice(object, start: AnyNumber=NaN, end: AnyNumber=NaN, step: AnyNumber=1) {
 
             let len = uint(object.length);
 

@@ -72,7 +72,7 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (radix is AnyNumber && radix >= 2 && radix <= 36 && isIntegral(radix)) 
+            if (radix is AnyNumber && radix >= 2 && radix <= 36 && intrinsic::isIntegral(radix)) 
                 return informative::toString(int(radix));
             throw new TypeError("Invalid radix argument to int.toString");
         }

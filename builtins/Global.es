@@ -41,24 +41,35 @@
 
 package
 {
-    import Unicode.*;
     import ECMAScript4_Internal.*;
 
-    use default namespace public;
-    use namespace intrinsic;
     use namespace __ES4__;
 
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity
     // 15.1.1.3 undefined
-    intrinsic const NaN = 0.0/0.0;
-    intrinsic const Infinity = 1.0/0.0;
-    intrinsic const undefined = void(0);
+    // [proposals:bug fixes] - [IMMUTABLE.GLOBALS] says that these three names
+    // are {DE,DD,RO}, and not just {DE,DD} as in E262-3.
+    public const NaN = 0.0/0.0;
+    public const Infinity = 1.0/0.0;
+    public const undefined = void(0);
 
-    // FIXME: intrinsic or __ES4__??
+    /* E262-4 [proposals:versioning] says that __ECMASCRIPT_VERSION__ is always defined */
+    public const __ECMASCRIPT_VERSION__ = 4;
+
+    /* Ticket 152: This is __ES4__, not intrinsic */
     __ES4__ const global = this;
 
-    namespace iterator;
+    __ES4__ namespace iterator;
+
+    __ES4__ type EnumerableId = (int|uint|string|Name);
+
+    helper function toEnumerableId(x) {
+        switch type (x) {
+        case (x: EnumerableId) { return x; }
+        case (x: *)            { return string(x); }
+        }
+    }
 
     iterator type IteratorType.<T> = {
         next: function () : T
@@ -75,16 +86,21 @@ package
 
     iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
 
-    // FIXME: probably wants to be not iterator-specific; generally useful.
-    iterator type EnumerableId = (int|uint|string|Name);
-
     // 15.1.2.1 eval (x)
+    //
+    // FIXME: This should probably be an intrinsic::eval that looks
+    // like public::eval below but which delegates to magic::eval,
+    // passing "this function" as the object from which to extract the
+    // scope chain.
+
     intrinsic native function eval(s: string);
 
-    function eval(x) {
+    public function eval(x) {
+        if (this !== global)
+            throw EvalError();
         if (!(x is AnyString))
             return x;
-        return intrinsic::eval(string(x));
+        return global.intrinsic::eval(string(x));
     }
 
     /* 15.1.2.2 parseInt (string , radix)
@@ -93,21 +109,25 @@ package
      * not to allow a leading '0' to force a non-supplied radix
      * to 8, but instead to default to radix 10 in all cases
      * except when the string starts with '0x' or '0X'.
+     *
+     * FIXME: use slice syntax here instead of intrinsic::substring,
+     * when it's supported in the RI.
      */
-    intrinsic const function parseInt(s: string, r: int=0): AnyNumber {
+    intrinsic const function parseInt(s: string, r: double=0): AnyNumber {
         let i;
 
-        for ( i=0 ; i < s.length && Unicode.isTrimmableSpace(s[i]) ; i++ )
+        for ( i=0 ; i < s.length && helper::isTrimmableSpace(s[i]) ; i++ )
             ;
-        s = s.substring(i);
+        s = s.intrinsic::substring(i);
 
         let sign = 1;
         if (s.length >= 1 && s[0] == '-')
             sign = -1;
         if (s.length >= 1 && (s[0] == '-' || s[0] == '+'))
-            s = s.substring(1);
+            s = s.intrinsic::substring(1);
 
         let maybe_hexadecimal = false;
+        r = intrinsic::toInt(r);
         if (r == 0) {
             r = 10;
             maybe_hexadecimal = true;
@@ -117,14 +137,15 @@ package
         else if (r < 2 || r > 36)
             return NaN;
 
-        if (maybe_hexadecimal && s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        if (maybe_hexadecimal && 
+            s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
             r = 16;
-            s = s.substring(2);
+            s = s.intrinsic::substring(2);
         }
 
         for ( i=0 ; i < s.length && helper::isDigitForRadix(s[i], r) ; i++ )
             ;
-        s = s.substring(0,i);
+        s = s.intrinsic::substring(0,i);
 
         if (s == "")
             return NaN;
@@ -133,13 +154,12 @@ package
     }
 
     helper function isDigitForRadix(c, r) {
-        c = c.toUpperCase();
+        c = c.intrinsic::toUpperCase();
         if (c >= '0' && c <= '9')
-            return (c.charCodeAt(0) - '0'.charCodeAt(0)) < r;
-        else if (c >= 'A' && c <= 'Z')
-            return (c.charCodeAt(0) - 'A'.charCodeAt(0) + 10) < r;
-        else 
-            return false;
+            return (c.intrinsic::charCodeAt(0) - '0'.intrinsic::charCodeAt(0)) < r;
+        if (c >= 'A' && c <= 'Z')
+            return (c.intrinsic::charCodeAt(0) - 'A'.intrinsic::charCodeAt(0) + 10) < r;
+        return false;
     }
 
     /* E262-3 section 15.1.2.2: INFORMATIVE.  If more than 20
@@ -149,11 +169,11 @@ package
     informative function numericValue(s, r) {
 
         function digitValue(c) {
-            c = c.toUpperCase();
+            c = c.intrinsic::toUpperCase();
             if (c >= '0' && c <= '9')
-                return c.charCodeAt(0) - '0'.charCodeAt(0);
+                return c.intrinsic::charCodeAt(0) - '0'.intrinsic::charCodeAt(0);
             else
-                return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+                return c.intrinsic::charCodeAt(0) - 'A'.intrinsic::charCodeAt(0) + 10;
         }
         
         let val = 0;
@@ -162,8 +182,8 @@ package
         return val;
     }
 
-    function parseInt(s, r=0)
-        intrinsic::parseInt(string(s), int(r));
+    public function parseInt(s, r=0)
+        intrinsic::parseInt(string(s), double(r));
 
 
     // 15.1.2.3 parseFloat (string)
@@ -171,65 +191,43 @@ package
 
     /*  No reason most of this has to be native.
     intrinsic const function parseFloat(s: string) {
-        FIXME: Needs implementation
+        // Implement this according to E262-3 
     }
     */
 
-    function parseFloat(s)
+    public function parseFloat(s)
         intrinsic::parseFloat(string(s));
 
 
     // 15.1.2.4 isNaN (v)
+    // parens to avoid interpretation "boolean!"
     intrinsic const function isNaN(n: AnyNumber): boolean
         (!(n === n));
 
-    function isNaN(number)
-        intrinsic::isNaN(Number(number));
+    public function isNaN(x)
+        intrinsic::isNaN(Number(x));
 
 
     // 15.1.2.5 isFinite (number)
-    // FIXME: this returns the wrong answer if the body is
-    // reduced to an expression; however, the function works if
-    // typed at the repl even in its simplified form, so something
-    // is definitely very wrong.
-    intrinsic const function isFinite(n: AnyNumber): boolean {
-        return !isNaN(n) && n != -Infinity && n != Infinity;
-    }
+    // parens to avoid interpretation "boolean!"
+    intrinsic const function isFinite(n: AnyNumber): boolean
+        (!intrinsic::isNaN(n) && n != -Infinity && n != Infinity);
 
-    function isFinite(x)
+    public function isFinite(x)
         intrinsic::isFinite(Number(x));
 
-    intrinsic const function isIntegral(v:AnyNumber):boolean {
-        switch type (v) {
-        case (v:int) { return true; }
-        case (v:uint) { return true; }
-        case (v:double) {
-            return (!isNaN(v) &&
-                    v != double.NEGATIVE_INFINITY &&
-                    v != double.POSITIVE_INFINITY &&
-                    Math.floor(v) == v);
-        }
-        case (v:decimal) {
-            return (!isNaN(v) &&
-                    v != decimal.NEGATIVE_INFINITY &&
-                    v != decimal.POSITIVE_INFINITY &&
-                    Math.floor(v) == v);
-        }
-        case (v:Number) {
-            return isIntegral(double(v));
-        }
-        }
-    }
+    intrinsic const function isIntegral(v:AnyNumber): boolean
+        intrinsic::isFinite(v) && Math.intrinsic::floor(v) == v;
 
-    function isIntegral(v)
+    __ES4__ function isIntegral(v)
         intrinsic::isIntegral(Number(v));
 
     // Returns x with the sign of y
     intrinsic const function copysign(x:AnyNumber, y:AnyNumber): AnyNumber {
-        if (isNaN(x)) 
+        if (intrinsic::isNaN(x)) 
             return x;
 
-        let s = sign(y);
+        let s = intrinsic::sign(y);
         if (x < 0) {
             if (s < 0)
                 return x;
@@ -250,12 +248,12 @@ package
         }
     }
 
-    function copysign(x,y)
+    __ES4__ function copysign(x,y)
         intrinsic::copysign(Number(x), Number(y));
 
     // Returns -1 for negative, 1 for positive, 0 for nan
-    intrinsic const function sign(x:AnyNumber) {
-        if (isNaN(x))
+    intrinsic const function sign(x:AnyNumber): double {
+        if (intrinsic::isNaN(x))
             return 0;
         if (x < 0)
             return -1;
@@ -266,71 +264,86 @@ package
         return 1;
     }
 
-    function sign(x)
+    __ES4__ function sign(x)
         intrinsic::sign(Number(x));
         
+    intrinsic const function isInt(n:AnyNumber) : boolean
+        intrinsic::isIntegral(n) && n >= -0x7FFFFFFF && n <= 0x7FFFFFFF;
+
+    __ES4__ function isInt(x)
+        intrinsic::isInt(Number(x));
+
+    intrinsic const function isUint(n:AnyNumber) : boolean
+        intrinsic::isIntegral(n) && n >= 0 && n <= 0xFFFFFFFF;
+
+    __ES4__ function isUint(x)
+        intrinsic::isUint(Number(x));
+
+    intrinsic const function toInt(n:AnyNumber) : double
+        n | 0;
+
+    __ES4__ function toInt(x)
+        intrinsic::toInt(Number(x));
+
+    intrinsic const function toUint(n:AnyNumber) : double
+        n >>> 0;
+
+    __ES4__ function toUint(x) : boolean
+        intrinsic::toUint(Number(x));
+
     helper function isIndex(k): boolean
-        (k is int && k >= 0) ||
-        (k is uint && k <= 0xFFFFFFFE) ||
-        (k is (double|decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
+        intrinsic::isUint(k) && k != 0xFFFFFFFF;
     
     // Note, this rounds toward zero
     helper function toInteger(value): AnyNumber {
         value = Number(value);
-        if (isNaN(value))
+        if (intrinsic::isNaN(value))
             return 0;
-        if (value === 0 || !isFinite(value))
+        if (value === 0 || !intrinsic::isFinite(value))
             return value;
-        return sign(value) * Math.floor(Math.abs(value));
+        return intrinsic::sign(value) * Math.intrinsic::floor(Math.intrinsic::abs(value));
     }
 
     // Return a hash code for the string.
     //
     // INFORMATIVE: this particular algorithm is not mandated and
     // may or may not be suitable.
-    informative function stringHash(s: string): uint {
+
+    informative function stringHash(str: AnyString): double {
+        let s = string(str);
         let h = 0;
         for ( let i=0 ; i < s.length ; i++ )
-            h = (h << 4) + (let (c = s.charCodeAt(i)) c*3);
+            h = (h << 4) + (let (c = s.intrinsic::charCodeAt(i)) c*3);
         return h;
     }
 
+    informative function namespaceHash(x)
+        informativ::stringHash(x);
+
+    informative function nameHash(x)
+        informativ::stringHash(x);
+
     // Return a hash code for the object.
-    //
-    // INFORMATIVE: this particular algorithm is not mandated, and
-    // is in fact in some sense incorrect because it prevents the
-    // object from being garbage collected if it is referenced
-    // from this table.  (On the other hand, garbage collection is
-    // not mandated by the spec.)  This algorithm is also slow;
-    // computing the hashcode should be a constant-time algorithm
-    // with a low constant.
 
-    informative var objectIdentities = null;
-    informative var nextHash: uint = 0;
+    informative native function objectHash(x:Object!): double;
 
-    informative native function objectHash(x:Object!): uint;
-
-    intrinsic const function hashcode(o): uint {
+    intrinsic const function hashcode(o): double {
         switch type (o) {
-        case (x: null)      { return 0u }
-        case (x: undefined) { return 0u }
-        case (x: boolean)   { return uint(x) }
-        case (x: Boolean)   { return uint(x) }
-        case (x: int)       { return x < 0 ? -x : x }
-        case (x: uint)      { return x }
-        case (x: double)    { return isNaN(x) ? 0u : uint(x) }
-        case (x: decimal)   { return isNaN(x) ? 0u : uint(x) }
-        case (x: Number)    { return isNaN(x) ? 0u : uint(x) }
-        case (x: string)    { return informative::stringHash(string(x)) }
-        case (x: String)    { return informative::stringHash(string(x)) }
-        case (x: *)         { return informative::objectHash(x) }
+        case (x: null)       { return 0 }
+        case (x: undefined)  { return 0 }
+        case (x: AnyBoolean) { return Number(x) }
+        case (x: AnyNumber)  { return intrinsic::toUint(x) }
+        case (x: AnyString)  { return informative::stringHash(x) }
+        case (x: Namespace)  { return informative::namespaceHash(x) }
+        case (x: Name)       { return informative::nameHash(x) }
+        case (x: *)          { return informative::objectHash(x) }
         }
     }
 
 
     /* URI encoding and decoding. */
 
-    helper function toUTF8(v: uint) {
+    helper function toUTF8(v) {
         if (v <= 0x7F)
             return [v];
         if (v <= 0x7FF)
@@ -345,7 +358,7 @@ package
                     0x80 | ((v >> 12) & 0x3F),
                     0x80 | ((v >> 6) & 0x3F),
                     0x80 | (v & 0x3F)];
-        throw URIError("Unconvertable code");
+        throw URIError(/* Unconvertible code */);
     }
 
     helper function fromUTF8(octets) {
@@ -371,20 +384,20 @@ package
         while (k != s.length) {
             let C = s[k];
 
-            if (unescapedSet.indexOf(C) != -1) {
+            if (unescapedSet.intrinsic::indexOf(C) != -1) {
                 R = R + C;
                 k = k + 1;
                 continue;
             }
 
-            let V = C.charCodeAt(0);
+            let V = C.intrinsic::charCodeAt(0);
             if (V >= 0xDC00 && V <= 0xDFFF)
-                throw new URIError("Invalid code");
+                throw new URIError(/* Invalid code */);
             if (V >= 0xD800 && V <= 0xDBFF) {
                 k = k + 1;
                 if (k == s.length)
-                    throw new URIError("Truncated code");
-                let V2 = s[k].charCodeAt(0);
+                    throw new URIError(/* Truncated code */);
+                let V2 = s[k].intrinsic::charCodeAt(0);
                 V = (V - 0xD800) * 0x400 + (V2 - 0xDC00) + 0x10000;
             }
 
@@ -404,9 +417,10 @@ package
     helper function decodeHexEscape(s, k) {
         if (k + 2 >= s.length || 
             s[k] != "%" ||
-            !helper::isDigitForRadix(s[k+1], 16) && !helper::isDigitForRadix(s[k+1], 16))
-            throw new URIError("Invalid escape sequence");
-        return parseInt(s.substring(k+1, k+3), 16);
+            (!helper::isDigitForRadix(s[k+1], 16) && 
+             !helper::isDigitForRadix(s[k+1], 16)))
+            throw new URIError(/* Invalid escape sequence */);
+        return intrinsic::parseInt(s.intrinsic::substring(k+1, k+3), 16);
     }
 
     helper function decode(s: string, reservedSet: string): string {
@@ -424,9 +438,9 @@ package
             k = k + 3;
 
             if ((B & 0x80) == 0) {
-                let C = string.fromCharCode(B);
-                if (reservedSet.indexOf(C) != -1)
-                    R = R + s.substring(start, k);
+                let C = string.intrinsic::fromCharCode(B);
+                if (reservedSet.intrinsic::indexOf(C) != -1)
+                    R = R + s.intrinsic::substring(start, k);
                 else
                     R = R + C;
                 continue;
@@ -436,28 +450,28 @@ package
             while (((B << n) & 0x80) == 1)
                 ++n;
             if (n == 1 || n > 4)
-                throw new URIError("Invalid encoded character");
+                throw new URIError(/* Invalid encoded character */);
 
             let octets = [B];
             for ( let j=1 ; j < n ; ++j ) {
                 let B = helper::decodeHexEscape(s, k);
                 if ((B & 0xC0) != 0x80)
-                    throw new URIError("Invalid encoded character");
+                    throw new URIError(/* Invalid encoded character */);
                 k = k + 3;
-                octets.push(B);
+                octets.intrinsic::push(B);
             }
             let V = helper::fromUTF8(octets);
             if (V > 0x10FFFF)
-                throw new URIError("Invalid Unicode code point");
+                throw new URIError(/* Invalid Unicode code point */);
             if (V > 0xFFFF) {
                 L = ((V - 0x10000) & 0x3FF) + 0xD800;
                 H = (((V - 0x10000) >> 10) & 0x3FF) + 0xD800;
-                R = R + string.fromCharCode(H, L);
+                R = R + string.intrinsic::fromCharCode(H, L);
             }
             else {
-                let C = string.fromCharCode(V);
-                if (reservedSet.indexOf(C))
-                    R = R + s.substring(start, k);
+                let C = string.intrinsic::fromCharCode(V);
+                if (reservedSet.intrinsic::indexOf(C))
+                    R = R + s.intrinsic::substring(start, k);
                 else
                     R = R + C;
             }
@@ -476,7 +490,7 @@ package
     intrinsic const function decodeURI(encodedURI: string)
         helper::decode(encodedURI, helper::uriReserved + "#");
 
-    function decodeURI(encodedURI)
+    public function decodeURI(encodedURI)
         intrinsic::decodeURI(string(encodedURI));
 
 
@@ -484,7 +498,7 @@ package
     intrinsic const function decodeURIComponent(encodedURIComponent)
         helper::decode(encodedURIComponent, "");
 
-    function decodeURIComponent(encodedURIComponent)
+    public function decodeURIComponent(encodedURIComponent)
         intrinsic::decodeURIComponent(string(encodedURIComponent));
 
 
@@ -492,7 +506,7 @@ package
     intrinsic const function encodeURI(uri: string): string
         helper::encode(uri, helper::uriReserved + helper::uriUnescaped + "#")
 
-    function encodeURI(uri)
+    public function encodeURI(uri)
         intrinsic::encodeURI(string(uri));
 
 
@@ -500,19 +514,9 @@ package
     intrinsic const function encodeURIComponent(uriComponent: string): string
         helper::encode(uri, helper::uriReserved);
 
-    function encodeURIComponent(uriComponent)
+    public function encodeURIComponent(uriComponent)
         intrinsic::encodeURIComponent(string(uriComponent));
 
-
-    /* E262-4 [proposals:versioning] says that __ECMASCRIPT_VERSION__ is always defined */
-    const __ECMASCRIPT_VERSION__ = 4;
-
-
-    // [proposals:bug fixes] - [IMMUTABLE.GLOBALS] says that these three names
-    // are {DE,DD,RO}, and not just {DE,DD} as in E262-3.
-    const NaN = intrinsic::NaN;
-    const Infinity = intrinsic::Infinity;
-    const undefined = intrinsic::undefined;
 
     // The non-virtual property get/set helpers.
     intrinsic native function get(obj:Object!, name:string) : *;

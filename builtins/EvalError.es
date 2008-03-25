@@ -51,19 +51,17 @@
 
 package
 {
-    use default namespace public;
-    use namespace intrinsic;
     use namespace __ES4__;
 
     /* E262-3 15.11.6.1; 15.11.7 */
-    dynamic class EvalError extends Error
+    public dynamic class EvalError extends Error
     {
-        static const length = 1;
+        static public const length = 1;
 
-        meta static function invoke(message)
+        static meta function invoke(message)
             new EvalError(message);
 
-        function EvalError(message) 
+        public function EvalError(message) 
             : super(message) 
         {
         }

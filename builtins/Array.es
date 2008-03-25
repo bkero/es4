@@ -366,8 +366,7 @@ package
             }
 
             let len = uint(object.length);
-            if (len > 0)
-                informative::sortEngine(object, 0, len-1, compare);
+            informative::sortEngine(object, 0, len-1, compare);
             return object;
         }
 
@@ -705,7 +704,13 @@ package
     // typically faces mostly-ordered inputs.  It is also not a stable
     // sort, which may be desirable but is not required by the spec
 
-    informative function sortEngine(v, lo: uint, hi: uint, sortCompare): void {
+    
+    informative function sortEngine(v, lo, hi, sortCompare): void {
+        if (hi-lo >= 0)
+            sortEngine2(v, lo, hi, sortCompare);
+    }
+
+    informative function sortEngine2(v, lo: uint, hi: uint, sortCompare): void {
 
         function qsort(lo, hi) {
             if (lo >= hi)

@@ -1,0 +1,1199 @@
+= Syntax =
+
+<p>This section defines the mapping from the surface syntax to the abstract, internal,
+representation of programs.
+
+== Source Text ==
+
+<p>ECMAScript source text is represetned as a sequence of characters in the Unicode character encoding,
+version 5 or later. 
+
+== Lexical Structure ==
+
+<p>The source text of an ES program is first converted into a sequence of input elements, which are either
+tokens, line terminators, comments, or white space. The source text is scanned from left to right,
+repeatedly taking the longest possible sequence of characters as the next input element.
+
+<p>There are two goal symbols for the lexical grammar. The //InputElementDiv// symbol is used in those
+syntactic grammar contexts where a division, ''/'', or //division-assignment//, ''/='', operator
+is permitted. The //InputElementRegExp// symbol is used in all other syntactic grammar contexts.
+
+<p>Note that contexts exist in the syntactic grammar where both a division and a //RegularExpressionLiteral//
+are permitted by the syntactic grammar; however, since the lexical grammar uses the //InputElementDiv// goal
+symbol in such cases, the opening slash is not recognised as starting a regular expression literal in such
+a context. As a workaround, one may enclose the regular expression literal in parenthesis.
+
+{{{
+InputElementDiv ::
+    WhiteSpace
+    LineTerminator
+    Comment
+    Token
+    DivPunctuator
+
+InputElementRegExpr ::
+    WhiteSpace
+    LineTerminator
+    Comment
+    Token
+    RegularExpressionLiteral
+}}}
+
+=== Tokens ===
+
+{{{
+Token ::
+    ReservedIdentifier
+    ContextuallyReservedIdentifier
+    Identifier
+    Punctuator
+    NumericLiteral
+    SingleLiteral
+}}}
+
+==== ReservedIdentifier ====
+
+<p>Reserved words cannot be used as identifiers.
+
+{{{
+ReservedIdentifier :: [one of]
+    break case cast catch class continue debugger default delete do else enum extends false 
+    finally for function if in instanceof internal is new null private protected public return 
+    super switch this throw true try typeof var void while with wrap
+}}}
+
+==== ContextuallyReservedIdentifier ====
+
+<p>//ContextuallyReservedIdentifier// may be used as property names, but have a specially
+meaning in specific syntactic contexts.
+
+{{{
+ContextuallyReservedIdentifier :: [one of]
+    const decimal double dynamic each eval final generator generic get has
+    implements import int interface let namespace native Number override
+    package precision prototype rounding set standard static strict to type uint 
+    undefined unit use xml yield
+}}}
+
+=== Identifier ===
+
+<p>Identifiers are interpreted according to the grammar given in //Section ..// of Version 5.0 of
+the Unicode standard, with small modifications. The grammar is base on both normative and
+informative character categories specified by the Unicode standard.
+
+<pre>
+//Identifier// ::
+    //IdentifierName// **but not** //ReservedWord//
+
+//IdentifierName// ::
+    //IdentifierStart//
+    //IdentifierName IdentifierPart//
+
+//IdentifierStart// ::
+    //UnicodeLetter//
+    **$**
+    **_**
+    **\** //UnicodeEscapeSequence//
+
+//IdentifierPart// ::
+    //IdentifierStart//
+    //UnicodeCombiningMark//
+    //UnicodeDigit//
+    //UnicodeConnectorPunctuation//
+    **\** //UnicodeEscapeSequence//
+
+//UnicodeLetter// ::
+    ...
+
+//UnicodeCombiningMark// ::
+    ...
+
+//UnicodeDigit// ::
+    ...
+
+//UnicodeConnectorPunctuation// ::
+    ...
+
+//UnicodeEscapeSequence// ::
+    ...
+
+//HexDigit// :: [one of]
+    **0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F**
+</pre>
+
+==== Punctuator ====
+
+{{{
+Punctuator :: [one of]
+    . .< .. ... ! != !== % %= & &= && &&= * *= + += ++ - -= --
+    / /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>=
+    ^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?
+}}}
+
+==== VirtualSemicolon ====
+
+<p>If the first through the n<sup>th</sup> tokens of an ES program form are
+grammatically valid but the first through then n+1<sup>st</sup> tokens, then
+the parser tries to parse the program again after inserting a //semicolon// (**;**) token
+between the n<sup>th</sup> and n+1<sup>th</sup> tokens
+
+==== StringLiteral ====
+
+<p>A string literal is zero or more characters enclosed in single or double quotes. Each
+character may be represented by an escape sequence.
+
+<IMPL>
+{{{
+StringLiteral ::
+    " DoubleStringCharactersOpt "
+    ' SingleStringCharactersOpt '
+
+...
+}}}
+
+==== NumberLiteral ====
+
+<p>A number literal represents a value of the type //double//.
+
+<IMPL> 
+{{{
+...
+}}}
+
+=== RegularExpression ===
+
+<p>A regular expression literal is an input element that is converted to a RegExp
+object (see //section ..: The RegExp class//) when it is scanned. The object is
+created before evaluation of the containing program or function begines. ...
+
+<IMPL>
+{{{
+RegularExpressionLiteral ::
+    / RegularExpressionBody / RegularExpressionFlags
+
+RegularExpressionBody ::
+    RegularExpressionFirstChar RegularExpressionChars
+
+RegularExpressionChars ::
+    [empty]
+    RegularExpressionChars RegularExpressionChar
+
+RegularExpressionFirstChar ::
+    NonTerminator [**but not** * or \ or /]
+    BackslashSequence
+
+BackslashSequence ::
+    NonTerminator [**but not** \ or /]
+    BackslashSequence
+
+BackslashSequence ::
+    \ NonTerminator
+
+NonTerminator ::
+    SourceCharacter [**but not** LineTerminator]
+
+RegularExpressionFlags ::
+    [empty]
+    RegularExpressionFlags IdentifierPart
+}}}
+
+<NOTE>Regular expression literals may not be empty; instead of representing an empty
+regular expression literal, the characters ''/''''/'' start a single line commment. To specify
+an empty regular expression, use ''/(?:)/''.
+
+== Program Structure ==
+
+=== Identifier Expresssions ===
+
+<p>Identifier expression have various surfaces representations including:
+//QualifiedName//, //PropertyName//, and //PrimaryName//. These expressions are 
+translated into one of two possible AST constructions:
+//Identifier// or //QualifiedIdentifier//.
+
+<IMPL>
+<pre>
+datatype IDENT_EXPR =
+         Identifier of EXPR
+       | QualifiedIdentifier of (EXPR * EXPR)
+</pre>
+
+==== Identifier ====
+
+<p>//Identifier// expressions are translated into the string literal with the same sequence of characters.
+
+<IMPL>
+<pre>
+rul Identifier () : EXPR =
+    //**Identifier**// => Ast.LiteralExpr (Ast.LiteralString **Identifier**)
+</pre>
+
+==== Qualifier ====
+
+<p>A //Qualifier// can occur on the left hand side of a ''::'' token in an identifier
+expression.
+
+<IMPL>
+<pre>
+rul Qualifier () : IDENT_EXPR =
+    //Identifier// => Identifier ()
+  | //ReservedNamespace// => ReservedNamespace ()
+</pre>
+
+==== ReservedNamespace ====
+
+<p>A //ReservedNamespace// identifier is used to refer to one of the system defined
+namespaces as a value.
+
+<IMPL>
+<pre>
+rul ReservedNamespace () : NAMESPACE =
+    //**internal**// => Ast.InternalNamespace (getPackageIdentifier ())
+  | //**private**// => Ast.Namespace (getClassPrivateIdentifier ())
+  | //**protected**// => Ast.Namespace (getClassProtectedIdentifier ())
+  | //**public**// => Ast.PublicNamespace (getPackageIdentifier ())
+</pre>
+
+{{{
+fun getPackageIdentifier () 
+    : IDENT =
+    (* return the sequence of characters that identifies the current package *)
+}}}
+
+{{{
+fun getClassPrivateIdentifier () 
+    : int = ...
+    (* return the system generated integer value that uniquely identifies
+       the private namespace for this class *)
+}}}
+
+{{{
+fun getClassPrivateIdentifier () 
+    : int = ...
+    (* return the system generated integer values that uniquely identifies
+       the protected namespaces for this class *)
+}}}
+
+==== QualifiedNameIdentifier ====
+
+<IMPL>
+<pre>
+rul QualifiedNameIdentifier (ns: EXPR) : IDENT_EXPR =
+    //Identifier// => Ast.QualifiedIdentifier (ns, //Identifier ()//)
+  | **ReservedIdentifier** => Ast.QualifiedIdentifier (ns, Ast.LiteralExpr (Ast.LiteralString **ReservedIdentifier**))
+</pre>
+
+==== QualifiedName ====
+
+<IMPL>
+<pre>
+rul QualifiedName () : IDENT_EXPR =
+    Identifier => Ast.Identifier (Identifier ())
+  | Qualifier :: QualifiedNameIdentifier => QualifiedNameIdentifier (Qualifier ())
+  | ParenListExpression :: QualifiedNameIdentifier => QualifiedNameIdentifier (ParenListExpression ())
+  | QualifiedName :: QualifiedNameIdentifier =>  QualifiedNameIdentifier (Ast.LexicalRef QualifiedName ())
+</pre>
+
+==== AttributeName ====
+
+<IMPL>
+<pre>
+rul AttributeName () : IDENT_EXPR =
+    @ Brackets => reserved_syntax ()
+  | @ QualfiedName => reserved_syntax ()
+</pre>
+
+==== PropertyName ====
+
+<IMPL>
+<pre>
+rul PropertyName  () : IDENT_EXPR =
+    AttributeName => AttributeName ()
+  | QualifiedName => QualifiedName ()
+</pre>
+
+==== PrimaryName ====
+
+<IMPL>
+<pre>
+rul PrimaryName () : IDENT_EXPR =
+    Path . QualfiedName => Ast.Path (Path (), QualfiedName ())
+  | PropertyName => PropertyName ()
+</pre>
+
+==== Path ====
+
+<IMPL>
+<pre>
+rul Path () : IDENT list =
+    Identifier => Identifier () :: []
+  | Path . Identifier => Path () @ (Identifier () :: [])
+</pre>
+
+=== Literal Expressions ===
+
+<p>Literal expressions are values expressions with a specific allocation type
+either implied by the literal or, in the case of an //ObjectLiteral// or //ArrayLiteral//,
+possibly specified by an optional type annotation.
+
+<IMPL>
+The abstract syntax for literal expressions is:
+
+<pre>
+datatype LITERAL =
+         LiteralNull
+       | LiteralUndefined
+       | LiteralBoolean of bool
+       | LiteralDouble of Real64.real
+       | LiteralString of Ustring.STRING
+       | LiteralArray of { exprs: EXPR list, ty: TY option }
+       | LiteralNamespace of NAMESPACE
+       | LiteralObject of{ expr : FIELD list, ty: TY option }
+       | LiteralFunction of FUNC
+       | LiteralRegExp of { str: Ustring.STRING }
+</pre>
+
+==== FunctionExpression ====
+==== FunctionExpressionBody ====
+==== ObjectLiteral ====
+==== FieldList ====
+==== LiteralField ====
+==== FieldKind ====
+==== FieldName ====
+==== ArrayLiteral ====
+==== Elements ====
+==== ElementList ====
+==== LiteralElement ====
+==== ElementComprehension ====
+==== ForInExpressionList ====
+==== ForInExpression ====
+==== OptionalIfCondition ====
+=== Expressions ===
+
+<pre>
+datatype EXPR =
+         TernaryExpr of (EXPR * EXPR * EXPR)
+       | BinaryExpr of (BINOP * EXPR * EXPR)
+       | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
+       | UnaryExpr of (UNOP * EXPR)
+       | TypeExpr of TY
+       | ThisExpr of THIS_KIND option
+       | YieldExpr of EXPR option
+       | SuperExpr of EXPR option
+       | LiteralExpr of LITERAL
+       | CallExpr of { func: EXPR, actuals: EXPR list }
+       | ApplyTypeExpr of { expr: EXPR, actuals: TY list }
+       | LetExpr of { head: HEAD, body: EXPR }
+       | NewExpr of { obj: EXPR, actuals: EXPR list }
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
+       | LexicalRef of { ident: IDENT_EXPR }
+       | SetExpr of (ASSIGNOP * EXPR * EXPR)
+       | ListExpr of EXPR list
+       | InitExpr of (INIT_TARGET * HEAD * INITS)
+       | GetTemp of int
+       | GetParam of int
+       | Comprehension of (EXPR * FOR_ENUM_HEAD list * EXPR option)
+</pre>
+
+==== ParenExpression ====
+==== ParenListExpression ====
+==== PrimaryExpression ====
+
+<p>A //PrimaryExpression// yields a value expression and may occur anywhere
+a //MemberExpression// may occur.
+
+<IMPL>
+<pre>
+rul PrimaryExpression (alpha, beta) : EXPR =
+    **null** => Ast.LiteralExpr (Ast.LiteralNull)
+  | **true** => Ast.LiteralExpr (Ast.LiteralBoolean **true**)
+  | **false** => Ast.LiteralExpr (Ast.LiteralBoolean **false**)
+  | **NumberLiteral** => Ast.LiteralExpr (Ast.LiteralNumber **NumberLiteral**)
+  | **StringLiteral** => Ast.LiteralExpr (Ast.LiteralString **StringLiteral**)
+  | **RegExpLiteral** => Ast.LiteralExpr (Ast.LiteralRegExp **RegExpLiteral**)
+  | //ArrayLiteral// => Ast.LiteralExpr (//ArrayLiteral (alpha)//)
+  | //ObjectLiteral// => Ast.LiteralExpr (//ObjectLiteral (alpha)//)
+  | //FunctionExpression// => Ast.LiteralExpr (//FunctionExpression (alpha, beta)//)
+  | //ThisExpression// => //ThisExpression ()//
+  | //ParenListExpression// => //ParenListExpression ()//
+  | //LetExpression// => //LetExpression (alpha, beta)//
+  | //PrimaryName// => Ast.LexicalRef (//PrimaryName (alpha, beta)//)
+  | //ReservedNamespace// => Ast.LiteralExpr (Ast.LiteralNamespace (//ReservedNamespace ()//))
+</pre>
+
+</pre>
+==== ThisExpression ====
+
+<IMPL>
+<pre>
+rul ThisExpression () : EXPR =
+    **this** => Ast.ThisExpr Ast.ObjectThis
+  | **this function** => Ast.ThisExpr Ast.FunctionThis
+  | **this generator** => Ast.ThisExpr Ast.GeneratorThis
+</pre>
+
+==== LetExpression ====
+
+<p>A let expression allows the creation of a local scope within an expression. The head of a
+let expression has a lexical scope of the outer block and so bindings introduced in the head
+do not shadow outer names. The lexical scope of the body includes the head as the first frame
+in the scope chain.
+
+<p>In the following example, two values are reversed before being used to compute a quotient.
+
+<P class="implsection"><b>Sample</b></P><span class="pcounter"></span>
+
+{{{
+... = let (x=y, y=x) x/y
+}}}
+
+
+<IMPL>
+<pre>
+rul LetExpression (alpha, beta) : EXPR =
+    **let (** //LetBindingList// **)** //AssignmentExpression// => LetExpr (//LetBindingList//, //AssignmentExpression (alpha, beta)//)
+</pre>
+
+<pre>
+rul LetBindingList () : (FIXTURE list * EXPR list) list =
+    //empty// => ([],[])
+  | //NonemptyLetBindingList// => //NonemptyLetBindingList ()//
+</pre>
+<pre>
+rul NonemptyLetBindingList () : (FIXTURE list * EXPR list) list =
+    //VariableBinding// => (//VariableBinding (AllowIn)//) :: []
+  | //VariableBinding//  **,**  //NonemptyLetBindingList// => (//VariableBinding (AllowIn)//) :: (//NonemptyLetBindingList ()//)
+</pre>
+
+==== SuperExpression ====
+==== Arguments ====
+==== ArgumentList ====
+==== PropertyOperator ====
+==== Brackets ====
+==== BracketsOrSlice ====
+==== SliceExpression ====
+==== OptionalExpression ====
+==== TypeApplication ====
+==== MemberExpression ====
+==== CallExpression ====
+==== NewExpression ====
+==== LeftHandSideExpression ====
+==== PostfixExpression ====
+==== UnaryExpression ====
+==== MultiplicativeExpression ====
+==== AdditiveExpression ====
+==== ShiftExpression ====
+==== RelationalExpressiona, allowIn ====
+==== RelationalExpressiona, noIn ====
+==== EqualityExpression ====
+==== BitwiseAndExpression ====
+==== BitwiseXorExpression ====
+==== BitwiseOrExpression ====
+==== LogicalAndExpression ====
+==== LogicalOrExpression ====
+==== ConditionalExpression ====
+==== NonAssignmentExpression ====
+==== UnaryTypeExpression ====
+==== YieldExpression ====
+==== AssignmentExpression ====
+==== CompoundAssignmentOperator ====
+==== ListExpression ====
+
+=== Patterns ===
+
+=== Types ===
+
+<pre>
+     and TYPE_EXPR =
+         SpecialType of SPECIAL_TY
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
+       | TypeName of IDENT_EXPR
+       | ElementTypeRef of (TYPE_EXPR * int)
+       | FieldTypeRef of (TYPE_EXPR * IDENT)
+       | FunctionType of FUNC_TYPE
+       | ObjectType of FIELD_TYPE list
+       | LikeType of TYPE_EXPR
+       | WrapType of TYPE_EXPR
+       | AppType of 
+         { base: TYPE_EXPR,
+           args: TYPE_EXPR list }
+       | LamType of
+         { params: IDENT list,
+           body: TYPE_EXPR }
+       | NullableType of 
+         { expr:TYPE_EXPR,
+           nullable:bool }
+       | InstanceType of INSTANCE_TYPE
+</pre>
+
+=== Statements ===
+
+<pre>
+     and STMT =
+         EmptyStmt
+       | ExprStmt of EXPR
+       | InitStmt of {
+             kind: VAR_DEFN_TAG,
+             ns: EXPR option,
+             prototype: bool,
+             static: bool,
+             temps: BINDINGS,
+             inits: INIT_STEP list }
+       | ClassBlock of CLASS_BLOCK                           
+       | ForInStmt of FOR_ENUM_STMT
+       | ThrowStmt of EXPR
+       | ReturnStmt of EXPR
+       | BreakStmt of IDENT option
+       | ContinueStmt of IDENT option
+       | BlockStmt of BLOCK
+       | LabeledStmt of (IDENT * STMT)
+       | LetStmt of BLOCK
+       | WhileStmt of WHILE_STMT
+       | DoWhileStmt of WHILE_STMT
+       | ForStmt of FOR_STMT
+       | IfStmt of {
+             cnd: EXPR,
+             thn: STMT,
+             els: STMT }
+       | WithStmt of {
+             obj: EXPR,
+             ty: TY,
+             body: STMT }
+       | TryStmt of {
+             block: BLOCK,
+             catches: CATCH_CLAUSE list,
+             finally: BLOCK option }
+
+       | SwitchStmt of {         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
+             cond: EXPR,
+             labels: IDENT list,
+             cases: CASE list }
+       | SwitchTypeStmt of {
+             cond: EXPR,
+             ty: TY,
+             cases: CATCH_CLAUSE list }
+       | DXNStmt of {
+             expr: EXPR }
+</pre>
+
+=== Definitions ===
+
+<p>Definitions in the surface syntax are translated into Fixtures in the abstract
+syntax.
+
+{{{
+datatype FIXTURE =
+         NamespaceFixture of NAMESPACE
+       | ClassFixture of CLS
+       | InterfaceFixture of IFACE
+       | TypeVarFixture of TYPEVAR_NONCE
+       | TypeFixture of TY
+       | MethodFixture of
+           { func: FUNC,
+             ty: TY,
+             readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+             override: bool,
+             final: bool }
+       | ValFixture of
+           { ty: TY,
+             readOnly: bool }
+       | VirtualValFixture of
+         { ty: TY, 
+           getter: FUNC option,
+           setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
+       | InheritedFixture of 
+         { baseName: NAME, 
+           baseTypeArgs: TY list }
+}}}
+
+=== Programs and Blocks ===
+
+=== Automatic Semicolon Insertion ===
+
+
+
+
+PATTERNS
+
+Pattern, g
+
+
+
+
+SimplePattern, noExpr
+
+
+SimplePattern, allowExpr
+
+
+ObjectPatterng
+
+
+FieldListPatterng
+
+
+
+
+FieldPatterng
+
+
+
+ArrayPatterng
+
+
+ElementListPatterng
+
+
+
+
+
+ElementPatterng
+
+
+TypedIdentifier
+
+
+
+TypedPatternb
+
+
+
+TypeAnnotation
+
+
+
+TYPE EXPRESSIONS
+
+TypeExpression
+
+
+
+NullableTypeExpression
+
+
+
+
+BasicTypeExpression
+
+
+
+
+
+
+
+
+
+FunctionType
+
+
+FunctionSignatureType
+
+
+
+
+ParametersType
+
+
+
+NonemptyParametersType
+
+
+
+
+ParameterInitType
+
+
+
+ParameterType
+
+
+RestParameterType
+
+
+
+UnionType
+
+
+TypeUnionList
+
+
+
+NonemptyTypeUnionList
+
+
+
+RecordType
+
+
+FieldTypeList
+
+
+
+NonemptyFieldTypeList
+
+
+
+FieldType
+
+
+ArrayType
+
+
+ElementTypeList
+
+
+
+
+
+TypeExpressionList
+
+
+
+STATEMENTS
+w =  {abbrev, noShortIf, full}
+
+Statementt, w
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Substatementw
+
+
+
+Semicolonabbrev 
+
+
+
+
+SemicolonnoShortIf
+
+
+
+
+Semicolonfull
+
+
+
+EmptyStatement 
+
+
+ExpressionStatement
+
+
+BlockStatementt
+
+
+LabeledStatementw
+
+
+IfStatementabbrev
+
+
+
+IfStatementfull
+
+
+
+IfStatementnoShortIf
+
+
+WithStatementw
+
+
+SwitchStatement
+
+
+CaseElements
+
+
+
+
+
+CaseElementsPrefix
+
+
+
+
+CaseLabel
+
+
+
+SwitchTypeStatement
+
+
+TypeCaseElements
+
+
+
+TypeCaseElement
+
+
+DoStatement
+
+
+WhileStatementw
+
+
+ForStatementw
+
+
+
+
+ForInitialiser
+
+
+
+
+ForInBinding
+
+
+
+LetStatementw
+
+
+ContinueStatement
+
+
+
+BreakStatement
+
+
+
+ReturnStatement
+
+
+
+ThrowStatement 
+
+
+TryStatement
+
+
+
+
+CatchClauses
+
+
+
+CatchClause
+
+
+DefaultXMLNamespaceStatement
+
+
+DIRECTIVES
+
+t = { global, class, interface, local }
+
+Directivest
+
+
+
+DirectivesPrefixt
+
+
+
+
+Directivet, w
+
+
+
+
+AnnotatableDirectiveglobal, w
+
+
+
+
+
+
+
+
+
+
+AnnotatableDirectiveclass, w
+
+
+
+
+
+
+AnnotatableDirectiveinterface, w
+
+
+
+
+AnnotatableDirectivelocal, w
+
+
+
+
+
+Attributeglobal
+
+
+
+
+
+
+Attributeclass
+
+
+
+
+
+
+
+
+Attributeinterface
+
+
+Attributelocal
+
+
+NamespaceAttributeglobal
+
+
+
+
+
+NamespaceAttributeclass
+
+
+
+DEFINITIONS
+
+VariableDefinitionb, w
+
+
+VariableDefinitionKind
+
+
+
+
+
+VariableBindingListb
+
+
+
+VariableBindingb
+
+
+
+VariableInitialisationb
+
+
+FunctionDeclaration
+
+
+FunctionDefinitionclass, w
+
+
+
+FunctionDefinitiont, w
+
+
+
+
+FunctionName
+
+
+
+
+
+OverloadedOperator  [one of]
+
+
+FunctionSignature
+
+
+
+
+TypeParameters
+
+
+
+TypeParameterList
+
+
+
+Parameters
+
+
+
+NonemptyParameters
+
+
+
+
+ParameterInit
+
+
+
+Parameter
+
+
+ParameterKind
+
+
+
+RestParameter
+
+
+
+ResultType
+
+
+
+
+ConstructorSignature
+
+
+
+ConstructorInitialiser
+
+
+
+
+InitialiserList
+
+
+
+Initialiser
+
+
+SuperInitialiser
+
+
+FunctionBody, w
+
+
+
+ClassDefinition
+
+
+TypeSignature
+
+
+
+ClassInheritance
+
+
+
+
+
+TypeReferenceList
+
+
+
+TypeReference
+
+
+
+ClassBody
+
+
+InterfaceDefinition
+
+
+InterfaceInheritance
+
+
+
+InterfaceBody
+
+
+NamespaceDefinition
+
+
+NamespaceInitialisation
+
+
+
+
+TypeDefinition
+
+
+TypeInitialisation
+
+
+PackageDefinition
+
+
+PackageAttributes
+
+
+
+PackageNameOpt
+
+
+
+PackageName
+
+
+
+PackageBody
+
+
+UnitDefinition
+
+
+UnitName
+
+
+
+UnitBody
+
+
+PRAGMAS
+
+Pragmas
+
+
+
+Pragma
+
+
+
+UsePragma
+
+
+PragmaItems
+
+
+
+PragmaItem
+
+
+
+
+
+
+
+ImportPragma
+
+
+ImportName
+
+
+
+BLOCKS AND PROGRAMS
+
+Blockt
+
+
+Program

@@ -39,31 +39,36 @@
 
 package
 {
-    use default namespace public;
     import ECMAScript4_Internal.*;
 
-    final class Vector.<T>
-    {
-        static const length = 2;
+    use namespace __ES4__;
 
-        function Vector(length: uint=0, fixed: boolean=false) 
+    __ES4__ class Vector.<T>
+    {
+        public function Vector(length: uint=0, fixed: boolean=false) 
             : fixed = fixed
         {
             informative::setLength(length);
         }
 
-        meta static function invoke(object) {
+        static public const length = 2;
+
+        static meta function invoke(object) {
+            if (object is Vector.<*>)
+                return object;
             let length = uint(object.length);
-            let result = new Vector.<T>(length);
+            let result = new Vector.<*>(length);
             for ( let i=0 ; i < length ; i++ )
                 result[i] = object[i];
             return result;
         }
 
-        function get length()
+        public var fixed: boolean;
+
+        public final function get length()
             informative::getLength();
 
-        function set length(len: AnyNumber) {
+        public final function set length(len: AnyNumber) {
             if (fixed)
                 throw new RangeError();
             if (!isIntegral(len) || len < 0 || len > 0xFFFFFFFF) 
@@ -71,19 +76,19 @@ package
             informative::setLength(uint(len));
         }
 
-        meta function get(name): T {
-            let idx : double = double(name);
+        meta final function get(name): T {
+            let idx = double(name);
             if (!intrinsic::isNaN(idx)) {
                 if (!isIntegral(idx) || idx < 0 || idx >= length)
                     throw new RangeError();
                 return informative::getValue(uint(idx));
             }
             else 
-                intrinsic::get(this,name);
+                return intrinsic::get(this,name);
         }
 
-        meta function set(name, v) {
-            let idx : double = double(name);
+        meta final function set(name, v): void {
+            let idx = double(name);
             if (!intrinsic::isNaN(idx)) {
                 let value: T = v;  // Note, effectful
                 if (!isIntegral(idx) || 
@@ -97,19 +102,29 @@ package
                 intrinsic::set(this, name, v);
         }
 
+        meta final function has(name) {
+            // To be written
+        }
+
+        /* Not possible in current refimpl
+        meta final function delete(name) {
+            // To be written
+        }
+        */
+
         override intrinsic function toString()
-            join();
+            intrinsic::join();
 
         override intrinsic function toLocaleString() {
             let limit = length;
-            let separator = informative::localeSpecificSeparatorString;
+            let separator = informative::localeSpecificSeparatorString();
             let s = "";
             let i = 0;
 
             while (true) {
                 let x = this[i];
                 if (x !== undefined && x !== null)
-                    s += x.public::toLocaleString();
+                    s += x.toLocaleString();
                 if (++i == limit)
                     break;
                 s += separator;
@@ -117,7 +132,8 @@ package
             return s;
         }
 
-        informative var localeSpecificSeparatorString = ",";
+        informative function localeSpecificSeparatorString()
+            ",";
 
         intrinsic function concat(...items): Vector.<T>
             helper::concat(items);
@@ -126,12 +142,12 @@ package
             let v = new Vector.<T>;
             let k = 0;
 
-            for ( let i=0 ; i < length ; i++ )
+            for ( let i=0, limit=length ; i < limit ; i++ )
                 v[k++] = this[i];
 
             for ( let j=0 ; j < items.length ; j++ ) {
-                let item: Vector.<T> = items[j];         // Note the type check is effectful
-                for ( let i=0 ; i < item.length ; i++ )
+                let item = items[j] cast Vector.<T>;
+                for ( let i=0, limit=item.length ; i < limit ; i++ )
                     v[k++] = item[i];
             }
 
@@ -149,7 +165,7 @@ package
             var result = new Vector.<T>;
             for ( let i=0, limit=length ; i < limit ; i++ )
                 if (checker.call(thisObj, this[i], i, this))
-                    result.push(this[i]);
+                    result[result.length] = this[i];
             return result;
         }
 
@@ -214,6 +230,46 @@ package
             return length;
         }
 
+        intrinsic function reduce(reducer/*: function*/, initialValue:(T|None)=NONE ): T {
+            let result;
+            let i = 0;
+
+            if (initialValue !== NONE)
+                result = initialValue;
+            else if (length == 0)
+                throw new TypeError();
+            else {
+                result = this[0];
+                i++;
+            }
+
+            for (let limit=length ; i < limit ; i++)
+                result = reducer.call(null, result, this[i], i, this);
+
+            return result;
+        }
+
+        intrinsic function reduceRight(reducer/*: function*/, initialValue:(T|None)=NONE ): T {
+            let result;
+            let i = length-1;
+
+            if (initialValue !== NONE)
+                result = initialValue;
+            else if (length == 0)
+                throw new TypeError();
+            else {
+                result = this[length-1];
+                i--;
+            }
+
+            while (i >= 0) {
+                result = reducer.call(null, result, this[i], i, this);
+                i--;
+            }
+
+            return result;
+        }
+
         intrinsic function reverse(): Vector.<T> {
             for ( let i=0, j=length-1 ; i < j ; i++, j-- )
                 [this[i], this[j]] = [this[j], this[i]];
@@ -230,27 +286,23 @@ package
             return v;
         }
 
-        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): Vector.<T> {
-
-            step = int(step);
+        intrinsic function slice(start: AnyNumber=0, end: AnyNumber=Infinity, step: AnyNumber=1): Vector.<T> {
+            step = helper::toInteger(step);
             if (step == 0)
                 step = 1;
 
-            if (intrinsic::isNaN(start))
-                start = step > 0 ? 0 : (length-1);
-            else
-                start = helper::clamp(start, length);
+            start = helper::clamp(start, length);
+            end = helper::clamp(end, length);
             
-            if (intrinsic::isNaN(end))
-                end = step > 0 ? len : (-1);
+            let result = new Vector.<T>;
+            if (step > 0)
+                for (let i=start; i < end ; i += step)
+                    result[result.length] = this[i];
             else
-                end = helper::clamp(end, length);
-            
-            let out:Vector.<T> = new Vector.<T>;
-            for (let i = start; step > 0 ? i < end : i > end; i += step)
-                out.push(this[i]);
+                for (let i=start; i > end ; i += step)
+                    result[result.length] = this[i];
 
-            return out;
+            return result;
         }
 
         intrinsic function some(checker: Checker, thisObj: Object=null): boolean { 
@@ -263,15 +315,11 @@ package
         // FIXME: Is the signature of comparefn too constraining?
 
         intrinsic function sort(comparefn: function(T, T): AnyNumber): Vector.<T> {
-            if (length > 0) {
-                let object = this;
-                informative::sortEngine(this, 
-                                        0, 
-                                        length-1, 
-                                        (function (j, k)
-                                             comparefn(object[j], object[k])));
-                return this;
-            }
+            let object = this;
+            informative::sortEngine(object,
+                                    0, 
+                                    length-1, 
+                                    (function (j, k) comparefn(object[j], object[k])));
         }
 
         intrinsic function splice(start: AnyNumber, deleteCount: AnyNumber, ...items): Vector.<T>
@@ -283,7 +331,7 @@ package
 
             let result = new Vector.<T>;
             for ( let n=0, i=first ; n < delcnt ; n++, i++ )
-                result.push(this[i]);
+                result[result.length] = this[i];
 
             if (items.length < delcnt) {
                 let shift = delcnt - items.length;
@@ -353,6 +401,12 @@ package
         prototype function push(this:Vector.<*>, ...items)
             this.helper::push(items);
 
+        prototype function reduce(this:Vector.<*>, reducer, initialValue=NONE)
+            this.intrinsic::reduce(reducer, initialValue);
+
+        prototype function reduceRight(this:Vector.<*>, reducer, initialValue=NONE)
+            this.intrinsic::reverse(reducer, initialValue);
+
         prototype function reverse(this:Vector.<*>)
             this.intrinsic::reverse();
 
@@ -381,42 +435,40 @@ package
             let i = 0;
             let a = this;
             return { 
-                next:
-                function () : uint {
-                    if (i === a.length)
+                const next:
+                    function () : uint {
+                        if (i < a.length)
+                            return i++;
                         throw iterator::StopIteration;
-                    return i++;
-                }
-            }
+                    }
+            } : iterator::IteratorType.<uint>;
         }
 
         iterator function getValues(deep: boolean = false) : iterator::IteratorType.<T> {
             let i = 0;
             let a = this;
             return { 
-                next:
-                function () : T {
-                    if (i === a.length)
+                const next:
+                    function () : T {
+                        if (i < a.length)
+                            return a[i++];
                         throw iterator::StopIteration;
-                    return a[i++];
                 }
-            }
+            } : iterator::IteratorType.<T>;
         }
 
-        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[uint,V]> {
+        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[uint,T]> {
             let i = 0;
             let a = this;
             return { 
-                next:
+                const next:
                 function () : T {
                     if (i === a.length)
-                        throw iterator::StopIteration;
-                    return [i,a[i++]];  // Yes, that's well-defined
+                        return [i,a[i++]];  // Yes, that's well-defined
+                    throw iterator::StopIteration;
                 }
-            }
+            } : iterator::IteratorType.<[uint,T]>;
         }
-
-        var fixed: boolean;
 
         informative function getLength()
             storage.length;
@@ -426,10 +478,22 @@ package
             if (newlength > oldlength) {
                 storage.length = newlength;
                 for ( let i=oldlength ; i < newlength ; i++ )
-                    storage[i] = undefined;
+                    storage[i] = undefined;  // FIXME: informative::defaultValue(T);
             }
             else
                 storage.length = newlength;
+        }
+
+        informative function defaultValue(t) {
+            if (t === int || t === uint || t === double || t === decimal || t === Number)
+                return 0;
+            if (t === string || t === String)
+                return "";
+            if (t === boolean || t === Boolean)
+                return false;
+            if (t === type undefined)
+                return undefined;
+            return null;
         }
 
         informative function getValue(idx: uint)

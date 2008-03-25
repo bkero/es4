@@ -75,11 +75,6 @@ H4 {
     counter-reset: para;
 }
 
-@media print {
-/*    H1 { page-break-before: always } */
-    .copyright { page-break-before: always }
-}
-
 </style>
 </head>
 
@@ -90,39 +85,44 @@ H4 {
 <pre>
 NAME:                       "The class 'Function'"
 FILE:                       spec/library/Function.html
-CATEGORY:                   Pre-defined classes
+CATEGORY:                   Pre-defined classes  (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2], [3], [5]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 1 - 2008-03-07
-REVIEWED AGAINST ES3:       NO
+DRAFT STATUS:               DRAFT 2 - 2008-03-14
+REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
-REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST BASE DOC:  YES
 REVIEWED AGAINST PROPOSALS: YES
-REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   YES
-IMPLEMENTATION STATUS:      ?
+IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 1 (2008-03-10)
+
+  * The 'thisObj' parameter to 'bind' is no longer optional, it must
+    be an object (not null).
+
+  * Removed the "Implementation" section for the 'meta::invoke' method
+    (it added nothing).
+
+  * Replaced note about host functions being "anything" with a
+    paragraph about the type 'Callable'.
+
+OPEN ISSUES
+
+  * ES3 restrictions on argArray having to be an Array or an arguments
+    object in Function.prototype.apply have been removed here.
+
+  * Is it reasonable to allow the thisObj parameter to bind to be null
+    (so that it defaults to the global object of the bind function)?
 
 
 NOTES
 
-  * The annotation "/*: function*/" in below looks like that because
-    the reference implementation does not yet accept plain "function"
-    as a type annotation to mean "anything callable" (ticket #153).
-
-  * The meaning of the <code>[[Scope]]</code> property on 'Function' objects is
-    defined elsewhere; it holds the captured scope chain of the
-    'Function'.
-
-  * The meaning of the <code>[[Construct]]</code> property on 'Function' objects is
-    defined elsewhere; it holds executable code that constructs a new
-    object instance and invokes the code of the 'Function' with the
-    new object as 'this'.
-
-  * The <code>[[Call]]</code> protocol of the 3rd Edition Specification has been
-    abandoned in favor of a protocol based on 'meta::invoke'.  This
-    simplifies the case for native objects but muddies it for callable
-    host objects that do not implement 'meta::invoke'.
+  * The use of 'Private' instead of 'private' below is a workaround
+    for a bug in the reference implementation (#368).
 
 
 REFERENCES
@@ -144,11 +144,10 @@ ECMAScript are instances of the class <code>Function</code>.
 
 <P><span class="pcounter"></span> Not all objects that can be called as functions are instances of
 subclasses of the <code>Function</code> class, however.  Any object that has a
-<code>meta::invoke</code> method can be called as a function.
+<code>meta::invoke</code> property can be called as a function.
 
-<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Host functions may also not be instances of <code>Function</code> or its
-subclasses, but must to some extent behave as if they are (see <span class="xref">Host objects</span>).  However, host functions need not provide
-<code>meta::invoke</code> methods to be callable.  Any 
+<P><span class="pcounter"></span> The structural type <code>Callable</code> (see <span class="xref">type:Callable</span>) 
+matches every object that has a <code>meta::invoke</code> property.
 
 
 <h2>Synopsis</h2>
@@ -161,9 +160,9 @@ dynamic class Function extends Object
     public function Function(...args) &#x0085
     static meta function invoke(...args) &#x0085
 
-    static public function apply(fn /*: function*/, thisArg: Object=null, argArray: Object=null) &#x0085
-    static public function bind(method /*: function*/, thisObj: Object=null, ...args) &#x0085
-    static public function call(fn /*: function*/, thisObj: Object=null, ...args) &#x0085
+    static public function apply(fn: Callable, thisArg: Object=null, argArray: Object=null) &#x0085
+    static public function bind(method: Callable, thisObj: Object, ...args) &#x0085
+    static public function call(fn: Callable, thisObj: Object=null, ...args) &#x0085
 
     static public const length = 1
 
@@ -172,7 +171,7 @@ dynamic class Function extends Object
     override intrinsic function toString() : string &#x0085
 
     intrinsic function apply(thisArg: Object=null, argArray: Object=null) &#x0085
-    intrinsic function bind(thisObj: Object=null, ...args) &#x0085
+    intrinsic function bind(thisObj: Object, ...args) &#x0085
     intrinsic function call(thisObj: Object=null, ...args) &#x0085
 
     public const length = &#x0085;
@@ -183,10 +182,12 @@ dynamic class Function extends Object
 <P><span class="pcounter"></span>The <code>Function</code> prototype object provides these direct properties:
 
 <PRE>
-    toString:    function () &#x0085; ,
-    apply:       function(thisArg, argArray) &#x0085;
-    bind:        function(thisArg, ...args) &#x0085;
-    call:        function(thisArg, ...args) &#x0085;
+    meta::invoke: function () &#x0085;
+    length:       0
+    toString:     function () &#x0085;
+    apply:        function(thisArg, argArray) &#x0085;
+    bind:         function(thisArg, ...args) &#x0085;
+    call:         function(thisArg, ...args) &#x0085;
 </PRE>
 
 
@@ -239,16 +240,13 @@ helper function createFunction(args) {
 }
 </PRE>
 
-<P><span class="pcounter"></span> The helper function <code>createFunction</code> is also used by the static
-<code>meta::invoke</code> method (see <span class="xref">Function: static meta invoke</span>).
-
 <P><span class="pcounter"></span> The magic function <code>initializeFunction</code> initializes the function
 object <code>this</code> from the list of parameters and the body, as specified
 in section <span class="xref">translation:FunctionExpression</span>.  The global
-object is passed in as the Scope parameter.
+object is passed in as the scope parameter.
 
-<P><span class="pcounter"></span>A <code>prototype</code> property is automatically created for every function, to
-provide for the possibility that the function will be used as a
+<P><span class="pcounter"></span>A <code>prototype</code> object is automatically created for every function,
+to provide for the possibility that the function will be used as a
 constructor.
 
 <p class="note"><b>NOTE</b>&nbsp;&nbsp;  It is permissible but not necessary to have one argument for
@@ -264,7 +262,7 @@ new Function("a,b", "c", "return a+b+c")
 </PRE>
 
 
-<h3 id="Function: meta static invoke">Function&nbsp;(p1,&nbsp;p2,&nbsp;&#x0085;&nbsp;,&nbsp;pn,&nbsp;body)</h3>
+<h3 id="Function: static meta invoke">Function&nbsp;(p1,&nbsp;p2,&nbsp;&#x0085;&nbsp;,&nbsp;pn,&nbsp;body)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> When the <code>Function</code> class object is called as a function it
 creates and initialises a new <code>Function</code> object.  Thus the function
@@ -276,46 +274,39 @@ new <code>Function</code> instance.
 
 <P class="implsection"><b>Implementation</b>
 
-
 <PRE>
 meta static function invoke(...args)
     new Function(...args);
 </PRE>
 
-<P><span class="pcounter"></span> The helper function <code>createFunction</code> was defined along with the
-<code>Function</code> constructor (see <span class="xref">Function: constructor</span>).
-
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Ticket #357: That particular definition makes use of the
+prefix "spread" operator, which has not yet been formally accepted
+into the language.
 
 <h3>apply&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;argArray=&#x0085;&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>apply</code> method takes arguments <i>fn</i>,
-<i>thisArg</i>, and <i>argArray</i>, and performs a function call using the
-<code>meta::invoke</code> method of <i>fn</i>, passing <i>thisArg</i> as the value
-for <code>this</code> and the members of <i>argArray</i> as the individual
-argument values.
-
-<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>meta::invoke</code> method, a <b>TypeError</b>
-exception is thrown.
+<i>thisArg</i>, and <i>argArray</i> and invokes <i>fn</i> in the standard
+manner, passing <i>thisArg</i> as the value for <code>this</code> and the members
+of <i>argArray</i> as the individual argument values.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>apply</code> method returns the value returned by <i>fn</i>.
 
 <P class="implsection"><b>Implementation</b>
-
 <PRE>
-static public function apply(fn /*: function*/, thisArg: Object=null, argArray: Object=null) {
+static public function apply(fn: Callable, thisArg: Object=null, argArray: Object=null) {
     if (thisArg === null)
         thisArg = global;
     if (argArray === null)
         argArray = [];
-
-    else if (!(argArray is Array || magic::isArgumentsObject(argArray)))
-        throw new TypeError();
     return magic::apply(fn, thisArg, argArray);
 }
 </PRE>
 
-<P><span class="pcounter"></span> The magic <code>apply</code> function performs the actual invocation (see
-<span class="xref">magic::apply</span>).
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The magic <code>apply</code> function performs the actual invocation (see
+<span class="xref">magic::apply</span>).  This code will eventually change to
+use the prefix "spread" operator.
+
 
 
 <h3>bind&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;...args&nbsp;)</h3>
@@ -330,30 +321,30 @@ actual arguments.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-static public function bind(method /*: function*/, thisObj: Object=null, ...args)
+static public function bind(method: Callable, thisObj: Object, ...args)
     helper::bind(method, thisObj, args);
 
-static helper function bind(method, thisObj, args)
-    function (...moreargs)
-        method.apply(thisObj, args.concat(...moreargs));
+static helper function bind(method, thisObj, args) {
+    if (thisObj === null)
+        throw new TypeError();
+    return function (...moreargs)
+               method.apply(thisObj, args.concat(moreargs));
+}
 </PRE>
 
 
 <h3>call&nbsp;(&nbsp;fn,&nbsp;thisArg=&#x0085;,&nbsp;...args&nbsp;)</h3>
 
-<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>call</code> method takes arguments <i>fn</i> and <i>thisArg</i> and
-optionally some <i>args</i>, and performs a function call using the
-<code>meta::invoke</code> method of <i>fn</i>, passing <i>thisArg</i> as the value for <code>this</code>
-and the members of <i>args</i> as the individual argument values.
-
-<P><span class="pcounter"></span> If <i>fn</i> does not have a <code>meta::invoke</code> method, a <b>TypeError</b> exception
-is thrown.
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The static <code>call</code> method takes arguments <i>fn</i> and
+<i>thisArg</i> and optionally some <i>args</i> and invokes <i>fn</i> in the
+standard manner, passing <i>thisArg</i> as the value for <code>this</code> and the
+members of <i>args</i> as the individual argument values.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>call</code> method returns the value returned by <i>fn</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-static public function call(fn /*: function*/, thisObj: Object=null, ...args)
+static public function call(fn: Callable, thisObj: Object=null, ...args)
     Function.apply(fn, thisObj, args);
 </PRE>
 
@@ -364,8 +355,8 @@ static public function call(fn /*: function*/, thisObj: Object=null, ...args)
 <h3>meta::invoke&nbsp;(&nbsp;&#x0085;&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The meta method <code>invoke</code> is specialized to the individual
-function object.  When called, it evaluates the executable code for
-the function.
+<code>Function</code> object.  When called, it evaluates the executable code
+for the function.
 
 <P><span class="pcounter"></span> The meta method <code>invoke</code> is typically called by the ECMAScript
 implementation as part of the function invocation and object
@@ -384,16 +375,15 @@ behavior.
 
 <p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #173.)  While it is necessary that the <code>invoke</code>
 method is completely magic in <code>Function</code> instances, it's not clear
-it needs to be magic for instances of subclasses of <code>Function</code>,
+that it needs to be magic for instances of subclasses of <code>Function</code>,
 because these can be treated like other objects that have <code>invoke</code>
-methods (and which already work just fine).  Therefore it should not
-be <code>final</code>.
+methods (and which already work just fine in the reference
+implementation).  Therefore it should not be <code>final</code>.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The meta method <code>invoke</code> returns the value produces by the
 first <code>return</code> statement that is evaluated during the evaluation of
 the executable code for the function represented by this <code>Function</code>
 object.
-
 
 <h3>intrinsic::toString&nbsp;(&nbsp;)</h3>
 
@@ -403,6 +393,10 @@ the syntax of a <i>FunctionDeclaration</i> or <i>FunctionExpression</i>.
 Note in particular that the use and placement of white space, line
 terminators, and semicolons within the representation string is
 implementation-dependent.
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; ES3 required the syntax to be that of a <i>FunctionDeclaration</i>
+only, but that made it impossible to produce a string representation
+for functions created from unnamed function expressions.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns a string.
 
@@ -418,7 +412,7 @@ override intrinsic function toString() : string
 <h3>intrinsic::apply&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;args=&#x0085;&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>apply</code> method calls the static <code>apply</code> method
-with the current value of <code>this</code> as the first argument.
+with the value of <code>this</code> as the first argument.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>apply</code> method returns the result of the static
 <code>apply</code> method.
@@ -433,14 +427,14 @@ intrinsic function apply(thisArg: Object=null, argArray: Object=null)
 <h3>intrinsic::bind&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;...args)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>bind</code> method calls the static <code>bind</code> method
-with the current value of <code>this</code> as the first argument.
+with the value of <code>this</code> as the first argument.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>bind</code> method returns the result of the static
 <code>bind</code> method.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function bind(thisObj: Object=null, ...args)
+intrinsic function bind(thisObj: Object, ...args)
     Function.helper::bind(this, thisObj, args);
 </PRE>
 
@@ -448,7 +442,7 @@ intrinsic function bind(thisObj: Object=null, ...args)
 <h3>intrinsic::call&nbsp;(&nbsp;thisObj=&#x0085;,&nbsp;...args)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span>The intrinsic <code>call</code> method calls the static <code>apply</code> method
-with the current value of <code>this</code> as the first argument.
+with the value of <code>this</code> as the first argument.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>call</code> method returns the result of the static
 <code>call</code> method.
@@ -460,12 +454,7 @@ intrinsic function call(thisObj: Object=null, ...args)
 </PRE>
 
 
-<h2>Properties of <code>Function</code> instances</h2>
-
-<P><span class="pcounter"></span> In addition to the required internal properties, every function
-instance has a <code>meta::invoke</code> property, a <code>[[Construct]]</code> property and a
-<code>[[Scope]]</code> property (see sections 8.6.2 and 13.2).
-
+<h2>Value properties of <code>Function</code> instances</h2>
 
 <h3>length</h3>
 
@@ -509,28 +498,38 @@ type adjustments and then perform the same actions as their intrinsic
 counterparts:
 
 <PRE>
-prototype function toString(this:Function)
+prototype function toString(this: Function)
     this.Private::toString();
 
-prototype function apply(/*this: function, */ thisArg=undefined, argArray=undefined)
+prototype function apply(this: Callable, thisArg=undefined, argArray=undefined)
     Function.apply(this,
                    thisArg === undefined ? null : thisArg,
                    argArray === undefined ? null : argArray);
 
-prototype function bind(/*this: function, */ thisObj=undefined, ...args)
-    Function.helper::bind(this,
-                          thisObj === undefined ? null : thisObj,
-                          args);
+prototype function bind(this: Callable, thisObj, ...args)
+    Function.helper::bind(this, thisObj, args);
 
-prototype function call(/*this: function, */ thisObj=undefined, ...args)
+prototype function call(this: Callable, thisObj=undefined, ...args)
     Function.apply(this,
                    thisObj === undefined ? null : thisObj,
                    args);
 </PRE>
 
-<P><span class="pcounter"></span> The Function prototype object does not have a <code>valueOf</code> property
-of its own; however, it inherits the <code>valueOf</code> property from the
-<code>Object</code> prototype object.
+
+<h2>Value properties on the <code>Function</code> prototype object</h2>
+
+<h3>length</h3> 
+
+<P><span class="pcounter"></span> The initial value of the <code>length</code> prototype property is 0.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+prototype var length : uint = 0;
+</PRE>
+
+<p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The "length" property of the prototype is not obviously
+required by the 3rd Edition of this Standard, but MSIE, Firefox,
+Opera, and Safari all provide it.
 
 
 
