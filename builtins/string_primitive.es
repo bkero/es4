@@ -85,6 +85,11 @@ package
         meta static function invoke(value="")
             (value is string) ? value : new string(value);
 
+        /* Don't remove this
+        function string(value="")
+            magic::newString(value)
+        */
+
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
@@ -488,10 +493,10 @@ package
             string.slice(this, start, end, step);
         */
 
-        intrinsic function slice(start: AnyNumber, end: AnyNumber, step: AnyNumber): string
+        intrinsic function slice(start: AnyNumber=NaN, end: AnyNumber=NaN, step: AnyNumber=1): string
             string.slice(this, start, end, step);
 
-        static function slice(object, start: AnyNumber, end: AnyNumber, step: AnyNumber) {
+        static function slice(object, start: AnyNumber=NaN, end: AnyNumber=NaN, step: AnyNumber=1) {
 
             let len = uint(object.length);
 

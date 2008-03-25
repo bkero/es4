@@ -1,0 +1,24 @@
+Since ML-editline is a library, there's nothing to install, but this file
+contains some build instructions.
+
+ML-editline works as either a native Windows library, using only the Win32 API,
+or a Unix or Cygwin library relying on the curses library. To build the native
+Windows version, you need MinGW; otherwise most standard Unix setups (including
+Cygwin) should be fine.
+
+In all cases, look in the example/ directory for a simple example application
+and example/Makefile for an example of how to build an application with
+ML-editline. I hope that the file is pretty self-explanatory but please do email
+me with questions, suggestions, or feedback:
+
+Dave Herman <dherman@ccs.neu.edu>
+
+NATIVE WINDOWS
+
+From a MinGW/MSYS shell, run make using the example/Makefile. Note that since
+the rxvt terminal isn't supported, you will need to test the program in a Cygwin
+terminal or Windows console.
+
+UNIX/CYGWIN
+
+Run make using the example/Makefile.

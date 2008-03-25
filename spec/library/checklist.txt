@@ -1,0 +1,30 @@
+component           pri   status     
+
+Intro
+Global               *    Draft 1 2008-03-12 / Draft 2 ready(?)
+Object                    Draft 3 2008-03-14
+Function                  Draft 2 2008-03-14
+Name                      Draft 3 2008-03-17
+Namespace                 Draft 2 2008-03-17
+Array                +
+String
+string
+Boolean
+boolean
+Number
+double
+decimal
+Math
+Date
+RegExp
+Error, ...                Draft 1 2008-03-06 / line number & file name debate, nothing conclusive or concrete
+Map                  -    Draft 3 2008-03-10 / fix to static meta::invoke pending
+Vector               +    Draft 1 (incomplete) / completion pending, comments to incorporate
+Reflection
+uint32ops
+
+
+
+line continuation    !    Closed
+line terminator norm !    Closed
+triple quoting            Pending / Brendan

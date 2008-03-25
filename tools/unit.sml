@@ -315,6 +315,7 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
 	 (let
 	      val frag = parse source
 	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag
+	      val _ = (Verify.warningsAreFailures := true )
 	      val frag = Verify.verifyTopFragment prog true frag
 	  in
 	      (test, if arg then true else false)

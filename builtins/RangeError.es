@@ -51,19 +51,17 @@
 
 package
 {
-    use default namespace public;
-    use namespace intrinsic;
     use namespace __ES4__;
 
     /* E262-3 15.11.6.2; 15.11.7 */
-    dynamic class RangeError extends Error
+    public dynamic class RangeError extends Error
     {
-        static const length = 1;
+        static public const length = 1;
 
-        meta static function invoke(message)
+        static meta function invoke(message)
             new RangeError(message);
 
-        function RangeError(message)
+        public function RangeError(message)
             : super(message)
         {
         }
@@ -73,7 +71,7 @@ package
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Numeric value out of range";
+        prototype var message = "Number value out of range";
     }
 
 }

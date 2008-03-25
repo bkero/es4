@@ -70,6 +70,7 @@ type ATTRS = { dontDelete: bool,
              
 datatype VAL = Object of OBJ
              | Wrapped of (VAL * Ast.TYPE_EXPR)
+             | Splat of VAL
              | Null
              | Undef
 
@@ -219,7 +220,7 @@ datatype VAL = Object of OBJ
           objCache: OBJ_CACHE, 
           profiler: PROFILER 
          }
-         
+
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
@@ -241,6 +242,7 @@ withtype FUN_CLOSURE =
          { 
           scope: SCOPE,
           this: OBJ,
+          thisFun: OBJ option,
           global: OBJ,
           prog: Fixture.PROGRAM,          
           aux: AUX
@@ -249,6 +251,7 @@ withtype FUN_CLOSURE =
      and NATIVE_FUNCTION =
          { func: ({ scope: SCOPE, 
                     this: OBJ, 
+                    thisFun: OBJ option,
                     global: OBJ, 
                     prog: Fixture.PROGRAM, 
                     aux: AUX } (* REGS *)
@@ -270,11 +273,11 @@ withtype FUN_CLOSURE =
                   attrs: ATTRS }
 
      and PROP_BINDINGS = { max_seq: int,
-			   bindings: { seq: int,
-				       prop: (* PROP *)
-				       { ty: Ast.TY,   
-					 state: PROP_STATE,
-					 attrs: ATTRS } } NameMap.map } ref 
+			               bindings: { seq: int,
+				                       prop: (* PROP *)
+				                                 { ty: Ast.TY,   
+					                               state: PROP_STATE,
+					                               attrs: ATTRS } } NameMap.map } ref 
 			 
 			 
 (* Exceptions for control transfer. *)
@@ -779,6 +782,10 @@ fun inspect (v:VAL)
           | printVal indent n (Wrapped (v, t)) = 
             (TextIO.print ("wrapped " ^ (typ t) ^ ":\n");
              printVal (indent+1) n v)
+
+          | printVal indent n (Splat v) =
+            (TextIO.print "splat:\n";
+             printVal (indent+1) n v)
             
           | printVal indent 0 (Object (Obj ob)) =
             (TextIO.print (case !(#magic ob) of
@@ -931,6 +938,7 @@ fun approx (arg:VAL)
         Null => "null"
       | Undef => "undefined"
       | Wrapped (v, t) => "wrapped(" ^ (approx v) ^ ")"
+      | Splat v => "..." ^ (approx v)
       | Object ob =>
         if hasMagic ob
         then
@@ -1213,6 +1221,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
     in        
         { this = glob,
           global = glob,          
+          thisFun = NONE,
           scope = makeGlobalScopeWith glob,
           prog = prog,
           aux = aux }

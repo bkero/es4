@@ -60,6 +60,11 @@ package
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 
+        /* Don't remove this
+        function uint(value=false)
+            magic::newUInt(value)
+        */
+
         /* E262-4 draft: The uint Constructor Called as a Function */
         meta static function invoke(x=0u)
             (x is uint) ? x : new uint(x);
@@ -67,11 +72,7 @@ package
         override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
                 return string(this);
-            if (typeof radix === "number" && 
-                radix >= 2 && 
-                radix <= 36 && 
-                helper::isIntegral(radix)) 
-            {
+            if (radix is AnyNumber && radix >= 2 && radix <= 36 && intrinsic::isIntegral(radix)) {
                 radix = int(radix);
                 let v = this;
                 var q = "";

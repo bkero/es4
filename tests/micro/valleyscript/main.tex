@@ -1,4 +1,4 @@
- \documentclass{article}
+\documentclass{article}
 \usepackage{amssymb}
 %\usepackage{gastex}
 \usepackage{graphics}
@@ -1090,9 +1090,13 @@ Also, $\matches S T$ if and only if $\alg {\t{bicompat}} {\t{covariant}} S T$.
 	}{
 		\alg b v  \Int \Int
 	}
-\trule{A-Dyn}{
+\trule{A-Dyn1}{
 	}{
 		\alg b v {T}{*}
+	}
+\trule{A-Dyn2}{
+	}{
+		\alg {\t{bicompat}} v {*}{T}
 	}
 \trule{A-Arrow}{
 		%\subtype{T_1}{S_1} \qquad

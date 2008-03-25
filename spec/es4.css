@@ -18,7 +18,7 @@ H4 { font-size: 10pt }
 P code { font-size: 10pt }
 code { font-style: normal; font-weight: normal }
 
-pre { font-size: 8pt }
+pre { font-size: 10pt }
 
 body { counter-reset: chapter section subsection subsubsection;
        font-size: 11pt; 
@@ -69,8 +69,4 @@ H4:before {
 
 H4 {
     counter-reset: para;
-}
-
-@media print {
-    H1 { page-break-before: always }
 }

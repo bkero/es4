@@ -339,3 +339,10 @@ package Unicode
         return c ? c : i;
     }
 }
+
+package {
+    import Unicode.*;
+
+    helper function isTrimmableSpace(x)
+        Unicode.isTrimmableSpace(x);
+}

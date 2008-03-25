@@ -21,22 +21,25 @@ lastNodeAdded = None
 lastNodeListIndex = 0
 recursionDepth = 0
 SCOPES = ['global','class','interface','local']
+version = 4
 
 def main(argv=None):
     global debug
     global maxRecursionDepth
+    global version
     startNode = 'Program'
     scope = []
     outFile = None
     reps = 1
     fbn = False
     seed = None
+    version = 4
     #DEBUG
     seed = random.randint(0,90000000)
     
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hf:dr:',['help','file=','debug','findBrokenNodes','seed=','reps='])
+        opts, args = getopt.getopt(sys.argv[1:], 'hf:dr:v:',['help','file=','debug','findBrokenNodes','seed=','reps='])
     except getopt.GetoptError:
         usage(2)
     for o,a in opts:
@@ -62,6 +65,8 @@ def main(argv=None):
         if o == '--reps':
             if outFile:
                 reps = int(a)
+        if o == '-v':
+            version = int(a)
     try:
         startNode = args[0]
     except IndexError:
@@ -150,7 +155,7 @@ def findBrokenNodes():
 # t = ['global','class','interface','local']
 # w = ['abbrev','noshortif','full']
 
-#{ Node : [ { scope : [''], dir(ective):[''], children : [ { subnodes : [{name:'',scope:[],dir:[]}], syntax : ''|lambda, literal : boolean} ] } ] } 
+#{ Node : [scope : [''], dir(ective):[''], children : [ { version:int,subnodes : [{name:'',scope:[],dir:[]}], syntax : ''|lambda, literal : boolean} ] } ] } 
 def getRandomNodeChild(node, scopeAndDirective = []):
     child = None
     if debug:
@@ -191,6 +196,19 @@ def getRandomNodeChild(node, scopeAndDirective = []):
             else:
                 if n['children'] not in childNodeSelection:
                     childNodeSelection.append(n['children'])
+    
+    if debug:
+        print('childNodeSelection: %s' % childNodeSelection)
+    
+    #filter for version
+    '''
+    for i,cl in enumerate(childNodeSelection):
+      for c in cl:
+        print (c)
+        if c['version'] > version:
+          childNodeSelection[i].remove(c)
+    '''
+    
     if debug:
         print('childNodeSelection: %s' % len(childNodeSelection))
     
@@ -274,7 +292,7 @@ def nn(name,scopeAndDirective=[]):
     
 
 # addChild
-def ac(subnodes, syntax='%s', literal=False,node=None,nolb=[]):
+def ac(ver, subnodes, syntax='%s', literal=False,node=None,nolb=[]):
     if isinstance(subnodes, types.StringType):
         subnodes = [sn(subnodes)]
     elif isinstance(subnodes, types.TupleType):
@@ -293,7 +311,10 @@ def ac(subnodes, syntax='%s', literal=False,node=None,nolb=[]):
     if not node:
         node = lastNodeAdded
     # add child to node
-    nodes[node][lastNodeListIndex]['children'].append({'subnodes':subnodes,'syntax':syntax,'literal':literal,'nolb':nolb})
+    
+    #version hack
+    if ver <= version:
+      nodes[node][lastNodeListIndex]['children'].append({'version':version,'subnodes':subnodes,'syntax':syntax,'literal':literal,'nolb':nolb})
 
 # subNode
 def sn(name, sd=[]):
@@ -313,7 +334,7 @@ def expandScope(scopeAndDirective):
             directive.append(i)
     return scope,directive
 
-from grammar import *;
-
 if __name__ == '__main__':
+    # Load Grammar
+    from grammar import *;
     main()
