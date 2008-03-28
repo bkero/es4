@@ -50,7 +50,7 @@ package
 
     import ECMAScript4_Internal.*;
 
-    __ES4__ type AnyNumber = (byte|int|uint|double|decimal|Number!);
+    __ES4__ type AnyNumber = (int|uint|double|decimal|Number!);
 
     dynamic class Number
     {

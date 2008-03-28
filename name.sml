@@ -172,9 +172,6 @@ val ES4_int = ES4 Ustring.int_
 (* From uint.es *)
 val ES4_uint = ES4 Ustring.uint_
 
-(* From byte.es *)
-val ES4_byte = ES4 Ustring.byte_
-
 (* From decimal.es *)
 val ES4_decimal = ES4 Ustring.decimal_
 

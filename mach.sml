@@ -98,7 +98,6 @@ datatype VAL = Object of OBJ
           doubleCache: (OBJ Real64Map.map) ref,
           intCache: (OBJ Real64Map.map) ref,
           uintCache: (OBJ Real64Map.map) ref,
-          byteCache: (OBJ Real64Map.map) ref,
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
           strCache: (OBJ StrMap.map) ref
@@ -128,7 +127,6 @@ datatype VAL = Object of OBJ
           numberClass : (OBJ option) ref,
           intClass : (OBJ option) ref,
           uintClass : (OBJ option) ref,
-          byteClass : (OBJ option) ref,
           doubleClass : (OBJ option) ref,
           decimalClass : (OBJ option) ref,
 
@@ -634,9 +632,6 @@ fun isInRange (low:Real64.real)
   : bool = 
     low <= d andalso d <= high
                      
-fun fitsInByte (d:Real64.real) 
-    : bool = isIntegral d andalso isInRange 0.0 255.0 d
-
 fun fitsInUInt (d:Real64.real) : bool 
   = isIntegral d andalso isInRange 0.0 4294967295.0 d
 
@@ -1100,7 +1095,6 @@ fun getStringWrapperClassSlot (regs:REGS) = (#stringWrapperClass (getSpecials re
 fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
 fun getIntClassSlot (regs:REGS) = (#intClass (getSpecials regs))
 fun getUintClassSlot (regs:REGS) = (#uintClass (getSpecials regs))
-fun getByteClassSlot (regs:REGS) = (#byteClass (getSpecials regs))
 fun getDoubleClassSlot (regs:REGS) = (#doubleClass (getSpecials regs))
 fun getDecimalClassSlot (regs:REGS) = (#decimalClass (getSpecials regs))
 
@@ -1143,7 +1137,6 @@ fun updateCache cacheGetter
 
 fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
 fun getUIntCache (regs:REGS) = (#uintCache (getCaches regs)) 
-fun getByteCache (regs:REGS) = (#byteCache (getCaches regs)) 
 fun getIntCache (regs:REGS) = (#intCache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
@@ -1151,7 +1144,6 @@ fun getStrCache (regs:REGS) = (#strCache (getCaches regs))
 
 val findInDoubleCache = findInCache getDoubleCache Real64Map.find
 val findInUIntCache = findInCache getUIntCache Real64Map.find
-val findInByteCache = findInCache getByteCache Real64Map.find
 val findInIntCache = findInCache getIntCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
@@ -1159,7 +1151,6 @@ val findInStrCache = findInCache getStrCache StrMap.find
 
 val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
 val updateUIntCache = updateCache getUIntCache Real64Map.numItems Real64Map.insert
-val updateByteCache = updateCache getByteCache Real64Map.numItems Real64Map.insert
 val updateIntCache = updateCache getIntCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
@@ -1187,7 +1178,6 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         val ocache = ObjCache 
                      { doubleCache = ref Real64Map.empty,
                        uintCache = ref Real64Map.empty,
-                       byteCache = ref Real64Map.empty,
                        intCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
@@ -1204,7 +1194,6 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          numberClass = ref NONE,
                          intClass = ref NONE,
                          uintClass = ref NONE,
-                         byteClass = ref NONE,
                          doubleClass = ref NONE,
                          decimalClass = ref NONE,
                          booleanClass = ref NONE,

@@ -298,7 +298,6 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "double.es",
                        builtin "int.es",
                        builtin "uint.es",
-                       builtin "byte.es",
                        builtin "decimal.es",
                        builtin "Number.es",
 

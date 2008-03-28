@@ -850,7 +850,6 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
             List.exists (Mach.nameEq n) [ Name.ES4_double, 
                                           Name.ES4_int,
                                           Name.ES4_uint,
-                                          Name.ES4_byte,
                                           Name.ES4_decimal,
                                           Name.ES4_double,
                                           Name.nons_Number ]

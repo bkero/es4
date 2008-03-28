@@ -391,7 +391,7 @@ fun getGlobalScope (regs:Mach.REGS)
 
 type REF = (Mach.OBJ * Ast.NAME)
 
-datatype NUMBER_TYPE = ByteNum | IntNum | UIntNum | DoubleNum | DecimalNum 
+datatype NUMBER_TYPE = IntNum | UIntNum | DoubleNum | DecimalNum 
                           
 fun numLE (a:NUMBER_TYPE)
           (b:NUMBER_TYPE) =
@@ -399,10 +399,7 @@ fun numLE (a:NUMBER_TYPE)
     then true
     else 
         case (a,b) of
-            (ByteNum, UIntNum) => true
-          | (ByteNum, DoubleNum) => true
-          | (ByteNum, DecimalNum) => true
-          | (UIntNum, DoubleNum) => true
+            (UIntNum, DoubleNum) => true
           | (UIntNum, DecimalNum) => true
           | (IntNum, DoubleNum) => true
           | (IntNum, DecimalNum) => true
@@ -417,10 +414,7 @@ fun promoteToCommon (regs:Mach.REGS)
     then a
     else 
         case if numLE a b then (a,b) else (b,a) of 
-            (ByteNum, UIntNum) => UIntNum
-          | (ByteNum, DoubleNum) => DoubleNum
-          | (ByteNum, DecimalNum) => DecimalNum
-          | (UIntNum, DoubleNum) => DoubleNum
+            (UIntNum, DoubleNum) => DoubleNum
           | (UIntNum, DecimalNum) => DecimalNum
           | (IntNum, DoubleNum) => DoubleNum
           | (IntNum, DecimalNum) => DecimalNum
@@ -828,7 +822,6 @@ and allocSpecial (regs:Mach.REGS)
              (Mach.getDecimalClassSlot, (fn _ => newDecimal regs Decimal.zero)),
              (Mach.getIntClassSlot, (fn _ => newInt regs 0.0)),
              (Mach.getUintClassSlot, (fn _ => newUInt regs 0.0)),
-             (Mach.getByteClassSlot, (fn _ => newByte regs 0.0)),
 
              (Mach.getStringClassSlot, (fn _ => newString regs Ustring.empty))
 	        ]
@@ -1440,13 +1433,6 @@ and newString (regs:Mach.REGS)
         SOME obj => Mach.Object obj
       | NONE => newBuiltin regs Name.ES4_string (SOME (Mach.String s))
 
-and newByte (regs:Mach.REGS)
-            (b:Real64.real)
-    : Mach.VAL =
-    case Mach.findInByteCache regs b of
-        SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_byte (SOME (Mach.Double b))
-
 and newBooleanWrapper (regs:Mach.REGS)
                       (b:bool)
     : Mach.VAL =
@@ -1972,12 +1958,6 @@ and toUIntNN (regs:Mach.REGS)
             end
     end
 
-
-and toByte (regs:Mach.REGS)
-           (v:Mach.VAL)
-    : Real64.real =
-    toUIntNN regs 8 v
-    
 
 (* ES-262-3 9.6 ToUInt32 *)
 
@@ -2958,7 +2938,6 @@ and numberOfSimilarType (regs:Mach.REGS)
         case nt of 
             IntNum => newInt regs d
           | UIntNum => newUInt regs d
-          | ByteNum => newByte regs d
           | _ => newDouble regs d
     end
 
@@ -3034,7 +3013,6 @@ and evalUnaryOp (regs:Mach.REGS)
                 case numTypeOf regs v of
                     IntNum => performBinop regs Ast.Minus (newInt regs 0.0) v
                   | UIntNum => performBinop regs Ast.Minus (newUInt regs 0.0) v
-                  | ByteNum => performBinop regs Ast.Minus (newByte regs 0.0) v
                   | _ => performBinop regs Ast.Minus (newDouble regs 0.0) v
             end
 
@@ -3159,12 +3137,9 @@ and numTypeOf (regs:Mach.REGS)
                 if ty ~< (instanceType regs Name.ES4_uint [])
                 then UIntNum
                 else 
-                    if ty ~< (instanceType regs Name.ES4_byte [])
-                    then ByteNum
-                    else 
-                        if ty ~< (instanceType regs Name.ES4_decimal [])
-                        then DecimalNum
-                        else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+                    if ty ~< (instanceType regs Name.ES4_decimal [])
+                    then DecimalNum
+                    else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
 
 
@@ -3227,13 +3202,7 @@ and performNumericBinop (regs:Mach.REGS)
                 if Mach.isIntegral dc
                 then 
                     case commonNumType of
-                        ByteNum => if Mach.fitsInByte dc
-                                   then newByte regs dc
-                                   else 
-                                       if Mach.fitsInUInt dc
-                                       then newUInt regs dc
-                                       else newDouble regs dc
-                      | UIntNum => if Mach.fitsInUInt dc
+                        UIntNum => if Mach.fitsInUInt dc
                                    then newUInt regs dc
                                    else newDouble regs dc
                       | IntNum =>  if Mach.fitsInInt dc
@@ -3283,12 +3252,7 @@ and performBinop (regs:Mach.REGS)
                         then newBoolean regs false
                         else newBoolean regs 
                              (case commonNumType of 
-                                  ByteNum => 
-                                  cmp (Real64.compare
-                                           ((toByte regs va),
-                                            (toByte regs vb)))
-
-                                | IntNum => 
+                                  IntNum => 
                                   cmp (Real64.compare
                                            ((toInt32 regs va),
                                             (toInt32 regs vb)))
@@ -4826,29 +4790,6 @@ and specialUIntConstructor (regs:Mach.REGS)
     end
 
 
-and specialByteConstructor (regs:Mach.REGS)
-                           (classObj:Mach.OBJ)
-                           (classClosure:Mach.CLS_CLOSURE)
-                           (args:Mach.VAL list)
-    : Mach.OBJ =
-    let 
-	val b = case args of 
-		    [] => 0.0
-		  | v :: _ => toByte regs v
-    in
-	case Mach.findInByteCache regs b of
-	    SOME obj => obj
-	  | NONE => 
-	    let 
-		val obj = constructStandard regs classObj classClosure []
-	    in 
-		Mach.setMagic obj (SOME (Mach.Double b));
-		Mach.updateByteCache regs (b, obj);
-		obj
-	    end
-    end
-
-
 and specialStringConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
@@ -4911,7 +4852,6 @@ and constructSpecial (regs:Mach.REGS)
 
              (Mach.getIntClassSlot, specialIntConstructor),
              (Mach.getUintClassSlot, specialUIntConstructor),
-             (Mach.getByteClassSlot, specialByteConstructor),
              (Mach.getStringClassSlot, specialStringConstructor)
 	    ]
     end
@@ -4942,7 +4882,6 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			(Name.ES4_string, Mach.getStringClassSlot),
 			
 			(Name.nons_Number, Mach.getNumberClassSlot),
-			(Name.ES4_byte, Mach.getByteClassSlot),
 			(Name.ES4_int, Mach.getIntClassSlot),
 			(Name.ES4_uint, Mach.getUintClassSlot),
 			(Name.ES4_double, Mach.getDoubleClassSlot),

@@ -44,7 +44,6 @@ type STD_TYPES = {
      decimalType: Ast.TYPE_EXPR,
      intType: Ast.TYPE_EXPR,
      uintType: Ast.TYPE_EXPR,
-     byteType: Ast.TYPE_EXPR,
 
      AnyStringType: Ast.TYPE_EXPR,
      stringType: Ast.TYPE_EXPR,
@@ -148,7 +147,6 @@ fun newEnv (prog:Fixture.PROGRAM)
       decimalType = Type.getNamedGroundType prog Name.ES4_decimal,
       intType = Type.getNamedGroundType prog Name.ES4_int,
       uintType = Type.getNamedGroundType prog Name.ES4_uint,
-      byteType = Type.getNamedGroundType prog Name.ES4_byte,
 
       AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
       stringType = Type.getNamedGroundType prog Name.ES4_string,
@@ -372,7 +370,6 @@ and verifyBinaryExpr (env:ENV)
                 decimalType,
                 intType,
                 uintType,
-                byteType,
 
                 AnyStringType,
                 stringType,
@@ -445,7 +442,6 @@ and verifyExpr (env:ENV)
                 decimalType,
                 intType,
                 uintType,
-                byteType,
 
                 AnyStringType,
                 stringType,
@@ -860,7 +856,6 @@ and verifyStmt (env:ENV)
                 decimalType,
                 intType,
                 uintType,
-                byteType,
 
                 AnyStringType,
                 stringType,
