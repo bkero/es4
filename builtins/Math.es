@@ -745,25 +745,3 @@ package
     Math.public::tan = 
         function (x) intrinsic::Math.intrinsic::tan(helper::toAnyNumber(x));
 }
-
-package uint32ops
-{
-    use default namespace public;
-
-    native function add(a:uint, b:uint) : uint;
-    native function sub(a:uint, b:uint) : uint;
-    native function mul(a:uint, b:uint) : uint;
-    native function div(a:uint, b:uint) : uint;
-    native function mod(a:uint, b:uint) : uint;
-
-    native function and(a:uint, b:uint) : uint;
-    native function or(a:uint, b:uint) : uint;
-    native function xor(a:uint, b:uint) : uint;
-    native function not(a:uint) : uint;
-
-    native function sar(a:uint, b:uint) : uint;
-    native function slr(a:uint, b:uint) : uint;
-    native function sll(a:uint, b:uint) : uint;
-    native function ror(a:uint, b:uint) : uint;
-    native function rol(a:uint, b:uint) : uint;
-}

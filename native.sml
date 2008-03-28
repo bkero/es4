@@ -803,58 +803,6 @@ val tanDecimal = unaryDecimalFn Decimal.tan
 val powDouble = binaryDoubleFn Math.pow
 val powDecimal = binaryDecimalFn Decimal.pow
 
-val uint32ops_add = binaryWord32Fn Word32.+
-val uint32ops_sub = binaryWord32Fn Word32.-
-val uint32ops_mul = binaryWord32Fn Word32.*
-val uint32ops_div = binaryWord32Fn Word32.div
-val uint32ops_mod = binaryWord32Fn Word32.mod
-
-val uint32ops_and = binaryWord32Fn Word32.andb
-val uint32ops_or = binaryWord32Fn Word32.orb
-val uint32ops_xor = binaryWord32Fn Word32.xorb
-val uint32ops_not = unaryWord32Fn Word32.notb
-
-fun sar (x:Word32.word, y:Word32.word) = Word32.~>>(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
-fun slr (x:Word32.word, y:Word32.word) = Word32.>>(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
-fun sll (x:Word32.word, y:Word32.word) = Word32.<<(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
-
-fun split_join (x:Word32.word)
-               (left:Word32.word)
-               (right:Word32.word)
-    : Word32.word = 
-    let
-        val right' = Word.fromInt (Word32.toInt right)
-        val left' = Word.fromInt (Word32.toInt left) 
-    in
-        Word32.orb (Word32.<<(x, left'), Word32.>>(x, right'))
-    end
-    
-
-fun ror (x:Word32.word, y:Word32.word) 
-    : Word32.word = 
-    let
-        val right = Word32.mod (y, 0wx20:Word32.word)
-        val left = Word32.- (0wx20:Word32.word, right)
-    in
-        split_join x left right
-    end
-
-fun rol (x:Word32.word, y:Word32.word) 
-    : Word32.word = 
-    let
-        val left = Word32.mod (y, 0wx20:Word32.word)
-        val right = Word32.- (0wx20:Word32.word, left)
-    in
-        split_join x left right
-    end
-
-val uint32ops_sar = binaryWord32Fn sar
-val uint32ops_slr = binaryWord32Fn slr
-val uint32ops_sll = binaryWord32Fn sll
-val uint32ops_ror = binaryWord32Fn ror
-val uint32ops_rol = binaryWord32Fn rol
-
-
 (* Math.pow in smlnj 110.60 has an error of 3.33e~6 on computing 2^32! *)
 
 val pow = binaryDoubleFn (fn (a,b) =>
@@ -1210,21 +1158,6 @@ fun registerNatives _ =
         addFn 1 Name.informative_tanDecimal tanDecimal;
 
         addFn 1 Name.intrinsic_random random;
-
-        addFn 2 Name.uint32ops_add uint32ops_add;
-        addFn 2 Name.uint32ops_sub uint32ops_sub;
-        addFn 2 Name.uint32ops_mul uint32ops_mul;
-        addFn 2 Name.uint32ops_div uint32ops_div;
-        addFn 2 Name.uint32ops_mod uint32ops_mod;
-        addFn 2 Name.uint32ops_and uint32ops_and;
-        addFn 2 Name.uint32ops_or uint32ops_or;
-        addFn 2 Name.uint32ops_xor uint32ops_xor;
-        addFn 2 Name.uint32ops_not uint32ops_not;
-        addFn 2 Name.uint32ops_sar uint32ops_sar;
-        addFn 2 Name.uint32ops_slr uint32ops_slr;
-        addFn 2 Name.uint32ops_sll uint32ops_sll;
-        addFn 2 Name.uint32ops_ror uint32ops_ror;
-        addFn 2 Name.uint32ops_rol uint32ops_rol;
 
         addFn 1 Name.intrinsic_print print;
         addFn 1 Name.intrinsic_load load;
