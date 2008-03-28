@@ -129,8 +129,8 @@ fun nthAsInt (regs:Mach.REGS)
 
 
 fun nthAsUInt (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-              (n:int)
+             (vals:Mach.VAL list)
+             (n:int)
     : Word32.word =
     Eval.doubleToWord (Eval.toUInt32 regs (rawNth vals n))
 
@@ -487,7 +487,7 @@ fun fnLength (regs:Mach.REGS)
               | SOME (Mach.NativeFunction {length, ...}) => length
                     | _ => error ["wrong kind of magic to fnLength"]
     in
-        Eval.newUInt regs (Real64.fromInt len)
+        Eval.newDouble regs (Real64.fromInt len)
     end
 
 
@@ -504,7 +504,7 @@ fun charCodeAt (regs:Mach.REGS)
         val s = nthAsUstr vals 0
         val i = nthAsUInt regs vals 1
     in
-        Eval.newUInt 
+        Eval.newDouble 
             regs
             (Real64.fromInt 
                  (Ustring.charCodeAt s (Word32.toInt i)))
@@ -543,7 +543,7 @@ fun stringLength (regs:Mach.REGS)
     let
         val s = nthAsUstr vals 0
     in
-        Eval.newUInt regs (Real64.fromInt (Ustring.stringLength s))
+        Eval.newDouble regs (Real64.fromInt (Ustring.stringLength s))
     end
 
 
@@ -682,7 +682,7 @@ fun objectHash (regs:Mach.REGS)
     let
         val Mach.Obj { ident, ... } = nthAsObj vals 0
     in
-       Eval.newUInt regs (Real64.fromInt ident)
+       Eval.newDouble regs (Real64.fromInt ident)
     end
                     
 (*
@@ -742,36 +742,6 @@ fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
                                              (Eval.toDecimal {precision = Decimal.defaultPrecision,
                                                               mode = Decimal.defaultRoundingMode}
                                                              (rawNth vals 1))))
-
-fun binaryWord32Fn (f:((Word32.word * Word32.word) -> Word32.word)) :
-    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
-    fn regs => 
-    fn vals => if length vals = 0 orelse length vals = 1
-               then Eval.newUInt regs 0.0
-               else 
-                   let
-                       val a = nthAsUInt regs vals 0
-                       val b = nthAsUInt regs vals 1
-                       val c = f (a, b)
-                       val d = Eval.wordToDouble c
-                   in
-                       Eval.newUInt regs d
-                   end
-
-fun unaryWord32Fn (f:(Word32.word -> Word32.word)) :
-    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
-    fn regs => 
-    fn vals => if length vals = 0 
-               then Eval.newUInt regs 0.0
-               else 
-                   let
-                       val a = nthAsUInt regs vals 0
-                       val b = f a
-                       val c = Eval.wordToDouble b
-                   in
-                       Eval.newUInt regs c
-                   end
-
 
 val ceilDouble = unaryDoubleFn Real64.realCeil
 val ceilDecimal = unaryDecimalFn Decimal.ceil
@@ -846,22 +816,22 @@ fun explodeDouble (regs:Mach.REGS)
             Eval.wordToDouble (Word32.orb(Word32.<<(Word32.fromLargeInt hi, 0w16), Word32.fromLargeInt lo))
 
     in
-        Eval.newUInt regs 
-                     (if p2 = 0w0 then
-                          let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
-                              val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
-                                                        IntInf.fromInt((#exp r) + 1022))
-                              val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
-                                                        IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
-                          in
-                              assemble hi_hi hi_lo
-                          end
-                      else
-                          let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
-                              val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
-                          in
-                              assemble lo_hi lo_lo
-                          end)
+        Eval.newDouble regs 
+                       (if p2 = 0w0 then
+                            let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
+                                val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
+                                                          IntInf.fromInt((#exp r) + 1022))
+                                val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
+                                                          IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
+                            in
+                                assemble hi_hi hi_lo
+                            end
+                        else
+                            let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
+                                val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
+                            in
+                                assemble lo_hi lo_lo
+                            end)
     end
 
 
@@ -1075,7 +1045,7 @@ fun id (regs:Mach.REGS)
     let
         val Mach.Obj { ident, ... } = nthAsObj vals 0
     in
-        Eval.newInt regs (Real64.fromInt ident)
+        Eval.newDouble regs (Real64.fromInt ident)
     end
 
 

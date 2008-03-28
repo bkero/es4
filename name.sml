@@ -164,12 +164,6 @@ val ES4_AnyNumber = ES4 Ustring.AnyNumber_
 (* From double.es *)
 val ES4_double = ES4 Ustring.double_
 
-(* From int.es *)
-val ES4_int = ES4 Ustring.int_
-
-(* From uint.es *)
-val ES4_uint = ES4 Ustring.uint_
-
 (* From decimal.es *)
 val ES4_decimal = ES4 Ustring.decimal_
 

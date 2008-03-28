@@ -86,10 +86,10 @@ package
     magic native function getSuperClass(cls : Class!) : Class;
 
     /* Retrieve the kth implemented interface of cls, or null. */
-    magic native function getImplementedInterface(cls: Class!, k: uint) : Interface;
+    magic native function getImplementedInterface(cls: Class!, k: double) : Interface;
 
     /* Retrieve the kth superinterface of iface, or null. */
-    magic native function getSuperInterface(iface: Interface!, k: uint) : Interface;
+    magic native function getSuperInterface(iface: Interface!, k: double) : Interface;
 
     /* Retrieve the possibly null [[Prototype]] property of o */
     magic native function getPrototype(o : Object!) : Object;
@@ -123,7 +123,7 @@ package
     magic native function apply(fn : Function!, t : Object!, args : Array) : *;
 
 
-    magic native function fnLength(fn: Function!) : uint;
+    magic native function fnLength(fn: Function!) : double;
 
     /* ----------------------------------------------------------------
 
@@ -135,15 +135,15 @@ package
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the
        string.  */
-    magic native function charCodeAt(s : string, pos : uint) : uint;
+    magic native function charCodeAt(s : string, pos : double) : double;
 
     /* Given a numeric character value, return a string of length 1
        whose element 0 is the character with that same value.  */
-    magic native function fromCharCode(ch : uint) : string;
+    magic native function fromCharCode(ch : double) : string;
 
     /* Given a string object, return the number of characters in the
      * string. */
-    magic native function stringLength(s : string) : uint;
+    magic native function stringLength(s : string) : double;
 
     /* Given two string objects A and B , return a new string object
        containing the characters from A followed by the characters

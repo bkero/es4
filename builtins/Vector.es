@@ -45,7 +45,7 @@ package
 
     __ES4__ class Vector.<T>
     {
-        public function Vector(length: uint=0, fixed: boolean=false) 
+        public function Vector(length: double=0, fixed: boolean=false) 
             : fixed = fixed
         {
             informative::setLength(length);
@@ -56,7 +56,7 @@ package
         static meta function invoke(object) {
             if (object is Vector.<*>)
                 return object;
-            let length = uint(object.length);
+            let length = intrinsic::toUint(object.length);
             let result = new Vector.<*>(length);
             for ( let i=0 ; i < length ; i++ )
                 result[i] = object[i];
@@ -73,7 +73,7 @@ package
                 throw new RangeError();
             if (!isIntegral(len) || len < 0 || len > 0xFFFFFFFF) 
                 throw new RangeError();
-            informative::setLength(uint(len));
+            informative::setLength(intrinsic::toUint(len));
         }
 
         meta final function get(name): T {
@@ -81,7 +81,7 @@ package
             if (!intrinsic::isNaN(idx)) {
                 if (!isIntegral(idx) || idx < 0 || idx >= length)
                     throw new RangeError();
-                return informative::getValue(uint(idx));
+                return informative::getValue(intrinsic::toUint(idx));
             }
             else 
                 return intrinsic::get(this,name);
@@ -96,7 +96,7 @@ package
                     fixed && idx >= length || 
                     !fixed && idx > length)
                     throw new RangeError();
-                informative::setValue(uint(idx), value);
+                informative::setValue(intrinsic::toUint(idx), value);
             }
             else
                 intrinsic::set(this, name, v);
@@ -221,7 +221,7 @@ package
             return v;
         }
 
-        intrinsic function push(...items): uint
+        intrinsic function push(...items): double
             helper::push(items);
 
         helper function push(items) {
@@ -350,7 +350,7 @@ package
             return result;
         }
 
-        intrinsic function unshift(...items): uint
+        intrinsic function unshift(...items): double
             helper::unshift(items);
 
         helper function unshift(items) {
@@ -436,7 +436,7 @@ package
             let a = this;
             return { 
                 const next:
-                    function () : uint {
+                    function () : double {
                         if (i < a.length)
                             return i++;
                         throw iterator::StopIteration;
@@ -473,7 +473,7 @@ package
         informative function getLength()
             storage.length;
 
-        informative function setLength(newlength: uint) {
+        informative function setLength(newlength: double) {
             let oldlength = storage.length;
             if (newlength > oldlength) {
                 storage.length = newlength;
@@ -496,10 +496,10 @@ package
             return null;
         }
 
-        informative function getValue(idx: uint)
+        informative function getValue(idx: double)
             storage[idx];
 
-        informative function setValue(idx: uint, val: T)
+        informative function setValue(idx: double, val: T)
             storage[idx] = val;
 
         private const storage = new Array();
