@@ -44,7 +44,6 @@ val informativeNS = newAnonNS ()
 val noNS = Ast.Public Ustring.empty
 val ES4NS = Ast.Public Ustring.ES4_
 val intrinsicNS = Ast.Intrinsic
-val uint32opsNS = Ast.Public Ustring.uint32ops_
 
 (*
  * FIXME: mangling a name into a string is bad form. We really want to
@@ -64,7 +63,6 @@ fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
 fun public (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Public (mangle cls) }
 fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
 fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
-fun uint32ops (id:Ast.IDENT) : Ast.NAME = { id = id, ns = uint32opsNS }
 
 (*
  * To reference a name as a type expression, you need
@@ -270,21 +268,6 @@ val magic_getImplementedInterface = magic Ustring.getImplementedInterface_
 val magic_getClassOfObject = magic Ustring.getClassOfObject_
 val magic_getClassName = magic Ustring.getClassName_
 val magic_construct = magic Ustring.construct_
-
-val uint32ops_add = uint32ops Ustring.add_
-val uint32ops_sub = uint32ops Ustring.sub_
-val uint32ops_mul = uint32ops Ustring.mul_
-val uint32ops_div = uint32ops Ustring.div_
-val uint32ops_mod = uint32ops Ustring.mod_
-val uint32ops_and = uint32ops Ustring.and_
-val uint32ops_or = uint32ops Ustring.or_
-val uint32ops_xor = uint32ops Ustring.xor_
-val uint32ops_not = uint32ops Ustring.not_
-val uint32ops_sar = uint32ops Ustring.sar_
-val uint32ops_slr = uint32ops Ustring.slr_
-val uint32ops_sll = uint32ops Ustring.sll_
-val uint32ops_ror = uint32ops Ustring.ror_
-val uint32ops_rol = uint32ops Ustring.rol_
 
 (*
  * Property names that have special meanings to the interpreter.
