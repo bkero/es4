@@ -157,9 +157,7 @@ fun evalTy (regs:Mach.REGS)
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
-exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
-exception ReturnException of Mach.VAL
 
 exception InternalError
 
@@ -3988,20 +3986,6 @@ and resolveName (obj:Mach.OBJ)
     end
 
 
-and evalTailCallExpr (regs:Mach.REGS)
-                     (e:Ast.EXPR)
-    : Mach.VAL =
-    raise (TailCallException (fn _ => evalExpr regs e))
-
-
-and evalNonTailCallExpr (regs:Mach.REGS)
-                        (e:Ast.EXPR)
-    : Mach.VAL =
-    evalExpr regs e
-    handle TailCallException thunk => thunk ()
-         | ReturnException v => v
-
-
 and labelMatch (stmtLabels:Ast.IDENT list)
                (exnLabel:Ast.IDENT option)
     : bool =
@@ -4130,9 +4114,7 @@ and invokeFuncClosure (regs:Mach.REGS)
                 val blockRegs = withThisFun varRegs thisFun 
                 val res = case block of 
                               NONE => Mach.Undef
-                            | SOME b => ((evalBlock blockRegs b;
-                                          Mach.Undef)
-                                         handle ReturnException v => v)
+                            | SOME b => (evalBlock blockRegs b; Mach.Undef)
             in
                 Mach.pop regs;
                 res
@@ -4476,8 +4458,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                     traceConstruct ["entering constructor for ", fmtName name];
                     (case block of 
                          NONE => Mach.Undef
-                       | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
-                                    handle ReturnException v => v));
+                       | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b));
                     Mach.pop classRegs;
                     ()
                 end
@@ -5580,7 +5561,7 @@ and evalForStmt (regs:Mach.REGS)
 and evalReturnStmt (regs:Mach.REGS)
                    (e:Ast.EXPR)
     : Mach.VAL =
-    raise (ReturnException (evalExpr regs e))
+    evalExpr regs e
 
 
 and evalThrowStmt (regs:Mach.REGS)
