@@ -757,9 +757,6 @@ and valAllocState (regs:Mach.REGS)
           | Ast.LikeType ty => 
             valAllocState regs (makeTy ty)
 
-          | Ast.WrapType ty => 
-            valAllocState regs (makeTy ty)
-            
           | Ast.AppType {base, ...} =>
             valAllocState regs (Ast.Ty { expr=base, ribId=ribId })
             
@@ -1591,7 +1588,6 @@ and toUstring (regs:Mach.REGS)
     case v of
         Mach.Undef => Ustring.undefined_
       | Mach.Null => Ustring.null_
-      | Mach.Wrapped (v, ty) => toUstring regs v
       | Mach.Splat v => toUstring regs v
       | Mach.Object obj =>
         let
@@ -1611,7 +1607,6 @@ and toBoolean (v:Mach.VAL) : bool =
     case v of
         Mach.Undef => false
       | Mach.Null => false
-      | Mach.Wrapped (v, ty) => toBoolean v
       | Mach.Splat v => toBoolean v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
@@ -1700,7 +1695,6 @@ and toNumeric (regs:Mach.REGS)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
-          | Mach.Wrapped (v, ty) => toNumeric regs v
           | Mach.Splat v => toNumeric regs v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
@@ -1733,7 +1727,6 @@ and toDecimal (ctxt:Mach.DECIMAL_CONTEXT)
     case v of
         Mach.Undef => Decimal.NaN
       | Mach.Null => Decimal.zero
-      | Mach.Wrapped (v, ty) => toDecimal ctxt v
       | Mach.Splat v => toDecimal ctxt v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
@@ -1771,7 +1764,6 @@ and toDouble (v:Mach.VAL)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
-          | Mach.Wrapped (v, ty) => toDouble v
           | Mach.Splat v => toDouble v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
@@ -3055,7 +3047,6 @@ and evalUnaryOp (regs:Mach.REGS)
                     case v of
                         Mach.Null => Ustring.object_
                       | Mach.Undef => Ustring.undefined_
-                      | Mach.Wrapped (v, ty) => typeNameOfVal v
                       | Mach.Splat v => typeNameOfVal v
                       | Mach.Object (Mach.Obj ob) =>
                         let
@@ -3511,7 +3502,6 @@ and typeOfVal (regs:Mach.REGS)
         val te = case v of
                      Mach.Undef => Ast.SpecialType Ast.Undefined
                    | Mach.Null => Ast.SpecialType Ast.Null
-                   | Mach.Wrapped (_,t) => t
                    | Mach.Splat v => typeOfVal regs v
                    | Mach.Object obj => 
                      let 
@@ -3583,18 +3573,6 @@ and evalOperatorIs (regs:Mach.REGS)
           | _ => vt <* te
     end
 
-and evalOperatorWrap (regs:Mach.REGS)
-                     (v:Mach.VAL)
-                     (t:Ast.TYPE_EXPR)
-    : Mach.VAL = 
-    if (typeOfVal regs v) <* t
-    then v
-    else 
-        if evalOperatorIs regs v t
-        then Mach.Wrapped (v, t)
-        else (typeOpFailure regs "wrapping failed" v t; dummyVal)
-             
-
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
                      (expr:Ast.EXPR)
@@ -3609,7 +3587,6 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             then v
             else (typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty); dummyVal)
           | Ast.To => checkAndConvert regs v ty
-          | Ast.Wrap => evalOperatorWrap regs v (evalTy regs ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end
 
@@ -3627,7 +3604,6 @@ and hasInstance (regs:Mach.REGS)
             case v' of 
                 Mach.Null => false
               | Mach.Undef => false
-              | Mach.Wrapped (v, ty) => hasInstance regs obj v
               | Mach.Splat v => hasInstance regs obj v
               | Mach.Object ob =>
                 if getObjId ob = targId
@@ -3851,7 +3827,6 @@ and evalObjectRef (regs:Mach.REGS)
                     fun extractFrom v = 
                         case v of
                             Mach.Object ob => ob
-                          | Mach.Wrapped (v',t) => extractFrom v'
                           | Mach.Splat v' => extractFrom v'
                           | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
                           | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
@@ -4634,7 +4609,6 @@ and specialObjectConstructor (regs:Mach.REGS)
             [] => instantiate ()
           | (Mach.Null :: _) => instantiate ()
           | (Mach.Undef :: _) => instantiate ()
-          | (Mach.Wrapped (v,t) :: rest) => specialObjectConstructor regs classObj classClosure (v::rest)
           | (Mach.Splat v :: rest) => error regs ["splat encountered in specialObjectConstructor; ",
                                                   "this should never happen"]
           | (Mach.Object obj :: _) =>
@@ -5376,7 +5350,6 @@ and evalIterable (regs:Mach.REGS)
         fun finishWith v = 
             case v of
                 Mach.Object ob => ob
-              | Mach.Wrapped (v',t) => finishWith v'
               | Mach.Undef => newObj regs
               | Mach.Null => newObj regs            
               | Mach.Splat v => error regs ["evalIterable called with splat argument; ",

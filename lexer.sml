@@ -826,8 +826,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"v"  => lexResOrId [(Ustring.fromSource "oid"      , Void),
                                              (Ustring.fromSource "ar"       , Var)]
                       | #"w"  => lexResOrId [(Ustring.fromSource "hile"     , While),
-                                             (Ustring.fromSource "ith"      , With),
-					     (Ustring.fromSource "rap"      , Wrap)]
+                                             (Ustring.fromSource "ith"      , With)]
                       | #"x"  => lexResOrId [(Ustring.fromSource "ml"       , Token.Xml)]
                       | #"y"  => lexResOrId [(Ustring.fromSource "ield"     , Yield)]
                     (* numbers *)

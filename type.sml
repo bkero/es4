@@ -742,16 +742,8 @@ fun groundMatchesGeneric (b:BICOMPAT)
     else
     case (b, v, ty1, ty2) of 
 
-        (* A-WRAP-COV *)
-        (_, _, Ast.WrapType wt1, Ast.WrapType wt2) => 
-        groundMatchesGeneric b v wt1 wt2
-        
-      (* A-WRAP *)
-      | (_, Covariant, Ast.WrapType wt1, _) => 
-        groundMatchesGeneric b v wt1 ty2
-
       (* A-LIKE-COV *)
-      | (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
+        (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
         groundMatchesGeneric b v lt2 lt2
 
       (* A-LIKE *)

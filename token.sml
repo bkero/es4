@@ -136,7 +136,6 @@ datatype TOKEN =
     | Void
     | While
     | With
-    | Wrap
 
     (* contextually reserved identifiers *)
 
@@ -354,7 +353,6 @@ fun tokenname (t,_) =
       | Void => "void"
       | While => "while"
       | With => "with"
-      | Wrap => "wrap"
 
       (* contextually reserved identifiers *)
 

@@ -65,7 +65,6 @@ type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 datatype BINTYPEOP =
          Cast
        | Is
-       | Wrap
        | To
 
 datatype BINOP =
@@ -245,7 +244,6 @@ datatype PRAGMA =
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | LikeType of TYPE_EXPR
-       | WrapType of TYPE_EXPR
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }
