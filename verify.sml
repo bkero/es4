@@ -541,8 +541,7 @@ and verifyExpr (env:ENV)
                 if strict
                 then 
                     case b of
-                        Ast.To => checkMatch t1 t2
-                      | Ast.Is => ()
+                        Ast.Is => ()
                       | Ast.Wrap => ()
                       | Ast.Cast => checkMatch t1 t2
                 else 
