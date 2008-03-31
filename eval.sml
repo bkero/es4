@@ -2550,7 +2550,8 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                          (ty:Ast.TY option)
     : Mach.VAL =
     let
-        val vals = map (evalExpr regs) exprs
+        (* Using evalArgs here, since it handles SplatExpressions *)
+        val vals = evalArgs regs exprs
         val tyExprs = case Option.map (evalTy regs) ty of
                           NONE => [Ast.SpecialType Ast.Any]
                         | SOME (Ast.ArrayType tys) => tys
