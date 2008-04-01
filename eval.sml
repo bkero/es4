@@ -2118,19 +2118,21 @@ and arrayToList (regs:Mach.REGS)
         build (len - (1:Int32.int)) []
     end
 
-and evalArgs (regs:Mach.REGS)
-             (actuals:Ast.EXPR list) 
+and evalExprsAndSpliceSplats (regs:Mach.REGS)
+                             (exprs:Ast.EXPR list)
     : (Mach.VAL list) = 
     let 
         (* 
-         * A Splat expression is only allowed at the end of a list of function arguments, 
-         * but that is enforced by the parser. Here we splice *any* unary splat operator
-         * we encounter in the actuals list into its place in the args list.
+         * A Splat expression is only allowed in certain syntactic
+         * contexts but those are enforced by the parser. Here we
+         * splice *any* unary splat operator we encounter in the value
+         * list we're producing.
          *
-         * Note: splat expression should allow an array or arguments object as its operand.
-         * Currently, an arguments object *is* an array...
+         * Note: splat expressions should allow an array *or*
+         * arguments object as its operand. Currently, an arguments
+         * object *is* an array, so this is a vacuous distinction.
          *)
-        fun evalArg (Ast.UnaryExpr (Ast.Splat, expr)) = 
+        fun f (Ast.UnaryExpr (Ast.Splat, expr)) = 
             let
                 val v = evalExpr regs expr
                 val t = typeOfVal regs v
@@ -2141,9 +2143,9 @@ and evalArgs (regs:Mach.REGS)
                                   "found instead: ", LogErr.ty t];
                       [])
             end
-          | evalArg e = [evalExpr regs e]
+          | f e = [evalExpr regs e]
     in
-        List.concat (map evalArg actuals)
+        List.concat (map f exprs)
     end
 
 
@@ -2152,7 +2154,7 @@ and evalCallExpr (regs:Mach.REGS)
                  (actuals:Ast.EXPR list)
     : Mach.VAL = 
     let
-        fun args _ = evalArgs regs actuals
+        fun args _ = evalExprsAndSpliceSplats regs actuals
     in
         case func of
             Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
@@ -2181,7 +2183,7 @@ and evalNewExpr (regs:Mach.REGS)
                 (actuals:Ast.EXPR list)
     : Mach.VAL = 
     let
-        fun args _ = evalArgs regs actuals
+        fun args _ = evalExprsAndSpliceSplats regs actuals
         val rhs = evalExpr regs obj
     in
         case rhs of
@@ -2550,8 +2552,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                          (ty:Ast.TY option)
     : Mach.VAL =
     let
-        (* Using evalArgs here, since it handles SplatExpressions *)
-        val vals = evalArgs regs exprs
+        val vals = evalExprsAndSpliceSplats regs exprs
         val tyExprs = case Option.map (evalTy regs) ty of
                           NONE => [Ast.SpecialType Ast.Any]
                         | SOME (Ast.ArrayType tys) => tys
@@ -4453,7 +4454,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                     traceConstruct ["evaluating settings"];
                     evalObjInits varRegs instanceObj settings;
                     traceConstruct ["initializing and constructing superclass of ", fmtName name];
-                    initializeAndConstructSuper (evalArgs varRegs superArgs);
+                    initializeAndConstructSuper (evalExprsAndSpliceSplats varRegs superArgs);
                     traceConstruct ["entering constructor for ", fmtName name];
                     (case block of 
                          NONE => Mach.Undef
