@@ -233,10 +233,7 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
           | filterHeadOpt NONE = NONE
     in
         case frag of 
-            Ast.Unit { name, fragments } =>
-            Ast.Unit { name = name, 
-                       fragments = map filterOutRootClasses fragments }
-          | Ast.Package { name, fragments } => 
+            Ast.Package { name, fragments } => 
             Ast.Package { name = name, 
                           fragments = map filterOutRootClasses fragments }
           | Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
