@@ -820,7 +820,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "ry"       , Try),
                                              (Ustring.fromSource "o"        , To)]
                       | #"u"  => lexResOrId [(Ustring.fromSource "ndefined" , Undefined),
-                                             (Ustring.fromSource "nit"      , Unit),
                                              (Ustring.fromSource "int"      , UInt),
                                              (Ustring.fromSource "se"       , Use)]
                       | #"v"  => lexResOrId [(Ustring.fromSource "oid"      , Void),
