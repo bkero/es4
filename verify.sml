@@ -1108,8 +1108,7 @@ and verifyFragment (env:ENV)
                    (frag:Ast.FRAGMENT) 
   : unit = 
     case frag of 
-        Ast.Unit { fragments, ... } => List.app (verifyFragment env) fragments
-      | Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
+        Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
       | Ast.Anon block => verifyBlock env block
 
 

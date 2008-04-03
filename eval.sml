@@ -5622,9 +5622,7 @@ and evalFragment (regs:Mach.REGS)
           | lastVal x = List.last x
     in
         (case frag of 
-             Ast.Unit { fragments, ... } => 
-             lastVal (map (evalFragment regs ) fragments)
-           | Ast.Package { name, fragments } => 
+             Ast.Package { name, fragments } => 
              let
                  val n = LogErr.join "." (map Ustring.toAscii name)
                  val _ = trace ["entering package fragment: ", n]

@@ -41,8 +41,6 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
 type IDENT = Ustring.STRING
 
-type UNIT_NAME = IDENT list
-
 type RIB_ID = int
 
 type TYPEVAR_NONCE = int
@@ -584,10 +582,7 @@ type VIRTUAL_VAL_FIXTURE =
 
 datatype FRAGMENT = 
          
-         Unit of { name: UNIT_NAME option,
-                   fragments: FRAGMENT list }
-
-       | Package of { name: IDENT list,
+         Package of { name: IDENT list,
                       fragments: FRAGMENT list }
 
        | Anon of BLOCK
