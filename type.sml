@@ -114,29 +114,6 @@ fun liftOption (f:'a -> 'a option)
         else NONE
     end
 
-(* 
- * While normalizing a TYPE_EXPR, we are doing two things: basic structural 
- * simplification (flattening unions, collapsing / shifting nulls, dereferencing
- * array elements, etc); and looking up names / evaluating closures as we hit
- * them. The latter is subject to some restrictions:
- * 
- *   - No cyclic terms are allowed
- *   - No partial applications are allowed
- *   - No passing of closures, only "ground" terms.
- *
- * The key points are:
- *
- *   - Normalization always terminates (all recursion is an error)
- *   - Normalization is a partial evaluator that respects missing information: 
- *     if a term is not known, it is returned "as-is". 
- *
- * A type *should* evaluate to a "ground" term if its unit is closed. We leave
- * that fact up to the various callers of normalization, though.
- *
- * A "ground type" is one that is closed, but, for example,
- *  function.<X>(X):X  is still considered a ground type.
- *)
-
 fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
     : bool = 
     let
@@ -160,13 +137,14 @@ fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR)
           | Ast.LamType {params, body} => isGroundTypeEnv (params @ e) body
           | Ast.NullableType { expr, ... } => isGroundType expr
           | Ast.ObjectType fields => List.all isGroundField fields
-          | Ast.LikeType t => isGroundTypeEnv e t
+          | Ast.LikeType t => isGroundType t
+          | Ast.WrapType t => isGroundType t
           | Ast.UnionType tys => List.all isGroundType tys
           | Ast.ArrayType tys =>List.all isGroundType tys
-              | Ast.FunctionType { params, result, thisType, ... } => 
-                List.all isGroundType params andalso
-                isGroundType result andalso
-                isGroundOption thisType
+          | Ast.FunctionType { params, result, thisType, ... } => 
+            List.all isGroundType params andalso
+            isGroundType result andalso
+            isGroundOption thisType
     end
 
 fun isGroundType  (t:Ast.TYPE_EXPR) 
@@ -183,19 +161,233 @@ fun groundExpr (ty:Ast.TY)
     then AstQuery.typeExprOf ty
     else (Pretty.ppType (AstQuery.typeExprOf ty);
           error ["extracting ground type expr from non-ground ty"])
+
+
+(* -----------------------------------------------------------------------------
+ * Normalization
+ * ----------------------------------------------------------------------------- *)
+
+fun mapFuncTy (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
+              (fty:Ast.FUNC_TYPE)
+    : Ast.FUNC_TYPE = 
+    let
+        val { params, result, thisType, hasRest, minArgs } = fty
+    in
+        { params = map f params,
+          result = f result,
+          thisType = Option.map f thisType,
+          hasRest = hasRest,
+          minArgs = minArgs }    
+    end
+
+fun mapObjTy (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
+             (fields:Ast.FIELD_TYPE list)
+    : Ast.FIELD_TYPE list =
+    let
+        fun mapField { name, ty } = { name = name, ty = f ty }
+    in
+        map mapField fields
+    end
+        
+(* Generic mapping helper. *)
+fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR)) 
+              (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
+    case ty of 
+        Ast.SpecialType _ => ty
+      | Ast.InstanceType _ => ty
+      | Ast.TypeName _ => ty
+      | Ast.AppType { base, args } => 
+        Ast.AppType { base = f base,
+                      args = map f args}
+      | Ast.LamType { params, body } => 
+        Ast.LamType { params = params, 
+                      body = f body }
+      | Ast.NullableType { expr, nullable } => 
+        Ast.NullableType { expr = f expr,
+                           nullable = nullable }
+      | Ast.ObjectType fields => 
+        Ast.ObjectType (mapObjTy f fields)
+      | Ast.LikeType t => 
+        Ast.LikeType (f t)
+      | Ast.WrapType t => 
+        Ast.WrapType (f t)
+      | Ast.UnionType tys =>
+        Ast.UnionType (map f tys)
+      | Ast.ArrayType tys => 
+        Ast.ArrayType (map f tys)
+      | Ast.FunctionType fty => 
+        Ast.FunctionType (mapFuncTy f fty)
+      | Ast.ElementTypeRef (t, idx) => 
+        Ast.ElementTypeRef (f t, idx)
+      | Ast.FieldTypeRef (t, id) =>
+        Ast.FieldTypeRef (f t, id)
+    
+
+fun normalizeRefs (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
+    case ty of 
+        Ast.ElementTypeRef (Ast.ArrayType arr, idx) => 
+        let
+            val t = if idx < length arr 
+                    then List.nth (arr, idx)
+                    else 
+                        if length arr > 0
+                        then List.last arr
+                        else Ast.SpecialType Ast.Any
+        in
+            normalizeRefs t
+        end
+      | Ast.ElementTypeRef (t, _) => error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
+      | Ast.FieldTypeRef (Ast.ObjectType fields, ident) => 
+        let                            
+            fun f [] = error ["FieldTypeRef on unknown field: ", Ustring.toAscii ident]
+              | f ({name,ty}::fields) = if name = ident 
+                                        then ty
+                                        else f fields
+            val t = f fields
+        in
+            normalizeRefs t
+        end
+      | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
+      | x => mapTyExpr normalizeRefs x
+                                   
+                                   
+fun normalizeNulls (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
+    let
+        val nullTy = Ast.SpecialType Ast.Null
+        fun containsNull ty = 
+            case ty of 
+                Ast.SpecialType Ast.Null => true
+              | Ast.SpecialType _ => false
+              | Ast.InstanceType _ => false
+              | Ast.NullableType { expr, nullable } => nullable
+              | Ast.LikeType t => containsNull t
+              | Ast.ObjectType _ => false
+              | Ast.UnionType tys => List.exists containsNull tys
+              | Ast.ArrayType tys => false
+              | Ast.FunctionType _ => false
+              | t => error ["Unexpected type while normalizing nulls: ", LogErr.ty t]
+
+        fun stripNulls ty = 
+            case ty of 
+                Ast.SpecialType Ast.Null => NONE
+              | Ast.SpecialType t => SOME (Ast.SpecialType t)
+              | Ast.InstanceType t => SOME (Ast.InstanceType t)
+              | Ast.NullableType { expr, nullable } => stripNulls expr 
+              | Ast.LikeType t => (case stripNulls t of 
+                                       NONE => NONE
+                                     | SOME t1 => SOME (Ast.LikeType t1))
+              | Ast.UnionType tys => 
+                (case List.mapPartial stripNulls tys of
+                     [] => NONE
+                   | tys1 => SOME (Ast.UnionType tys1))
+              | Ast.ObjectType fields => SOME (Ast.ObjectType (mapObjTy normalizeNulls fields))
+              | Ast.ArrayType tys => SOME (Ast.ArrayType (map normalizeNulls tys))
+              | Ast.FunctionType fty => SOME (Ast.FunctionType (mapFuncTy normalizeNulls fty))
+              | t => error ["Unexpected type while normalizing nulls: ", LogErr.ty t]
+    in
+        if containsNull ty
+        then 
+            case stripNulls ty of 
+                SOME (Ast.UnionType tys) => Ast.UnionType (tys @ [nullTy])
+              | SOME t => Ast.UnionType [t, nullTy]
+              | NONE => nullTy
+        else 
+            case stripNulls ty of 
+                SOME t => t
+              | NONE => Ast.UnionType []
+    end
+
+fun normalizeUnions (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
+    let
+        fun unUnion (Ast.UnionType tys) = tys
+          | unUnion t = [t]
+    in
+        case ty of 
+            Ast.UnionType tys => 
+            (case List.concat (map unUnion tys) of 
+                 [x] => x
+               | tys => Ast.UnionType tys)                                     
+          | x => mapTyExpr normalizeUnions x
+    end
+    
+(* FIXME: Cormac, please fix the busted name logic here. This doesn't
+ * avoid capture or do shadowing right or anything. It's very weak.                       
+ *) 
+fun normalizeNames (env:Ast.RIB list)
+                   (ty:Ast.TYPE_EXPR)                    
+  : Ast.TYPE_EXPR = 
+    let
+        fun getFixture mname = 
+            case Multiname.resolveInRibs mname env of 
+                SOME (x::_, n) => (n, Fixture.getFixture x (Ast.PropName n))
+              | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
+                            " in type expression ", LogErr.ty ty]
+        fun getType mname = 
+            case getFixture mname of 
+                (_, Ast.TypeFixture ty) => AstQuery.typeExprOf ty
+              | (_, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => (AstQuery.typeExprOf instanceType)
+              | (_, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => (AstQuery.typeExprOf instanceType)
+              | (n, _) => error ["name ", LogErr.name  n, 
+                                 " in type expression ", LogErr.ty ty, 
+                                 " is not a type"]
+        fun getNamespace mname = 
+            case getFixture mname of 
+                (_, Ast.NamespaceFixture ns) => ns
+              | (n, _) => error ["name ", LogErr.name  n, 
+                                 " in qualifier of type expression ", LogErr.ty ty, 
+                                 " is not a namespace"]
+        fun getNamespaceForExpr expr = 
+            case expr of
+                Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
+                                                             
+              | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
+                (LogErr.setLoc loc;
+                 getNamespace {id = ident, nss = openNamespaces})
+                
+              | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
+                (LogErr.setLoc loc; 
+                 getNamespace { id = ident, nss = [[ getNamespaceForExpr qual ]] })
+                
+              | _ => error ["dynamic qualifier in namespace of type expression ", LogErr.ty ty]
+    in
+        case ty of 
+            Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
+            normalizeNames env (getType { id = ident, nss = openNamespaces })
+            
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
+            normalizeNames env (getType { id = ident, nss = [[ getNamespaceForExpr qual ]] })
+            
+          | Ast.TypeName Ast.WildcardIdentifier => Ast.SpecialType Ast.Any
+          | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
+          | t => mapTyExpr (normalizeNames env) t
+    end
+
+(* FIXME: Cormac, please write this normalization pass. *)
+fun normalizeLambdas ty = ty
+    
+
+fun newNormalizer (ribs:Ast.RIB list)
+                  (ty:Ast.TYPE_EXPR)               
+    : Ast.TYPE_EXPR =
+    let
+        val ty = normalizeRefs ty
+        val ty = normalizeNames ribs ty
+        val ty = normalizeLambdas ty
+        val ty = normalizeNulls ty
+        val ty = normalizeUnions ty
+    in
+        ty
+    end
              
 (* 
- * During normalization we work with a "slighly unpacked" form of type
- * closures: type TY_NORM
- *
- * It's similar to Ast.TY -- can map back and forth with Ast.TY -- but
- * it explicitly models the flattening of unions and the 
- * collapse-and-shift-to-end-of-union implied with nullability.
+ * FIXME: newNormalizer will be renamed 'normalize' shortly, and this
+ * function will be removed, once all the callers are updated to call
+ * it properly. For now it still follows the old signature.                             
  *)
-
-type TY_NORM = { exprs: Ast.TYPE_EXPR list,
-                 nullable: bool,
-                 ribId: Ast.RIB_ID option }
 
 fun normalize (prog:Fixture.PROGRAM) 
               (locals:Ast.RIBS)
@@ -203,461 +395,18 @@ fun normalize (prog:Fixture.PROGRAM)
     : Ast.TY =
     let
         val _ = trace [">>> normalize: ", fmtTy t]
-        val res = (norm2ty (ty2norm prog t locals []))
-        val _ = trace ["<<< normalize: ", fmtTy t, " ---> ", fmtTy res]
-    in
-        res
-    end
-
-and repackage (t:Ast.TY) 
-    : TY_NORM = 
-    let
         val Ast.Ty { expr, ribId } = t
+        val (ribs, _) = Fixture.getRibs prog ribId
+        val res = newNormalizer ribs expr 
+        (* (norm2ty (ty2norm prog t locals [])) *)
+        val _ = trace ["<<< normalize: ", fmtTy t, " ---> ", fmtType res]
     in
-        { exprs = [expr],
-          nullable = false,
-          ribId = ribId }
+        Ast.Ty { expr=res, ribId=ribId }
     end
 
-
-and fix2norm (prog:Fixture.PROGRAM)
-             (originalt:Ast.TY)
-             (mname:Ast.MULTINAME)
-             (fixOpt:(Ast.NAME * Ast.FIXTURE) option)
-             (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
-    : TY_NORM = 
-    let
-        val _ = trace ["examined type multiname ", fmtMname mname]
-        val Ast.Ty { expr, ribId } = originalt
-        fun subIty ity = 
-            let
-                val subnorm = ty2norm prog ity [] seen
-                val nullable = case (#exprs subnorm) of 
-                                   [Ast.InstanceType { nonnullable, ... }] => not nonnullable
-                                 | [Ast.LamType { body = Ast.InstanceType { nonnullable, ... }, ... }] => not nonnullable
-                                 | _ => error ["expected instance type for multiname ", 
-                                               LogErr.multiname mname]
-            in
-                { exprs = (#exprs subnorm), nullable = nullable, ribId = (#ribId subnorm) }
-            end
-    in
-        case fixOpt of 
-            NONE => (trace ["failed to resolve"];
-                     if Fixture.ribIsClosed prog ribId
-                     then error ["type multiname ", LogErr.multiname mname, 
-                                 " failed to resolve in closed unit "]
-                     else repackage originalt)
-          | SOME (n, fix) => 
-            (trace ["resolved"];
-             case fix of
-                 Ast.TypeFixture ty => ty2norm prog ty [] seen
-               | Ast.ClassFixture (Ast.Cls cls) => subIty (#instanceType cls)
-               | Ast.InterfaceFixture (Ast.Iface iface) => subIty (#instanceType iface)
-               | Ast.TypeVarFixture _ => repackage originalt
-               | _ => error ["expected type fixture for: ", LogErr.multiname mname])
-    end
-
-    
-and maybeNamedSlow (prog:Fixture.PROGRAM)
-                   (originalt:Ast.TY) 
-                   (locals:Ast.RIBS)
-                   (mname:Ast.MULTINAME) 
-                   (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
-    : TY_NORM =
-    let
-        val (ribs, closed) = Fixture.getRibsForTy prog originalt 
-        val fullRibs = locals @ ribs
-    in       
-        case Multiname.resolveInRibs mname fullRibs of 
-            NONE => fix2norm prog originalt mname NONE seen
-          | SOME (ribs, n) =>
-            let 
-                val fix = Fixture.getFixture (List.hd ribs) (Ast.PropName n)
-            in
-                fix2norm prog originalt mname (SOME (n, fix)) seen
-            end
-    end
-
-
-and maybeNamed (prog:Fixture.PROGRAM)
-               (originalt:Ast.TY) 
-               (locals:Ast.RIBS)
-               (mname:Ast.MULTINAME) 
-               (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
-    : TY_NORM =
-    let
-        val Ast.Ty { ribId, expr } = originalt
-        val newSeen = if List.exists (fn x => x = (ribId, mname)) seen
-                      then (error ["Cyclical type term detected in ", LogErr.ty expr]; [])
-                      else (ribId, mname) :: seen
-    in
-        case locals of 
-            x::xs => maybeNamedSlow prog originalt locals mname newSeen
-          | [] => 
-            let
-                val Ast.Ty { ribId, expr } = originalt
-                val fixOpt = Fixture.resolveToFixture prog mname ribId 
-                val norm = fix2norm prog originalt mname fixOpt newSeen
-                val ty = norm2ty norm
-            in
-                (* 
-                 * Optionally: if the name resolved to a *type abbreviation*,
-                 * write back through to the fixture cache to save the 
-                 * normalized form. This will cause future normalization
-                 * of the same type name to accelerate.
-                 *)
-                case fixOpt of
-                    SOME (n, Ast.TypeFixture _) =>
-                    if (isGroundTy ty)                   
-                    then Fixture.updateFixtureCache prog ribId mname n (Ast.TypeFixture ty)
-                    else ()
-                  | _ => ();
-                norm
-            end
-    end
-
-and norm2ty (norm:TY_NORM) 
-    : Ast.TY = 
-    let
-        val { exprs, nullable, ribId } = norm 
-        val _ = trace ["norm2ty on type with nullable=", Bool.toString nullable]
-        val null = Ast.SpecialType Ast.Null
-        val expr = case exprs of 
-                       [] => if nullable
-                             then null
-                             else Ast.UnionType []
-                     | [x] => if nullable
-                              then Ast.UnionType [x, null]
-                              else x
-                     | union => if nullable
-                                then Ast.UnionType (union @ [null])
-                                else Ast.UnionType union
-    in
-        Ast.Ty { expr = expr,
-                 ribId = ribId }
-    end
-
-and ty2norm (prog:Fixture.PROGRAM) 
-            (ty:Ast.TY) 
-            (locals:Ast.RIBS) (* Local bindings that extend the frame referenced in ty. *)
-            (seen:((Ast.RIB_ID option) * Ast.MULTINAME) list)
-    : TY_NORM =
-    let
-        val Ast.Ty { ribId, expr } = ty
-
-        (* Package up a 1-term type in the current TY environment. *)
-        fun simple (e:Ast.TYPE_EXPR)
-                   (nullable:bool)
-            : TY_NORM = 
-            if isGroundType e 
-            then { exprs = [e], nullable = nullable, ribId = ribId }
-            else error ["internal error: simple type is not ground: ", LogErr.ty e]
-                 
-
-        (* Use 'subTerm2Norm' to evaluate a TYPE_EXPR in the same environment
-         * as the current TY, and get back a new TY_NORM. *)
-        fun subTerm2Norm (e:Ast.TYPE_EXPR) 
-            : TY_NORM = 
-            ty2norm prog (Ast.Ty { expr = e, ribId = ribId }) locals seen
-
-        (* 
-         * Use 'subTerm' to evaluate a TYPE_EXPR in the same environment
-         * as the current TY, and get back "SOME TYPE_EXPR", if the subterm
-         * normalized to a ground term. NONE if there's a non-ground term. 
-         *)
-        fun subTerm (e:Ast.TYPE_EXPR) 
-            : Ast.TYPE_EXPR option = 
-            let 
-                val t = norm2ty (subTerm2Norm e)
-            in
-                if isGroundType (AstQuery.typeExprOf t)
-                then SOME (AstQuery.typeExprOf t)
-                else NONE
-            end
-
-        (* Same as above, but fails if any member of its list fails. *)
-        val subTerms = liftOption subTerm 
-
-        (* 
-         * Likewise, but with options. The confusing part, alas, is that
-         * the outer option means "evaluation did/did-not succeed" and the
-         * inner option is structural. 
-         *)
-        fun subTermOption (e:Ast.TYPE_EXPR option)
-            : (Ast.TYPE_EXPR option) option =             
-            case e of 
-                NONE => SOME (NONE)
-              | SOME te => 
-                let
-                    val t = norm2ty (subTerm2Norm te)
-                in
-                    if isGroundType (AstQuery.typeExprOf t)
-                    then SOME (SOME (AstQuery.typeExprOf t))
-                    else NONE
-                end
-
-        val { exprs, ribId, nullable } = 
-            case expr of              
-                Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
-                maybeNamed prog ty locals { id = ident, nss = openNamespaces } seen
-                
-              | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
-                (case findNamespace prog ribId qual of
-                     SOME ns => maybeNamed prog ty locals { nss = [[ns]], id = ident } seen
-                   | NONE => repackage ty)
-                
-              | Ast.TypeName Ast.WildcardIdentifier => 
-                subTerm2Norm (Ast.SpecialType Ast.Any)
-
-              | Ast.TypeName _ =>
-                error ["dynamic name in type expression: ", LogErr.ty expr]
-                
-              | Ast.InstanceType it => 
-                (* 
-                 * We want to bind any typeargs at this point, if we can resolve them.
-                 * 
-                 * If we do not, we will not be able to compare parametric instance types.
-                 *)
-                let
-                    val { typeParams, typeArgs, ... } = it
-                    fun withArgs args = Ast.InstanceType { name = (#name it),
-                                                           typeParams = typeParams,
-                                                           typeArgs = args,
-                                                           nonnullable = (#nonnullable it),
-                                                           superTypes = (#superTypes it),
-                                                           ty = (#ty it),
-                                                           dynamic = (#dynamic it) }                                                       
-                in
-                    if (length typeParams) = (length typeArgs)
-                    then simple expr false
-                    else 
-                        case (subTerms (map (fn id => Name.typename (Name.nons id)) typeParams)) of 
-                            NONE => simple expr false
-                          | SOME args => simple (withArgs args) false
-                end
-
-              (* 
-               * NB: We used to go up through the supertypes and into all the subterms
-               * normalizing as we went. This was both very painful at runtime *and* 
-               * at least *somewhat* pointless, since the definer ensures all these
-               * types are ground  before it *creates* an InstanceType in the first place.
-               * 
-               * Keep that in mind! You can't just throw together an InstanceType with 
-               * non-ground terms and expect "some later stage" of the system to catch it.
-               * 
-               * It won't. 
-               * 
-               * Possibly in the future we'll consider making ground terms a special type of
-               * type expressions (though it will require some interconversions), such that 
-               * this is semantically impossible. For now it's just something you will have 
-               * to ensure manually.
-               * 
-               * Old code follows:
-               *)
-
-              (* 
-               let
-                   val t0 = ty
-                   val { name, typeArgs, superTypes, ty, 
-                         nonnullable, dynamic } = it
-                   val typeArgs' = subTerms typeArgs
-                   val superTypes' = subTerms superTypes
-                   val ty' = subTerm ty
-               in
-                   case (typeArgs', superTypes', ty') of
-                       (SOME ta, SOME st, SOME t) => 
-                       simple (Ast.InstanceType 
-                                   { name = name,
-                                     typeArgs = ta,
-                                     superTypes = st,
-                                     ty = t,
-                                     nonnullable = nonnullable,
-                                     dynamic = dynamic }) (not nonnullable)
-                     | _ => repackage t0
-               end
-               *)
-                
-              | Ast.AppType { base, args } => 
-                let
-                    val baseNorm = subTerm2Norm base
-                    val baseTy = norm2ty baseNorm
-                    val (args':Ast.TY list) = map (norm2ty o subTerm2Norm) args
-                in                
-                    case baseNorm of 
-                        { exprs=[Ast.LamType {params, body}], nullable, ribId } => 
-                        let
-                            val _ = if length params = length args'
-                                    then ()
-                                    else error ["applying wrong number of type arguments"]
-                        in
-                            (* 
-                             * FIXME: we may wish to have non-ground terms -- say, type variable fixtures -- 
-                             * propagate through lambdas. For now we do not: we simply suspend normalization
-                             * any time we lack ground terms. 
-                             *
-                             * Probably the thing to do here is to consider a separate concept -- "closed" --
-                             * which differs from ground in that a typename in an env where the typename resolves
-                             * to a typeVarFixture is closed, but not ground. In those cases, after all, we can 
-                             * propagate the binding through transparent ty lams. We just can't instantiate the
-                             * resulting type.
-                             *
-                             * Maybe. Revisit.
-                             *)
-                            if not (List.all isGroundTy args')
-                            then repackage ty
-                            else 
-                                let
-                                    val names = List.map Name.nons params
-                                    val bindings = ListPair.zip (names, args')
-                                    fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
-                                    val rib = List.foldl bind [] bindings
-                                    val appNorm = ty2norm prog (Ast.Ty { expr=body, ribId=ribId }) (rib::locals) seen
-                                in
-                                    { exprs = (#exprs appNorm), ribId = (#ribId appNorm), 
-                                      nullable = nullable orelse (#nullable appNorm) }
-                                end               
-                        end 
-                      | _ => repackage ty
-                end
-                
-              | (Ast.UnionType tys) => 
-                let 
-                    fun extract {exprs, nullable, ribId} = (exprs, nullable) 
-                    val sub = extract o subTerm2Norm
-                    val (listOfLists, listOfNulls) = ListPair.unzip (map sub tys)
-                    val exprs' = List.concat listOfLists
-                    val nullable = List.exists (fn x => x) listOfNulls
-                in
-                    {exprs=exprs', nullable=nullable, ribId=ribId }
-                end
-                
-              | (Ast.SpecialType Ast.Null) => 
-                {exprs=[], nullable=true, ribId=ribId }
-                
-              | (Ast.ArrayType []) => 
-                simple (Ast.ArrayType [Ast.SpecialType Ast.Any]) false
-                
-              | (Ast.ArrayType tys) => 
-                (case subTerms tys of
-                     NONE => repackage ty
-                   | SOME tys' => simple (Ast.ArrayType tys') false)
-                
-              | (Ast.FunctionType { params, result, 
-                                    thisType, hasRest, minArgs }) =>
-                let
-                    val params' = subTerms params
-                    val result' = subTerm result
-                    val this' = subTermOption thisType
-                in
-                    case (params', result', this') of 
-                        (SOME p, SOME r, SOME t) => 
-                        simple (Ast.FunctionType { params = p,
-                                                   result = r,
-                                                   thisType = t,
-                                                   hasRest = hasRest,
-                                                   minArgs = minArgs }) false
-                      | _ => repackage ty
-                end
-                
-              | Ast.ObjectType fields => 
-                let
-                    fun unpack { name, ty } = (name, ty)
-                    fun pack (name, ty) = { name=name, ty=ty }
-                    val (names, tys) = ListPair.unzip (map unpack fields)
-                in
-                    case subTerms tys of
-                        NONE => repackage ty
-                      | SOME tys'=> 
-                        simple 
-                            (Ast.ObjectType (map pack (ListPair.zip (names, tys')))) 
-                            false
-                end
-
-              | Ast.LikeType t => 
-                let
-                    val { exprs, ribId, nullable } = subTerm2Norm t
-                in
-                    { exprs = map (fn x => Ast.LikeType x) exprs,
-                      ribId = ribId,
-                      nullable = nullable }
-                end
-                
-                
-              | Ast.NullableType { expr, nullable } => 
-                let
-                    val _ = trace [">>> normalizing nullableType with nullable=", Bool.toString nullable]
-                    val {exprs, ribId=ribId', ...} = subTerm2Norm expr
-                    val _ = trace ["<<< normalizing nullableType with nullable=", Bool.toString nullable]
-                in                
-                    if not (List.all isGroundType exprs)
-                    then repackage ty
-                    else { exprs=exprs, ribId=ribId', nullable=nullable }
-                end
-
-
-              | Ast.ElementTypeRef (t, idx) =>                 
-                let
-                    val baseNorm = subTerm2Norm t
-                in
-                    case baseNorm of 
-                        { exprs=[Ast.ArrayType fields], nullable, ribId } => 
-                        let
-                            val t = if idx < length fields 
-                                    then List.nth (fields, idx)
-                                    else 
-                                        if length fields > 0
-                                        then List.last fields
-                                        else Ast.SpecialType Ast.Any
-                        in
-                            subTerm2Norm t
-                        end
-                      | { exprs=[Ast.SpecialType Ast.Any], nullable, ribId } => 
-                          baseNorm
-                      | _ => error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
-                end
-                
-                
-              | Ast.FieldTypeRef (t, ident) => 
-                let
-                    val baseNorm = subTerm2Norm t
-                in
-                    case baseNorm of 
-                        { exprs=[Ast.ObjectType fields], nullable, ribId } =>
-                        let                            
-                            fun f [] = error ["FieldTypeRef on unknown field: ", Ustring.toAscii ident]
-                              | f ({name,ty}::fields) = if name = ident 
-                                                        then ty
-                                                        else f fields
-                            val t = f fields
-                        in
-                            subTerm2Norm t
-                        end
-                      | { exprs = [Ast.SpecialType Ast.Any], nullable, ribId } => 
-                        baseNorm
-                      | _ => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
-                end
-(*
-              | Ast.LamType { params, body } =>
-                (* FIXME: add params to env, may shadow other vars *)
-                let in
-                    case subTerm body of
-                        SOME body' =>
-                        { exprs = [ Ast.LamType { params=params, body=body' } ],
-                          nullable = false,
-                          ribId = ribId }
-
-                      | _ => repackage ty 
-                end
-  *)              
-              | _ => repackage ty
-
-        fun nonNull (Ast.SpecialType Ast.Null) = false
-          | nonNull _ = true
-
-        val exprs = List.filter nonNull exprs
-    in
-        { exprs = exprs, ribId = ribId, nullable = nullable }        
-    end
+(* -----------------------------------------------------------------------------
+ * Matching helpers
+ * ----------------------------------------------------------------------------- *)
 
 
 fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
@@ -690,12 +439,7 @@ fun fieldPairWiseSuperset predicate _ [] = true
 fun optionWise predicate (SOME a) (SOME b) = predicate a b
   | optionWise _ NONE NONE = true
   | optionWise _ _ _ = false
-
-             
-(* -----------------------------------------------------------------------------
- * Equality
- * ----------------------------------------------------------------------------- *)
-
+            
 fun normalizingPredicate groundPredicate 
                          nonNormalizableDefault
                          (prog:Fixture.PROGRAM)
