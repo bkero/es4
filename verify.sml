@@ -110,12 +110,18 @@ fun fmtType ty = if !doTrace
 val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
 val anyType         = Ast.SpecialType Ast.Any
+                                
+
+fun makeTy (tyExpr:Ast.TYPE_EXPR) 
+    : Ast.TY =
+    Ast.Ty { expr = tyExpr,
+             ribId = NONE }
 
 fun normalize (prog:Fixture.PROGRAM)
               (strict:bool)              
               (ty:Ast.TY)
     : Ast.TY = 
-    Type.normalize prog [] ty 
+    makeTy (Type.normalize (Fixture.getRibsForTy prog ty) (AstQuery.typeExprOf ty))
     handle LogErr.TypeError e => 
            let in
                if strict 
@@ -125,11 +131,6 @@ fun normalize (prog:Fixture.PROGRAM)
                else ();
                ty
            end
-                                
-fun makeTy (tyExpr:Ast.TYPE_EXPR) 
-    : Ast.TY =
-    Ast.Ty { expr = tyExpr,
-             ribId = NONE }
 
 fun newEnv (prog:Fixture.PROGRAM) 
            (strict:bool) 

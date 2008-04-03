@@ -117,7 +117,7 @@ fun normalize (regs:Mach.REGS)
         val { scope, prog, ... } = regs
         val locals = extractRuntimeTypeRibs regs scope []
     in
-        Type.normalize prog locals ty
+        makeTy (Type.normalize (locals @ (Fixture.getRibsForTy prog ty)) (AstQuery.typeExprOf ty))
     end
 
 fun needGroundTy (regs:Mach.REGS)

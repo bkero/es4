@@ -110,7 +110,7 @@ fun dumpEnv (e:ENV) : unit =
     if (!doTrace) 
     then 
         let 
-            val (ribs, closed) = Fixture.getRibs (#program e) (#ribId e)
+            val ribs = Fixture.getRibs (#program e) (#ribId e)
         in
             List.app Fixture.printRib ribs
         end
@@ -122,6 +122,13 @@ val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.me
                           (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS),
                           (Ast.PropName Name.ES4_, Ast.NamespaceFixture Name.ES4NS)]
 
+fun getFullRibs (env:ENV)
+    : Ast.RIBS = 
+    let
+        val ribs = Fixture.getRibs (#program env) (#ribId env)
+    in
+        ribs
+    end
 
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 
@@ -136,7 +143,8 @@ fun makeTy (e:ENV)
          * our job to try this here; if someone wants early typechecking they can
          * use the verifier.
          *)        
-        Type.normalize (#program e) [] ty
+        Ast.Ty { expr = Type.normalize (getFullRibs e) (AstQuery.typeExprOf ty),
+                 ribId = #ribId e }
         handle LogErr.TypeError _ => ty
     end
 
@@ -597,7 +605,7 @@ and defInterface (env: ENV)
 
         val prog = (#program env)
 
-        val groundSuperInterfaceExprs = map (Type.groundExpr o (Type.normalize prog [])) superInterfaces
+        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) (AstQuery.typeExprOf t))) superInterfaces
 
         val env = enterClass env name
 
@@ -879,7 +887,7 @@ and resolveClassInheritance (env:ENV)
                         NONE => implementsTys
                       | SOME ty => ty :: implementsTys
                 val prog = (#program env)
-                val superTypes = map (Type.groundExpr o (Type.normalize prog [])) superTypes
+                val superTypes = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) (AstQuery.typeExprOf t))) superTypes
                 val te = Ast.InstanceType { name = (#name it),
                                             typeParams = (#typeParams it),
                                             typeArgs = (#typeArgs it),
@@ -1736,13 +1744,6 @@ val _ = trace2 ("resolvePath ",case pkg of NONE => Ustring.fromString "NONE" | _
     Return the package qualifier, if any, and the remaining path
 *)
 
-and getFullRibs (env:ENV)
-    : Ast.RIBS = 
-    let
-        val (ribs, closed) = Fixture.getRibs (#program env) (#ribId env)
-    in
-        ribs
-    end
 
 and matchPackageName (env:ENV)
                      (path:Ast.IDENT list)

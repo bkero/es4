@@ -119,7 +119,7 @@ signature FIXTURE = sig
 
     val allocGeneralRib : PROGRAM -> (Ast.RIB_ID option) -> Ast.RIB_ID
     val allocTopUnitRib : PROGRAM -> Ast.RIB_ID
-    val getRibs : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIBS * bool)
+    val getRibs : PROGRAM -> (Ast.RIB_ID option) -> Ast.RIBS
     val ribIsClosed : PROGRAM -> (Ast.RIB_ID option) -> bool
     val saveRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> unit
     val extendRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> TYEQ -> unit
@@ -127,6 +127,6 @@ signature FIXTURE = sig
     val getRootRib : PROGRAM -> Ast.RIB
     val addPackageName : PROGRAM -> Ast.IDENT list -> unit
     val getPackageNames : PROGRAM -> Ast.IDENT list list
-    val getRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)
+    val getRibsForTy : PROGRAM -> Ast.TY -> Ast.RIBS
 
 end

@@ -348,19 +348,14 @@ fun closeTopUnitRib (prog:PROGRAM)
 
 fun getRibs (prog:PROGRAM)
             (ribId:Ast.RIB_ID option)
-    : (Ast.RIBS * bool) =
+    : Ast.RIBS =
     case ribId of 
-        NONE => ([!(#rootRib prog)], false)
+        NONE => [!(#rootRib prog)]
       | SOME rid =>         
         case getRibRec prog rid of 
-            GeneralRib { parent, rib } => 
-            let
-                val (parentRibs, parentClosed) = getRibs prog parent
-            in
-                (rib :: parentRibs, parentClosed)
-            end
+            GeneralRib { parent, rib } => (rib :: (getRibs prog parent))
           | OpenTopUnitRib => getRibs prog NONE
-          | ClosedTopUnitRib rib => ([rib], true)
+          | ClosedTopUnitRib rib => [rib]
 
 
 fun ribIsClosed (prog:PROGRAM)
@@ -421,7 +416,7 @@ fun resolveToFixture (prog:PROGRAM)
             SOME v => SOME v
           | NONE => 
             let
-                val (ribs, closed) = getRibs prog rid
+                val ribs = getRibs prog rid
             in
                 case Multiname.resolveInRibs mn ribs of 
                     NONE => NONE
@@ -498,7 +493,7 @@ fun getPackageNames (prog:PROGRAM)
 
 fun getRibsForTy (prog:PROGRAM) 
                  (ty:Ast.TY)                
-    : (Ast.RIBS * bool) = 
+    : Ast.RIBS = 
     let       
         val Ast.Ty { ribId, ... } = ty
     in

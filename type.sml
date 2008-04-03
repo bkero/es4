@@ -370,8 +370,8 @@ fun normalizeNames (env:Ast.RIB list)
 fun normalizeLambdas ty = ty
     
 
-fun newNormalizer (ribs:Ast.RIB list)
-                  (ty:Ast.TYPE_EXPR)               
+fun normalize (ribs:Ast.RIB list)
+              (ty:Ast.TYPE_EXPR)               
     : Ast.TYPE_EXPR =
     let
         val ty = normalizeRefs ty
@@ -383,26 +383,6 @@ fun newNormalizer (ribs:Ast.RIB list)
         ty
     end
              
-(* 
- * FIXME: newNormalizer will be renamed 'normalize' shortly, and this
- * function will be removed, once all the callers are updated to call
- * it properly. For now it still follows the old signature.                             
- *)
-
-fun normalize (prog:Fixture.PROGRAM) 
-              (locals:Ast.RIBS)
-              (t:Ast.TY) 
-    : Ast.TY =
-    let
-        val _ = trace [">>> normalize: ", fmtTy t]
-        val Ast.Ty { expr, ribId } = t
-        val (ribs, _) = Fixture.getRibs prog ribId
-        val res = newNormalizer ribs expr 
-        (* (norm2ty (ty2norm prog t locals [])) *)
-        val _ = trace ["<<< normalize: ", fmtTy t, " ---> ", fmtType res]
-    in
-        Ast.Ty { expr=res, ribId=ribId }
-    end
 
 (* -----------------------------------------------------------------------------
  * Matching helpers
@@ -439,7 +419,7 @@ fun fieldPairWiseSuperset predicate _ [] = true
 fun optionWise predicate (SOME a) (SOME b) = predicate a b
   | optionWise _ NONE NONE = true
   | optionWise _ _ _ = false
-            
+
 fun normalizingPredicate groundPredicate 
                          nonNormalizableDefault
                          (prog:Fixture.PROGRAM)
@@ -448,15 +428,13 @@ fun normalizingPredicate groundPredicate
                          (t2:Ast.TY)
   =
   let
-      val norm1 = normalize prog locals t1
-      val norm2 = normalize prog locals t2
+      val norm1 = normalize (locals @ (Fixture.getRibsForTy prog t1)) (AstQuery.typeExprOf t1)
+      val norm2 = normalize (locals @ (Fixture.getRibsForTy prog t2)) (AstQuery.typeExprOf t2)
   in
-      if isGroundTy norm1 andalso
-         isGroundTy norm2 
+      if isGroundType norm1 andalso
+         isGroundType norm2 
       then 
-          groundPredicate
-              (AstQuery.typeExprOf norm1) 
-              (AstQuery.typeExprOf norm2)
+          groundPredicate norm1 norm2
       else
           nonNormalizableDefault
     end
@@ -666,11 +644,11 @@ fun groundType (prog:Fixture.PROGRAM)
                (ty:Ast.TY) 
     : Ast.TYPE_EXPR = 
     let
-        val norm = normalize prog [] ty
-        val expr = AstQuery.typeExprOf norm
+        val expr = AstQuery.typeExprOf ty
+        val norm = normalize (Fixture.getRibsForTy prog ty) expr
     in
-        if isGroundTy norm
-        then expr
+        if isGroundType norm
+        then norm
         else error ["Unable to ground type closure for ", 
                     LogErr.ty expr]
     end    
