@@ -151,11 +151,6 @@ datatype PRAGMA =
        | Set
        | Call
        | Has
-
-     and TY = 
-         Ty of 
-         { expr: TYPE_EXPR,
-           ribId: RIB_ID option }
          
      and CLS =
          Cls of
@@ -163,23 +158,23 @@ datatype PRAGMA =
              typeParams: IDENT list,
              nonnullable: bool,
              dynamic: bool,
-             extends: TY option,
-             implements: TY list,
+             extends: TYPE_EXPR option,
+             implements: TYPE_EXPR list,
              classRib: RIB,
              instanceRib: RIB,
              instanceInits: HEAD,
              constructor: CTOR option,
-             classType: TY,  (* ObjectType *)
-             instanceType: TY }
+             classType: TYPE_EXPR,  (* ObjectType *)
+             instanceType: TYPE_EXPR }
 
      and IFACE =
          Iface of
            { name: NAME,
              typeParams: IDENT list,
              nonnullable: bool,
-             extends: TY list,
+             extends: TYPE_EXPR list,
              instanceRib: RIB,
-             instanceType: TY }
+             instanceType: TYPE_EXPR }
 
      and CTOR =
          Ctor of 
@@ -195,7 +190,7 @@ datatype PRAGMA =
            block: BLOCK option, (* NONE => abstract *)
            param: HEAD,
            defaults: EXPR list,
-           ty: TY,
+           ty: TYPE_EXPR,
            loc: LOC option }
          
      and DEFN =
@@ -282,7 +277,7 @@ datatype PRAGMA =
              els: STMT }
        | WithStmt of {
              obj: EXPR,
-             ty: TY,
+             ty: TYPE_EXPR,
              body: STMT }
        | TryStmt of {
              block: BLOCK,
@@ -295,7 +290,7 @@ datatype PRAGMA =
              cases: CASE list }
        | SwitchTypeStmt of {
              cond: EXPR,
-             ty: TY,
+             ty: TYPE_EXPR,
              cases: CATCH_CLAUSE list }
        | DXNStmt of {
              expr: EXPR }
@@ -303,9 +298,9 @@ datatype PRAGMA =
      and EXPR =
          TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
-       | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
+       | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
        | UnaryExpr of (UNOP * EXPR)
-       | TypeExpr of TY
+       | TypeExpr of TYPE_EXPR
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
@@ -315,7 +310,7 @@ datatype PRAGMA =
              actuals: EXPR list }
        | ApplyTypeExpr of {
              expr: EXPR,  (* apply expr to type list *)
-             actuals: TY list }
+             actuals: TYPE_EXPR list }
        | LetExpr of {
              defs: BINDINGS,
              body: EXPR,
@@ -376,12 +371,12 @@ datatype PRAGMA =
        | LiteralString of Ustring.STRING
        | LiteralArray of
            { exprs: EXPR,  (* FIXME: more specific type here *)
-             ty:TY option }
+             ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
        | LiteralObject of
            { expr : FIELD list,
-             ty: TY option }
+             ty: TYPE_EXPR option }
        | LiteralFunction of FUNC
        | LiteralRegExp of
            { str: Ustring.STRING }
@@ -401,23 +396,23 @@ datatype PRAGMA =
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
        | TypeVarFixture of TYPEVAR_NONCE
-       | TypeFixture of TY
+       | TypeFixture of TYPE_EXPR
        | MethodFixture of
            { func: FUNC,
-             ty: TY,
+             ty: TYPE_EXPR,
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool }
        | ValFixture of
-           { ty: TY,
+           { ty: TYPE_EXPR,
              readOnly: bool }
        | VirtualValFixture of
-         { ty: TY, 
+         { ty: TYPE_EXPR, 
            getter: FUNC option,
            setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
        | InheritedFixture of 
          { baseName: NAME, 
-           baseTypeArgs: TY list }
+           baseTypeArgs: TYPE_EXPR list }
 
      and HEAD =
          Head of RIB * INITS
@@ -566,7 +561,7 @@ withtype
 
      and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
-           ty: TY, 
+           ty: TYPE_EXPR, 
            rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
            inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
            block:BLOCK }
@@ -576,7 +571,7 @@ withtype
              ident : IDENT }
 
 type VIRTUAL_VAL_FIXTURE =
-           { ty: TY, 
+           { ty: TYPE_EXPR, 
              getter: FUNC option,
              setter: FUNC option }
 

@@ -143,7 +143,7 @@ fun replaceFixture (b:Ast.RIB)
     end
 
 
-type TYEQ = (Ast.TY -> Ast.TY -> bool)
+type TYEQ = (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool)
 
 
 fun mergeVirtuals (tyeq:TYEQ)
@@ -152,8 +152,8 @@ fun mergeVirtuals (tyeq:TYEQ)
                   (vold:Ast.VIRTUAL_VAL_FIXTURE) =
     let
         val ty = case ((#ty vold), (#ty vnew)) of
-                     (Ast.Ty {expr=Ast.SpecialType Ast.Any, ...}, tnew) => tnew
-                   | (told, Ast.Ty {expr=Ast.SpecialType Ast.Any, ...}) => told
+                     (Ast.SpecialType Ast.Any, tnew) => tnew
+                   | (told, Ast.SpecialType Ast.Any) => told
                    | (t1, t2) => if tyeq t1 t2
                                  then t1
                                  else error ["mismatched get/set types on fixture ",
@@ -213,7 +213,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
 		   | Ast.TypeVarFixture _ => "[typeVar]"
-		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty (AstQuery.typeExprOf t))
+		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty t)
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
@@ -412,15 +412,5 @@ fun addPackageName (prog:PROGRAM)
 fun getPackageNames (prog:PROGRAM)
     : Ast.IDENT list list = 
     !(#packageNames prog)
-
-
-fun getRibsForTy (prog:PROGRAM) 
-                 (ty:Ast.TY)                
-    : Ast.RIBS = 
-    let       
-        val Ast.Ty { ribId, ... } = ty
-    in
-        getRibs prog ribId
-    end
 
 end

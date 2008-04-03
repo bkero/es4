@@ -59,11 +59,6 @@ fun fmtType t = if !doTrace
                  then LogErr.ty t
                  else ""
 
-fun fmtTy t = if !doTrace
-              then LogErr.ty (AstQuery.typeExprOf t)
-              else ""
-
-
 (* -----------------------------------------------------------------------------
  * Normalized types
  * ----------------------------------------------------------------------------- *)
@@ -147,20 +142,16 @@ fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR)
             isGroundOption thisType
     end
 
-fun isGroundType  (t:Ast.TYPE_EXPR) 
+fun isGroundType (t:Ast.TYPE_EXPR) 
     : bool = 
     isGroundTypeEnv [] t
 
-fun isGroundTy (ty:Ast.TY) 
-    : bool =
-    isGroundType (AstQuery.typeExprOf ty)
-
-fun groundExpr (ty:Ast.TY) 
+fun groundExpr (ty:Ast.TYPE_EXPR) 
     : Ast.TYPE_EXPR = 
-    if isGroundTy ty
-    then AstQuery.typeExprOf ty
-    else (Pretty.ppType (AstQuery.typeExprOf ty);
-          error ["extracting ground type expr from non-ground ty"])
+    if isGroundType ty
+    then ty
+    else (Pretty.ppType ty;
+          error ["extracting ground type expr from non-ground type expr"])
 
 
 (* -----------------------------------------------------------------------------
@@ -328,9 +319,9 @@ fun normalizeNames (env:Ast.RIB list)
                             " in type expression ", LogErr.ty ty]
         fun getType mname = 
             case getFixture mname of 
-                (_, Ast.TypeFixture ty) => AstQuery.typeExprOf ty
-              | (_, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => (AstQuery.typeExprOf instanceType)
-              | (_, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => (AstQuery.typeExprOf instanceType)
+                (_, Ast.TypeFixture ty) => ty
+              | (_, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
+              | (_, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => instanceType
               | (n, _) => error ["name ", LogErr.name  n, 
                                  " in type expression ", LogErr.ty ty, 
                                  " is not a type"]
@@ -424,12 +415,13 @@ fun normalizingPredicate groundPredicate
                          nonNormalizableDefault
                          (prog:Fixture.PROGRAM)
                          (locals:Ast.RIBS)
-                         (t1:Ast.TY)
-                         (t2:Ast.TY)
+                         (t1:Ast.TYPE_EXPR)
+                         (t2:Ast.TYPE_EXPR)
   =
   let
-      val norm1 = normalize (locals @ (Fixture.getRibsForTy prog t1)) (AstQuery.typeExprOf t1)
-      val norm2 = normalize (locals @ (Fixture.getRibsForTy prog t2)) (AstQuery.typeExprOf t2)
+      (* FIXME: it is *super wrong* to just be using the root rib here. *)
+      val norm1 = normalize (locals @ [Fixture.getRootRib prog]) t1
+      val norm2 = normalize (locals @ [Fixture.getRootRib prog]) t2
   in
       if isGroundType norm1 andalso
          isGroundType norm2 
@@ -634,34 +626,29 @@ val matches = normalizingPredicate groundMatches false
 
 fun instanceTy (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
-    : Ast.TY =
+    : Ast.TYPE_EXPR =
     case Fixture.resolveToFixture prog { nss = [[(#ns n)]], id=(#id n) } NONE of
         SOME (_, Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
       | SOME (_, Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
 fun groundType (prog:Fixture.PROGRAM)
-               (ty:Ast.TY) 
+               (ty:Ast.TYPE_EXPR) 
     : Ast.TYPE_EXPR = 
     let
-        val expr = AstQuery.typeExprOf ty
-        val norm = normalize (Fixture.getRibsForTy prog ty) expr
+        (* FIXME: it is *super wrong* to just be using the root rib here. *)
+        val norm = normalize [Fixture.getRootRib prog] ty
     in
         if isGroundType norm
         then norm
         else error ["Unable to ground type closure for ", 
-                    LogErr.ty expr]
+                    LogErr.ty ty]
     end    
-
-fun makeTy (tyExpr:Ast.TYPE_EXPR) 
-    : Ast.TY =
-    Ast.Ty { expr = tyExpr,
-             ribId = NONE }
 
 fun getNamedGroundType (prog:Fixture.PROGRAM)
                        (name:Ast.NAME)
    : Ast.TYPE_EXPR = 
-    groundType prog (makeTy (Name.typename name))
+    groundType prog (Name.typename name)
             
 
 end

@@ -54,7 +54,7 @@ fun lookupRoot (prog:Fixture.PROGRAM)
                     | _ => error [LogErr.name n, " did not resolve to a class fixture"]
         val Ast.Cls { instanceType, ... } = cls
         val ty = case instanceType of 
-                     Ast.Ty { expr = Ast.InstanceType ity, ... } => ity
+                     Ast.InstanceType ity => ity
                    | _ => error [LogErr.name n, " does not have an instance type"]
     in
         (cls, ty)
@@ -90,7 +90,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.Ty { expr=Ast.InstanceType cty, ribId=NONE },
+                           { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
                                        dontEnum = true,

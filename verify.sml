@@ -111,23 +111,17 @@ val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
 val anyType         = Ast.SpecialType Ast.Any
                                 
-
-fun makeTy (tyExpr:Ast.TYPE_EXPR) 
-    : Ast.TY =
-    Ast.Ty { expr = tyExpr,
-             ribId = NONE }
-
 fun normalize (prog:Fixture.PROGRAM)
               (strict:bool)              
-              (ty:Ast.TY)
-    : Ast.TY = 
-    makeTy (Type.normalize (Fixture.getRibsForTy prog ty) (AstQuery.typeExprOf ty))
+              (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR = 
+    (* FIXME: it is *super wrong* to just be using the root rib here. *)
+    Type.normalize [Fixture.getRootRib prog] ty
     handle LogErr.TypeError e => 
            let in
                if strict 
                then 
-                   warning [e, " while normalizing ", 
-                            LogErr.ty (AstQuery.typeExprOf ty)]
+                   warning [e, " while normalizing ", LogErr.ty ty]
                else ();
                ty
            end
@@ -217,7 +211,7 @@ and resolveExprToNamespace (env:ENV)
  *)
 fun resolveMnameToFixtureTy (env:ENV)
 			    (mname:Ast.MULTINAME)
-    : Ast.TY = 
+    : Ast.TYPE_EXPR = 
     case resolveMnameToFixture env mname of 	
 	(* 
 	 * FIXME: classtypes should be turned into instancetypes of 
@@ -227,8 +221,8 @@ fun resolveMnameToFixtureTy (env:ENV)
 	SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
       | SOME (Ast.ValFixture { ty, ... }) => ty	
       | SOME (Ast.VirtualValFixture { ty, ... }) => ty        
-      | SOME (Ast.TypeFixture _) => makeTy (#TypeType (#stdTypes env))
-      | _ => makeTy anyType
+      | SOME (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
+      | _ => anyType
 
 
 
@@ -261,8 +255,8 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
 (******************** Verification **************************************************)
 
 fun verifyType (env:ENV)
-               (ty:Ast.TY)
-    : (Ast.TY * Ast.TYPE_EXPR) =
+               (ty:Ast.TYPE_EXPR)
+    : (Ast.TYPE_EXPR * Ast.TYPE_EXPR) =
 
     (* 
      * Verification converts a (non-closed) TY into a 
@@ -293,17 +287,17 @@ fun verifyType (env:ENV)
         val norm = normalize (#prog env) (#strict env) ty
     in
         (norm, 
-         if Type.isGroundTy norm
-         then (AstQuery.typeExprOf norm)
+         if Type.isGroundType norm
+         then norm
          else 
              let in
-                 warning ["Type could not be closed: ", LogErr.ty (AstQuery.typeExprOf norm)];
+                 warning ["Type could not be closed: ", LogErr.ty norm];
                  anyType
              end)
     end
 
 fun verifyTypeExpr (env:ENV)
-                   (ty:Ast.TY)
+                   (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     
     let
@@ -317,8 +311,8 @@ fun verifyTypeExpr (env:ENV)
 verifyTypeExpr env ty
 *)
 fun verifyTy (env:ENV)
-             (ty:Ast.TY)
-    : Ast.TY =
+             (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
     
     let
         val (ty,te) = verifyType env ty

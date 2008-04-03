@@ -43,7 +43,7 @@ signature FIXTURE = sig
     val printRib : Ast.RIB -> unit
 
     (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
-    type TYEQ = (Ast.TY -> Ast.TY -> bool)
+    type TYEQ = (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool)
     val mergeRibs : TYEQ -> Ast.RIB -> Ast.RIB -> Ast.RIB
 
     type PROGRAM
@@ -61,6 +61,5 @@ signature FIXTURE = sig
     val getRootRib : PROGRAM -> Ast.RIB
     val addPackageName : PROGRAM -> Ast.IDENT list -> unit
     val getPackageNames : PROGRAM -> Ast.IDENT list list
-    val getRibsForTy : PROGRAM -> Ast.TY -> Ast.RIBS
 
 end

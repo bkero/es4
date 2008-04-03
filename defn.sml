@@ -132,21 +132,15 @@ fun getFullRibs (env:ENV)
 
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 
-    : Ast.TY = 
-    let
-        val ty = Ast.Ty { expr = tyExpr,
-                          ribId = #ribId e }
-    in
-        (* 
-         * FIXME: controversial? This attempts to normalize each type term the first 
-         * time we see it. We ignore type errors since it's not technically
-         * our job to try this here; if someone wants early typechecking they can
-         * use the verifier.
-         *)        
-        Ast.Ty { expr = Type.normalize (getFullRibs e) (AstQuery.typeExprOf ty),
-                 ribId = #ribId e }
-        handle LogErr.TypeError _ => ty
-    end
+    : Ast.TYPE_EXPR = 
+    (* 
+     * FIXME: controversial? This attempts to normalize each type term the first 
+     * time we see it. We ignore type errors since it's not technically
+     * our job to try this here; if someone wants early typechecking they can
+     * use the verifier.
+     *)        
+    Type.normalize (getFullRibs e) tyExpr
+    handle LogErr.TypeError _ => tyExpr
 
         
 (*
@@ -591,11 +585,11 @@ and defInterface (env: ENV)
         val name = {id = ident, ns = resolveExprOptToNamespace env ns} 
 
         (* Resolve base interface's super interfaces and rib *)
-        val (superInterfaces:Ast.TY list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
+        val (superInterfaces:Ast.TYPE_EXPR list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
 
         val prog = (#program env)
 
-        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) (AstQuery.typeExprOf t))) superInterfaces
+        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superInterfaces
 
         val env = enterClass env name
 
@@ -610,7 +604,7 @@ and defInterface (env: ENV)
         val instanceRib:Ast.RIB = inheritRib inheritedRib instanceRib
 
         (* Make the instance type and interface fixture *)
-        val instanceType:Ast.TY = 
+        val instanceType:Ast.TYPE_EXPR = 
             makeTy env (Ast.InstanceType 
                             { name=name,
                               nonnullable=nonnullable,
@@ -682,13 +676,10 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
                      
         val isCompatible = case (fb,fd) of
                 (Ast.MethodFixture
-                     {ty=Ast.Ty 
-                             {expr=Ast.FunctionType
-                                       {params=pb, 
-                                        result=rtb, 
-                                        minArgs=mb,
-                                        ...}, 
-                              ...},
+                     {ty=Ast.FunctionType {params=pb, 
+                                           result=rtb, 
+                                           minArgs=mb,
+                                           ...}, 
                       func=Ast.Func 
                                {fsig=Ast.FunctionSignature 
                                          {defaults=db, 
@@ -696,18 +687,15 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
                                 ...},
                       ...},
                  Ast.MethodFixture
-                     {ty=Ast.Ty 
-                             {expr=Ast.FunctionType
-                                       {params=pd, 
-                                        result=rtd, 
-                                        minArgs=md,
-                                        ...}, 
-                              ...},
-                       func=Ast.Func 
-                                {fsig=Ast.FunctionSignature 
+                     {ty=Ast.FunctionType {params=pd, 
+                                           result=rtd, 
+                                           minArgs=md,
+                                           ...}, 
+                      func=Ast.Func 
+                               {fsig=Ast.FunctionSignature 
                                           {defaults=dd, 
                                            ...}, 
-                                 ...},
+                                ...},
                       ...}) =>
                     let
                         val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
@@ -862,22 +850,22 @@ and resolveClassInheritance (env:ENV)
     let
         val _ = trace ["analyzing inheritance for ", LogErr.name name]
 
-        val (extendsTy:Ast.TY option, 
+        val (extendsTy:Ast.TYPE_EXPR option, 
              instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
 
-        val (implementsTys:Ast.TY list, 
+        val (implementsTys:Ast.TYPE_EXPR list, 
              instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
 
 
         val instanceType = 
             let
-                val (it, rid) = AstQuery.extractInstanceType instanceType
-                val superTypes:Ast.TY list = 
+                val it = AstQuery.needInstanceType instanceType
+                val superTypes:Ast.TYPE_EXPR list = 
                     case extendsTy of 
                         NONE => implementsTys
                       | SOME ty => ty :: implementsTys
                 val prog = (#program env)
-                val superTypes = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) (AstQuery.typeExprOf t))) superTypes
+                val superTypes = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superTypes
                 val te = Ast.InstanceType { name = (#name it),
                                             typeParams = (#typeParams it),
                                             typeArgs = (#typeArgs it),
@@ -885,13 +873,11 @@ and resolveClassInheritance (env:ENV)
                                             superTypes = superTypes,
                                             ty = (#ty it),
                                             dynamic = (#dynamic it)}
-                val te = case typeParams of 
-                             [] => te
-                           | params => Ast.LamType { params = params, 
-                                                     body = te }
             in
-                Ast.Ty { expr = te,
-                         ribId = rid }
+                case typeParams of 
+                    [] => te
+                  | params => Ast.LamType { params = params, 
+                                            body = te }
             end
                 
     in
@@ -929,7 +915,7 @@ and resolveExtends (env:ENV)
                    (currInstanceRib:Ast.RIB)
                    (extends:Ast.TYPE_EXPR option)
                    (currName:Ast.NAME) 
-    : (Ast.TY option * Ast.RIB) =
+    : (Ast.TYPE_EXPR option * Ast.RIB) =
     let
         val baseClassMultiname:Ast.MULTINAME option = 
             case extends of 
@@ -956,7 +942,7 @@ and resolveExtends (env:ENV)
 and resolveImplements (env: ENV)
                       (instanceRib: Ast.RIB)
                       (implements: Ast.TYPE_EXPR list)
-    : (Ast.TY list * Ast.RIB) =
+    : (Ast.TYPE_EXPR list * Ast.RIB) =
     let
         val (superInterfaces, abstractRib) = resolveInterfaces env implements
         val _ = implementFixtures abstractRib instanceRib
@@ -985,13 +971,13 @@ and interfaceMethods (ifxtr:Ast.FIXTURE)
       |_ => LogErr.internalError ["interfaceMethods"]
 
 and interfaceExtends (ifxtr:Ast.FIXTURE)
-    : Ast.TY list =
+    : Ast.TYPE_EXPR list =
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {extends,...}) => extends
       |_ => LogErr.internalError ["interfaceExtends"]
 
 and interfaceInstanceType (ifxtr:Ast.FIXTURE)
-    : Ast.TY =
+    : Ast.TYPE_EXPR =
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {instanceType,...}) => instanceType
       |_ => LogErr.internalError ["interfaceInstanceType"]
@@ -1003,7 +989,7 @@ and classInstanceRib (cfxtr:Ast.FIXTURE)
       |_ => LogErr.internalError ["classInstanceRib"]
 
 and classInstanceType (cfxtr:Ast.FIXTURE)
-    : Ast.TY =
+    : Ast.TYPE_EXPR =
     case cfxtr of
         Ast.ClassFixture (Ast.Cls {instanceType,...}) => instanceType
       |_ => LogErr.internalError ["classInstanceType"]
@@ -1028,7 +1014,7 @@ and extractIdentExprFromTypeName (Ast.TypeName ie) : Ast.IDENT_EXPR = ie
 
 and resolveInterfaces (env: ENV)
                       (exprs: Ast.TYPE_EXPR list)
-    : (Ast.TY list * Ast.RIB) =
+    : (Ast.TYPE_EXPR list * Ast.RIB) =
     case exprs of        
         [] => ([],[])
       | _ =>
@@ -1037,8 +1023,8 @@ and resolveInterfaces (env: ENV)
             val fixs = (map (resolve env) mnames)
             (* val _ = List.map (fn (n,f) => Fixture.printFixture (Ast.PropName n, f)) fixs *)
             val (_, ifaces) = ListPair.unzip fixs
-            val ifaceInstanceTypes:Ast.TY list = map interfaceInstanceType ifaces
-            val superIfaceTypes:Ast.TY list = List.concat (map interfaceExtends ifaces)
+            val ifaceInstanceTypes:Ast.TYPE_EXPR list = map interfaceInstanceType ifaces
+            val superIfaceTypes:Ast.TYPE_EXPR list = List.concat (map interfaceExtends ifaces)
             val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
         in
             (ifaceInstanceTypes @ superIfaceTypes, methodRib)
@@ -1193,7 +1179,7 @@ and defVar (env:ENV)
     case var of
         Ast.Binding { ident, ty } =>
         let
-            val ty':Ast.TY = defTy env ty
+            val ty':Ast.TYPE_EXPR = defTypeExpr env ty
             val readOnly' = case kind of
                                  Ast.Const => true
                                | Ast.LetConst => true
@@ -1416,7 +1402,6 @@ and defFunc (env:ENV)
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
-        val Ast.Ty { expr, ... } = ty 
         fun findFuncType env e = 
             case e of 
                 Ast.LamType { params, body } => 
@@ -1424,8 +1409,8 @@ and defFunc (env:ENV)
               | Ast.FunctionType fty => (env, fty)
               | _ => error ["unexpected primary type in function: ", LogErr.ty e]
 
-        val newT = defTyFromTy env ty
-        val (env, funcType) = findFuncType env expr                     
+        val newT = defTypeExpr env ty
+        val (env, funcType) = findFuncType env newT                     
         val numParams = length (#params funcType)
         val env = updateTempOffset env numParams
         val (paramRib, paramInits, defaults, settingsRib, settingsInits, superArgs, thisType) = defFuncSig env fsig
@@ -1675,7 +1660,7 @@ and defLiteral (env:ENV)
             Ast.LiteralArray {exprs = defExpr env exprs,
                               ty = case ty of
                                        NONE => NONE
-                                     | SOME t => SOME (defTyFromTy env t) }
+                                     | SOME t => SOME (defTypeExpr env t) }
           | Ast.LiteralXML exprs =>
             Ast.LiteralXML (defExprs env exprs)
 
@@ -1686,7 +1671,7 @@ and defLiteral (env:ENV)
                                                      init = defExpr env init }) expr,
                                ty = case ty of
                                         NONE => NONE
-                                      | SOME t => SOME (defTyFromTy env t) }
+                                      | SOME t => SOME (defTypeExpr env t) }
 
           | Ast.LiteralNamespace ns =>
             Ast.LiteralNamespace (defNamespace env ns)
@@ -1824,13 +1809,13 @@ and defExpr (env:ENV)
             Ast.BinaryExpr (b, sub e1, sub e2)
 
           | Ast.BinaryTypeExpr (b, e, ty) =>
-            Ast.BinaryTypeExpr (b, sub e, defTyFromTy env ty)
+            Ast.BinaryTypeExpr (b, sub e, defTypeExpr env ty)
 
           | Ast.UnaryExpr (u, e) =>
             Ast.UnaryExpr (u, sub e)
 
           | Ast.TypeExpr t =>
-            Ast.TypeExpr (defTyFromTy env t)
+            Ast.TypeExpr (defTypeExpr env t)
 
           | Ast.ThisExpr k =>
             (case k of
@@ -1863,7 +1848,7 @@ and defExpr (env:ENV)
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
             Ast.ApplyTypeExpr { expr = sub expr,
-                                actuals = map (defTyFromTy env) actuals }
+                                actuals = map (defTypeExpr env) actuals }
 
           | Ast.LetExpr { defs, body,... } =>
             let
@@ -2018,22 +2003,6 @@ and defTypeExpr (env:ENV)
       | t => t
 
 
-and defTy (env:ENV)
-          (typeExpr:Ast.TYPE_EXPR)
-    : Ast.TY = 
-    makeTy env (defTypeExpr env typeExpr)
-
-
-and defTyFromTy (env:ENV)
-                (ty:Ast.TY)
-    : Ast.TY =
-    let
-        val Ast.Ty { expr, ... } = ty
-    in
-        defTy env expr
-    end
-
-
 and defFieldType (env:ENV)
               (ty:Ast.FIELD_TYPE)
     : Ast.FIELD_TYPE =
@@ -2133,7 +2102,7 @@ and defStmt (env:ENV)
 
         fun reconstructCatch { bindings, rib, inits, block, ty } =
             let
-                val ty:Ast.TY = defTyFromTy env ty
+                val ty:Ast.TYPE_EXPR = defTypeExpr env ty
                 val (r0,i0) = defBindings env Ast.Var Name.noNS bindings
                 val env = extendEnvironment env r0
                 val (block:Ast.BLOCK, rib:Ast.RIB) = defBlock env block
@@ -2351,7 +2320,7 @@ and defStmt (env:ENV)
                 val (body,hoisted) = defStmt env [] body
             in
                 (Ast.WithStmt { obj = (defExpr env obj),
-                           ty = (defTyFromTy env ty),
+                           ty = (defTypeExpr env ty),
                            body = body }, hoisted)
             end
 
@@ -2387,7 +2356,7 @@ and defStmt (env:ENV)
                 val (cases,hoisted) = ListPair.unzip (map reconstructCatch cases)
             in
                 (Ast.SwitchTypeStmt {cond = defExpr env cond,
-                                     ty = defTyFromTy env ty,
+                                     ty = defTypeExpr env ty,
                                      cases = cases}, List.concat hoisted)
             end
           | Ast.DXNStmt { expr } =>
@@ -2456,7 +2425,7 @@ and defType (env:ENV)
         val n = { id=ident, ns=ns }
     in
         [(Ast.PropName n,
-          Ast.TypeFixture (defTy env init))]
+          Ast.TypeFixture (defTypeExpr env init))]
     end
 
 
