@@ -77,6 +77,7 @@ datatype VAL = Object of OBJ
          Obj of { ident: OBJ_IDENT,
                   tag: VAL_TAG,
                   props: PROP_BINDINGS,
+                  rib: Ast.RIB ref,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
 
@@ -514,6 +515,35 @@ fun hasMagic (ob:OBJ) =
             SOME _ => true
           | NONE => false
 
+fun setRib (obj:OBJ)
+           (r:Ast.RIB)
+    : unit =
+    let
+        val Obj { rib, ... } = obj
+    in
+        rib := r
+    end
+
+fun getRib (obj:OBJ)
+    : Ast.RIB =
+    let
+        val Obj { rib, ... } = obj
+    in
+        !rib
+    end
+
+fun getRibs (scope:SCOPE) 
+    : Ast.RIBS = 
+      let   
+          val Scope {object, parent, ...} = scope
+          val rib = getRib object
+      in
+          case parent of 
+              NONE => [rib]
+            | SOME p => rib :: (getRibs p)
+      end
+
+
 fun setPropDontEnum (props:PROP_BINDINGS)
                     (n:Ast.NAME)
                     (dontEnum:bool)
@@ -550,6 +580,7 @@ fun newObj (t:VAL_TAG)
           tag = t,
           props = newPropBindings (),
           proto = ref p,
+          rib = ref [],
           magic = ref m }
 
 fun newObjNoTag _

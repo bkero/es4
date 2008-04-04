@@ -62,8 +62,6 @@ package
 
     __ES4__ namespace iterator;
 
-    __ES4__ type EnumerableId = (int|uint|string|Name);
-
     helper function toEnumerableId(x) {
         switch type (x) {
         case (x: EnumerableId) { return x; }
@@ -524,3 +522,12 @@ package
     intrinsic native function get(obj:Object!, name:string) : *;
     intrinsic native function set(obj:Object!, name:string, val:*) : void;
 }
+
+// FIXME: types do not hoist, but they *do* get allocated on to the global object 
+// when defined at package scope. This is inconsistent and weird: it means that 
+// we have to move EnumerableId out here to have Object.es *statically* see the
+// type, even though if we wait until we've actually executed this file, we will
+// wind up with an EnumerableId type property stuck on global, visible to Object
+// instances.
+
+__ES4__ type EnumerableId = (int|uint|string|Name);

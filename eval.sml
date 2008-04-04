@@ -38,8 +38,8 @@ fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 val doTrace = ref false
 val doTraceConstruct = ref false
 
-fun fmtName n = if (!doTrace) then LogErr.name n else ""
-fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
+fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
+fun fmtMultiname n = if (!doTrace orelse !doTraceConstruct) then LogErr.multiname n else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -53,57 +53,14 @@ fun error (regs:Mach.REGS)
      LogErr.evalError ss)
 
 
-fun extractRuntimeTypeRibs (regs:Mach.REGS)
-                           (scope:Mach.SCOPE) 
-                           (ribs:Ast.RIBS) 
-    : Ast.RIBS = 
-      let
-          fun typePropToFixture (n:Ast.NAME, {prop:Mach.PROP, seq}) : 
-              (Ast.FIXTURE_NAME * Ast.FIXTURE) = 
-              let
-                  val { state, ty, ... } = prop
-                  val fixtureName = Ast.PropName n
-                  val fixtureVal = Ast.TypeFixture ty
-                  val fixture = (fixtureName, fixtureVal)
-              in
-                  case state of 
-                      Mach.TypeProp => fixture
-                    | _ => error regs ["non-type property in type-arg scope"]
-              end
-                       
-          fun typePropsToRib (props:Mach.PROP_BINDINGS) 
-              : Ast.RIB = 
-              let
-                  val { bindings, ... } = !props
-                  val items = NameMap.listItemsi bindings
-              in
-                  map typePropToFixture items
-              end
-              
-          val Mach.Scope {kind, object=Mach.Obj {props, ...}, parent, ...} = scope
-          val ribs' = case kind of 
-                          Mach.TypeArgScope => 
-                          let 
-                              val rib = typePropsToRib props
-                          in
-                              rib :: ribs
-                          end
-                        | _ => ribs
-      in
-          case parent of 
-              NONE => List.rev ribs'
-            | SOME p => extractRuntimeTypeRibs regs p ribs'
-      end
-
 fun normalize (regs:Mach.REGS)
               (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR = 
     let
         val { scope, prog, ... } = regs
-        val locals = extractRuntimeTypeRibs regs scope []
+        val ribs = Mach.getRibs scope
     in
-        (* FIXME: it is *super wrong* to just be using the root rib here. *)
-        Type.normalize (locals @ [Fixture.getRootRib prog]) ty
+        Type.normalize ribs ty
     end
 
 fun evalTy (regs:Mach.REGS)
@@ -442,6 +399,10 @@ fun allocRib (regs:Mach.REGS)
         
         val Mach.Obj { props, ident, ... } = obj
         val _ = traceConstruct ["allocating rib on object id #", Int.toString ident]
+        val _ = if (Mach.isBooting regs andalso 
+                    getObjId (#global regs) = getObjId obj)
+                then ()
+                else Mach.setRib obj (f @ (Mach.getRib obj))
         val {scope, ...} = regs
         val methodScope = extendScope scope obj Mach.ActivationScope                 
         val attrs0 = { dontDelete = true,

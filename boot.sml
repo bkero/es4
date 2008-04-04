@@ -303,8 +303,7 @@ fun boot (baseDir:string) : Mach.REGS =
 
                        builtin "Math.es",
                        builtin "Global.es",
-                       
-                       
+                                              
                        builtin "Name.es",
 
                        builtin "Error.es",
@@ -334,8 +333,6 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "DecimalContext.es"
                  ]
 
-        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
-
         val glob = 
             let
                 val (_, objIty) = lookupRoot prog Name.nons_Object
@@ -344,6 +341,9 @@ fun boot (baseDir:string) : Mach.REGS =
                 Mach.newObj objTag Mach.Null NONE
             end
 
+        val _ = Mach.setRib glob (Fixture.getRootRib prog)
+
+        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
         val clsFrag = Verify.verifyTopFragment prog verifyBuiltins clsFrag
         val funFrag = Verify.verifyTopFragment prog verifyBuiltins funFrag
         val ifaceFrag = Verify.verifyTopFragment prog verifyBuiltins ifaceFrag
@@ -367,22 +367,27 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val _ = describeGlobal regs;
     in
+        trace ["completing class fixtures"];
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
         completeClassFixtures regs Name.nons_Function funClassObj;
         completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
         (* NB: order matters here. *)
+        trace ["initializing class prototypes"];
         Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
         Eval.initClassPrototype regs ifaceClassObj;
 
+        trace ["evaluating other files"];
         evalFiles regs otherFrags;
 
+        trace ["executing object constructor on global object"];
         runObjectConstructorOnGlobalObject 
             regs objClass objClassObj objClassClosure;
 
+        trace ["evaluating top fragments of root-class files"];
         Eval.evalTopFragment regs (filterOutRootClasses objFrag);
         Eval.evalTopFragment regs (filterOutRootClasses clsFrag);
         Eval.evalTopFragment regs (filterOutRootClasses funFrag);
@@ -393,6 +398,7 @@ fun boot (baseDir:string) : Mach.REGS =
         describeGlobal regs;
 
         (* Do a small bit of rewiring of the root prototype chains. *)
+        trace ["configuring root-class prototype chains"];
         Mach.setProto funClassObj (Eval.getPrototype regs funClassObj);
         Mach.setProto objClassObj (Mach.getProto funClassObj);
         Mach.setProto classClassObj (Mach.getProto funClassObj);
