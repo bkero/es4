@@ -63,7 +63,45 @@ fun fmtType t = if !doTrace
  * Normalized types
  * ----------------------------------------------------------------------------- *)
 
+(* 
+ * Normalization converts a (non-closed) TYPE_EXPR (in the context of given RIBS) 
+ * into a normalized TYPE_EXPR.
+ * It is an error if a type cannot be normalized; that may be a static or dynamic error,
+ * since normalization runs both at verify-time and eval-time.
+ *
+ * Normalized types satisfy the following properties:
+ *
+ * * If two types are equivalent (in that they are both subtypes of each other),
+ *   then normalization maps those types to the same type. This property in necessary
+ *   to implement C#-style semantics for static fields of generic classes.
+ *
+ * * Normalized types are closed, so that they can be safely propogated
+ *   outside of their current environment env without worrying about variable capture etc.
+ *   Normalized types may have references to class or interface defns, but these are from
+ *   a global namespace (FIXME: say more), and so are not a concern
+ *
+ * * Normalized types are in beta-normal form, in that any applications of generic typedefs 
+ *   have been reduced. 
+ *
+ * Some issues here with generic classes, and with generic type definitions.
+ * For example,given
+ *    type T.<X>  = { a:X, b:X }
+ *    class C.<X> = { a:X; b:X }
+ * the type "T" has kind "type -> type", since it is a function from types to types.
+ * Each reference to T must be of the form "T.<type>".
+ *
+ * The types T and C are second-class; we have no variables of type T or C.
+ * A "true type" is a type of kind "type".
+ *
+ * Type definitions are inlined and beta-reduced at verification time, leaving only
+ * the "C.<type>" form, that is, the result type has no free type variables
+ * and no LamType forms.
+ *)
+
+
 (* Unused
+
+Ground vs Normalized vs type value
 type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
 *)
 
@@ -109,6 +147,7 @@ fun liftOption (f:'a -> 'a option)
         else NONE
     end
 
+(* e is generic type vars in scope *)
 fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
     : bool = 
     let
@@ -120,7 +159,7 @@ fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR)
         case t of 
             Ast.SpecialType _ => true
           | Ast.InstanceType it => 
-            (length (#typeParams it) = length (#typeArgs it))
+            (length (#typeParams it) = length (#typeArgs it))   (* CF: not ground, well-formed *)
           | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
             if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
             then (trace ["bound var in ground type"]; true)
@@ -136,7 +175,7 @@ fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR)
           | Ast.WrapType t => isGroundType t
           | Ast.UnionType tys => List.all isGroundType tys
           | Ast.ArrayType tys =>List.all isGroundType tys
-          | Ast.FunctionType { params, result, thisType, ... } => 
+          | Ast.FunctionType { params, result, thisType, ... } =>   (* where are generics? *)
             List.all isGroundType params andalso
             isGroundType result andalso
             isGroundOption thisType
@@ -146,7 +185,7 @@ fun isGroundType (t:Ast.TYPE_EXPR)
     : bool = 
     isGroundTypeEnv [] t
 
-fun groundExpr (ty:Ast.TYPE_EXPR) 
+fun groundExpr (ty:Ast.TYPE_EXPR)  (* or "groundType" *)
     : Ast.TYPE_EXPR = 
     if isGroundType ty
     then ty
@@ -214,6 +253,7 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
       | Ast.FieldTypeRef (t, id) =>
         Ast.FieldTypeRef (f t, id)
     
+(* CF: I'd love to get rid of Refs ... *)
 
 fun normalizeRefs (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
@@ -306,32 +346,39 @@ fun normalizeUnions (ty:Ast.TYPE_EXPR)
     end
     
 (* FIXME: Cormac, please fix the busted name logic here. This doesn't
- * avoid capture or do shadowing right or anything. It's very weak.                       
+ * avoid capture or do shadowing right or anything. It's very weak.
+ *
+ 
  *) 
 fun normalizeNames (env:Ast.RIB list)
                    (ty:Ast.TYPE_EXPR)                    
   : Ast.TYPE_EXPR = 
     let
-        fun getFixture mname = 
+        fun getFixture (mname : Ast.MULTINAME) : (Ast.NAME * Ast.FIXTURE) = 
             case Multiname.resolveInRibs mname env of 
                 SOME (x::_, n) => (n, Fixture.getFixture x (Ast.PropName n))
               | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
                             " in type expression ", LogErr.ty ty]
-        fun getType mname = 
+
+        fun getType (mname : Ast.MULTINAME) : Ast.TYPE_EXPR = 
             case getFixture mname of 
-                (_, Ast.TypeFixture ty) => ty
+                (_, Ast.TypeFixture ty) => ty (* Pulling type out of environment, better be closed! *)
               | (_, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
+              (* CF: what about generic classes? *)
+
               | (_, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => instanceType
               | (n, _) => error ["name ", LogErr.name  n, 
                                  " in type expression ", LogErr.ty ty, 
                                  " is not a type"]
-        fun getNamespace mname = 
+
+        fun getNamespace (mname : Ast.MULTINAME) : Ast.NAMESPACE = 
             case getFixture mname of 
                 (_, Ast.NamespaceFixture ns) => ns
               | (n, _) => error ["name ", LogErr.name  n, 
                                  " in qualifier of type expression ", LogErr.ty ty, 
                                  " is not a namespace"]
-        fun getNamespaceForExpr expr = 
+
+        fun getNamespaceForExpr (expr : Ast.EXPR) : Ast.NAMESPACE = 
             case expr of
                 Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
                                                              

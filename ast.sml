@@ -123,7 +123,7 @@ datatype UNOP =
        | Splat
 
 datatype VAR_DEFN_TAG =
-         Const
+         Const 
        | Var
        | LetVar
        | LetConst
@@ -181,11 +181,11 @@ datatype PRAGMA =
          { settings: HEAD, (* FIXME should be a EXPR list of LetExpr of InitExpr *)
            superArgs: EXPR list,
            func: FUNC }
-
+ 
      and FUNC =
          Func of 
          { name: FUNC_NAME,
-           fsig: FUNC_SIG,
+           fsig: FUNC_SIG,                       (* redundant, not used in verify *)
            native: bool,
            block: BLOCK option, (* NONE => abstract *)
            param: HEAD,
@@ -202,7 +202,7 @@ datatype PRAGMA =
        | NamespaceDefn of NAMESPACE_DEFN
        | TypeDefn of TYPE_DEFN
 
-     and FUNC_SIG =
+     and FUNC_SIG =                             (* redundant, not used in verify *)
          FunctionSignature of 
          { typeParams: IDENT list,
            params: BINDINGS,
@@ -346,6 +346,10 @@ datatype PRAGMA =
          Identifier of
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
+(* CF: the above should be unified with
+        type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+   Perhaps Identifier should be Multiname
+*)
        | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
@@ -382,7 +386,6 @@ datatype PRAGMA =
            { str: Ustring.STRING }
 
      and BLOCK = Block of DIRECTIVES
-
 
      (* RIBs are built by the definition phase, not the parser; but they 
       * are patched back into the AST in class-definition and block
@@ -421,17 +424,17 @@ withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and RIB = (FIXTURE_NAME * FIXTURE) list
-     and RIBS = ((FIXTURE_NAME * FIXTURE) list) list
+     and RIBS = RIB list
      and INITS = (FIXTURE_NAME * EXPR) list
 
      and INSTANCE_TYPE =
           {  name: NAME,
-             typeParams: IDENT list,
+             typeParams: IDENT list,      (* redundant, ignored in verify.sml *)
              typeArgs: TYPE_EXPR list,
-             nonnullable: bool,
-             superTypes: TYPE_EXPR list,
-             ty: TYPE_EXPR,
-             dynamic: bool }
+             nonnullable: bool,           (* redundant, ignored in verify.sml *)
+             superTypes: TYPE_EXPR list,  (* redundant, ignored in verify.sml *)
+             ty: TYPE_EXPR,               (* redundant, ignored in verify.sml *)
+             dynamic: bool }              (* redundant, ignored in verify.sml *)
 
      and FIELD =
            { kind: VAR_DEFN_TAG,

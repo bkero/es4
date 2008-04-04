@@ -243,7 +243,6 @@ type PROGRAM = { rootRib: Ast.RIB ref,
                  fixtureCache: ((Ast.NAME * Ast.FIXTURE) FixtureMap.map) ref, 
                  cacheSize: int }
 
-
 fun mkProgram (langEd:int) 
               (topRib:Ast.RIB)
     : PROGRAM =
