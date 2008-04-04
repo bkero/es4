@@ -123,13 +123,6 @@ EXPR =
            body: TYPE_EXPR }
  *)
 
-
-(* Unused
-
-Ground vs Normalized vs type value
-type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
-*)
-
 fun findNamespace (prog:Fixture.PROGRAM)
                   (ribId:Ast.RIB_ID option)
                   (expr:Ast.EXPR)
@@ -277,8 +270,6 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
         Ast.ElementTypeRef (f t, idx)
       | Ast.FieldTypeRef (t, id) =>
         Ast.FieldTypeRef (f t, id)
-    
-(* CF: I'd love to get rid of Refs ... *)
 
 fun normalizeRefs (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
@@ -355,7 +346,12 @@ fun normalizeNulls (ty:Ast.TYPE_EXPR)
               | NONE => Ast.UnionType []
     end
 
-(* FIXME: also need to normalize (C|D) and (D|C) to the same type *)
+(* FIXME: also need to normalize (C|D) and (D|C) to the same type.
+ * We also need to normalize ...
+ *
+ * function.<X>(X):X
+ * function.<Y>(Y):Y 
+ *)
                                    
 fun normalizeUnions (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
@@ -370,37 +366,49 @@ fun normalizeUnions (ty:Ast.TYPE_EXPR)
                | tys => Ast.UnionType tys)                                     
           | x => mapTyExpr normalizeUnions x
     end
+
+
+(* FIXME *)
+(* Checks that the given type does not contain any type constructors *)
+
+fun checkProperType (ty:Ast.TYPE_EXPR) : unit = ()    
+
     
-(* FIXME: Cormac, please fix the busted name logic here. This doesn't
- * avoid capture or do shadowing right or anything. It's very weak.
- *
- 
+(* By normalizing names when we look up a type fixture in the appropriate environment,
+ * we never deal with open types, so I don't believe there are any problems with
+ * type name capture or shadowing, etc. 
  *) 
-fun normalizeNames (env:Ast.RIB list)
+
+fun normalizeNames (env:Ast.RIBS)
                    (ty:Ast.TYPE_EXPR)                    
   : Ast.TYPE_EXPR = 
     let
-        fun getFixture (mname : Ast.MULTINAME) : (Ast.NAME * Ast.FIXTURE) = 
+        fun getFixture (mname : Ast.MULTINAME) : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
             case Multiname.resolveInRibs mname env of 
-                SOME (x::_, n) => (n, Fixture.getFixture x (Ast.PropName n))
+                SOME (ribs, name) => 
+                let val (rib::_) = ribs in
+                    (ribs, name, Fixture.getFixture rib (Ast.PropName name))
+                end
               | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
                             " in type expression ", LogErr.ty ty]
 
         fun getType (mname : Ast.MULTINAME) : Ast.TYPE_EXPR = 
             case getFixture mname of 
-                (_, Ast.TypeFixture ty) => ty (* Pulling type out of environment, better be closed! *)
-              | (_, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
-              (* CF: what about generic classes? *)
+                (env', _,  Ast.TypeFixture ty') => 
+                (* Pulling ty out of env', need to normalize first *)
+                normalizeNames env' ty'
 
-              | (_, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => instanceType
-              | (n, _) => error ["name ", LogErr.name  n, 
+                (* FIXME: not sure about the following, and generic classes ... *)
+              | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
+              | (_, _, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => instanceType
+              | (_, n, _) => error ["name ", LogErr.name  n, 
                                  " in type expression ", LogErr.ty ty, 
                                  " is not a type"]
 
         fun getNamespace (mname : Ast.MULTINAME) : Ast.NAMESPACE = 
             case getFixture mname of 
-                (_, Ast.NamespaceFixture ns) => ns
-              | (n, _) => error ["name ", LogErr.name  n, 
+                (_, _, Ast.NamespaceFixture ns) => ns
+              | (_, n, _) => error ["name ", LogErr.name  n, 
                                  " in qualifier of type expression ", LogErr.ty ty, 
                                  " is not a namespace"]
 
@@ -430,12 +438,50 @@ fun normalizeNames (env:Ast.RIB list)
           | t => mapTyExpr (normalizeNames env) t
     end
 
-(* FIXME: Cormac, please write this normalization pass. *)
-fun normalizeLambdas ty = ty
+(* args are all closed *)
 
-(* FIXME *)
-fun checkNoTypeConstructors ty = ty
-    
+fun substType (id:Ast.IDENT) (arg:Ast.TYPE_EXPR) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
+    case ty of
+        Ast.LamType { params, body } =>
+        if List.exists (fn id' => id=id') params
+        then ty (* shadowed *) 
+        else Ast.LamType { params=params,
+                       body = substType id arg body}
+      | Ast.TypeName (Ast.Identifier { ident=id', ... }) =>
+        if id = id'
+        then arg
+        else ty
+      | _ => mapTyExpr (substType id arg) ty
+
+(* args are all closed *)
+
+fun substTypes (params:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
+    case (params,args) of
+        ([],[]) => ty
+      | (param::params, arg::args) =>
+        substTypes params args (substType param arg ty)
+        
+(* When normalizeLambdas is called, all typedefs have been inlined *)
+fun normalizeLambdas (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR = 
+    (* first, normalizeLambdas in subterms *)
+    let val ty = mapTyExpr normalizeLambdas ty
+    in
+        case ty of
+            Ast.AppType { base=(Ast.LamType {params, body}), args } =>
+            (* a beta-redex *)
+            let val _ =
+                    if length params = length args
+                    then ()
+                    else error ["incorrect number of type arguments ", LogErr.ty ty]
+                val ty = substTypes params args body
+            in
+                (* normalizeLambdas already run on body above, 
+                 * but substitution may have exposed more redexes
+                 *)
+                normalizeLambdas ty
+            end
+          | _ => ty
+    end
 
 fun normalize (ribs:Ast.RIB list)
               (ty:Ast.TYPE_EXPR)               
@@ -446,7 +492,7 @@ fun normalize (ribs:Ast.RIB list)
         val ty = normalizeLambdas ty
         val ty = normalizeNulls ty
         val ty = normalizeUnions ty
-        val _  = checkNoTypeConstructors ty
+        val _  = checkProperType ty
     in
         ty
     end

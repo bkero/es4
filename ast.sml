@@ -362,7 +362,7 @@ datatype PRAGMA =
            { qual : EXPR,
              ident : Ustring.STRING }
        | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
-       | WildcardIdentifier
+       | WildcardIdentifier            (* CF: not really an identifier, should be part of TYPE_EXPR *)
 
      and LITERAL =
          LiteralNull
