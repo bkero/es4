@@ -71,31 +71,56 @@ fun fmtType t = if !doTrace
  *
  * Normalized types satisfy the following properties:
  *
- * * If two types are equivalent (in that they are both subtypes of each other),
+ * # If two types are equivalent (in that they are both subtypes of each other),
  *   then normalization maps those types to the same type. This property in necessary
  *   to implement C#-style semantics for static fields of generic classes.
  *
- * * Normalized types are closed, so that they can be safely propogated
+ * # Normalized types are closed, so that they can be safely propogated
  *   outside of their current environment env without worrying about variable capture etc.
  *   Normalized types may have references to class or interface defns, but these are from
  *   a global namespace (FIXME: say more), and so are not a concern
  *
- * * Normalized types are in beta-normal form, in that any applications of generic typedefs 
+ * # Normalized types are in beta-normal form, in that any applications of LamTypes 
  *   have been reduced. 
  *
- * Some issues here with generic classes, and with generic type definitions.
- * For example,given
- *    type T.<X>  = { a:X, b:X }
- *    class C.<X> = { a:X; b:X }
- * the type "T" has kind "type -> type", since it is a function from types to types.
- * Each reference to T must be of the form "T.<type>".
+ * # Normalized types are proper types, in that they contain no type constructors (see below)
+ *   ie no LamTypes, and no references to generic classes or interfaces
+ *   without the appropriate number of type parameters.
  *
- * The types T and C are second-class; we have no variables of type T or C.
- * A "true type" is a type of kind "type".
- *
- * Type definitions are inlined and beta-reduced at verification time, leaving only
- * the "C.<type>" form, that is, the result type has no free type variables
- * and no LamType forms.
+ * A "type constructor" is a type that is not quite a proper type, in that it needs some number
+ * of type arguments to become a proper type.  
+ * Unparameterized references to generic typedefs,  classes, and interfaces are type constructors.
+
+ * Consider the subtle distinction:
+ *   type f.<X> = function(X):X
+ *   type g = function.<X>(X):X
+ * Traditionally, these are very different; 
+ *   g is a type that describes some kinds of generic functions,
+ *   whereas f is a type constructor, and must be applied to a type argument to yield a type,
+ *   eg f.<int> yields function(int):int
+ * But we only have one ast node (LamType) to describe both kinds,
+ * so f and g are identical. That is, f is a types, and it is also a unary type constructors,
+ * in that f.<int> is also a type. Ditto for g.
+ * Thus function.<X>(X):X   is both a type constructor and a proper type.
+
+
+for fn application, to type args and regular args are separate, at least in AST, but that's fine.
+EXPR = 
+       | CallExpr of {
+             func: EXPR,
+             actuals: EXPR list }
+       | ApplyTypeExpr of {                  // ONLY generic fn instantiation
+             expr: EXPR,  (* apply expr to type list *)
+             actuals: TYPE_EXPR list }
+
+     and TYPE_EXPR =
+       | FunctionType of FUNC_TYPE
+       | AppType of                         // apply type constructor
+         { base: TYPE_EXPR,
+           args: TYPE_EXPR list }
+       | LamType of                         // 
+         { params: IDENT list,
+           body: TYPE_EXPR }
  *)
 
 
@@ -283,7 +308,6 @@ fun normalizeRefs (ty:Ast.TYPE_EXPR)
       | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
       | x => mapTyExpr normalizeRefs x
                                    
-                                   
 fun normalizeNulls (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
@@ -331,6 +355,8 @@ fun normalizeNulls (ty:Ast.TYPE_EXPR)
               | NONE => Ast.UnionType []
     end
 
+(* FIXME: also need to normalize (C|D) and (D|C) to the same type *)
+                                   
 fun normalizeUnions (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
@@ -406,17 +432,21 @@ fun normalizeNames (env:Ast.RIB list)
 
 (* FIXME: Cormac, please write this normalization pass. *)
 fun normalizeLambdas ty = ty
+
+(* FIXME *)
+fun checkNoTypeConstructors ty = ty
     
 
 fun normalize (ribs:Ast.RIB list)
               (ty:Ast.TYPE_EXPR)               
     : Ast.TYPE_EXPR =
     let
-        val ty = normalizeRefs ty
         val ty = normalizeNames ribs ty
+        val ty = normalizeRefs ty
         val ty = normalizeLambdas ty
         val ty = normalizeNulls ty
         val ty = normalizeUnions ty
+        val _  = checkNoTypeConstructors ty
     in
         ty
     end
