@@ -64,9 +64,10 @@ fun fmtType t = if !doTrace
  * ----------------------------------------------------------------------------- *)
 
 (* 
- * Normalization converts a (non-closed) TYPE_EXPR (in the context of given RIBS) 
+ * Normalization converts a TYPE_EXPR (in the context of given RIBS) 
  * into a normalized TYPE_EXPR.
- * It is an error if a type cannot be normalized; that may be a static or dynamic error,
+ * It is an error if a type cannot be normalized; 
+ * that may be a static or dynamic error,
  * since normalization runs both at verify-time and eval-time.
  *
  * Normalized types satisfy the following properties:
@@ -75,10 +76,12 @@ fun fmtType t = if !doTrace
  *   then normalization maps those types to the same type. This property in necessary
  *   to implement C#-style semantics for static fields of generic classes.
  *
- * # Normalized types are closed, so that they can be safely propogated
+ * # FIXME: Normalized types are closed, so that they can be safely propogated
  *   outside of their current environment env without worrying about variable capture etc.
  *   Normalized types may have references to class or interface defns, but these are from
- *   a global namespace (FIXME: say more), and so are not a concern
+ *   a global namespace (FIXME: say more), and so are not a concern.
+ *   Of course, normalized types may include LamType (eg for generic functions),
+ *   and so the body of the LamType will *not*, in general, be closed.
  *
  * # Normalized types are in beta-normal form, in that any applications of LamTypes 
  *   have been reduced. 
@@ -438,14 +441,29 @@ fun normalizeNames (env:Ast.RIBS)
           | t => mapTyExpr (normalizeNames env) t
     end
 
-(* args are all closed *)
+(* uniqueIdent maps an IDENT to a unique variant of that IDENT that has not been used before.
+ * This unique-ification is used for alpha-renaming with capture-free substitution.
+ *)
+
+val uniqueIdentPostfix = ref 0
+
+fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
+    let in
+        uniqueIdentPostfix := !uniqueIdentPostfix +1;
+        id (* FIXME: add postfix *)
+    end
+
+(* Perform capture-free substitution of "arg" for all free occurrences of "id" in ty".
+ *)
 
 fun substType (id:Ast.IDENT) (arg:Ast.TYPE_EXPR) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
     case ty of
         Ast.LamType { params, body } =>
+        
         if List.exists (fn id' => id=id') params
         then ty (* shadowed *) 
-        else Ast.LamType { params=params,
+        else 
+            let valAst.LamType { params=params,
                        body = substType id arg body}
       | Ast.TypeName (Ast.Identifier { ident=id', ... }) =>
         if id = id'
@@ -453,15 +471,50 @@ fun substType (id:Ast.IDENT) (arg:Ast.TYPE_EXPR) (ty:Ast.TYPE_EXPR) : Ast.TYPE_E
         else ty
       | _ => mapTyExpr (substType id arg) ty
 
-(* args are all closed *)
+(* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
+ *)
+
+fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
+    case ty of
+        Ast.LamType { params, body } =>
+        let val uniqParams = map uniqueIdent params
+            val refUniqParams = 
+                map (fun id => Ast.TypeName (Ast.Identifier { ident=id, openNamespaces = [] }))
+                    uniqParams
+            val body' = substTypes uniqParams refUniqParams body
+            val body'' = substTypes params args body'
+        in
+            Ast.LamType { params=uniqParams, body=body'' }
+        end
+      | Ast.TypeName (Ast.Identifier { ident=id', ... }) =>
+        if id = id'
+        then arg
+        else ty
+      | _ => mapTyExpr (substType id arg) ty
+
+
+
+    case (params,args) of
+        ([],[]) => ty
+      | (param::params, arg::args) =>
+        substTypes params args (substType param arg ty)
+        
+
+(* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
+ * The types "args" are closed (may not be fully normalized yet, but certainly closed)
+ * so don't need to worry about variable capture. 
+ *)
 
 fun substTypes (params:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
     case (params,args) of
         ([],[]) => ty
       | (param::params, arg::args) =>
         substTypes params args (substType param arg ty)
-        
-(* When normalizeLambdas is called, all typedefs have been inlined *)
+(* Perform beta-reduction of all AppTypes applied to a LamType.
+ * When normalizeLambdas is called, all typedefs have been inlined, 
+ * so don't need to worry about variable capture.
+ *)
+
 fun normalizeLambdas (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR = 
     (* first, normalizeLambdas in subterms *)
     let val ty = mapTyExpr normalizeLambdas ty
