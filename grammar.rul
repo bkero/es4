@@ -21,23 +21,23 @@ datatype NAMESPACE_EXPRESSION =
 
 (* TYPES *)
 
-datatype TYPE_EXPR =
-         SpecialType of SPECIAL_TY
-       | UnionType of TYPE_EXPR list
-       | ArrayType of TYPE_EXPR list
+datatype TYPE_EXPRESSION =
+         SpecialType of SPECIAL_TYPE
+       | UnionType of TYPE_EXPRESSION list
+       | ArrayType of TYPE_EXPRESSION list
        | TypeRef of TYPE_REF
-       | ElementTypeRef of (TYPE_EXPR * int)
-       | FieldTypeRef of (TYPE_EXPR * IDENT)
+       | ElementTypeRef of (TYPE_EXPRESSION * int)
+       | FieldTypeRef of (TYPE_EXPRESSION * IDENT)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
-       | LikeType of TYPE_EXPR
-       | AppType of {base: TYPE_EXPR, args: TYPE_EXPR list}
-       | LamType of {params: IDENT list, body: TYPE_EXPR}
+       | LikeType of TYPE_EXPRESSION
+       | AppType of {base: TYPE_EXPRESSION, args: TYPE_EXPRESSION list}
+       | LamType of {params: IDENTIFIER list, body: TYPE_EXPRESSION}
        | TypePredicate of EXPRESSION
 
-type TYPE_REF = (IDENTIFIER_EXPRESSION * IDENTIFIER)
+type TYPE_REF = IDENTIFIER_EXPRESSION  (* constant type value *)
 
-datatype SPECIAL_TY =
+datatype SPECIAL_TYPE =
          AnyType
        | NullType
        | UndefinedType
@@ -45,87 +45,168 @@ datatype SPECIAL_TY =
 
 (* DEFINITIONS *)
 
+type NAME_REF = IDENTIFIER_EXPRESSION  (* constant name value *)
+type INIT = (NAME_REF * EXPRESSION)
+type HEAD = (DEFINITION list * INIT list)
+
 datatype DEFINITION =
          NamespaceDefn of (NAME_REF * NAMESPACE)
        | ClassDefn of (NAME_REF * CLASS)
        | InterfaceDefn of (NAME_REF * INTERFACE)
-       | TypeDefn of (NAME_REF * TYPE_EXPR)
+       | TypeDefn of (NAME_REF * TYPE_EXPRESSION)
        | MethodDefn of (NAME_REF * METHOD)
        | VarDefn of (NAME_REF * VAR)
        | AccessorDefn of (NAME_REF * ACCESSOR)
 
-type NAME_REF = (NAMESPACE_EXPRESSION * IDENTIFIER)
-
 datatype CLASS =
-         Class of { namespace: IDENTIFIER_EXPRESSION
-                  , identifier: IDENTIFIER
-                  , typeParams: IDENTIFIER list
-                  , dynamic: IS_DYNAMIC
-                  , extends: TYPE_REF option
-                  , implements: TYPE_REF list
-                  , classDefns: DEFINITION list
-                  , instanceDefns: DEFINITION list
-                  , instanceInits: HEAD
-                  , constructor: CONSTRUCTOR option }
-
-type IS_DYNAMIC = bool
+         Class of { 
+	     namespace: NAMESPACE_EXPRESSION
+           , identifier: IDENTIFIER
+           , typeParams: IDENTIFIER list
+           , dynamic: bool
+           , extends: TYPE_REF option
+           , implements: TYPE_REF list
+           , classDefns: DEFINITION list
+           , instanceDefns: DEFINITION list
+           , instanceInits: HEAD
+           , constructor: CONSTRUCTOR option }
 
 datatype INTERFACE =
-         Interface { namespace: IDENTIFIER_EXPRESSION option,
-                   , identifier: IDENTIFIER
-                   , typeParams: IDENTIFIER list
-                   , extends: IDENTIFIER_EXPRESSION option
-                   , instanceDefns: DEFINITION list }
+         Interface { 
+	     namespace: NAMESPACE_EXPRESSION,
+           , identifier: IDENTIFIER
+           , typeParams: IDENTIFIER list
+           , extends: TYPE_REF option
+           , instanceDefns: DEFINITION list }
 
 datatype FUNCTION =
-         Function of { name: FUNC_NAME
-                     , block: BLOCK option
-                     , parameters: HEAD
-                     , defaults: EXPR list
-                     , functionType: TYPE_EXPR }
+         Function of { 
+	     name: FUNC_NAME
+           , block: BLOCK option
+           , parameters: HEAD
+           , defaults: EXPRESSION list
+           , functionType: TYPE_EXPRESSION }
 
 datatype METHOD =
-         Method { func: FUNCTION
-                , readOnly: bool  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
-                , override: bool
-                , final: bool }
+         Method { 
+	     func: FUNCTION
+           , readOnly: bool  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+           , override: bool
+           , final: bool }
 
 datatype CONSTRUCTOR =
-         Constructor of { settings: EXPR list (* EXPR list of LetExpr of InitExpr *)
-                        , superArgs: EXPR list
-                        , func: FUNC }
+         Constructor of { 
+             settings: EXPRESSION list (* EXPRESSION list of LetExpr of InitExpr *)
+           , superArgs: EXPRESSION list
+           , func: FUNC }
 
 datatype VAR = 
-         Var { storeType: TYPE_EXPR
-             , readOnly: bool }
+         Var { 
+	     storeType: TYPE_EXPRESSION
+           , readOnly: bool }
 
 datatype ACCESSOR =
-         Accessor { storeType: TYPE_EXPR
-                  , getter: FUNC option
-                  , setter: FUNC option }
+         Accessor { 
+	     storeType: TYPE_EXPRESSION
+           , getter: FUNC option
+           , setter: FUNC option }
 
 (* EXPRESSIONS *)
 
-datatype EXPR =
-         ConditionalExpr of (EXPR * EXPR * EXPR)
-       | BinaryExpr of (BINOP * EXPR * EXPR)
-       | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
-       | UnaryExpr of (UNOP * EXPR)
-       | TypeExpr of TYPE_EXPR
+datatype EXPRESSION =
+         ConditionalExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
+       | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
+       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE_EXPRRESSION)
+       | UnaryExpr of (UNOP * EXPRESSION)
+       | TypeExpr of TYPE_EXPRESSION
        | ThisExpr of THIS_KIND option
-       | YieldExpr of EXPR option
-       | SuperExpr of EXPR option
+       | YieldExpr of EXPRESSION option
+       | SuperExpr of EXPRESSION option
        | LiteralExpr of LITERAL
-       | CallExpr of {func: EXPR, actuals: EXPR list}
-       | ApplyTypeExpr of {expr: EXPR, actuals: TY list}
-       | LetExpr of {head: HEAD, body: EXPR}
-       | NewExpr of {obj: EXPR, actuals: EXPR list}
-       | ObjectRef of {base: EXPR, ident: IDENT_EXPR}
-       | LexicalRef of {ident: IDENT_EXPR}
-       | SetExpr of (ASSIGNOP * EXPR * EXPR)
-       | ListExpr of EXPR list
-       | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
-       | Comprehension of (EXPR * FOR_ENUM_HEAD list * EXPR option)
+       | CallExpr of {func: EXPRESSION, actuals: EXPRESSION list}
+       | ApplyTypeExpr of {expr: EXPRESSION, actuals: TYPE_EXPRESSION list}
+       | LetExpr of (HEAD * EXPRESSION)
+       | NewExpr of {obj: EXPRESSION, actuals: EXPRESSION list}
+       | ObjectRef of {base: EXPRESSION, ident: IDENTIFIER_EXPRESSION}
+       | LexicalRef of {ident: IDENTIFIER_EXPRESSION}
+       | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
+       | ListExpr of EXPRESSION list
+       | InitExpr of (INIT_TARGET * HEAD * INIT list)   (* HEAD is for temporaries *)
+       | Comprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
+
+datatype INIT_TARGET = 
+         Hoisted
+       | Local
+       | Prototype
+
+datatype BINTYPEOP =
+         Cast
+       | Is
+       | Wrap
+       | To
+
+datatype BINOP =
+         Plus
+       | Minus
+       | Times
+       | Divide
+       | Remainder
+       | LeftShift
+       | RightShift
+       | RightShiftUnsigned
+       | BitwiseAnd
+       | BitwiseOr
+       | BitwiseXor
+       | LogicalAnd
+       | LogicalOr
+       | InstanceOf
+       | In
+       | Equals 
+       | NotEquals 
+       | StrictEquals 
+       | StrictNotEquals 
+       | Less 
+       | LessOrEqual 
+       | Greater 
+       | GreaterOrEqual 
+       | Comma
+
+datatype ASSIGNOP =
+         Assign
+       | AssignPlus 
+       | AssignMinus 
+       | AssignTimes 
+       | AssignDivide 
+       | AssignRemainder 
+       | AssignLeftShift
+       | AssignRightShift
+       | AssignRightShiftUnsigned
+       | AssignBitwiseAnd
+       | AssignBitwiseOr
+       | AssignBitwiseXor
+       | AssignLogicalAnd
+       | AssignLogicalOr
+
+datatype UNOP =
+         Delete
+       | Void
+       | Typeof
+       | PreIncrement 
+       | PreDecrement 
+       | PostIncrement 
+       | PostDecrement 
+       | UnaryPlus 
+       | UnaryMinus 
+       | BitwiseNot
+       | LogicalNot
+       | Type
+       | Splat
+
+datatype THIS_KIND = 
+         FunctionThis
+       | GeneratorThis
+
+type FOR_ENUM_HEAD = ...
 
 datatype LITERAL =
          LiteralNull
@@ -134,17 +215,21 @@ datatype LITERAL =
        | LiteralDecimal of Decimal.DEC
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
-       | LiteralArray of {exprs: EXPR, ty:TY option}
+       | LiteralArray of {exprs: EXPRESSION, ty:TYPE option}
        | LiteralNamespace of NAMESPACE
-       | LiteralObject of {expr : FIELD list, ty: TY option}
+       | LiteralObject of {expr : FIELD list, ty: TYPE option}
        | LiteralFunction of FUNC
        | LiteralRegExp of {str: Ustring.STRING}
 
 type FIELD =
-         { kind: VAR_DEFN_TAG,
-           name: IDENT_EXPR,
-           init: EXPR }
+       { kind: VAR_DEFN_TAG,
+         name: IDENTIFIER_EXRESSION,
+         init: EXPRESSION }
 
+datatype VAR_DEFN_TAG =
+         Const
+       | Var
+       | Let
 
 datatype ASSIGNOP =
          Assign
@@ -181,23 +266,25 @@ datatype UNOP =
 
 datatype STATEMENT =
          EmptyStmt
-       | ExprStmt of EXPR
+       | ExprStmt of EXPRESSION
        | ClassBlock of CLASS_BLOCK
        | ForInStmt of FOR_ENUM_STMT
-       | ThrowStmt of EXPR
-       | ReturnStmt of EXPR
-       | BreakStmt of IDENT option
-       | ContinueStmt of IDENT option
+       | ThrowStmt of EXPRESSION
+       | ReturnStmt of EXPRESSION
+       | BreakStmt of IDENTIFIER option
+       | ContinueStmt of IDENTIFIER option
        | BlockStmt of BLOCK
-       | LabeledStmt of (IDENT * STMT)
-       | WhileStmt of WHILE_STMT
-       | DoWhileStmt of WHILE_STMT
-       | ForStmt of FOR_STMT
-       | IfStmt of { cnd: EXPR, thn: STMT, els: STMT }
-       | WithStmt of { obj: EXPR, ty: TY, body: STMT }
-       | TryStmt of { block: BLOCK, catches: CATCH_CLAUSE list, finally: BLOCK option }
-       | SwitchStmt of { head: HEAD, cond: EXPR, labels: IDENT list, cases: CASE list }
-       | SwitchTypeStmt of { cond: EXPR, ty: TY, cases: CATCH_CLAUSE list }
+       | LabeledStmt of (IDENTIFIER * STATEMENT)
+       | WhileStmt of WHILE_STATEMENT
+       | DoWhileStmt of WHILE_STATEMENT
+       | ForStmt of FOR_STATEMENT
+       | IfStmt of { cnd: EXPRESSION, thn: STATEMENT, els: STATEMENT }
+       | WithStmt of { obj: EXPRESSION, ty: TYPE, body: STATEMENT }
+       | TryStmt of {block: BLOCK, catches: CATCH_CLAUSE list, 
+                     finally: BLOCK option}
+       | SwitchStmt of {head: HEAD, cond: EXPRESSION, labels: IDENTIFIER list, 
+                        cases: CASE list}
+       | SwitchTypeStmt of {cond: EXPRESSION, ty: TYPE, cases: CATCH_CLAUSE list}
 
 (* Translation From Concrete Syntax *)
 
@@ -251,30 +338,30 @@ rul ReservedNamespace  () : NAMESPACE =
   | 'public' => 
     getPublicNamespace ()
 
-rul QualifiedNameIdentifier (namespace: EXPRESSION) : IDENTIFIER_EXPRESSION =
-    Identifier => 
-    Ast.QualifiedIdentifier (namespace, Identifier)
+rul QualifiedNameIdentifier () : EXPRESSION =
+    Identifier =>
+    Ast.LiteralExpr (Ast.StringLiteral (Identifier))
   | *ReservedIdentifier* => 
-    Ast.QualifiedIdentifier (namespace, *ReservedIdentifier*)
+    Ast.LiteralExpr (Ast.StringLiteral (*ReservedIdentifier*))
   | *StringLiteral* => 
-    Ast.QualifiedIdentifier (namespace, Ast.LiteralExpr (Ast.LiteralString (*StringLiteral*)))
+    Ast.LiteralExpr (Ast.StringLiteral (*StringLiteral*))
   | *NumberLiteral* => 
-    Ast.QualifiedIdentifier (namespace, Ast.LiteralExpr (Ast.LiteralString (toString (*NumberLiteral*))))
+    Ast.LiteralExpr (Ast.LiteralString (toString (*NumberLiteral*))))
   | Brackets => 
-    Ast.QualifiedIdentifier (namespace, Brackets)
+    Brackets
 
 rul QualifiedName () : IDENTIFIER_EXPRESSION =
     Identifier =>
     Ast.Identifier (Identifier)
-  | Qualifier '::' QualifiedNameIdentifier(Qualifier) => 
-    QualifiedNameIdentifier
-  | ParenExpression '::' QualifiedNameIdentifier(ParenExpression) => 
-    QualifiedNameIdentifier
-  | QualifiedName '::' QualifiedNameIdentifier(Ast.LexicalRef (QualifiedName)) =>
-    QualifiedNameIdentifier
+  | Qualifier '::' QualifiedNameIdentifier =>
+    Ast.QualifiedIdentifier (Qualifier, QualifiedNameIdentifier)
+  | ParenExpression '::' QualifiedNameIdentifier =>
+    Ast.QualifiedIdentifier (ParenExpression, QualifiedNameIdentifier)
+  | QualifiedName '::' QualifiedNameIdentifier =>
+    Ast.QualifiedIdentifier (Ast.LexicalRef (QualifiedName), QualifiedNameIdentifier)
 
 rul PrimaryName () : IDENTIFIER_EXPRESSION =
-    QualifiedName => 
+    QualifiedName =>
     QualifiedName
 
 rul FunctionExpression (alpha, beta) : LITERAL =
@@ -284,7 +371,8 @@ rul FunctionExpression (alpha, beta) : LITERAL =
         val {params, vars, defaults, type, ...}  = FunctionSignature
         val block = FunctionExpressionBody 
     in
-        Ast.LiteralFunction (Ast.Func (ident, false, params, vars, defaults, type, block))
+        Ast.LiteralFunction (Ast.Func (ident, false, params, vars, defaults, 
+                                       type, block))
     end
   | 'function' FunctionSignature FunctionExpressionBody(alpha, beta) => 
     let
@@ -292,7 +380,8 @@ rul FunctionExpression (alpha, beta) : LITERAL =
         val {params, vars, defaults, type, ...}  = FunctionSignature
         val block = FunctionExpressionBody
     in
-        Ast.LiteralFunction (Ast.Func (ident, false, params, vars, defaults, type, block))
+        Ast.LiteralFunction (Ast.Func (ident, false, params, vars, defaults, 
+                                       type, block))
     end
 
 rul FunctionExpressionBody (alpha, beta) : BLOCK =
@@ -306,17 +395,17 @@ rul ObjectLiteral (NoColon) : LITERAL =
     Ast.LiteralObject (Ast.FieldList, NONE)
 
 rul ObjectLiteral (AllowColon) : LITERAL =
-    '{' FieldList '}' => 
+    '{' FieldList '}' =>
     Ast.LiteralObject (FieldList, NONE)
-  | '{' FieldList '}' ':' TypeExpression => 
+  | '{' FieldList '}' ':' TypeExpression =>
     Ast.LiteralObject (FieldList, TypeExpression)
 
 rul FieldList () : FIELD list =
-    empty => 
+    empty =>
     []
-  | LiteralField => 
+  | LiteralField =>
     LiteralField :: []
-  | LiteralField ',' FieldList => 
+  | LiteralField ',' FieldList =>
     LiteralField :: FieldList
 
 rul LiteralField () : FIELD =
@@ -327,7 +416,8 @@ rul LiteralField () : FIELD =
         val name = {kind=Ast.Get, ident=Ustring.empty}
         val {params, vars, defaults, type, ...}  = FunctionSignature
         val block = FunctionExpressionBody
-        val functionExpression = Ast.LiteralExpr (Ast.LiteralFunction (Ast.Func (name, false, params, vars, defaults, type, FunctionExpressionBody)))
+        val functionExpression = Ast.LiteralExpr (Ast.LiteralFunction (
+                Ast.Func (name, false, params, vars, defaults, type, FunctionExpressionBody)))
     in
         (FieldKind, FieldName, functionExpression)
     end
@@ -335,12 +425,13 @@ rul LiteralField () : FIELD =
     let
         val name = {kind=Ast.Set, ident=Ustring.empty}
         val {params, vars, defaults, type, ...}  = FunctionSignature
-        val functionExpression = Ast.LiteralExpr (Ast.LiteralFunction (Ast.Func (name, false, params, vars, defaults, type, FunctionExpressionBody)))
+        val functionExpression = Ast.LiteralExpr (Ast.LiteralFunction (
+                Ast.Func (name, false, params, vars, defaults, type, FunctionExpressionBody)))
     in
         (FieldKind, FieldName, functionExpression)
     end
 
-rul FieldKind () : VAR_DEFN_KIND option =
+rul FieldKind () : VAR_DEFN_TAG option =
     empty => 
     NONE
   | 'const' => 
@@ -406,7 +497,7 @@ rul ForInExpression () : (FOR_BINDING * EXPRESSION) =
   | 'for' 'each' '(' ForInBinding 'in' CommaExpression(AllowColon, AllowIn) ')' => 
     (ForInBinding, CommaExpression)
 
-rul OptionalIfCondition () : EXPR option =
+rul OptionalIfCondition () : EXPRESSION option =
     empty => 
     NONE
   | 'if' ParenExpression => 
@@ -446,7 +537,7 @@ rul ParenExpression () : EXPRESSION =
     '(' CommaExpression(AllowColon, AllowIn) ')' => 
     CommaExpression
 
-rul ThisExpression () : EXPR =
+rul ThisExpression () : EXPRESSION =
     'this' => 
     Ast.ThisExpr (NONE)
   | 'this' 'function' => 
@@ -454,7 +545,7 @@ rul ThisExpression () : EXPR =
   | 'this' 'generator' => 
     Ast.ThisExpr (Ast.GeneratorThis)
 
-rul LetExpression (alpha, beta) : EXPR =
+rul LetExpression (alpha, beta) : EXPRESSION =
     'let' '(' LetBindingList ')' AssignmentExpression(alpha, beta) => 
     Ast.LetExpr (LetBindingList, AssignmentExpression)
 
@@ -470,13 +561,13 @@ rul NonemptyLetBindingList () : HEAD =
   | VariableBinding(AllowIn) ',' NonemptyLetBindingList => 
     VariableBinding :: NonemptyLetBindingList
 
-rul SuperExpression () : EXPR =
+rul SuperExpression () : EXPRESSION =
     'super' => 
     Ast.SuperExpr (NONE)
   | 'super' ParenExpression => 
     Ast.SuperExpr (ParenExpression)
 
-rul Arguments () : EXPR list =
+rul Arguments () : EXPRESSION list =
     '(' ')' => 
     []
   | '(' SplatExpression ')' => 
@@ -486,13 +577,13 @@ rul Arguments () : EXPR list =
   | '(' ArgumentList, SplatExpression ')' => 
     ArgumentList @ (SplatExpression :: [])
 
-rul ArgumentList () : EXPR list =
+rul ArgumentList () : EXPRESSION list =
     AssignmentExpression(AllowColon, AllowIn) => 
     AssignmentExpression :: []
   | ArgumentList ',' AssignmentExpression(AllowColon, AllowIn) => 
     ArgumentList @ (AssignmentExpression :: [])
 
-rul PropertyOperator (base: EXPRESSION) : EXPR =
+rul PropertyOperator (base: EXPRESSION) : EXPRESSION =
     '.' *ReservedIdentifier* => 
     Ast.ObjectRef (base, ReservedIdentifier)
   | '.' PrimaryName => 
@@ -508,29 +599,29 @@ rul Brackets (base: EXPRESSION) : EXPRESSION =
     '[' CommaExpression(AllowColon, AllowIn) ']' => 
     Ast.ObjectRef (base, Ast.Identifier (CommaExpression))
 
-rul BracketsOrSlice (base: EXPR) : EXPR =
+rul BracketsOrSlice (base: EXPRESSION) : EXPRESSION =
     '[' CommaExpression(AllowColon, AllowIn) ']' => 
     Ast.ObjectRef (base, Ast.Identifier (CommaExpression))
   | '[' SliceExpression ']' => 
     Ast.ObjectRef (base, Ast.Identifier (SliceExpression))
 
-rul SliceExpression () : EXPR =
+rul SliceExpression () : EXPRESSION =
     OptionalExpression ':' OptionalExpression => 
     Ast.SliceExpression (OptionalExpression, OptionalExpression, NONE)
   | OptionalExpression ':' OptionalExpression ':' OptionalExpression => 
     Ast.SliceExpression (OptionalExpression, OptionalExpression, OptionalExpression)
 
-rul OptionalExpression () : EXPR option =
+rul OptionalExpression () : EXPRESSION option =
     empty => 
     NONE
   | CommaExpression(AllowColon, AllowIn) => 
     CommaExpression
 
-rul TypeApplication (base) : EXPR =
+rul TypeApplication (base: EXPRESSION) : EXPRESSION =
     '.<'  TypeExpressionList  '>' => 
     Ast.TypeApplication (base, TypeExpressionList)
 
-rul MemberExpression (alpha, beta) : EXPR =
+rul MemberExpression (alpha, beta) : EXPRESSION =
     PrimaryExpression(alpha, beta) => 
     PrimaryExpression
   | 'new' MemberExpression(alpha, beta) Arguments => 
@@ -540,7 +631,7 @@ rul MemberExpression (alpha, beta) : EXPR =
   | MemberExpression(alpha, beta) PropertyOperator =>
     PropertyOperator (MemberExpression))
 
-rul CallExpression (alpha, beta) : EXPR =
+rul CallExpression (alpha, beta) : EXPRESSION =
     MemberExpression(alpha, beta) Arguments => 
     Ast.CallExpr (MemberExpression, Arguments ())
   | CallExpression(alpha, beta) Arguments => 
@@ -548,19 +639,19 @@ rul CallExpression (alpha, beta) : EXPR =
   | CallExpression(alpha, beta) PropertyOperator => 
     PropertyOperator (CallExpression)
 
-rul NewExpression (alpha, beta) : EXPR =
+rul NewExpression (alpha, beta) : EXPRESSION =
     MemberExpression(alpha, beta) => 
     MemberExpression
   | 'new' NewExpression(alpha, beta) => 
     Ast.NewExpr (NewExpression, [])
 
-rul LeftHandSideExpression (alpha, beta) : EXPR =
+rul LeftHandSideExpression (alpha, beta) : EXPRESSION =
     NewExpression(alpha, beta) => 
     NewExpression
   | CallExpression(alpha, beta) => 
     CallExpression
 
-rul PostfixExpression (alpha, beta) : EXPR =
+rul PostfixExpression (alpha, beta) : EXPRESSION =
     LeftHandSideExpression(alpha, beta) => 
     LeftHandSideExpression
   | LeftHandSideExpression(alpha, beta) [no line break] '++' => 
@@ -568,7 +659,7 @@ rul PostfixExpression (alpha, beta) : EXPR =
   | LeftHandSideExpression(alpha, beta) [no line break] '--' => 
     Ast.UnaryExpr (Ast.PostDec, LeftHandSideExpression)
 
-rul UnaryExpression (alpha, beta) : EXPR =
+rul UnaryExpression (alpha, beta) : EXPRESSION =
     PostfixExpression(alpha, beta) => 
     PostfixExpression
   | 'delete' PostfixExpression (alpha, beta) =>
@@ -600,7 +691,7 @@ rul MultiplicativeExpression (alpha, beta) : EXPRESSION =
   | MultiplicativeExpression(alpha, beta) '%' UnaryExpression(alpha, beta) => 
     Ast.BinaryExpr (Ast.Remainder, MultiplicativeExpression, UnaryExpression)
 
-rul AdditiveExpression (alpha, beta) : EXPR =
+rul AdditiveExpression (alpha, beta) : EXPRESSION =
     MultiplicativeExpression(alpha, beta) => 
     MultiplicativeExpression
   | AdditiveExpression(alpha, beta) '+' MultiplicativeExpression(alpha, beta) => 
@@ -608,7 +699,7 @@ rul AdditiveExpression (alpha, beta) : EXPR =
   | AdditiveExpression(alpha, beta) '-' MultiplicativeExpression(alpha, beta) => 
     Ast.BinaryExpr (Ast.Minus, AdditiveExpression, MultiplicativeExpression)
 
-rul ShiftExpression (alpha, beta) : EXPR =
+rul ShiftExpression (alpha, beta) : EXPRESSION =
     AdditiveExpression(alpha, beta) => 
     AdditiveExpression
   | ShiftExpression(alpha, beta) '<<' AdditiveExpression(alpha, beta) => 
@@ -618,7 +709,7 @@ rul ShiftExpression (alpha, beta) : EXPR =
   | ShiftExpression(alpha, beta) '>>>' AdditiveExpression(alpha, beta) =>
     Ast.BinaryExpr (Ast.UnsignedRightShift, ShiftExpression, AdditiveExpression)
 
-rul RelationalExpression (alpha, AllowIn) : EXPR =
+rul RelationalExpression (alpha, AllowIn) : EXPRESSION =
     ShiftExpression(alpha, AllowIn) =>
     ShiftExpression
   | RelationalExpression(alpha, AllowIn) '<' ShiftExpression(alpha, AllowIn) =>
@@ -640,7 +731,7 @@ rul RelationalExpression (alpha, AllowIn) : EXPR =
   | RelationalExpression(alpha, AllowIn) 'like' TypeExpression =>
     Ast.BinaryTypeExpr (Ast.Like, RelationalExpression, TypeExpression)
 
-rul RelationalExpression (alpha, NoIn) : EXPR =
+rul RelationalExpression (alpha, NoIn) : EXPRESSION =
     ShiftExpression(alpha, NoIn) => 
     ShiftExpression
   | RelationalExpression(alpha, NoIn) '<' ShiftExpression(alpha, NoIn) =>
@@ -660,7 +751,7 @@ rul RelationalExpression (alpha, NoIn) : EXPR =
   | RelationalExpression(alpha, NoIn) 'like' TypeExpression => 
     Ast.BinaryTypeExpr (Ast.Like, RelationalExpression, TypeExpression)
 
-rul EqualityExpression (alpha, beta) : EXPR =
+rul EqualityExpression (alpha, beta) : EXPRESSION =
     RelationalExpression(alpha, beta) => 
     RelationalExpression
   | EqualityExpression(alpha, beta) '==' RelationalExpression(alpha, beta) =>
@@ -672,37 +763,37 @@ rul EqualityExpression (alpha, beta) : EXPR =
   | EqualityExpression(alpha, beta) '!==' RelationalExpression(alpha, beta) =>
     Ast.BinaryExpr (Ast.StrictNotEqual, EqualityExpression, RelationalExpression)
 
-rul BitwiseAndExpression (alpha, beta) : EXPR =
+rul BitwiseAndExpression (alpha, beta) : EXPRESSION =
     EqualityExpression(alpha, beta) => 
     EqualityExpression
   | BitwiseAndExpression(alpha, beta) '&' EqualityExpression(alpha, beta) =>
     Ast.BinaryExpr (Ast.BitwiseAnd, BitwiseAndExpression, EqualityExpression)
 
-rul BitwiseXorExpression (alpha, beta) : EXPR =
+rul BitwiseXorExpression (alpha, beta) : EXPRESSION =
     BitwiseAndExpression(alpha, beta) => 
     BitwiseAndExpression
   | BitwiseXorExpression(alpha, beta) '^' BitwiseAndExpression(alpha, beta) =>
     Ast.BinaryExpr (Ast.BitwiseXor, BitwiseXorExpression, BitwiseAndExpression)
 
-rul BitwiseOrExpression (alpha, beta) : EXPR =
+rul BitwiseOrExpression (alpha, beta) : EXPRESSION =
     BitwiseXorExpression(alpha, beta) => 
     BitwiseXorExpression
   | BitwiseOrExpression(alpha, beta) '|' BitwiseXorExpression(alpha, beta) =>
     Ast.BinaryExpr (Ast.BitwiseOr, BitwiseOrExpression, BitwiseXorExpression)
 
-rul LogicalAndExpression (alpha, beta) : EXPR =
+rul LogicalAndExpression (alpha, beta) : EXPRESSION =
     BitwiseOrExpression(alpha, beta) => 
     BitwiseOrExpression
   | LogicalAndExpression(alpha, beta) '&&' BitwiseOrExpression(alpha, beta) => 
     Ast.BinaryExpr (Ast.LogicalAnd, LogicalAndExpression, BitwiseOrExpression)
 
-rul LogicalOrExpression (alpha, beta) : EXPR =
+rul LogicalOrExpression (alpha, beta) : EXPRESSION =
     LogicalAndExpression(alpha, beta) => 
     LogicalAndExpression
   | LogicalOrExpression(alpha, beta) '||' LogicalAndExpression(alpha, beta) => 
     Ast.BinaryExpr (Ast.LogicalOr, LogicalOrExpression, LogicalAndExpression)
 
-rul ConditionalExpression (alpha, beta) : EXPR =
+rul ConditionalExpression (alpha, beta) : EXPRESSION =
     UnaryTypeExpression => 
     UnaryTypeExpression
   | YieldExpression(alpha, beta) => 
@@ -711,9 +802,10 @@ rul ConditionalExpression (alpha, beta) : EXPR =
     LogicalOrExpression 
   | LogicalOrExpression(alpha, beta) '?' AssignmentExpression(alpha, beta) 
                                      ':' AssignmentExpression(alpha, beta) =>
-    Ast.ConditionalExpr (LogicalOrExpression, AssignmentExpression, AssignmentExpression)
+    Ast.ConditionalExpr (LogicalOrExpression, AssignmentExpression, 
+                         AssignmentExpression)
 
-rul NonAssignmentExpression (alpha, beta) : EXPR =
+rul NonAssignmentExpression (alpha, beta) : EXPRESSION =
     UnaryTypeExpression => 
     UnaryTypeExpression
   | YieldExpression(alpha, beta) => 
@@ -722,9 +814,10 @@ rul NonAssignmentExpression (alpha, beta) : EXPR =
     LogicalOrExpression 
   | LogicalOrExpression(alpha, beta) '?' NonAssignmentExpression(NoColon, beta) 
                                      ':' NonAssignmentExpression(alpha, beta) =>
-    Ast.ConditionalExpression (LogicalOrExpression, NonAssignmentExpression, NonAssignmentExpression)
+    Ast.ConditionalExpression (LogicalOrExpression, NonAssignmentExpression, 
+                               NonAssignmentExpression)
 
-rul UnaryTypeExpression () : EXPR =
+rul UnaryTypeExpression () : EXPRESSION =
     'type' TypeExpression => 
     Ast.TypeExpr (TypeExpression)
 
@@ -741,7 +834,8 @@ rul AssignmentExpression (alpha, beta) : EXPRESSION =
     desugarAssignmentExpression (Ast.Assign, Pattern, AssignmentExpression)
   | SimplePattern(alpha, beta, AllowExpr) CompoundAssignmentOperator 
                                           AssignmentExpression(alpha, beta) => 
-    desugarAssignmentExpression (CompoundAssignmentOperator, SimplePattern, AssignmentExpression)
+    desugarAssignmentExpression (CompoundAssignmentOperator, SimplePattern, 
+                                 AssignmentExpression)
 
 rul CompoundAssignmentOperator () : ASSIGN_OP =
     '*=' => 
@@ -771,7 +865,7 @@ rul CompoundAssignmentOperator () : ASSIGN_OP =
   | '||=' => 
     Ast.AssignLogicalOr
 
-rul CommaExpression (alpha, beta) : EXPR =
+rul CommaExpression (alpha, beta) : EXPRESSION =
     AssignmentExpression(alpha, beta) => 
     AssignmentExpression
   | CommaExpression(alpha, beta) ',' AssignmentExpression(alpha, beta) => 
@@ -784,7 +878,7 @@ rul CommaExpression (alpha, beta) : EXPR =
 datatype PATTERN =
          ObjectPattern of (IDENTIFIER * PATTERN) list
        | ArrayPattern of PATTERN list
-       | SimplePattern of EXPR
+       | SimplePattern of EXPRESSION
        | BindingPattern of IDENTIFIER
 
 rul Pattern(alpha, beta, gamma) : PATTERN =
@@ -842,25 +936,25 @@ rul ElementPattern (gamma) : PATTERN =
     Pattern(AllowColon, AllowIn, gamma) => 
     Pattern
 
-rul TypedIdentifier () : (PATTERN * TYPE_EXPR) =
+rul TypedIdentifier () : (PATTERN * TYPE_EXPRESSION) =
     SimplePattern(AllowColon, AllowIn, NoExpr) => 
     (SimplePattern, Ast.SpecialType (Ast.AnyType))
   | SimplePattern(AllowColon, AllowIn, NoExpr) ':' TypeExpression => 
     (SimplePattern, TypeExpression)
 
-rul TypedPattern (beta) : (PATTERN * TYPE_EXPR) =
+rul TypedPattern (beta) : (PATTERN * TYPE_EXPRESSION) =
     Pattern(AllowColon, beta, NoExpr) =>
     (Pattern, Ast.SpecialType (Ast.AnyType))
   | Pattern(AllowColon, beta, NoExpr) ':' TypeExpression =>
     (Pattern, TypeExpression)
 
-rul LikedPattern (beta) : (PATTERN * TYPE_EXPR) =
+rul LikedPattern (beta) : (PATTERN * TYPE_EXPRESSION) =
     Pattern(AllowColon, beta, NoExpr) 'like' TypeExpression => 
     (Pattern, Ast.TypePredicate (makeLikePredicate (TypeExpression)))
 
 (*** TYPE EXPRESSIONS ***)
 
-rul TypeExpression () : TYPE_EXPR =
+rul TypeExpression () : TYPE_EXPRESSION =
     BasicTypeExpression => 
     BasicTypeExpression
   | '?' BasicTypeExpression => 
@@ -868,7 +962,7 @@ rul TypeExpression () : TYPE_EXPR =
   | '!' BasicTypeExpression => 
     Ast.NullableType (Ast.NonNullable, BasicTypeExpression)
 
-rul BasicTypeExpression () : TYPE_EXPR =
+rul BasicTypeExpression () : TYPE_EXPRESSION =
     '*' => 
     Ast.SpecialType (Ast.AnyType)
   | 'null' => 
@@ -888,7 +982,7 @@ rul BasicTypeExpression () : TYPE_EXPR =
   | PrimaryName TypeApplication(PrimaryName) =>
     TypeApplication
 
-rul FunctionType () : TYPE_EXPR =
+rul FunctionType () : TYPE_EXPRESSION =
     'function' FunctionSignatureType => 
     Ast.FunctionType (FunctionSignatureType)
 
@@ -897,16 +991,17 @@ rul FunctionSignatureType () : FUNC_TYPE =
     makeFunctionType (TypeParameters, NONE, ParametersType, ResultType)
   | TypeParameters '(' 'this' ':' PrimaryName ')' ResultType =>
     makeFunctionType (TypeParameters, PrimaryName, ParametersType, ResultType)
-  | TypeParameters '(' 'this' ':' PrimaryName ',' NonemptyParametersType ')' ResultType =>
+  | TypeParameters '(' 'this' ':' PrimaryName ',' NonemptyParametersType ')' 
+            ResultType =>
     makeFunctionType (TypeParameters, PrimaryName, ParametersType, ResultType)
 
-rul ParametersType () : (TYPE_EXPR list * uint * HAS_REST)
+rul ParametersType () : (TYPE_EXPRESSION list * uint * HAS_REST)
     empty => 
     ([], 0, false)
   | NonemptyParametersType => 
     NonemptyParametersType (0)
 
-rul NonemptyParametersType (minArgs: uint) : (TYPE_EXPR list * uint * HAS_REST)
+rul NonemptyParametersType (minArgs: uint) : (TYPE_EXPRESSION list * uint * HAS_REST)
     ParameterInitType(minArgs) => 
     let
         val (paramType, minArgs1) = ParameterInitType
@@ -923,38 +1018,38 @@ rul NonemptyParametersType (minArgs: uint) : (TYPE_EXPR list * uint * HAS_REST)
   | RestParameterType => 
     (RestParameterType, minArgs, true)
 
-rul ParameterInitType (minArgs: uint) : (TYPE_EXPR * uint) =
+rul ParameterInitType (minArgs: uint) : (TYPE_EXPRESSION * uint) =
     ParameterType => 
     (ParameterType, minArgs+1)
   | ParameterType '=' => 
     (ParameterType, minArgs)
 
-rul ParameterType () : TYPE_EXPR =
+rul ParameterType () : TYPE_EXPRESSION =
     TypeExpression => 
     TypeExpression
 
-rul RestParameterType () : TYPE_EXPR =
+rul RestParameterType () : TYPE_EXPRESSION =
     '...' => 
     Ast.SpecialType Ast.Any
   | '...' ParameterType => 
     ParameterType
 
-rul UnionType () : TYPE_EXPR =
+rul UnionType () : TYPE_EXPRESSION =
     '(' TypeUnionList ')' => 
     Ast.UnionType (TypeUnionList)
 
-rul TypeUnionList () : TYPE_EXPR list =
+rul TypeUnionList () : TYPE_EXPRESSION list =
     empty => []
   | NonemptyTypeUnionList => 
     NonemptyTypeUnionList
 
-rul NonemptyTypeUnionList () : TYPE_EXPR list =
+rul NonemptyTypeUnionList () : TYPE_EXPRESSION list =
     TypeExpression => 
     TypeExpression :: []
   | TypeExpression  '|'  NonemptyTypeUnionList => 
     TypeExpression :: NonemptyTypeUnionList
 
-rul RecordType () : TYPE_EXPR =
+rul RecordType () : TYPE_EXPRESSION =
     '{' FieldTypeList '}' => 
     Ast.RecordType (FieldTypeList)
 
@@ -973,11 +1068,11 @@ rul FieldType () : FIELD_TYPE =
     FieldName ':' TypeExpression => 
     Ast.FieldType (FieldName, TypeExpression)
 
-rul ArrayType () : TYPE_EXPR =
+rul ArrayType () : TYPE_EXPRESSION =
     '[' ElementTypeList ']' => 
     Ast.ArrayType (ElementTypeList)
 
-rul ElementTypeList () : TYPE_EXPR list =
+rul ElementTypeList () : TYPE_EXPRESSION list =
     empty => 
     []
   | TypeExpression => 
@@ -987,7 +1082,7 @@ rul ElementTypeList () : TYPE_EXPR list =
   | TypeExpression , ElementTypeList => 
     TypeExpression () :: ElementTypeList ()
 
-rul TypeExpressionList () : TYPE_EXPR list =
+rul TypeExpressionList () : TYPE_EXPRESSION list =
     TypeExpression => 
     TypeExpression :: []
   | TypeExpressionList ',' TypeExpression => 
@@ -1000,7 +1095,7 @@ datatype OMEGA =
        | NoShortIf
        | Full    
 
-rul Statement (tau, omega) : STMT =
+rul Statement (tau, omega) : STATEMENT =
     BlockStatement(tau) => 
     BlockStatement
   | BreakStatement Semicolon(omega) =>
@@ -1032,7 +1127,7 @@ rul Statement (tau, omega) : STMT =
   | WithStatement(omega) => 
     WithStatement
 
-rul Substatement (omega) : STMT =
+rul Substatement (omega) : STATEMENT =
     EmptyStatement => 
     EmptyStatement
   | Statement(Local, omega) => 
@@ -1060,15 +1155,15 @@ rul Semicolon (Full) : () =
   | VirtualSemicolon => 
     ()
 
-rul EmptyStatement () : STMT =
+rul EmptyStatement () : STATEMENT =
     ';' => 
     Ast.EmptyStmt
 
-rul ExpressionStatement () : STMT =
+rul ExpressionStatement () : STATEMENT =
     [lookahead !{ 'function', '{' }] CommaExpression(AllowColon, AllowIn) => 
     Ast.ExprStmt (CommaExpression)
 
-rul BlockStatement (tau) : STMT =
+rul BlockStatement (tau) : STATEMENT =
     Block(tau) => 
     Ast.BlockStmt (Block)
 
@@ -1076,27 +1171,27 @@ rul LabeledStatement (omega)
     Identifier  ':'  Substatement(omega) => 
     Ast.LabeledStmt (Identifier, Substatement)
 
-rul IfStatement (Abbrev) : STMT =
+rul IfStatement (Abbrev) : STATEMENT =
     'if' ParenExpression Substatement(Abbrev) =>
     Ast.IfStmt (ParenExpression, Substatement)
   | 'if' ParenExpression Substatement(NoShortIf) 'else' Substatement(Abbrev) =>
     Ast.IfStmt (ParenExpression, Substatement, Substatement)
 
-rul IfStatement (Full) : STMT =
+rul IfStatement (Full) : STATEMENT =
     'if' ParenExpression Substatement(Full) => 
     Ast.IfStmt (ParenExpression, Substatement)
   | 'if' ParenExpression Substatement(NoShortIf) 'else' Substatement(Full) =>
     Ast.IfStmt (ParenExpression, Substatement, Substatement)
 
-rul IfStatement (NoShortIf) : STMT =
+rul IfStatement (NoShortIf) : STATEMENT =
     'if' ParenExpression Substatement(NoShortIf) 'else' Substatement(NoShortIf) =>
     Ast.IfStmt (ParenExpression, Substatement, Substatement)
 
-rul WithStatement (omega) : STMT =
+rul WithStatement (omega) : STATEMENT =
     'with' ParenExpression Substatement(omega) =>
     Ast.WithStmt (ParenExpression, Substatement)
 
-rul SwitchStatement () : STMT =
+rul SwitchStatement () : STATEMENT =
     'switch' ParenExpression '{' CaseElements '}' =>
     Ast.SwitchStmt (ParenExpression, CaseElements)
 
@@ -1134,7 +1229,7 @@ rul CaseLabel () : CASE_LABEL =
   | 'default' ':' => 
     Ast.CaseLabel (NONE)
 
-rul SwitchTypeStatement () : STMT =    
+rul SwitchTypeStatement () : STATEMENT =    
     'switch' 'type' ParenExpression '{' TypeCaseElements '}' => 
     Ast.SwitchTypeStatement (ParenExpression, TypeCaseElements)
 
@@ -1148,15 +1243,15 @@ rul TypeCaseElement () : TYPE_CASE =
     'case' '(' TypedPattern(AllowColon, AllowIn) ')' Block(Local) =>
     (TypedPattern, Block)
 
-rul DoStatement () : STMT =   
+rul DoStatement () : STATEMENT =   
     'do' Substatement(Abbrev) 'while' ParenExpression => 
     Ast.DoStmt (Substatement, ParenExpression)
 
-rul WhileStatement (omega) : STMT =
+rul WhileStatement (omega) : STATEMENT =
     'while' ParenExpression Substatement(omega) => 
     Ast.WhileStmt (ParenExpression, Substatement)
 
-rul ForStatement (omega) : STMT =   
+rul ForStatement (omega) : STATEMENT =   
     'for' '(' ForInitialiser ';'  OptionalExpression ';'  OptionalExpression ')' 
             Substatement(omega) =>
     Ast.ForStmt (ForInitialiser, OptionalExpression, OptionalExpression)
@@ -1179,35 +1274,35 @@ rul ForInitialiser () : EXPRESSION option =
         init
     end
 
-rul ForInBinding () : (FIXTURE list * EXPR) =
+rul ForInBinding () : (FIXTURE list * EXPRESSION) =
     Pattern(AllowColon, NoIn, AllowExpr) =>
     desugarAssignment (Assign, Pattern, ...)
   | VariableDefinitionKind VariableBinding(NoIn,Local,ignoreAttributes) =>
     desugarBinding (Pattern, ...)
 
-rul ContinueStatement () : STMT =
+rul ContinueStatement () : STATEMENT =
     'continue' =>
     Ast.ContinueStmt (NONE)
   | 'continue' [no line break] Identifier =>
     Ast.ContinueStmt (Identifier)
 
-rul BreakStatement () : STMT =
+rul BreakStatement () : STATEMENT =
     'break' =>
     Ast.BreakStmt (NONE)
   | 'break' [no line break] Identifier =>
     Ast.BreakStmt (Identifier)
 
-rul ReturnStatement () : STMT =
+rul ReturnStatement () : STATEMENT =
     'return' =>
     Ast.ReturnStmt (NONE)
   | 'return' CommaExpression(AllowColon, AllowIn) =>
     Ast.ReturnStmt (CommaExpression)
 
-rul ThrowStatement () : STMT =
+rul ThrowStatement () : STATEMENT =
     'throw' CommaExpression(AllowColon, AllowIn) => 
     Ast.ThrowStmt (CommaExpression)
 
-rul TryStatement () : STMT =
+rul TryStatement () : STATEMENT =
     'try' Block(Local) CatchClauses =>
     Ast.TryStmt (Block, CatchClauses, NONE)
   | 'try' Block(Local) CatchClauses 'finally' Block(Local) =>
@@ -1233,12 +1328,12 @@ datatype TAU =
        | Interface
        | Local
 
-rul Directives (tau) : STMT list =
+rul Directives (tau) : STATEMENT list =
     empty => []
   | DirectivesPrefix(tau)  Directive(tau, Abbrev) =>
     DirectivePrefix @ [Directive]
 
-rul DirectivesPrefix (tau) : STMT list =
+rul DirectivesPrefix (tau) : STATEMENT list =
     empty =>
     []
   | Pragmas =>
@@ -1246,7 +1341,7 @@ rul DirectivesPrefix (tau) : STMT list =
   | DirectivesPrefix(tau)  Directive(tau, Full) =>
     DirectivePrefix @ [Directive]
 
-rul Directive (tau, omega) : STMT =
+rul Directive (tau, omega) : STATEMENT =
     EmptyStatement =>
     EmptyStatement
   | Statement(tau, omega) =>
@@ -1254,8 +1349,9 @@ rul Directive (tau, omega) : STMT =
   | AnnotatableDirective(tau, omega) =>
     AnnotatableDirective
 
-rul AnnotatableDirective (Global, omega, attributes) : STMT =
-    Attribute(Global, attributes) [no line break] AnnotatableDirective(Global, omega, Attribute) =>
+rul AnnotatableDirective (Global, omega, attributes) : STATEMENT =
+    Attribute(Global, attributes) [no line break] 
+            AnnotatableDirective(Global, omega, Attribute) =>
     AnnotatableDirective
   | VariableDefinition(AllowIn, Global, attributes) Semicolon(omega) =>
     VariableDefinition
@@ -1272,8 +1368,9 @@ rul AnnotatableDirective (Global, omega, attributes) : STMT =
   | PackageDefinition(attributes)
     PackageDefinition
 
-rul AnnotatableDirective (Class, omega, attributes) : STMT
-    Attribute(Class, attributes) [no line break] AnnotatableDirective(Class, omega, Attribute) =>
+rul AnnotatableDirective (Class, omega, attributes) : STATEMENT
+    Attribute(Class, attributes) [no line break] 
+            AnnotatableDirective(Class, omega, Attribute) =>
     AnnotatableDirective
   | VariableDefinition(AllowIn, Class, attributes) Semicolon(omega) =>
     VariableDefinition
@@ -1284,13 +1381,14 @@ rul AnnotatableDirective (Class, omega, attributes) : STMT
   | TypeDefinition(attributes) Semicolon(omega) =>
     TypeDefinition
 
-rul AnnotatableDirective (Interface, omega, attributes) : STMT =
-    Attribute(Interface, attributes) [no line break] AnnotatableDirective(Interface, omega, Attribute) =>
+rul AnnotatableDirective (Interface, omega, attributes) : STATEMENT =
+    Attribute(Interface, attributes) [no line break] 
+            AnnotatableDirective(Interface, omega, Attribute) =>
     AnnotatableDirective
   | FunctionDeclaration(omega, attributes) =>
     FunctionDeclaration
 
-rul AnnotatableDirective(Local, omega) : STMT =
+rul AnnotatableDirective(Local, omega) : STATEMENT =
     VariableDefinition(AllowIn, Local, attributes) Semicolon(omega) =>
     VariableDefinition
   | FunctionDefinition(Local, omega, attributes) =>
@@ -1332,7 +1430,7 @@ rul Attribute (Local, attributes) : ATTRIBUTES =
     NamespaceAttribute(Local) =>
     setNamespaceAttribute (attributes, NamespaceAttribute)
 
-rul NamespaceAttribute(Global) : NAMESPACE_EXPR =
+rul NamespaceAttribute(Global) : NAMESPACE_EXPRESSION =
     'public' =>
     getPublicNamespace ()
   | 'internal' =>
@@ -1340,7 +1438,7 @@ rul NamespaceAttribute(Global) : NAMESPACE_EXPR =
   | PrimaryName =>
     Ast.NamespaceRef (PrimaryName)
     
-rul NamespaceAttribute(Class) : NAMESPACE_EXPR =
+rul NamespaceAttribute(Class) : NAMESPACE_EXPRESSION =
     ReservedNamespace =>
     ReservedNamespace
   | PrimaryName =>
@@ -1348,25 +1446,32 @@ rul NamespaceAttribute(Class) : NAMESPACE_EXPR =
 
 (*** Definitions ***)
 
-rul VariableDefinition (beta, tau, attributes) : STMT list =
+rul VariableDefinition (beta, tau, attributes) : STATEMENT list =
     VariableDefinitionKind VariableBindingList(beta, attributes) =>
     let
         val (ns, isPrototype, isStatic) = attributes
         val (it, ro) = VariableDefinitionKind ()
-        val (fxtrs, exprs) = VariableBindingList
+        val (defns, exprs) = VariableBindingList
     in case (tau, it) of
-        (_, Ast.LetInit) => addLetDefinitions (fxtrs); Ast.ExprStmt (Ast.ListExpr exprs)
-      | (Ast.ClassBlk, _) => addVarDefinitions (fxtrs, isStatic); addVarInits (exprs, isStatic); []
-      | _ => addVarDefinitions (fxtrs); (Ast.ExpressionStmt (Ast.ListExpr (exprs)))
+        (_, Ast.LetTarget) => 
+        addLetDefinitions (defns);
+        (Ast.ExprStmt (Ast.ListExpr exprs)) :: []
+      | (Ast.ClassBlk, _) => 
+        addVarDefinitions (defns, isStatic); 
+        addVarInits (exprs, isStatic); 
+        []
+      | _ => 
+        addVarDefinitions (defns, isStatic); 
+        (Ast.ExpressionStmt (Ast.ListExpr (exprs)))
     end
 
 rul VariableDefinitionKind () : (INIT_TARGET, bool (*isReadOnly*)) =
     'const' => 
-    (Ast.VarInit, true)
-  | 'let' => 
-    (Ast.LetInit, false)
-  | 'var' => 
-    (Ast.VarInit, false)
+    (Ast.VarTarget, true)
+  | 'let' =>
+    (Ast.LetTarget, false)
+  | 'var' =>
+    (Ast.VarTarget, false)
 
 rul VariableBindingList (beta, attributes) : (FIXTURE list * EXPRESSION list) list =
     VariableBinding(beta, attributes) => 
@@ -1386,23 +1491,47 @@ rul VariableInitialisation (beta) :  EXPRESSION =
 
 rul FunctionDeclaration (attributes) : () =
     'function' FunctionName FunctionSignature => 
-    addMethodDefinition (makeMethodDefinition (FunctionName, FunctionSignature, NONE), 
-            attributes)
-    
-rul FunctionDefinition (Class, omega) : () =
-    function Identifier [identifier == outer classname] ConstructorSignature Block(Local)
-    addConstructorDefinition (makeMethodDefinition (FunctionName, FunctionSignature, FunctionBody))
-  | function  FunctionName  FunctionSignature  FunctionBody(AllowIn, omega)
-    addMethodDefinition (makeMethodDefinition (FunctionName, FunctionSignature, FunctionBody), 
-            attributes)
+    let
+        val definition = makeMethod (FunctionName, FunctionSignature, 
+                                     NONE, attributes)
+    in
+        addDefinition (definition)
+    end
+
+rul FunctionDefinition (Class, omega, attributes) : () =
+    'function' Identifier [identifier == outer classname] 
+            ConstructorSignature Block(Local) =>
+    let
+        val definition = makeConstructor (ConstructorSignature, Block)
+    in
+        setContructor (definition)
+    end
+  | 'function' FunctionName FunctionSignature 
+            FunctionBody (AllowIn, omega, attributes) =>
+    let
+        val definition = makeMethod (FunctionName, FunctionSignature, 
+                                     FunctionBody, attributes)
+    in
+        addDefinition (definition)
+    end
 
 rul FunctionDefinition (tau, omega, attributes) : () =
-    'function' FunctionName FunctionSignature FunctionBody(AllowIn, omega) => 
-    addMethodDefinition (makeMethodDefinition (FunctionName, FunctionSignature, FunctionBody), 
-            attributes)
-  | 'const' 'function' FunctionName FunctionSignature FunctionBody(AllowIn, omega) =>
-    addMethodDefinition (makeMethodDefinition (FunctionName, FunctionSignature, FunctionBody), 
-            setConstAttribute (attributes))
+    'function' FunctionName FunctionSignature 
+            FunctionBody(AllowIn, omega) => 
+    let
+        val definition = makeMethod (FunctionName, FunctionSignature, 
+                                     FunctionBody, attributes)
+    in
+        addDefinition (definition)
+    end
+  | 'const' 'function' FunctionName FunctionSignature 
+            FunctionBody(AllowIn, omega) =>
+    let
+        val definition = makeMethod (FunctionName, FunctionSignature, 
+                                     FunctionBody, setConst (attributes))
+    in
+        addDefinition (definition)
+    end
 
 rul FunctionName () : (FUNC_KIND * IDENTIFIER) =
     Identifier => 
@@ -1412,12 +1541,14 @@ rul FunctionName () : (FUNC_KIND * IDENTIFIER) =
   | 'set' Identifier => 
     (Ast.Set, Identifier)
 
-rul FunctionSignature () : (IDENTIFIER list * TYPE_EXPRESSION * PARAM list * TYPE_EXPRESSION) =
+rul FunctionSignature () : (IDENTIFIER list * TYPE_EXPRESSION * 
+                            PARAMETER list * TYPE_EXPRESSION) =
     TypeParameters '(' Parameters ')' ResultType => 
     (TypeParameters, NONE, Parameters, ResultType)
   | TypeParameters '(' 'this' ':' PrimaryName ')' ResultType =>
     (TypeParameters, Ast.TypeRef (PrimaryName), NONE, ResultType)
-  | TypeParameters '(' 'this' ':' PrimaryName ',' NonemptyParameters ')' ResultType => 
+  | TypeParameters '(' 'this' ':' PrimaryName ',' NonemptyParameters ')' 
+            ResultType => 
     (TypeParameters, Ast.TypeRef (PrimaryName), Parameters, ResultType)
 
 rul TypeParameters () : IDENTIFIER list =
@@ -1432,13 +1563,13 @@ rul TypeParameterList () : IDENTIFIER list =
   | Identifier ',' TypeParameterList => 
     Identifier :: TypeParameterList
 
-rul Parameters () : PARAM list = 
+rul Parameters () : PARAMETER list = 
     empty => 
     []
   | NonemptyParameters => 
     NonemptyParameters
     
-rul NonemptyParameters () : PARAM list =
+rul NonemptyParameters () : PARAMETER list =
     ParameterInit => 
     ParameterInit :: []
   | ParameterInit ',' NonemptyParameters => 
@@ -1450,9 +1581,10 @@ rul ParameterInit () : (EXPRESSION option * TYPE_EXPRESSION) =
     Parameter => 
     let
         val (isReadOnly, (ptrn, type)) = Parameter
-        val (fxtrs, inits) = desugarBindingPattern (ptrn, type, Ast.GetParam n, null, Ast.Let, isReadOnly)
+        val (defns, inits) = desugarBindingPattern (ptrn, type, Ast.GetParam n, 
+                                                    null, Ast.Let, isReadOnly)
     in
-        addVarDefinitions (fxtrs);
+        addVarDefinitions (defns);
         addVarInits (inits);
         (NONE, type)
     end
@@ -1460,9 +1592,10 @@ rul ParameterInit () : (EXPRESSION option * TYPE_EXPRESSION) =
     let
         val (isReadOnly, (ptrn, type)) = Parameter
         val default = NonAssignmentExpression
-        val (fxtrs, inits) = desugarBindingPattern (ptrn, type, Ast.GetParam n, null, Ast.Let, isReadOnly)
+        val (defns, inits) = desugarBindingPattern (ptrn, type, Ast.GetParam n, 
+                                                    null, Ast.Let, isReadOnly)
     in
-        addVarDefinitions (fxtrs);
+        addVarDefinitions (defns);
         addVarInits (inits);
         (default, type)
     end
@@ -1489,7 +1622,8 @@ rul ResultType () : TYPE_EXPRESSION =
   | 'like' TypeExpression =>
     Ast.TypePredicate (makeLikePredicate (TypeExpression))
 
-rul ConstructorSignature () : (IDENTIFIER list * PARAM list * EXPRESSION list * EXPRESSION list) =
+rul ConstructorSignature () : (IDENTIFIER list * PARAMETER list * 
+                               EXPRESSION list * EXPRESSION list) =
     TypeParameters '(' Parameters ')' => 
     (TypeParameters, Parameters, [], [])
   | TypeParameters '('  Parameters ')' ':' ConstructorInitialiser => 
@@ -1501,7 +1635,7 @@ rul ConstructorSignature () : (IDENTIFIER list * PARAM list * EXPRESSION list * 
         (typeParams, params, settings, superArgs)
     end
 
-rul ConstructorInitialiser () : (EXPRESSION list * EXPRESSION list) = (* settings, super args *)
+rul ConstructorInitialiser () : (EXPRESSION list * EXPRESSION list) =
     SettingList => (SettingList, [])
   | SettingList ',' SuperInitialiser => 
     (SettingList, SuperInitialiser)
@@ -1534,9 +1668,16 @@ rul FunctionBody (alpha, beta, omega) : BLOCK =
   | AssignmentExpression(alpha, beta) Semicolon(omega, AssignmentExpression) => 
     Ast.Block (Ast.Head ([], []), Ast.ReturnStmt (Semicolon)) :: [])
 
-rul ClassDefinition (ns) : STMT list =
+rul ClassDefinition (attributes) : STATEMENT list =
     'class' Identifier TypeSignature ClassInheritance ClassBody =>
-    addClassDefinition ((ns, Identifier), TypeSignature, ClassInheritance, ClassBody)
+    let
+        val {namespace, ...} = attributes
+        val name = (namespace, Identifier)
+        val definition = makeClassDefinition (Interface, TypeSignature, ClassInheritance, 
+                                              ClassBody, attributes)
+    in
+        addDefinition (definition)
+    end
 
 rul TypeSignature () : (bool, IDENTIFIER list) =
     TypeParameters =>
@@ -1569,10 +1710,18 @@ rul ClassBody () : BLOCK =
     Block(Class) => 
     Block
 
-rul InterfaceDefinition () : () =
+rul InterfaceDefinition (attributes) : () =
     'interface' Identifier TypeSignature InterfaceInheritance InterfaceBody =>
-    addInterfaceDefinition ((ns, Identifier), TypeSignature, InterfaceInheritance, InterfaceBody)
-    
+    let
+        val {namespace, ...} = attributes
+        val name = (namespace, Identifier)
+        val definition = makeInterfaceDefinition (Identifier, TypeSignature, 
+                                                  InterfaceInheritance, 
+                                                  InterfaceBody, attributes)
+    in
+        addDefinition (definition)
+    end
+
 rul InterfaceInheritance () : TYPE list =
     empty => 
     []
@@ -1582,10 +1731,10 @@ rul InterfaceInheritance () : TYPE list =
 rul InterfaceBody () : BLOCK =    
     Block(Interface) => 
     Block
-    
-rul NamespaceDefinition (ns) : () =
+
+rul NamespaceDefinition (attributes) : () =
     'namespace' Identifier NamespaceInitialisation => 
-    addNamespaceDefinition ((ns, Identifier), NamespaceInitialisation)
+    addDefinition (makeNamespace (Identifier, NamespaceInitialisation, attributes))
     
 rul NamespaceInitialisation () : NAMESPACE_EXPRESSION =
     empty =>
@@ -1594,36 +1743,42 @@ rul NamespaceInitialisation () : NAMESPACE_EXPRESSION =
     Ast.Namespace (Ast.ForgeableNamespace (*StringLiteral*))
   | '=' PrimaryName => 
     Ast.NamespaceRef (PrimaryName)
-    
-rul TypeDefinition (ns) : () =
+
+rul TypeDefinition (attributes) : () =
     'type' Identifier TypeSignature TypeInitialisation => 
-    addTypeDefinition ((ns, Identifier), Ast.TypeLambda (TypeSignature, TypeInitialisation))
-    
+    addDefinition (makeTypeDefinition (Identifier, TypeSignature, 
+                                       TypeInitialisation, attributes))
+
 rul TypeInitialisation () : TYPE_EXPRESSION =   
     '=' TypeExpression => 
     TypeExpression
     
-rul PackageDefinition () : PACKAGE =
-    PackageAttribute 'package' PackageNameOpt PackageBody => 
-    Ast.PackageBlock (PackageAttribute, PackageNameOpt, PackageBody)
+rul PackageDefinition () : STATEMENT list =
+    PackageAttribute 'package' PackageNameOpt PackageBody =>
+    desugarPackage (PackageBody, PackageAttribute, PackageNameOpt);
+
+fun desugarPackage (block, attribute, name) =
+    ...
 
 rul PackageAttribute () : IDENTIFIER option =    
     empty => 
     NONE
   | 'internal' => 
     "internal"
+  | 'final' => 
+    "final"
 
-rul PackageNameOpt () : IDENTIFIER list option =
+rul PackageNameOpt () : IDENTIFIER list =
     empty => 
-    NONE
+    []
   | PackageName => 
     PackageName
     
 rul PackageName () : IDENTIFIER list =
     Identifier => 
-    [Identifier]
+    Identifier :: []
   | PackageName '.' Identifier => 
-    PackageName @ [Identifier]
+    PackageName @ (Identifier :: [])
 
 rul PackageBody () : BLOCK =    
     Block(Global) => 
@@ -1663,6 +1818,8 @@ rul PragmaItem () : () =
     
 rul ImportPragma () : () =   
     'import' ImportName => 
+    (* 'use namespace ' +  pkg ' for ' + ident
+        where 'pkg' is the package name, and 'ident' is the imported identifier  *)
     useNamespace (makeUseNamespace (ImportName))
 
 rul ImportName () : (IDENTIFIER list, IDENTIFIER) =    
