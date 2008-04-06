@@ -51,14 +51,8 @@ signature FIXTURE = sig
     val updateLangEd : PROGRAM -> int -> unit
     val getLangEd : PROGRAM -> int
 
-    val resolveToFixture : PROGRAM -> Ast.MULTINAME -> (Ast.RIB_ID option) -> ((Ast.NAME * Ast.FIXTURE) option)
-    val updateFixtureCache : PROGRAM -> (Ast.RIB_ID option) -> Ast.MULTINAME -> Ast.NAME -> Ast.FIXTURE -> unit
-
-    val allocGeneralRib : PROGRAM -> (Ast.RIB_ID option) -> Ast.RIB_ID
-    val getRibs : PROGRAM -> (Ast.RIB_ID option) -> Ast.RIBS
-    val saveRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> unit
-    val extendRib : PROGRAM -> (Ast.RIB_ID option) -> (Ast.RIB) -> TYEQ -> unit
     val getRootRib : PROGRAM -> Ast.RIB
+    val extendRootRib : PROGRAM -> Ast.RIB -> TYEQ -> unit
     val addPackageName : PROGRAM -> Ast.IDENT list -> unit
     val getPackageNames : PROGRAM -> Ast.IDENT list list
 

@@ -123,36 +123,6 @@ EXPR =
            body: TYPE_EXPR }
  *)
 
-fun findNamespace (prog:Fixture.PROGRAM)
-                  (ribId:Ast.RIB_ID option)
-                  (expr:Ast.EXPR)
-    : Ast.NAMESPACE option =
-    let
-        fun withMname (mname:Ast.MULTINAME) 
-            : Ast.NAMESPACE option = 
-            case Fixture.resolveToFixture prog mname ribId of
-                NONE => NONE
-              | SOME (n, Ast.NamespaceFixture ns) => SOME ns
-              | _ => error ["namespace expression resolved ",
-                            "to non-namespace fixture"]
-    in    
-        case expr of
-            Ast.LiteralExpr (Ast.LiteralNamespace ns) => SOME ns
-
-          | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
-            (LogErr.setLoc loc;
-             withMname {id = ident, nss = openNamespaces})
-
-          | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
-            (LogErr.setLoc loc;
-             case findNamespace prog ribId qual of
-                 NONE => NONE
-               | SOME ns => withMname {id = ident, nss = [[ns]]})
-
-          | Ast.LexicalRef _ => error ["dynamic name in namespace"]
-                                
-          | _ => error ["dynamic expr in namespace"]
-    end
 
 fun liftOption (f:'a -> 'a option) 
                (ls:'a list) 
@@ -750,9 +720,9 @@ val matches = normalizingPredicate groundMatches false
 fun instanceTy (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
     : Ast.TYPE_EXPR =
-    case Fixture.resolveToFixture prog { nss = [[(#ns n)]], id=(#id n) } NONE of
-        SOME (_, Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
-      | SOME (_, Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
+    case Fixture.getFixture (Fixture.getRootRib prog) (Ast.PropName n) of
+        (Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
+      | (Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
 fun groundType (prog:Fixture.PROGRAM)

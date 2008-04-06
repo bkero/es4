@@ -94,8 +94,26 @@ datatype LABEL_KIND =
 type LABEL = (Ast.IDENT * LABEL_KIND)
 
 
+(* 
+ * 
+ * The type ENV carrise *two* lists of RIBs, outer and inner. The
+ * outer ribs are those including and containing the current hoisting
+ * scope. The inner ribs are any lexical scopes defined *inside* the
+ * current hoisting scope.
+ * 
+ * Any time you add a hoisted definition to an environment, you are
+ * extending the head of the outerRibs. Any time you add a non-hoisted
+ * definition to an environment, you are extending the head of the
+ * innerRibs.
+ * 
+ * The concatenation of the inner and outer ribs is the full ribs,
+ * which is the combined RIBs you should use to look up any bindings
+ * in.
+ *)
+
 type ENV =
-     { ribId: Ast.RIB_ID option,
+     { innerRibs: Ast.RIB list,
+       outerRibs: Ast.RIB list,
        tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list,
        labels: LABEL list,
@@ -104,17 +122,6 @@ type ENV =
        defaultNamespace: Ast.NAMESPACE,
        program: Fixture.PROGRAM,
        func: Ast.FUNC option }    
-
-
-fun dumpEnv (e:ENV) : unit =
-    if (!doTrace) 
-    then 
-        let 
-            val ribs = Fixture.getRibs (#program e) (#ribId e)
-        in
-            List.app Fixture.printRib ribs
-        end
-    else ()
 
     
 val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
@@ -125,10 +132,22 @@ val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.me
 fun getFullRibs (env:ENV)
     : Ast.RIBS = 
     let
-        val ribs = Fixture.getRibs (#program env) (#ribId env)
+        val { innerRibs, outerRibs, ... } = env
     in
-        ribs
+        innerRibs @ outerRibs
     end
+
+
+fun dumpEnv (e:ENV) : unit =
+    if (!doTrace) 
+    then 
+        let 
+            val ribs = getFullRibs e
+        in
+            List.app Fixture.printRib ribs
+        end
+    else ()
+
 
 fun makeTy (e:ENV) 
            (tyExpr:Ast.TYPE_EXPR) 
@@ -194,9 +213,9 @@ fun isInstanceInit (s:Ast.STMT)
 fun resolve (env:ENV)
             (mname:Ast.MULTINAME)
     : (Ast.NAME * Ast.FIXTURE) =
-    case Fixture.resolveToFixture (#program env) mname (#ribId env) of 
-        SOME nf => nf
-      | NONE => LogErr.defnError ["multiname did not resolve ", LogErr.multiname mname]
+    case Multiname.resolveInRibs mname (getFullRibs env) of 
+        SOME (rib::ribs, name) => (name, Fixture.getFixture rib (Ast.PropName name))
+      | _ => LogErr.defnError ["multiname did not resolve ", LogErr.multiname mname]
 
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -300,7 +319,7 @@ fun enterFragment (env:ENV)
                   (frag:Ast.FRAGMENT)
     : ENV =     
     let
-        val { ribId, tempOffset, openNamespaces, 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env                                           
     
@@ -316,7 +335,8 @@ fun enterFragment (env:ENV)
                 end
               | _ => (defaultNamespace, packageName, openNamespaces)
     in
-        { ribId = ribId, 
+        { innerRibs = innerRibs, 
+          outerRibs = outerRibs,
           tempOffset = tempOffset,
           openNamespaces = newOpenNss,
           labels = labels,
@@ -330,15 +350,18 @@ fun enterFragment (env:ENV)
     
 fun extendEnvironment (env:ENV)
                       (rib:Ast.RIB)
+                      (hoistingPoint:bool)
     : ENV =
     let
-        val { ribId, tempOffset, openNamespaces, 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env
-        val newRibId = SOME (Fixture.allocGeneralRib program (#ribId env))
+        val (newInnerRibs, newOuterRibs) = if hoistingPoint
+                                           then ([], [] :: (innerRibs @ outerRibs))
+                                           else ([] :: innerRibs, outerRibs)
     in
-        Fixture.saveRib program newRibId rib;
-        { ribId = newRibId, 
+        { innerRibs = newInnerRibs,
+          outerRibs = newOuterRibs,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
@@ -350,21 +373,66 @@ fun extendEnvironment (env:ENV)
     end
 
 
-fun addToRib (env:ENV)
-             (additions:Ast.RIB)
-    : unit =
+fun mergeRibs (program:Fixture.PROGRAM)
+              (oldRib:Ast.RIB)
+              (additions:Ast.RIB)
+    : Ast.RIB = 
+    Fixture.mergeRibs (Type.matches program []) oldRib additions
+
+
+fun headAndTailOfRibs (ribs:Ast.RIB list)
+    : (Ast.RIB * Ast.RIB list) = 
+    case ribs of 
+        [] => ([],[])
+      | (x::xs) => (x, xs)
+
+
+fun addToInnerRib (env:ENV)
+                  (additions:Ast.RIB)
+    : ENV =
     let 
-        val ribId = (#ribId env)
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
+              labels, className, packageName, 
+              defaultNamespace, program, func } = env
+        val (innerRib, rest) = headAndTailOfRibs innerRibs
+        val newInnerRib = mergeRibs (#program env) innerRib additions
+        val newInnerRibs = newInnerRib :: rest
     in
-        Fixture.extendRib (#program env) ribId additions (Type.matches (#program env) [])
+        { innerRibs = newInnerRibs, 
+          outerRibs = outerRibs,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          labels = labels,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          program = program,
+          func = func }
     end
 
 
-fun mergeRibs (program:Fixture.PROGRAM)
-              (oldRib:Ast.RIB)
-              (newRib:Ast.RIB)
-    : Ast.RIB = 
-    Fixture.mergeRibs (Type.matches program []) oldRib newRib
+fun addToOuterRib (env:ENV)
+                  (additions:Ast.RIB)
+    : ENV =
+    let 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
+              labels, className, packageName, 
+              defaultNamespace, program, func } = env
+        val (outerRib, rest) = headAndTailOfRibs outerRibs
+        val newOuterRib = mergeRibs (#program env) outerRib additions
+        val newOuterRibs = newOuterRib :: rest
+    in
+        { innerRibs = innerRibs, 
+          outerRibs = newOuterRibs,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          labels = labels,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          program = program,
+          func = func }
+    end
 
 
 fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
@@ -375,11 +443,12 @@ fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
 fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
-        val { ribId, tempOffset, openNamespaces, 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env
     in
-        { ribId = ribId,
+        { innerRibs = innerRibs, 
+          outerRibs = outerRibs,
           tempOffset = newTempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
@@ -394,11 +463,12 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
 fun clearPackageName (env:ENV)
     : ENV =
     let
-        val { ribId, tempOffset, openNamespaces, 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env
     in
-        { ribId = ribId,
+        { innerRibs = innerRibs, 
+          outerRibs = outerRibs,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
@@ -413,12 +483,13 @@ fun clearPackageName (env:ENV)
 fun enterClass (env:ENV) (newClassName:Ast.NAME)
     : ENV =
     let
-        val { ribId, tempOffset, openNamespaces, 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env
         val className = Name.mangle newClassName
     in
-        { ribId = ribId,
+        { innerRibs = innerRibs, 
+          outerRibs = outerRibs,
           tempOffset = tempOffset,
           openNamespaces = [Ast.Private className]::openNamespaces,
           labels = labels,
@@ -432,11 +503,12 @@ fun enterClass (env:ENV) (newClassName:Ast.NAME)
 fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
     : ENV = 
     let
-        val { ribId, tempOffset, openNamespaces, 
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env    
     in
-        { ribId = ribId,
+        { innerRibs = innerRibs, 
+          outerRibs = outerRibs,
           tempOffset = tempOffset,
           openNamespaces = [Ast.Private className]::openNamespaces,
           labels = labels,
@@ -467,7 +539,7 @@ fun dumpPath path =
 fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
-            val { ribId, tempOffset, openNamespaces, 
+            val { innerRibs, outerRibs, tempOffset, openNamespaces, 
                   labels, className, packageName, 
                   defaultNamespace, program, func } = env
             val (labelId,labelKnd) = label
@@ -479,7 +551,8 @@ fun addLabel ((label:LABEL),(env:ENV))
                                knd = labelKnd) labels            (* and kinds *)
             then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
             else ();
-            { ribId = ribId,
+            { innerRibs = innerRibs, 
+              outerRibs = outerRibs,
               tempOffset = tempOffset,
               openNamespaces = openNamespaces,
               labels = label::labels,
@@ -593,12 +666,12 @@ and defInterface (env: ENV)
 
         val env = enterClass env name
 
-        val instanceEnv = extendEnvironment env []
+        val instanceEnv = extendEnvironment env [] true
         val (typeParamRib:Ast.RIB) = mkParamRib params
-        val _ = addToRib instanceEnv typeParamRib
+        val instanceEnv = addToInnerRib instanceEnv typeParamRib
 
         (* Define the current rib *)
-        val (unhoisted,instanceRib,_) = defDefns env instanceDefns
+        val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
 
         (* Inherit rib and check overrides *)
         val instanceRib:Ast.RIB = inheritRib inheritedRib instanceRib
@@ -1058,21 +1131,22 @@ and analyzeClassBody (env:ENV)
         val env = enterClass env name
         val _ = trace ["defining class ", LogErr.name name]
 
-        val staticEnv = extendEnvironment env []
+        val staticEnv = extendEnvironment env [] true
         val (unhoisted,classRib,classInits) = defDefns staticEnv classDefns
         val classRib = (mergeRibs (#program env) unhoisted classRib)
 
         (* namespace and type definitions aren't normally hoisted *)
 
-        val instanceEnv = extendEnvironment staticEnv []
+        val instanceEnv = extendEnvironment staticEnv [] true
 
         (* FIXME: there is some debate about whether type parameters live in the 
          * instance rib or the class rib. This needs to be resolved. 
          *)
         val (typeParamRib:Ast.RIB) = mkParamRib params
-        val _ = addToRib instanceEnv typeParamRib
+        val instanceEnv = addToInnerRib instanceEnv typeParamRib
 
         val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
+        val instanceEnv = addToInnerRib instanceEnv instanceRib
 
         val ctor:Ast.CTOR option =
             case ctorDefn of
@@ -1405,7 +1479,7 @@ and defFunc (env:ENV)
         fun findFuncType env e = 
             case e of 
                 Ast.LamType { params, body } => 
-                findFuncType (extendEnvironment env (mkParamRib params)) body 
+                findFuncType (extendEnvironment env (mkParamRib params) true) body 
               | Ast.FunctionType fty => (env, fty)
               | _ => error ["unexpected primary type in function: ", LogErr.ty e]
 
@@ -1415,7 +1489,7 @@ and defFunc (env:ENV)
         val env = updateTempOffset env numParams
         val (paramRib, paramInits, defaults, settingsRib, settingsInits, superArgs, thisType) = defFuncSig env fsig
         val defaults = defExprs env defaults
-        val env = extendEnvironment env paramRib
+        val env = extendEnvironment env paramRib true
         val env = enterFuncBody env func
         val (blockOpt:Ast.BLOCK option, hoisted:Ast.RIB) = 
             case block of 
@@ -1518,8 +1592,11 @@ and defFuncDefn (env:ENV)
 and defCtor (env:ENV) (ctor:Ast.CTOR)
     : Ast.CTOR =
     let
+        val _ = trace [">> defCtor"]
+        val _ = (trace ["environment: "]; dumpEnv env)                
         val Ast.Ctor {func,...} = ctor
         val (settings,superArgs,newFunc) = defFunc env func
+        val _ = trace ["<< defCtor"]
     in
         Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc}
     end
@@ -1536,14 +1613,16 @@ and defPragmas (env:ENV)
     : (Ast.PRAGMA list * ENV * Ast.RIB) =
     let
         val program = #program env
-        val ribId  = #ribId env
+        val innerRibs  = #innerRibs env
+        val outerRibs  = #outerRibs env
         val defaultNamespace = ref (#defaultNamespace env)
         val opennss = ref []
         val rib = ref []
         val tempOffset = #tempOffset env
 
         fun modifiedEnv _ = 
-            { ribId = ribId,
+            { innerRibs = innerRibs,
+              outerRibs = outerRibs,
               tempOffset = tempOffset,
               openNamespaces = (case !opennss of
                                     [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
@@ -1853,7 +1932,7 @@ and defExpr (env:ENV)
           | Ast.LetExpr { defs, body,... } =>
             let
                 val (f,i)   = defBindings env Ast.Var Name.noNS defs
-                val env     = extendEnvironment env f
+                val env     = extendEnvironment env f false
                 val newBody = defExpr env body
             in
                 Ast.LetExpr { defs = defs,
@@ -2038,7 +2117,7 @@ and defStmt (env:ENV)
                 let
                     val newObj =  defExpr env obj
                     val (ur1,hr1,i1) = defVarDefnOpt defn
-                    val env = extendEnvironment env ur1
+                    val env = extendEnvironment env ur1 false
                     val (newBody,hoisted) = defStmt env [] body
                     val tempEnv = updateTempOffset env 1   (* alloc temp for iteration value *)
                     val (newNext,_) = defStmt tempEnv [] next
@@ -2083,7 +2162,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (ur,hr,_) = defVarDefnOpt defn
-                val env = extendEnvironment env (mergeRibs (#program env) ur hr)
+                val env = extendEnvironment env (mergeRibs (#program env) ur hr) false
                 val (newInit,_) = defStmts env init
                 val newCond = defExpr env cond
                 val newUpdate = defExpr env update
@@ -2104,7 +2183,7 @@ and defStmt (env:ENV)
             let
                 val ty:Ast.TYPE_EXPR = defTypeExpr env ty
                 val (r0,i0) = defBindings env Ast.Var Name.noNS bindings
-                val env = extendEnvironment env r0
+                val env = extendEnvironment env r0 false
                 val (block:Ast.BLOCK, rib:Ast.RIB) = defBlock env block
             in
                 ({ bindings = bindings,   (* FIXME: what about inits *)
@@ -2373,7 +2452,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                 (* Class definitions are embedded in the ClassBlock so we
                    need to update the environment in that case *)
 
-                val _ = addToRib env f1
+                val env = addToOuterRib env f1
                 val (s2, f2) = defStmts env stmts
             in
                 (s1::s2,(mergeRibs (#program env) f1 f2))
@@ -2508,7 +2587,8 @@ and defDefns (env:ENV)
              (defns:Ast.DEFN list)
     : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let
-        fun loop (defns:Ast.DEFN list)
+        fun loop (env:ENV)
+                 (defns:Ast.DEFN list)
                  (unhoisted:Ast.RIB)
                  (hoisted:Ast.RIB)
                  (inits:Ast.INITS)
@@ -2519,13 +2599,8 @@ and defDefns (env:ENV)
                 let
                     val { program, ... } = env
                     val (unhoisted', hoisted', inits') = defDefn env d
-                    val _ = if (!doTrace) 
-                            then (trace ["defDefns: unhoisted: "]; Fixture.printRib unhoisted;
-                                  trace ["defDefns: hoisted: "]; Fixture.printRib hoisted;
-                                  trace ["defDefns: unhoisted': "]; Fixture.printRib unhoisted';
-                                  trace ["defDefns: hoisted': "]; Fixture.printRib hoisted')
-                            else ()
-
+                    val env = addToOuterRib env hoisted'
+                    val env = addToInnerRib env unhoisted'
                     val _ = trace(["defDefns: combining unhoisted ribs"]);                    
                     val combinedUnHoisted = mergeRibs program unhoisted unhoisted'
                     val _ = trace(["defDefns: combining hoisted ribs"]);        
@@ -2533,12 +2608,10 @@ and defDefns (env:ENV)
                     val _ = trace(["defDefns: combining inits"])
                     val combinedInits = inits @ inits'
                 in
-                    addToRib env unhoisted';
-                    addToRib env hoisted';
-                    loop ds combinedUnHoisted combinedHoisted combinedInits
+                    loop env ds combinedUnHoisted combinedHoisted combinedInits
                 end
         val _ = trace([">> defDefns"])
-        val res = loop defns [] [] []
+        val res = loop env defns [] [] []
         val _ = trace(["<< defDefns"])
     in
         res
@@ -2563,37 +2636,48 @@ and defBlock (env:ENV)
     : (Ast.BLOCK * Ast.RIB) =
     defBlockFull env b false
 
-and defTopBlock (env:ENV)
-                (b:Ast.BLOCK) = 
+and defDecorativeBlock (env:ENV)
+                       (b:Ast.BLOCK)
+    : (Ast.BLOCK * Ast.RIB) = 
     defBlockFull env b true
-
+    
 and defBlockFull (env:ENV)
                  (b:Ast.BLOCK)
-                 (top:bool)
+                 (decorative:bool)
+    (* 
+     * Returns the re-formed block *and* the rib of "escaping" defns:
+     * if the block is decorative, that's everything; if the block is 
+     * normal, it's only the hoists.
+     *)
     : (Ast.BLOCK * Ast.RIB) =
     let
         val Ast.Block { pragmas, defns, body, loc, ... } = b
         val _ = LogErr.setLoc loc
-        val env = if top 
+        val env = if decorative 
                   then env
-                  else extendEnvironment env []
+                  else extendEnvironment env [] false
         val (pragmas, env, unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs, hoisted_defn_fxtrs, inits) = defDefns env defns
-        val (body, hoisted_body_fxtrs) = defStmts env body
         val unhoisted = mergeRibs (#program env) 
                                   unhoisted_defn_fxtrs 
                                   unhoisted_pragma_fxtrs
+        val env = addToOuterRib env hoisted_defn_fxtrs
+        val env = addToInnerRib env unhoisted
+        val (body, hoisted_body_fxtrs) = defStmts env body
         val hoisted = mergeRibs (#program env) hoisted_defn_fxtrs hoisted_body_fxtrs
-        val rib = if top
-                  then mergeRibs (#program env) unhoisted hoisted
-                  else unhoisted
+        val contained = if decorative
+                        then []
+                        else unhoisted
+        val escaped = if decorative
+                      then mergeRibs (#program env) hoisted unhoisted 
+                      else hoisted
     in
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
-                     head = SOME (Ast.Head (rib, inits)),
+                     head = SOME (Ast.Head (contained, inits)),
                      loc = loc},
-         hoisted)
+         escaped)
     end
 
 (*
@@ -2603,24 +2687,38 @@ and defBlockFull (env:ENV)
 
 and defFragment (env:ENV) 
                 (frag:Ast.FRAGMENT)
-    : Ast.FRAGMENT =
+    : (Ast.FRAGMENT * Ast.RIB) =
     let
         val env = enterFragment env frag
     in
         case frag of 
             Ast.Package { name, fragments } => 
-            Ast.Package { name = name, fragments = List.map (defFragment env) fragments }
+            let 
+                fun doFrag (frag, (frags,escaped)) = 
+                    let 
+                        val (frag', escaped') = defFragment (addToOuterRib env escaped) frag
+                    in
+                        (frag' :: frags, escaped' @ escaped)
+                    end
+                val (fragments', escaped) = List.foldl doFrag ([], []) fragments
+            in                
+                (Ast.Package { name = name, 
+                               fragments = fragments' },
+                 escaped)
+            end
+
           | Ast.Anon blk => 
             let 
-                val (blk, _) = defTopBlock env blk
+                val (blk, escaped) = defDecorativeBlock env blk
             in
-                Ast.Anon blk
+                (Ast.Anon blk, escaped)
             end
     end
 
 and mkTopEnv (prog:Fixture.PROGRAM) 
     : ENV =
-    { ribId = NONE,
+    { outerRibs = [Fixture.getRootRib prog],
+      innerRibs = [],
       tempOffset = 0,
       openNamespaces = (if (Fixture.getLangEd prog > 3)
                         then [[Name.noNS, Ast.Internal Ustring.empty], [Name.ES4NS]]
@@ -2638,15 +2736,29 @@ and summarizeFragment (Ast.Package { name, fragments }) =
      LogErr.log ["}"])
   | summarizeFragment (Ast.Anon (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
     Fixture.printRib rib
-  | summarizeFragment _ = ()
 
 and defTopFragment (prog:Fixture.PROGRAM)
                    (frag:Ast.FRAGMENT)
     : (Fixture.PROGRAM * Ast.FRAGMENT) =
     let
         val topEnv = mkTopEnv prog
-        val frag = defFragment topEnv frag
+        val (frag, escaped) = defFragment topEnv frag
+    (* 
+     * We stuff the escapees back inside a surrounding non-name 
+     * package frag so they actually get allocated by someone.
+     *
+     * FIXME: could make this a little less silly if we were to 
+     * give a HEAD to packages.
+     *)
+        val escapeeFrag = Ast.Anon 
+                              (Ast.Block { pragmas = [],
+                                           defns = [],                                                                       
+                                           head = SOME (Ast.Head (escaped, [])),
+                                           body = [],
+                                           loc = NONE })
+        val frag = Ast.Package { name = [], fragments = [ escapeeFrag, frag ] }
     in
+        Fixture.extendRootRib prog escaped (Type.matches prog []);
         trace ["fragment definition complete"];
         (if !doTraceSummary
          then summarizeFragment frag
