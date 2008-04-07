@@ -70,33 +70,44 @@ fun fmtType t = if !doTrace
  * that may be a static or dynamic error,
  * since normalization runs both at verify-time and eval-time.
  * 
- * Since normalization always returns a normalized type, 
- * the isGround predicate etc is no longer necessary.
- *
+ * There are two kinds of type variables. 
+ * - Defined type variables are introduced via type definitions "type X = T".
+ * - Generic type variables are introduced via  function.<X>() {...}, 
+ *   class C.<X> {...} and interface I.<X> { ... }
+ * 
+ * Normalization works in the context of an environment (aka RIBS) that may contain two
+ * kinds of bindings for type variable.
+ * - TypeFixture, where the environment associated a type variable with a corresponding type,
+ *   which are introduced at verify time for defined type variables, 
+ *   and also at eval time for all type variables.
+ * - TypeVarFixture just contain a type variable, without a corresponding type, 
+ *   and are introduced at verify time for generic type variables.
+ * 
  * Normalized types satisfy the following properties:
  *
- * # If two types are equivalent (in that they are both subtypes of each other),
+ * - If two types are equivalent (in that they are both subtypes of each other),
  *   then normalization maps those types to the same type. This property in necessary
  *   to implement C#-style semantics for static fields of generic classes.
  *
- * # FIXME: Normalized types are closed, so that they can be safely propogated
- *   outside of their current environment env without worrying about variable capture etc.
- *   Normalized types may have references to class or interface defns, but these are from
- *   a global namespace (FIXME: say more), and so are not a concern.
- *   Of course, normalized types may include LamType (eg for generic functions),
- *   and so the body of the LamType will *not*, in general, be closed.
+ * - Normalized types are *NOT* necessarily closed. 
+ *   They do not contain references to TypeFixtures, since those are inlined,
+ *   but may still contain references to TypeVarFixtures, provided the  
+ *   environment has such bindings, which may happen at verify time.
+ *   At evaluation time, all normalized types should be closed.
  *
- * # Normalized types are in beta-normal form, in that any applications of LamTypes 
+ * - Normalized types are in beta-normal form, in that any applications of LamTypes 
  *   have been reduced. 
  *
- * # Normalized types are proper types, in that they contain no type constructors (see below)
+ * - Normalized types are proper types, in that they contain no type constructors (see below)
  *   ie no LamTypes, and no references to generic classes or interfaces
  *   without the appropriate number of type parameters.
  *
+ * --------
+ * 
  * A "type constructor" is a type that is not quite a proper type, in that it needs some number
  * of type arguments to become a proper type.  
  * Unparameterized references to generic typedefs,  classes, and interfaces are type constructors.
-
+ *
  * Consider the subtle distinction:
  *   type f.<X> = function(X):X
  *   type g = function.<X>(X):X
@@ -109,8 +120,6 @@ fun fmtType t = if !doTrace
  * in that f.<int> is also a type. Ditto for g.
  * Thus function.<X>(X):X   is both a type constructor and a proper type.
 
-
-for fn application, to type args and regular args are separate, at least in AST, but that's fine.
 EXPR = 
        | CallExpr of {
              func: EXPR,
@@ -128,94 +137,6 @@ EXPR =
          { params: IDENT list,
            body: TYPE_EXPR }
  *)
-
-fun findNamespace (prog:Fixture.PROGRAM)
-                  (ribId:Ast.RIB_ID option)
-                  (expr:Ast.EXPR)
-    : Ast.NAMESPACE option =
-    let
-        fun withMname (mname:Ast.MULTINAME) 
-            : Ast.NAMESPACE option = 
-            case Fixture.resolveToFixture prog mname ribId of
-                NONE => NONE
-              | SOME (n, Ast.NamespaceFixture ns) => SOME ns
-              | _ => error ["namespace expression resolved ",
-                            "to non-namespace fixture"]
-    in    
-        case expr of
-            Ast.LiteralExpr (Ast.LiteralNamespace ns) => SOME ns
-
-          | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
-            (LogErr.setLoc loc;
-             withMname {id = ident, nss = openNamespaces})
-
-          | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
-            (LogErr.setLoc loc;
-             case findNamespace prog ribId qual of
-                 NONE => NONE
-               | SOME ns => withMname {id = ident, nss = [[ns]]})
-
-          | Ast.LexicalRef _ => error ["dynamic name in namespace"]
-                                
-          | _ => error ["dynamic expr in namespace"]
-    end
-
-fun liftOption (f:'a -> 'a option) 
-               (ls:'a list) 
-    : (('a list) option) = 
-    let
-        val (res:(('a option) list)) = map f ls
-    in
-        if List.all Option.isSome res
-        then SOME (map Option.valOf res)
-        else NONE
-    end
-
-(* e is generic type vars in scope *)
-fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
-    : bool = 
-    let
-        fun isGroundType t = isGroundTypeEnv e t
-        fun isGroundField { name, ty } = isGroundType ty
-        fun isGroundOption NONE = true
-          | isGroundOption (SOME t) = isGroundType t
-    in
-        case t of 
-            Ast.SpecialType _ => true
-          | Ast.InstanceType it => 
-            (length (#typeParams it) = length (#typeArgs it))   (* CF: not ground, well-formed *)
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
-            if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
-            then (trace ["bound var in ground type"]; true)
-            else (trace ["free var in ground type"]; false)
-          | Ast.TypeName _ => false
-          | Ast.ElementTypeRef _ => false
-          | Ast.FieldTypeRef _ => false
-          | Ast.AppType _ => false
-          | Ast.LamType {params, body} => isGroundTypeEnv (params @ e) body
-          | Ast.NullableType { expr, ... } => isGroundType expr
-          | Ast.ObjectType fields => List.all isGroundField fields
-          | Ast.LikeType t => isGroundType t
-          | Ast.WrapType t => isGroundType t
-          | Ast.UnionType tys => List.all isGroundType tys
-          | Ast.ArrayType tys =>List.all isGroundType tys
-          | Ast.FunctionType { params, result, thisType, ... } =>   (* where are generics? *)
-            List.all isGroundType params andalso
-            isGroundType result andalso
-            isGroundOption thisType
-    end
-
-fun isGroundType (t:Ast.TYPE_EXPR) 
-    : bool = 
-    isGroundTypeEnv [] t
-
-fun groundExpr (ty:Ast.TYPE_EXPR)  (* or "groundType" *)
-    : Ast.TYPE_EXPR = 
-    if isGroundType ty
-    then ty
-    else (Pretty.ppType ty;
-          error ["extracting ground type expr from non-ground type expr"])
-
 
 (* -----------------------------------------------------------------------------
  * Normalization
@@ -375,14 +296,48 @@ fun normalizeUnions (ty:Ast.TYPE_EXPR)
 
 
 (* FIXME *)
-(* Checks that the given type does not contain any type constructors *)
+(* Checks that the given type does not contain any type constructors,
+ * unless they are immediately applied to an appropriate number of arguments.
+ * Assumes the type already normalized, so no beta redexes.
+ * FIXME: need to deal with InstanceType and AppType.
+ *)
 
-fun checkProperType (ty:Ast.TYPE_EXPR) : unit = ()    
+fun foreachTyExpr (f:Ast.TYPE_EXPR -> unit) (ty:Ast.TYPE_EXPR) : unit =
+    let in
+        mapTyExpr (fn t => let in f t; t end) ty;
+        ()
+    end
 
+fun checkProperType (ty:Ast.TYPE_EXPR) : unit = 
+    let fun check ty2 = 
+            case ty2 of
+                Ast.LamType { params, body } => 
+                error ["Improper occurrence of type consgtructor ", LogErr.ty ty2, 
+                       " in type ", LogErr.ty ty]
+              | Ast.AppType { base = Ast.InstanceType _, args } =>
+                (* FIXME: check instance type *)
+                let in List.map check args; () end
+              | Ast.AppType { base, args } =>
+                error ["Improper occurrence of type application ", LogErr.ty ty2, 
+                       " in type ", LogErr.ty ty]
+              | Ast.InstanceType _ =>
+                (* FIXME *)
+                ()
+              | _ => foreachTyExpr check ty
+    in 
+        check ty
+    end
     
-(* By normalizing names when we look up a type fixture in the appropriate environment,
- * we never deal with open types, so I don't believe there are any problems with
- * type name capture or shadowing, etc. 
+(* normalizeNames: replace all references to TypeFixtures by the corresponding type.
+ * OUCH!
+ class C.<Y> {
+   type X = Y
+   function f.<Y>() {
+         X <- how to normalize this?
+         (1) require no shadowing of type variables
+         (2) alpha-rename statements etc
+         (3) find some other way to unique-ify references - RIBID ...
+
  *) 
 
 fun normalizeNames (env:Ast.RIBS)
@@ -527,6 +482,98 @@ fun normalize (ribs:Ast.RIB list)
 (* -----------------------------------------------------------------------------
  * Matching helpers
  * ----------------------------------------------------------------------------- *)
+
+
+(* CF: unused
+fun findNamespace (prog:Fixture.PROGRAM)
+                  (ribId:Ast.RIB_ID option)
+                  (expr:Ast.EXPR)
+    : Ast.NAMESPACE option =
+    let
+        fun withMname (mname:Ast.MULTINAME) 
+            : Ast.NAMESPACE option = 
+            case Fixture.resolveToFixture prog mname ribId of
+                NONE => NONE
+              | SOME (n, Ast.NamespaceFixture ns) => SOME ns
+              | _ => error ["namespace expression resolved ",
+                            "to non-namespace fixture"]
+    in    
+        case expr of
+            Ast.LiteralExpr (Ast.LiteralNamespace ns) => SOME ns
+
+          | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
+            (LogErr.setLoc loc;
+             withMname {id = ident, nss = openNamespaces})
+
+          | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
+            (LogErr.setLoc loc;
+             case findNamespace prog ribId qual of
+                 NONE => NONE
+               | SOME ns => withMname {id = ident, nss = [[ns]]})
+
+          | Ast.LexicalRef _ => error ["dynamic name in namespace"]
+                                
+          | _ => error ["dynamic expr in namespace"]
+    end
+*)
+
+(* CF: unused
+fun liftOption (f:'a -> 'a option) 
+               (ls:'a list) 
+    : (('a list) option) = 
+    let
+        val (res:(('a option) list)) = map f ls
+    in
+        if List.all Option.isSome res
+        then SOME (map Option.valOf res)
+        else NONE
+    end
+*)
+
+(* e is generic type vars in scope *)
+fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
+    : bool = 
+    let
+        fun isGroundType t = isGroundTypeEnv e t
+        fun isGroundField { name, ty } = isGroundType ty
+        fun isGroundOption NONE = true
+          | isGroundOption (SOME t) = isGroundType t
+    in
+        case t of 
+            Ast.SpecialType _ => true
+          | Ast.InstanceType it => 
+            (length (#typeParams it) = length (#typeArgs it))   (* CF: not ground, well-formed *)
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+            if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
+            then (trace ["bound var in ground type"]; true)
+            else (trace ["free var in ground type"]; false)
+          | Ast.TypeName _ => false
+          | Ast.ElementTypeRef _ => false
+          | Ast.FieldTypeRef _ => false
+          | Ast.AppType _ => false
+          | Ast.LamType {params, body} => isGroundTypeEnv (params @ e) body
+          | Ast.NullableType { expr, ... } => isGroundType expr
+          | Ast.ObjectType fields => List.all isGroundField fields
+          | Ast.LikeType t => isGroundType t
+          | Ast.WrapType t => isGroundType t
+          | Ast.UnionType tys => List.all isGroundType tys
+          | Ast.ArrayType tys =>List.all isGroundType tys
+          | Ast.FunctionType { params, result, thisType, ... } =>   (* where are generics? *)
+            List.all isGroundType params andalso
+            isGroundType result andalso
+            isGroundOption thisType
+    end
+
+fun isGroundType (t:Ast.TYPE_EXPR) 
+    : bool = 
+    isGroundTypeEnv [] t
+
+fun groundExpr (ty:Ast.TYPE_EXPR)  (* or "groundType" *)
+    : Ast.TYPE_EXPR = 
+    if isGroundType ty
+    then ty
+    else (Pretty.ppType ty;
+          error ["extracting ground type expr from non-ground type expr"])
 
 
 fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
@@ -801,3 +848,6 @@ fun getNamedGroundType (prog:Fixture.PROGRAM)
             
 
 end
+
+
+

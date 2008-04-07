@@ -2364,7 +2364,7 @@ and applyTypesToClass (regs:Mach.REGS)
         val { cls, env } = clsClosure
         val Ast.Cls { instanceType, ... } = cls
     in
-        if Type.isGroundType instanceType
+        if Type.isGroundType instanceType (* CF: ?? *)
         then classVal
         else 
             let
