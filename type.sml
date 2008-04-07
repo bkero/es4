@@ -69,6 +69,9 @@ fun fmtType t = if !doTrace
  * It is an error if a type cannot be normalized; 
  * that may be a static or dynamic error,
  * since normalization runs both at verify-time and eval-time.
+ * 
+ * Since normalization always returns a normalized type, 
+ * the isGround predicate etc is no longer necessary.
  *
  * Normalized types satisfy the following properties:
  *
@@ -453,24 +456,6 @@ fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
         id (* FIXME: add postfix *)
     end
 
-(* Perform capture-free substitution of "arg" for all free occurrences of "id" in ty".
- *)
-
-fun substType (id:Ast.IDENT) (arg:Ast.TYPE_EXPR) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
-    case ty of
-        Ast.LamType { params, body } =>
-        
-        if List.exists (fn id' => id=id') params
-        then ty (* shadowed *) 
-        else 
-            let valAst.LamType { params=params,
-                       body = substType id arg body}
-      | Ast.TypeName (Ast.Identifier { ident=id', ... }) =>
-        if id = id'
-        then arg
-        else ty
-      | _ => mapTyExpr (substType id arg) ty
-
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
  *)
 
@@ -479,7 +464,7 @@ fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR)
         Ast.LamType { params, body } =>
         let val uniqParams = map uniqueIdent params
             val refUniqParams = 
-                map (fun id => Ast.TypeName (Ast.Identifier { ident=id, openNamespaces = [] }))
+                map (fn id => Ast.TypeName (Ast.Identifier { ident=id, openNamespaces = [] }))
                     uniqParams
             val body' = substTypes uniqParams refUniqParams body
             val body'' = substTypes params args body'
@@ -487,32 +472,20 @@ fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR)
             Ast.LamType { params=uniqParams, body=body'' }
         end
       | Ast.TypeName (Ast.Identifier { ident=id', ... }) =>
-        if id = id'
-        then arg
-        else ty
-      | _ => mapTyExpr (substType id arg) ty
+        let fun lookup ids args =
+                case (ids, args) of
+                    ([],[]) => ty
+                  | (id::idRest, arg::argRest) =>
+                    if id = id'
+                    then arg
+                    else lookup idRest argRest
+        in 
+            lookup ids args
+        end
+      | _ => mapTyExpr (substTypes ids args) ty
 
 
-
-    case (params,args) of
-        ([],[]) => ty
-      | (param::params, arg::args) =>
-        substTypes params args (substType param arg ty)
-        
-
-(* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
- * The types "args" are closed (may not be fully normalized yet, but certainly closed)
- * so don't need to worry about variable capture. 
- *)
-
-fun substTypes (params:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
-    case (params,args) of
-        ([],[]) => ty
-      | (param::params, arg::args) =>
-        substTypes params args (substType param arg ty)
 (* Perform beta-reduction of all AppTypes applied to a LamType.
- * When normalizeLambdas is called, all typedefs have been inlined, 
- * so don't need to worry about variable capture.
  *)
 
 fun normalizeLambdas (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR = 
