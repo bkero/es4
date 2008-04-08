@@ -34,7 +34,7 @@
 structure Type = struct
 
 val doTrace = ref false
-fun log ss = LogErr.log ("[type] " :: ss) 
+fun log ss = LogErr.log ("[type] " :: ss)  
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.typeError ss
 
@@ -334,9 +334,36 @@ fun checkProperType (ty:Ast.TYPE_EXPR) : unit =
    type X = Y
    function f.<Y>() {
          X <- how to normalize this?
-         (1) require no shadowing of type variables
-         (2) alpha-rename statements etc
-         (3) find some other way to unique-ify references - RIBID ...
+   }
+ }
+
+ (1) require no shadowing of type variables
+ (2) alpha-rename statements etc
+ (3) find some other way to unique-ify references - RIBID ...
+
+
+     and TYPE_EXPR =
+         SpecialType of SPECIAL_TY
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
+       | TypeName of IDENT_EXPR
+
+
+ CLASS_DEFN =
+           { ns: EXPR option,
+             ident: IDENT,             
+             nonnullable: bool,
+             dynamic: bool,
+             final: bool,
+             params: IDENT list,  ****
+             extends: TYPE_EXPR option, 
+             implements: TYPE_EXPR list,
+             classDefns: DEFN list,
+             instanceDefns: DEFN list,
+             instanceStmts: STMT list,
+             ctorDefn: CTOR option }
+
+type IDENT = Ustring.STRING
 
  *) 
 
