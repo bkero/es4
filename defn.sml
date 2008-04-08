@@ -323,17 +323,18 @@ fun enterFragment (env:ENV)
               labels, className, packageName, 
               defaultNamespace, program, func } = env                                           
     
-        val (newDefaultNs, newPkgName, newOpenNss) = 
+        val (newProgram, newDefaultNs, newPkgName, newOpenNss) = 
             case frag of 
                 Ast.Package { name, ... } => 
                 let 
                     val packageIdent = packageIdentFromPath name
                 in
-                    Fixture.addPackageName program name;
-                    (Ast.Internal packageIdent, name,
+                    (Fixture.addPackageName program name, 
+                     Ast.Internal packageIdent, 
+                     name,
                      [[Ast.Internal packageIdent, Ast.Public packageIdent]] @ openNamespaces)
                 end
-              | _ => (defaultNamespace, packageName, openNamespaces)
+              | _ => (program, defaultNamespace, packageName, openNamespaces)
     in
         { innerRibs = innerRibs, 
           outerRibs = outerRibs,
@@ -343,7 +344,7 @@ fun enterFragment (env:ENV)
           className = className,
           packageName = newPkgName,
           defaultNamespace = newDefaultNs,
-          program = program,
+          program = newProgram,
           func = func }
     end
 
@@ -433,11 +434,6 @@ fun addToOuterRib (env:ENV)
           program = program,
           func = func }
     end
-
-
-fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
-    : unit =
-    Fixture.addPackageName (#program env) newPkgName
 
 
 fun updateTempOffset (env:ENV) (newTempOffset:int)
@@ -1612,7 +1608,7 @@ and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
     : (Ast.PRAGMA list * ENV * Ast.RIB) =
     let
-        val program = #program env
+        val program = ref (#program env)
         val innerRibs  = #innerRibs env
         val outerRibs  = #outerRibs env
         val defaultNamespace = ref (#defaultNamespace env)
@@ -1631,7 +1627,7 @@ and defPragmas (env:ENV)
               className = (#className env),
               packageName = (#packageName env),
               defaultNamespace = !defaultNamespace,
-              program = (#program env),
+              program = !program,
               func = (#func env) }
 
         fun defPragma x =
@@ -1671,7 +1667,7 @@ and defPragmas (env:ENV)
                              then Ast.Public id
                              else Ast.LimitedNamespace (name,Ast.Public id)
                 in
-                    Fixture.addPackageName program package;
+                    program := Fixture.addPackageName (!program) package;
                     trace2 ("openning package ",id);
                     opennss  := addNamespace ns (!opennss);
                     Ast.Import {package=package, name=name}
@@ -2716,11 +2712,12 @@ and defFragment (env:ENV)
     end
 
 and mkTopEnv (prog:Fixture.PROGRAM) 
+             (langEd:int)
     : ENV =
     { outerRibs = [Fixture.getRootRib prog],
       innerRibs = [],
       tempOffset = 0,
-      openNamespaces = (if (Fixture.getLangEd prog > 3)
+      openNamespaces = (if (langEd > 3)
                         then [[Name.noNS, Ast.Internal Ustring.empty], [Name.ES4NS]]
                         else [[Name.noNS, Ast.Internal Ustring.empty]]),
       labels = [],
@@ -2739,9 +2736,10 @@ and summarizeFragment (Ast.Package { name, fragments }) =
 
 and defTopFragment (prog:Fixture.PROGRAM)
                    (frag:Ast.FRAGMENT)
+                   (langEd:int)
     : (Fixture.PROGRAM * Ast.FRAGMENT) =
     let
-        val topEnv = mkTopEnv prog
+        val topEnv = mkTopEnv prog langEd
         val (frag, escaped) = defFragment topEnv frag
     (* 
      * We stuff the escapees back inside a surrounding non-name 
@@ -2757,8 +2755,8 @@ and defTopFragment (prog:Fixture.PROGRAM)
                                            body = [],
                                            loc = NONE })
         val frag = Ast.Package { name = [], fragments = [ escapeeFrag, frag ] }
+        val prog = Fixture.extendRootRib prog escaped (Type.matches prog [])
     in
-        Fixture.extendRootRib prog escaped (Type.matches prog []);
         trace ["fragment definition complete"];
         (if !doTraceSummary
          then summarizeFragment frag

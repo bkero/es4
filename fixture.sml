@@ -233,65 +233,48 @@ fun printRib (rib:Ast.RIB) =
  * Operations on PROGRAMs -- NB: much of PROGRAM is mutable.
  * ----------------------------------------------------------------------------- *)
                 
-type PROGRAM = { rootRib: Ast.RIB ref,
-                 nextRibId: Ast.RIB_ID ref,
-                 ribs: (RIB_RECORD IntMap.map) ref,
-                 packageNames: ((Ast.IDENT list) list) ref,
-                 langEd: int ref,
-                 
-                 (* fixtureCache lazily mirrors the contents of the rib records *)
-                 fixtureCache: ((Ast.NAME * Ast.FIXTURE) FixtureMap.map) ref, 
-                 cacheSize: int }
+type PROGRAM = { rootRib: Ast.RIB,
+                 packageNames: ((Ast.IDENT list) list) }
 
-fun mkProgram (langEd:int) 
-              (topRib:Ast.RIB)
+               
+fun mkProgram (topRib:Ast.RIB)
     : PROGRAM =
-    { rootRib = ref topRib, 
-      nextRibId = ref 0,
-      ribs = ref IntMap.empty,
-      packageNames = ref [],
-      langEd = ref langEd,
-      
-      fixtureCache = ref FixtureMap.empty,
-      cacheSize = 4096 }
-
-
-fun updateLangEd (prog:PROGRAM) 
-                 (langEd:int)                  
-    : unit = 
-    ((#langEd prog) := langEd)
-    
-
-fun getLangEd (prog:PROGRAM) 
-    : int = 
-    (!(#langEd prog))
+    { rootRib = topRib, 
+      packageNames = [] }
 
 
 fun extendRootRib (prog:PROGRAM)
                   (additions:Ast.RIB)
                   (tyeq:TYEQ)
-    : unit = 
+    : PROGRAM = 
     let
-        val oldRib = !(#rootRib prog)
+        val { packageNames, ... } = prog
+        val oldRib = (#rootRib prog)
         val newRib = mergeRibs tyeq oldRib additions
     in
-        (#rootRib prog) := newRib
+        { rootRib = newRib,
+          packageNames = packageNames }
     end
         
 
 fun getRootRib (prog:PROGRAM)
     : Ast.RIB = 
-    !(#rootRib prog)
+    (#rootRib prog)
 
 
 fun addPackageName (prog:PROGRAM)
                    (packageName:Ast.IDENT list)
-    : unit = 
-    (#packageNames prog) := packageName :: (!(#packageNames prog))
+    : PROGRAM = 
+    let
+        val { rootRib, ... } = prog
+    in
+        { rootRib = rootRib,
+          packageNames = (packageName :: (#packageNames prog)) }
+    end
 
 
 fun getPackageNames (prog:PROGRAM)
     : Ast.IDENT list list = 
-    !(#packageNames prog)
+    (#packageNames prog)
 
 end

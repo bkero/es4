@@ -4451,7 +4451,7 @@ and parseFunctionFromArgs (regs:Mach.REGS)
                                 Parser.AllowColon,
                                 Parser.AllowIn)
 
-        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#prog regs)) funcExpr
+        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#prog regs) (Mach.getLangEd regs)) funcExpr
     in
         (fullStr, funcExpr)
     end

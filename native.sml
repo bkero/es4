@@ -592,7 +592,7 @@ fun eval (regs:Mach.REGS)
                     val frag = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-                    val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
+                    val (prog, frag) = (Defn.defTopFragment (#prog regs) frag (Mach.getLangEd regs)
                                         handle
                                         LogErr.DefnError de => raise Eval.ThrowException (str de))
                     val _ = (Verify.verifyTopFragment prog false frag
@@ -939,7 +939,7 @@ fun load (regs:Mach.REGS)
         val frag = Parser.parseFile fname
             handle LogErr.LexError le => raise Eval.ThrowException (str le)
                  | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-        val (prog, frag) = (Defn.defTopFragment (#prog regs) frag
+        val (prog, frag) = (Defn.defTopFragment (#prog regs) frag (Mach.getLangEd regs)
                             handle
                             LogErr.DefnError de => raise Eval.ThrowException (str de))
         val _ = (Verify.verifyTopFragment prog false frag

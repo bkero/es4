@@ -40,6 +40,7 @@ val doTrace = ref false
 fun log ss = LogErr.log ("[boot] " :: ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.hostError ss
+val langEd = 4
 
 
 fun lookupRoot (prog:Fixture.PROGRAM)
@@ -148,7 +149,7 @@ fun loadFile (prog:Fixture.PROGRAM)
         val frag = Parser.parseFile f
         val _ = trace ["defining boot file ", f]
     in
-        Defn.defTopFragment prog frag
+        Defn.defTopFragment prog frag langEd
     end
 
 fun loadFiles (prog:Fixture.PROGRAM) 
@@ -159,7 +160,7 @@ fun loadFiles (prog:Fixture.PROGRAM)
             let 
                 val _ = trace ["parsing and defining boot file ", file]
                 val frag = Parser.parseFile file
-                val (prog', frag') = Defn.defTopFragment prog frag
+                val (prog', frag') = Defn.defTopFragment prog frag langEd
             in
                 f prog' ((file, frag')::accum) files
             end
@@ -249,8 +250,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val dir = OS.Path.joinDirFile {dir = baseDir, file = "builtins"}
         fun builtin file = OS.Path.joinDirFile {dir = dir, file = file}
         val _ = Native.registerNatives ();
-        val langEd = 4
-        val prog = Fixture.mkProgram langEd Defn.initRib
+        val prog = Fixture.mkProgram Defn.initRib
 
         (*
          * We have to do a small bit of delicate work here because we have to 

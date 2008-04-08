@@ -47,13 +47,11 @@ signature FIXTURE = sig
     val mergeRibs : TYEQ -> Ast.RIB -> Ast.RIB -> Ast.RIB
 
     type PROGRAM
-    val mkProgram : int -> Ast.RIB -> PROGRAM
-    val updateLangEd : PROGRAM -> int -> unit
-    val getLangEd : PROGRAM -> int
+    val mkProgram : Ast.RIB -> PROGRAM
 
     val getRootRib : PROGRAM -> Ast.RIB
-    val extendRootRib : PROGRAM -> Ast.RIB -> TYEQ -> unit
-    val addPackageName : PROGRAM -> Ast.IDENT list -> unit
+    val extendRootRib : PROGRAM -> Ast.RIB -> TYEQ -> PROGRAM
+    val addPackageName : PROGRAM -> Ast.IDENT list -> PROGRAM
     val getPackageNames : PROGRAM -> Ast.IDENT list list
 
 end

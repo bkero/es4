@@ -212,6 +212,7 @@ datatype VAL = Object of OBJ
            * Auxiliary machine/eval data structures, not exactly
            * spec-normative, but important! Embedded in REGS.
            *)
+          langEd: int ref,
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
@@ -1094,6 +1095,23 @@ fun setBooting (regs:REGS)
         booting := isBooting
     end
 
+fun setLangEd (regs:REGS) 
+              (newLangEd:int)
+    : unit =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        langEd := newLangEd
+    end
+
+fun getLangEd (regs:REGS)               
+    : int =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        !langEd
+    end
+
 fun getSpecials (regs:REGS) =
     let 
         val { aux = Aux { specials = SpecialObjs ss, ... }, ... } = regs
@@ -1222,6 +1240,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          booleanFalse = ref NONE,
                          doubleNaN = ref NONE }
         val aux = Aux { booting = ref false,
+                        langEd = ref 4,
                         specials = specials,
                         stack = ref [],
                         objCache = ocache,
