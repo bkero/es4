@@ -77,6 +77,7 @@ datatype VAL = Object of OBJ
          Obj of { ident: OBJ_IDENT,
                   tag: VAL_TAG,
                   props: PROP_BINDINGS,
+                  rib: Ast.RIB ref,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
 
@@ -211,6 +212,7 @@ datatype VAL = Object of OBJ
            * Auxiliary machine/eval data structures, not exactly
            * spec-normative, but important! Embedded in REGS.
            *)
+          langEd: int ref,
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
@@ -514,6 +516,35 @@ fun hasMagic (ob:OBJ) =
             SOME _ => true
           | NONE => false
 
+fun setRib (obj:OBJ)
+           (r:Ast.RIB)
+    : unit =
+    let
+        val Obj { rib, ... } = obj
+    in
+        rib := r
+    end
+
+fun getRib (obj:OBJ)
+    : Ast.RIB =
+    let
+        val Obj { rib, ... } = obj
+    in
+        !rib
+    end
+
+fun getRibs (scope:SCOPE) 
+    : Ast.RIBS = 
+      let   
+          val Scope {object, parent, ...} = scope
+          val rib = getRib object
+      in
+          case parent of 
+              NONE => [rib]
+            | SOME p => rib :: (getRibs p)
+      end
+
+
 fun setPropDontEnum (props:PROP_BINDINGS)
                     (n:Ast.NAME)
                     (dontEnum:bool)
@@ -550,6 +581,7 @@ fun newObj (t:VAL_TAG)
           tag = t,
           props = newPropBindings (),
           proto = ref p,
+          rib = ref [],
           magic = ref m }
 
 fun newObjNoTag _
@@ -1063,6 +1095,23 @@ fun setBooting (regs:REGS)
         booting := isBooting
     end
 
+fun setLangEd (regs:REGS) 
+              (newLangEd:int)
+    : unit =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        langEd := newLangEd
+    end
+
+fun getLangEd (regs:REGS)               
+    : int =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        !langEd
+    end
+
 fun getSpecials (regs:REGS) =
     let 
         val { aux = Aux { specials = SpecialObjs ss, ... }, ... } = regs
@@ -1191,6 +1240,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          booleanFalse = ref NONE,
                          doubleNaN = ref NONE }
         val aux = Aux { booting = ref false,
+                        langEd = ref 4,
                         specials = specials,
                         stack = ref [],
                         objCache = ocache,

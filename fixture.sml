@@ -233,183 +233,48 @@ fun printRib (rib:Ast.RIB) =
  * Operations on PROGRAMs -- NB: much of PROGRAM is mutable.
  * ----------------------------------------------------------------------------- *)
                 
-type PROGRAM = { rootRib: Ast.RIB ref,
-                 nextRibId: Ast.RIB_ID ref,
-                 ribs: (RIB_RECORD IntMap.map) ref,
-                 packageNames: ((Ast.IDENT list) list) ref,
-                 langEd: int ref,
-                 
-                 (* fixtureCache lazily mirrors the contents of the rib records *)
-                 fixtureCache: ((Ast.NAME * Ast.FIXTURE) FixtureMap.map) ref, 
-                 cacheSize: int }
+type PROGRAM = { rootRib: Ast.RIB,
+                 packageNames: ((Ast.IDENT list) list) }
 
-fun mkProgram (langEd:int) 
-              (topRib:Ast.RIB)
+               
+fun mkProgram (topRib:Ast.RIB)
     : PROGRAM =
-    { rootRib = ref topRib, 
-      nextRibId = ref 0,
-      ribs = ref IntMap.empty,
-      packageNames = ref [],
-      langEd = ref langEd,
-      
-      fixtureCache = ref FixtureMap.empty,
-      cacheSize = 4096 }
+    { rootRib = topRib, 
+      packageNames = [] }
 
 
-fun updateLangEd (prog:PROGRAM) 
-                 (langEd:int)                  
-    : unit = 
-    ((#langEd prog) := langEd)
-    
-
-fun getLangEd (prog:PROGRAM) 
-    : int = 
-    (!(#langEd prog))
-
-
-fun updateFixtureCache (prog:PROGRAM)
-                       (ribId:Ast.RIB_ID option)
-                       (mname:Ast.MULTINAME)
-                       (name:Ast.NAME)
-                       (fixture:Ast.FIXTURE) 
-    : unit = 
+fun extendRootRib (prog:PROGRAM)
+                  (additions:Ast.RIB)
+                  (tyeq:TYEQ)
+    : PROGRAM = 
     let
-        val c = (#fixtureCache prog)
-    in
-        c := FixtureMap.insert ((!c), (ribId, mname), (name, fixture))
-    end
-
-
-fun writeRibRec (prog:PROGRAM)
-                (ribId:Ast.RIB_ID)
-                (ribRec:RIB_RECORD)
-    : unit = 
-    let 
-        val { ribs, fixtureCache, ... } = prog
-    in
-        fixtureCache := FixtureMap.empty;
-        ribs := IntMap.insert ((!ribs), ribId, ribRec)
-    end
-
-
-fun allocRibRec (prog:PROGRAM)
-                (ribRec:RIB_RECORD)
-    : Ast.RIB_ID = 
-    let 
-        val { nextRibId, ... } = prog
-        val ribId = !nextRibId
-    in        
-        nextRibId := (ribId + 1
-                      handle Overflow => error ["overflowed maximum rib ID"]);
-        writeRibRec prog ribId ribRec;
-        ribId
-    end
-
-
-fun allocGeneralRib (prog:PROGRAM)
-                    (parent:Ast.RIB_ID option)
-    : Ast.RIB_ID =
-    allocRibRec prog (GeneralRib { parent = parent, rib = [] })
-
-
-fun getRibRec (prog:PROGRAM)
-              (ribId:Ast.RIB_ID)
-    : RIB_RECORD = 
-    case IntMap.find(!(#ribs prog), ribId) of
-        NONE => error ["no rib record found for rib #", Int.toString ribId ]
-      | SOME rr => rr
-
-
-(* 
- * Convert a ribId to a specific chain of RIBS and an indicator of whether it's closed.
- * Possibly we can do without this if we fix up the multiname algorithm to use the 
- * fixture cache explicitly. For now we do it the old way.
- *)
-
-fun getRibs (prog:PROGRAM)
-            (ribId:Ast.RIB_ID option)
-    : Ast.RIBS =
-    case ribId of 
-        NONE => [!(#rootRib prog)]
-      | SOME rid =>         
-        case getRibRec prog rid of 
-            GeneralRib { parent, rib } => (rib :: (getRibs prog parent))
-
-fun ribIsClosed (prog:PROGRAM)
-                (ribId:Ast.RIB_ID option)
-    : bool = false
-
-
-fun saveRib (prog:PROGRAM)
-            (ribId:Ast.RIB_ID option)
-            (rib:Ast.RIB)
-    : unit = 
-    case ribId of 
-        NONE => (#rootRib prog) := rib
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => 
-            writeRibRec prog rid (GeneralRib { parent=parent, rib=rib })
-
-
-fun extendRib (prog:PROGRAM)
-              (ribId:Ast.RIB_ID option)
-              (additions:Ast.RIB)
-              (tyeq:TYEQ)
-    : unit = 
-    let
-        val oldRib = case ribId of 
-                         NONE => !(#rootRib prog)
-                       | SOME rid => 
-                         case getRibRec prog rid of 
-                             GeneralRib { rib, ... } => rib
+        val { packageNames, ... } = prog
+        val oldRib = (#rootRib prog)
         val newRib = mergeRibs tyeq oldRib additions
     in
-        saveRib prog ribId newRib
+        { rootRib = newRib,
+          packageNames = packageNames }
     end
         
 
-fun resolveToFixture (prog:PROGRAM)
-                     (mn:Ast.MULTINAME)
-                     (rid:Ast.RIB_ID option)
-    : ((Ast.NAME * Ast.FIXTURE) option) =
-    let
-        val { fixtureCache, cacheSize, ... } = prog
-        val c = !fixtureCache
-        val k = (rid,mn)
-    in
-        case FixtureMap.find (c, k) of
-            SOME v => SOME v
-          | NONE => 
-            let
-                val ribs = getRibs prog rid
-            in
-                case Multiname.resolveInRibs mn ribs of 
-                    NONE => NONE
-                  | SOME (ribs, n) => 
-                    let 
-                        val (fix:Ast.FIXTURE) = getFixture (List.hd ribs) (Ast.PropName n)
-                    in
-                        if (FixtureMap.numItems c) < cacheSize
-                        then (fixtureCache := FixtureMap.insert (c, k, (n, fix)); SOME (n, fix))
-                        else SOME (n, fix)
-                    end
-            end
-    end
-
 fun getRootRib (prog:PROGRAM)
     : Ast.RIB = 
-    !(#rootRib prog)
+    (#rootRib prog)
 
 
 fun addPackageName (prog:PROGRAM)
                    (packageName:Ast.IDENT list)
-    : unit = 
-    (#packageNames prog) := packageName :: (!(#packageNames prog))
+    : PROGRAM = 
+    let
+        val { rootRib, ... } = prog
+    in
+        { rootRib = rootRib,
+          packageNames = (packageName :: (#packageNames prog)) }
+    end
 
 
 fun getPackageNames (prog:PROGRAM)
     : Ast.IDENT list list = 
-    !(#packageNames prog)
+    (#packageNames prog)
 
 end

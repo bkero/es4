@@ -850,9 +850,9 @@ val matches = normalizingPredicate groundMatches false
 fun instanceTy (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
     : Ast.TYPE_EXPR =
-    case Fixture.resolveToFixture prog { nss = [[(#ns n)]], id=(#id n) } NONE of
-        SOME (_, Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
-      | SOME (_, Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
+    case Fixture.getFixture (Fixture.getRootRib prog) (Ast.PropName n) of
+        (Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
+      | (Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
 fun groundType (prog:Fixture.PROGRAM)
