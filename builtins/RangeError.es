@@ -67,11 +67,11 @@ package
         }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
-        prototype var name = "RangeError";
+        public prototype var name = "RangeError";
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Number value out of range";
+        public prototype var message = "Number value out of range";
     }
 
 }

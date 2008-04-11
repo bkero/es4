@@ -67,10 +67,10 @@ package
         }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
-        prototype var name = "SyntaxError";
+        public prototype var name = "SyntaxError";
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Parsing error";
+        public prototype var message = "Parsing error";
     }
 }

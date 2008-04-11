@@ -86,7 +86,7 @@ package
             new Object(value);
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
-        prototype function toString()
+        public prototype function toString()
             this.Private::toString();
 
         intrinsic function toString() : string
@@ -99,7 +99,7 @@ package
             magic::getClassName(this);
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
-        prototype function toLocaleString()
+        public prototype function toLocaleString()
             this.Private::toLocaleString();
 
         intrinsic function toLocaleString() : string
@@ -110,7 +110,7 @@ package
 
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
-        prototype function valueOf()
+        public prototype function valueOf()
             this.Private::valueOf();
 
         intrinsic function valueOf() : Object
@@ -121,7 +121,7 @@ package
 
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
-        prototype function hasOwnProperty(name)
+        public prototype function hasOwnProperty(name)
             this.Private::hasOwnProperty(helper::toEnumerableId(name));
 
         // Bootstrapping barfs if this does not go directly to the magic,
@@ -135,7 +135,7 @@ package
 
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
-        prototype function isPrototypeOf(value)
+        public prototype function isPrototypeOf(value)
             this.Private::isPrototypeOf(value);
 
         intrinsic function isPrototypeOf(value): boolean
@@ -158,7 +158,7 @@ package
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
         /* E262-4 draft proposals:enumerability */
 
-        prototype function propertyIsEnumerable(name)
+        public prototype function propertyIsEnumerable(name)
             this.Private::propertyIsEnumerable(helper::toEnumerableId(name));
 
         intrinsic function propertyIsEnumerable(name: EnumerableId): boolean 
@@ -190,7 +190,7 @@ package
         }
         */
 
-        prototype function __createProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
+        public prototype function __createProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
             this.Private::__createProperty__(helper::toEnumerableId(name),
                                              value,
                                              enumerable === undefined ? true : boolean(enumerable),
