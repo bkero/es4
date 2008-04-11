@@ -3006,7 +3006,7 @@ and evalTypeExpr (regs:Mach.REGS)
         Ast.SpecialType st => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
       | Ast.ArrayType a => Mach.Null (* FIXME *)
-      | Ast.TypeName tn => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
+      | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.ObjectType ot => Mach.Null (* FIXME *)
       | Ast.LikeType lt => Mach.Null (* FIXME *)
@@ -5583,7 +5583,7 @@ and evalFragment (regs:Mach.REGS)
                    val exnStr = Ustring.toAscii (toUstring regs v)
                in
                    LogErr.setLoc loc;
-                   error regs ["uncaught exception: ", Ustring.toAscii (toUstring regs v)]
+                   error regs ["uncaught exception: ", exnStr]
                end
     end
 

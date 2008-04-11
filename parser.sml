@@ -45,6 +45,10 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[parse] " :: ss) else ()
 fun error ss = LogErr.parseError ss
 
+val astNonceCounter = ref 0
+fun nextAstNonce _ = ( astNonceCounter := (!astNonceCounter) + 1;
+                       !astNonceCounter)
+
 exception ParseError = LogErr.ParseError
 exception LexError = LogErr.LexError
 exception EofError = LogErr.EofError
@@ -5968,14 +5972,14 @@ and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
     case nd of
         Ast.Identifier {ident,...} =>
                 if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
-                then Ast.TypeName nd
-                else Ast.TypeName nd
+                then Ast.TypeName (nd, SOME (nextAstNonce()))
+                else Ast.TypeName (nd, SOME (nextAstNonce()))
 (* Don't convert to Ast.Any so we can distinguish from un-anno'd defs
    for handling compatibility cases, such as writable functions
         Ast.WildcardIdentifier =>
                 Ast.SpecialType Ast.Any
 *)
-      | _ => Ast.TypeName nd
+      | _ => Ast.TypeName (nd, SOME (nextAstNonce()))
 
 and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))])

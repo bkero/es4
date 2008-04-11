@@ -41,7 +41,7 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
 type IDENT = Ustring.STRING
 
-type RIB_ID = int
+type AST_NONCE = int
 
 type TYPEVAR_NONCE = int
 
@@ -231,7 +231,7 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | TypeName of IDENT_EXPR
+       | TypeName of (IDENT_EXPR * AST_NONCE option)
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE

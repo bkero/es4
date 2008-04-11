@@ -10,31 +10,17 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<p>
-
-There are four kinds of expressions: name, literal, general, and type.
+<p>There are four kinds of expressions: name, literal, value, and type.
 Literal expressions have a known type after parsing. Identifier expressions
 evaluate to a Name objects that are a part of a reference general expression. Type expressions compute
 values of type Type. General expressions include all other expressions.
 
-</p>
-
 == Identifier Expressions ==
 
-Identifier expressions evaluate to a singleton name. They occur as a part of
-a reference in a type or value expression, and in a field name of an object literal.
+<p>An ''IDENTIFIER_EXPRESSION'' evaluates to a ''NAME''.
 
 <IMPL>
-<pre>
-fun evalIdentExpr (regs:Mach.REGS)
-                  (identExpr:Ast.IDENT_EXPR)
-    : NAME =
-    case identExpr of
-        Ast.Identifier { ident } =>
-        { ns = NONE, id = evalExprToString regs ident }
-      | Ast.QualifiedIdentifier { qual, ident } =>
-        { ns = evalExprToNamespace regs qual, id = evalExprToString regs ident }
-</pre>
+<INCLUDE file="eval.sml" name="and evalIdentExpr">
 
 == Literals ==
 
@@ -43,6 +29,8 @@ machine values. Array, Object, Function, and RegExp literals are evaluated as
 described in the following sections.
 
 <pre>
+
+
 fun evalLiteralExpr (regs:Mach.REGS)
                     (lit:Ast.LITERAL)
     : Mach.VAL =
@@ -59,131 +47,18 @@ fun evalLiteralExpr (regs:Mach.REGS)
 
 === Object literals ===
 
-<pre>
-
-fun evalLiteralObjectExpr (regs:Mach.REGS)
-                          (fields:Ast.FIELD list)
-                          (ty:Ast.TY option)
-    : Mach.VAL =
-    let
-        fun searchFieldTypes n [] = Ast.SpecialType Ast.Any
-          | searchFieldTypes n ({name,ty}::ts) =
-            if n = name
-            then ty
-            else searchFieldTypes n ts
-        val tyExprs = case Option.map (evalTy regs) ty of
-                          NONE => []
-                        | SOME (Ast.ObjectType tys) => tys
-                        (* FIXME: hoist this to parsing or defn; don't use
-                         * a full TYPE_EXPR in LiteralObject. *)
-                        | SOME _ => error regs ["non-object type on object literal"]
-        val tag = Mach.ObjectTag tyExprs
-        val objectClass = needObj regs (getValue regs (#global regs) Name.nons_Object)
-        val Mach.Obj { magic, ... } = objectClass
-        val obj = case (!magic) of
-                      SOME (Mach.Class objectClassClosure) =>
-                      constructStandardWithTag regs objectClass objectClassClosure [] tag
-                    | _ => error regs ["Error in constructing array literal"]
-        val (Mach.Obj {props, ...}) = obj
-        fun processField {kind, name, init} =
-            let
-                val const = case kind of
-                                Ast.Const => true
-                              | Ast.LetConst => true
-                              | _ => false
-                val n = case evalIdentExpr regs name of
-                            Name n => n
-                          | Multiname n => Name.nons (#id n)
-                val v = evalExpr regs init
-                val ty = makeTy (searchFieldTypes (#id n) tyExprs)
-                val prop = { ty = ty,
-                             (* FIXME: handle virtuals *)
-                             state = Mach.ValProp v,
-                             attrs = { dontDelete = false,
-                                       dontEnum = false,
-                                       readOnly = const,
-                                       isFixed = false } }
-            in
-                Mach.addProp props n prop
-            end
-    in
-        List.app processField fields;
-        Mach.Object obj
-    end
-</pre>
+<IMPL>
+<INCLUDE file="eval.sml" name="and evalLiteralObjectExpr">
 
 === Array literals ===
 
-<pre>
-
-fun evalLiteralArrayExpr (regs:Mach.REGS)
-                         (exprs:Ast.EXPR list)
-                         (ty:Ast.TY option)
-    : Mach.VAL =
-    let
-        val vals = map (evalExpr regs) exprs
-        val tyExprs = case Option.map (evalTy regs) ty of
-                          NONE => [Ast.SpecialType Ast.Any]
-                        | SOME (Ast.ArrayType tys) => tys
-                        (* FIXME: hoist this to parsing or defn; don't use
-                         * a full TYPE_EXPR in LiteralArray. *)
-                        | SOME _ => error regs ["non-array type on array literal"]
-        val tag = Mach.ArrayTag tyExprs
-        val arrayClass = needObj regs (getValue regs (#global regs) Name.nons_Array)
-        val Mach.Obj { magic, ... } = arrayClass
-        val obj = case (!magic) of
-                      SOME (Mach.Class arrayClassClosure) =>
-                      constructStandardWithTag regs arrayClass arrayClassClosure [] tag
-                    | _ => error regs ["Error in constructing array literal"]
-        val (Mach.Obj {props, ...}) = obj
-        fun putVal n [] = n
-          | putVal n (v::vs) =
-            let
-                val name = Name.nons (Ustring.fromInt n)
-                (* FIXME: this is probably incorrect wrt. Array typing rules. *)
-                val ty = makeTy (if n < (length tyExprs)
-                                 then List.nth (tyExprs, n)
-                                 else (if (length tyExprs) > 0
-                                       then List.last tyExprs
-                                       else Ast.SpecialType Ast.Any))
-                val prop = { ty = ty,
-                             state = Mach.ValProp v,
-                             attrs = { dontDelete = false,
-                                       dontEnum = false,
-                                       readOnly = false,
-                                       isFixed = false } }
-            in
-                Mach.addProp props name prop;
-                putVal (n+1) vs
-            end
-        val numProps = putVal 0 vals
-    in
-        setValue regs obj Name.nons_length (newUInt regs (Real64.fromInt numProps));
-        Mach.Object obj
-    end
-
-</pre>
+<IMPL>
+<INCLUDE file="eval.sml" name="and evalLiteralArrayExpr">
 
 === RegExp literals ===
 
-<pre>
-fun evalLiteralRegExp (regs:Mach.REGS)
-                      (re:Ustring.STRING)
-    : Mach.VAL =
-    let fun findSplit 0 = 0
-          | findSplit n =
-            if Ustring.charCodeAt re n = Char.ord #"/" then
-                n
-            else
-                findSplit (n-1)
-        val len = Ustring.stringLength re
-        val split = findSplit (len - 1)
-    in
-        newRegExp regs 
-                  (Ustring.substring re      1             (split - 1) )
-                  (Ustring.substring re (split + 1) (len - (split + 1)))
-    end
-</pre>
+<IMPL>
+<INCLUDE file="eval.sml" name="and evalLiteralRegExp">
 
 == Value Expressions ==
 
@@ -193,76 +68,7 @@ and the abstract form of //LiteralExpr//, //ListExpr//, //LexicalRef//, //Object
 invoked by the function //evalStmt// and numerous other functions.
 
 <IMPL>
-<pre>
-fun evalExpr (regs:Mach.REGS)
-             (expr:Ast.EXPR)
-    : Mach.VAL =
-    case expr of
-        Ast.LiteralExpr lit =>
-        evalLiteralExpr regs lit
-
-      | Ast.ListExpr es =>
-        evalListExpr regs es
-
-      | Ast.LexicalRef { ident, loc } =>
-        evalLexicalRef regs ident loc
-
-      | Ast.ObjectRef { base, ident, loc } =>
-        evalObjectRef regs base ident loc
-
-      | Ast.LetExpr {defs, body, head} =>
-        evalLetExpr regs (valOf head) body
-
-      | Ast.TernaryExpr (aexpr, bexpr, cexpr) =>
-        evalCondExpr regs aexpr bexpr cexpr
-
-      | Ast.BinaryExpr (bop, aexpr, bexpr) =>
-        evalBinaryOp regs bop aexpr bexpr
-
-      | Ast.UnaryExpr (unop, expr) =>
-        evalUnaryOp regs unop expr
-
-      | Ast.TypeExpr ty =>
-        evalTypeExpr regs (evalTy regs ty)
-
-      | Ast.ThisExpr kind =>
-        evalThisExpr regs kind
-
-          (* 
-           * Naked super-exprs on their own are not permitted. Super is only 
-           * permitted in a few contexts, which we explicitly handle elsewhere
-           * (CallExprs and constructor settings).
-           *)
-      | Ast.SuperExpr _ => 
-           error regs ["super expression in illegal context"]
-
-      | Ast.SetExpr (aop, pat, expr) =>
-        evalSetExpr regs aop pat expr
-
-      | Ast.CallExpr { func, actuals } =>
-        evalCallExpr regs func actuals
-
-      | Ast.NewExpr { obj, actuals } =>
-        evalNewExpr regs obj actuals
-
-      | Ast.GetTemp n =>
-        evalGetTemp regs n
-
-      | Ast.InitExpr (target,tempHead,inits) =>
-        evalInitExpr regs target tempHead inits
-
-      | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) =>
-        evalBinaryTypeOp regs typeOp expr tyExpr
-
-      | Ast.GetParam n =>
-        LogErr.unimplError ["unhandled GetParam expression"]
-
-      | Ast.ApplyTypeExpr { expr, actuals } =>
-        evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
-
-      | _ => LogErr.unimplError ["unhandled expression type"]    
-
-</pre>
+<INCLUDE file="eval.sml" name="and evalExpr">
 
 === This expressions ===
 

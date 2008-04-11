@@ -1,297 +1,315 @@
-<h1>Names</h1>
-<p>
- A name consists of a string and a namespace. Names are introduced into a particular scope by a definition. Those definitions are referred to by names that result from expressions.
-</p>
-<p>
-The qualified forms result in a single name consisting of the given qualifier and identifier. The unqualified forms result in a set of names consisting of strings qualified by the open namespaces.
-</p>
-<p>
-The visibility of an identifier is controlled by the set of open namespaces. The set of open namespaces includes all of the implicitly opened namespaces and the user opened namespaces. The implicitly opened namespaces are: 
-</p>
-<ul>
-<li class="level1"><div class="li"> Public namespace</div>
-</li> 
-<li class="level1"><div class="li"> Internal namespace for the current package</div>
-</li>
-<li class="level1"><div class="li"> Private namespace for the current class</div>
-</li>
-<li class="level1"><div class="li"> Protected namespaces for the current class</div>
-</li>
-</ul>
-<p>
- The user opened namespaces are controlled by the use namespace directives that are in scope. For example,
-</p>
-<pre class="code javascript"><span class="kw2">namespace</span> mx = "http:<span class="co1">%%//%%macromedia.com/mx"</span>
-<span class="kw2">use</span> <span class="kw2">namespace</span><span class="br0">&#40;</span>mx<span class="br0">&#41;</span>
-o.<span class="me1">m</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
-<p>
-In this example, the reference to <code>o.m()</code> will involve the names qualified by the namespace <code>mx</code> as well as the implicitly opened namespaces: public, internal, etc.
-</p>
-<p>
-The terms namespace and qualifier are used interchangeably when talking about qualified names.
-</p>
-<h2>Name definition</h2>
-<p>
- A name introduced by a definition must get its namespace from one of various sources 
-</p>
-<ul>
-<li class="level1"><div class="li"> top-level definitions in a package have the internal package namespace as their qualifier</div>
-</li>
-<li class="level1"><div class="li"> top-level definitions outside of a package have the file internal namespace as their qualifier</div>
-</li>
-<li class="level1"><div class="li"> interface members have the public namespace as their qualifier</div>
-</li>
-<li class="level1"><div class="li"> dynamic property names have the public namespace as their qualifier</div>
-</li>
-<li class="level1"><div class="li"> definitions inside a class have the internal namespace of the current package as their qualifier, unless a namespace attribute is specified</div>
-</li>
-<li class="level1"><div class="li"> a definition with a namespace attribute has its corresponding namespace as its qualifier</div>
-</li>
-<li class="level1"><div class="li"> a definition with an access control attribute has the implicitly defined namespace for that access specifier as its qualifier</div>
-</li>
-</ul>
-<p>
- It is an error to introduce a name with an identifier that has already been defined in an open namespace in the same scope, but with a different qualifier.
-</p>
-<h2>Reference names</h2>
-<p>
- Reference names result from various forms of expressions. The two main distinctions in these forms are whether the name is qualified or unqualified, and whether the identifier is a literal identifier or an expression.
-</p>
-<p>
-The following table shows the kinds of references that include qualified and unqualified, literal and expression names.
-</p>
-<table border="1" cellspacing="0" cellpadding="3" class="inline">
-        <tr>
-                <td class="rightalign">             </td><th class="leftalign"> Literal                </th><th class="leftalign"> Expression                     </th>
-        </tr>
-        <tr>
-                <th> Unqualified </th><td class="leftalign"><code>o.id</code>, <code>id</code>       </td><td class="leftalign"><code>o[expr]</code>                    </td>
-        </tr>
-        <tr>
-                <th class="leftalign"> Qualified   </th><td><code>o.q::id</code>, <code>q::id</code></td><td><code>o.q::[expr]</code>, <code>q::[expr]</code></td>
-        </tr>
-</table>
-<br />
-<ul>
-<li class="level1"><div class="li"> A qualified or unqualified literal identifier is equivalent to the dynamic form with its expression operand replaced by a string literal representing the literal identifier</div>
-</li>
-</ul>
-<ul>
-<li class="level1"><div class="li"> An unqualified expression reference results in multiple names (called a multiname), one for every open namespace combined with the string value of the expression expr</div>
-</li>
-</ul>
-<ul>
-<li class="level1"><div class="li"> A qualified expression reference results in a qualified name that consists of the value of the qualifier q combined with the string value of the expression expr</div>
-</li>
-</ul>
-<p>
- <em> edit: show examples of multinames </em>
-</p>
-<h2>Name lookup</h2>
-<p>
- An expression involving a name results in an internal reference value used by certain operators to perform actions. To describe name lookup we distinguish between two types of references: those that include a base object (object references), and those that do not (lexical references.) 
-</p>
-<p>
-Looking up a reference involves determining its ultimate qualified name (in the case of unqualified references) and its base object.
-</p>
-<h3>Object references</h3>
-<p>
- Object references result from expressions involving the dot or bracket operators. They may be qualified or unqualified. The following table shows various forms of object references.  
-</p>
-<table border="1" cellspacing="0" cellpadding="3" class="inline">
-        <tr>
-                <td class="rightalign">             </td><th class="leftalign"> Literal     </th><th class="leftalign"> Expression      </th>
-        </tr>
-        <tr>
-                <th> Unqualified </th><td class="leftalign"><code>o.id</code>    </td><td class="leftalign"><code>o[expr]</code>     </td>
-        </tr>
-        <tr>
-                <th class="leftalign"> Qualified   </th><td><code>o.q::id</code></td><td><code>o.q::[expr]</code></td>
-        </tr>
-</table>
-<br />
-<p>
- We use the expression form of references to describe the name lookup semantics. However, every literal name can be rewritten as an expression name by the following steps. 
-</p>
-<ul>
-<li class="level1"><div class="li"> If the expression is an unqualified literal name, then replace the dot operation <code>o.id</code> with a bracket operations of the form <code>o[&#8216;id&#8217;]</code></div>
-</li>
-<li class="level1"><div class="li"> Otherwise the expression is a qualified literal name, so replace the operand of the dot operation with the dot operation <code>o.q::[&#8216;id&#8217;]</code></div>
-</li>
-</ul>
-<h4>Unqualified object references</h4>
-<pre class="code">
-o[expr]
+= Names =
+
+<hr>
+<pre>
+FILE:                       spec/language/names.html
+DRAFT STATUS:               DRAFT 2 - REVIEWED - 2008-03-21
+AUTHORS:                    Jeff, Graydon
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+SCOPE:                      The structure and resolution of names
 </pre>
-<p>
-This is a reference to a property of the value of the expression <code>o</code> that has a name that matches one of the names of the set of names (multiname) composed in the following way: 
-</p>
-<ul>
-<li class="level1"><div class="li"> Let <code>id</code> be the string value of the expression <code>expr</code></div>
-</li>
-<li class="level1"><div class="li"> Let <code>m</code> be an empty set of names</div>
-</li>
-<li class="level1"><div class="li"> For each namespace <code>q</code> in the set of open namespaces</div>
-<ul>
-<li class="level2"><div class="li"> Let <code>n</code> be a name with the qualifier <code>q</code> and the identifier <code>id</code></div>
-</li>
-<li class="level2"><div class="li"> Add <code>n</code> to the set of names <code>m</code></div>
-</li>
-</ul>
-</li>
-<li class="level1"><div class="li"> Return <code>m</code></div>
-</li>
-</ul>
-<p>
- The single name of a multiname reference r is determined by the following steps: 
-</p>
-<ul>
-<li class="level1"><div class="li"> Let <code>t</code> be the least derived type of <code>x</code> that contains at least one of the names in the multiname set m of the reference <code>r</code></div>
-</li>
-<li class="level1"><div class="li"> Let <code>m&#8217;</code> be the intersection of the set of names <code>m</code> and the property names in <code>t</code></div>
-</li>
-<li class="level1"><div class="li"> Let <code>n</code> be the set of names in the most derived type of <code>x</code> and in <code>m&#8217;</code></div>
-</li>
-<li class="level1"><div class="li"> If <code>n</code> is empty, return the name in <code>m</code> that is qualified by the public namespace</div>
-</li>
-<li class="level1"><div class="li"> If <code>n</code> contains one name, then return that name</div>
-</li>
-<li class="level1"><div class="li"> Report an ambiguous reference error</div>
-</li>
-</ul>
-<p>
- The base object of this reference is the value of the expression <code>o</code>.
-</p>
-<h4>Qualified object references</h4>
-<pre class="code">
-o.q::[expr]
+<hr>
+
+<p>A property name consists of an identifier and a namespace qualifier.
+
+<p>The accessibility of a binding is determined by the accessibility of its namespace. In
+other words if you can name a property, you can read it.
+
+<IMPL>
+<pre>
+type NAME = { namespace: NAMESPACE, identifier: IDENTIFIER }
 </pre>
-<p>
-This is a reference to a property inside the value of <code>o</code> that matches a single name. Because the qualifier is explicit, the qualified name is straightforward to compute. 
-</p>
-<ul>
-<li class="level1"><div class="li"> Let <code>ns</code> be the value of the expression <code>q</code></div>
-</li>
-<li class="level1"><div class="li"> Let <code>id</code> be the string value of the expression <code>expr</code></div>
-</li>
-<li class="level1"><div class="li"> Return the qualified name consisting of the namespace <code>ns</code> and the identifier <code>id</code></div>
-</li>
-</ul>
-<p>
- The base object of this reference is the value of the expression <code>o</code>.
-</p>
-<h3>Lexical references</h3>
-<pre class="code">
-q::[expr]
-q::id
-id
+
+<p>Identfiers are Unicode strings.
+
+<IMPL>
+<pre>
+type IDENTIFIER = Ustring.STRING
 </pre>
-<p>
-Lexical references result from expressions involving a name but no base object. Whether a lexical reference is qualified or unqualified, with a literal identifier or expression, it results in a search of the scope chain of the lexical environment until either a match is found or the last scope is searched.
-</p>
-<p>
-The scope chain might include the following kinds of scopes: 
-</p>
-<ul>
-<li class="level1"><div class="li"> Code inside a with statement will have a with frame as the inner most scope on the scope chain</div>
-</li>
-<li class="level1"><div class="li"> Code inside a function definition will have an activation object on its scope chain</div>
-</li>
-<li class="level1"><div class="li"> Code inside an instance method will have the instance this object on its scope chain</div>
-</li>
-<li class="level1"><div class="li"> Code inside of a class definition, including in instance and static methods, will have the class objects of its base classes and the current class on the scope chain. </div>
-<ul>
-<li class="level2"><div class="li"> The innermost class object corresponds to the most derived class, and the outermost class object corresponds to the Object class</div>
-</li>
-</ul>
-</li>
-<li class="level1"><div class="li"> Code everywhere has the global object as the outermost object on its scope chain</div>
-</li>
-</ul>
-<p>
- The base object of a lexical reference is computed by the following steps: 
-</p>
-<ul>
-<li class="level1"><div class="li"> Let <code>s</code> be the list of scopes enclosing the reference being evaluated</div>
-</li>
-<li class="level1"><div class="li"> Let <code>n</code> be the qualified name or set of qualified names that result from the operation described in section 4.3.1.1</div>
-</li>
-<li class="level1"><div class="li"> Search the scopes in <code>s</code> starting from the innermost scope and continuing outwards until a scope is found that contains a property that matches <code>n</code>, or all scopes have been searched</div>
-</li>
-<li class="level1"><div class="li"> If a match is found, return the scope that contains the matching property</div>
-</li>
-<li class="level1"><div class="li"> Report a property not found error</div>
-</li>
-</ul>
-<h2>Intrinsic namespace</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:intrinsic_namespace" class="wikilink1" title="proposals:intrinsic_namespace" onclick="return svchk()" onkeypress="return svchk()">Intrinsic namespace proposal page</a> for more information.
-</p>
-<p>
-The <code>intrinsic</code> namespace can be used to access a built-in or default function or operator without the risk of being shadowed by a user definition of the same name.
-</p>
-<h2>Definition Hoisting and Domination</h2>
-<p>
- Hoisting is a feature of ES by which a name might reside in  a scope represented by a block outside of the block it is defined in. Except if defined by a &lsquo;let&rsquo; definition, a name is hoisted to the nearest enclosing global, class, or function (regional) scope. Inside of a class, static definitions are hoisted to the implicit class scope, and instance definitions are hoisted to the implicit instance scope.
-</p>
-<p>
-The principle of domination is used to constrain the syntactic location of definitions. A name dominates a point in a program if, before hoisting, there is no path to that point in the program that does not pass through that definition.  
-</p>
-<ul>
-<li class="level1"><div class="li"> class and inteface definitions shall dominate the end of the program</div>
-</li>
-<li class="level1"><div class="li"> configuration names shall dominate the end of the program</div>
-</li>
-<li class="level1"><div class="li"> namespace definitions shall dominate the end of the region</div>
-</li>
-<li class="level1"><div class="li"> class and instance definitions shall dominate the end of the class</div>
-</li>
-<li class="level1"><div class="li"> function definitions shall dominate the end of the region</div>
-</li>
-<li class="level1"><div class="li"> type and let definitions shall dominate the end of the block</div>
-</li>
-</ul>
-<p>
-There are no domination constraints on var and const definitions.
-</p>
-<h2>Name resolution</h2>
-<p>
-Names get resolved at various stages of compilation &ndash; definition,  verification or evaluation. The lexical scope of a name is the region of program text in which that name is visible without reference to the object it lives in. The lifetime of a names is the period in which the name exists and can be reference by any means.
-</p>
-<h3>Definition Phase</h3>
-<p>
-Names that get resolved during the definition phase are in scope from the  point of definition to the end of the scope they reside in. Because of  hoisting, the scope a name resides in may be a lexical block outside it point of definition. 
-</p>
-<p>
-Name references in the following syntactic contexts are resolved during the definition phase: 
-</p>
-<ul>
-<li class="level1"><div class="li"> extends and implements clauses</div>
-</li>
-<li class="level1"><div class="li"> namespace attributes</div>
-</li>
-<li class="level1"><div class="li"> type definitions</div>
-</li>
-<li class="level1"><div class="li"> namespace definitions</div>
-</li>
-<li class="level1"><div class="li"> pragmas</div>
-</li>
-<li class="level1"><div class="li"> configuration attributes (proposed)</div>
-</li>
-</ul>
-<h3>Verification and Evaluation</h3>
-<p>
-Names that are resolved during the verification and evaluation phases  are in scope from the beginning of the block they reside in.
-</p>
-<p>
-References in the following syntactic contexts are resolved during verification: 
-</p>
-<ul>
-<li class="level1"><div class="li"> type annotations</div>
-</li>
-<li class="level1"><div class="li"> type expressions not in type definitions</div>
-</li>
-</ul>
-<p>
- All other references are resolved during evaluation.
-</p>
+
+== Namespaces ==
+
+<p>In order to assist programmers in managing property visibility and avoiding potential 
+collisions of property identifiers, the space of identifier strings is partitioned into 
+user defined and system defined namespaces. A namespace is an immutable object that 
+serves as a distinct tag with which programmers can organize and manage groups of 
+identifiers. In this sense, a namespace is a kind of name parameter that can be used
+to control the meaning of a name.
+
+<p>Namespaces can be forgeable or unforgeable. A forgeable namespace can be replicated
+by creating another forgeable namespace with the same identifier string. An 
+unforgeable namespace is given a system defined unique ID that is hidden from program code.
+
+<p>Any two forgeable namespaces with the same identifier string are considered equal.
+Every unforgeable namespace is considered non-equal to every other namespace.
+
+<IMPL>
+{{{
+datatype NAMESPACE =
+         UnforgeableNamespace of NAMESPACE_ID
+       | ForgeableNamespace of IDENTIFIER
+}}}
+{{{
+datatype NAMESPACE_ID = <LDOTS>
+}}}
+
+=== Compatibility Namespace ===
+
+<p>To preserve backward compatibility with the 3rd edition, all unqualified property names
+are upgraded to names that use a compatibility namespace (also referred to as "no namespace").
+The compatibility namespace is an unforgeable namespace that is always open, and is the 
+default namespace for definitions in the initial lexical scope of each ES program. Thus we 
+say that every property name in ES has a namespace, even if only the compatibility namespace.
+
+<IMPL>
+<pre>
+val noNS = Ast.UnforgeableNamespace <LDOTS>
+</pre>
+
+== References ==
+
+<p>A reference is an expression that refers to a property binding. A reference contains a name
+that is computed from either an //unqualified identifier// or a namespace //qualified identifier//.
+In this section we describe how the identifier part (''IDENTIFIER_EXPRESSION'' in the semantics) of a reference is resolved to a name.
+
+<IMPL>
+<pre>
+datatype IDENTIFIER_EXPRESSION =
+         Identifier of EXPRESSION
+       | QualifiedIdentifier of EXPRESSION * EXPRESSION
+</pre>
+
+=== Qualified Identifiers ===
+
+<p>A qualified identifier consists of an expression that computes a namespace value and an 
+expression that computes a string value. A name value is constructed at runtime using the
+values of these expressions.
+
+=== Unqualified Identifiers ===
+
+<p>An unqualified identifier consists of a single expression that computes a string value.
+A name value is constructed at runtime by searching for a property name that has an identifier 
+that matches that string value and one of the open namespaces. 
+
+==== Scope Chain ====
+
+<p>A scope chain contains a list of objects that are searched when evaluating a lexical
+reference. The exact specification of how scope chains are constructed is described in
+//section ..: Execution//. For the purpose of specifying how names are resolved, it is
+sufficient to know that a scope chain yields a sequence of objects to be searched.
+
+<FIXME>Scope is the region of program text. In ES there are regions of text that correspond to
+the instantiation of objects that hold variables associated with that region of text. We 
+refer to those objects as scopes. I wonder
+if we can use more precise language that distinguishes between the lexical meaning of scope
+and the activation frames created when a scope is entered.
+
+==== Open Namespaces ====
+
+<p>The open namespaces is a list of lists of namespace values. Each execution context extends 
+this list of lists with a new list of namespace values representing namespaces that are
+opened in that execution context.
+
+<p>The ordering of the outer list is used to to priorize the search for
+a matching name. The order of the inner lists is not signficant as all
+namespaces opened in the same block are given the same priority. 
+
+<IMPL>
+{{{
+type OPEN_NAMESPACES = NAMESPACE list list
+}}}
+
+{{{
+fun extendOpenNamespaces (openNamespaces: OPEN_NAMESPACES) (namespaceList: NAMESPACE list)
+    : OPEN_NAMESPACES = 
+    namespaceList::openNamespaces
+}}}
+
+==== Unqualified Identifier Resolution ====
+
+<p>Unqualified identifiers are resolved to a name using the following informal algorithms.
+
+<p>**Identifier resolution** - given a list of scope objects, a set of all open namespaces and an
+identifier, search for a property name that matches the identifier.
+
+{{{
+* search the scope chain (Scope search) for a name that matches the identifier and one of the open namespaces.
+* if more than one name is matched, 
+  * select the name(s) with a more recently opened namespace (Scope selection).
+* if more than one name is still matched and the owning object is a class instance, 
+  * select the name(s) introduced in the least derived class (Inheritance selection).
+* if more than one name still matched, then report an error.
+* if one name is matched, then return that name.
+* return nil
+}}}
+
+<IMPL>
+{{{
+fun resolveIdentifier (scopes: OBJECT list, namespaces: NAMESPACE list list, identifier: IDENTIFIER)
+    : NAME option =
+    let
+        val {scopes, ...} = env
+        val (object, names) = findNamesInScopes (scopes, List.concat namespaces, identifier)
+    in
+        case names of
+            [] => NONE
+          | name :: [] => SOME name
+          | _ =>
+            let
+                val names = selectNameByScope (names, namespaces)
+            in
+                case names of
+                    name :: [] => SOME name
+                  | [] => NONE
+                  | _ => SOME (selectNameByInheritance (names, inheritedClassesOf (valOf object)))
+            end
+    end
+}}}
+
+<p>**Scope chain search** - given a scope chain, open namespaces and an identifier, search for a
+matching property name.
+
+{{{
+* for each scope in the scope chain
+  * search for a matching name in the current scope object (Object search)
+  * if a match is found, return that name
+  * continue with next scope
+* return nil
+}}}
+
+<IMPL>
+{{{
+fun findNamesInScopes ([], ...) = (NONE, [])
+  | findNamesInScopes (scopes: OBJECT list, namespaces: NAMESPACE list list, identifier: IDENTIFIER)
+    : (OBJECT option, NAME list) =
+    let
+        val object = hd scopes
+        val names = findNamesInObject (object, namespaces, identifier)
+    in
+        case names of
+            [] => findNamesInScopes (tl scopes, identifier, namespaces)
+          | _ => (SOME object, names)
+    end
+}}}
+
+<p>**Object search** - given an object, a set of namespaces and an identifier,
+search for a matching property name.
+
+{{{
+* for each object in the prototype chain
+  * for each namespace in the namespace set
+    * search for a matching name in the current object
+    * if a match is found, add name to set of matches
+    * continue with next namespace
+  * if at least one match is found, return that matches
+  * continue with next object in prototype chain
+* return nil
+}}}
+
+<IMPL>
+{{{
+fun findNamesInObject (NONE, ...) = []
+  | findNamesInObject (object: SOME OBJECT, namespaces: NAMESPACE list, identifier: IDENTIFIER)
+    : NAME list =
+    let
+        val names = hasNames (object, namespaces, identifier)
+    in
+        case names of
+            [] => findNamesInObject (prototype object, identifier, openNamespaces)
+          | _ => names
+    end
+}}}
+
+<p>**Scope selection of a name** - given a list of lists of open
+namespaces (most recently opened to least recently opened) and a set of names, 
+select the name(s) that is in the most recently opened namespace(s)
+
+{{{
+* for each set of namespaces in the open namespaces
+  * for each namespace in the set of namespaces
+    * for each name in the set of names
+      * if the namespace and the name's namespace are equal,
+        * add that name to the set of matches
+      * continue with the next name
+  * if matches is not empty, return matches
+  * continue with next set of namespaces
+* return nil
+}}}
+
+<IMPL>
+{{{
+fun selectNamesByScope ([], ...) = []
+ |  selectNamesByScope (namespaces: NAMESPACE list list, names: NAME list)
+    : NAME list =
+    let
+         val names = selectNamesByNamespaces (hd namespaces, names)
+    in
+        case names of
+            [] => selectNameByScope (names, tl namespaces)
+          | _ => names
+    end
+}}}
+
+<p>**Inheritance selection of a name** - given an object and a set of names,
+select the name that matches the most generic binding in that object. This
+step is necessary to avoid object integrity issues that arise when a derived
+class introduces a binding with the same identifier and a different namespace 
+in the open namespaces.
+
+{{{
+* for each class inherited from object, ordered from most generic to most derived
+  * for each names in the given set of names
+    * search for a matching name in the current class
+    * if a match is found, add name to set of matches
+    * continue with next name
+  * if matches is of length 1, then return match
+  * if matches is of length > 1, report an ambiguity error
+  * continue with next class
+* return nil
+}}}
+
+<IMPL>
+{{{
+fun selectNameByInheritance (classes: CLASS list, ...) = throw "unresolved name error"
+ |  selectNameByInheritance (classes: CLASS list, names: NAME list)
+    : NAME =
+    let
+        val {instanceBindings, ...} = hd classes
+        val selection = hasNames (instanceBindings, names)
+    in
+        case selection of
+            [] => selectNameByInheritance (tl classes, names)
+          | name :: [] => name
+          | _ => throw "ambiguous name error"
+    end
+}}}
+
+== Phased Identifier Resolution ==
+
+<p>To avoid the problem of dynamic properties shadowing fixed properties, it is necessary to
+resolve names in such as way that gives priority to fixed properties. The relevant principle
+is that if an identifier may be resolved in an earlier phase (e.g. the name of a type during
+program initialization), then its meaning shall remain fixed over the life of the program.
+Conceptually, this means that we need to model in the lookup mechanism the phases of execution 
+that involve name resolution.
+
+<p>While this two-phase algorithm might appear to double the amount
+of work to do, in practical implementations it does the opposite,
+greatly reducing the cost of identifier resolution. The reason is that
+the set of fixed properties visible in many contexts can be calculated
+statically during parsing and compilation, and identifier references
+can be resolved to names once during this stage, and never again at
+runtime.
+
+<p>Even if identifier resolution is delayed until runtime, a successful
+resolution to a fixed property can frequently be cached -- for
+example in cases of unqualified lexical references, or unqualified
+object references on typed objects -- because no new fixed property may be
+introduced at runtime that would make a successful match
+ambiguous.
+
+

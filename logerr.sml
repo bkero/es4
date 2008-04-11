@@ -141,13 +141,13 @@ fun ty t =
           | Ast.SpecialType Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
 	    "<TypeName: {" 
 	    ^ (nsssToString openNamespaces) 
 	    ^ "}::" 
 	    ^ (Ustring.toAscii ident) 
 	    ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => 
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) => 
 	    "<TypeName: " 
 	    ^ (nsExprToString qual) 
 	    ^ "::" 
