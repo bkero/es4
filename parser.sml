@@ -5826,7 +5826,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
               | Ast.SpecialType AstAny :: _ => hasNonStar (tl ts)
               | _ => true
 
-        val hasNonStarAnno = (not (Type.isGroundType ty))
+        val hasNonStarAnno = true (* (not (Type.isGroundType ty)) *)
                              orelse hasNonStar (AstQuery.paramTysOfFuncTy ty) 
                              orelse hasNonStar [(AstQuery.resultTyOfFuncTy ty)]
 
@@ -5836,9 +5836,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
 
     in
         (ts4,{pragmas=[],
-              defns=[Ast.FunctionDefn {kind=if hasNonStarAnno 
-                                            then nd1 
-                                            else unconst nd1, (* dynamic function are writable *)
+              defns=[Ast.FunctionDefn {kind=unconst nd1, (* dynamic function are writable *)
                                        ns=ns,
                                        final=final,
                                        override=override,

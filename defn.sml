@@ -658,7 +658,8 @@ and defInterface (env: ENV)
 
         val prog = (#program env)
 
-        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superInterfaces
+(*        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superInterfaces *)
+        val groundSuperInterfaceExprs = map (makeTy env) superInterfaces
 
         val env = enterClass env name
 
@@ -934,7 +935,8 @@ and resolveClassInheritance (env:ENV)
                         NONE => implementsTys
                       | SOME ty => ty :: implementsTys
                 val prog = (#program env)
-                val superTypes = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superTypes
+(*                val superTypes = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superTypes *)
+                val superTypes = map (makeTy env) superTypes
                 val te = Ast.InstanceType { name = (#name it),
                                             typeParams = (#typeParams it),
                                             typeArgs = (#typeArgs it),

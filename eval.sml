@@ -65,21 +65,7 @@ fun normalize (regs:Mach.REGS)
 
 fun evalTy (regs:Mach.REGS)
            (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR = 
-    let
-    (* 
-     * evalTy implements the above assumption: a last-ditch 
-     * requirement that we *must* ground this TYPE_EXPR. 
-     * 
-     * We call this in a variety of contexts where the program can't 
-     * really sensibly proceed if we can't ground the type.
-     *)
-        val norm = normalize regs ty
-    in
-        if Type.isGroundType norm
-        then norm             
-        else error regs ["Unable to ground type closure: ", LogErr.ty ty]
-    end    
+    : Ast.TYPE_EXPR = normalize regs ty
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -2315,6 +2301,11 @@ and bindTypes (regs:Mach.REGS)
         env
     end
 
+(* Types of various kinds are have a dual representation: both as TYPE_EXPRs
+ * and as a magic within Mach.VAL, such as a CLS_CLOSURE.
+ * Really would love to unify these two representations,
+ * which might enable nice downstream simplifications. - cf
+ *)
 
 and applyTypesToClass (regs:Mach.REGS)
                       (classVal:Mach.VAL)
@@ -2456,12 +2447,14 @@ and evalApplyTypeExpr (regs:Mach.REGS)
     in
         if Mach.isFunction v
         then applyTypesToFunction regs v args
+(* cf: these are not allowed, I think
         else 
             if Mach.isClass v
             then applyTypesToClass regs v args
             else
                 if Mach.isInterface v
                 then applyTypesToInterface regs v args
+*)
                 else 
                     (throwTypeErr regs ["applying types to unknown base value: ",
                                         Mach.approx v]; dummyVal)
