@@ -358,6 +358,13 @@ fun normalizeUnions (ty:Ast.TYPE_EXPR)
     end
 
 
+fun normalizeArrays (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
+    case ty of 
+        Ast.ArrayType [] => Ast.ArrayType [Ast.SpecialType Ast.Any]
+      | x => mapTyExpr normalizeArrays x
+
+
 (* ----------------------------------------------------------------------------- *)
 (* Checks that the given type does not contain any type constructors,
  * unless they are immediately applied to an appropriate number of arguments.
@@ -590,9 +597,12 @@ fun normalize (ribs:Ast.RIB list)
         val ty = normalizeUnions ty
 
         val _ = traceTy "normalize6: " ty
-        val _  = checkProperType ty
+        val ty = normalizeArrays ty
 
         val _ = traceTy "normalize7: " ty
+        val _  = checkProperType ty
+
+        val _ = traceTy "normalize8: " ty
     in
         ty
     end
