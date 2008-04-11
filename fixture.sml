@@ -38,6 +38,7 @@ fun log ss = LogErr.log ("[fixture] " :: ss)
 fun error ss = LogErr.fixtureError ss
 fun trace ss = if (!doTrace) then log ss else ()
 
+(*
 fun cmpMname (a:Ast.MULTINAME, b:Ast.MULTINAME) 
     : order = 
     case Ustring.compare (#id a) (#id b) of
@@ -64,34 +65,10 @@ structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
 structure IntMap = SplayMapFn (IntKey);
 
 
-(* 
- * Rib records have a lifecycle. 
- *
- * There is always exactly one root rib, and it never closes.
- * 
- * Under the root rib, there are a variety of other ribs: 
- * 
- *   - open top unit ribs, which are placeholders with no content.
- * 
- *   - closed top unit ribs, which store a snapshot of the root rib at
- *     the moment they closed.
- * 
- *   - general ribs, which may be children of either form of top rib
- *     *or* direct children of the root.
- * 
- * If a general rib has no parent, or has an open top-unit rib as its
- * parent, it's implicitly a child of the root rib and is implicitly open.
- * 
- * If any rib has a closed top-unit rib as a parent, the rib is closed by 
- * extension and all type reasoning in it should actually resolve; there should
- * never be partial-evaluation stalls. Failure to find a fixture name
- * (say a type) under a closed top-unit rib is always a hard error.
- * 
- *)
-
 datatype RIB_RECORD = 
          GeneralRib of { parent: Ast.RIB_ID option,
                          rib: Ast.RIB }
+*)
 
 
 (* -----------------------------------------------------------------------------

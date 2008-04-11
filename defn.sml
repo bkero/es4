@@ -1077,7 +1077,7 @@ and classInstanceType (cfxtr:Ast.FIXTURE)
  * TYPE_EXPRs of a simple form: those which name a 0-parameter interface. 
  * Generalize later. 
  *)
-and extractIdentExprFromTypeName (Ast.TypeName ie) : Ast.IDENT_EXPR = ie
+and extractIdentExprFromTypeName (Ast.TypeName (ie, _)) : Ast.IDENT_EXPR = ie
   | extractIdentExprFromTypeName _ = 
     error ["can only presently handle inheriting from simple named interfaces"]
 
@@ -2032,7 +2032,7 @@ and defTypeExpr (env:ENV)
     case typeExpr of
         Ast.FunctionType t =>
         Ast.FunctionType (defFuncTy env t)
-      | Ast.TypeName n =>
+      | Ast.TypeName (n,nonce) =>
         let
         in
             case n of
@@ -2042,12 +2042,12 @@ and defTypeExpr (env:ENV)
                 in case (base,i) of
                    (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
                    Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                          ident=id})
+                                                          ident=id}, NONE)
                  | (_,_) =>
                        LogErr.defnError ["invalid type expr ", Ustring.toAscii (hd p)]
                 end
               | _ =>
-                Ast.TypeName (defIdentExpr env n)
+                Ast.TypeName ((defIdentExpr env n), nonce)
          end
       | Ast.UnionType tys =>
         Ast.UnionType (map (defTypeExpr env) tys)

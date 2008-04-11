@@ -45,6 +45,13 @@ val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
 val anyType         = Ast.SpecialType Ast.Any
 
+fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
+
+(* BEGIN SPEED HACK *)
+val cacheLoad : (((int -> Ast.TYPE_EXPR option) option) ref) = ref NONE
+val cacheSave : (((int -> Ast.TYPE_EXPR -> unit) option) ref) = ref NONE
+(* END SPEED HACK *)
+
 fun assert b s = if b then () else (raise Fail s)
 
 fun fmtName n = if !doTrace
@@ -148,7 +155,7 @@ fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR)
             Ast.SpecialType _ => true
           | Ast.InstanceType it => 
             (length (#typeParams it) = length (#typeArgs it))   (* CF: not ground, well-formed *)
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
             if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
             then (trace ["bound var in ground type"]; true)
             else (trace ["free var in ground type"]; false)
@@ -349,7 +356,8 @@ fun checkProperType (ty:Ast.TYPE_EXPR) : unit = ()
  * type name capture or shadowing, etc. 
  *) 
 
-fun normalizeNames (env:Ast.RIBS)
+fun normalizeNames (useCache:bool)
+                   (env:Ast.RIBS)
                    (ty:Ast.TYPE_EXPR)                    
   : Ast.TYPE_EXPR = 
     let
@@ -366,7 +374,7 @@ fun normalizeNames (env:Ast.RIBS)
             case getFixture mname of 
                 (env', _,  Ast.TypeFixture ty') => 
                 (* Pulling ty out of env', need to normalize first *)
-                normalizeNames env' ty'
+                normalizeNames useCache env' ty'
 
                 (* FIXME: not sure about the following, and generic classes ... *)
               | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
@@ -395,17 +403,37 @@ fun normalizeNames (env:Ast.RIBS)
                  getNamespace { id = ident, nss = [[ getNamespaceForExpr qual ]] })
                 
               | _ => error ["dynamic qualifier in namespace of type expression ", LogErr.ty ty]
+
+        fun doResolve _ =         
+            case ty of 
+                Ast.TypeName (Ast.Identifier { ident, openNamespaces }, _) => 
+                normalizeNames useCache env (getType { id = ident, nss = openNamespaces })
+                
+              | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) =>
+                normalizeNames useCache env (getType { id = ident, nss = [[ getNamespaceForExpr qual ]] })
+                
+              | Ast.TypeName (Ast.WildcardIdentifier, _) => Ast.SpecialType Ast.Any
+              | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
+              | Ast.LamType { params, body } => 
+                Ast.LamType { params = params, 
+                              body = normalizeNames false env body }
+              | t => mapTyExpr (normalizeNames useCache env) t
     in
-        case ty of 
-            Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
-            normalizeNames env (getType { id = ident, nss = openNamespaces })
-            
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
-            normalizeNames env (getType { id = ident, nss = [[ getNamespaceForExpr qual ]] })
-            
-          | Ast.TypeName Ast.WildcardIdentifier => Ast.SpecialType Ast.Any
-          | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
-          | t => mapTyExpr (normalizeNames env) t
+        (* BEGIN SPEED HACK *)
+        case (useCache, !cacheLoad, !cacheSave, ty) of 
+            (true, SOME load, SOME save, Ast.TypeName (_, SOME id)) => 
+            (case load id of 
+                 NONE => 
+                 let
+                     val r = doResolve ()
+                 in
+                     save id r;
+                     r
+                 end
+               | SOME r => r)
+        (* END SPEED HACK *)
+
+          | _ => doResolve ()        
     end
 
 (* args are all closed *)
@@ -417,7 +445,7 @@ fun substType (id:Ast.IDENT) (arg:Ast.TYPE_EXPR) (ty:Ast.TYPE_EXPR) : Ast.TYPE_E
         then ty (* shadowed *) 
         else Ast.LamType { params=params,
                        body = substType id arg body}
-      | Ast.TypeName (Ast.Identifier { ident=id', ... }) =>
+      | Ast.TypeName (Ast.Identifier { ident=id', ... }, _) =>
         if id = id'
         then arg
         else ty
@@ -457,7 +485,7 @@ fun normalize (ribs:Ast.RIB list)
               (ty:Ast.TYPE_EXPR)               
     : Ast.TYPE_EXPR =
     let
-        val ty = normalizeNames ribs ty
+        val ty = normalizeNames true ribs ty
         val ty = normalizeRefs ty
         val ty = normalizeLambdas ty
         val ty = normalizeNulls ty
@@ -602,7 +630,7 @@ fun groundMatchesGeneric (b:BICOMPAT)
 
       (* A-INSTANCE -- generalized from A-INT *)
       | (_, _, Ast.InstanceType it1, Ast.InstanceType it2) =>
-        (Mach.nameEq (#name it1) (#name it2) andalso
+        (nameEq (#name it1) (#name it2) andalso
          (arrayPairWise (groundMatchesGeneric b Invariant) (#typeArgs it1) (#typeArgs it2)))
         orelse 
         (List.exists (fn sup => groundMatchesGeneric b v sup ty2) 
@@ -629,14 +657,14 @@ fun groundMatchesGeneric (b:BICOMPAT)
       (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
 
       | (_, _, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-	List.exists (Mach.nameEq name) [ Name.nons_Array,
+	List.exists (nameEq name) [ Name.nons_Array,
 					 Name.nons_Object ]
 
       | (_, _, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
-	List.exists (Mach.nameEq name) [ Name.nons_Object ]
+	List.exists (nameEq name) [ Name.nons_Object ]
 
       | (_, _, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-	List.exists (Mach.nameEq name) [ Name.nons_Function, 
+	List.exists (nameEq name) [ Name.nons_Function, 
 					 Name.nons_Object ]
 
     | _ => false
@@ -654,18 +682,18 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
         val srcInstance = extract tyExpr1
         val dstInstance = extract tyExpr2
         fun isNumericType n = 
-            List.exists (Mach.nameEq n) [ Name.ES4_double, 
+            List.exists (nameEq n) [ Name.ES4_double, 
                                           Name.ES4_int,
                                           Name.ES4_uint,
                                           Name.ES4_decimal,
                                           Name.ES4_double,
                                           Name.nons_Number ]
         fun isStringType n = 
-            List.exists (Mach.nameEq n) [ Name.ES4_string,
+            List.exists (nameEq n) [ Name.ES4_string,
                                           Name.nons_String ]
 
         fun isBooleanType n = 
-            List.exists (Mach.nameEq n) [ Name.ES4_boolean,
+            List.exists (nameEq n) [ Name.ES4_boolean,
                                           Name.nons_Boolean ]
     in
         case (srcInstance, dstInstance) of

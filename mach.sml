@@ -58,10 +58,13 @@ structure StrMap = SplayMapFn (StrKey);
 
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
+
+structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
+structure IntMap = SplayMapFn (IntKey);
           
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
-val cachesz = 1024
+val cachesz = 4096
                                        
 type ATTRS = { dontDelete: bool,
                dontEnum: bool,
@@ -100,7 +103,8 @@ datatype VAL = Object of OBJ
           uintCache: (OBJ Real64Map.map) ref,
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
-          strCache: (OBJ StrMap.map) ref
+          strCache: (OBJ StrMap.map) ref,
+          tyCache: (Ast.TYPE_EXPR IntMap.map) ref (* well, mostly objs *)
          }
 
      and PROFILER =
@@ -1171,6 +1175,7 @@ fun updateCache cacheGetter
         then ((c := cacheInsert ((!c), k, v)); v)
         else v
     end
+        
 
 fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
 fun getUIntCache (regs:REGS) = (#uintCache (getCaches regs)) 
@@ -1178,6 +1183,7 @@ fun getIntCache (regs:REGS) = (#intCache (getCaches regs))
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
 fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
+fun getTyCache (regs:REGS) = (#tyCache (getCaches regs)) 
 
 val findInDoubleCache = findInCache getDoubleCache Real64Map.find
 val findInUIntCache = findInCache getUIntCache Real64Map.find
@@ -1185,6 +1191,7 @@ val findInIntCache = findInCache getIntCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
 val findInStrCache = findInCache getStrCache StrMap.find
+val findInTyCache = findInCache getTyCache IntMap.find
 
 val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
 val updateUIntCache = updateCache getUIntCache Real64Map.numItems Real64Map.insert
@@ -1192,6 +1199,7 @@ val updateIntCache = updateCache getIntCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
+val updateTyCache = updateCache getTyCache IntMap.numItems IntMap.insert
 
 val defaultDecimalContext = 
 	{ precision = 34,
@@ -1218,7 +1226,8 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                        intCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
-                       strCache = ref StrMap.empty }
+                       strCache = ref StrMap.empty,
+                       tyCache = ref IntMap.empty }
         val specials = SpecialObjs 
                        { classClass = ref NONE,
                          interfaceClass = ref NONE,
