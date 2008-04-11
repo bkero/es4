@@ -31,13 +31,6 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
-fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
-
-(* BEGIN SPEED HACK *)
-val cacheLoad : (((int -> Ast.TYPE_EXPR option) option) ref) = ref NONE
-val cacheSave : (((int -> Ast.TYPE_EXPR -> unit) option) ref) = ref NONE
-(* END SPEED HACK *)
-
 
 (* -----------------------------------------------------------------------------
  * General overview of types and type bindings
@@ -182,6 +175,14 @@ fun fmtMname n = if !doTrace
 fun fmtType t = if !doTrace
                  then LogErr.ty t
                  else ""
+
+fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
+
+(* BEGIN SPEED HACK *)
+val cacheLoad : (((int -> Ast.TYPE_EXPR option) option) ref) = ref NONE
+val cacheSave : (((int -> Ast.TYPE_EXPR -> unit) option) ref) = ref NONE
+(* END SPEED HACK *)
+
 
 (* -----------------------------------------------------------------------------
  * Normalization
@@ -424,12 +425,14 @@ fun normalizeNames (useCache:bool)
         fun getFixture (mname : Ast.MULTINAME) : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
             case Multiname.resolveInRibs mname env of 
                 SOME (ribs, name) => 
-                let val (rib::_) = ribs in
+                let 
+                    val (rib::_) = ribs 
+                in
                     (ribs, name, Fixture.getFixture rib (Ast.PropName name))
                 end
               | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
                             " in type expression ", LogErr.ty ty]
-
+                     
         fun getType (mname : Ast.MULTINAME) : Ast.TYPE_EXPR = 
             case getFixture mname of 
                 (env', _,  Ast.TypeFixture ty') => 
@@ -482,7 +485,7 @@ fun normalizeNames (useCache:bool)
               | Ast.LamType { params, body } => 
                 Ast.LamType { params = params, 
                               body = normalizeNames false env (ids@params) body }
-              | t => mapTyExpr (normalizeNames useCache env id) t
+              | t => mapTyExpr (normalizeNames useCache env ids) t
     in
         (* BEGIN SPEED HACK *)
         case (useCache, !cacheLoad, !cacheSave, ty) of 
@@ -511,9 +514,10 @@ fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
     let in
         uniqueIdentPostfix := !uniqueIdentPostfix +1;
         Ustring.stringAppend id (Ustring.fromInt (!uniqueIdentPostfix))
+    end
 
 fun makeTypeName (id:Ast.IDENT) : Ast.TYPE_EXPR = 
-    Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[] })
+    Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[] }, NONE)
 
 
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
@@ -674,7 +678,7 @@ fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR)
             Ast.SpecialType _ => true
           | Ast.InstanceType it => 
             (length (#typeParams it) = length (#typeArgs it))   (* CF: not ground, well-formed *)
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
             if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
             then (trace ["bound var in ground type"]; true)
             else (trace ["free var in ground type"]; false)
