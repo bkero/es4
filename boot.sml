@@ -357,6 +357,15 @@ fun boot (baseDir:string) : Mach.REGS =
         val regs = Mach.makeInitialRegs prog glob
         val _ = Mach.setBooting regs true
 
+        (* BEGIN SPEED HACK *)
+        (* 
+         * This wins a factor of 60 in performance. It's worth it.
+         * Just don't copy this nonsense to the spec. 
+         *)
+        val _ = Type.cacheLoad := SOME (fn i => Mach.findInTyCache regs i)
+        val _ = Type.cacheSave := SOME (fn i => fn t => (Mach.updateTyCache regs (i, t); ()))
+        (* END SPEED HACK *)                
+
         val (objClass, objClassClosure, objClassObj) = 
             instantiateRootClass regs Name.nons_Object
 
@@ -372,6 +381,7 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val _ = describeGlobal regs;
     in
+
         trace ["completing class fixtures"];
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;

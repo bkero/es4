@@ -208,16 +208,6 @@ fun verify prog argvRest =
         f prog [] frags
     end
 
-(* BEGIN SPEED HACK *)
-(* 
- * This wins a factor of 60 in performance. It's worth it.
- * Just don't copy this nonsense to the spec. 
- *)
-fun installTypeCache regs = 
-    ((Type.cacheLoad := SOME (fn i => Mach.findInTyCache regs i));
-     (Type.cacheSave := SOME (fn i => fn t => (Mach.updateTyCache regs (i, t); ()))))
-(* END SPEED HACK *)
-
 fun eval regs argvRest =
     let
         val (prog, frags) = verify (#prog regs) argvRest
@@ -226,7 +216,6 @@ fun eval regs argvRest =
         Mach.setLangEd regs (!langEd);
         Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
-        installTypeCache regs;
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
     end
 
@@ -337,7 +326,6 @@ fun repl (regs:Mach.REGS)
                                 val regs = !regsCell
 					            val _ = Mach.resetStack regs
                                 val _ = Mach.setLangEd regs (!langEd)
-                                val _ = installTypeCache regs
                                 val res = (Eval.evalTopFragment regs frag)
 						            handle Eval.ThrowException v => (tidyUp (); v)
                             in

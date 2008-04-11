@@ -412,12 +412,21 @@ fun normalizeNames (useCache:bool)
                 (env', _,  Ast.TypeFixture ty') => 
                 (* Pulling ty out of env', need to normalize first, in the right environment *)
                 normalizeNames useCache env' [] ty'
+
               | (env', n, Ast.TypeVarFixture nonce) =>
                 Ast.TypeVarFixtureRef nonce
 
                 (* FIXME: not sure about the following, and generic classes ... *)
-              | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
-              | (_, _, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => instanceType
+              | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, nonnullable, ... })) => 
+                if nonnullable
+                then instanceType
+                else Ast.UnionType [ instanceType, Ast.SpecialType Ast.Null ]
+
+              | (_, _, Ast.InterfaceFixture (Ast.Iface { instanceType, nonnullable, ... })) => 
+                if nonnullable
+                then instanceType
+                else Ast.UnionType [ instanceType, Ast.SpecialType Ast.Null ]
+                         
               | (_, n, _) => error ["name ", LogErr.name  n, 
                                     " in type expression ", LogErr.ty ty, 
                                     " is not a type"]
