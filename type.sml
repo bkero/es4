@@ -362,59 +362,33 @@ fun normalizeUnions (ty:Ast.TYPE_EXPR)
 (* Checks that the given type does not contain any type constructors,
  * unless they are immediately applied to an appropriate number of arguments.
  * Assumes no beta redexes.
- * FIXME: need to deal with InstanceType and AppType.
  *)
 
 fun checkProperType (ty:Ast.TYPE_EXPR) : unit = 
     let fun check ty2 = 
             case ty2 of
                 Ast.LamType { params, body } => 
-                error ["Improper occurrence of type consgtructor ", LogErr.ty ty2, 
-                       " in type ", LogErr.ty ty]
-
-              | Ast.AppType { base = Ast.InstanceType _, args } =>
-                (* FIXME: check instance type *)
-                let in List.map check args; () end
+                error ["Improper occurrence of type constructor ", LogErr.ty ty2, 
+                       " in normalized type ", LogErr.ty ty]
 
               | Ast.AppType { base, args } =>
                 error ["Improper occurrence of type application ", LogErr.ty ty2, 
-                       " in type ", LogErr.ty ty]
-              | Ast.InstanceType _ =>
-                (* FIXME *)
-                ()
+                       " in normalized type ", LogErr.ty ty]
+
+              | Ast.InstanceType { name, typeParams, typeArgs, ... } =>
+                if length typeParams = length typeArgs
+                then (map (foreachTyExpr check) typeArgs; ())
+                else
+                error ["Improper occurrence of generic class reference ", LogErr.ty ty2, 
+                       " in normalized type ", LogErr.ty ty]
+
               | _ => foreachTyExpr check ty2
     in 
         check ty
     end
     
 (* ----------------------------------------------------------------------------- *)
-(* normalizeNames: replace all references to TypeFixtures by the corresponding type. 
-
-
-     and TYPE_EXPR =
-         SpecialType of SPECIAL_TY
-       | UnionType of TYPE_EXPR list
-       | ArrayType of TYPE_EXPR list
-       | TypeName of IDENT_EXPR
-
-
- CLASS_DEFN =
-           { ns: EXPR option,
-             ident: IDENT,             
-             nonnullable: bool,
-             dynamic: bool,
-             final: bool,
-             params: IDENT list,  ****
-             extends: TYPE_EXPR option, 
-             implements: TYPE_EXPR list,
-             classDefns: DEFN list,
-             instanceDefns: DEFN list,
-             instanceStmts: STMT list,
-             ctorDefn: CTOR option }
-
-type IDENT = Ustring.STRING
-
- *) 
+(* normalizeNames: replace all references to TypeFixtures by the corresponding type. *)
 
 fun normalizeNames (useCache:bool)
                    (env:Ast.RIBS)
@@ -586,6 +560,7 @@ fun normalizeLambdas (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
     end
 
 (* ----------------------------------------------------------------------------- *)
+
 fun normalize (ribs:Ast.RIB list)
               (ty:Ast.TYPE_EXPR)               
     : Ast.TYPE_EXPR =
@@ -617,99 +592,6 @@ fun normalize (ribs:Ast.RIB list)
 (* -----------------------------------------------------------------------------
  * Matching helpers
  * ----------------------------------------------------------------------------- *)
-
-
-(* CF: unused
-fun findNamespace (prog:Fixture.PROGRAM)
-                  (ribId:Ast.RIB_ID option)
-                  (expr:Ast.EXPR)
-    : Ast.NAMESPACE option =
-    let
-        fun withMname (mname:Ast.MULTINAME) 
-            : Ast.NAMESPACE option = 
-            case Fixture.resolveToFixture prog mname ribId of
-                NONE => NONE
-              | SOME (n, Ast.NamespaceFixture ns) => SOME ns
-              | _ => error ["namespace expression resolved ",
-                            "to non-namespace fixture"]
-    in    
-        case expr of
-            Ast.LiteralExpr (Ast.LiteralNamespace ns) => SOME ns
-
-          | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
-            (LogErr.setLoc loc;
-             withMname {id = ident, nss = openNamespaces})
-
-          | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
-            (LogErr.setLoc loc;
-             case findNamespace prog ribId qual of
-                 NONE => NONE
-               | SOME ns => withMname {id = ident, nss = [[ns]]})
-
-          | Ast.LexicalRef _ => error ["dynamic name in namespace"]
-                                
-          | _ => error ["dynamic expr in namespace"]
-    end
-*)
-
-(* CF: unused
-fun liftOption (f:'a -> 'a option) 
-               (ls:'a list) 
-    : (('a list) option) = 
-    let
-        val (res:(('a option) list)) = map f ls
-    in
-        if List.all Option.isSome res
-        then SOME (map Option.valOf res)
-        else NONE
-    end
-*)
-
-
-fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
-    : bool = 
-    let
-        fun isGroundType t = isGroundTypeEnv e t
-        fun isGroundField { name, ty } = isGroundType ty
-        fun isGroundOption NONE = true
-          | isGroundOption (SOME t) = isGroundType t
-    in
-        case t of 
-            Ast.SpecialType _ => true
-          | Ast.InstanceType it => 
-            (length (#typeParams it) = length (#typeArgs it))   (* CF: not ground, well-formed *)
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
-            if     List.exists (fn i => i = ident) e (* ground if ident in environment *)                
-            then (trace ["bound var in ground type"]; true)
-            else (trace ["free var in ground type"]; false)
-          | Ast.TypeName _ => false
-          | Ast.ElementTypeRef _ => false
-          | Ast.FieldTypeRef _ => false
-          | Ast.AppType _ => false
-          | Ast.LamType {params, body} => isGroundTypeEnv (params @ e) body
-          | Ast.NullableType { expr, ... } => isGroundType expr
-          | Ast.ObjectType fields => List.all isGroundField fields
-          | Ast.LikeType t => isGroundType t
-          | Ast.WrapType t => isGroundType t
-          | Ast.UnionType tys => List.all isGroundType tys
-          | Ast.ArrayType tys =>List.all isGroundType tys
-          | Ast.FunctionType { params, result, thisType, ... } =>   (* where are generics? *)
-            List.all isGroundType params andalso
-            isGroundType result andalso
-            isGroundOption thisType
-    end
-
-fun isGroundType (t:Ast.TYPE_EXPR) 
-    : bool = 
-    isGroundTypeEnv [] t
-
-fun groundExpr (ty:Ast.TYPE_EXPR)  (* or "groundType" *)
-    : Ast.TYPE_EXPR = 
-    if isGroundType ty
-    then ty
-    else (Pretty.ppType ty;
-          error ["extracting ground type expr from non-ground type expr"])
-
 
 fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
     Ustring.stringEquals name (#name field) 
@@ -743,7 +625,6 @@ fun optionWise predicate (SOME a) (SOME b) = predicate a b
   | optionWise _ _ _ = false
 
 fun normalizingPredicate groundPredicate 
-                         nonNormalizableDefault
                          (prog:Fixture.PROGRAM)
                          (locals:Ast.RIBS)
                          (t1:Ast.TYPE_EXPR)
@@ -754,13 +635,8 @@ fun normalizingPredicate groundPredicate
       val norm1 = normalize (locals @ [Fixture.getRootRib prog]) t1
       val norm2 = normalize (locals @ [Fixture.getRootRib prog]) t2
   in
-      if isGroundType norm1 andalso
-         isGroundType norm2 
-      then 
-          groundPredicate norm1 norm2
-      else
-          nonNormalizableDefault
-    end
+      groundPredicate norm1 norm2
+  end
 
 (* -----------------------------------------------------------------------------
  * Generic matching algorithm
@@ -943,15 +819,14 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
  * ----------------------------------------------------------------------------- *)
 
 val groundIsCompatibleSubtype = groundMatchesGeneric Compat Covariant
-val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype false
+val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype 
 
 (* -----------------------------------------------------------------------------
  * Matching: ~<
  * ----------------------------------------------------------------------------- *)
 
 val groundMatches = groundMatchesGeneric Bicompat Covariant
-val matches = normalizingPredicate groundMatches false
-
+val matches = normalizingPredicate groundMatches 
 
 
 (* 
@@ -973,17 +848,19 @@ fun groundType (prog:Fixture.PROGRAM)
         (* FIXME: it is *super wrong* to just be using the root rib here. *)
         val norm = normalize [Fixture.getRootRib prog] ty
     in
-        if isGroundType norm
-        then norm
-        else error ["Unable to ground type closure for ", 
-                    LogErr.ty ty]
+        norm
     end    
+
+fun isGroundType (ty:Ast.TYPE_EXPR) : bool = true
+
+fun groundExpr (ty:Ast.TYPE_EXPR)  (* or "groundType" *)
+    : Ast.TYPE_EXPR = ty (* FIXME: remove *)
 
 fun getNamedGroundType (prog:Fixture.PROGRAM)
                        (name:Ast.NAME)
    : Ast.TYPE_EXPR = 
     groundType prog (Name.typename name)
-            
+
 
 end
 
