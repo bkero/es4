@@ -536,7 +536,10 @@ package
 
             type matcher = (string|RegExp!);
 
-            function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
+            // FIXME: when 'let function' goes away, ensure that this doesn't hoist away from
+            // the definition of type matcher.
+
+            let function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
                 switch type (R) {
                 case (x: string) {
                     let r = x.length;

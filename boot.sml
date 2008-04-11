@@ -40,6 +40,7 @@ val doTrace = ref false
 fun log ss = LogErr.log ("[boot] " :: ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.hostError ss
+val langEd = 4
 
 
 fun lookupRoot (prog:Fixture.PROGRAM)
@@ -54,7 +55,7 @@ fun lookupRoot (prog:Fixture.PROGRAM)
                     | _ => error [LogErr.name n, " did not resolve to a class fixture"]
         val Ast.Cls { instanceType, ... } = cls
         val ty = case instanceType of 
-                     Ast.Ty { expr = Ast.InstanceType ity, ... } => ity
+                     Ast.InstanceType ity => ity
                    | _ => error [LogErr.name n, " does not have an instance type"]
     in
         (cls, ty)
@@ -90,7 +91,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.Ty { expr=Ast.InstanceType cty, ribId=NONE },
+                           { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
                                        dontEnum = true,
@@ -148,7 +149,7 @@ fun loadFile (prog:Fixture.PROGRAM)
         val frag = Parser.parseFile f
         val _ = trace ["defining boot file ", f]
     in
-        Defn.defTopFragment prog frag
+        Defn.defTopFragment prog frag langEd
     end
 
 fun loadFiles (prog:Fixture.PROGRAM) 
@@ -159,7 +160,7 @@ fun loadFiles (prog:Fixture.PROGRAM)
             let 
                 val _ = trace ["parsing and defining boot file ", file]
                 val frag = Parser.parseFile file
-                val (prog', frag') = Defn.defTopFragment prog frag
+                val (prog', frag') = Defn.defTopFragment prog frag langEd
             in
                 f prog' ((file, frag')::accum) files
             end
@@ -233,10 +234,7 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
           | filterHeadOpt NONE = NONE
     in
         case frag of 
-            Ast.Unit { name, fragments } =>
-            Ast.Unit { name = name, 
-                       fragments = map filterOutRootClasses fragments }
-          | Ast.Package { name, fragments } => 
+            Ast.Package { name, fragments } => 
             Ast.Package { name = name, 
                           fragments = map filterOutRootClasses fragments }
           | Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
@@ -252,8 +250,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val dir = OS.Path.joinDirFile {dir = baseDir, file = "builtins"}
         fun builtin file = OS.Path.joinDirFile {dir = dir, file = file}
         val _ = Native.registerNatives ();
-        val langEd = 4
-        val prog = Fixture.mkProgram langEd Defn.initRib
+        val prog = Fixture.mkProgram Defn.initRib
 
         (*
          * We have to do a small bit of delicate work here because we have to 
@@ -306,8 +303,7 @@ fun boot (baseDir:string) : Mach.REGS =
 
                        builtin "Math.es",
                        builtin "Global.es",
-                       
-                       
+                                              
                        builtin "Name.es",
 
                        builtin "Error.es",
@@ -332,12 +328,10 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "Date.es",
                        builtin "MetaObjects.es", (* before JSON *)
                        builtin "JSON.es",
-                       builtin "Vector.es",
-                       builtin "Map.es",
+                       (* builtin "Vector.es", *)
+                       (* builtin "Map.es", *)
                        builtin "DecimalContext.es"
                  ]
-
-        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
 
         val glob = 
             let
@@ -347,6 +341,9 @@ fun boot (baseDir:string) : Mach.REGS =
                 Mach.newObj objTag Mach.Null NONE
             end
 
+        val _ = Mach.setRib glob (Fixture.getRootRib prog)
+
+        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
         val clsFrag = Verify.verifyTopFragment prog verifyBuiltins clsFrag
         val funFrag = Verify.verifyTopFragment prog verifyBuiltins funFrag
         val ifaceFrag = Verify.verifyTopFragment prog verifyBuiltins ifaceFrag
@@ -370,22 +367,27 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val _ = describeGlobal regs;
     in
+        trace ["completing class fixtures"];
         completeClassFixtures regs Name.nons_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
         completeClassFixtures regs Name.nons_Function funClassObj;
         completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
         (* NB: order matters here. *)
+        trace ["initializing class prototypes"];
         Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
         Eval.initClassPrototype regs ifaceClassObj;
 
+        trace ["evaluating other files"];
         evalFiles regs otherFrags;
 
+        trace ["executing object constructor on global object"];
         runObjectConstructorOnGlobalObject 
             regs objClass objClassObj objClassClosure;
 
+        trace ["evaluating top fragments of root-class files"];
         Eval.evalTopFragment regs (filterOutRootClasses objFrag);
         Eval.evalTopFragment regs (filterOutRootClasses clsFrag);
         Eval.evalTopFragment regs (filterOutRootClasses funFrag);
@@ -396,6 +398,7 @@ fun boot (baseDir:string) : Mach.REGS =
         describeGlobal regs;
 
         (* Do a small bit of rewiring of the root prototype chains. *)
+        trace ["configuring root-class prototype chains"];
         Mach.setProto funClassObj (Eval.getPrototype regs funClassObj);
         Mach.setProto objClassObj (Mach.getProto funClassObj);
         Mach.setProto classClassObj (Mach.getProto funClassObj);

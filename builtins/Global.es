@@ -71,13 +71,15 @@ package
         }
     }
 
+    /*
     iterator type IteratorType.<T> = {
-        next: function () : T
+        next: function () : *
     };
+    */
 
-    iterator type IterableType.<T> = {
+    // iterator type IterableType.<T> = {
         /* iterator::get: function (boolean=) : iterator::IteratorType.<T>*/
-    };
+    // };
       
     iterator class StopIterationClass {
         function toString() : string 

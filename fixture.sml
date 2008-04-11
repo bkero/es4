@@ -90,9 +90,7 @@ structure IntMap = SplayMapFn (IntKey);
  *)
 
 datatype RIB_RECORD = 
-         OpenTopUnitRib 
-       | ClosedTopUnitRib of Ast.RIB
-       | GeneralRib of { parent: Ast.RIB_ID option,
+         GeneralRib of { parent: Ast.RIB_ID option,
                          rib: Ast.RIB }
 
 
@@ -145,7 +143,7 @@ fun replaceFixture (b:Ast.RIB)
     end
 
 
-type TYEQ = (Ast.TY -> Ast.TY -> bool)
+type TYEQ = (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool)
 
 
 fun mergeVirtuals (tyeq:TYEQ)
@@ -154,8 +152,8 @@ fun mergeVirtuals (tyeq:TYEQ)
                   (vold:Ast.VIRTUAL_VAL_FIXTURE) =
     let
         val ty = case ((#ty vold), (#ty vnew)) of
-                     (Ast.Ty {expr=Ast.SpecialType Ast.Any, ...}, tnew) => tnew
-                   | (told, Ast.Ty {expr=Ast.SpecialType Ast.Any, ...}) => told
+                     (Ast.SpecialType Ast.Any, tnew) => tnew
+                   | (told, Ast.SpecialType Ast.Any) => told
                    | (t1, t2) => if tyeq t1 t2
                                  then t1
                                  else error ["mismatched get/set types on fixture ",
@@ -215,7 +213,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
 		   | Ast.TypeVarFixture _ => "[typeVar]"
-		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty (AstQuery.typeExprOf t))
+		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty t)
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
@@ -235,274 +233,48 @@ fun printRib (rib:Ast.RIB) =
  * Operations on PROGRAMs -- NB: much of PROGRAM is mutable.
  * ----------------------------------------------------------------------------- *)
                 
-type PROGRAM = { rootRib: Ast.RIB ref,
-                 nextRibId: Ast.RIB_ID ref,
-                 ribs: (RIB_RECORD IntMap.map) ref,
-                 packageNames: ((Ast.IDENT list) list) ref,
-                 langEd: int ref,
-                 
-                 (* fixtureCache lazily mirrors the contents of the rib records *)
-                 fixtureCache: ((Ast.NAME * Ast.FIXTURE) FixtureMap.map) ref, 
-                 cacheSize: int }
+type PROGRAM = { rootRib: Ast.RIB,
+                 packageNames: ((Ast.IDENT list) list) }
 
-
-fun mkProgram (langEd:int) 
-              (topRib:Ast.RIB)
+               
+fun mkProgram (topRib:Ast.RIB)
     : PROGRAM =
-    { rootRib = ref topRib, 
-      nextRibId = ref 0,
-      ribs = ref IntMap.empty,
-      packageNames = ref [],
-      langEd = ref langEd,
-      
-      fixtureCache = ref FixtureMap.empty,
-      cacheSize = 4096 }
+    { rootRib = topRib, 
+      packageNames = [] }
 
 
-fun updateLangEd (prog:PROGRAM) 
-                 (langEd:int)                  
-    : unit = 
-    ((#langEd prog) := langEd)
-    
-
-fun getLangEd (prog:PROGRAM) 
-    : int = 
-    (!(#langEd prog))
-
-
-fun updateFixtureCache (prog:PROGRAM)
-                       (ribId:Ast.RIB_ID option)
-                       (mname:Ast.MULTINAME)
-                       (name:Ast.NAME)
-                       (fixture:Ast.FIXTURE) 
-    : unit = 
+fun extendRootRib (prog:PROGRAM)
+                  (additions:Ast.RIB)
+                  (tyeq:TYEQ)
+    : PROGRAM = 
     let
-        val c = (#fixtureCache prog)
-    in
-        c := FixtureMap.insert ((!c), (ribId, mname), (name, fixture))
-    end
-
-
-fun writeRibRec (prog:PROGRAM)
-                (ribId:Ast.RIB_ID)
-                (ribRec:RIB_RECORD)
-    : unit = 
-    let 
-        val { ribs, fixtureCache, ... } = prog
-    in
-        fixtureCache := FixtureMap.empty;
-        ribs := IntMap.insert ((!ribs), ribId, ribRec)
-    end
-
-
-fun allocRibRec (prog:PROGRAM)
-                (ribRec:RIB_RECORD)
-    : Ast.RIB_ID = 
-    let 
-        val { nextRibId, ... } = prog
-        val ribId = !nextRibId
-    in        
-        nextRibId := (ribId + 1
-                      handle Overflow => error ["overflowed maximum rib ID"]);
-        writeRibRec prog ribId ribRec;
-        ribId
-    end
-
-
-fun allocGeneralRib (prog:PROGRAM)
-                    (parent:Ast.RIB_ID option)
-    : Ast.RIB_ID =
-    allocRibRec prog (GeneralRib { parent = parent, rib = [] })
-
-
-fun allocTopUnitRib (prog:PROGRAM)
-    : Ast.RIB_ID =
-    allocRibRec prog (OpenTopUnitRib)
-
-
-fun getRibRec (prog:PROGRAM)
-              (ribId:Ast.RIB_ID)
-    : RIB_RECORD = 
-    case IntMap.find(!(#ribs prog), ribId) of
-        NONE => error ["no rib record found for rib #", Int.toString ribId ]
-      | SOME rr => rr
-
-
-fun closeTopUnitRib (prog:PROGRAM)
-                    (ribId:Ast.RIB_ID)
-    : unit = 
-    let
-        val { rootRib, ... } = prog
-    in
-        case getRibRec prog ribId of
-            OpenTopUnitRib => writeRibRec prog ribId (ClosedTopUnitRib (!rootRib))
-          | _ => error ["closing rib #", Int.toString ribId, ", which is not an open top unit"]
-    end
-
-
-(* 
- * Convert a ribId to a specific chain of RIBS and an indicator of whether it's closed.
- * Possibly we can do without this if we fix up the multiname algorithm to use the 
- * fixture cache explicitly. For now we do it the old way.
- *)
-
-fun getRibs (prog:PROGRAM)
-            (ribId:Ast.RIB_ID option)
-    : (Ast.RIBS * bool) =
-    case ribId of 
-        NONE => ([!(#rootRib prog)], false)
-      | SOME rid =>         
-        case getRibRec prog rid of 
-            GeneralRib { parent, rib } => 
-            let
-                val (parentRibs, parentClosed) = getRibs prog parent
-            in
-                (rib :: parentRibs, parentClosed)
-            end
-          | OpenTopUnitRib => getRibs prog NONE
-          | ClosedTopUnitRib rib => ([rib], true)
-
-
-fun ribIsClosed (prog:PROGRAM)
-                (ribId:Ast.RIB_ID option)
-    : bool = 
-    case ribId of 
-        NONE => false
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => ribIsClosed prog parent
-          | OpenTopUnitRib => false
-          | ClosedTopUnitRib _ => true
-
-
-fun saveRib (prog:PROGRAM)
-            (ribId:Ast.RIB_ID option)
-            (rib:Ast.RIB)
-    : unit = 
-    case ribId of 
-        NONE => (#rootRib prog) := rib
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => 
-            writeRibRec prog rid (GeneralRib { parent=parent, rib=rib })
-          | _ => error ["saving rib #", Int.toString rid, 
-                        ", which is not a general rib"]
-
-
-fun extendRib (prog:PROGRAM)
-              (ribId:Ast.RIB_ID option)
-              (additions:Ast.RIB)
-              (tyeq:TYEQ)
-    : unit = 
-    let
-        val oldRib = case ribId of 
-                         NONE => !(#rootRib prog)
-                       | SOME rid => 
-                         case getRibRec prog rid of 
-                             GeneralRib { rib, ... } => rib
-                           | _ => error ["extending rib #", Int.toString rid, 
-                                         ", which is not a general rib"]
+        val { packageNames, ... } = prog
+        val oldRib = (#rootRib prog)
         val newRib = mergeRibs tyeq oldRib additions
     in
-        saveRib prog ribId newRib
+        { rootRib = newRib,
+          packageNames = packageNames }
     end
         
 
-fun resolveToFixture (prog:PROGRAM)
-                     (mn:Ast.MULTINAME)
-                     (rid:Ast.RIB_ID option)
-    : ((Ast.NAME * Ast.FIXTURE) option) =
-    let
-        val { fixtureCache, cacheSize, ... } = prog
-        val c = !fixtureCache
-        val k = (rid,mn)
-    in
-        case FixtureMap.find (c, k) of
-            SOME v => SOME v
-          | NONE => 
-            let
-                val (ribs, closed) = getRibs prog rid
-            in
-                case Multiname.resolveInRibs mn ribs of 
-                    NONE => NONE
-                  | SOME (ribs, n) => 
-                    let 
-                        val (fix:Ast.FIXTURE) = getFixture (List.hd ribs) (Ast.PropName n)
-                    in
-                        if (FixtureMap.numItems c) < cacheSize
-                        then (fixtureCache := FixtureMap.insert (c, k, (n, fix)); SOME (n, fix))
-                        else SOME (n, fix)
-                    end
-            end
-    end
-
-
-fun inGeneralRib (prog:PROGRAM)
-                 (ribId:Ast.RIB_ID option)
-    : bool =
-    case ribId of 
-        NONE => false
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => true
-          | OpenTopUnitRib => false
-          | ClosedTopUnitRib _ => false
-
-
-fun inTopUnitRib (prog:PROGRAM)
-                 (ribId:Ast.RIB_ID option)
-    : bool =
-    case ribId of 
-        NONE => false
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => inTopUnitRib prog parent
-          | OpenTopUnitRib => true
-          | ClosedTopUnitRib _ => true
-
-
-fun closeFragment (prog:PROGRAM)
-                  (frag:Ast.FRAGMENT)
-                  (ribId:Ast.RIB_ID option)
-    : unit = 
-    let
-        val { packageNames, ... } = prog
-    in
-        case frag of
-            Ast.Package { name, ... } => ()
-          | Ast.Anon block => ()
-          | Ast.Unit _ => 
-            (case ribId of 
-                 NONE => ()
-               | SOME rid => if inTopUnitRib prog ribId
-                             then ()
-                             else closeTopUnitRib prog rid)
-    end
-
-
 fun getRootRib (prog:PROGRAM)
     : Ast.RIB = 
-    !(#rootRib prog)
+    (#rootRib prog)
 
 
 fun addPackageName (prog:PROGRAM)
                    (packageName:Ast.IDENT list)
-    : unit = 
-    (#packageNames prog) := packageName :: (!(#packageNames prog))
+    : PROGRAM = 
+    let
+        val { rootRib, ... } = prog
+    in
+        { rootRib = rootRib,
+          packageNames = (packageName :: (#packageNames prog)) }
+    end
 
 
 fun getPackageNames (prog:PROGRAM)
     : Ast.IDENT list list = 
-    !(#packageNames prog)
-
-
-fun getRibsForTy (prog:PROGRAM) 
-                 (ty:Ast.TY)                
-    : (Ast.RIBS * bool) = 
-    let       
-        val Ast.Ty { ribId, ... } = ty
-    in
-        getRibs prog ribId
-    end
+    (#packageNames prog)
 
 end
