@@ -49,14 +49,19 @@ fun lookupRoot (prog:Fixture.PROGRAM)
     let
         val _ = trace ["fetching ", LogErr.name n, " class definition"];
         val rib = Fixture.getRootRib prog
+        val _ = trace ["fetching2 ", LogErr.name n, " class definition"];
         val fix = Fixture.getFixture rib (Ast.PropName n)
+        val _ = trace ["fetching3 ", LogErr.name n, " class definition"];
         val cls = case fix of
                       Ast.ClassFixture cls => cls
                     | _ => error [LogErr.name n, " did not resolve to a class fixture"]
+        val _ = trace ["fetching4 ", LogErr.name n, " class definition"];
         val Ast.Cls { instanceType, ... } = cls
+        val _ = trace ["fetching5 ", LogErr.name n, " class definition"];
         val ty = case instanceType of 
                      Ast.InstanceType ity => ity
                    | _ => error [LogErr.name n, " does not have an instance type"]
+        val _ = trace ["fetched ", LogErr.name n, " class definition"];
     in
         (cls, ty)
     end

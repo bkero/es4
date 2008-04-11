@@ -188,7 +188,7 @@ datatype PRAGMA =
            fsig: FUNC_SIG,                       (* redundant, not used in verify *)
            native: bool,
            block: BLOCK option, (* NONE => abstract *)
-           param: HEAD,
+           param: HEAD,         (* CF: not sure what this is ... *)
            defaults: EXPR list,
            ty: TYPE_EXPR,
            loc: LOC option }
@@ -248,6 +248,7 @@ datatype PRAGMA =
          { expr:TYPE_EXPR,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
+       | TypeVarFixtureRef of TYPEVAR_NONCE  
 
      and STMT =
          EmptyStmt
@@ -362,7 +363,7 @@ datatype PRAGMA =
            { qual : EXPR,
              ident : Ustring.STRING }
        | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
-       | WildcardIdentifier            (* CF: not really an identifier, should be part of TYPE_EXPR *)
+       | WildcardIdentifier            (* CF: not really an identifier, should be part of T *)
 
      and LITERAL =
          LiteralNull
@@ -398,7 +399,7 @@ datatype PRAGMA =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
-       | TypeVarFixture of TYPEVAR_NONCE
+       | TypeVarFixture of TYPEVAR_NONCE 
        | TypeFixture of TYPE_EXPR
        | MethodFixture of
            { func: FUNC,
@@ -427,9 +428,22 @@ withtype
      and RIBS = RIB list
      and INITS = (FIXTURE_NAME * EXPR) list
 
+(* cf: a class ref of the form C.<int> is represented as
+  AppType
+  { base = LamType
+             { params = ["X"],
+               body = InstanceType
+                        { name = { ns = Public "", id = "C"},
+                          typeParams = ["X"],
+                          typeArgs = [], 
+                          ... }},
+    args = ... }
+
+  In the above AST, typeArgs is implicitly ["X"]
+*)
      and INSTANCE_TYPE =
           {  name: NAME,
-             typeParams: IDENT list,      (* redundant, ignored in verify.sml *)
+             typeParams: IDENT list,      
              typeArgs: TYPE_EXPR list,
              nonnullable: bool,           (* redundant, ignored in verify.sml *)
              superTypes: TYPE_EXPR list,  (* redundant, ignored in verify.sml *)

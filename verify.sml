@@ -284,7 +284,9 @@ fun verifyType (env:ENV)
      * form.
      *)
     let
+        val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
         val norm = normalize (#prog env) (#strict env) ty
+        val _ = trace ["verifyType: back from normalize ", LogErr.ty ty]
     in
         (norm, 
          if Type.isGroundType norm
@@ -1120,26 +1122,27 @@ and verifyTopRib (prog:Fixture.PROGRAM)
 and verifyTopFragment (prog:Fixture.PROGRAM)
                       (strict:bool) 
                       (frag:Ast.FRAGMENT) 
-  : Ast.FRAGMENT = 
-    let 
-        val env = newEnv prog strict
-    in
-        (* print "verifyTopFragment\n";  *)
-        if !doTraceFrag then
-            let in
-                print "verifyTopFragment:printing\n";
-                Pretty.ppFragment frag;
-                TextIO.print "\n"
-            end
-        else ();
-        verifyFragment env frag;
-        trace ["verification complete ",
-              (if strict then "strict " else "nonstrict ")];
-
-
+  : Ast.FRAGMENT =
+    if true (* FIXME: strict *) 
+    then
+        let 
+            val env = newEnv prog strict
+        in
+            trace ["verifyTopFragment"];
+            if !doTraceFrag then
+                let in
+                    print "verifyTopFragment:printing\n";
+                    Pretty.ppFragment frag;
+                    TextIO.print "\n"
+                end
+            else ();
+            verifyFragment env frag;
+            trace ["verification complete ",
+                   (if strict then "strict " else "nonstrict ")];
+            frag
+        end
+    else
         frag
-    end
-
-
 end
+
 

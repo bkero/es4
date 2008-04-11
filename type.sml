@@ -31,12 +31,129 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
+
+(* -----------------------------------------------------------------------------
+ * General overview of types and type bindings
+ * ----------------------------------------------------------------------------- 
+ * 
+ * There are two kinds of type variables. 
+ * - Defined type variables are introduced via type definitions "type X = T".
+ * - Generic type variables are introduced via  function.<X>() {...}, 
+ *   class C.<X> {...} and interface I.<X> { ... }
+ * 
+ * An environment (aka RIBS) that may contain two kinds of bindings for type variable.
+ * - TypeFixture, where the environment associated a type variable with a corresponding type,
+ *   which are introduced at verify time for defined type variables, 
+ *   and also at eval time for all type variables.
+ * - TypeVarFixture just contain a type variable, without a corresponding type, 
+ *   and are introduced at verify time for generic type variables.
+ *   TypeVarFixtures do not exist at run-time
+ *
+ * ----------------------------------------------------------------------------- 
+ *
+ * A "type constructor" is a type that is not quite a proper type, in that it needs some number
+ * of type arguments to become a proper type.  
+ * Unparameterized references to generic typedefs,  classes, and interfaces are type constructors.
+ *
+ * Consider the two type definitions:
+ *   type f.<X> = function(X):X
+ *   type g = function.<X>(X):X
+ * 
+ * Traditionally, these are very different; 
+ *   g is a type that describes some kinds of generic functions,
+ *   whereas f is a type constructor, and must be applied to a type argument to yield a type,
+ *   eg f.<int> yields function(int):int
+ *
+ * But we only have one ast node (LamType) to describe both kinds,
+ * so f and g are identical. That is, f is a types, and it is also a unary type constructor,
+ * in that f.<int> is also a type. Ditto for g.
+ * Thus function.<X>(X):X is both a type constructor and a proper type.
+ *
+ * ----------------------------------------------------------------------------- 
+ *
+ * Normalization converts a TYPE_EXPR (in the context of given RIBS) 
+ * into a normalized TYPE_EXPR.
+ * It is an error if a type cannot be normalized; 
+ * that may be a static or dynamic error,
+ * since normalization runs both at verify-time and eval-time.
+ * 
+ * Normalized types satisfy the following properties:
+ *
+ * - If two types are equivalent (in that they are both subtypes of each other),
+ *   then normalization maps those types to the same type. This property in necessary
+ *   to implement C#-style semantics for static fields of generic classes.
+ *
+ * - Normalized types are closed, no free TypeNames. 
+ *   In particular:
+ *     references to TypeFixtures are replaced by the corresponding type
+ *     references TypeVarFixtures (which has a nonce) are replaced by a TypeVarFixtureRef
+ *     containing that nonce.
+ *   At evaluation time, all normalized types should be closed, so no TypeVarFixtureRefs.
+ *
+ * - Normalized types are in beta-normal form, in that any applications of LamTypes 
+ *   have been reduced. 
+ *
+ * - Normalized types are proper types, in that they contain no type constructors (see below)
+ *   ie no LamTypes, and no references to generic classes or interfaces
+ *   without the appropriate number of type parameters.
+ *
+ * ----------------------------------------------------------------------------- 
+ * 
+ * Tricky example of shadowing, etc, where *2 = nonce 2, etc
+
+
+ class C.<Y - *1> {
+   type X = Y
+   function f.<Y - *2>() {
+         type W.<Z - *3> = {y:Y,z:Z}        <-- normalized to  {y:*2, z:*3 }
+         function g.<Y>() {
+              (W.<X>).z        = (W.<*1>).z = ({y:*2, z:*1}).z = *1
+   }
+ }
+
+need to inline, to beta-reduce, to eval refs, etc
+
+
+EXPR = 
+       | CallExpr of {
+             func: EXPR,
+             actuals: EXPR list }
+       | ApplyTypeExpr of {                  // ONLY generic fn instantiation
+             expr: EXPR,  (* apply expr to type list *)
+             actuals: TYPE_EXPR list }
+
+     and TYPE_EXPR =
+       | FunctionType of FUNC_TYPE
+       | AppType of                         // apply type constructor
+         { base: TYPE_EXPR,
+           args: TYPE_EXPR list }
+       | LamType of                         // 
+         { params: IDENT list,
+           body: TYPE_EXPR }
+
+
+AppType
+                                           { base = TypeName
+                                                      Identifier
+                                                        { ident = "C",
+                                                          openNamespaces = []},
+                                             args = [TypeName
+                                                       Identifier
+                                                         { ident = "int",
+                                                           openNamespaces = []}]}}],
+
+
+
+ *)
+
+
 structure Type = struct
 
 val doTrace = ref false
 fun log ss = LogErr.log ("[type] " :: ss)  
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.typeError ss
+fun traceTy ss ty = if (!doTrace) then let in trace [ss, LogErr.ty ty]; Pretty.ppType ty; TextIO.print "\n" end else ()
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
@@ -58,85 +175,6 @@ fun fmtMname n = if !doTrace
 fun fmtType t = if !doTrace
                  then LogErr.ty t
                  else ""
-
-(* -----------------------------------------------------------------------------
- * Normalized types
- * ----------------------------------------------------------------------------- *)
-
-(* 
- * Normalization converts a TYPE_EXPR (in the context of given RIBS) 
- * into a normalized TYPE_EXPR.
- * It is an error if a type cannot be normalized; 
- * that may be a static or dynamic error,
- * since normalization runs both at verify-time and eval-time.
- * 
- * There are two kinds of type variables. 
- * - Defined type variables are introduced via type definitions "type X = T".
- * - Generic type variables are introduced via  function.<X>() {...}, 
- *   class C.<X> {...} and interface I.<X> { ... }
- * 
- * Normalization works in the context of an environment (aka RIBS) that may contain two
- * kinds of bindings for type variable.
- * - TypeFixture, where the environment associated a type variable with a corresponding type,
- *   which are introduced at verify time for defined type variables, 
- *   and also at eval time for all type variables.
- * - TypeVarFixture just contain a type variable, without a corresponding type, 
- *   and are introduced at verify time for generic type variables.
- * 
- * Normalized types satisfy the following properties:
- *
- * - If two types are equivalent (in that they are both subtypes of each other),
- *   then normalization maps those types to the same type. This property in necessary
- *   to implement C#-style semantics for static fields of generic classes.
- *
- * - Normalized types are *NOT* necessarily closed. 
- *   They do not contain references to TypeFixtures, since those are inlined,
- *   but may still contain references to TypeVarFixtures, provided the  
- *   environment has such bindings, which may happen at verify time.
- *   At evaluation time, all normalized types should be closed.
- *
- * - Normalized types are in beta-normal form, in that any applications of LamTypes 
- *   have been reduced. 
- *
- * - Normalized types are proper types, in that they contain no type constructors (see below)
- *   ie no LamTypes, and no references to generic classes or interfaces
- *   without the appropriate number of type parameters.
- *
- * --------
- * 
- * A "type constructor" is a type that is not quite a proper type, in that it needs some number
- * of type arguments to become a proper type.  
- * Unparameterized references to generic typedefs,  classes, and interfaces are type constructors.
- *
- * Consider the subtle distinction:
- *   type f.<X> = function(X):X
- *   type g = function.<X>(X):X
- * Traditionally, these are very different; 
- *   g is a type that describes some kinds of generic functions,
- *   whereas f is a type constructor, and must be applied to a type argument to yield a type,
- *   eg f.<int> yields function(int):int
- * But we only have one ast node (LamType) to describe both kinds,
- * so f and g are identical. That is, f is a types, and it is also a unary type constructors,
- * in that f.<int> is also a type. Ditto for g.
- * Thus function.<X>(X):X   is both a type constructor and a proper type.
-
-EXPR = 
-       | CallExpr of {
-             func: EXPR,
-             actuals: EXPR list }
-       | ApplyTypeExpr of {                  // ONLY generic fn instantiation
-             expr: EXPR,  (* apply expr to type list *)
-             actuals: TYPE_EXPR list }
-
-     and TYPE_EXPR =
-       | FunctionType of FUNC_TYPE
-       | AppType of                         // apply type constructor
-         { base: TYPE_EXPR,
-           args: TYPE_EXPR list }
-       | LamType of                         // 
-         { params: IDENT list,
-           body: TYPE_EXPR }
- *)
 
 (* -----------------------------------------------------------------------------
  * Normalization
@@ -170,7 +208,6 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
     : Ast.TYPE_EXPR =
     case ty of 
         Ast.SpecialType _ => ty
-      | Ast.InstanceType _ => ty
       | Ast.TypeName _ => ty
       | Ast.AppType { base, args } => 
         Ast.AppType { base = f base,
@@ -197,6 +234,21 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
         Ast.ElementTypeRef (f t, idx)
       | Ast.FieldTypeRef (t, id) =>
         Ast.FieldTypeRef (f t, id)
+      | Ast.InstanceType { name, typeParams, typeArgs, 
+                           nonnullable, superTypes, ty, dynamic } =>
+        Ast.InstanceType { name=name, 
+                           typeParams=typeParams,
+                           typeArgs = map f typeArgs,
+                           nonnullable=nonnullable, 
+                           superTypes=superTypes, ty=ty, dynamic=dynamic } 
+
+fun foreachTyExpr (f:Ast.TYPE_EXPR -> unit) (ty:Ast.TYPE_EXPR) : unit =
+    let in
+        mapTyExpr (fn t => let in f t; t end) ty;
+        ()
+    end
+
+(* ----------------------------------------------------------------------------- *)
 
 fun normalizeRefs (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
@@ -226,6 +278,8 @@ fun normalizeRefs (ty:Ast.TYPE_EXPR)
       | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
       | x => mapTyExpr normalizeRefs x
                                    
+(* ----------------------------------------------------------------------------- *)
+
 fun normalizeNulls (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
@@ -273,6 +327,7 @@ fun normalizeNulls (ty:Ast.TYPE_EXPR)
               | NONE => Ast.UnionType []
     end
 
+(* ----------------------------------------------------------------------------- *)
 (* FIXME: also need to normalize (C|D) and (D|C) to the same type.
  * We also need to normalize ...
  *
@@ -295,18 +350,12 @@ fun normalizeUnions (ty:Ast.TYPE_EXPR)
     end
 
 
-(* FIXME *)
+(* ----------------------------------------------------------------------------- *)
 (* Checks that the given type does not contain any type constructors,
  * unless they are immediately applied to an appropriate number of arguments.
- * Assumes the type already normalized, so no beta redexes.
+ * Assumes no beta redexes.
  * FIXME: need to deal with InstanceType and AppType.
  *)
-
-fun foreachTyExpr (f:Ast.TYPE_EXPR -> unit) (ty:Ast.TYPE_EXPR) : unit =
-    let in
-        mapTyExpr (fn t => let in f t; t end) ty;
-        ()
-    end
 
 fun checkProperType (ty:Ast.TYPE_EXPR) : unit = 
     let fun check ty2 = 
@@ -314,32 +363,24 @@ fun checkProperType (ty:Ast.TYPE_EXPR) : unit =
                 Ast.LamType { params, body } => 
                 error ["Improper occurrence of type consgtructor ", LogErr.ty ty2, 
                        " in type ", LogErr.ty ty]
+
               | Ast.AppType { base = Ast.InstanceType _, args } =>
                 (* FIXME: check instance type *)
                 let in List.map check args; () end
+
               | Ast.AppType { base, args } =>
                 error ["Improper occurrence of type application ", LogErr.ty ty2, 
                        " in type ", LogErr.ty ty]
               | Ast.InstanceType _ =>
                 (* FIXME *)
                 ()
-              | _ => foreachTyExpr check ty
+              | _ => foreachTyExpr check ty2
     in 
         check ty
     end
     
-(* normalizeNames: replace all references to TypeFixtures by the corresponding type.
- * OUCH!
- class C.<Y> {
-   type X = Y
-   function f.<Y>() {
-         X <- how to normalize this?
-   }
- }
-
- (1) require no shadowing of type variables
- (2) alpha-rename statements etc
- (3) find some other way to unique-ify references - RIBID ...
+(* ----------------------------------------------------------------------------- *)
+(* normalizeNames: replace all references to TypeFixtures by the corresponding type. 
 
 
      and TYPE_EXPR =
@@ -368,6 +409,7 @@ type IDENT = Ustring.STRING
  *) 
 
 fun normalizeNames (env:Ast.RIBS)
+                   (ids:Ast.IDENT list)
                    (ty:Ast.TYPE_EXPR)                    
   : Ast.TYPE_EXPR = 
     let
@@ -383,15 +425,17 @@ fun normalizeNames (env:Ast.RIBS)
         fun getType (mname : Ast.MULTINAME) : Ast.TYPE_EXPR = 
             case getFixture mname of 
                 (env', _,  Ast.TypeFixture ty') => 
-                (* Pulling ty out of env', need to normalize first *)
-                normalizeNames env' ty'
+                (* Pulling ty out of env', need to normalize first, in the right environment *)
+                normalizeNames env' [] ty'
+              | (env', n, Ast.TypeVarFixture nonce) =>
+                Ast.TypeVarFixtureRef nonce
 
                 (* FIXME: not sure about the following, and generic classes ... *)
               | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, ... })) => instanceType
               | (_, _, Ast.InterfaceFixture (Ast.Iface { instanceType, ... })) => instanceType
               | (_, n, _) => error ["name ", LogErr.name  n, 
-                                 " in type expression ", LogErr.ty ty, 
-                                 " is not a type"]
+                                    " in type expression ", LogErr.ty ty, 
+                                    " is not a type"]
 
         fun getNamespace (mname : Ast.MULTINAME) : Ast.NAMESPACE = 
             case getFixture mname of 
@@ -416,16 +460,23 @@ fun normalizeNames (env:Ast.RIBS)
     in
         case ty of 
             Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
-            normalizeNames env (getType { id = ident, nss = openNamespaces })
+            if List.exists (fn i => i=ident) ids
+            then ty (* local binding, don't replace *)
+            else getType { id = ident, nss = openNamespaces }
             
           | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
-            normalizeNames env (getType { id = ident, nss = [[ getNamespaceForExpr qual ]] })
+            (* FIXME: sure this is not a reference to a type var? *)
+            getType { id = ident, nss = [[ getNamespaceForExpr qual ]] }
             
           | Ast.TypeName Ast.WildcardIdentifier => Ast.SpecialType Ast.Any
           | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
-          | t => mapTyExpr (normalizeNames env) t
+          | Ast.LamType { params, body } =>
+            Ast.LamType { params = params,
+                          body   = normalizeNames env (ids @ params) body }
+          | t => mapTyExpr (normalizeNames env ids) t
     end
 
+(* ----------------------------------------------------------------------------- *)
 (* uniqueIdent maps an IDENT to a unique variant of that IDENT that has not been used before.
  * This unique-ification is used for alpha-renaming with capture-free substitution.
  *)
@@ -435,20 +486,23 @@ val uniqueIdentPostfix = ref 0
 fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
     let in
         uniqueIdentPostfix := !uniqueIdentPostfix +1;
-        id (* FIXME: add postfix *)
+        Ustring.stringAppend id (Ustring.fromInt (!uniqueIdentPostfix))
     end
 
+fun makeTypeName (id:Ast.IDENT) : Ast.TYPE_EXPR = 
+    Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[] })
+
+
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
+ * All are normalized, so no TypeNames in args or ty, just TypeVarFixtureRefs.
  *)
 
 fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
     case ty of
         Ast.LamType { params, body } =>
-        let val uniqParams = map uniqueIdent params
-            val refUniqParams = 
-                map (fn id => Ast.TypeName (Ast.Identifier { ident=id, openNamespaces = [] }))
-                    uniqParams
-            val body' = substTypes uniqParams refUniqParams body
+        let val uniqParams    = map uniqueIdent  params
+            val refUniqParams = map makeTypeName uniqParams
+            val body'  = substTypes uniqParams refUniqParams body
             val body'' = substTypes params args body'
         in
             Ast.LamType { params=uniqParams, body=body'' }
@@ -467,6 +521,7 @@ fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR)
       | _ => mapTyExpr (substTypes ids args) ty
 
 
+(* ----------------------------------------------------------------------------- *)
 (* Perform beta-reduction of all AppTypes applied to a LamType.
  *)
 
@@ -488,19 +543,45 @@ fun normalizeLambdas (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
                  *)
                 normalizeLambdas ty
             end
+
+            (* cf: fix the rep for typeArgs so substitution will work *)
+          | Ast.InstanceType { name, typeParams, typeArgs, 
+                               nonnullable, superTypes, ty, dynamic } =>
+            Ast.InstanceType { name=name, 
+                               typeParams=typeParams,
+                               typeArgs = if typeArgs=[] 
+                                          then map makeTypeName typeParams 
+                                          else typeArgs,
+                               nonnullable=nonnullable, 
+                               superTypes=superTypes, ty=ty, dynamic=dynamic } 
+
           | _ => ty
     end
 
+(* ----------------------------------------------------------------------------- *)
 fun normalize (ribs:Ast.RIB list)
               (ty:Ast.TYPE_EXPR)               
     : Ast.TYPE_EXPR =
     let
-        val ty = normalizeNames ribs ty
+        val _ = traceTy "normalize1: " ty
+        val ty = normalizeNames ribs [] ty     (* inline TypeFixtures and TypeVarFixture nonces *)
+
+        val _ = traceTy "normalize2: " ty
         val ty = normalizeRefs ty
+
+        val _ = traceTy "normalize3: " ty
         val ty = normalizeLambdas ty
+
+        val _ = traceTy "normalize4: " ty
         val ty = normalizeNulls ty
+
+        val _ = traceTy "normalize5: " ty
         val ty = normalizeUnions ty
+
+        val _ = traceTy "normalize6: " ty
         val _  = checkProperType ty
+
+        val _ = traceTy "normalize7: " ty
     in
         ty
     end
@@ -557,7 +638,7 @@ fun liftOption (f:'a -> 'a option)
     end
 *)
 
-(* e is generic type vars in scope *)
+
 fun isGroundTypeEnv (e:Ast.IDENT list) (t:Ast.TYPE_EXPR) 
     : bool = 
     let
@@ -662,9 +743,9 @@ datatype BICOMPAT = Bicompat | Compat
 datatype VARIANCE = Covariant | Invariant
 
 fun groundMatchesGeneric (b:BICOMPAT)
-                  (v:VARIANCE)
-                  (ty1:Ast.TYPE_EXPR)
-                  (ty2:Ast.TYPE_EXPR)
+                         (v:VARIANCE)
+                         (ty1:Ast.TYPE_EXPR)
+                         (ty2:Ast.TYPE_EXPR)
 
     : bool = 
     if b=Bicompat andalso
@@ -759,17 +840,20 @@ fun groundMatchesGeneric (b:BICOMPAT)
       (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
 
       | (_, _, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-	List.exists (Mach.nameEq name) [ Name.nons_Array,
-					 Name.nons_Object ]
-
+	    List.exists (Mach.nameEq name) [ Name.nons_Array,
+					                     Name.nons_Object ]
+        
       | (_, _, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
-	List.exists (Mach.nameEq name) [ Name.nons_Object ]
-
+	    List.exists (Mach.nameEq name) [ Name.nons_Object ]
+        
       | (_, _, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-	List.exists (Mach.nameEq name) [ Name.nons_Function, 
-					 Name.nons_Object ]
-
-    | _ => false
+	    List.exists (Mach.nameEq name) [ Name.nons_Function, 
+					                     Name.nons_Object ]
+        
+      | (_, _, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
+        (nonce1 = nonce2)
+      
+      | _ => false
 
     
 

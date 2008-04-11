@@ -79,6 +79,7 @@ fun usage () =
                "        native    native operations\n",
                "        boot      standard library boot sequence\n",
                "        ns        namespaces in traces\n",
+               "        type      operations on types\n",
                "        stack     stack operations\n"])
 
 fun findTraceOption (tname:string)
