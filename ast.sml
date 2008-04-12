@@ -49,7 +49,6 @@ type TYPEVAR_NONCE = int
 
 datatype NAMESPACE =
          Intrinsic
-       | OperatorNamespace
        | Private of IDENT
        | Protected of IDENT
        | Public of IDENT

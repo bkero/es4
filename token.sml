@@ -60,10 +60,8 @@ datatype TOKEN =
     | MinusMinus
     | Div
     | DivAssign
-    | SlashGreaterThan
     | LessThan
     | LessThanOrEquals
-    | LessThanSlash
     | LeftShift
     | LeftShiftAssign
     | Assign

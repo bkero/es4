@@ -104,9 +104,8 @@ fun findTraceOption (tname:string)
       | "construct" => SOME (Eval.doTraceConstruct) 
       | "ns" => SOME (LogErr.doNamespaces) 
       | "stack" => SOME (Mach.traceStack) 
-      (* FIXME: add "fixture" 
+      (* FIXME: add "fixture" *)
       | _ => NONE
-*)
 
 fun consumeOption (opt:string) : bool =
     case explode opt of                                  
