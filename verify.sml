@@ -40,27 +40,27 @@ structure Verify = struct
 
 type STD_TYPES = { 
      AnyNumberType: Ast.TYPE_EXPR,
-     doubleType: Ast.TYPE_EXPR,
-     decimalType: Ast.TYPE_EXPR,
-     intType: Ast.TYPE_EXPR,
-     uintType: Ast.TYPE_EXPR,
+     doubleType:    Ast.TYPE_EXPR,
+     decimalType:   Ast.TYPE_EXPR,
+     intType:       Ast.TYPE_EXPR,
+     uintType:      Ast.TYPE_EXPR,
 
      AnyStringType: Ast.TYPE_EXPR,
-     stringType: Ast.TYPE_EXPR,
+     stringType:    Ast.TYPE_EXPR,
 
      AnyBooleanType: Ast.TYPE_EXPR,
-     booleanType: Ast.TYPE_EXPR,
+     booleanType:   Ast.TYPE_EXPR,
 
-     RegExpType: Ast.TYPE_EXPR,
+     RegExpType:    Ast.TYPE_EXPR,
 
      NamespaceType: Ast.TYPE_EXPR,
-     TypeType: Ast.TYPE_EXPR
+     TypeType:      Ast.TYPE_EXPR
 }
 
 type ENV = { returnType: Ast.TYPE_EXPR option,
              strict: bool,
              prog: Fixture.PROGRAM,
-             ribs: Ast.RIB list,
+             ribs: Ast.RIBS,
              stdTypes: STD_TYPES }
 
 fun withReturnType { returnType=_, strict, prog, ribs, stdTypes } returnType =
@@ -110,22 +110,7 @@ fun fmtType ty = if !doTrace
 val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
 val anyType         = Ast.SpecialType Ast.Any
-                                
-fun normalize (prog:Fixture.PROGRAM)
-              (strict:bool)              
-              (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR = 
-    (* FIXME: it is *super wrong* to just be using the root rib here. *)
-    Type.normalize [Fixture.getRootRib prog] ty
-    handle LogErr.TypeError e => 
-           let in
-               if strict 
-               then 
-                   warning [e, " while normalizing ", LogErr.ty ty]
-               else ();
-               ty
-           end
-
+                                           
 fun newEnv (prog:Fixture.PROGRAM) 
            (strict:bool) 
     : ENV = 
@@ -134,40 +119,41 @@ fun newEnv (prog:Fixture.PROGRAM)
      strict = strict,
      prog = prog, 
      ribs = [Fixture.getRootRib prog],
-
+     
      stdTypes = 
      {      
       AnyNumberType = Type.getNamedGroundType prog Name.ES4_AnyNumber,
-      doubleType = Type.getNamedGroundType prog Name.ES4_double,
-      decimalType = Type.getNamedGroundType prog Name.ES4_decimal,
-      intType = Type.getNamedGroundType prog Name.ES4_int,
-      uintType = Type.getNamedGroundType prog Name.ES4_uint,
+      doubleType    = Type.getNamedGroundType prog Name.ES4_double,
+      decimalType   = Type.getNamedGroundType prog Name.ES4_decimal,
+      intType       = Type.getNamedGroundType prog Name.ES4_int,
+      uintType      = Type.getNamedGroundType prog Name.ES4_uint,
 
       AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
-      stringType = Type.getNamedGroundType prog Name.ES4_string,
+      stringType    = Type.getNamedGroundType prog Name.ES4_string,
 
-      AnyBooleanType = Type.getNamedGroundType prog Name.ES4_AnyBoolean,
-      booleanType = Type.getNamedGroundType prog Name.ES4_boolean,
+      AnyBooleanType= Type.getNamedGroundType prog Name.ES4_AnyBoolean,
+      booleanType   = Type.getNamedGroundType prog Name.ES4_boolean,
 
-      RegExpType = Type.getNamedGroundType prog Name.nons_RegExp,
+      RegExpType    = Type.getNamedGroundType prog Name.nons_RegExp,
 
       NamespaceType = Type.getNamedGroundType prog Name.ES4_Namespace,
 
-      TypeType = Type.getNamedGroundType prog Name.intrinsic_Type
+      TypeType      = Type.getNamedGroundType prog Name.intrinsic_Type
      }
     }
 
 
 (******************* Utilities for dealing with ribs *********************)
+(* FIXME: need all these? maybe redundant with type.sml? *)
 
 fun resolveMnameToFixture (env:ENV)
-			  (mname:Ast.MULTINAME)
+			              (mname:Ast.MULTINAME)
     : Ast.FIXTURE option =
     case Multiname.resolveInRibs mname (#ribs env) of 
         NONE => NONE
       | SOME (ribs, n) =>
         SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
-
+        
 (* 
  * FIXME: It'd be nice to unify this with the namespace-expr resolver in 
  * defn.sml; unfortunately that uses ribId-based lookup not rib-list lookup,
@@ -176,16 +162,16 @@ fun resolveMnameToFixture (env:ENV)
  *)
 
 fun resolveIdentExprToMname (env:ENV)
-			    (ie:Ast.IDENT_EXPR)
+			                (ie:Ast.IDENT_EXPR)
     : Ast.MULTINAME = 
     case ie of                     
-	Ast.Identifier { ident, openNamespaces } => 
-	{ id = ident, nss = openNamespaces }
+	    Ast.Identifier { ident, openNamespaces } => 
+	    { id = ident, nss = openNamespaces }
       | Ast.QualifiedIdentifier { qual, ident } => 
-	{ id = ident, 
-	  nss = [[resolveExprToNamespace env qual]] }
+	    { id = ident, 
+	      nss = [[resolveExprToNamespace env qual]] }
       | _ =>  error ["unhandled type of lexical reference"]
-	     
+	          
 and resolveExprToNamespace (env:ENV)
                            (expr:Ast.EXPR)
     : Ast.NAMESPACE =
@@ -210,24 +196,23 @@ and resolveExprToNamespace (env:ENV)
  * by the general type normalizer in type.sml.
  *)
 fun resolveMnameToFixtureTy (env:ENV)
-			    (mname:Ast.MULTINAME)
+			                (mname:Ast.MULTINAME)
     : Ast.TYPE_EXPR = 
     case resolveMnameToFixture env mname of 	
-	(* 
-	 * FIXME: classtypes should be turned into instancetypes of 
-	 * the static-class type, so we can look up static props on them
-	 * correctly. Abusing object types like this is no good.
-	 *)
-	SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
+	    (* 
+	     * FIXME: classtypes should be turned into instancetypes of 
+	     * the static-class type, so we can look up static props on them
+	     * correctly. Abusing object types like this is no good.
+	     *)
+	    SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
       | SOME (Ast.ValFixture { ty, ... }) => ty	
       | SOME (Ast.VirtualValFixture { ty, ... }) => ty        
       | SOME (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
       | _ => anyType
 
-
-
 (******************* Subtyping and Compatibility *************************)
 
+(* src and dst are normalized *)
 fun checkMatch (src:Ast.TYPE_EXPR) (* assignment src *)
 		       (dst:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
@@ -238,64 +223,49 @@ fun checkMatch (src:Ast.TYPE_EXPR) (* assignment src *)
         else warning ["checkMatch failed: ", LogErr.ty src, " vs. ", LogErr.ty dst]
     end
 
+(* t1 and t2 are normalized *)
+
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
                     (t2:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
     in
-        if Type.groundIsCompatibleSubtype t1 t2 then (* FIXME *)
-            t2
-        else if Type.groundIsCompatibleSubtype t2 t1 then
-            t1
-        else
-            Ast.UnionType [t1, t2]
+        if      Type.groundIsCompatibleSubtype t1 t2 then t2
+        else if Type.groundIsCompatibleSubtype t2 t1 then t1
+        else Ast.UnionType [t1, t2]
     end
-
 
 (******************** Verification **************************************************)
 
+fun normalize (prog:Fixture.PROGRAM)
+              (strict:bool)              
+              (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR = 
+    (* FIXME: it is *super wrong* to just be using the root rib here. *)
+    Type.normalize [Fixture.getRootRib prog] ty
+    handle LogErr.TypeError e => 
+           let in
+               if strict 
+               then 
+                   warning [e, " while normalizing ", LogErr.ty ty]
+               else ();
+               ty
+           end
+
 fun verifyType (env:ENV)
                (ty:Ast.TYPE_EXPR)
-    : (Ast.TYPE_EXPR * Ast.TYPE_EXPR) =
+    : Ast.TYPE_EXPR =
 
     (* 
-     * Verification converts a (non-closed) TY into a 
+     * Verification converts a (non-closed) TYPE_EXPR into a 
      * (closed, aka grounded) TYPE_EXPR.
-     * It is a static error if a type cannot be closed.
-     * We return the closed type, since it may later be propogated
-     * outside of its current environment env.
-     *
-     * verifyType only called by verifyTy and verifyTypeExpr;
-     * result of verifyTy never used.
-     * -----
-     * Verification, if it runs, is obliged to come up with a best
-     * guess ground type expression for every type it sees. It does
-     * this because it performs some static reasoning and leaves
-     * behind a bunch of runtime checks.
-     * 
-     * As such, when we hit a TY, we try to reduce it to a
-     * TYPE_EXPR. If we get a non-ground type, we produce the special
-     * TYPE_EXPR "anyType", representing *, because it's the "best
-     * guess" at this stage.
-     * 
-     * We also return the normalized TY, as many of our callers are
-     * rewriting their type expressions and it gives us a chance to
-     * optimize away future runtime calculations of the same normal
-     * form.
      *)
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
         val norm = normalize (#prog env) (#strict env) ty
         val _ = trace ["verifyType: back from normalize ", LogErr.ty ty]
     in
-        (norm, 
-         if Type.isGroundType norm
-         then norm
-         else 
-             let in
-                 warning ["Type could not be closed: ", LogErr.ty norm];
-                 anyType
-             end)
+        norm 
     end
 
 fun verifyTypeExpr (env:ENV)
@@ -303,11 +273,10 @@ fun verifyTypeExpr (env:ENV)
     : Ast.TYPE_EXPR =
     
     let
-        val (ty,te) = verifyType env ty
+        val te = verifyType env ty
     in
         te
     end
-
 
 (*
 verifyTypeExpr env ty
@@ -317,7 +286,7 @@ fun verifyTy (env:ENV)
     : Ast.TYPE_EXPR =
     
     let
-        val (ty,te) = verifyType env ty
+        val ty = verifyType env ty
     in
         ty
     end
