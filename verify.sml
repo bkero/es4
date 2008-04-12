@@ -224,7 +224,6 @@ fun checkMatch (src:Ast.TYPE_EXPR) (* assignment src *)
     end
 
 (* t1 and t2 are normalized *)
-
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
                     (t2:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
@@ -237,45 +236,29 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
 
 (******************** Verification **************************************************)
 
-fun normalize (prog:Fixture.PROGRAM)
-              (strict:bool)              
-              (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR = 
-    (* FIXME: it is *super wrong* to just be using the root rib here. *)
-    Type.normalize [Fixture.getRootRib prog] ty
-    handle LogErr.TypeError e => 
-           let in
-               if strict 
-               then 
-                   warning [e, " while normalizing ", LogErr.ty ty]
-               else ();
-               ty
-           end
+(* Verification (aka normalization) converts a (non-closed) TYPE_EXPR into a 
+ * (closed, aka grounded) TYPE_EXPR. 
+ *)
 
 fun verifyType (env:ENV)
                (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
-
-    (* 
-     * Verification converts a (non-closed) TYPE_EXPR into a 
-     * (closed, aka grounded) TYPE_EXPR.
-     *)
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
-        val norm = normalize (#prog env) (#strict env) ty
+        val norm = 
+            (* FIXME: it is *super wrong* to just be using the root rib here. *)
+            Type.normalize [Fixture.getRootRib (#prog env)] ty
+            handle LogErr.TypeError e => 
+                   let in
+                       if (#strict env) 
+                       then 
+                           warning [e, " while normalizing ", LogErr.ty ty]
+                       else ();
+                       ty
+                   end
         val _ = trace ["verifyType: back from normalize ", LogErr.ty ty]
     in
         norm 
-    end
-
-fun verifyTypeExpr (env:ENV)
-                   (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR =
-    
-    let
-        val te = verifyType env ty
-    in
-        te
     end
 
 (*
@@ -499,7 +482,7 @@ and verifyExpr (env:ENV)
           | Ast.BinaryTypeExpr (b, e, ty) =>
             let
                 val t1 = verifySub e
-                val t2 = verifyTypeExpr env ty
+                val t2 = verifyType env ty
                 val resultType = case b of
                                      Ast.Is => booleanType
                                    | _ => t2
@@ -599,16 +582,16 @@ and verifyExpr (env:ENV)
                                    | Ast.LiteralUInt _ => uintType
                                    | Ast.LiteralBoolean _ => booleanType
                                    | Ast.LiteralString _ => stringType
-                                   | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                   | Ast.LiteralArray { ty=SOME ty, ... } => verifyType env ty
                                    (* FIXME: how do we want to represent [*] ? *)
                                    | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [anyType]
                                    (* TODO: define this *)
                                    | Ast.LiteralXML _ => anyType
                                    | Ast.LiteralNamespace _ => NamespaceType
-                                   | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                   | Ast.LiteralObject { ty=SOME ty, ... } => verifyType env ty
                                    (* FIXME: how do we want to represent {*} ? *)
                                    | Ast.LiteralObject { ty=NONE, ... } => anyType
-                                   | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyTypeExpr env ty
+                                   | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyType env ty
                                    | Ast.LiteralRegExp _ => RegExpType
                 fun verifyField { kind, name, init } =
                     (verifyExpr env init; ())
@@ -721,7 +704,7 @@ and verifyExpr (env:ENV)
 		            val ty = resolveMnameToFixtureTy env mname
 		        in
                     LogErr.setLoc loc;
-		            verifyTypeExpr env ty
+		            verifyType env ty
 		        end
 	        else 
 		        anyType

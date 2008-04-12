@@ -378,7 +378,8 @@ fun mergeRibs (program:Fixture.PROGRAM)
               (oldRib:Ast.RIB)
               (additions:Ast.RIB)
     : Ast.RIB = 
-    Fixture.mergeRibs (Type.matches program []) oldRib additions
+    Fixture.mergeRibs (Type.matches program []) oldRib additions    
+(* FIXME: calls some pretty-hairy type code - needed? *)
 
 
 fun headAndTailOfRibs (ribs:Ast.RIB list)

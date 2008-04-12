@@ -643,20 +643,6 @@ fun optionWise predicate (SOME a) (SOME b) = predicate a b
   | optionWise _ NONE NONE = true
   | optionWise _ _ _ = false
 
-fun normalizingPredicate groundPredicate 
-                         (prog:Fixture.PROGRAM)
-                         (locals:Ast.RIBS)
-                         (t1:Ast.TYPE_EXPR)
-                         (t2:Ast.TYPE_EXPR)
-  =
-  let
-      (* FIXME: it is *super wrong* to just be using the root rib here. *)
-      val norm1 = normalize (locals @ [Fixture.getRootRib prog]) t1
-      val norm2 = normalize (locals @ [Fixture.getRootRib prog]) t2
-  in
-      groundPredicate norm1 norm2
-  end
-
 (* -----------------------------------------------------------------------------
  * Generic matching algorithm
  * ----------------------------------------------------------------------------- *)
@@ -838,14 +824,25 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
  * ----------------------------------------------------------------------------- *)
 
 val groundIsCompatibleSubtype = groundMatchesGeneric Compat Covariant
-val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype 
+(* val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype  *)
 
 (* -----------------------------------------------------------------------------
  * Matching: ~<
  * ----------------------------------------------------------------------------- *)
 
 val groundMatches = groundMatchesGeneric Bicompat Covariant
-val matches = normalizingPredicate groundMatches 
+fun matches (prog:Fixture.PROGRAM)
+            (locals:Ast.RIBS)
+            (t1:Ast.TYPE_EXPR)
+            (t2:Ast.TYPE_EXPR)
+  =
+  let
+      (* FIXME: it is *super wrong* to just be using the root rib here. *)
+      val norm1 = normalize (locals @ [Fixture.getRootRib prog]) t1
+      val norm2 = normalize (locals @ [Fixture.getRootRib prog]) t2
+  in
+      groundMatches norm1 norm2
+  end
 
 
 (* 
