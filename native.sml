@@ -66,7 +66,6 @@ fun nthAsObj (vals:Mach.VAL list)
         fun f Mach.Undef = error ["Wanted Object, got Undef"]
           | f Mach.Null = error ["Wanted Object, got Null"]
           | f (Mach.Wrapped (v,t)) = nthAsObj [v] n
-          | f (Mach.Splat v) = nthAsObj [v] n
           | f (Mach.Object ob) = ob
     in
         nthAsA f vals n
@@ -987,7 +986,6 @@ fun typename (regs:Mach.REGS)
         Mach.Null => Eval.newString regs Ustring.null_
       | Mach.Undef => Eval.newString regs Ustring.undefined_
       | Mach.Wrapped (v, t) => typename regs [v]
-      | Mach.Splat v => typename regs [v]
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              NONE => Eval.newString regs Ustring.object_

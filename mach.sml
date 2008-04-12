@@ -70,7 +70,6 @@ type ATTRS = { dontDelete: bool,
              
 datatype VAL = Object of OBJ
              | Wrapped of (VAL * Ast.TYPE_EXPR)
-             | Splat of VAL
              | Null
              | Undef
 
@@ -767,10 +766,6 @@ fun inspect (v:VAL)
             (TextIO.print ("wrapped " ^ (typ t) ^ ":\n");
              printVal (indent+1) n v)
 
-          | printVal indent n (Splat v) =
-            (TextIO.print "splat:\n";
-             printVal (indent+1) n v)
-            
           | printVal indent 0 (Object (Obj ob)) =
             (TextIO.print (case !(#magic ob) of
                                NONE => tag (Obj ob)
@@ -922,7 +917,6 @@ fun approx (arg:VAL)
         Null => "null"
       | Undef => "undefined"
       | Wrapped (v, t) => "wrapped(" ^ (approx v) ^ ")"
-      | Splat v => "..." ^ (approx v)
       | Object ob =>
         if hasMagic ob
         then
