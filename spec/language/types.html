@@ -1,437 +1,120 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Untitled Document</title>
-</head>
+= Types =
 
-<body>
-
-
-<h1>Types</h1>
-<p>
- A type is a set of values. Expressions have known values at run time and properties have known types at compile time (as well as run time.) The various types of Ecmascript 4 can be related graphically as a type lattice where the edges of the lattice indicate subset relationships.
-</p>
-<p>
-There are three fundamental program visible types (Null, Object and void). What makes these types fundamental is that they their union includes all possible values in the language. Null includes null, void includes undefined, and Object includes every other value. Null and void are different because they do not have object like properties (e.g. toString, valueOf), and they both have values that represent a missing value.
-</p>
-<p>
-The type Null includes one value - the value that results of the primary expression null. The value null is used to represent the idea &#8220;no value&#8221; in the context of an Object typed reference. 
-</p>
-<p>
-The type void includes one value - the value that is the initial value of the global property undefined and the result of the unary expression void 0. The value undefined is used to represent the idea &#8220;no property&#8221; or &#8220;no value&#8221; in the context of an untyped reference. 
-</p>
-<ul>
-<li class="level1"><div class="li"> While the need for two types that represent the idea of &#8220;no value&#8221; seems strange to programmers familiar with statically typed object oriented languages, in this language the distinction is useful for representing the absence of a property or the absence of a value of an untyped property versus the absence of a typed property.  Here is an example,</div>
-</li>
-</ul>
-<pre class="code javascript">dynamic <span class="kw2">class</span> A <span class="br0">&#123;</span>
-    <span class="kw2">var</span> x : String
-    <span class="kw2">var</span> y
-<span class="br0">&#125;</span>
-<span class="kw2">var</span> a : A = <span class="kw2">new</span> A
-<span class="kw3">print</span><span class="br0">&#40;</span>a.<span class="me1">x</span><span class="br0">&#41;</span>    <span class="co1">// null</span>
-<span class="kw3">print</span><span class="br0">&#40;</span>a.<span class="me1">y</span><span class="br0">&#41;</span>    <span class="co1">// undefined</span>
-<span class="kw3">print</span><span class="br0">&#40;</span>a.<span class="me1">z</span><span class="br0">&#41;</span>    <span class="co1">// undefined</span>
-a.<span class="me1">y</span> = <span class="nu0">10</span>
-a.<span class="me1">z</span> = <span class="nu0">20</span>
-<span class="kw3">print</span><span class="br0">&#40;</span>a.<span class="me1">y</span><span class="br0">&#41;</span>    <span class="co1">// 10</span>
-<span class="kw3">print</span><span class="br0">&#40;</span>a.<span class="me1">z</span><span class="br0">&#41;</span>    <span class="co1">// 20</span></pre>
-<ul>
-<li class="level1"><div class="li"> When dealing with dynamic instances, there is little difference between a property that doesn&#8217;t exist and a property with no type and no value. But there is a difference between a property that has a type and one that doesn&#8217;t. This is one of the reasons for the existence of both types Null and void.</div>
-</li>
-</ul>
-<p>
- Note: In Ecmascript ed. 3 program visible values where instances of one of six unrelated types (Undefined, Null, Boolean, Number, String and Object). Conversions were provided to translate a value from one type to another. Ed. 4 provides the same conversions between the primitive types (void/Undefined, Null, Boolean, String, Number, int and uint)
-</p>
-<h2>Type operators</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:is_as_to" class="wikilink1" title="proposals:is_as_to" onclick="return svchk()" onkeypress="return svchk()">is_as_to proposal page</a> for more information.
-</p>
-<p>
-The language includes three type operators that enable programs to test and manipulate values in terms of a type. These type operators are &#8216;is&#8217;, &lsquo;as&rsquo; and &#8216;to&#8217;. Each of these operators has a corresponding type annotation that constrains the value of a property according to the meaning of the operation.  Please see the <a href="/ECMA/wiki/doku.php?id=proposals:is_as_to" class="wikilink1" title="proposals:is_as_to" onclick="return svchk()" onkeypress="return svchk()">is_as_to proposal page</a> for more information.
-</p>
-<p>
-<strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:syntax_for_type_expressions#unary_type_operator" class="wikilink1" title="proposals:syntax_for_type_expressions" onclick="return svchk()" onkeypress="return svchk()">unary type operator proposal page</a> for more information.
-</p>
-<p>
-The language also includes a unary type operator that creates a syntactic  context for type expressions wherever an ordinary expression is expected.
-</p>
-<h3>Operator is</h3>
-<p>
- The is operator appears in expressions of the form:
-</p>
-<pre class="code javascript">v <span class="kw1">is</span> T</pre>
-<p>
-The is operator checks to see if the value on the left hand side is a member of the type on the right hand side. For user defined types and most built-in types, is returns true if the value is an instance of a class that is or derives from the type on the right hand side, otherwise it returns false. For built-in numeric types the result cannot be determined by the class of the value. The implementation must check the actual value to see if it is included in the value set of the type.
-</p>
-<p>
-The following table shows the results of using various values and types with the is operator: 
-</p>
-<table border="1" cellspacing="0" cellpadding="3" class="inline">
-	<tr>
-		<th class="leftalign"> Value     </th><th class="leftalign"> String  </th><th class="leftalign"> Number  </th><th class="leftalign"> int     </th><th class="leftalign"> uint    </th><th> Boolean </th><th class="leftalign"> Object  </th>
-	</tr>
-	<tr>
-		<th class="leftalign"> {}        </th><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> true    </td>
-	</tr>
-	<tr>
-		<th class="leftalign">&ldquo;string&rdquo;  </th><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> true    </td>
-	</tr>
-	<tr>
-		<th class="leftalign">&ldquo;10&rdquo;      </th><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> true    </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> null      </th><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td>
-	</tr>
-	<tr>
-		<th> undefined </th><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> true      </th><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> false     </th><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> 0         </th><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign">true     </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> 1         </th><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign">true     </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> -1        </th><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign">true     </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> 1.23      </th><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign">true     </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> -1.23     </th><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign">true     </td>
-	</tr>
-	<tr>
-		<th class="leftalign"> NaN       </th><td class="leftalign"> false   </td><td class="leftalign"> true    </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign"> false   </td><td class="leftalign">true     </td>
-	</tr>
-</table>
-<br />
-<h3>Operator cast</h3>
-<p>
- <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:is_as_to" class="wikilink1" title="proposals:is_as_to" onclick="return svchk()" onkeypress="return svchk()">is_as_to proposal page</a> for more information.
-</p>
-<p>
-The cast operator appears in expressions of the form:
-</p>
-<pre class="code javascript">cast T<span class="br0">&#40;</span>v<span class="br0">&#41;</span></pre>
-<p>
-The purpose of the cast operator is to guarantee that a value is of certain type, and if not indicate so by throwing an exception. 
-</p>
-<p>
-The steps used to evaluate the cast operator are: 
-</p>
-<ol>
-<li class="level1"><div class="li"> Let v be the value of the left operand</div>
-</li>
-<li class="level1"><div class="li"> Let T be the value of the right operand</div>
-</li>
-<li class="level1"><div class="li"> If T is not of type Type</div>
-<ol>
-<li class="level2"><div class="li"> Throw a TypeError</div>
-</li>
-</ol>
-</li>
-<li class="level1"><div class="li"> If v is of type T </div>
-<ol>
-<li class="level2"><div class="li"> Return the value v</div>
-</li>
-</ol>
-</li>
-<li class="level1"><div class="li"> Else</div>
-<ol>
-<li class="level2"><div class="li"> Throw an Error</div>
-</li>
-</ol>
-</li>
-</ol>
-<h3>Operator to</h3>
-<p>
- <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:is_as_to" class="wikilink1" title="proposals:is_as_to" onclick="return svchk()" onkeypress="return svchk()">is_as_to proposal page</a> for more information.
-</p>
-<p>
-The to operator appears in expressions of the form:
-</p>
-<pre class="code javascript">v to T</pre>
-<p>
-The to operator converts the value of the right side to a value of the type on the left side.
-</p>
-<p>
-Implicit conversions occur when a value is assigned to a property, passed as an argument to a function, or returned from a function. 
-</p>
-<p>
-When the destination type is a user defined type T, the user definition of the to operator as in,
-</p>
-<pre class="code javascript"><span class="kw2">class</span> T 
-<span class="br0">&#123;</span>
-    <span class="kw2">function</span> to T<span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span> … <span class="br0">&#125;</span>
-<span class="br0">&#125;</span></pre>
-<p>
-If a user defined type does not specify the to operator, then a system default is provided. The default to checks for 
-</p>
-<pre class="code javascript"><span class="kw2">class</span> T 
-<span class="br0">&#123;</span>
-    <span class="kw2">function</span> to T<span class="br0">&#40;</span>v<span class="br0">&#41;</span> 
-    <span class="br0">&#123;</span> 
-        <span class="kw1">if</span><span class="br0">&#40;</span> v <span class="kw1">is</span> T <span class="br0">&#41;</span> <span class="kw1">return</span> v
-        <span class="kw1">else</span> <span class="kw1">if</span><span class="br0">&#40;</span> v <span class="kw1">is</span> <span class="kw2">Null</span> <span class="br0">&#41;</span> <span class="kw1">return</span> <span class="kw2">null</span>
-        <span class="kw1">else</span> <span class="kw1">throw</span> <span class="kw2">new</span> TypeError<span class="br0">&#40;</span><span class="br0">&#41;</span>
-    <span class="br0">&#125;</span>
-<span class="br0">&#125;</span></pre>
-<p>
-When the destination type is a primitive type, the to operator is described by the corresponding abstract procedure (e.g. toString() and toNumber().) The following table shows some results: 
-</p>
-<table border="1" cellspacing="0" cellpadding="3" class="inline">
-	<tr>
-		<th>Value</th><th>String</th><th>Number</th><th>int</th><th>uint</th><th>Boolean</th><th>Object</th>
-	</tr>
-	<tr>
-		<th>{}</th><td>&#8220;[objectObject]&#8221;</td><td>NaN</td><td>0</td><td>0</td><td>true</td><td>{}</td>
-	</tr>
-	<tr>
-		<th>&ldquo;string&rdquo;</th><td>&ldquo;string&rdquo;</td><td>NaN</td><td>0</td><td>0</td><td>true</td><td>&ldquo;string&rdquo;</td>
-	</tr>
-	<tr>
-		<th>&ldquo;10&rdquo;</th><td>&ldquo;10&rdquo;</td><td>10</td><td>10</td><td>10</td><td>true</td><td>&ldquo;10&rdquo;</td>
-	</tr>
-	<tr>
-		<th>null</th><td>Null</td><td>0</td><td>0</td><td>0</td><td>false</td><td>null</td>
-	</tr>
-	<tr>
-		<th>undefined</th><td>Null</td><td>NaN</td><td>0</td><td>0</td><td>false</td><td>null</td>
-	</tr>
-	<tr>
-		<th>true</th><td>&ldquo;true&rdquo;</td><td>1</td><td>1</td><td>1</td><td>true</td><td>true</td>
-	</tr>
-	<tr>
-		<th>false</th><td>&ldquo;false&rdquo;</td><td>0</td><td>0</td><td>0</td><td>false</td><td>false</td>
-	</tr>
-	<tr>
-		<th>0</th><td>&#8221;0&#8221;</td><td>0</td><td>0</td><td>0</td><td>false</td><td>0</td>
-	</tr>
-	<tr>
-		<th>1</th><td>&#8221;1&#8221;</td><td>1</td><td>1</td><td>1</td><td>true</td><td>1</td>
-	</tr>
-	<tr>
-		<th>-1</th><td>&#8221;-1&#8221;</td><td>-1</td><td>-1</td><td>2E+32-1</td><td>true</td><td>-1</td>
-	</tr>
-	<tr>
-		<th>1.23</th><td>&ldquo;1.23&rdquo;</td><td>1.23</td><td>1</td><td>1</td><td>true</td><td>1.23</td>
-	</tr>
-	<tr>
-		<th>-1.23</th><td>&ldquo;-1.23&rdquo;</td><td>-1.23</td><td>-1</td><td>2E+32-1</td><td>true</td><td>-1.23</td>
-	</tr>
-	<tr>
-		<th>NaN</th><td>&ldquo;NaN&rdquo;</td><td>NaN</td><td>0</td><td>0</td><td>false</td><td>NaN</td>
-	</tr>
-</table>
-<br />
-<h3>Operator type</h3>
-<p>
- <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:syntax_for_type_expressions#unary_type_operator" class="wikilink1" title="proposals:syntax_for_type_expressions" onclick="return svchk()" onkeypress="return svchk()">unary type operator proposal page</a> for more information.
-</p>
-<p>
-As it stands, type expressions shall only occur in limited syntactic contexts (that is, in a type expression, in a type annotation, in a cast expression, in an inheritance clause, in a type definition). But since type values are first class, programmers will want to express them literally outside of those few contexts. We propose to introduce a unary <code>type</code> operator that creates a syntactic context for type expressions where ever a ordinary expression is expected.
-</p>
-<h2>Type annotations</h2>
-<p>
- A type annotation places a type-related constraint on a variable. A variable with a type annotation consists of the <code>var</code> keyword, followed by the name of the variable, followed by a colon (:), followed by the name of a type. The following example shows a variable named <code>v</code> with a type annotation (<code>T</code>), where <code>v</code> is assigned the value of the variable <code>x</code>:
-</p>
-<pre class="code">
-var v : T = x;
+<hr>
+<pre>
+FILE:                       spec/language/names.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-03-17
+SPEC AUTHORS:               Cormac, Jeff
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+SCOPE:                      The type system
 </pre>
-<p>
-A variable with a type annotation carries that type information with it at runtime, which means that the type of the variable is constrained to the type specified in the type annotation. If a variable with a type annotation is on the left-hand side of an assignment statement, the value on the right-hand side is converted to the specified type with the <code>to</code> operator before the assignment occurs. For example, the following code uses the <code>to</code> operator to enforce type constraints at runtime:
-</p>
-<pre class="code">
-var v = x to T;
-v = y to T;
-v = z to T;
-</pre>
-<p>
-A type annotation associates the type constraint with the variable so that the explicit use of the <code>to</code> operator is not necessary. The following code results in the same runtime behavior as the previous example:
-</p>
-<pre class="code">
-var v : T = x;
-v = y;
-v = z;
-</pre>
-<p>
-Moreover, in strict mode, it is an error to assign a value to a variable with a type annotation if the type of the value is incompatible with the type specified in the type annotation.
-</p>
-<h2>Run time versus compile time type</h2>
-<p>
- We sometimes refer to a class or interface that helps to define the structure of a value as the value&#8217;s type. What we really mean is that that value is a member of that class or interface type. This distinction is subtle but important. Since a value might belong to any number of unrelated types to say that it is of a particular type is misleading.
-</p>
-<p>
-In dynamically typed languages expressions don&#8217;t have types; they have values whose types may change each time the expression is evaluated. 
-</p>
-<p>
-Statically typed languages make the important simplification of associating a type with every expression, even if it is a very general one, when it is compiled. In this way the suitability of an expression can be checked against its use before it is ever actually run. The cost of this added reliability is the loss of flexibility that comes from not having to think about the types of values.
-</p>
-<pre class="code javascript"><span class="kw2">function</span> f<span class="br0">&#40;</span> o : Object <span class="br0">&#41;</span> <span class="br0">&#123;</span>
-    <span class="kw2">var</span> x : Number
-    x = o               <span class="co1">// Allowed in standard mode</span>
-<span class="br0">&#125;</span>
-f<span class="br0">&#40;</span><span class="nu0">10</span><span class="br0">&#41;</span>                   <span class="co1">// No problem, x gets set to 10</span></pre>
-<p>
-Other places where the differences between dynamic and static type checking can be seen are property access, and method invocation. 
-</p>
-<pre class="code javascript"><span class="kw2">function</span> f<span class="br0">&#40;</span> o : Object <span class="br0">&#41;</span> <span class="br0">&#123;</span>
-    o.<span class="me1">g</span><span class="br0">&#40;</span><span class="br0">&#41;</span>
-    <span class="kw1">return</span> o.<span class="me1">x</span>
-<span class="br0">&#125;</span></pre>
-<p>
-Whereas in a static type system, the binding for a method call or property read, would need to be known at compile-time, the standard mode always defers that checking until runtime.
-</p>
-<p>
-The strict mode has a hybrid type system. Normally static type rules are used to check the compatibility of an expression with its destination type but there are a few special cases. For example, when an expression on the right side of an assignment expression consists of a reference to an property with no type, name lookup is deferred to run time. When an object reference has a base object that is an instance of a dynamic class, the reference is checked at runtime. These dynamic typing features are useful when strict-mode programs are interoperating with dynamic features such as <acronym title="Extensible Markup Language">XML</acronym> objects.
-</p>
-<h2>Untyped versus typed properties</h2>
-<p>
- A property without a type annotation or with the wildcard annotation <code>*</code> (as in, <code>var x : *</code>) is said to be untyped. Writing to an untyped property will always succeed since an untyped property can hold any value. Expressions that read from an untyped property are said to be untyped expressions. Assignment from an untyped expression may or may not succeed at runtime depending on whether its value can be implicitly converted to the destination type.  Nevertheless, in the strict mode assignments from untyped expressions are always type checked at runtime as in the standard mode.
-</p>
-<p>
-Use untyped properties when you want to store the result of an untyped expression or undefined as one of the values, or when you want to defer type checking to runtime.
-</p>
-<h2>Object types</h2>
-<p>
- All program visible types other than void and Null derive from type Object. This means that all values (except <code>undefined</code> and <code>null</code>) have properties that can be accessed by object references without the need to be wrapped in an object as they were in Ecmascript ed. 3.
-</p>
-<h2>Number types</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:numbers" class="wikilink1" title="proposals:numbers" onclick="return svchk()" onkeypress="return svchk()">Numbers proposal</a>.
-</p>
-<p>
-There are four numeric types: <code>decimal</code>, <code>double</code>, <code>int</code>, and <code>uint</code>. 
-</p>
-<ul>
-<li class="level1"><div class="li"> <code>decimal</code> values are 128-bit IEEE decimal floating point values</div>
-</li>
-<li class="level1"><div class="li"> <code>double</code> values are 64-bit IEEE binary floating point values</div>
-</li>
-<li class="level1"><div class="li"> <code>int</code> values are integers in the range -(2^31) .. (2^31)-1</div>
-</li>
-<li class="level1"><div class="li"> <code>uint</code> values are integers in the range 0 .. (2^32)-1</div>
-</li>
-</ul>
-<p>
- All numeric types are <code>final</code> classes that are direct subtypes of Object.
-</p>
-<h3>Decimal type</h3>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:decimal" class="wikilink1" title="proposals:decimal" onclick="return svchk()" onkeypress="return svchk()">Decimal arithmetic proposal</a>.
-</p>
-<p>
-A new non-normalizing decimal type, corresponding to the 128-bit decimal type described in the forthcoming IEEE754r document, and providing the arithmetic operations and rules set forth in that document.
-</p>
-<h2>Class types</h2>
-<p>
- A class refers to a type or a value depending on its use.
-</p>
-<pre class="code javascript"><span class="kw2">class</span> A 
-<span class="br0">&#123;</span>
-    static <span class="kw2">var</span> x
-    <span class="kw2">var</span> y
-    prototype <span class="kw2">var</span> z
-<span class="br0">&#125;</span>
-&nbsp;
-<span class="kw2">var</span> a : A		<span class="co1">// A means type A</span>
-a = <span class="kw2">new</span> A		<span class="co1">// A means value A</span></pre>
-<p>
-The value is a class object that has the form shown in the drawing above. The class object is CA. When used as a type it evaluates to its instance traits (TA). When used in a new expression the class serves as a factory object with a special method that creates a new instance (OA), which contains an internal delegate property pointing to the class object&#8217;s prototype (P) and an internal traits property pointing to the class object&#8217;s instance traits (TA).
-</p>
-<h2>Interface types</h2>
-<p>
- An interface name can only be used where a type is expected.
-</p>
-<pre class="code javascript">interface I <span class="br0">&#123;</span><span class="br0">&#125;</span>
-<span class="kw2">var</span> x : I		<span class="co1">// I means type I</span>
-x = <span class="kw2">new</span> I		<span class="co1">// Error, I is not a value</span></pre>
-<h2>Structural types</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:structural_types_and_typing_of_initializers" class="wikilink1" title="proposals:structural_types_and_typing_of_initializers" onclick="return svchk()" onkeypress="return svchk()">structural typing proposal</a> and the <a href="/ECMA/wiki/doku.php?id=proposals:type_definitions" class="wikilink1" title="proposals:type_definitions" onclick="return svchk()" onkeypress="return svchk()">type definitions proposal</a>.
-</p>
-<p>
-A structural type is a type that is compared to other types by its structure and content rather than by its name or explicit declaration. Four categories of types can be expressed using structural types: function types, union types, Object types, and Array types.
-</p>
-<p>
-A structural type can be assigned to a type identifier with the <code>type</code> keyword. For example, the following code assigns structural types to identifiers:
-</p>
-<pre class="code javascript">type F = <span class="kw2">function</span> <span class="br0">&#40;</span>int,Object<span class="br0">&#41;</span>:int  <span class="co1">// a function type</span>
-type U = <span class="br0">&#40;</span>A, B, C<span class="br0">&#41;</span>                  <span class="co1">// a union type</span>
-type R = <span class="br0">&#123;</span> p: int, q: String <span class="br0">&#125;</span>      <span class="co1">// an object type</span>
-type S = <span class="br0">&#91;</span> int, , String!, * <span class="br0">&#93;</span>      <span class="co1">// an array type</span></pre>
-<p>
-A structural type, whether or not it is assigned to a type identifier, can be used in type contexts, such as the return type of a function,  a variable declaration, a parameter declaration, or on the right-hand side of the <code>is</code> operator.
-</p>
-<h3>Structural union types</h3>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:switch_class" class="wikilink1" title="proposals:switch_class" onclick="return svchk()" onkeypress="return svchk()">Structural union types proposal</a>.
-</p>
-<p>
-The language shall support structural types which are the transitive union of other named types. Union types and type switches are both supported.
-</p>
-<h3>Type expressions</h3>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:syntax_for_type_expressions" class="wikilink1" title="proposals:syntax_for_type_expressions" onclick="return svchk()" onkeypress="return svchk()">Syntax for type expressions proposal</a>.
-</p>
-<h2>Iterator types</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:iterators_and_generators" class="wikilink1" title="proposals:iterators_and_generators" onclick="return svchk()" onkeypress="return svchk()">Iterators and Generators proposal</a>.
-</p>
-<h2>Strict mode and static types</h2>
-<p>
- In strict mode both expressions and properties have types. To be used to compute the value of a property, the expression must have a static type that is compatible with the type of the property. One way to think about static types of expressions and values is that the static type is a conservative approximation of the set of values that will result from that expression.
-</p>
-<p>
-Strict mode provides static typechecking, but there are some implicit conversions. Specifically, in strict mode, the annotation <code>x : T = y</code> represents an error unless one of the following is true: 
-</p>
-<ul>
-<li class="level1"><div class="li"> <code>y</code> is of type <code>U</code> and <code>T</code> defines a <code>to</code> operator that accepts values of type <code>U</code></div>
-</li>
-<li class="level1"><div class="li"> <code>y</code> is of the top &ldquo;unconstrained&rdquo; type</div>
-</li>
-<li class="level1"><div class="li"> <code>T</code> is <code>Boolean</code> (which always gets an implicit conversion)</div>
-</li>
-<li class="level1"><div class="li"> <code>y</code> is of type <code>U</code> and both <code>U &lt;: Number</code> and <code>T &lt;: Number</code></div>
-</li>
-</ul>
-<p>
- User-provided <code>to</code> operators are used to determine type compatibility for assignment. Please see the <a href="/ECMA/wiki/doku.php?id=proposals:is_as_to" class="wikilink1" title="proposals:is_as_to" onclick="return svchk()" onkeypress="return svchk()">is_as_to proposal page</a> for more information.
-</p>
-<p>
-An explicit cast to a user defined type is only useful in strict mode. This is because the effect of an explicit cast is to defer type checking until runtime, which is already the case in standard mode. This is not necessarily the case for built-in types that have special conversion behavior.
-</p>
-<h2>Type parameters</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:type_parameters" class="wikilink1" title="proposals:type_parameters" onclick="return svchk()" onkeypress="return svchk()">type parameters proposal</a>.
-</p>
-<p>
-A type definition that includes type parameters defines a generic type. A generic type is a data type that is  constrained to the type or types passed as type arguments when the data type is instantiated. For example, the following code constrains an  instance of Array to hold only elements of type String:
-</p>
-<pre class="code javascript"><span class="kw2">var</span> stringArray:Array.&lt;String&gt; = <span class="kw2">new</span> Array.&lt;String&gt;;</pre>
-<h2>Nullable types</h2>
-<p>
- <strong>PROPOSAL</strong> &mdash; For more information, see the <a href="/ECMA/wiki/doku.php?id=proposals:nullability" class="wikilink1" title="proposals:nullability" onclick="return svchk()" onkeypress="return svchk()">Nullability proposal</a>
-</p>
-<p>
-Almost all types include the value <code>null</code> by default. Only the Boolean type and the Numeric types do not include the value <code>null</code> by default.
-</p>
-<p>
-Any type that is annotated with the <code>?</code> prefix modifier is said to be &ldquo;nullable&rdquo;, which means that the type includes the value <code>null</code>. For example, the following variable <code>x</code> can hold the values <code>true</code>, <code>false</code>, or <code>null</code> because the Boolean type is declared with the <code>?</code> modifier.
-</p>
-<pre class="code javascript"><span class="kw2">var</span> x : ?Boolean = <span class="kw2">null</span>;</pre>
-<p>
-Any type that is annotated with the <code>!</code> postfix modifier is said to be &ldquo;non-nullable&rdquo;, which means that the type does not include the value <code>null</code>. For example, the following variable <code>y</code> cannot hold the value <code>null</code> because the Object type is declared with the <code>!</code> modifier.
-</p>
-<pre class="code javascript"><span class="kw2">var</span> y : Object! = <span class="kw2">null</span>;  <span class="co1">// error</span></pre>
+<hr>
 
-</body>
-</html>
+<p>ECMAScript includes a gradual type system that supports a range of typing disciplines, including
+dynamically-typed code (as in ES3), statically-typed code (much like in Java or C#), and various
+combinations of statically- and dynamically-typed code, with convenient interoperation between the two.
+
+<p>Type annotations are supported, but not required. A variable with no type annotation implicitly is
+assigned the type "*", meaning that it can hold any value (much like variables in ES3).
+
+<p>ES4 provides two language modes. In //standard mode//, all type annotations are enforced via 
+dynamic checks (unless static analysis can prove such checks to never fail). In strict mode, a
+program is first checked by a static type checker or verifier before being executed; any program that
+is ill-typed will be rejected by the verifier. If the program is not rejected, then it is executed
+as in "standard" mode. That is, there is no difference in run-time behavior between "strict" and
+"standard" modes.
+
+<p>Every value has an //allocated type//. The allocated type is the 
+type given to a value when it is created and which defines its fixed 
+structure.
+
+<p>Every property has an //storage type//. The storage type of a property
+is given by its definition and constrains the set of values that
+can be stored in the property.
+
+<p>In general, if a property holds a value, then that value must have
+a allocated type that is a //compatible subtype// of property's storage
+type. The intuitive meaning of compatible subtype is that the subtype's 
+(the allocated type) value set is a subset of the type it is compatible with
+(the storage type). The precise meaning of compatible subtype is specified 
+below.
+
+== Type Expressions ==
+
+<p>A type may be expressed by any of the following kinds of expressions:
+
+<p>The keyword ''null''
+<p>The symbol ''*''
+<p>A //PrimaryName// expression such as: ''String''
+<p>An //TypeApplication// expression such as: ''Vector.<Number>''
+<p>A //FunctionType// expression such as: ''function (Number, String=) : void''
+<p>A //RecordType// expression such as: ''{x: Number, y: Number}''
+<p>A //UnionType// expression such as: ''(Number, String)''
+<p>An //ArrayType// expression such as: ''[String]''
+<p>A //LikeType// expression such as: ''like {x: Number}''
+
+<FIXME>Explain the intuitive meaning of each type expression.
+
+<IMPL>
+{{{
+datatype TYPE_EXPR =
+         SpecialType of SPECIAL_TY
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
+       | TypeName of IDENT_EXPR
+       | ElementTypeRef of (TYPE_EXPR * int)
+       | FieldTypeRef of (TYPE_EXPR * IDENT)
+       | FunctionType of FUNC_TYPE
+       | ObjectType of FIELD_TYPE list
+       | LikeType of TYPE_EXPR
+       | WrapType of TYPE_EXPR
+       | AppType of 
+         { base: TYPE_EXPR,
+           args: TYPE_EXPR list }
+       | LamType of
+         { params: IDENT list,
+           body: TYPE_EXPR }
+       | NullableType of 
+         { expr:TYPE_EXPR,
+           nullable:bool }
+       | InstanceType of INSTANCE_TYPE
+
+datatype SPECIAL_TY =
+         Any
+       | Null
+       | Undefined
+       | VoidType
+
+}}}
+
+<p>A //reifiable type// is any type tha tis not "*", a union type, or a //like// type.
+
+<p>In the context of a class definition such as ''class C.<X> {...}'', the class name
+//C// is considered to be a type, but it is somewhat unusual in that we cannot declare
+a variable of type //C//. We refer to //C// as a //higher-order// type, in that it
+requires additional type parameters to become a normal or //first-order// type of the
+form ''C.<T>''.
+
+== Type Compatibility ==
+
+<p>Every value in ES has an associated //allocated type//, which is a type that is
+associated with the value when the value is first allocated or created. An allocated
+type is always a reifiable type. The allocated type of a value is invariant; for example,
+updating the fields of an object cannot change the allocated tpe of that object.
+
+<p>In general, if a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
+is a compatible-subtype of ''T''. There are some exceptions where ''T'' is a //like-type//.
+
+=== Subtyping ===
+
+<FIXME>Add prose from Cormac's //Type System// whitepaper.
+
+=== Compatible Subtyping ===
+
+<FIXME>Add prose from Cormac's //Type System// whitepaper.
+
+

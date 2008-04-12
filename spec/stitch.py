@@ -73,6 +73,7 @@ includetag = re.compile(r"<h[1-6]|<(?:INCLUDE|INCLUDECTX|SIGNATURE)(?:\".*?\"|[^
 signaturetag = re.compile(r"<h[1-6]|<SIGNATURE(?:\".*?\"|[^\"])*?>")
 htmlInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s*file=\"(.*?\.(?:html|css))\">")
 smlInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s+file=\"(.*?\.sml)\"\s+name=\"(.*?)\">")
+rulInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s+file=\"(.*?\.rul)\"\s+name=\"(.*?)\">")
 esInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s+file=\"(.*?\.es)\"\s+name=\"(.*?)\">")
 esIncludeCtx = re.compile(r"<INCLUDECTX\s+file=\"(.*?\.es)\"\s+name=\"(.*?)\"\s+ctx=\"(.*?)\">")
 hdrprefix = re.compile(r"<h([1-6])")
@@ -111,6 +112,7 @@ currentlevel = 0
 
 es_dir = os.path.abspath("../builtins")
 sml_dir = os.path.abspath("..")
+rul_dir = os.path.abspath("..")
 
 # fn is the filename from the INCLUDE tag: it has no directory component.
 # Returns a sequence of strings.
@@ -225,7 +227,164 @@ def extractES(fn, name, isSignature, isContextual):
 	return ss
 
 def extractSML(fn, name):
-    return "fun " + name + "(...) =\n    MISSING SML CODE"
+    f = open(os.path.normpath(rul_dir + "/" + fn), 'r')
+    isContextual = False
+    isSignature = False
+    outside = True
+    # Avoid matching prefixes of names
+    lastIsIdent = isIdent(name[len(name)-1])
+    name = reEscape(name)
+    if lastIsIdent:
+	name = name + r"(?![a-zA-Z0-9_])"
+    starting = re.compile("^( *)" + name)
+    starting2 = re.compile("^( *)" + str(isContextual))
+    blanks = 0
+    prev = ""
+    inContext = False
+    for line in f:
+        line = adHocFixFunctionType(line)
+	if outside:
+	    if isContextual and not inContext:
+		m = starting2.search(line)
+		if m:
+		    inContext = True
+		continue
+	    m = starting.search(line)
+	    if m:
+		ending = re.compile("^" + m.group(1) + r"[^\s]")
+		openbrace = re.compile(m.group(1) + r"\{")
+		closebrace = re.compile(m.group(1) + r"\}")
+		res = [line.rstrip()]
+		outside = False
+		continue
+	else:
+	    line = unComment(line.rstrip())
+	    if ending.search(line):
+		# Special case for common pattern: open brace indented like the name
+		if openbrace.search(line):
+		    res = res + [line]
+		    continue
+		if closebrace.search(line):
+		    res = res + [line]
+		    break
+		break
+	    if line == "":
+		# Count blank lines, but not if the previous line ended with {
+		if not(len(prev) > 0 and prev[len(prev)-1] == "{"):
+		    blanks = blanks+1
+	    elif res == []:
+		# Skip blanks at the beginning
+		res = res + [line]
+	    else:
+		# Add one blank line for a sequence of blanks
+		if blanks > 0:
+		    res = res + [""]
+		blanks = 0
+		res = res + [line]
+		prev = line
+    f.close()
+    if outside:
+	print fn + ": Could not find definition for " + name
+	sys.exit(1)
+    undent = len(re.search(r"^(\s*)", res[0]).group(1))
+    if isSignature:
+	s = res[0][undent:]
+	s = re.sub(r" native", "", s)
+	if s[len(s)-1] == "{" or s[len(s)-1] == ";":
+	    s = s[:len(s)-1].rstrip()
+	if len(s) >= LINELIM:
+	    i = len(s)-1;
+	    while i >= 0 and s[i] != ')':
+		if s[i] == ':' and (i == 0 or s[i-1] == ' ' or s[i-1] == ')'):
+		    s = s[:i] + "\n        " + s[i:]
+		    break
+		i = i - 1
+	return s + " &#x0085";
+    else:
+	ss = "\n"
+	for s in res:
+	    ss = ss + s[undent:] + "\n"
+	return ss
+
+def extractRUL(fn, name):
+    f = open(os.path.normpath(rul_dir + "/" + fn), 'r')
+    isContextual = False
+    isSignature = False
+    outside = True
+    # Avoid matching prefixes of names
+    lastIsIdent = isIdent(name[len(name)-1])
+    name = reEscape(name)
+    if lastIsIdent:
+	name = name + r"(?![a-zA-Z0-9_])"
+    starting = re.compile("^( *)" + name)
+    starting2 = re.compile("^( *)" + str(isContextual))
+    blanks = 0
+    prev = ""
+    inContext = False
+    for line in f:
+        line = adHocFixFunctionType(line)
+	if outside:
+	    if isContextual and not inContext:
+		m = starting2.search(line)
+		if m:
+		    inContext = True
+		continue
+	    m = starting.search(line)
+	    if m:
+		ending = re.compile("^" + m.group(1) + r"[^\s]")
+		openbrace = re.compile(m.group(1) + r"\{")
+		closebrace = re.compile(m.group(1) + r"\}")
+		res = [line.rstrip()]
+		outside = False
+		continue
+	else:
+	    line = unComment(line.rstrip())
+	    if ending.search(line):
+		# Special case for common pattern: open brace indented like the name
+		if openbrace.search(line):
+		    res = res + [line]
+		    continue
+		if closebrace.search(line):
+		    res = res + [line]
+		    break
+		break
+	    if line == "":
+		# Count blank lines, but not if the previous line ended with {
+		if not(len(prev) > 0 and prev[len(prev)-1] == "{"):
+		    blanks = blanks+1
+	    elif res == []:
+		# Skip blanks at the beginning
+		res = res + [line]
+	    else:
+		# Add one blank line for a sequence of blanks
+		if blanks > 0:
+		    res = res + [""]
+		blanks = 0
+		res = res + [line]
+		prev = line
+    f.close()
+    if outside:
+	print fn + ": Could not find definition for " + name
+	sys.exit(1)
+    undent = len(re.search(r"^(\s*)", res[0]).group(1))
+    if isSignature:
+	s = res[0][undent:]
+	s = re.sub(r" native", "", s)
+	if s[len(s)-1] == "{" or s[len(s)-1] == ";":
+	    s = s[:len(s)-1].rstrip()
+	if len(s) >= LINELIM:
+	    i = len(s)-1;
+	    while i >= 0 and s[i] != ')':
+		if s[i] == ':' and (i == 0 or s[i-1] == ' ' or s[i-1] == ')'):
+		    s = s[:i] + "\n        " + s[i:]
+		    break
+		i = i - 1
+	return s + " &#x0085";
+    else:
+	ss = "\n"
+	for s in res:
+	    ss = ss + s[undent:] + "\n"
+	return ss
 
 def replaceWiki(m):
     return "<h" + str(len(m.group(1))) + ">" + m.group(2) + "</h" + str(len(m.group(1))) + ">"
@@ -267,6 +426,9 @@ def replaceInclude(m, hdrlvl, fn):
     ms = smlInclude.match(m.group(0))
     if ms:
 	return "<PRE>" + extractSML(ms.group(1), ms.group(2)) + "\n</PRE>"
+    ms = rulInclude.match(m.group(0))
+    if ms:
+	return "<PRE>" + extractRUL(ms.group(1), ms.group(2)) + "\n</PRE>"
     if isContextual:
 	ms = esIncludeCtx.match(m.group(0))
     else:

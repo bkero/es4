@@ -48,6 +48,11 @@ TBD.
     II.d  Verification
     II.e  Loading
     II.f  Computation
+        II.f.1  Expressions
+                - Names
+                - Values
+                - Types
+        II.f.2  Statements
 
 
 = III.  The built-in libraries =

@@ -98,14 +98,14 @@ package
         }
                 
         /* E262-3 15.11.4.2: "name" property on prototype */
-        prototype var name = "Error";
+        public prototype var name = "Error";
 
         /* E262-3 15.11.4.3: "message" property on prototype */
         /* INFORMATIVE */
-        prototype var message = "Generic error";
+        public prototype var message = "Generic error";
 
         /* E262-3 15.11.4.4: toString */
-        prototype function toString(this: Error)
+        public prototype function toString(this: Error)
             this.Private::toString();
 
         /* INFORMATIVE */

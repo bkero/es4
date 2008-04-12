@@ -67,10 +67,10 @@ package
         }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
-        prototype var name = "EvalError";
+        public prototype var name = "EvalError";
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Illegal use of 'eval'";
+        public prototype var message = "Illegal use of 'eval'";
     }
 }
