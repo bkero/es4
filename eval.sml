@@ -3112,17 +3112,22 @@ and numTypeOf (regs:Mach.REGS)
     : NUMBER_TYPE = 
     let
         val ty = typeOfVal regs v 
+        fun sameItype t2 = 
+            case (ty, t2) of
+                (Ast.InstanceType it1, Ast.InstanceType it2) => Mach.nameEq (#name it1) (#name it2)
+              | _ => false
     in
-        if ty ~< (instanceType regs Name.ES4_double [])
+        (* Don't use ~< here, it is willing to convert numeric types! *)
+        if sameItype (instanceType regs Name.ES4_double [])
         then DoubleNum
         else
-            if ty ~< (instanceType regs Name.ES4_int [])
+            if sameItype (instanceType regs Name.ES4_int [])
             then IntNum
             else
-                if ty ~< (instanceType regs Name.ES4_uint [])
+                if sameItype (instanceType regs Name.ES4_uint [])
                 then UIntNum
                 else 
-                    if ty ~< (instanceType regs Name.ES4_decimal [])
+                    if sameItype (instanceType regs Name.ES4_decimal [])
                     then DecimalNum
                     else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
