@@ -716,10 +716,7 @@ fun unaryDecimalFn (f:(Decimal.DEC -> Decimal.DEC)) :
     fn regs =>
     fn vals => if length vals = 0
                then Eval.newDecimal regs Decimal.NaN
-               else Eval.newDecimal regs (f (Eval.toDecimal 
-                                                 {precision = Decimal.defaultPrecision,
-                                                  mode = Decimal.defaultRoundingMode}
-                                                 (rawNth vals 0)))
+               else Eval.newDecimal regs (f (Eval.toDecimal (rawNth vals 0)))
 
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
@@ -734,13 +731,8 @@ fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
     fn regs =>
     fn vals => if length vals = 0 orelse length vals = 1
                then Eval.newDecimal regs Decimal.NaN
-               else Eval.newDecimal regs (f ((Eval.toDecimal 
-                                                  {precision = Decimal.defaultPrecision,
-                                                  mode = Decimal.defaultRoundingMode}
-                                                  (rawNth vals 0)),
-                                             (Eval.toDecimal {precision = Decimal.defaultPrecision,
-                                                              mode = Decimal.defaultRoundingMode}
-                                                             (rawNth vals 1))))
+               else Eval.newDecimal regs (f ((Eval.toDecimal (rawNth vals 0)),
+                                             (Eval.toDecimal (rawNth vals 1))))
 
 fun binaryWord32Fn (f:((Word32.word * Word32.word) -> Word32.word)) :
     (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =

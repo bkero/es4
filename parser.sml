@@ -7128,13 +7128,7 @@ and pragmaItem (ts:TOKENS)
                 (ts1, Ast.UseDefaultNamespace (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
             end
     in case ts of
-        (Decimal, _) :: _ => 
-            let
-                val (ts1,nd1) = primaryExpression ((tl ts), AllowColon, NoIn)
-	    in
-                (ts1, Ast.UseDecimalContext nd1)
-            end
-      | (Standard, _) :: _ => (tl ts,Ast.UseStandard)
+        (Standard, _) :: _ => (tl ts,Ast.UseStandard)
       | (Strict, _) :: _ => (tl ts,Ast.UseStrict)
       | (Default, _) :: (Namespace, _) :: (Public,    _) :: _ => defaultNamespaceReserved ()
       | (Default, _) :: (Namespace, _) :: (Internal,  _) :: _ => defaultNamespaceReserved ()

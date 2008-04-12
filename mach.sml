@@ -161,7 +161,6 @@ datatype VAL = Object of OBJ
          Scope of { object: OBJ,
                     parent: SCOPE option,
                     temps: TEMPS,
-                    decimal: DECIMAL_CONTEXT,
                     kind: SCOPE_KIND }
 
      and SCOPE_KIND =
@@ -230,10 +229,6 @@ withtype FUN_CLOSURE =
      and IFACE_CLOSURE =
          { iface: Ast.IFACE,
            env: SCOPE }
-
-     and DECIMAL_CONTEXT = 
-         { precision: int,
-           mode: DecimalParams.ROUNDING_MODE }
 
      and REGS = 
          { 
@@ -1150,16 +1145,11 @@ val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
 
-val defaultDecimalContext = 
-	{ precision = 34,
-	  mode = DecimalParams.HalfEven } 
-
 fun makeGlobalScopeWith (global:OBJ) 
     : SCOPE =
     Scope { object = global,
             parent = NONE,
             temps = ref [],
-            decimal = defaultDecimalContext,
             kind = GlobalScope }
 
 fun makeInitialRegs (prog:Fixture.PROGRAM)

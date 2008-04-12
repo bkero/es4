@@ -206,15 +206,13 @@ fun extendScope (p:Mach.SCOPE)
                 (kind:Mach.SCOPE_KIND)
     : Mach.SCOPE =
     let
-        val Mach.Scope { decimal, ... } = p
         val parent = SOME p
         val temps = ref []
     in
         Mach.Scope { parent = parent,
                      object = ob,
                      temps = temps,
-                     kind = kind,
-                     decimal = decimal }
+                     kind = kind }
     end
 
 (*
@@ -272,26 +270,6 @@ fun withScope (r:Mach.REGS)
         val { scope, this, thisFun, global, prog, aux } = r
     in
         { scope = newScope, 
-          this = this, 
-          thisFun = thisFun,
-          global = global, 
-          prog = prog,
-          aux = aux }
-    end
-    
-fun withDecimalContext (r:Mach.REGS)
-                       (newDecimalContext:Mach.DECIMAL_CONTEXT)
-    : Mach.REGS =
-    let
-        val { scope, this, thisFun, global, prog, aux } = r
-        val Mach.Scope { object, parent, temps, decimal, kind } = scope
-        val scope = Mach.Scope{ object = object,
-                                parent = parent,
-                                temps = temps,
-                                decimal = newDecimalContext,
-                                kind = kind }
-    in
-        { scope = scope, 
           this = this, 
           thisFun = thisFun,
           global = global, 
@@ -1724,37 +1702,42 @@ and toNumeric (regs:Mach.REGS)
     end
 
 
-and toDecimal (ctxt:Mach.DECIMAL_CONTEXT)
-              (v:Mach.VAL)
+and toDecimal (v:Mach.VAL)
     : Decimal.DEC =
-    case v of
-        Mach.Undef => Decimal.NaN
-      | Mach.Null => Decimal.zero
-      | Mach.Wrapped (v, ty) => toDecimal ctxt v
-      | Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Mach.Double d) =>
-             (* NB: Lossy. *)
-             (case Decimal.fromString (#precision ctxt) (#mode ctxt) (Real64.toString d) of
-                  SOME d' => d'
-                | NONE => Decimal.NaN)
-           | SOME (Mach.Decimal d) => d
-           | SOME (Mach.Boolean false) => Decimal.zero
-           | SOME (Mach.Boolean true) => Decimal.one
-           (*
-            * FIXME: This is not the correct definition either. See toNumeric.
-            *)
-           | SOME (Mach.String us) =>
-             let val s = Ustring.toAscii us
-             in
-                 case Decimal.fromString (#precision ctxt) (#mode ctxt) s of
-                     SOME s' => s'
-                   | NONE => Decimal.NaN
-             end
-           (*
-            * FIXME: Possibly wrong here also. See comment in toNumeric.
-            *)
-           | _ => Decimal.zero)
+    let 
+        val fromStr = Decimal.fromString 
+                          Decimal.defaultPrecision 
+                          Decimal.defaultRoundingMode
+    in
+        case v of
+            Mach.Undef => Decimal.NaN
+          | Mach.Null => Decimal.zero
+          | Mach.Wrapped (v, ty) => toDecimal v
+          | Mach.Object (Mach.Obj ob) =>
+            (case !(#magic ob) of
+                 SOME (Mach.Double d) =>
+                 (* NB: Lossy. *)
+                 (case fromStr (Real64.toString d) of
+                      SOME d' => d'
+                    | NONE => Decimal.NaN)
+               | SOME (Mach.Decimal d) => d
+               | SOME (Mach.Boolean false) => Decimal.zero
+               | SOME (Mach.Boolean true) => Decimal.one
+               (*
+                * FIXME: This is not the correct definition either. See toNumeric.
+                *)
+               | SOME (Mach.String us) =>
+                 let val s = Ustring.toAscii us
+                 in
+                     case fromStr s of
+                         SOME s' => s'
+                       | NONE => Decimal.NaN
+                 end
+               (*
+                * FIXME: Possibly wrong here also. See comment in toNumeric.
+                *)
+               | _ => Decimal.zero)
+    end
 
 
 and toDouble (v:Mach.VAL)
@@ -1868,7 +1851,6 @@ and sign (v:Mach.VAL)
          * or only return 1 or -1. Don't know which one the ES-262-3 spec means.
          *)
 
-        (* FIXME: should decimal context be used in sign-determination? *)
         fun decimalSign d = case Decimal.compare Decimal.defaultPrecision
                                                  Decimal.defaultRoundingMode
                                                  d Decimal.zero
@@ -2924,15 +2906,6 @@ and evalSetExpr (regs:Mach.REGS)
     end
 
 
-and decimalCtxt (regs:Mach.REGS)
-    : Mach.DECIMAL_CONTEXT = 
-    let
-        val Mach.Scope { decimal, ... } = (#scope regs)
-    in
-        decimal
-    end
-
-
 and numberOfSimilarType (regs:Mach.REGS)
                         (v:Mach.VAL)
                         (d:Real64.real)
@@ -3139,10 +3112,10 @@ and performDecimalBinop (regs:Mach.REGS)
                         (vb:Mach.VAL)
     : Mach.VAL = 
     let
-        val ctxt = decimalCtxt regs
-        val { precision, mode } = ctxt
-        val da = toDecimal ctxt va
-        val db = toDecimal ctxt vb
+        val precision = Decimal.defaultPrecision 
+        val mode = Decimal.defaultRoundingMode
+        val da = toDecimal va
+        val db = toDecimal vb
         val dc = case bop of 
                      Ast.Plus => Decimal.add precision mode da db
                    | Ast.Minus => Decimal.subtract precision mode da db
@@ -3212,8 +3185,8 @@ and performBinop (regs:Mach.REGS)
     : Mach.VAL =
 
     let
-        val ctxt = decimalCtxt regs
-        val { precision, mode } = ctxt
+        val precision = Decimal.defaultPrecision
+        val mode = Decimal.defaultRoundingMode
 
         fun dispatchComparison cmp =            
             let
@@ -3259,8 +3232,8 @@ and performBinop (regs:Mach.REGS)
                                 | DecimalNum => 
                                   cmp (Decimal.compare 
                                            precision mode 
-                                           (toDecimal ctxt va) 
-                                           (toDecimal ctxt vb)))
+                                           (toDecimal va) 
+                                           (toDecimal vb)))
                     end
             end
 
@@ -4720,8 +4693,8 @@ and specialDecimalConstructor (regs:Mach.REGS)
     : Mach.OBJ =
     let
 	val n = case args of 
-		    [] => toDecimal (decimalCtxt regs) (newInt regs 0.0)
-		  | v :: _ => toDecimal (decimalCtxt regs) v
+		    [] => toDecimal (newInt regs 0.0)
+		  | v :: _ => toDecimal v
 	val obj = constructStandard regs classObj classClosure []
     in
 	Mach.setMagic obj (SOME (Mach.Decimal n));
@@ -5084,38 +5057,7 @@ and get (regs:Mach.REGS)
 and evalPragmas (regs:Mach.REGS)
                 (pragmas:Ast.PRAGMA list)
     : Mach.REGS = 
-    case pragmas of 
-        ((Ast.UseDecimalContext e) :: pragmas) => 
-        let
-            val t = instanceType regs Name.ES4_DecimalContext [] 
-            val v = evalExpr regs e             
-        in
-            if evalOperatorIs regs v t
-            then 
-                let
-                    val obj = needObj regs v
-                    val pv = getValue regs obj Name.nons_precision
-                    val pr = toUInt32 regs pv
-                    val precision = Real64.floor pr
-
-                    val mv = getValue regs obj Name.nons_mode
-                    val mr = toUInt32 regs mv
-                    val mode = case Real64.floor mr of 
-                                   0 => DecimalParams.Ceiling
-                                 | 1 => DecimalParams.Floor
-                                 | 2 => DecimalParams.Up
-                                 | 3 => DecimalParams.Down
-                                 | 4 => DecimalParams.HalfUp
-                                 | 5 => DecimalParams.HalfDown
-                                 | _ => DecimalParams.HalfEven
-                in
-                    evalPragmas (withDecimalContext regs {precision=precision, mode=mode}) pragmas
-                end
-            else
-                error regs ["need DecimalContext as argument to 'use decimal' pragma"]
-        end
-      | p::pragmas => evalPragmas regs pragmas
-      | [] => regs
+    regs
 
 (*
     Evaluate a block head (head) in the environment (regs).

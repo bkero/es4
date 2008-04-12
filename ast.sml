@@ -139,7 +139,6 @@ datatype SPECIAL_TY =
 datatype PRAGMA =
          UseNamespace of EXPR
        | UseDefaultNamespace of EXPR
-       | UseDecimalContext of EXPR
        | UseStrict
        | UseStandard
        | Import of
