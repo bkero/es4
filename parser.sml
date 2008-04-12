@@ -500,7 +500,6 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Type => tn ()
       | UInt => tn ()
       | Undefined => tn ()
-      | Unit => tn ()
       | Use => tn ()
       | Wrap => tn ()
       | Xml => tn ()
@@ -7501,8 +7500,8 @@ fun parse ts =
         val (_, frags) = parseFrags ts
         val frag = case frags of 
                        [x] => x
-                     | other => Ast.Unit { name = NONE, 
-                                           fragments = other }
+                     | other => Ast.Package { name = [], 
+                                              fragments = other }
     in
         frag
     end
