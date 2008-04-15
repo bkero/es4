@@ -242,8 +242,7 @@ and fix2norm (prog:Fixture.PROGRAM)
             end
     in
         case fixOpt of 
-            NONE => (error ["type multiname ", LogErr.multiname mname, 
-                            " failed to resolve in closed unit "])
+            NONE => repackage originalt
           | SOME (n, fix) => 
             (trace ["resolved"];
              case fix of
