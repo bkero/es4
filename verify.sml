@@ -42,8 +42,6 @@ type STD_TYPES = {
      AnyNumberType: Ast.TYPE_EXPR,
      doubleType: Ast.TYPE_EXPR,
      decimalType: Ast.TYPE_EXPR,
-     intType: Ast.TYPE_EXPR,
-     uintType: Ast.TYPE_EXPR,
 
      AnyStringType: Ast.TYPE_EXPR,
      stringType: Ast.TYPE_EXPR,
@@ -145,8 +143,6 @@ fun newEnv (prog:Fixture.PROGRAM)
       AnyNumberType = Type.getNamedGroundType prog Name.ES4_AnyNumber,
       doubleType = Type.getNamedGroundType prog Name.ES4_double,
       decimalType = Type.getNamedGroundType prog Name.ES4_decimal,
-      intType = Type.getNamedGroundType prog Name.ES4_int,
-      uintType = Type.getNamedGroundType prog Name.ES4_uint,
 
       AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
       stringType = Type.getNamedGroundType prog Name.ES4_string,
@@ -368,8 +364,6 @@ and verifyBinaryExpr (env:ENV)
               { AnyNumberType, 
                 doubleType,
                 decimalType,
-                intType,
-                uintType,
 
                 AnyStringType,
                 stringType,
@@ -440,8 +434,6 @@ and verifyExpr (env:ENV)
               { AnyNumberType, 
                 doubleType,
                 decimalType,
-                intType,
-                uintType,
 
                 AnyStringType,
                 stringType,
@@ -541,8 +533,7 @@ and verifyExpr (env:ENV)
                 if strict
                 then 
                     case b of
-                        Ast.To => checkMatch t1 t2
-                      | Ast.Is => ()
+                        Ast.Is => ()
                       | Ast.Cast => checkMatch t1 t2
                 else 
                     ();
@@ -628,8 +619,6 @@ and verifyExpr (env:ENV)
                                    | Ast.LiteralUndefined => undefinedType
                                    | Ast.LiteralDouble _ => doubleType
                                    | Ast.LiteralDecimal _ => decimalType
-                                   | Ast.LiteralInt _ => intType
-                                   | Ast.LiteralUInt _ => uintType
                                    | Ast.LiteralBoolean _ => booleanType
                                    | Ast.LiteralString _ => stringType
                                    | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
@@ -853,8 +842,6 @@ and verifyStmt (env:ENV)
               { AnyNumberType, 
                 doubleType,
                 decimalType,
-                intType,
-                uintType,
 
                 AnyStringType,
                 stringType,

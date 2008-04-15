@@ -62,7 +62,7 @@ package
 
     __ES4__ namespace iterator;
 
-    __ES4__ type EnumerableId = (int|uint|string|Name);
+    __ES4__ type EnumerableId = (double|string|Name);
 
     helper function toEnumerableId(x) {
         switch type (x) {

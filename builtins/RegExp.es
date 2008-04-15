@@ -194,12 +194,12 @@ package
          * uses it, and if we want to model the language in the
          * language we should expose it -- it's benign.
          */
-        helper function match(s : string, i : uint) : MatchResult
+        helper function match(s : string, i : double) : MatchResult
             matcher.match(s, i, multiline, ignoreCase);
 
         /* E262-4 - nCapturingParens used by String.prototype.replace.
          */
-        helper function get nCapturingParens() : uint
+        helper function get nCapturingParens() : double
             matcher.nCapturingParens;
 
         /* Internal */

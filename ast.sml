@@ -64,7 +64,6 @@ type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 datatype BINTYPEOP =
          Cast
        | Is
-       | To
 
 datatype BINOP =
          Plus
@@ -370,8 +369,6 @@ datatype PRAGMA =
        | LiteralUndefined
        | LiteralDouble of Real64.real
        | LiteralDecimal of Decimal.DEC
-       | LiteralInt of Int32.int
-       | LiteralUInt of Word32.word
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
        | LiteralArray of

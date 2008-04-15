@@ -102,7 +102,7 @@ package
                 year = double(year);
                 month = double(month);
 
-                let intYear : int = helper::toInteger(year);
+                let intYear : double = helper::toInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
                 timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date),
@@ -817,7 +817,7 @@ package
     informative function fromDateString(s : string, reference : double) : double {
 
         function findMonth(name) {
-            for ( let i:int=0 ; i < monthNames.length ; i++ )
+            for ( let i:double=0 ; i < monthNames.length ; i++ )
                 if (name === monthNames[i])
                     return i;
             return 0;  // implementation bug if this happens...
@@ -1040,13 +1040,13 @@ package
             return string(n);
     }
 
-    helper function removeTrailingZeroes(n: int): string {
+    helper function removeTrailingZeroes(n: double): string {
         while (n > 0 && n % 10 === 0)
             n /= 10;
         return string(n);
     }
 
-    helper function zeroFill(n: int, k): string {
+    helper function zeroFill(n: double, k): string {
         let s = string(n);
         while (s.length < k)
             s = "0" + s;

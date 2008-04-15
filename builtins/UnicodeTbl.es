@@ -67,7 +67,7 @@ package Unicode
         return t;
     }
 
-    function expandTable(tbl, cc:uint) {
+    function expandTable(tbl, cc:double) {
         while (tbl.watermark < cc) {
             if (tbl.ptr == tbl.data.length)
                 tbl.watermark = uint.MAX_VALUE;
@@ -120,7 +120,7 @@ package Unicode
     var table_Co = makeTable(category_Co);
     var table_Cn = makeTable(category_Cn);
 
-    function classify(tbl, cc:uint): boolean {
+    function classify(tbl, cc:double): boolean {
         expandTable(tbl, cc);
         return tbl.hasOwnProperty(cc) ? true : false;
     }

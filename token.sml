@@ -150,7 +150,6 @@ datatype TOKEN =
     | Has
     | Implements
     | Import
-    | Int
     | Interface
     | Intrinsic
     | Let
@@ -167,9 +166,7 @@ datatype TOKEN =
     | Standard
     | Static
     | Strict
-    | To
     | Type
-    | UInt
     | Undefined
     | Unit
     | Use
@@ -183,8 +180,6 @@ datatype TOKEN =
     (* The interpretation of these 4 literal types can be done during lexing. *)
     | DecimalLiteral of Decimal.DEC
     | DoubleLiteral of Real64.real
-    | IntLiteral of Int32.int
-    | UIntLiteral of Word32.word
 
     | PackageIdentifier of Ustring.STRING
     | RegexpLiteral of Ustring.STRING
@@ -367,7 +362,6 @@ fun tokenname (t,_) =
       | Has => "has"
       | Implements => "implements"
       | Import => "import"
-      | Int => "int"
       | Interface => "interface"
       | Intrinsic => "intrinsic"
       | Let => "let"
@@ -384,9 +378,7 @@ fun tokenname (t,_) =
       | Standard => "standard"
       | Static => "static"
       | Strict => "strict"
-      | To => "to"
       | Type => "type"
-      | UInt => "uint"
       | Unit => "unit"
       | Undefined => "undefined"
       | Use => "use"
@@ -399,8 +391,6 @@ fun tokenname (t,_) =
 
       | DecimalLiteral x => Decimal.toString(x) ^ "m"
       | DoubleLiteral x => Real64.toString(x) ^ "d"
-      | IntLiteral x => Int32.toString(x) ^ "i"
-      | UIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
 
       | PackageIdentifier x => "packageidentifier("^(Ustring.toAscii x)^")"
       | RegexpLiteral x => "regexp("^(Ustring.toAscii x)^")"
