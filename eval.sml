@@ -3082,7 +3082,7 @@ and numTypeOf (regs:Mach.REGS)
         else
             if sameItype (instanceType regs Name.ES4_decimal [])
             then DecimalNum
-	    else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+	        else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
 
 
