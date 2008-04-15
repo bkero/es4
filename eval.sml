@@ -157,7 +157,6 @@ fun evalTy (regs:Mach.REGS)
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
-exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
@@ -3973,20 +3972,6 @@ and resolveName (obj:Mach.OBJ)
                   | ro => ro
             end
     end
-
-
-and evalTailCallExpr (regs:Mach.REGS)
-                     (e:Ast.EXPR)
-    : Mach.VAL =
-    raise (TailCallException (fn _ => evalExpr regs e))
-
-
-and evalNonTailCallExpr (regs:Mach.REGS)
-                        (e:Ast.EXPR)
-    : Mach.VAL =
-    evalExpr regs e
-    handle TailCallException thunk => thunk ()
-         | ReturnException v => v
 
 
 and labelMatch (stmtLabels:Ast.IDENT list)
