@@ -495,7 +495,6 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Standard => tn ()
       | Static => tn ()
       | Strict => tn ()
-      | To => tn ()
       | Type => tn ()
       | Undefined => tn ()
       | Unit => tn ()
@@ -2329,12 +2328,6 @@ and relationalExpression (ts:TOKENS, a:ALPHA, b:BETA)
                         val (ts3,nd3) = typeExpression (ts2)
                     in
                         relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Cast,nd1,nd3),a,AllowIn)
-                    end
-              | ((To, _) :: ts2, _) =>
-                    let
-                        val (ts3,nd3) = typeExpression (ts2)
-                    in
-                        relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.To,nd1,nd3),a,AllowIn)
                     end
               | ((Is, _) :: ts2, _) =>
                     let

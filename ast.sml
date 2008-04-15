@@ -65,7 +65,6 @@ datatype BINTYPEOP =
          Cast
        | Is
        | Wrap
-       | To
 
 datatype BINOP =
          Plus

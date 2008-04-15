@@ -32,7 +32,6 @@ structure PrettyCvt = struct
    and cvtBINTYPEOP (Cast) = PrettyRep.Ctor ("Cast", NONE)
      | cvtBINTYPEOP (Is) = PrettyRep.Ctor ("Is", NONE)
      | cvtBINTYPEOP (Wrap) = PrettyRep.Ctor ("Wrap", NONE)
-     | cvtBINTYPEOP (To) = PrettyRep.Ctor ("To", NONE)
    and cvtBINOP (Plus) = PrettyRep.Ctor ("Plus", NONE)
      | cvtBINOP (Minus) = PrettyRep.Ctor ("Minus", NONE)
      | cvtBINOP (Times) = PrettyRep.Ctor ("Times", NONE)

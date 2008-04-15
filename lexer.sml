@@ -767,8 +767,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "his"      , This),
                                              (Ustring.fromSource "ype"      , Type),
                                              (Ustring.fromSource "rue"      , True),
-                                             (Ustring.fromSource "ry"       , Try),
-                                             (Ustring.fromSource "o"        , To)]
+                                             (Ustring.fromSource "ry"       , Try)]
                       | #"u"  => lexResOrId [(Ustring.fromSource "ndefined" , Undefined),
                                              (Ustring.fromSource "nit"      , Unit),
                                              (Ustring.fromSource "se"       , Use)]

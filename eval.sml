@@ -3530,7 +3530,6 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             if evalOperatorIs regs v (evalTy regs ty)
             then v
             else (typeOpFailure regs "cast failed" v (AstQuery.typeExprOf ty); dummyVal)
-          | Ast.To => checkAndConvert regs v ty
           | Ast.Wrap => evalOperatorWrap regs v (evalTy regs ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end

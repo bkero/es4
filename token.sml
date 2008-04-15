@@ -167,7 +167,6 @@ datatype TOKEN =
     | Standard
     | Static
     | Strict
-    | To
     | Type
     | Undefined
     | Unit
@@ -381,7 +380,6 @@ fun tokenname (t,_) =
       | Standard => "standard"
       | Static => "static"
       | Strict => "strict"
-      | To => "to"
       | Type => "type"
       | Unit => "unit"
       | Undefined => "undefined"
