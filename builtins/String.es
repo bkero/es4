@@ -208,7 +208,7 @@ package
         static function split(self, separator, limit): Array!
             string.split(self, separator, limit);
 
-        intrinsic function split(separator:(AnyString|RegExp!), limit: uint = uint.MAX_VALUE) : Array!
+        intrinsic function split(separator:(AnyString|RegExp!), limit: double = double.MAX_VALUE) : Array!
             string.split(val, separator, limit);
 
 
@@ -289,7 +289,7 @@ package
 
 
         /* E262-3 15.5.5.1: length. */
-        function get length() : uint
+        function get length() : double
             val.length;
 
 

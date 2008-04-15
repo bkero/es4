@@ -479,7 +479,6 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Has => tn ()
       | Implements => tn ()
       | Import => tn ()
-      | Int => tn ()
       | Interface => tn ()
       | Intrinsic => tn ()
       | Let => tn ()
@@ -496,12 +495,9 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Standard => tn ()
       | Static => tn ()
       | Strict => tn ()
-      | To => tn ()
       | Type => tn ()
-      | UInt => tn ()
       | Undefined => tn ()
       | Use => tn ()
-      | Wrap => tn ()
       | Xml => tn ()
       | Yield => tn ()
       | _ => error ["expecting 'identifier' before '",tokenname (t,()),"'"]
@@ -1055,14 +1051,6 @@ and fieldName (ts:TOKENS)
         (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralDouble n)),
                                          openNamespaces = []})
 
-      | (IntLiteral n, _) :: ts1 => 
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralInt n)),
-                                         openNamespaces = []})
-
-      | (UIntLiteral n, _) :: ts1 => 
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralUInt n)),
-                                         openNamespaces = []})
-
       | _ =>
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -1381,8 +1369,6 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
 
       | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralDecimal n))
       | (DoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralDouble n))
-      | (IntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralInt n))
-      | (UIntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralUInt n))
 
       | (StringLiteral s,_) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralString s))
       | (This, _) :: _ => 
@@ -2341,23 +2327,11 @@ and relationalExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     in
                         relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Cast,nd1,nd3),a,AllowIn)
                     end
-              | ((To, _) :: ts2, _) =>
-                    let
-                        val (ts3,nd3) = typeExpression (ts2)
-                    in
-                        relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.To,nd1,nd3),a,AllowIn)
-                    end
               | ((Is, _) :: ts2, _) =>
                     let
                         val (ts3,nd3) = typeExpression (ts2)
                     in
                         relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Is,nd1,nd3),a,AllowIn)
-                    end
-              | ((Wrap, _) :: ts2, _) =>
-                    let
-                        val (ts3,nd3) = typeExpression (ts2)
-                    in
-                        relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Wrap,nd1,nd3),a,AllowIn)
                     end
               | (_,_) =>
                     (trace(["<< relationalExpression"]);(ts1,nd1))

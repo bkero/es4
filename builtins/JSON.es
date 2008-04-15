@@ -118,7 +118,7 @@ package JSON
     }
 
     function isEncodableName(n) {
-        return (n is uint || 
+        return (n is double || 
                 n is string || 
                 n is Name && n.qualifier == null);
     }

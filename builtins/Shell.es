@@ -69,7 +69,7 @@ package
             if (m === null) {
                 throw ("couldn't parse HTTP status: " + text);
             }
-            return [uint(m[1].trim()), m[2].trim()];
+            return [toUint(m[1].trim()), m[2].trim()];
         }
         function parseResponse(rsp) {
             let [status, i] = eatLine(rsp,0);
@@ -92,7 +92,7 @@ package
             throw ("couldn't parse URL: " + url);
         }
         let server = String(matches[2]);
-        let port = uint(matches[3] || 80);
+        let port = toUint(matches[3] || 80);
         let page = String(matches[4] || "/");
         return parseResponse(intrinsic::readHTTP(server, port, page, method, headerStr));
     }
