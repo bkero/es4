@@ -157,7 +157,6 @@ fun evalTy (regs:Mach.REGS)
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
-exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
@@ -3072,13 +3071,18 @@ and numTypeOf (regs:Mach.REGS)
     : NUMBER_TYPE = 
     let
         val ty = typeOfVal regs v 
+        fun sameItype t2 = 
+            case (ty, t2) of
+                (Ast.InstanceType it1, Ast.InstanceType it2) => Mach.nameEq (#name it1) (#name it2)
+              | _ => false
     in
-        if ty ~< (instanceType regs Name.ES4_double [])
+        (* Don't use ~< here, it is willing to convert numeric types! *)
+        if sameItype (instanceType regs Name.ES4_double [])
         then DoubleNum
         else
-            if ty ~< (instanceType regs Name.ES4_decimal [])
+            if sameItype (instanceType regs Name.ES4_decimal [])
             then DecimalNum
-            else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+	    else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
 
 
@@ -3902,20 +3906,6 @@ and resolveName (obj:Mach.OBJ)
                   | ro => ro
             end
     end
-
-
-and evalTailCallExpr (regs:Mach.REGS)
-                     (e:Ast.EXPR)
-    : Mach.VAL =
-    raise (TailCallException (fn _ => evalExpr regs e))
-
-
-and evalNonTailCallExpr (regs:Mach.REGS)
-                        (e:Ast.EXPR)
-    : Mach.VAL =
-    evalExpr regs e
-    handle TailCallException thunk => thunk ()
-         | ReturnException v => v
 
 
 and labelMatch (stmtLabels:Ast.IDENT list)
