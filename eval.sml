@@ -637,9 +637,6 @@ and valAllocState (regs:Mach.REGS)
       | Ast.LikeType ty => 
         valAllocState regs ty
         
-      | Ast.WrapType ty => 
-        valAllocState regs ty
-        
       | Ast.AppType {base, ...} =>
         valAllocState regs base
         

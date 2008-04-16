@@ -230,8 +230,6 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
         Ast.ObjectType (mapObjTy f fields)
       | Ast.LikeType t => 
         Ast.LikeType (f t)
-      | Ast.WrapType t => 
-        Ast.WrapType (f t)
       | Ast.UnionType tys =>
         Ast.UnionType (map f tys)
       | Ast.ArrayType tys => 
