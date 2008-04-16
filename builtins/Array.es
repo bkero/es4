@@ -689,7 +689,7 @@ package
     // Then clamp it between 0 and len inclusive, and convert it to uint.
     //
     // Also used by Vector.es
-    helper function clamp(val: AnyNumber, len: double): uint {
+    helper function clamp(val: AnyNumber, len: double): double {
         val = helper::toInteger(val);
         if (val < 0)
             val += len;

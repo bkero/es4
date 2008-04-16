@@ -145,7 +145,7 @@ package
            x must be positive, f is in the range [0,20]. */
 
         // FIXME: really informative, not intrinsic
-        native intrinsic function toFixedStep10(x : (double|decimal), f : double) : int;
+        native intrinsic function toFixedStep10(x : (double|decimal), f : double) : double;
 
         intrinsic function toExponential(fractionDigits=undefined) : string {
             return "**toExponential: FIXME**";
