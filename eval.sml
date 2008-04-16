@@ -70,7 +70,6 @@ fun evalTy (regs:Mach.REGS)
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
-exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
@@ -119,15 +118,13 @@ fun extendScope (p:Mach.SCOPE)
                 (kind:Mach.SCOPE_KIND)
     : Mach.SCOPE =
     let
-        val Mach.Scope { decimal, ... } = p
         val parent = SOME p
         val temps = ref []
     in
         Mach.Scope { parent = parent,
                      object = ob,
                      temps = temps,
-                     kind = kind,
-                     decimal = decimal }
+                     kind = kind }
     end
 
 (*
@@ -185,26 +182,6 @@ fun withScope (r:Mach.REGS)
         val { scope, this, thisFun, global, prog, aux } = r
     in
         { scope = newScope, 
-          this = this, 
-          thisFun = thisFun,
-          global = global, 
-          prog = prog,
-          aux = aux }
-    end
-    
-fun withDecimalContext (r:Mach.REGS)
-                       (newDecimalContext:Mach.DECIMAL_CONTEXT)
-    : Mach.REGS =
-    let
-        val { scope, this, thisFun, global, prog, aux } = r
-        val Mach.Scope { object, parent, temps, decimal, kind } = scope
-        val scope = Mach.Scope{ object = object,
-                                parent = parent,
-                                temps = temps,
-                                decimal = newDecimalContext,
-                                kind = kind }
-    in
-        { scope = scope, 
           this = this, 
           thisFun = thisFun,
           global = global, 
@@ -304,7 +281,7 @@ fun getGlobalScope (regs:Mach.REGS)
 
 type REF = (Mach.OBJ * Ast.NAME)
 
-datatype NUMBER_TYPE = IntNum | UIntNum | DoubleNum | DecimalNum 
+datatype NUMBER_TYPE = DoubleNum | DecimalNum 
                           
 fun numLE (a:NUMBER_TYPE)
           (b:NUMBER_TYPE) =
@@ -312,11 +289,7 @@ fun numLE (a:NUMBER_TYPE)
     then true
     else 
         case (a,b) of
-            (UIntNum, DoubleNum) => true
-          | (UIntNum, DecimalNum) => true
-          | (IntNum, DoubleNum) => true
-          | (IntNum, DecimalNum) => true
-          | (DoubleNum, DecimalNum) => true
+            (DoubleNum, DecimalNum) => true
           | _ => false
                  
 fun promoteToCommon (regs:Mach.REGS) 
@@ -327,14 +300,7 @@ fun promoteToCommon (regs:Mach.REGS)
     then a
     else 
         case if numLE a b then (a,b) else (b,a) of 
-            (UIntNum, DoubleNum) => DoubleNum
-          | (UIntNum, DecimalNum) => DecimalNum
-          | (IntNum, DoubleNum) => DoubleNum
-          | (IntNum, DecimalNum) => DecimalNum
-          | (DoubleNum, DecimalNum) => DecimalNum
-          (* These two may be a little contentious: they're unordered! *)
-          | (IntNum, UIntNum) => DoubleNum
-          | (UIntNum, IntNum) => DoubleNum
+            (DoubleNum, DecimalNum) => DecimalNum
           | _ => error regs ["unexpected number combination in promoteToCommon"]
                  
 (*
@@ -733,8 +699,6 @@ and allocSpecial (regs:Mach.REGS)
 
              (Mach.getDoubleClassSlot, (fn _ => newDouble regs 0.0)),
              (Mach.getDecimalClassSlot, (fn _ => newDecimal regs Decimal.zero)),
-             (Mach.getIntClassSlot, (fn _ => newInt regs 0.0)),
-             (Mach.getUintClassSlot, (fn _ => newUInt regs 0.0)),
 
              (Mach.getStringClassSlot, (fn _ => newString regs Ustring.empty))
 	        ]
@@ -1279,7 +1243,7 @@ and newArray (regs:Mach.REGS)
      *)
     let val a = instantiateGlobalClass 
                     regs Name.nons_Array 
-                    [newInt regs (Real64.fromInt (List.length vals))]
+                    [newDouble regs (Real64.fromInt (List.length vals))]
         fun init a _ [] = ()
           | init a k (x::xs) =
             (setValue regs a (Name.nons (Ustring.fromInt k)) x ;
@@ -1319,20 +1283,6 @@ and newDouble (regs:Mach.REGS)
 	case Mach.findInDoubleCache regs n of
 	    SOME obj => Mach.Object obj
 	  | NONE => newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
-
-and newInt (regs:Mach.REGS) 
-           (n:Real64.real)
-    : Mach.VAL =    
-    case Mach.findInIntCache regs n of
-	SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_int (SOME (Mach.Double n))
-
-and newUInt (regs:Mach.REGS)
-            (n:Real64.real)
-    : Mach.VAL =
-    case Mach.findInUIntCache regs n of
-        SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_uint (SOME (Mach.Double n))
 
 and newStringWrapper (regs:Mach.REGS)
                     (s:Ustring.STRING)
@@ -1504,7 +1454,6 @@ and toUstring (regs:Mach.REGS)
     case v of
         Mach.Undef => Ustring.undefined_
       | Mach.Null => Ustring.null_
-      | Mach.Wrapped (v, ty) => toUstring regs v
       | Mach.Object obj =>
         let
             val Mach.Obj ob = obj
@@ -1523,7 +1472,6 @@ and toBoolean (v:Mach.VAL) : bool =
     case v of
         Mach.Undef => false
       | Mach.Null => false
-      | Mach.Wrapped (v, ty) => toBoolean v
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Boolean b) => b
@@ -1611,7 +1559,6 @@ and toNumeric (regs:Mach.REGS)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
-          | Mach.Wrapped (v, ty) => toNumeric regs v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
                  SOME (Mach.Double _) => v
@@ -1637,37 +1584,41 @@ and toNumeric (regs:Mach.REGS)
     end
 
 
-and toDecimal (ctxt:Mach.DECIMAL_CONTEXT)
-              (v:Mach.VAL)
+and toDecimal (v:Mach.VAL)
     : Decimal.DEC =
-    case v of
-        Mach.Undef => Decimal.NaN
-      | Mach.Null => Decimal.zero
-      | Mach.Wrapped (v, ty) => toDecimal ctxt v
-      | Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Mach.Double d) =>
-             (* NB: Lossy. *)
-             (case Decimal.fromString (#precision ctxt) (#mode ctxt) (Real64.toString d) of
-                  SOME d' => d'
-                | NONE => Decimal.NaN)
-           | SOME (Mach.Decimal d) => d
-           | SOME (Mach.Boolean false) => Decimal.zero
-           | SOME (Mach.Boolean true) => Decimal.one
-           (*
-            * FIXME: This is not the correct definition either. See toNumeric.
-            *)
-           | SOME (Mach.String us) =>
-             let val s = Ustring.toAscii us
-             in
-                 case Decimal.fromString (#precision ctxt) (#mode ctxt) s of
-                     SOME s' => s'
-                   | NONE => Decimal.NaN
-             end
-           (*
-            * FIXME: Possibly wrong here also. See comment in toNumeric.
-            *)
-           | _ => Decimal.zero)
+    let 
+        val fromStr = Decimal.fromString 
+                          Decimal.defaultPrecision 
+                          Decimal.defaultRoundingMode
+    in
+        case v of
+            Mach.Undef => Decimal.NaN
+          | Mach.Null => Decimal.zero
+          | Mach.Object (Mach.Obj ob) =>
+            (case !(#magic ob) of
+                 SOME (Mach.Double d) =>
+                 (* NB: Lossy. *)
+                 (case fromStr (Real64.toString d) of
+                      SOME d' => d'
+                    | NONE => Decimal.NaN)
+               | SOME (Mach.Decimal d) => d
+               | SOME (Mach.Boolean false) => Decimal.zero
+               | SOME (Mach.Boolean true) => Decimal.one
+               (*
+                * FIXME: This is not the correct definition either. See toNumeric.
+                *)
+               | SOME (Mach.String us) =>
+                 let val s = Ustring.toAscii us
+                 in
+                     case fromStr s of
+                         SOME s' => s'
+                       | NONE => Decimal.NaN
+                 end
+               (*
+                * FIXME: Possibly wrong here also. See comment in toNumeric.
+                *)
+               | _ => Decimal.zero)
+    end
 
 
 and toDouble (v:Mach.VAL)
@@ -1680,7 +1631,6 @@ and toDouble (v:Mach.VAL)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
-          | Mach.Wrapped (v, ty) => toDouble v
           | Mach.Object (Mach.Obj ob) =>
             (case !(#magic ob) of
                  SOME (Mach.Double d) => d
@@ -1781,7 +1731,6 @@ and sign (v:Mach.VAL)
          * or only return 1 or -1. Don't know which one the ES-262-3 spec means.
          *)
 
-        (* FIXME: should decimal context be used in sign-determination? *)
         fun decimalSign d = case Decimal.compare Decimal.defaultPrecision
                                                  Decimal.defaultRoundingMode
                                                  d Decimal.zero
@@ -1789,10 +1738,6 @@ and sign (v:Mach.VAL)
                                 LESS => ~1
                               | EQUAL => 0
                               | GREATER => 1
-
-        fun uint32Sign u = if u = (Word32.fromInt 0)
-                           then 0
-                           else 1
     in
         mathOp v
                (SOME decimalSign)
@@ -2503,7 +2448,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
             end
         val numProps = putVal 0 vals
     in
-        setValue regs obj Name.nons_length (newUInt regs (Real64.fromInt numProps));
+        setValue regs obj Name.nons_length (newDouble regs (Real64.fromInt numProps));
         Mach.Object obj
     end
 
@@ -2625,8 +2570,6 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralUndefined => Mach.Undef
       | Ast.LiteralDouble r => newDouble regs r
       | Ast.LiteralDecimal d => newDecimal regs d
-      | Ast.LiteralInt i => newInt regs (Real64.fromLargeInt (Int32.toLarge i))
-      | Ast.LiteralUInt u => newUInt regs (Real64.fromLargeInt (Word32.toLargeInt u))
       | Ast.LiteralBoolean b => newBoolean regs b
       | Ast.LiteralString s => newString regs s
       | Ast.LiteralArray {exprs=Ast.ListExpr exprs, ty} => evalLiteralArrayExpr regs exprs ty (* FIXME handle comprehensions *)
@@ -2838,15 +2781,6 @@ and evalSetExpr (regs:Mach.REGS)
     end
 
 
-and decimalCtxt (regs:Mach.REGS)
-    : Mach.DECIMAL_CONTEXT = 
-    let
-        val Mach.Scope { decimal, ... } = (#scope regs)
-    in
-        decimal
-    end
-
-
 and numberOfSimilarType (regs:Mach.REGS)
                         (v:Mach.VAL)
                         (d:Real64.real)
@@ -2855,9 +2789,7 @@ and numberOfSimilarType (regs:Mach.REGS)
         val nt = numTypeOf regs v
     in
         case nt of 
-            IntNum => newInt regs d
-          | UIntNum => newUInt regs d
-          | _ => newDouble regs d
+            _ => newDouble regs d
     end
 
 
@@ -2913,12 +2845,12 @@ and evalUnaryOp (regs:Mach.REGS)
           | Ast.PostIncrement => evalCrement regs Ast.Plus false expr
           | Ast.PostDecrement => evalCrement regs Ast.Minus false expr
           | Ast.BitwiseNot =>
-            newInt regs (wordToDouble
-                             (Word32.notb
-                                  (doubleToWord 
-                                       (toUInt32 regs
-                                                 (evalExpr regs expr)))))
-
+            newDouble regs (wordToDouble
+                                (Word32.notb
+                                     (doubleToWord 
+                                          (toUInt32 regs
+                                                    (evalExpr regs expr)))))
+            
           | Ast.LogicalNot =>
             newBoolean regs (not (toBoolean (evalExpr regs expr)))
 
@@ -2929,10 +2861,7 @@ and evalUnaryOp (regs:Mach.REGS)
             let
                 val v = toNumeric regs (evalExpr regs expr)
             in
-                case numTypeOf regs v of
-                    IntNum => performBinop regs Ast.Minus (newInt regs 0.0) v
-                  | UIntNum => performBinop regs Ast.Minus (newUInt regs 0.0) v
-                  | _ => performBinop regs Ast.Minus (newDouble regs 0.0) v
+                performBinop regs Ast.Minus (newDouble regs 0.0) v
             end
 
           | Ast.Void => Mach.Undef
@@ -2955,14 +2884,11 @@ and evalUnaryOp (regs:Mach.REGS)
                     case v of
                         Mach.Null => Ustring.object_
                       | Mach.Undef => Ustring.undefined_
-                      | Mach.Wrapped (v, ty) => typeNameOfVal v
                       | Mach.Object (Mach.Obj ob) =>
                         let
                             val n = Mach.nominalBaseOfTag (#tag ob)
                         in
-                            if n = Name.ES4_int orelse
-                               n = Name.ES4_uint orelse
-                               n = Name.ES4_double orelse
+                            if n = Name.ES4_double orelse
                                n = Name.ES4_decimal
                             then Ustring.number_
                             else
@@ -3026,19 +2952,18 @@ and numTypeOf (regs:Mach.REGS)
     : NUMBER_TYPE = 
     let
         val ty = typeOfVal regs v 
+        fun sameItype t2 = 
+            case (ty, t2) of
+                (Ast.InstanceType it1, Ast.InstanceType it2) => Mach.nameEq (#name it1) (#name it2)
+              | _ => false
     in
-        if ty ~< (instanceType regs Name.ES4_double [])
+        (* Don't use ~< here, it is willing to convert numeric types! *)
+        if sameItype (instanceType regs Name.ES4_double [])
         then DoubleNum
         else
-            if ty ~< (instanceType regs Name.ES4_int [])
-            then IntNum
-            else
-                if ty ~< (instanceType regs Name.ES4_uint [])
-                then UIntNum
-                else 
-                    if ty ~< (instanceType regs Name.ES4_decimal [])
-                    then DecimalNum
-                    else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+            if sameItype (instanceType regs Name.ES4_decimal [])
+            then DecimalNum
+	        else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
     end
 
 
@@ -3048,10 +2973,10 @@ and performDecimalBinop (regs:Mach.REGS)
                         (vb:Mach.VAL)
     : Mach.VAL = 
     let
-        val ctxt = decimalCtxt regs
-        val { precision, mode } = ctxt
-        val da = toDecimal ctxt va
-        val db = toDecimal ctxt vb
+        val precision = Decimal.defaultPrecision 
+        val mode = Decimal.defaultRoundingMode
+        val da = toDecimal va
+        val db = toDecimal vb
         val dc = case bop of 
                      Ast.Plus => Decimal.add precision mode da db
                    | Ast.Minus => Decimal.subtract precision mode da db
@@ -3098,18 +3023,7 @@ and performNumericBinop (regs:Mach.REGS)
                    | Ast.Remainder => realRem (da,db)
                    | _ => error regs ["unexpected binary operator in performNumericBinop"]
             in
-                if Mach.isIntegral dc
-                then 
-                    case commonNumType of
-                        UIntNum => if Mach.fitsInUInt dc
-                                   then newUInt regs dc
-                                   else newDouble regs dc
-                      | IntNum =>  if Mach.fitsInInt dc
-                                   then newInt regs dc
-                                   else newDouble regs dc
-                      | _ => newDouble regs dc
-                else 
-                    newDouble regs dc
+                newDouble regs dc
             end
     end
 
@@ -3121,8 +3035,8 @@ and performBinop (regs:Mach.REGS)
     : Mach.VAL =
 
     let
-        val ctxt = decimalCtxt regs
-        val { precision, mode } = ctxt
+        val precision = Decimal.defaultPrecision
+        val mode = Decimal.defaultRoundingMode
 
         fun dispatchComparison cmp =            
             let
@@ -3151,16 +3065,7 @@ and performBinop (regs:Mach.REGS)
                         then newBoolean regs false
                         else newBoolean regs 
                              (case commonNumType of 
-                                  IntNum => 
-                                  cmp (Real64.compare
-                                           ((toInt32 regs va),
-                                            (toInt32 regs vb)))
-                                | UIntNum => 
-                                  cmp (Real64.compare 
-                                           ((toUInt32 regs va),
-                                            (toUInt32 regs vb)))
-                                  
-                                | DoubleNum => 
+                                  DoubleNum => 
                                   cmp (Real64.compare 
                                            ((toDouble va),
                                             (toDouble vb)))
@@ -3168,8 +3073,8 @@ and performBinop (regs:Mach.REGS)
                                 | DecimalNum => 
                                   cmp (Decimal.compare 
                                            precision mode 
-                                           (toDecimal ctxt va) 
-                                           (toDecimal ctxt vb)))
+                                           (toDecimal va) 
+                                           (toDecimal vb)))
                     end
             end
 
@@ -3177,9 +3082,9 @@ and performBinop (regs:Mach.REGS)
             Word.fromInt (Word32.toInt (Word32.andb (x, (valOf (Word32.fromString "0x1F")))))
 
         fun bitwiseWordOp f =
-            newUInt regs (wordToDouble (f ((doubleToWord (toUInt32 regs va),
-                                            (doubleToWord (toUInt32 regs vb))))))
-
+            newDouble regs (wordToDouble (f ((doubleToWord (toUInt32 regs va),
+                                              (doubleToWord (toUInt32 regs vb))))))
+            
         (*
          * ES-262-3 11.9.6 Strict Equality Comparison Algorithm
          *)
@@ -3313,16 +3218,16 @@ and performBinop (regs:Mach.REGS)
               | Ast.Remainder => performNumericBinop regs bop va vb
 
               | Ast.LeftShift =>
-                newUInt regs (wordToDouble (Word32.<< ((doubleToWord (toInt32 regs va)),
-                                                       (masku5 (doubleToWord (toUInt32 regs vb))))))
+                newDouble regs (wordToDouble (Word32.<< ((doubleToWord (toInt32 regs va)),
+                                                         (masku5 (doubleToWord (toUInt32 regs vb))))))
                 
               | Ast.RightShift =>
-                newUInt regs (wordToDouble (Word32.>> ((doubleToWord (toInt32 regs va)),
-                                                       (masku5 (doubleToWord (toUInt32 regs vb))))))
+                newDouble regs (wordToDouble (Word32.>> ((doubleToWord (toInt32 regs va)),
+                                                         (masku5 (doubleToWord (toUInt32 regs vb))))))
 
               | Ast.RightShiftUnsigned =>
-                newUInt regs (wordToDouble (Word32.~>> ((doubleToWord (toUInt32 regs va)),
-                                                        (masku5 (doubleToWord (toUInt32 regs vb))))))
+                newDouble regs (wordToDouble (Word32.~>> ((doubleToWord (toUInt32 regs va)),
+                                                          (masku5 (doubleToWord (toUInt32 regs vb))))))
 
               (* FIXME: should we return int if we do int|int or int&int ? *)
               | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
@@ -3410,7 +3315,6 @@ and typeOfVal (regs:Mach.REGS)
         val te = case v of
                      Mach.Undef => Ast.SpecialType Ast.Undefined
                    | Mach.Null => Ast.SpecialType Ast.Null
-                   | Mach.Wrapped (_,t) => t
                    | Mach.Object obj => 
                      let 
                          val tag = getObjTag obj
@@ -3480,18 +3384,6 @@ and evalOperatorIs (regs:Mach.REGS)
           | _ => vt <* te
     end
 
-and evalOperatorWrap (regs:Mach.REGS)
-                     (v:Mach.VAL)
-                     (t:Ast.TYPE_EXPR)
-    : Mach.VAL = 
-    if (typeOfVal regs v) <* t
-    then v
-    else 
-        if evalOperatorIs regs v t
-        then Mach.Wrapped (v, t)
-        else (typeOpFailure regs "wrapping failed" v t; dummyVal)
-             
-
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
                      (expr:Ast.EXPR)
@@ -3505,8 +3397,6 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             if evalOperatorIs regs v (evalTy regs ty)
             then v
             else (typeOpFailure regs "cast failed" v ty; dummyVal)
-          | Ast.To => checkAndConvert regs v ty
-          | Ast.Wrap => evalOperatorWrap regs v (evalTy regs ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end
 
@@ -3524,7 +3414,6 @@ and hasInstance (regs:Mach.REGS)
             case v' of 
                 Mach.Null => false
               | Mach.Undef => false
-              | Mach.Wrapped (v, ty) => hasInstance regs obj v
               | Mach.Object ob =>
                 if getObjId ob = targId
                 then true
@@ -3747,7 +3636,6 @@ and evalObjectRef (regs:Mach.REGS)
                     fun extractFrom v = 
                         case v of
                             Mach.Object ob => ob
-                          | Mach.Wrapped (v',t) => extractFrom v'
                           | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
                           | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
                 in
@@ -3881,20 +3769,6 @@ and resolveName (obj:Mach.OBJ)
                   | ro => ro
             end
     end
-
-
-and evalTailCallExpr (regs:Mach.REGS)
-                     (e:Ast.EXPR)
-    : Mach.VAL =
-    raise (TailCallException (fn _ => evalExpr regs e))
-
-
-and evalNonTailCallExpr (regs:Mach.REGS)
-                        (e:Ast.EXPR)
-    : Mach.VAL =
-    evalExpr regs e
-    handle TailCallException thunk => thunk ()
-         | ReturnException v => v
 
 
 and labelMatch (stmtLabels:Ast.IDENT list)
@@ -4484,7 +4358,7 @@ and specialArrayConstructor (regs:Mach.REGS)
              bindVal (n+1) xs)
     in
         case args of
-            [] => setValue regs instanceObj Name.nons_length (newUInt regs 0.0)
+            [] => setValue regs instanceObj Name.nons_length (newDouble regs 0.0)
           | [k] => let val idx = asArrayIndex k
                    in
                        if not (idx = 0wxFFFFFFFF) then
@@ -4529,7 +4403,6 @@ and specialObjectConstructor (regs:Mach.REGS)
             [] => instantiate ()
           | (Mach.Null :: _) => instantiate ()
           | (Mach.Undef :: _) => instantiate ()
-          | (Mach.Wrapped (v,t) :: rest) => specialObjectConstructor regs classObj classClosure (v::rest)
           | (Mach.Object obj :: _) =>
             case Mach.getObjMagic obj of
                 NONE => obj
@@ -4628,60 +4501,14 @@ and specialDecimalConstructor (regs:Mach.REGS)
     : Mach.OBJ =
     let
 	val n = case args of 
-		    [] => toDecimal (decimalCtxt regs) (newInt regs 0.0)
-		  | v :: _ => toDecimal (decimalCtxt regs) v
+		    [] => toDecimal (newDouble regs 0.0)
+		  | v :: _ => toDecimal v
 	val obj = constructStandard regs classObj classClosure []
     in
 	Mach.setMagic obj (SOME (Mach.Decimal n));
 	obj
     end
-
-
-and specialIntConstructor (regs:Mach.REGS)
-                          (classObj:Mach.OBJ)
-                          (classClosure:Mach.CLS_CLOSURE)
-                          (args:Mach.VAL list)
-    : Mach.OBJ =
-    let
-	val i = case args of 
-		    [] => 0.0
-		  | v :: _ => toInt32 regs v
-    in
-	case Mach.findInIntCache regs i of
-	    SOME obj => obj
-	  | NONE => 
-	    let 
-		val obj = constructStandard regs classObj classClosure []
-	    in 
-		Mach.setMagic obj (SOME (Mach.Double i));
-		Mach.updateIntCache regs (i, obj);
-		obj
-	    end
-    end
     
-
-and specialUIntConstructor (regs:Mach.REGS)
-                           (classObj:Mach.OBJ)
-                           (classClosure:Mach.CLS_CLOSURE)
-                           (args:Mach.VAL list)
-    : Mach.OBJ = 
-    let 
-	val u = case args of 
-		    [] => 0.0
-		  | v :: _ => toUInt32 regs v
-    in
-	case Mach.findInUIntCache regs u of
-	    SOME obj => obj
-	  | NONE => 
-	    let 
-		val obj = constructStandard regs classObj classClosure []
-	    in 
-		Mach.setMagic obj (SOME (Mach.Double u));
-		Mach.updateUIntCache regs (u, obj);
-		obj
-	    end
-    end
-
 
 and specialStringConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
@@ -4743,8 +4570,6 @@ and constructSpecial (regs:Mach.REGS)
              (Mach.getDoubleClassSlot, specialDoubleConstructor),
              (Mach.getDecimalClassSlot, specialDecimalConstructor),
 
-             (Mach.getIntClassSlot, specialIntConstructor),
-             (Mach.getUintClassSlot, specialUIntConstructor),
              (Mach.getStringClassSlot, specialStringConstructor)
 	    ]
     end
@@ -4775,8 +4600,6 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			(Name.ES4_string, Mach.getStringClassSlot),
 			
 			(Name.nons_Number, Mach.getNumberClassSlot),
-			(Name.ES4_int, Mach.getIntClassSlot),
-			(Name.ES4_uint, Mach.getUintClassSlot),
 			(Name.ES4_double, Mach.getDoubleClassSlot),
 			(Name.ES4_decimal, Mach.getDecimalClassSlot),
 			
@@ -4878,16 +4701,10 @@ and getSpecialPrototype (regs:Mach.REGS)
                  (Mach.getStringWrapperClassSlot,
                   (fn _ => getExistingProto Mach.getStringClassSlot)),
                  
-                 (Mach.getIntClassSlot, 
-                  (fn _ => SOME (newObject regs, true))),
-                 (Mach.getUintClassSlot,
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
                  (Mach.getDecimalClassSlot,
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
-                 (Mach.getDoubleClassSlot,
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                  (fn _ => getExistingProto Mach.getDoubleClassSlot)),
                  (Mach.getNumberClassSlot, 
-                  (fn _ => getExistingProto Mach.getIntClassSlot)),
+                  (fn _ => getExistingProto Mach.getDoubleClassSlot)),
                  
                  (Mach.getBooleanClassSlot,
                   (fn _ => SOME (newObject regs, true))),
@@ -4992,38 +4809,7 @@ and get (regs:Mach.REGS)
 and evalPragmas (regs:Mach.REGS)
                 (pragmas:Ast.PRAGMA list)
     : Mach.REGS = 
-    case pragmas of 
-        ((Ast.UseDecimalContext e) :: pragmas) => 
-        let
-            val t = instanceType regs Name.ES4_DecimalContext [] 
-            val v = evalExpr regs e             
-        in
-            if evalOperatorIs regs v t
-            then 
-                let
-                    val obj = needObj regs v
-                    val pv = getValue regs obj Name.nons_precision
-                    val pr = toUInt32 regs pv
-                    val precision = Real64.floor pr
-
-                    val mv = getValue regs obj Name.nons_mode
-                    val mr = toUInt32 regs mv
-                    val mode = case Real64.floor mr of 
-                                   0 => DecimalParams.Ceiling
-                                 | 1 => DecimalParams.Floor
-                                 | 2 => DecimalParams.Up
-                                 | 3 => DecimalParams.Down
-                                 | 4 => DecimalParams.HalfUp
-                                 | 5 => DecimalParams.HalfDown
-                                 | _ => DecimalParams.HalfEven
-                in
-                    evalPragmas (withDecimalContext regs {precision=precision, mode=mode}) pragmas
-                end
-            else
-                error regs ["need DecimalContext as argument to 'use decimal' pragma"]
-        end
-      | p::pragmas => evalPragmas regs pragmas
-      | [] => regs
+    regs
 
 (*
     Evaluate a block head (head) in the environment (regs).
@@ -5269,7 +5055,6 @@ and evalIterable (regs:Mach.REGS)
         fun finishWith v = 
             case v of
                 Mach.Object ob => ob
-              | Mach.Wrapped (v',t) => finishWith v'
               | Mach.Undef => newObj regs
               | Mach.Null => newObj regs            
     in
@@ -5310,7 +5095,7 @@ and callIteratorGet (regs:Mach.REGS)
         val vals = Array.foldl project [] bindingArray
         val iterator = needObj regs (newArray regs vals)
     in
-        setValue regs iterator Name.nons_cursor (newInt regs 0.0);
+        setValue regs iterator Name.nons_cursor (newDouble regs 0.0);
         iterator
     end
 
@@ -5327,7 +5112,7 @@ and callIteratorNext (regs:Mach.REGS)
         then
             let
                 val nextName       = Name.nons (Mach.NumberToString cursor)
-                val newCursorValue = newInt regs (cursor + 1.0)
+                val newCursorValue = newDouble regs (cursor + 1.0)
             in
                 setValue regs iterator Name.nons_cursor newCursorValue;
                 getValue regs iterator nextName

@@ -1634,9 +1634,7 @@ and defPragmas (env:ENV)
 
         fun defPragma x =
             case x of
-                Ast.UseDecimalContext e =>
-                Ast.UseDecimalContext (defExpr (modifiedEnv()) e)
-              | Ast.UseNamespace ns =>
+                Ast.UseNamespace ns =>
                     let
                         val env = modifiedEnv()
                         val ns = defExpr env ns
