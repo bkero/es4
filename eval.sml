@@ -73,10 +73,10 @@ fun extractRuntimeTypeRibs (regs:Mach.REGS)
                            (ribs:Ast.RIBS) 
     : Ast.RIBS = 
       let
-          fun typePropToFixture (n:Ast.NAME, {prop:Mach.PROP, seq}) : 
-              (Ast.FIXTURE_NAME * Ast.FIXTURE) = 
+          fun typePropToFixture (n:Ast.NAME, {prop, seq}) 
+              : (Ast.FIXTURE_NAME * Ast.FIXTURE) = 
               let
-                  val { state, ty, ... } = prop
+                  val { state, ty, attrs } = prop
                   val fixtureName = Ast.PropName n
                   val fixtureVal = Ast.TypeFixture ty
                   val fixture = (fixtureName, fixtureVal)
@@ -3920,11 +3920,15 @@ and checkAllPropertiesInitialized (regs:Mach.REGS)
                                   (obj:Mach.OBJ)
     : unit =
     let
-        fun checkOne (n:Ast.NAME, {prop:Mach.PROP, seq}) =
-            case (#state prop) of
-                Mach.UninitProp => 
-                error regs ["uninitialized property: ", LogErr.name n]
-              | _ => ()
+        fun checkOne (n:Ast.NAME, {prop, seq}) =
+            let 
+                val { ty, state, attrs} = prop 
+            in
+                case state of
+                    Mach.UninitProp => 
+                    error regs ["uninitialized property: ", LogErr.name n]
+                  | _ => ()
+            end
         val Mach.Obj { props, ... } = obj
         val { bindings, ... } = !props
     in
@@ -5157,11 +5161,11 @@ and callIteratorGet (regs:Mach.REGS)
         val Mach.Obj { props, ... } = iterable
         val { bindings, ... } = !props
         val bindingList = NameMap.listItemsi bindings
-        fun select (name:Ast.NAME, { seq:int, prop:Mach.PROP }) = 
+        fun select (name, { seq, prop }) = 
             case prop of 
                 { state = Mach.ValProp _,
-                  attrs = { dontEnum = false, ... },
-                  ... } => SOME (name, seq)
+                  attrs = { dontEnum = false, dontDelete, readOnly, isFixed },
+                  ty } => SOME (name, seq)
               | _ => NONE
         val filteredList = List.mapPartial select bindingList
         val bindingArray = Array.fromList filteredList

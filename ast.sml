@@ -409,9 +409,6 @@ datatype PRAGMA =
          { ty: TY, 
            getter: FUNC option,
            setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
-       | InheritedFixture of 
-         { baseName: NAME, 
-           baseTypeArgs: TY list }
 
      and HEAD =
          Head of RIB * INITS
