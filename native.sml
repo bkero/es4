@@ -65,7 +65,6 @@ fun nthAsObj (vals:Mach.VAL list)
     let
         fun f Mach.Undef = error ["Wanted Object, got Undef"]
           | f Mach.Null = error ["Wanted Object, got Null"]
-          | f (Mach.Wrapped (v,t)) = nthAsObj [v] n
           | f (Mach.Object ob) = ob
     in
         nthAsA f vals n
@@ -128,8 +127,8 @@ fun nthAsInt (regs:Mach.REGS)
 
 
 fun nthAsUInt (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-              (n:int)
+             (vals:Mach.VAL list)
+             (n:int)
     : Word32.word =
     Eval.doubleToWord (Eval.toUInt32 regs (rawNth vals n))
 
@@ -486,7 +485,7 @@ fun fnLength (regs:Mach.REGS)
               | SOME (Mach.NativeFunction {length, ...}) => length
                     | _ => error ["wrong kind of magic to fnLength"]
     in
-        Eval.newUInt regs (Real64.fromInt len)
+        Eval.newDouble regs (Real64.fromInt len)
     end
 
 
@@ -503,7 +502,7 @@ fun charCodeAt (regs:Mach.REGS)
         val s = nthAsUstr vals 0
         val i = nthAsUInt regs vals 1
     in
-        Eval.newUInt 
+        Eval.newDouble 
             regs
             (Real64.fromInt 
                  (Ustring.charCodeAt s (Word32.toInt i)))
@@ -542,7 +541,7 @@ fun stringLength (regs:Mach.REGS)
     let
         val s = nthAsUstr vals 0
     in
-        Eval.newUInt regs (Real64.fromInt (Ustring.stringLength s))
+        Eval.newDouble regs (Real64.fromInt (Ustring.stringLength s))
     end
 
 
@@ -681,7 +680,7 @@ fun objectHash (regs:Mach.REGS)
     let
         val Mach.Obj { ident, ... } = nthAsObj vals 0
     in
-       Eval.newUInt regs (Real64.fromInt ident)
+       Eval.newDouble regs (Real64.fromInt ident)
     end
                     
 (*
@@ -734,36 +733,6 @@ fun binaryDecimalFn (f:((Decimal.DEC * Decimal.DEC) -> Decimal.DEC)) :
                else Eval.newDecimal regs (f ((Eval.toDecimal (rawNth vals 0)),
                                              (Eval.toDecimal (rawNth vals 1))))
 
-fun binaryWord32Fn (f:((Word32.word * Word32.word) -> Word32.word)) :
-    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
-    fn regs => 
-    fn vals => if length vals = 0 orelse length vals = 1
-               then Eval.newUInt regs 0.0
-               else 
-                   let
-                       val a = nthAsUInt regs vals 0
-                       val b = nthAsUInt regs vals 1
-                       val c = f (a, b)
-                       val d = Eval.wordToDouble c
-                   in
-                       Eval.newUInt regs d
-                   end
-
-fun unaryWord32Fn (f:(Word32.word -> Word32.word)) :
-    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
-    fn regs => 
-    fn vals => if length vals = 0 
-               then Eval.newUInt regs 0.0
-               else 
-                   let
-                       val a = nthAsUInt regs vals 0
-                       val b = f a
-                       val c = Eval.wordToDouble b
-                   in
-                       Eval.newUInt regs c
-                   end
-
-
 val ceilDouble = unaryDoubleFn Real64.realCeil
 val ceilDecimal = unaryDecimalFn Decimal.ceil
 val floorDouble = unaryDoubleFn Real64.realFloor
@@ -793,58 +762,6 @@ val tanDouble = unaryDoubleFn Math.tan
 val tanDecimal = unaryDecimalFn Decimal.tan
 val powDouble = binaryDoubleFn Math.pow
 val powDecimal = binaryDecimalFn Decimal.pow
-
-val uint32ops_add = binaryWord32Fn Word32.+
-val uint32ops_sub = binaryWord32Fn Word32.-
-val uint32ops_mul = binaryWord32Fn Word32.*
-val uint32ops_div = binaryWord32Fn Word32.div
-val uint32ops_mod = binaryWord32Fn Word32.mod
-
-val uint32ops_and = binaryWord32Fn Word32.andb
-val uint32ops_or = binaryWord32Fn Word32.orb
-val uint32ops_xor = binaryWord32Fn Word32.xorb
-val uint32ops_not = unaryWord32Fn Word32.notb
-
-fun sar (x:Word32.word, y:Word32.word) = Word32.~>>(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
-fun slr (x:Word32.word, y:Word32.word) = Word32.>>(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
-fun sll (x:Word32.word, y:Word32.word) = Word32.<<(x, Word.fromInt (Word32.toInt (Word32.min(0wx20:Word32.word, y))))
-
-fun split_join (x:Word32.word)
-               (left:Word32.word)
-               (right:Word32.word)
-    : Word32.word = 
-    let
-        val right' = Word.fromInt (Word32.toInt right)
-        val left' = Word.fromInt (Word32.toInt left) 
-    in
-        Word32.orb (Word32.<<(x, left'), Word32.>>(x, right'))
-    end
-    
-
-fun ror (x:Word32.word, y:Word32.word) 
-    : Word32.word = 
-    let
-        val right = Word32.mod (y, 0wx20:Word32.word)
-        val left = Word32.- (0wx20:Word32.word, right)
-    in
-        split_join x left right
-    end
-
-fun rol (x:Word32.word, y:Word32.word) 
-    : Word32.word = 
-    let
-        val left = Word32.mod (y, 0wx20:Word32.word)
-        val right = Word32.- (0wx20:Word32.word, left)
-    in
-        split_join x left right
-    end
-
-val uint32ops_sar = binaryWord32Fn sar
-val uint32ops_slr = binaryWord32Fn slr
-val uint32ops_sll = binaryWord32Fn sll
-val uint32ops_ror = binaryWord32Fn ror
-val uint32ops_rol = binaryWord32Fn rol
-
 
 (* Math.pow in smlnj 110.60 has an error of 3.33e~6 on computing 2^32! *)
 
@@ -889,22 +806,22 @@ fun explodeDouble (regs:Mach.REGS)
             Eval.wordToDouble (Word32.orb(Word32.<<(Word32.fromLargeInt hi, 0w16), Word32.fromLargeInt lo))
 
     in
-        Eval.newUInt regs 
-                     (if p2 = 0w0 then
-                          let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
-                              val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
-                                                        IntInf.fromInt((#exp r) + 1022))
-                              val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
-                                                        IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
-                          in
-                              assemble hi_hi hi_lo
-                          end
-                      else
-                          let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
-                              val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
-                          in
-                              assemble lo_hi lo_lo
-                          end)
+        Eval.newDouble regs 
+                       (if p2 = 0w0 then
+                            let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
+                                val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
+                                                          IntInf.fromInt((#exp r) + 1022))
+                                val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
+                                                          IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
+                            in
+                                assemble hi_hi hi_lo
+                            end
+                        else
+                            let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
+                                val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
+                            in
+                                assemble lo_hi lo_lo
+                            end)
     end
 
 
@@ -1059,7 +976,6 @@ fun typename (regs:Mach.REGS)
     case hd vals of
         Mach.Null => Eval.newString regs Ustring.null_
       | Mach.Undef => Eval.newString regs Ustring.undefined_
-      | Mach.Wrapped (v, t) => typename regs [v]
       | Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              NONE => Eval.newString regs Ustring.object_
@@ -1117,7 +1033,7 @@ fun id (regs:Mach.REGS)
     let
         val Mach.Obj { ident, ... } = nthAsObj vals 0
     in
-        Eval.newInt regs (Real64.fromInt ident)
+        Eval.newDouble regs (Real64.fromInt ident)
     end
 
 
@@ -1200,21 +1116,6 @@ fun registerNatives _ =
         addFn 1 Name.informative_tanDecimal tanDecimal;
 
         addFn 1 Name.intrinsic_random random;
-
-        addFn 2 Name.uint32ops_add uint32ops_add;
-        addFn 2 Name.uint32ops_sub uint32ops_sub;
-        addFn 2 Name.uint32ops_mul uint32ops_mul;
-        addFn 2 Name.uint32ops_div uint32ops_div;
-        addFn 2 Name.uint32ops_mod uint32ops_mod;
-        addFn 2 Name.uint32ops_and uint32ops_and;
-        addFn 2 Name.uint32ops_or uint32ops_or;
-        addFn 2 Name.uint32ops_xor uint32ops_xor;
-        addFn 2 Name.uint32ops_not uint32ops_not;
-        addFn 2 Name.uint32ops_sar uint32ops_sar;
-        addFn 2 Name.uint32ops_slr uint32ops_slr;
-        addFn 2 Name.uint32ops_sll uint32ops_sll;
-        addFn 2 Name.uint32ops_ror uint32ops_ror;
-        addFn 2 Name.uint32ops_rol uint32ops_rol;
 
         addFn 1 Name.intrinsic_print print;
         addFn 1 Name.intrinsic_load load;

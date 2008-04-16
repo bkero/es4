@@ -69,7 +69,6 @@ type ATTRS = { dontDelete: bool,
                isFixed: bool }     
              
 datatype VAL = Object of OBJ
-             | Wrapped of (VAL * Ast.TYPE_EXPR)
              | Null
              | Undef
 
@@ -95,8 +94,6 @@ datatype VAL = Object of OBJ
          ObjCache of 
          {
           doubleCache: (OBJ Real64Map.map) ref,
-          intCache: (OBJ Real64Map.map) ref,
-          uintCache: (OBJ Real64Map.map) ref,
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
           strCache: (OBJ StrMap.map) ref
@@ -124,8 +121,6 @@ datatype VAL = Object of OBJ
           stringWrapperClass : (OBJ option) ref,
 
           numberClass : (OBJ option) ref,
-          intClass : (OBJ option) ref,
-          uintClass : (OBJ option) ref,
           doubleClass : (OBJ option) ref,
           decimalClass : (OBJ option) ref,
 
@@ -625,13 +620,6 @@ fun isInRange (low:Real64.real)
               (d:Real64.real) 
   : bool = 
     low <= d andalso d <= high
-                     
-fun fitsInUInt (d:Real64.real) : bool 
-  = isIntegral d andalso isInRange 0.0 4294967295.0 d
-
-fun fitsInInt (d:Real64.real) : bool 
-  = isIntegral d andalso isInRange (~2147483647.0) 2147483647.0 d
-
 
 (* 
  * Some stringification helpers on low-level values.
@@ -768,9 +756,6 @@ fun inspect (v:VAL)
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"
-          | printVal indent n (Wrapped (v, t)) = 
-            (TextIO.print ("wrapped " ^ (typ t) ^ ":\n");
-             printVal (indent+1) n v)
 
           | printVal indent 0 (Object (Obj ob)) =
             (TextIO.print (case !(#magic ob) of
@@ -922,7 +907,6 @@ fun approx (arg:VAL)
     case arg of
         Null => "null"
       | Undef => "undefined"
-      | Wrapped (v, t) => "wrapped(" ^ (approx v) ^ ")"
       | Object ob =>
         if hasMagic ob
         then
@@ -1082,8 +1066,6 @@ fun getStringClassSlot (regs:REGS) = (#stringClass (getSpecials regs))
 fun getStringWrapperClassSlot (regs:REGS) = (#stringWrapperClass (getSpecials regs))
 
 fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
-fun getIntClassSlot (regs:REGS) = (#intClass (getSpecials regs))
-fun getUintClassSlot (regs:REGS) = (#uintClass (getSpecials regs))
 fun getDoubleClassSlot (regs:REGS) = (#doubleClass (getSpecials regs))
 fun getDecimalClassSlot (regs:REGS) = (#decimalClass (getSpecials regs))
 
@@ -1125,22 +1107,16 @@ fun updateCache cacheGetter
     end
 
 fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
-fun getUIntCache (regs:REGS) = (#uintCache (getCaches regs)) 
-fun getIntCache (regs:REGS) = (#intCache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
 fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
 
 val findInDoubleCache = findInCache getDoubleCache Real64Map.find
-val findInUIntCache = findInCache getUIntCache Real64Map.find
-val findInIntCache = findInCache getIntCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
 val findInStrCache = findInCache getStrCache StrMap.find
 
 val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
-val updateUIntCache = updateCache getUIntCache Real64Map.numItems Real64Map.insert
-val updateIntCache = updateCache getIntCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
@@ -1161,8 +1137,6 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          doProfile = ref NONE }
         val ocache = ObjCache 
                      { doubleCache = ref Real64Map.empty,
-                       uintCache = ref Real64Map.empty,
-                       intCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
                        strCache = ref StrMap.empty }
@@ -1176,8 +1150,6 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          stringClass = ref NONE,
                          stringWrapperClass = ref NONE,
                          numberClass = ref NONE,
-                         intClass = ref NONE,
-                         uintClass = ref NONE,
                          doubleClass = ref NONE,
                          decimalClass = ref NONE,
                          booleanClass = ref NONE,

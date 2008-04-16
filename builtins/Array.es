@@ -50,10 +50,10 @@ package
     // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
     // The callback function typically takes (item, i, list) parameters
-    type Mapper  = function (*, uint, Object):*;
-    type Eacher  = function (*, uint, Object):void;    // FIXME: 'void' seems too strict
-    type Checker = function (*, uint, Object):boolean;
-    type Reducer = function (*, *, uint, Object):*;
+    type Mapper  = function (*, double, Object):*;
+    type Eacher  = function (*, double, Object):void;    // FIXME: 'void' seems too strict
+    type Checker = function (*, double, Object):boolean;
+    type Reducer = function (*, *, double, Object):*;
 
     // INFORMATIVE: this is an implementation that meets the spec, but the spec
     // allows for different sort implementations (quicksort is not required)
@@ -85,8 +85,8 @@ package
             if (items.length === 1) {
                 let item = items[0];
                 if (item is AnyNumber) {
-                    if (uint(item) === item)
-                        this.length = uint(item);
+                    if (intrinsic::toUint(item) === item)
+                        this.length = intrinsic::toUint(item);
                     else
                         throw new RangeError("Invalid array length");
                 }
@@ -176,7 +176,7 @@ package
         static function join(object/*: Object!*/, separator: string=","): string {
             let out = "";
 
-            for (let i=0, limit=uint(object.length) ; i < limit ; i++) {
+            for (let i=0, limit=intrinsic::toUint(object.length) ; i < limit ; i++) {
                 if (i > 0)
                     out += separator;
                 let x = object[i];
@@ -196,7 +196,7 @@ package
         // 15.4.4.6 Array.prototype.pop ( )
         // FIXME #155: type system bug
         static function pop(object/*:Object!*/) {
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
 
             if (len != 0) {
                 len = len - 1;
@@ -219,8 +219,8 @@ package
 
         // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
         // FIXME #155: type system bug
-        helper static function push(object/*:Object!*/, args: Array): uint {
-            let len = uint(object.length);
+        helper static function push(object/*:Object!*/, args: Array): double {
+            let len = intrinsic::toUint(object.length);
 
             for (let i=0, limit=args.length ; i < limit ; i++)
                 object[len++] = args[i];
@@ -229,19 +229,19 @@ package
             return len;
         }
 
-        static function push(object/*: Object!*/, ...args): uint
+        static function push(object/*: Object!*/, ...args): double
             Array.helper::push(object, args);
 
         prototype function push(...args)
             Array.helper::push(this, args);
 
-        intrinsic function push(...args): uint
+        intrinsic function push(...args): double
             Array.helper::push(this, args);
 
         // 15.4.4.8 Array.prototype.reverse ( )
         // FIXME #155: type system bug
         static function reverse(object/*: Object!*/)/*: Object!*/ {
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
             let middle = Math.floor(len / 2);
 
             for ( let k=0 ; k < middle ; ++k ) {
@@ -279,7 +279,7 @@ package
         // 15.4.4.9 Array.prototype.shift ( )
         // FIXME #155: type system bug
         static function shift(object/*: Object!*/) {
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
             if (len == 0) {
                 object.length = 0;        // ECMA-262 requires explicit set here
                 return undefined;
@@ -305,7 +305,7 @@ package
         // 15.4.4.10 Array.prototype.slice (start, end, step)
         // FIXME #155: type system bug
         static function slice(object/*: Object!*/, start: AnyNumber, end: AnyNumber, step: AnyNumber) {
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
 
             step = int(step);
             if (step == 0)
@@ -365,7 +365,7 @@ package
                 return 0;
             }
 
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
             informative::sortEngine(object, 0, len-1, compare);
             return object;
         }
@@ -381,7 +381,7 @@ package
         // FIXME #155: type system bug
         helper static function splice(object/*: Object!*/, start: AnyNumber, deleteCount: AnyNumber, items: Array) {
             let out = new Array();
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
 
             start = helper::clamp( start, len );
             deleteCount = helper::clamp( deleteCount, len - start );
@@ -435,8 +435,8 @@ package
             Array.helper::splice(this, start, deleteCount, items);
 
         // FIXME #155: type system bug
-        helper static function unshift(object/*: Object!*/, items: Array) : uint {
-            let len = uint(object.length);
+        helper static function unshift(object/*: Object!*/, items: Array) : double {
+            let len = intrinsic::toUint(object.length);
             let numitems = items.length;
 
             for ( let k=len-1 ; k >= 0 ; --k ) {
@@ -457,13 +457,13 @@ package
 
         // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
         // FIXME #155: type system bug
-        static function unshift(object/*: Object!*/, ...items) : uint
+        static function unshift(object/*: Object!*/, ...items) : double
             Array.helper::unshift(this, object, items);
 
         prototype function unshift(...items)
             Array.helper::unshift(this, items);
 
-        intrinsic function unshift(...items): uint
+        intrinsic function unshift(...items): double
             Array.helper::unshift(this, items);
 
 
@@ -658,28 +658,26 @@ package
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
         meta function set(id, value):void {
-            let oldLength:uint = this.length;
+            let oldLength:double = this.length;
             intrinsic::set(this, id, value);
             let idAsDouble:double = double(id);
-            let idAsUint:uint = uint(idAsDouble);
+            let idAsUint:double = intrinsic::toUint(idAsDouble);
             if (idAsUint == idAsDouble && idAsUint >= oldLength)
                 this.length = idAsUint+1;
         }
 
         // 15.4.5.2 length
-        private var _length:uint = 0;
-        function get length():uint
+        private var _length:double = 0;
+        function get length():double
             this.private::_length;
 
-        // ECMA-262 requires a RangeError if non-ints are passed in,
-        // so we must not type it as uint in the setter's signature
         function set length(newLength):void {
-            let oldLength:uint = this.private::_length;
+            let oldLength:double = this.private::_length;
             let newLengthAsDouble:double = double(newLength);
-            let newLengthAsUint:uint = uint(newLengthAsDouble);
+            let newLengthAsUint:double = intrinsic::toUint(newLengthAsDouble);
             if (newLengthAsUint != newLengthAsDouble)
                 throw new RangeError();
-            for (let i:uint = newLengthAsUint; i < oldLength; ++i)
+            for (let i:double = newLengthAsUint; i < oldLength; ++i)
                 if (this.hasOwnProperty(i.toString()))  // FIXME: when type annos work, won't need explicit conversion
                     delete this[i];
             this.private::_length = newLengthAsUint;
@@ -688,14 +686,14 @@ package
 
     // Convert val to integer (this rounds it toward zero and discards NaN).
     // If the number is negative, add "len".
-    // Then clamp it between 0 and len inclusive, and cast it to uint.
+    // Then clamp it between 0 and len inclusive, and convert it to uint.
     //
     // Also used by Vector.es
-    helper function clamp(val: AnyNumber, len: uint): uint {
+    helper function clamp(val: AnyNumber, len: double): uint {
         val = helper::toInteger(val);
         if (val < 0)
             val += len;
-        return uint( Math.min( Math.max( val, 0 ), len ) );
+        return intrinsic::toUint( Math.min( Math.max( val, 0 ), len ) );
     }
 
     // INFORMATIVE note: as noted above, this is a very simple recursive
@@ -710,7 +708,7 @@ package
             sortEngine2(v, lo, hi, sortCompare);
     }
 
-    informative function sortEngine2(v, lo: uint, hi: uint, sortCompare): void {
+    informative function sortEngine2(v, lo: double, hi: double, sortCompare): void {
 
         function qsort(lo, hi) {
             if (lo >= hi)

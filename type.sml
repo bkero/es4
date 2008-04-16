@@ -242,11 +242,7 @@ and fix2norm (prog:Fixture.PROGRAM)
             end
     in
         case fixOpt of 
-            NONE => (trace ["failed to resolve"];
-                     if Fixture.ribIsClosed prog ribId
-                     then error ["type multiname ", LogErr.multiname mname, 
-                                 " failed to resolve in closed unit "]
-                     else repackage originalt)
+            NONE => repackage originalt
           | SOME (n, fix) => 
             (trace ["resolved"];
              case fix of
@@ -742,16 +738,8 @@ fun groundMatchesGeneric (b:BICOMPAT)
     else
     case (b, v, ty1, ty2) of 
 
-        (* A-WRAP-COV *)
-        (_, _, Ast.WrapType wt1, Ast.WrapType wt2) => 
-        groundMatchesGeneric b v wt1 wt2
-        
-      (* A-WRAP *)
-      | (_, Covariant, Ast.WrapType wt1, _) => 
-        groundMatchesGeneric b v wt1 ty2
-
       (* A-LIKE-COV *)
-      | (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
+        (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
         groundMatchesGeneric b v lt2 lt2
 
       (* A-LIKE *)
@@ -848,10 +836,7 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
         val dstInstance = extract tyExpr2
         fun isNumericType n = 
             List.exists (Mach.nameEq n) [ Name.ES4_double, 
-                                          Name.ES4_int,
-                                          Name.ES4_uint,
                                           Name.ES4_decimal,
-                                          Name.ES4_double,
                                           Name.nons_Number ]
         fun isStringType n = 
             List.exists (Mach.nameEq n) [ Name.ES4_string,
