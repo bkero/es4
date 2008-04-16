@@ -121,7 +121,16 @@ and walkExp (entry:string) (locals:string list) (APPexp (a,b)) = (walkExp entry 
   | walkExp (entry:string) (locals:string list) (TYPEDexp (exp, _)) = walkExp entry locals exp
   | walkExp (entry:string) (locals:string list) (MARKexp (_, exp)) = walkExp entry locals exp
   | walkExp (entry:string) (locals:string list) (CASEexp (exp, clauses)) = (walkExp entry locals exp; 
-									    List.app (walkClause entry locals) clauses)
+																			List.app (walkClause entry locals) clauses)
+  | walkExp (entry:string) (locals:string list) (HANDLEexp (exp, clauses)) = (walkExp entry locals exp; 
+																			  List.app (walkClause entry locals) clauses)
+  | walkExp (entry:string) (locals:string list) (TUPLEexp exps) = List.app (walkExp entry locals) exps
+  | walkExp (entry:string) (locals:string list) (RECORDexp idexps) = List.app (fn (id, exp) => (walkExp entry locals exp)) idexps
+  | walkExp (entry:string) (locals:string list) (LISTexp (exps, eo)) = (List.app (walkExp entry locals) exps;
+																		(Option.app (walkExp entry locals) eo))
+  | walkExp (entry:string) (locals:string list) (SEQexp exps) = List.app (walkExp entry locals) exps
+  | walkExp (entry:string) (locals:string list) (LAMBDAexp clauses) = List.app (walkClause entry locals) clauses
+  | walkExp (entry:string) (locals:string list) (RAISEexp exp) = walkExp entry locals exp
   | walkExp (entry:string) (locals:string list) (IFexp (a,b,c)) = List.app (walkExp entry locals) [a,b,c]
   | walkExp (entry:string) (locals:string list) (LETexp (decls, exps)) = 
     let
@@ -178,7 +187,9 @@ fun genFile (infile:string)
 	val mlast = MLParser.load infile
 	fun dig (MARKdecl (_, d)) = dig d
 	  | dig (STRUCTUREdecl (_, _, _, DECLsexp decls)) = List.app dig decls
-	  | dig (FUNdecl binds) = (List.map (fn (FUNbind (id, clauses)) => List.app (walkClause id []) clauses) binds; ())
+	  | dig (FUNdecl binds) = (List.app (fn (FUNbind (id, clauses)) => List.app (walkClause id []) clauses) binds)
+	  | dig (SEQdecl decls) = List.app dig decls
+	  | dig (LOCALdecl (d0, d1)) = (List.app dig d0; List.app dig d1)
 	  | dig _ = ()
     in
 	List.app dig mlast
