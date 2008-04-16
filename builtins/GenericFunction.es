@@ -67,7 +67,7 @@
 
    The translator will see a generic function definition like this:
 
-       generic function f(a:int, b, c=10, ...rest);
+       generic function f(a:double, b, c=10, ...rest);
 
    and will turn it into something like this:
 
@@ -75,14 +75,14 @@
 
    Then methods scattered throughout the program, like these:
 
-       generic function f(a: int, b: boolean, c: AnyNumber, ...rest) {
+       generic function f(a: double, b: boolean, c: AnyNumber, ...rest) {
            return a+b
        }
 
    are turned into calls to addMethod:
 
        f.addMethod([int, boolean, AnyNumber], 
-                   function (nextMethod, a:int, b:boolean, c:AnyNumber, ...rest) { return a+b })
+                   function (nextMethod, a:double, b:boolean, c:AnyNumber, ...rest) { return a+b })
 
    Generally few errors are signalled when a method is added, most of
    the interesting work happens when f is called.
@@ -493,7 +493,7 @@ package
             if (probe !== null)
                 supers.push(probe);
             for ( let i=0 ; ; i++ ) {
-                let probe = magic::getImplementedInterface(cls, uint(i));
+                let probe = magic::getImplementedInterface(cls, toUint(i));
                 if (probe === null)
                     break;
                 supers.push(probe);
@@ -501,7 +501,7 @@ package
         }
         case (iface:Interface) {
             for ( let i=0 ; ; i++ ) {
-                let probe = magic::getSuperInterface(iface, uint(i));
+                let probe = magic::getSuperInterface(iface, toUint(i));
                 if (probe === null)
                     break;
                 supers.push(probe);

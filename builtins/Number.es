@@ -50,7 +50,7 @@ package
 
     import ECMAScript4_Internal.*;
 
-    __ES4__ type AnyNumber = (int|uint|double|decimal|Number!);
+    __ES4__ type AnyNumber = (double|decimal|Number!);
 
     dynamic class Number
     {
@@ -85,7 +85,7 @@ package
         override intrinsic function toJSONString(pretty: boolean=false) : string
             intrinsic::valueOf().intrinsic::toJSONString(pretty);
 
-        override intrinsic function valueOf(): (int|uint|double|decimal)
+        override intrinsic function valueOf(): (double|decimal)
             val;
 
         intrinsic function toFixed(fractionDigits=0): string
@@ -97,7 +97,7 @@ package
         intrinsic function toPrecision(precision=undefined) : string
             intrinsic::valueOf().intrinsic::toPrecision(precision);
 
-        /* The prototype is shared with int, uint, double, and decimal, and none
+        /* The prototype is shared with double, and decimal, and none
          * of these functions may assume they operate on a "Number".
          */
 

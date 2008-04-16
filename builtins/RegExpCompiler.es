@@ -60,12 +60,12 @@ package RegExpInternals
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
         const source : string;         // expression source, sans leading and trailing / 
-        var   slen : uint;             // source length, retrieved once
-        var   idx : uint;              // current character in the source
-        var   largest_backref : uint;  // largest back reference seen
+        var   slen : double;             // source length, retrieved once
+        var   idx : double;              // current character in the source
+        var   largest_backref : double;  // largest back reference seen
         const extended : boolean;      // true iff expression has /x flag
         const names : [string?] = []:[string?];  // capturing names, or null for capturing exprs that are not named
-        var parenIndex : uint = 0;     // number of capturing parens (including those that are named)
+        var parenIndex : double = 0;     // number of capturing parens (including those that are named)
 
         function RegExpCompiler( source : string, flags  )
             : extended = flags.x
@@ -92,7 +92,7 @@ package RegExpInternals
             let alt : Matcher = alternative();
             if (alt == null)
                 alt = new Empty;
-            if (peekCharCode() == 0x7Cu /* "|" */) {
+            if (peekCharCode() == 0x7C /* "|" */) {
                 advance();
                 return new Disjunct(alt, disjunction());
             }
@@ -131,15 +131,15 @@ package RegExpInternals
         function assertion() : Matcher? {
             switch (peekCharCode()) {
 
-            case 0x5Eu /* "^" */ :
+            case 0x5E /* "^" */ :
                 advance();
                 return new AssertStartOfInput;
 
-            case 0x24u /* "$" */ :
+            case 0x24 /* "$" */ :
                 advance();
                 return new AssertEndOfInput;
 
-            case 0x5Cu /* "\\" */:
+            case 0x5C /* "\\" */:
                 if (eat("\\b"))
                     return new AssertWordBoundary;
                 if (eat("\\B"))
@@ -157,7 +157,7 @@ package RegExpInternals
                 return qp;
             let [min,max] : [double,double] = qp;
             let greedy : boolean = true;
-            if (peekCharCode() == 0x3Fu /* "?" */) {
+            if (peekCharCode() == 0x3F /* "?" */) {
                 greedy = false;
                 advance();
             }
@@ -170,19 +170,19 @@ package RegExpInternals
 
         function quantifierPrefix() : [double, double]? {
             switch (peekCharCode()) {
-            case 0x2Au /* "*" */:
+            case 0x2A /* "*" */:
                 advance();
                 return star;
 
-            case 0x2Bu /* "+" */:
+            case 0x2B /* "+" */:
                 advance();
                 return plus;
 
-            case 0x3Fu /* "?" */:
+            case 0x3F /* "?" */:
                 advance();
                 return ques;
 
-            case 0x7Bu /* "{" */:
+            case 0x7B /* "{" */:
                 advance();
                 {
                     let min : double = number();
@@ -212,18 +212,18 @@ package RegExpInternals
                 return null;
 
             switch (peekCharCode()) {
-            case 0x29u /* ")" */:
+            case 0x29 /* ")" */:
                 skip();
                 return null;
 
-            case 0x2Eu /* "." */:
+            case 0x2E /* "." */:
                 advance();
                 return new CharacterSet(charset_notlinebreak);
 
-            case 0x28u /* "(" */:
+            case 0x28 /* "(" */:
                 consumeChar("(");
 
-                if (peekCharCode() == 0x3Fu /* "?" */) {
+                if (peekCharCode() == 0x3F /* "?" */) {
                     consumeChar("?");
                     switch (peekChar()) {
                     case ":":
@@ -256,10 +256,10 @@ package RegExpInternals
                         if (eat("<")) {
                             let name : string = identifier();
                             match(">");
-                            let capno : uint = parenIndex++;
+                            let capno : double = parenIndex++;
                             let d : Matcher = disjunction();
                             match(")");
-                            for ( let i:uint=1 ; i < names.length ; i++ ) {
+                            for ( let i:double=1 ; i < names.length ; i++ ) {
                                 if (names[i] === name)
                                     fail( SyntaxError, "Multiply defined capture name: " + name );
                             }
@@ -270,9 +270,9 @@ package RegExpInternals
                         if (eat("=")) {
                             let name : string = identifier();
                             match(")");
-                            for ( let i:uint=1 ; i < names.length ; i++ )
+                            for ( let i:double=1 ; i < names.length ; i++ )
                                 if (names[i] === name)
-                                    return new Backref(uint(i));
+                                    return new Backref(intrinsic::toUint(i));
                             fail( SyntaxError, "Unknown backref name " + name );
                         }
 
@@ -281,32 +281,32 @@ package RegExpInternals
                     }
                 } // peekChar() != "?"
 
-                let capno : uint = parenIndex++;
+                let capno : double = parenIndex++;
                 let d : Matcher = disjunction();
                 match(")");
                 return new Capturing(d, capno);
 
-            case 0x5Bu /* "[" */: {
+            case 0x5B /* "[" */: {
                 let m : Matcher = characterClass();
                 skip();
                 return m;
             }
 
-            case 0x5Cu /* "\\" */: {
+            case 0x5C /* "\\" */: {
                 let m : Matcher = atomEscape();
                 skip();
                 return m;
             }
 
-            case 0x5Eu /* "^" */:
-            case 0x24u /* "$" */:
-            case 0x2Au /* "*" */:
-            case 0x2Bu /* "+" */:
-            case 0x3Fu /* "?" */:
-            case 0x7Bu /* "{" */:
-            case 0x7Cu /* "|" */:
-                // case 0x7Du /* "}" */:
-                // case 0x5Du /* "]" */:
+            case 0x5E /* "^" */:
+            case 0x24 /* "$" */:
+            case 0x2A /* "*" */:
+            case 0x2B /* "+" */:
+            case 0x3F /* "?" */:
+            case 0x7B /* "{" */:
+            case 0x7C /* "|" */:
+                // case 0x7D /* "}" */:
+                // case 0x5D /* "]" */:
                 skip();
                 return null;
 
@@ -491,16 +491,16 @@ package RegExpInternals
 
             switch (peekCharCode()) {
 
-            case 0x64u /* "d" */: advance(); return charset_digit;
-            case 0x44u /* "D" */: advance(); return charset_notdigit;
-            case 0x73u /* "s" */: advance(); return charset_space;
-            case 0x53u /* "S" */: advance(); return charset_notspace;
-            case 0x77u /* "w" */: advance(); return charset_word;
-            case 0x57u /* "W" */: advance(); return charset_notword;
+            case 0x64 /* "d" */: advance(); return charset_digit;
+            case 0x44 /* "D" */: advance(); return charset_notdigit;
+            case 0x73 /* "s" */: advance(); return charset_space;
+            case 0x53 /* "S" */: advance(); return charset_notspace;
+            case 0x77 /* "w" */: advance(); return charset_word;
+            case 0x57 /* "W" */: advance(); return charset_notword;
 
-            case 0x70u /* "p" */:
+            case 0x70 /* "p" */:
                 invert = false;
-            case 0x50u /* "P" */:
+            case 0x50 /* "P" */:
                 {
                     if (peekChar2() == "{") {
                         advance();
@@ -520,34 +520,34 @@ package RegExpInternals
          */
         function characterEscape(allow_b : boolean) : string? {
 
-            let c : uint = peekCharCode();
+            let c : double = peekCharCode();
 
             switch (c) {
-            case 0x30u:
-            case 0x31u:
-            case 0x32u:
-            case 0x33u:
-            case 0x34u:
-            case 0x35u:
-            case 0x36u:
-            case 0x37u:
-            case 0x38u:
-            case 0x39u:
+            case 0x30:
+            case 0x31:
+            case 0x32:
+            case 0x33:
+            case 0x34:
+            case 0x35:
+            case 0x36:
+            case 0x37:
+            case 0x38:
+            case 0x39:
                 return null;
 
-            case 0x62u /* "b" */:
+            case 0x62 /* "b" */:
                 if (allow_b) {
                     advance();
                     return "\\b";
                 }
                 break;
 
-            case 0x66u /* "f" */: advance(); return "\f";
-            case 0x6Eu /* "n" */: advance(); return "\n";
-            case 0x72u /* "r" */: advance(); return "\r";
-            case 0x74u /* "t" */: advance(); return "\t";
+            case 0x66 /* "f" */: advance(); return "\f";
+            case 0x6E /* "n" */: advance(); return "\n";
+            case 0x72 /* "r" */: advance(); return "\r";
+            case 0x74 /* "t" */: advance(); return "\t";
 
-            case 0x63u /* "c" */:
+            case 0x63 /* "c" */:
                 consumeChar();
                 let (c : string = peekChar()) {
                     if (c >= "A" && c <= "Z") {
@@ -562,12 +562,12 @@ package RegExpInternals
                         return "c";
                 }
 
-            case 0x78u /* "x" */:
-            case 0x58u /* "X" */:
-            case 0x75u /* "u" */:
-            case 0x55u /* "U" */:
+            case 0x78 /* "x" */:
+            case 0x58 /* "X" */:
+            case 0x75 /* "u" */:
+            case 0x55 /* "U" */:
                 consumeChar();
-                if (peekCharCode() == 0x7Bu /* "{" */) {
+                if (peekCharCode() == 0x7B /* "{" */) {
                     advance();
                     let s = hexDigits();
                     if (s == null)
@@ -577,7 +577,7 @@ package RegExpInternals
                 }
                 else {
                     let saved = idx;
-                    if (c == 0x78u /* "x" */ || c == 0x58u /* "X" */)
+                    if (c == 0x78 /* "x" */ || c == 0x58 /* "X" */)
                         res = hexDigits(2);
                     else
                         res = hexDigits(4);
@@ -601,10 +601,10 @@ package RegExpInternals
          * throws an error if it consumes and then fails.
          */
         function decimalEscape() : double? {
-            let c : uint = peekCharCode();
-            if (c == 0x30u)
+            let c : double = peekCharCode();
+            if (c == 0x30)
                 return null;
-            if (c >= 0x31u && c <= 0x39u)
+            if (c >= 0x31 && c <= 0x39)
                 return decimalDigits();
             else
                 return null;
@@ -632,8 +632,8 @@ package RegExpInternals
         function lookingAt(c : string) : void {
             if (atEnd())
                 return false;
-            let i : uint = 0;
-            let j : uint = idx;
+            let i : double = 0;
+            let j : double = idx;
             let ilim = i + c.length;
             let jlim = j + c.length;
             for ( ; i < ilim && j < jlim ; i++, j++ )
@@ -665,11 +665,11 @@ package RegExpInternals
                 return decimalDigits();
         }
 
-        function hexDigits(n : uint? = null) : string {
+        function hexDigits(n : double? = null) : string {
             let k : double = 0;
             let c : string;
-            let m : uint = n === null ? 100000 : n;
-            let i : uint;
+            let m : double = n === null ? 100000 : n;
+            let i : double;
             for ( i=0 ; i < m ; i++ ) {
                 let (c = peekChar()) {
                     if (!isHexDigit(c))
@@ -701,14 +701,14 @@ package RegExpInternals
         function peekChar2() : string
             idx+1 < slen ? source[idx+1] : "*END*";
 
-        function peekCharCode() : uint {
+        function peekCharCode() : double {
             // In a production implementation, this would probably be
             // no faster than peekChar. In our reference
             // implementation, it is substantially faster.
             if (idx < slen)
-                return magic::charCodeAt(source, uint(idx));
+                return magic::charCodeAt(source, intrinsic::toUint(idx));
             else
-                return 0x0u;
+                return 0x0;
         }
 
         function consumeChar(c : string? = null) : string {
@@ -737,8 +737,8 @@ package RegExpInternals
                 return;
 
             while (!atEnd()) {
-                let c : uint = peekCharCode();
-                if (c == 0x23u /* '#' */) {
+                let c : double = peekCharCode();
+                if (c == 0x23 /* '#' */) {
                     ++idx;
                     while (!atEnd() && !isTerminatorCode(peekCharCode()))
                         ++idx;

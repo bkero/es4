@@ -159,7 +159,7 @@ package
         function pushSuperInterfaces(iface) {
             let i = 0;
             while (true) {
-                let iface2 = magic::getSuperInterface(iface, uint(i));
+                let iface2 = magic::getSuperInterface(iface, toUint(i));
                 if (iface2 == null)
                     break;
                 supers.push(getInterfaceMetaObject(iface2));
@@ -171,7 +171,7 @@ package
         function pushImplementedInterfaces(cls) {
             let i = 0;
             while (true) {
-                let iface = magic::getImplementedInterface(cls, uint(i));
+                let iface = magic::getImplementedInterface(cls, toUint(i));
                 if (iface == null)
                     break;
                 supers.push(getInterfaceMetaObject(iface));
@@ -287,8 +287,6 @@ package
 
     helper const nulltype = new NullTypeImpl;
     helper const undefinedtype = new UndefinedTypeImpl;
-    helper const inttype = new ClassTypeImpl(int, numberconversion);
-    helper const uinttype = new ClassTypeImpl(uint, numberconversion);
     helper const doubletype = new ClassTypeImpl(double, numberconversion);
     helper const decimaltype = new ClassTypeImpl(decimal, numberconversion);
     helper const Numbertype = new ClassTypeImpl(Number, numberconversion);
@@ -297,14 +295,12 @@ package
     helper const booleantype = new ClassTypeImpl(boolean, anyconversion);
     helper const Booleantype = new ClassTypeImpl(Boolean, anyconversion);
 
-    helper const numbertypes = [inttype, uinttype, doubletype, decimaltype, Numbertype];
+    helper const numbertypes = [doubletype, decimaltype, Numbertype];
     helper const stringtypes = [stringtype, Stringtype];
 
     helper const classtypes = [];
     helper const interfacetypes = [];
 
-    registerMetaObject(int, inttype, classtypes);
-    registerMetaObject(uint, uinttype, classtypes);
     registerMetaObject(double, doubletype, classtypes);
     registerMetaObject(decimal, decimaltype, classtypes);
     registerMetaObject(Number, Numbertype, classtypes);

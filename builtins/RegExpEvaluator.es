@@ -53,7 +53,7 @@ package RegExpInternals
     */
     intrinsic class RegExpMatcher!
     {
-        function RegExpMatcher(matcher: Matcher, nCapturingParens: uint)
+        function RegExpMatcher(matcher: Matcher, nCapturingParens: double)
             : matcher = matcher
             , nCapturingParens = nCapturingParens
         {
@@ -62,7 +62,7 @@ package RegExpInternals
         /* Returns an array of matches, with additional named properties
            on the array for named submatches
         */
-        function match( input: string, endIndex: int, multiline: boolean, ignoreCase: boolean )
+        function match( input: string, endIndex: double, multiline: boolean, ignoreCase: boolean )
             : MatchResult 
         {
             return matcher.match(new Context(input, multiline, ignoreCase),
@@ -70,7 +70,7 @@ package RegExpInternals
                                  function (ctx: Context, x: State): State? { return x } );
         }
 
-        var nCapturingParens: uint;
+        var nCapturingParens: double;
         private var matcher: Matcher;
     }
 
@@ -89,7 +89,7 @@ package RegExpInternals
         }
 
         const input       : string;
-        const inputLength : int;
+        const inputLength : double;
         const ignoreCase  : boolean;   // i
         const multiline   : boolean;   // m
     }
@@ -102,13 +102,13 @@ package RegExpInternals
 
     class State!
     {
-        function State(endIndex: int, captures: CapArray)
+        function State(endIndex: double, captures: CapArray)
             : endIndex = endIndex
             , captures = captures
         {
         }
 
-        var endIndex : int;
+        var endIndex : double;
         var captures : CapArray;
     }
 
@@ -119,14 +119,14 @@ package RegExpInternals
     */
     type CapArray = [(string|undefined)];
 
-    function makeCapArray(len: uint): CapArray {
+    function makeCapArray(len: double): CapArray {
         let a = []: CapArray;
         for ( let i = 0 ; i < len ; i++ )
             a[i] = undefined;
         return a;
     }
 
-    function copyCapArray(a: CapArray, parenIndex: uint, parenCount: uint): CapArray {
+    function copyCapArray(a: CapArray, parenIndex: double, parenCount: double): CapArray {
         let b = makeCapArray(a.length);
         for ( let i = 0 ; i < a.length ; i++ )
             b[i] = a[i];
@@ -232,7 +232,7 @@ package RegExpInternals
         }
     }
 
-    function isREWordChar(ctx: Context, e: int): boolean {
+    function isREWordChar(ctx: Context, e: double): boolean {
         if (e == -1 || e == ctx.inputLength)
             return false;
         let c = ctx.input[e];
@@ -241,7 +241,7 @@ package RegExpInternals
 
     class Quantified! implements Matcher
     {
-        function Quantified(parenIndex: uint, parenCount: uint, m: Matcher, min: double, max: double, greedy: boolean)
+        function Quantified(parenIndex: double, parenCount: double, m: Matcher, min: double, max: double, greedy: boolean)
             : parenIndex = parenIndex
             , parenCount = parenCount
             , m = m
@@ -287,8 +287,8 @@ package RegExpInternals
             return RepeatMatcher(min, max, x);
         }
 
-        const parenIndex : uint;
-        const parenCount : uint;
+        const parenIndex : double;
+        const parenCount : double;
         const m : Matcher;
         const min : double;
         const max : double;
@@ -297,7 +297,7 @@ package RegExpInternals
 
     class Capturing! implements Matcher
     {
-        function Capturing(m: Matcher, parenIndex: uint)
+        function Capturing(m: Matcher, parenIndex: double)
             : m=m
             , parenIndex=parenIndex 
         {
@@ -316,12 +316,12 @@ package RegExpInternals
             return m.match(ctx, x, d);
         }
 
-        const m : Matcher, parenIndex : uint;
+        const m : Matcher, parenIndex : double;
     }
 
     class Backref! implements Matcher
     {
-        function Backref(capno: uint)
+        function Backref(capno: double)
             : capno=capno 
         {
         }
@@ -342,7 +342,7 @@ package RegExpInternals
             return c(ctx, new State(f, cap));
         }
 
-        const capno : uint;
+        const capno : double;
     }
 
     class PositiveLookahead! implements Matcher
@@ -505,12 +505,12 @@ package RegExpInternals
 
     class CharsetUnicodeClass! extends CharsetMixin implements CharsetMatcher
     {
-        function CharsetUnicodeClass(tester: function(uint): boolean): tester=tester {}
+        function CharsetUnicodeClass(tester: function(double): boolean): tester=tester {}
 
         public function match(ctx: Context, c: string): boolean
             tester(c.charCodeAt(0));
 
-        const tester: function(uint): boolean;
+        const tester: function(double): boolean;
     }
 
     const charset_linebreak : CharsetMixin = new CharsetAdhoc(Unicode.linebreaks);
