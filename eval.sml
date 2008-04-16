@@ -1973,28 +1973,28 @@ and arrayToList (regs:Mach.REGS)
         build (len - (1:Int32.int)) []
     end
 
-and evalExprsAndSpliceSplats (regs:Mach.REGS)
+and evalExprsAndSpliceSpreads (regs:Mach.REGS)
                              (exprs:Ast.EXPR list)
     : (Mach.VAL list) = 
     let 
         (* 
-         * A Splat expression is only allowed in certain syntactic
+         * A Spread expression is only allowed in certain syntactic
          * contexts but those are enforced by the parser. Here we
-         * splice *any* unary splat operator we encounter in the value
+         * splice *any* unary spread operator we encounter in the value
          * list we're producing.
          *
-         * Note: splat expressions should allow an array *or*
+         * Note: spread expressions should allow an array *or*
          * arguments object as its operand. Currently, an arguments
          * object *is* an array, so this is a vacuous distinction.
          *)
-        fun f (Ast.UnaryExpr (Ast.Splat, expr)) = 
+        fun f (Ast.UnaryExpr (Ast.Spread, expr)) = 
             let
                 val v = evalExpr regs expr
                 val t = typeOfVal regs v
             in
                 if t <* (instanceType regs Name.nons_Array [])
                 then arrayToList regs (needObj regs v)
-                else (error regs ["splat expression requires an array or arguments object as its operand; ",
+                else (error regs ["spread expression requires an array or arguments object as its operand; ",
                                   "found instead: ", LogErr.ty t];
                       [])
             end
@@ -2009,7 +2009,7 @@ and evalCallExpr (regs:Mach.REGS)
                  (actuals:Ast.EXPR list)
     : Mach.VAL = 
     let
-        fun args _ = evalExprsAndSpliceSplats regs actuals
+        fun args _ = evalExprsAndSpliceSpreads regs actuals
     in
         case func of
             Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
@@ -2038,7 +2038,7 @@ and evalNewExpr (regs:Mach.REGS)
                 (actuals:Ast.EXPR list)
     : Mach.VAL = 
     let
-        fun args _ = evalExprsAndSpliceSplats regs actuals
+        fun args _ = evalExprsAndSpliceSpreads regs actuals
         val rhs = evalExpr regs obj
     in
         case rhs of
@@ -2408,7 +2408,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                          (ty:Ast.TYPE_EXPR option)
     : Mach.VAL =
     let
-        val vals = evalExprsAndSpliceSplats regs exprs
+        val vals = evalExprsAndSpliceSpreads regs exprs
         val tyExprs = case Option.map (evalTy regs) ty of
                           NONE => [Ast.SpecialType Ast.Any]
                         | SOME (Ast.ArrayType tys) => tys
@@ -2863,7 +2863,7 @@ and evalUnaryOp (regs:Mach.REGS)
 
           | Ast.Void => Mach.Undef
 
-          | Ast.Splat => error regs ["splat operator in unexpected context"]
+          | Ast.Spread => error regs ["spread operator in unexpected context"]
 
           | Ast.Type =>
             (*
@@ -3833,11 +3833,15 @@ and checkAllPropertiesInitialized (regs:Mach.REGS)
                                   (obj:Mach.OBJ)
     : unit =
     let
-        fun checkOne (n:Ast.NAME, {prop:Mach.PROP, seq}) =
-            case (#state prop) of
-                Mach.UninitProp => 
-                error regs ["uninitialized property: ", LogErr.name n]
-              | _ => ()
+        fun checkOne (n:Ast.NAME, {prop, seq}) =
+            let 
+                val { ty, state, attrs} = prop 
+            in
+                case state of
+                    Mach.UninitProp => 
+                    error regs ["uninitialized property: ", LogErr.name n]
+                  | _ => ()
+            end
         val Mach.Obj { props, ... } = obj
         val { bindings, ... } = !props
     in
@@ -4238,7 +4242,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                     traceConstruct ["evaluating settings"];
                     evalObjInits varRegs instanceObj settings;
                     traceConstruct ["initializing and constructing superclass of ", fmtName name];
-                    initializeAndConstructSuper (evalExprsAndSpliceSplats varRegs superArgs);
+                    initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
                     traceConstruct ["entering constructor for ", fmtName name];
                     (case block of 
                          NONE => Mach.Undef
@@ -5070,11 +5074,11 @@ and callIteratorGet (regs:Mach.REGS)
         val Mach.Obj { props, ... } = iterable
         val { bindings, ... } = !props
         val bindingList = NameMap.listItemsi bindings
-        fun select (name:Ast.NAME, { seq:int, prop:Mach.PROP }) = 
+        fun select (name, { seq, prop }) = 
             case prop of 
                 { state = Mach.ValProp _,
-                  attrs = { dontEnum = false, ... },
-                  ... } => SOME (name, seq)
+                  attrs = { dontEnum = false, dontDelete, readOnly, isFixed },
+                  ty } => SOME (name, seq)
               | _ => NONE
         val filteredList = List.mapPartial select bindingList
         val bindingArray = Array.fromList filteredList

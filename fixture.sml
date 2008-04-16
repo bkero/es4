@@ -194,7 +194,6 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
-           | Ast.InheritedFixture _ => "[inherited]"
     in
 	case n of
 	    Ast.TempName n => log ["temp #", Int.toString n, " -> ", fs]

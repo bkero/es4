@@ -118,7 +118,7 @@ datatype UNOP =
        | BitwiseNot
        | LogicalNot
        | Type
-       | Splat
+       | Spread
 
 datatype VAR_DEFN_TAG =
          Const 
@@ -408,9 +408,6 @@ datatype PRAGMA =
          { ty: TYPE_EXPR, 
            getter: FUNC option,
            setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
-       | InheritedFixture of 
-         { baseName: NAME, 
-           baseTypeArgs: TYPE_EXPR list }
 
      and HEAD =
          Head of RIB * INITS

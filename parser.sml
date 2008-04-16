@@ -1095,28 +1095,28 @@ and arrayLiteral (ts0: TOKENS, alpha: ALPHA)
     end
 
 (*
-    SplatExpression
+    SpreadExpression
         ... AssignmentExpression(AllowColon, AllowIn)
 *)
-and splatExpression (ts0: TOKENS)
+and spreadExpression (ts0: TOKENS)
     : (TOKENS * Ast.EXPR list) =
-    let val _ = trace [">> splatExpression with next=", tokenname (hd ts0)]
+    let val _ = trace [">> spreadExpression with next=", tokenname (hd ts0)]
     in case ts0 of
            (TripleDot, _) :: ts1 =>
            let
                val (ts2, nd1) = assignmentExpression (ts1, AllowColon, AllowIn)
            in
-               (ts2, [Ast.UnaryExpr (Ast.Splat, nd1)])
+               (ts2, [Ast.UnaryExpr (Ast.Spread, nd1)])
            end
          | _ =>
-           error ["unknown token in splatExpression", tokenname (hd ts0)]
+           error ["unknown token in spreadExpression", tokenname (hd ts0)]
     end
 
 (*
     Elements
         empty
         LiteralElement
-        SplatExpression
+        SpreadExpression
         ,  ElementList
         LiteralElement  ,  ElementList
         LiteralElement  ElementComprehension
@@ -1135,7 +1135,7 @@ and elements (ts0: TOKENS)
             end
       | (TripleDot, _) :: _ =>
             let
-                val (ts1, nd1) = splatExpression ts0
+                val (ts1, nd1) = spreadExpression ts0
             in
                 (ts1, Ast.ListExpr nd1)
             end
@@ -1169,7 +1169,7 @@ and elements (ts0: TOKENS)
 (*
     ElementList
         empty
-        SplatExpression
+        SpreadExpression
         ,  ElementList
         LiteralElement
         LiteralElement  ,  ElementList
@@ -1192,7 +1192,7 @@ and elementList (ts0: TOKENS)
                 (ts1, (Ast.LiteralExpr Ast.LiteralUndefined) :: nd1)
             end
       | (TripleDot, _) :: _ =>
-            splatExpression ts0
+            spreadExpression ts0
       | _ =>
             let
                 val (ts1,nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
@@ -1544,18 +1544,18 @@ and arguments (ts0: TOKENS)
     ArgumentList
         AssignmentExpression(AllowColon, AllowIn)
         AssignmentExpression(AllowColon, AllowIn)  ,  ArgumentList
-        SplatExpression
+        SpreadExpression
 
     refactored:
 
     ArgumentList
         AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
-        SplatExpression
+        SpreadExpression
 
     ArgumentListPrime
         empty
         , AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
-        , SplatExpression
+        , SpreadExpression
 *)
 
 and argumentList (ts0: TOKENS)
@@ -1565,7 +1565,7 @@ and argumentList (ts0: TOKENS)
             let val _ = trace ([">> argumentList' with next=", tokenname (hd (ts0))])
             in case ts0 of
                 (Comma, _) :: (TripleDot, _) :: _ =>
-                    splatExpression (tl ts0)
+                    spreadExpression (tl ts0)
               | (Comma, _) :: _ =>
                     let
                         val (ts1, nd1) = assignmentExpression (tl ts0, AllowColon, AllowIn)
@@ -1582,7 +1582,7 @@ and argumentList (ts0: TOKENS)
     in
         case ts0 of
             (TripleDot, _) :: _ =>
-                splatExpression ts0
+                spreadExpression ts0
           | _ =>
             let
                 val (ts1, nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
