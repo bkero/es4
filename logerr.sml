@@ -101,6 +101,13 @@ fun fname (n:Ast.FIXTURE_NAME) =
 	Ast.TempName n => "<temp " ^ (Int.toString n) ^ ">"
       | Ast.PropName n => name n
 
+fun rib (r:Ast.RIB) = 
+    "[rib: " ^ (join ", " (map (fn (n,f) => fname n) r)) ^ "]"
+
+fun ribs (rs:Ast.RIBS) = 
+    "[ribs: " ^ (join ", " (map rib rs)) ^ "]"
+
+
 fun multiname (mn:Ast.MULTINAME) =
     let
 	fun fmtNss (nss:Ast.NAMESPACE list) = 

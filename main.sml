@@ -135,22 +135,22 @@ val failure = OS.Process.failure
 (* FIXME: should use more portable OS.Process.exit *)
 fun withEofHandler thunk =
     (thunk (); 0)
-    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1)
+(*    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1) *)
 
 fun withHandlers thunk =
     (thunk (); 0)
     handle
-    LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
-  | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
-  | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
-  | LogErr.TypeError e => (print ("**ERROR** TypeError: " ^ e ^ "\n"); 1)
+    LogErr.LexError e    => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
+  | LogErr.ParseError e  => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
+  | LogErr.NameError e   => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
+  | LogErr.TypeError e   => (print ("**ERROR** TypeError: " ^ e ^ "\n"); 1)
   | LogErr.FixtureError e => (print ("**ERROR** FixtureError: " ^ e ^ "\n"); 1)
-  | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
-  | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
-  | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
+  | LogErr.DefnError e   => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
+  | LogErr.EvalError e   => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
+  | LogErr.MachError e   => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
   | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
-  | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
-  | LogErr.AstError e => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
+  | LogErr.HostError e   => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
+  | LogErr.AstError e    => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
   | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
 datatype COMMAND =

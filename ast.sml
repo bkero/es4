@@ -544,7 +544,7 @@ withtype
              body: STMT }
 
      and FOR_STMT =
-           { rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
+           { rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)  (* CF: list option seems redundant *)
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
                      ns : EXPR option,
@@ -573,14 +573,14 @@ withtype
 
      and CASE =
            { label: EXPR option,
-             inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
+             inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option, replace by INITS?? *)
              body: BLOCK }   (* FIXME: should be STMT list *)
 
      and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
            ty: TYPE_EXPR, 
            rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
-           inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
+           inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option, TODO: replace by INITS?? *)
            block:BLOCK }
 
      and FUNC_NAME =

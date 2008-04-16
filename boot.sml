@@ -180,7 +180,10 @@ fun verifyFiles prog fs =
     let
         fun ver (file, frag) =
             (trace ["verifying boot file ", file];
-             (file, Verify.verifyTopFragment prog verifyBuiltins frag))
+             (file,
+              if verifyBuiltins
+              then Verify.verifyTopFragment prog verifyBuiltins frag
+              else frag))
     in
         map ver fs
     end
