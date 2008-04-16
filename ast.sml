@@ -118,7 +118,7 @@ datatype UNOP =
        | BitwiseNot
        | LogicalNot
        | Type
-       | Splat
+       | Spread
 
 datatype VAR_DEFN_TAG =
          Const
