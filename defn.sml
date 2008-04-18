@@ -1934,7 +1934,7 @@ and defExpr (env:ENV)
                 val env     = extendEnvironment env f false
                 val newBody = defExpr env body
             in
-                Ast.LetExpr { defs = defs,
+                Ast.LetExpr { defs = ([],[]),  (* defs, *)
                               body = newBody,
                               head = SOME (Ast.Head (f,i)) }
             end

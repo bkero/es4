@@ -67,14 +67,26 @@ let (z=2,y=3) y
 %% [this] verify, pass
 this
 
+%% [fn0] verify, pass
+(function f(){})
+
 %% [fn1] verify, pass
-(function f(x:int):int { return 1 });
+   (function f(x:int):int { return 1 });
 
 %% [fn2] verify, pass
 (function f(x:int):int { return 1 }) (4);
 
 %% [fn3] verify, pass
 (function f(x:int,y):int { return 1 }) (4,5);
+
+%% [fn3a] verify, fail
+(function f(x:int,y):int { return 1 }) (4);
+
+%% [fn3b] verify, fail
+(function f(x:int,y):int { return 1 }) ();
+
+%% [fn3c] verify, fail
+(function f(x:int,y):int { return 1 }) (4,5,6);
 
 %% [fn4] verify, pass
 let (f=function f() {}) f(3);
@@ -87,6 +99,15 @@ let (f:function(int):int=function f(x:int):int {return x}) f(3);
 
 %% [fn7] verify, pass
 (function f(...x):int { return 1 }) (4);
+
+%% [fn7a] verify, pass
+(function f(...x):int { return 1 }) (4,true,7);
+
+%% [fn7b] verify, pass
+(function f(y,...x):int { return 1 }) (4);
+
+%% [fn7c] verify, fail
+(function f(y,z,...x):int { return 1 }) (4);
 
 %% [fn8] verify, pass
 (function f.<X>(x:X):X { return x});

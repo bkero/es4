@@ -244,7 +244,11 @@ fun checkMatch (env:ENV)
         trace ["checkMatch ", LogErr.ty src, " vs. ", LogErr.ty dst]; 
         if not (#strict env) orelse Type.groundMatches src dst
         then ()
-        else warning ["checkMatch: incompatible types in assignment:\n    ", LogErr.ty src, "\nvs.\n    ", LogErr.ty dst]
+        else warning 
+                 ["checkMatch: incompatible types in assignment: a value of type\n    ", 
+                  LogErr.ty src, 
+                  "\ncannot be put into a slot of type\n    ", 
+                  LogErr.ty dst]
     end
 
 (* t1 and t2 are normalized *)
@@ -598,37 +602,35 @@ and verifyExpr (env:ENV)
           | Ast.CallExpr {func, actuals} =>
             let
                 val t = verifySub func
-                val ts = verifySubList actuals
-                val resultType = case t of
-                                     Ast.FunctionType { result, ... } => result
-                                   | _ => anyType
+                val args = verifySubList actuals
             in
-                if strict
-                then 
-                    case t of
-                        Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
-                        if 
-                            (List.length actuals) < minArgs 
-                        then 
-                            warning ["too few actuals"]
-                        else 
-                            if (not hasRest) andalso
-                               ((List.length actuals) > (List.length params))
-                            then
-                                warning ["too many actuals"]
-                            else
-                                List.app (fn (formal, actual) => checkMatch env actual formal)
-                                         (ListPair.zip (params, ts))
-                      | Ast.SpecialType Ast.Any => ()
+                case t of
+                    Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
+                    
+                    let fun checkargs args params =
+                            case (args,params,hasRest) of
+                                ([],[],false) => ()
+                              | ([], [restType], true) => ()
+                              | (args, [restType], true) =>
+                                checkMatch env (Ast.ArrayType args) restType
+                              | (a::ar, p::pr, _) =>
+                                let in
+                                    checkMatch env a p;
+                                    checkargs ar pr
+                                end
+                              | _ => warning ["too many actuals"]
+                    in
+                        checkargs args params;
+                        result
+                    end
+                  | Ast.SpecialType Ast.Any => anyType
+                                               
 		      (* 
 		       * FIXME: Actually have to handle instance types here, and hook into
 		       * their meta::invoke slot as well.
                * do not print error msgs for now, too noisy
 		       *)
-                      | _ => trace (* warning *) ["ill-typed call to type ", LogErr.ty t]
-                else 
-                    ();
-                resultType
+                  | _ => (warning ["ill-typed call to type ", LogErr.ty t]; anyType)
             end
 
             (* FIXME: what is this? *)

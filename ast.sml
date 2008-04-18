@@ -465,8 +465,8 @@ withtype
          { params: TYPE_EXPR list,
            result: TYPE_EXPR,
            thisType: TYPE_EXPR option,
-           hasRest: bool,
-           minArgs: int }
+           hasRest: bool,         (* if true, the last elem in params is array type *)
+           minArgs: int }         (* necessary because some of params can have defaults *)
 
      and FUNC_DEFN =
            { kind : VAR_DEFN_TAG,

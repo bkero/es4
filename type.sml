@@ -295,21 +295,14 @@ fun normalizeNulls (ty:Ast.TYPE_EXPR)
         fun containsNull ty = 
             case ty of 
                 Ast.SpecialType Ast.Null => true
-              | Ast.SpecialType _ => false
-              | Ast.InstanceType _ => false
               | Ast.NullableType { expr, nullable } => nullable
               | Ast.LikeType t => containsNull t
-              | Ast.ObjectType _ => false
               | Ast.UnionType tys => List.exists containsNull tys
-              | Ast.ArrayType tys => false
-              | Ast.FunctionType _ => false
-              | t => error ["Unexpected type while normalizing nulls: ", LogErr.ty t]
+              | _ => false
 
         fun stripNulls ty = 
             case ty of 
                 Ast.SpecialType Ast.Null => NONE
-              | Ast.SpecialType t => SOME (Ast.SpecialType t)
-              | Ast.InstanceType t => SOME (Ast.InstanceType t)
               | Ast.NullableType { expr, nullable } => stripNulls expr 
               | Ast.LikeType t => (case stripNulls t of 
                                        NONE => NONE
@@ -318,10 +311,7 @@ fun normalizeNulls (ty:Ast.TYPE_EXPR)
                 (case List.mapPartial stripNulls tys of
                      [] => NONE
                    | tys1 => SOME (Ast.UnionType tys1))
-              | Ast.ObjectType fields => SOME (Ast.ObjectType (mapObjTy normalizeNulls fields))
-              | Ast.ArrayType tys => SOME (Ast.ArrayType (map normalizeNulls tys))
-              | Ast.FunctionType fty => SOME (Ast.FunctionType (mapFuncTy normalizeNulls fty))
-              | t => error ["Unexpected type while normalizing nulls: ", LogErr.ty t]
+              | _ => SOME ty
     in
         if containsNull ty
         then 
@@ -374,11 +364,12 @@ fun normalizeArrays (ty:Ast.TYPE_EXPR)
 fun checkProperType (ty:Ast.TYPE_EXPR) : unit = 
     let fun check ty2 = 
             case ty2 of
+(* a LamType could be a generic function type, which is a type
                 Ast.LamType { params, body } => 
                 error ["Improper occurrence of type constructor ", LogErr.ty ty2, 
                        " in normalized type ", LogErr.ty ty]
-
-              | Ast.AppType { base, args } =>
+*)
+                Ast.AppType { base, args } =>
                 error ["Improper occurrence of type application ", LogErr.ty ty2, 
                        " in normalized type ", LogErr.ty ty]
 
@@ -412,7 +403,8 @@ fun normalizeNames (useCache:bool)
                     (ribs, name, Fixture.getFixture rib (Ast.PropName name))
                 end
               | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
-                            " in type expression ", LogErr.ty ty]
+                            " in type expression ", LogErr.ty ty,
+                            " in ribs ", LogErr.ribs env]
                      
         fun getType (mname : Ast.MULTINAME) : Ast.TYPE_EXPR = 
             case getFixture mname of 
@@ -696,17 +688,18 @@ fun groundMatchesGeneric (b:BICOMPAT)
       (* A-ARROW *)
       | (_, _, 
          Ast.FunctionType
-		     {params  =params1,
-		      result  =result1,
-		      thisType=thisType1,
-		      hasRest =hasRest1,
-	          minArgs=minArgs1},
+		     {params   = params1,
+		      result   = result1,
+		      thisType = thisType1,
+		      hasRest  = hasRest1,
+	          minArgs  = minArgs1},
 	     Ast.FunctionType
-		     {params=params2,
-		      result=result2,
-		      thisType=thisType2,
-		      hasRest=hasRest2,
-		      minArgs=minArgs2}) => 
+		     {params   = params2,
+		      result   = result2,
+		      thisType = thisType2,
+		      hasRest  = hasRest2,
+		      minArgs  = minArgs2}) 
+        => 
         (arrayPairWise (groundMatchesGeneric b Invariant) params1 params2) andalso
         groundMatchesGeneric b v result1 result2 andalso
         (optionWise (groundMatchesGeneric b Invariant) thisType1 thisType2) andalso
@@ -737,8 +730,20 @@ fun groundMatchesGeneric (b:BICOMPAT)
         groundMatchesGeneric b v (#expr nt1) (#expr nt2)
         
       | (_, _, Ast.ArrayType tys1, Ast.ArrayType tys2) => 
-        arrayPairWise (groundMatchesGeneric b Invariant) tys1 tys2
-        
+        (* last entry repeats *)
+        let fun check tys1 tys2 =
+                case (tys1,tys2) of
+                    ([],[]) => true
+                  | ([ty1],[ty2]) => 
+                    groundMatchesGeneric b Invariant ty1 ty2
+                  | (ty1::tys1, ty2::tys2) => 
+                    groundMatchesGeneric b Invariant ty1 ty2
+                    andalso check (if tys1=[] then [ty1] else tys1)
+                                  (if tys2=[] then [ty2] else tys2)
+        in
+            check tys1 tys2
+        end
+
       | (_, _, Ast.UnionType tys1, _) => 
         List.all (fn t => groundMatchesGeneric b v t ty2) tys1
 
