@@ -130,7 +130,7 @@ fun newEnv (prog:Fixture.PROGRAM)
       AnyBooleanType= Type.getNamedGroundType prog Name.ES4_AnyBoolean,
       booleanType   = Type.getNamedGroundType prog Name.ES4_boolean,
 
-      RegExpType    = Type.getNamedGroundType prog Name.nons_RegExp,
+      RegExpType    = Type.getNamedGroundType prog Name.public_RegExp,
 
       NamespaceType = Type.getNamedGroundType prog Name.ES4_Namespace,
 
@@ -979,7 +979,8 @@ and verifyFixture (env:ENV)
     : unit =
     case f of
      
-        Ast.ClassFixture (Ast.Cls {name, typeParams, nonnullable, 
+        Ast.ClassFixture (Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
+                                   typeParams, nonnullable, 
                                    dynamic, extends, implements, 
                                    classRib, instanceRib, instanceInits, 
                                    constructor, classType, instanceType }) =>
@@ -1042,8 +1043,7 @@ and verifyFragment (env:ENV)
                    (frag:Ast.FRAGMENT) 
   : unit = 
     case frag of 
-        Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
-      | Ast.Anon block => verifyBlock env block
+        Ast.Anon block => verifyBlock env block
 
 
 and verifyTopRib (prog:Fixture.PROGRAM)
@@ -1076,7 +1076,7 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
             else ();
             verifyFragment env frag;
             trace ["verification complete ",
-                   (if strict then "strict " else "nonstrict ")];
+                   (if strict then "strict " else "publictrict ")];
             frag
         end
     else

@@ -226,9 +226,9 @@ fun describeGlobal (regs:Mach.REGS) =
 
 fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
     let
-        fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.nons_Object orelse
+        fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.public_Object orelse
                                                            n = Name.intrinsic_Class orelse
-                                                           n = Name.nons_Function orelse
+                                                           n = Name.public_Function orelse
                                                            n = Name.intrinsic_Interface
                                                         then false
                                                         else true
@@ -239,10 +239,7 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
           | filterHeadOpt NONE = NONE
     in
         case frag of 
-            Ast.Package { name, fragments } => 
-            Ast.Package { name = name, 
-                          fragments = map filterOutRootClasses fragments }
-          | Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
+            Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
             Ast.Anon (Ast.Block { pragmas = pragmas, 
                                   defns = defns, 
                                   head = filterHeadOpt head, 
@@ -338,7 +335,7 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val glob = 
             let
-                val (_, objIty) = lookupRoot prog Name.nons_Object
+                val (_, objIty) = lookupRoot prog Name.public_Object
                 val objTag = Mach.ClassTag objIty
             in
                 Mach.newObj objTag Mach.Null NONE
@@ -358,17 +355,17 @@ fun boot (baseDir:string) : Mach.REGS =
         (* BEGIN SPEED HACK *)
         (* 
          * This wins a factor of 60 in performance. It's worth it.
-         * Just don't copy this nonsense to the spec. 
+         * Just don't copy this publicense to the spec. 
          *)
         val _ = Type.cacheLoad := SOME (fn i => Mach.findInTyCache regs i)
         val _ = Type.cacheSave := SOME (fn i => fn t => (Mach.updateTyCache regs (i, t); ()))
         (* END SPEED HACK *)                
 
         val (objClass, objClassClosure, objClassObj) = 
-            instantiateRootClass regs Name.nons_Object
+            instantiateRootClass regs Name.public_Object
 
         val (_, _, classClassObj) = instantiateRootClass regs Name.intrinsic_Class
-        val (_, _, funClassObj) = instantiateRootClass regs Name.nons_Function
+        val (_, _, funClassObj) = instantiateRootClass regs Name.public_Function
         val (_, _, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface
 
         (* Allocate runtime representations of anything in the initRib. *)
@@ -381,9 +378,9 @@ fun boot (baseDir:string) : Mach.REGS =
     in
 
         trace ["completing class fixtures"];
-        completeClassFixtures regs Name.nons_Object objClassObj;
+        completeClassFixtures regs Name.public_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
-        completeClassFixtures regs Name.nons_Function funClassObj;
+        completeClassFixtures regs Name.public_Function funClassObj;
         completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
         (* NB: order matters here. *)

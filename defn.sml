@@ -61,7 +61,7 @@ fun mkTypeVarFixture _ =
 
 fun mkParamRib (idents:Ast.IDENT list)
   : Ast.RIB = 
-    map (fn id => (Ast.PropName (Name.nons id), (mkTypeVarFixture()))) idents
+    map (fn id => (Ast.PropName (Name.public id), (mkTypeVarFixture()))) idents
 
 (*
  * The goal of the definition phase is to put together the ribs
@@ -76,8 +76,6 @@ fun mkParamRib (idents:Ast.IDENT list)
     - inherit super classes and interfaces
     - evaluate pragmas
     - capture open namespaces in unqualified identifiers
-    - capture arithmetic modes in arithmetic operators
-    - disambiguate package / object references
 
     TODO
     - fold types
@@ -117,17 +115,17 @@ type ENV =
        tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list,
        labels: LABEL list,
-       className: Ast.IDENT,
-       packageName: Ast.IDENT list,
        defaultNamespace: Ast.NAMESPACE,
        program: Fixture.PROGRAM,
        func: Ast.FUNC option }    
 
     
-val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
+val (initRib:Ast.RIB) = [ (Ast.PropName Name.public_, Ast.NamespaceFixture Name.publicNS),
+                          (Ast.PropName Name.ES4_, Ast.NamespaceFixture Name.ES4NS),
+                          (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
                           (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
                           (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS),
-                          (Ast.PropName Name.ES4_, Ast.NamespaceFixture Name.ES4NS)]
+                          (Ast.PropName Name.intrinsic_, Ast.NamespaceFixture Name.intrinsicNS) ]
 
 fun getFullRibs (env:ENV)
     : Ast.RIBS = 
@@ -161,31 +159,6 @@ fun makeTy (e:ENV)
     Type.normalize (getFullRibs e) tyExpr
     handle LogErr.TypeError _ => tyExpr
 
-        
-(*
-    FIXME: Move this to Mach or Eval. Something like this is used to eval Ast.FieldTypeRef
-           and ElementTypeRef
-
-    Get the type of a field in a field pattern - lookup in a list of field types a field type
-    with associated a name. if the list is empty then return type '*'. if the list is not
-    empty and the sought name is not found, then report a syntax error.
-*)
-(*
-fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
-            : Ast.TYPE_EXPR =
-            let
-            in case field_types of
-                [] => Ast.SpecialType Ast.Any
-              | field_type :: field_type_list =>
-                let
-                    val {name=field_type_name,ty} = field_type
-                in
-                    if field_type_name = name
-                        then ty
-                        else getFieldType name field_type_list
-                end
-            end
-*)
 
 fun inl f (a, b) = (f a, b)
 
@@ -217,24 +190,23 @@ fun resolve (env:ENV)
         SOME (rib::ribs, name) => (name, Fixture.getFixture rib (Ast.PropName name))
       | _ => LogErr.defnError ["multiname did not resolve ", LogErr.multiname mname]
 
+fun getNamespace (env:ENV)
+				 (name:Ast.NAME)
+	: Ast.NAMESPACE = 
+	let 
+		val { ns, id } = name
+		val mname = { nss = [[ns]], id = id }
+	in
+		case resolve env mname of 
+			(_, Ast.NamespaceFixture ns) => ns
+		  | _ => error ["missing namespace: ", LogErr.name name]
+	end
+	
 (*
     Since we are in the definition phase the open namespaces have not been
     captured yet, so capture them before evaluating an unqualified namespace
     expression
 *)
-
-fun packageIdentFromPath origPath
-    : Ast.IDENT =
-    let fun packageIdentFromPath_ [] ident = ident
-          | packageIdentFromPath_ (pthid::pth) ident =
-           let
-               val dot = if ident=Ustring.empty then Ustring.empty else Ustring.dot
-           in
-               packageIdentFromPath_ pth (Ustring.append [ident, dot, pthid])
-           end
-    in
-        packageIdentFromPath_ origPath Ustring.empty
-    end
 
 
 fun addNamespace (ns:Ast.NAMESPACE) 
@@ -246,40 +218,7 @@ fun addNamespace (ns:Ast.NAMESPACE)
 
 fun defNamespace (env:ENV)
                  (ns:Ast.NAMESPACE)
-    : Ast.NAMESPACE =
-        let
-        in case ns of
-            Ast.Public n =>
-                let
-                    val packageName = (#packageName env)
-                    val ident = packageIdentFromPath packageName
-                in
-                    if n = Ustring.empty
-                    then Ast.Public ident
-                    else ns
-                        (* if n is not empty, then it is a package qualifier,
-                           so don't with the current package name *)
-                end
-          | Ast.Internal _ =>
-                let
-                    val packageName = (#packageName env)
-                    val ident = packageIdentFromPath packageName
-                in
-(trace2 ("packageName=",ident);
-                    Ast.Internal ident)
-                end
-          | Ast.Private _ =>
-                let
-                in
-                    Ast.Private (#className env)
-                end
-          | Ast.Protected _ =>
-                let
-                in
-                    Ast.Protected (#className env)  (* [JD] FIXME: not quite right *)
-                end
-          | _ => ns
-        end
+    : Ast.NAMESPACE = ns
 
 fun resolveExprToNamespace (env:ENV)
                            (expr:Ast.EXPR)
@@ -320,29 +259,16 @@ fun enterFragment (env:ENV)
     : ENV =     
     let
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
-              defaultNamespace, program, func } = env                                           
+              labels, defaultNamespace, program, func } = env                                           
     
-        val (newProgram, newDefaultNs, newPkgName, newOpenNss) = 
-            case frag of 
-                Ast.Package { name, ... } => 
-                let 
-                    val packageIdent = packageIdentFromPath name
-                in
-                    (Fixture.addPackageName program name, 
-                     Ast.Internal packageIdent, 
-                     name,
-                     [[Ast.Internal packageIdent, Ast.Public packageIdent]] @ openNamespaces)
-                end
-              | _ => (program, defaultNamespace, packageName, openNamespaces)
+        val (newProgram, newDefaultNs, newOpenNss) = 
+            (program, defaultNamespace, openNamespaces)
     in
         { innerRibs = innerRibs, 
           outerRibs = outerRibs,
           tempOffset = tempOffset,
           openNamespaces = newOpenNss,
           labels = labels,
-          className = className,
-          packageName = newPkgName,
           defaultNamespace = newDefaultNs,
           program = newProgram,
           func = func }
@@ -355,19 +281,17 @@ fun extendEnvironment (env:ENV)
     : ENV =
     let
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
+              labels, 
               defaultNamespace, program, func } = env
         val (newInnerRibs, newOuterRibs) = if hoistingPoint
-                                           then ([], [] :: (innerRibs @ outerRibs))
-                                           else ([] :: innerRibs, outerRibs)
+                                           then ([], rib :: (innerRibs @ outerRibs))
+                                           else (rib :: innerRibs, outerRibs)
     in
         { innerRibs = newInnerRibs,
           outerRibs = newOuterRibs,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
-          className = className,
-          packageName = packageName,
           defaultNamespace = defaultNamespace,
           program = program,
           func = func }
@@ -394,7 +318,7 @@ fun addToInnerRib (env:ENV)
     : ENV =
     let 
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
+              labels, 
               defaultNamespace, program, func } = env
         val (innerRib, rest) = headAndTailOfRibs innerRibs
         val newInnerRib = mergeRibs (#program env) innerRib additions
@@ -405,8 +329,6 @@ fun addToInnerRib (env:ENV)
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
-          className = className,
-          packageName = packageName,
           defaultNamespace = defaultNamespace,
           program = program,
           func = func }
@@ -418,7 +340,7 @@ fun addToOuterRib (env:ENV)
     : ENV =
     let 
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
+              labels, 
               defaultNamespace, program, func } = env
         val (outerRib, rest) = headAndTailOfRibs outerRibs
         val newOuterRib = mergeRibs (#program env) outerRib additions
@@ -429,8 +351,6 @@ fun addToOuterRib (env:ENV)
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
-          className = className,
-          packageName = packageName,
           defaultNamespace = defaultNamespace,
           program = program,
           func = func }
@@ -441,76 +361,57 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
-              defaultNamespace, program, func } = env
+              labels, defaultNamespace, program, func } = env
     in
         { innerRibs = innerRibs, 
           outerRibs = outerRibs,
           tempOffset = newTempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
-          className = className,
-          packageName = packageName,
           defaultNamespace = defaultNamespace,
           program = program,
           func = func }
     end
 
 
-fun clearPackageName (env:ENV)
+fun enterClass (env:ENV) 
+			   (privateNS:Ast.NAMESPACE)
+			   (protectedNS:Ast.NAMESPACE)
+			   (parentProtectedNSs:Ast.NAMESPACE list)
     : ENV =
     let
+		val localNamespaceRib = [ (Ast.PropName (Name.private privateNS), 
+								   Ast.NamespaceFixture privateNS),
+								  (Ast.PropName (Name.protected privateNS), 
+								   Ast.NamespaceFixture protectedNS) ]
+		val openNamespaces = ([privateNS, protectedNS] @ parentProtectedNSs) :: (#openNamespaces env)
+		val env = extendEnvironment env localNamespaceRib true
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
-              defaultNamespace, program, func } = env
+              labels, defaultNamespace, program, func } = env
+	in
+		{ innerRibs = innerRibs, 
+          outerRibs = outerRibs,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          labels = labels,
+          defaultNamespace = defaultNamespace,
+          program = program,
+          func = func }		
+	end
+
+
+fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
+    : ENV = 
+    let
+        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
+              labels, 
+              defaultNamespace, program, func } = env    
     in
         { innerRibs = innerRibs, 
           outerRibs = outerRibs,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
-          className = className,
-          packageName = [],
-          defaultNamespace = defaultNamespace,
-          program = program,
-          func = func }
-    end
-
-
-fun enterClass (env:ENV) (newClassName:Ast.NAME)
-    : ENV =
-    let
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
-              defaultNamespace, program, func } = env
-        val className = Name.mangle newClassName
-    in
-        { innerRibs = innerRibs, 
-          outerRibs = outerRibs,
-          tempOffset = tempOffset,
-          openNamespaces = [Ast.Private className]::openNamespaces,
-          labels = labels,
-          className = className,
-          packageName = packageName,
-          defaultNamespace = defaultNamespace,
-          program = program,
-          func = func }
-    end
-
-fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
-    : ENV = 
-    let
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, className, packageName, 
-              defaultNamespace, program, func } = env    
-    in
-        { innerRibs = innerRibs, 
-          outerRibs = outerRibs,
-          tempOffset = tempOffset,
-          openNamespaces = [Ast.Private className]::openNamespaces,
-          labels = labels,
-          className = className,
-          packageName = packageName,
           defaultNamespace = defaultNamespace,
           program = program,
           func = SOME newFunc }
@@ -519,9 +420,6 @@ fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
 
 fun dumpLabels (labels : LABEL list) = 
     trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id) ^ " ") labels)]
-
-fun dumpPath path = 
-    trace ["path ", concat (map (fn (id) => (Ustring.toAscii id) ^ " ") path)]
 
 (*
     Add a label to the current environment context. Report an error
@@ -537,8 +435,7 @@ fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
             val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-                  labels, className, packageName, 
-                  defaultNamespace, program, func } = env
+                  labels, defaultNamespace, program, func } = env
             val (labelId,labelKnd) = label
         in
             dumpLabels labels;
@@ -553,8 +450,6 @@ fun addLabel ((label:LABEL),(env:ENV))
               tempOffset = tempOffset,
               openNamespaces = openNamespaces,
               labels = label::labels,
-              className = className,
-              packageName = packageName,
               defaultNamespace = defaultNamespace,
               program = program,
               func = func }
@@ -662,8 +557,6 @@ and defInterface (env: ENV)
 (*        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superInterfaces *)
         val groundSuperInterfaceExprs = map (makeTy env) superInterfaces
 
-        val env = enterClass env name
-
         val instanceEnv = extendEnvironment env [] true
         val (typeParamRib:Ast.RIB) = mkParamRib params
         val instanceEnv = addToInnerRib instanceEnv typeParamRib
@@ -672,7 +565,7 @@ and defInterface (env: ENV)
         val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
 
         (* Inherit rib and check overrides *)
-        val instanceRib:Ast.RIB = inheritRib inheritedRib instanceRib
+        val instanceRib:Ast.RIB = inheritRib NONE inheritedRib instanceRib
 
         (* Make the instance type and interface fixture *)
         val instanceType:Ast.TYPE_EXPR = 
@@ -806,7 +699,8 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
       | _ => LogErr.unimplError ["checkOverride"]
     end
 
-and inheritRib (base:Ast.RIB)
+and inheritRib (privateNS:Ast.NAMESPACE option)
+			   (base:Ast.RIB)
                (derived:Ast.RIB)
     : Ast.RIB =
     let
@@ -848,21 +742,25 @@ and inheritRib (base:Ast.RIB)
                                       then SOME (Fixture.getFixture derived n)
                                       else NONE
                 val _ = trace ["checking override of ", LogErr.fname n]
+				val canInherit = 
+					case (n, privateNS) of 
+						(Ast.PropName { ns, ...}, SOME pns) => ns = pns
+					  | (Ast.PropName _, _) => true
+					  | (Ast.TempName _, _) => error ["inheriting temp fixture"]
             in
-                case n of
-                    (* Private fixtures never "inherit", so it's meaningless to ask. *)
-                    Ast.PropName {ns=Ast.Private _, ...} => derived
-                  | _ => case targetFixture () of
-                             NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
-                           | SOME fd =>
-                             case (canOverride fb fd) of
-                                 true => derived  (* return current fixtures *)
-                               | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
+				if canInherit
+				then case targetFixture () of
+                         NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
+					   | SOME fd =>
+                         case (canOverride fb fd) of
+                             true => derived  (* return current fixtures *)
+						   | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
+				else derived
             end
 
     in case base of
         [] => derived (* done *)
-      | first::follows => inheritRib follows (inheritFixture first)
+      | first::follows => inheritRib privateNS follows (inheritFixture first)
     end
 
 (*
@@ -915,8 +813,10 @@ and implementFixtures (base:Ast.RIB)
 
 and resolveClassInheritance (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,typeParams,nonnullable,dynamic,classRib,instanceRib,instanceInits,
-                           constructor,classType,instanceType,...}:Ast.CLS)
+                 (Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
+						   typeParams, nonnullable, dynamic, classRib, 
+						   instanceRib, instanceInits, constructor, classType, 
+						   instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
         val _ = trace ["analyzing inheritance for ", LogErr.name name]
@@ -954,6 +854,9 @@ and resolveClassInheritance (env:ENV)
                 
     in
         Ast.Cls {name=name,
+				 privateNS=privateNS,
+				 protectedNS=protectedNS,
+				 parentProtectedNSs=parentProtectedNSs,
                  typeParams=typeParams,
                  nonnullable=nonnullable,
                  dynamic=dynamic,
@@ -991,9 +894,9 @@ and resolveExtends (env:ENV)
     let
         val baseClassMultiname:Ast.MULTINAME option = 
             case extends of 
-                NONE => if currName = Name.nons_Object
+                NONE => if currName = Name.public_Object
                         then NONE
-                        else SOME (multinameOf Name.nons_Object)
+                        else SOME (multinameOf Name.public_Object)
               | SOME te => SOME (identExprToMultiname env (extractIdentExprFromTypeName te))
 
             
@@ -1007,7 +910,9 @@ and resolveExtends (env:ENV)
                     resolve env bcm
             in
                 (SOME (classInstanceType baseClassFixture),
-                 inheritRib (classInstanceRib baseClassFixture) currInstanceRib)                 
+                 inheritRib (SOME (classPrivateNS baseClassFixture))
+							(classInstanceRib baseClassFixture) 
+							currInstanceRib)
             end
     end
 
@@ -1059,6 +964,12 @@ and classInstanceRib (cfxtr:Ast.FIXTURE)
     case cfxtr of
         Ast.ClassFixture (Ast.Cls {instanceRib,...}) => instanceRib
       |_ => LogErr.internalError ["classInstanceRib"]
+
+and classPrivateNS (cfxtr:Ast.FIXTURE)
+    : Ast.NAMESPACE =
+    case cfxtr of
+        Ast.ClassFixture (Ast.Cls {privateNS,...}) => privateNS
+      |_ => LogErr.internalError ["privateNS"]
 
 and classInstanceType (cfxtr:Ast.FIXTURE)
     : Ast.TYPE_EXPR =
@@ -1115,11 +1026,10 @@ and analyzeClassBody (env:ENV)
                      (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     let
-        val {ns, ident, nonnullable, dynamic, params,                  
-             classDefns, 
-             instanceDefns, instanceStmts, 
-             ctorDefn,  ...} = cdef
-                               
+        val {ns, privateNS, protectedNS, ident, 
+			 nonnullable, dynamic, params, classDefns, instanceDefns, 
+			 instanceStmts, ctorDefn,  ...} = cdef
+
         (*
          * Partition the class definition into a class block
          * and an instance block, and then define both blocks.
@@ -1127,7 +1037,7 @@ and analyzeClassBody (env:ENV)
 
         val ns = resolveExprOptToNamespace env ns
         val name = {id=ident, ns=ns}
-        val env = enterClass env name
+        val env = enterClass env privateNS protectedNS []
         val _ = trace ["defining class ", LogErr.name name]
 
         val staticEnv = extendEnvironment env [] true
@@ -1180,6 +1090,9 @@ and analyzeClassBody (env:ENV)
                               dynamic = dynamic})
     in
         Ast.Cls { name=name,
+				  privateNS = privateNS,
+				  protectedNS = protectedNS,				  
+				  parentProtectedNSs = [], (* set in resolveClassInheritence *)
                   typeParams = params,
                   nonnullable = nonnullable,
                   dynamic = dynamic,
@@ -1343,7 +1256,7 @@ and defSettings (env:ENV)
     : (Ast.RIB * Ast.INITS) =
     let
         val _ = trace [">> defSettings"]
-        val fxtrs:Ast.RIB = map (defVar env Ast.Var Name.noNS) binds
+        val fxtrs:Ast.RIB = map (defVar env Ast.Var Name.publicNS) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
         val _ = trace ["<< defSettings"]
     in
@@ -1416,7 +1329,7 @@ and defFuncSig (env:ENV)
                  | _ => false
 
 
-            val (paramRib,paramInits) = defBindings env Ast.Var (Name.noNS) params
+            val (paramRib,paramInits) = defBindings env Ast.Var Name.publicNS params
             val ((settingsRib,settingsInits),superArgs) =
                     case ctorInits of
                         SOME (settings,args) => (defSettings env settings, defExprs env args)
@@ -1534,7 +1447,6 @@ and defFuncDefn (env:ENV)
         let
             val qualNs = resolveExprOptToNamespace env (#ns f)
             val newName = Ast.PropName { id = (#ident name), ns = qualNs }
-            val env = clearPackageName env
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
 
@@ -1627,8 +1539,6 @@ and defPragmas (env:ENV)
                                     [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
                                   | _  => !opennss :: (#openNamespaces env)),
               labels = (#labels env),
-              className = (#className env),
-              packageName = (#packageName env),
               defaultNamespace = !defaultNamespace,
               program = !program,
               func = (#func env) }
@@ -1651,28 +1561,10 @@ and defPragmas (env:ENV)
                         val namespace = resolveExprToNamespace env ns
                         val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=Ustring.empty}]
                     in
-                        (case namespace of
-                             (* these ones are already open *)
-                             (Ast.Public _) => ()
-                           | (Ast.Protected _) => ()
-                           | (Ast.Private _) => ()
-                           | (Ast.Internal _) => ()
-                           | _ => opennss := (namespace :: !opennss));
+                        opennss := (namespace :: !opennss);
                         defaultNamespace := namespace;
                         Ast.UseDefaultNamespace ns
                     end
-              | Ast.Import {package,name} =>
-                let
-                    val id = packageIdentFromPath package
-                    val ns = if name = Ustring.asterisk
-                             then Ast.Public id
-                             else Ast.LimitedNamespace (name,Ast.Public id)
-                in
-                    program := Fixture.addPackageName (!program) package;
-                    trace2 ("openning package ",id);
-                    opennss  := addNamespace ns (!opennss);
-                    Ast.Import {package=package, name=name}
-                end
 
               | p => p
 
@@ -1708,12 +1600,7 @@ and defIdentExpr (env:ENV)
                                       expr = defExpr env expr }
           | Ast.ExpressionIdentifier { expr, ...} =>
             Ast.ExpressionIdentifier { expr = (defExpr env expr),
-                                       openNamespaces = openNamespaces }
-          | Ast.WildcardIdentifier =>
-            Ast.WildcardIdentifier
-
-          | Ast.UnresolvedPath (p,i) =>
-            LogErr.internalError ["unresolved UnresolvedPath ", Ustring.toAscii (hd p)]
+                                       openNamespaces = openNamespaces }          
 
 
     end
@@ -1753,97 +1640,6 @@ and defLiteral (env:ENV)
             Ast.LiteralNamespace (defNamespace env ns)
 
           | _ => lit   (* FIXME: other cases to handle here *)
-    end
-
-(*
-    Resolve a path in an environment
-
-    For each context in the environment: if there is a fixture that matches the
-    head of the path, then resolve the path as an object path; if some prefix of
-    the path matches a package name introduced in that context, then resolve the
-    prefix as a package qualifier and the rest of the path as an object path,
-    the head (if any) is qualified by the package qualifier.
-
-    If no context has a matching fixture or package name, then resolve the path as
-    as an object reference.
-*)
-
-and resolvePath (env:ENV) 
-                (path:Ast.IDENT list)
-    : Ast.EXPR =
-    let
-val _ = dumpPath path
-
-        val (pkg,pth) = matchPackageName env path
-val _ = trace2 ("resolvePath ",case pkg of NONE => Ustring.fromString "NONE" | _ => valOf pkg)
-    in case (pkg,pth) of
-             (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
-           | (SOME pk,id::ids) =>
-                let
-                    val expr = Ast.LexicalRef
-                                    {ident=Ast.QualifiedIdentifier
-                                        {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk)),
-                                         ident=id},
-                                     loc=NONE}
-                in
-                    resolveObjectPath env ids (SOME expr)
-                end
-           | (NONE,_) => resolveObjectPath env path NONE
-    end
-
-(*
-    Return the package qualifier, if any, and the remaining path
-*)
-
-
-and matchPackageName (env:ENV)
-                     (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list =
-    let
-        val mname = 
-            identExprToMultiname 
-                env 
-                (Ast.Identifier {ident=(hd path),openNamespaces=[]})
-    in
-        case Multiname.resolveInRibs mname (getFullRibs env) of
-            SOME (_, n) => (NONE,path) (* head of path matches fixture *)
-          | NONE => 
-            (* head of path does not match fixture, *)
-            (* try finding a package name that matches prefix of path *)
-            let
-                val { program, ... } = env
-            in 
-                case pathInPackageNames (Fixture.getPackageNames program) path of
-                    (NONE,_) => (NONE, path)
-                  | (SOME pkg, rest) => (SOME pkg, rest)
-            end
-    end
-
-and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list =
-    let
-        fun matchPackage (package:Ast.IDENT list) (path:Ast.IDENT list) (prefix:Ast.IDENT list)
-            : Ast.IDENT option * Ast.IDENT list =
-            case (package,path,prefix) of
-                ([],_,[]) =>
-                    (NONE,path)
-              | ([],_,_) =>
-                    (SOME (packageIdentFromPath (List.rev prefix)),path)
-              | (pkgid::pkg,pthid::pth,_) =>
-                    if pkgid = pthid
-                    then matchPackage pkg pth (pkgid::prefix)
-                    else (NONE,path)
-          | (_,[],_) => error ["resolving package portion of empty path"];
-
-    in case packageNames of
-        [] => (NONE,path)  (* no match *)
-      | pkg::pkgs =>
-        let
-            val (ident,path) = matchPackage pkg path []
-        in case ident of
-            NONE => pathInPackageNames pkgs path (* no match yet, try again *)
-          | _ => (ident,path) (* match, return the remainder of the path *)
-        end
     end
 
 and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
@@ -1928,7 +1724,7 @@ and defExpr (env:ENV)
 
           | Ast.LetExpr { defs, body,... } =>
             let
-                val (f,i)   = defBindings env Ast.Var Name.noNS defs
+                val (f,i)   = defBindings env Ast.Var Name.publicNS defs
                 val env     = extendEnvironment env f false
                 val newBody = defExpr env body
             in
@@ -1948,30 +1744,9 @@ and defExpr (env:ENV)
                              loc = loc })
 
           | Ast.LexicalRef { ident, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-            in
-                case ident of
-                    Ast.UnresolvedPath (p,i) =>
-                    let
-                        val base = resolvePath env p
-                    in case (base,i) of
-                           (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
-                               Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                              ident=id},
-                                               loc=loc}
-                         | (Ast.LiteralExpr _,_) =>
-                           LogErr.defnError ["invalid package qualification"]
-
-                         | (_,_) =>
-                           Ast.ObjectRef { base=(defExpr env base),
-                                           ident=(defIdentExpr env i),
-                                           loc=loc}
-                    end
-                  | _ =>
-                    Ast.LexicalRef { ident = defIdentExpr env ident,
-                                     loc = loc}
-            end
+            (LogErr.setLoc loc;
+             Ast.LexicalRef { ident = defIdentExpr env ident,
+                              loc = loc})
 
           | Ast.SetExpr (a, le, re) =>
             Ast.SetExpr (a, (sub le), (sub re))
@@ -2034,22 +1809,7 @@ and defTypeExpr (env:ENV)
         Ast.FunctionType t =>
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName (n,nonce) =>
-        let
-        in
-            case n of
-                Ast.UnresolvedPath (p,i) =>
-                let
-                    val base = resolvePath env p
-                in case (base,i) of
-                   (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
-                   Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                          ident=id}, NONE)
-                 | (_,_) =>
-                       LogErr.defnError ["invalid type expr ", Ustring.toAscii (hd p)]
-                end
-              | _ =>
-                Ast.TypeName ((defIdentExpr env n), nonce)
-         end
+        Ast.TypeName ((defIdentExpr env n), nonce)
       | Ast.UnionType tys =>
         Ast.UnionType (map (defTypeExpr env) tys)
       | Ast.ArrayType tys =>
@@ -2179,7 +1939,7 @@ and defStmt (env:ENV)
         fun reconstructCatch { bindings, rib, inits, block, ty } =
             let
                 val ty:Ast.TYPE_EXPR = defTypeExpr env ty
-                val (r0,i0) = defBindings env Ast.Var Name.noNS bindings
+                val (r0,i0) = defBindings env Ast.Var Name.publicNS bindings
                 val env = extendEnvironment env r0 false
                 val (block:Ast.BLOCK, rib:Ast.RIB) = defBlock env block
             in
@@ -2218,7 +1978,8 @@ and defStmt (env:ENV)
                  | _ => LogErr.defnError ["reference to non-class fixture"]
             end
             
-        fun reconstructClassBlock {ns, ident:Ast.IDENT, block, name:Ast.NAME option } =
+        fun reconstructClassBlock {ns, privateNS, protectedNS, 
+								   ident:Ast.IDENT, block, name:Ast.NAME option } =
             let
                 val _ = trace2 ("reconstructing class block for ", ident)
                 val Ast.Block { pragmas, defns, head, body, loc } = block
@@ -2229,7 +1990,12 @@ and defStmt (env:ENV)
                 val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
-                val env = enterClass env name (* only top level package defns use package specific namespaces *)
+				(* 
+				 * NB: Not able to see parent-protected NSs in class
+				 * block, only local private and protected! 
+				 *) 
+				val env =
+					enterClass env privateNS protectedNS []
 
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
@@ -2238,9 +2004,11 @@ and defStmt (env:ENV)
                                                                loc=loc})
             in
                 (Ast.ClassBlock { ns = ns,
-                                 ident = ident,
-                                 name = SOME name,
-                                 block = block }, hoisted)
+								  privateNS = privateNS,
+								  protectedNS = protectedNS,
+                                  ident = ident,
+                                  name = SOME name,
+                                  block = block }, hoisted)
             end
 
 
@@ -2475,9 +2243,9 @@ and defNamespaceDefn (env:ENV)
             val qualNs = resolveExprOptToNamespace env ns
             val newNs = case init of
                             (* FIXME: a nonce perhaps? *)
-                            NONE => Ast.UserNamespace ident
+                            NONE => Name.newOpaqueNS ()
                           | SOME (Ast.LiteralExpr (Ast.LiteralString s)) =>
-                            Ast.UserNamespace s
+                            Ast.StringNamespace s
                           | SOME (Ast.LexicalRef lref) =>
                             resolveExprToNamespace env (Ast.LexicalRef lref)
                           | _ => LogErr.evalError ["illegal form of namespace initializer"]
@@ -2689,22 +2457,7 @@ and defFragment (env:ENV)
         val env = enterFragment env frag
     in
         case frag of 
-            Ast.Package { name, fragments } => 
-            let 
-                fun doFrag (frag, (frags,escaped)) = 
-                    let 
-                        val (frag', escaped') = defFragment (addToOuterRib env escaped) frag
-                    in
-                        (frag' :: frags, escaped' @ escaped)
-                    end
-                val (fragments', escaped) = List.foldl doFrag ([], []) fragments
-            in                
-                (Ast.Package { name = name, 
-                               fragments = fragments' },
-                 escaped)
-            end
-
-          | Ast.Anon blk => 
+			Ast.Anon blk => 
             let 
                 val (blk, escaped) = defDecorativeBlock env blk
             in
@@ -2719,20 +2472,14 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       innerRibs = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
-                        then [[Name.noNS, Ast.Internal Ustring.empty], [Name.ES4NS]]
-                        else [[Name.noNS, Ast.Internal Ustring.empty]]),
+                        then [[Name.publicNS ], [Name.ES4NS]]
+                        else [[Name.publicNS ]]),
       labels = [],
-      className = Ustring.fromString "",
-      packageName = [],
-      defaultNamespace = Name.noNS,
+      defaultNamespace = Name.publicNS,
       program = prog,
       func = NONE }
 
-and summarizeFragment (Ast.Package { name, fragments }) =
-    (LogErr.log ["package ", (LogErr.join "." (map Ustring.toAscii name)), " { "];
-     List.app summarizeFragment fragments;
-     LogErr.log ["}"])
-  | summarizeFragment (Ast.Anon (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
+and summarizeFragment (Ast.Anon (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
     Fixture.printRib rib
 
 and defTopFragment (prog:Fixture.PROGRAM)
@@ -2742,20 +2489,23 @@ and defTopFragment (prog:Fixture.PROGRAM)
     let
         val topEnv = mkTopEnv prog langEd
         val (frag, escaped) = defFragment topEnv frag
+		val Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) = frag
+		val newHead = case head of
+						  SOME (Ast.Head (rib, inits)) => 
+						  SOME (Ast.Head (mergeRibs prog rib escaped, inits))
+						| NONE => 
+						  SOME (Ast.Head (escaped, []))
     (* 
-     * We stuff the escapees back inside a surrounding non-name 
-     * package frag so they actually get allocated by someone.
-     *
-     * FIXME: could make this a little less silly if we were to 
-     * give a HEAD to packages.
+     * We stuff the escapees back inside the anon block. This is 
+	 * ugly and needs a little refactoring. It used to be this way
+	 * to handle packages, but is no longer necessary.
      *)
-        val escapeeFrag = Ast.Anon 
-                              (Ast.Block { pragmas = [],
-                                           defns = [],                                                                       
-                                           head = SOME (Ast.Head (escaped, [])),
-                                           body = [],
-                                           loc = NONE })
-        val frag = Ast.Package { name = [], fragments = [ escapeeFrag, frag ] }
+        val frag = Ast.Anon 
+                       (Ast.Block { pragmas = pragmas,
+                                    defns = [],                                                                       
+                                    head = newHead,
+                                    body = body,
+                                    loc = loc })
         val prog = Fixture.extendRootRib prog escaped (Type.matches prog [])
     in
         trace ["fragment definition complete"];

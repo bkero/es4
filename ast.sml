@@ -41,19 +41,11 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
 type IDENT = Ustring.STRING
 
-type AST_NONCE = int
-
-type TYPEVAR_NONCE = int
+type NONCE = int
 
 datatype NAMESPACE =
-         Intrinsic
-       | Private of IDENT
-       | Protected of IDENT
-       | Public of IDENT
-       | Internal of IDENT
-       | UserNamespace of Ustring.STRING
-       | AnonUserNamespace of int
-       | LimitedNamespace of (IDENT * NAMESPACE)
+         OpaqueNamespace of NONCE
+       | StringNamespace of Ustring.STRING
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
@@ -137,9 +129,6 @@ datatype PRAGMA =
        | UseDefaultNamespace of EXPR
        | UseStrict
        | UseStandard
-       | Import of
-           { package: IDENT list,
-             name: IDENT }
 
      and FUNC_NAME_KIND =
          Ordinary
@@ -152,6 +141,9 @@ datatype PRAGMA =
      and CLS =
          Cls of
            { name: NAME,
+             privateNS: NAMESPACE,
+             protectedNS: NAMESPACE,
+             parentProtectedNSs: NAMESPACE list,
              typeParams: IDENT list,
              nonnullable: bool,
              dynamic: bool,
@@ -228,7 +220,7 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | TypeName of (IDENT_EXPR * AST_NONCE option)
+       | TypeName of (IDENT_EXPR * NONCE option)
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE
@@ -244,7 +236,7 @@ datatype PRAGMA =
          { expr:TYPE_EXPR,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
-       | TypeVarFixtureRef of TYPEVAR_NONCE  
+       | TypeVarFixtureRef of NONCE  
 
      and STMT =
          EmptyStmt
@@ -358,8 +350,6 @@ datatype PRAGMA =
        | QualifiedIdentifier of
            { qual : EXPR,
              ident : Ustring.STRING }
-       | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
-       | WildcardIdentifier            (* CF: not really an identifier, should be part of T *)
 
      and LITERAL =
          LiteralNull
@@ -393,7 +383,7 @@ datatype PRAGMA =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
-       | TypeVarFixture of TYPEVAR_NONCE 
+       | TypeVarFixture of NONCE
        | TypeFixture of TYPE_EXPR
        | MethodFixture of
            { func: FUNC,
@@ -483,6 +473,8 @@ withtype
 
      and CLASS_DEFN =
            { ns: EXPR option,
+             privateNS: NAMESPACE,
+             protectedNS: NAMESPACE,
              ident: IDENT,             
              nonnullable: bool,
              dynamic: bool,
@@ -510,9 +502,11 @@ withtype
 
      and CLASS_BLOCK = 
          { ns: EXPR option,
+           protectedNS: NAMESPACE,
+           privateNS: NAMESPACE,
            ident: IDENT,
            name: NAME option,
-             block: BLOCK }
+           block: BLOCK }
 
      and FOR_ENUM_HEAD =  (* FIXME: use this in FOR_ENUM_STMT *)
            { isEach: bool,
@@ -585,9 +579,6 @@ type VIRTUAL_VAL_FIXTURE =
 
 datatype FRAGMENT = 
          
-         Package of { name: IDENT list,
-                      fragments: FRAGMENT list }
-
-       | Anon of BLOCK
+         Anon of BLOCK
 
 end
