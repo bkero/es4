@@ -102,7 +102,9 @@ fun fname (n:Ast.FIXTURE_NAME) =
       | Ast.PropName n => name n
 
 fun rib (r:Ast.RIB) = 
-    "[rib: " ^ (join ", " (map (fn (n,f) => fname n) r)) ^ "]"
+    "[rib: " ^ (join ", " (map (fn (n,f) => fname n) 
+			       (List.take(r,(Int.min(length r,10))))))
+    ^ "]"
 
 fun ribs (rs:Ast.RIBS) = 
     "[ribs: " ^ (join ", " (map rib rs)) ^ "]"

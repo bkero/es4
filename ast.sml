@@ -312,8 +312,10 @@ datatype PRAGMA =
        | ApplyTypeExpr of {
              expr: EXPR,  (* apply expr to type list *)
              actuals: TYPE_EXPR list }
+
+       (* defs are rewritten into head by defn phase, and so defs are ignored in verifier and in eval *)
        | LetExpr of {
-             defs: BINDINGS,
+             defs: BINDINGS,  
              body: EXPR,
              head: HEAD option }
        | NewExpr of {

@@ -105,6 +105,11 @@ fun fmtType ty = if !doTrace
                  then LogErr.ty ty
                  else ""
 
+fun liftOption (f: 'a -> 'b) (x:'a option) (y:'b) : 'b =
+    case x of
+        NONE => y
+      | SOME xx => f xx
+
 (****************************** standard types *************************)
 
 val undefinedType   = Ast.SpecialType Ast.Undefined
@@ -184,8 +189,11 @@ and resolveExprToNamespace (env:ENV)
         in
             case resolveMnameToFixture env mname of
                 SOME (Ast.NamespaceFixture ns) => ns
-              | _ => error ["namespace expression did not resolve ",
-			    "to namespace fixture"]
+              | _ => 
+                let in
+                    warning ["namespace expression did not resolve to namespace fixture"];
+                    Ast.Intrinsic
+                end
         end
       | _ => error ["unexpected expression type ",
 		    "in namespace context"]
@@ -218,7 +226,9 @@ fun resolveMnameToFixtureTy (env:ENV)
 	    SOME fixture => typeOfFixture env fixture 
       | NONE => 
         let in
-            warning ["Unbound multiname ", LogErr.multiname mname];
+            warning ["Unbound multiname ", LogErr.multiname mname
+                      , " in ribs ", LogErr.ribs (#ribs env)  
+                    ];
             anyType
         end
 
@@ -234,7 +244,7 @@ fun checkMatch (env:ENV)
         trace ["checkMatch ", LogErr.ty src, " vs. ", LogErr.ty dst]; 
         if not (#strict env) orelse Type.groundMatches src dst
         then ()
-        else warning ["checkMatch failed: ", LogErr.ty src, " vs. ", LogErr.ty dst]
+        else warning ["checkMatch: incompatible types in assignment:\n    ", LogErr.ty src, "\nvs.\n    ", LogErr.ty dst]
     end
 
 (* t1 and t2 are normalized *)
@@ -280,11 +290,12 @@ and verifyFixtureName (env:ENV) (fname:Ast.FIXTURE_NAME) : Ast.TYPE_EXPR =
        (* trace ["Verifying fixture name ", LogErr.fname fname, 
                " in ribs ", LogErr.ribs (#ribs env)]; *)
         case List.find (fn (fname2,fixture) => fname2=fname) (hd (#ribs env)) of
-            SOME (_,f) => typeOfFixture env f
+            SOME (_,f) => verifyType env (typeOfFixture env f)
           | NONE => 
             let in
-                warning ["Unbound fixture name ", LogErr.fname fname, 
-                         " in ribs ", LogErr.ribs (#ribs env)];
+                warning ["Unbound fixture name ", LogErr.fname fname
+                          ," in ribs ", LogErr.ribs (#ribs env)
+                        ];
                 anyType
             end
     end
@@ -300,26 +311,19 @@ and verifyInits (env:ENV) (inits:Ast.INITS)
         ()
     end
 
-
-and verifyInitsOption (env:ENV)
-		              (inits:Ast.INITS option)
-    : unit =
-    case inits of
-        SOME inits => verifyInits env inits
-      | _ => LogErr.internalError ["missing inits"]    (* FIXME: why must inits be present? *)
-
+(* verifyHead returns an extended environment *)
 
 and verifyHead (env:ENV) 
                (head:Ast.HEAD)
-    : unit =
+    : ENV =
     let
         val Ast.Head (rib, inits) = head
-        val _ = trace ["verifying head with ", 
-                       Int.toString (length rib), 
-                       " entry rib"];
+        val env' = withRib env rib
     in        
+        trace ["verifying head with ", Int.toString (length rib), " entry rib"];
         verifyRib env rib;
-        verifyInits (withRib env rib) inits
+        verifyInits env' inits;
+        env'
     end
 
 and verifyLvalue (env:ENV)
@@ -502,6 +506,48 @@ and verifyExpr (env:ENV)
 
           | Ast.LiteralExpr le =>
             let
+            in
+                case le of
+                    Ast.LiteralFunction func => 
+                    verifyFunc env func
+                  (*
+                  | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyType env ty
+                   *)
+
+                  | Ast.LiteralObject { expr, ty } =>
+                    let
+                        fun verifyField { kind, name, init } =
+                            (verifyExpr env init; ())
+                    in
+                        List.app verifyField expr;
+                        liftOption (verifyType env) ty anyType
+                    end                    
+
+                  (* FIXME handle comprehensions *)
+                  | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => 
+                    let                        
+                    in
+                        List.map (verifyExpr env) exprs;
+                        liftOption (verifyType env) ty (Ast.ArrayType [anyType])
+                    end
+
+                  | Ast.LiteralNull => nullType
+                  | Ast.LiteralUndefined => undefinedType
+                  | Ast.LiteralDouble _ => doubleType
+                  | Ast.LiteralDecimal _ => decimalType
+                  | Ast.LiteralInt _ => intType
+                  | Ast.LiteralUInt _ => uintType
+                  | Ast.LiteralBoolean _ => booleanType
+                  | Ast.LiteralString _ => stringType
+                  | Ast.LiteralXML _ => anyType
+                  | Ast.LiteralNamespace _ => NamespaceType
+                  | Ast.LiteralRegExp _ => RegExpType
+            end
+
+(*
+
+          | Ast.LiteralExpr le =>
+            let
                 val resultType = case le of
                                      Ast.LiteralNull => nullType
                                    | Ast.LiteralUndefined => undefinedType
@@ -547,6 +593,7 @@ and verifyExpr (env:ENV)
                   | x => ();
                 resultType
             end
+*)
 
           | Ast.CallExpr {func, actuals} =>
             let
@@ -593,14 +640,13 @@ and verifyExpr (env:ENV)
                 anyType
             end
 
-          | Ast.LetExpr { defs, head, body } =>
+          | Ast.LetExpr { defs=_, head as SOME (Ast.Head (rib, inits)), body } =>
             let
-                val defs' = defs 
-                val head' = Option.map (verifyHead env) head
-                (* FIXME: verify body with `head' rib in env *)
-                val t = verifySub body
+                val _ = verifyRib env rib
+                val env' = withRib env rib
             in
-                t
+                verifyInits env' inits;
+                verifyExpr env' body
             end
 
           | Ast.NewExpr { obj, actuals } =>
@@ -694,8 +740,7 @@ and verifyExpr (env:ENV)
           | Ast.InitExpr (it, head, inits) =>
             let
             in
-                verifyHead env head;
-                verifyInits env inits;
+                verifyInits (verifyHead env head) inits;
                 anyType
             end
 
@@ -865,7 +910,7 @@ and verifyCatchClause (env:ENV)
     in
         verifyType env ty;
         Option.app (verifyRib env) rib;
-        verifyInitsOption env inits;
+        Option.map (verifyInits env) inits;
         verifyBlock blockEnv block
     end
 
@@ -880,32 +925,26 @@ and verifyBlock (env:ENV)
                 (b:Ast.BLOCK)
     : unit =
     let
-        val Ast.Block { head, body, loc, pragmas, ... } = b
-	val env = withStrict env (strictness (#strict env) pragmas)
-        val ribOpt = case head of 
-			 NONE => NONE
-		       | SOME (Ast.Head (rib, _)) => SOME rib
-        val env = withRibOpt env ribOpt
-    in 
-        LogErr.setLoc loc;
-        Option.app (verifyHead env) head;
-        List.app (verifyStmt env) body
+       val Ast.Block { head as SOME head', body, loc, pragmas, ... } = b
+	    val env = withStrict env (strictness (#strict env) pragmas)
+        val _ = LogErr.setLoc loc
+        val env' = verifyHead env head'
+    in
+        List.app (verifyStmt env') body
     end
 
-
+(* returns the normalized type of this function *)
 and verifyFunc (env:ENV)
                (func:Ast.FUNC)
-    : unit =
+    : Ast.TYPE_EXPR =
     let
-        val Ast.Func { name, fsig, native, block, param, defaults, ty, loc } = func
-        val (Ast.Head (paramRib, _)) = param
-        val blockEnv = withRib env paramRib
+        val Ast.Func { name, fsig=_, native, block, param, defaults, ty, loc } = func
+        val blockEnv = verifyHead env param
     in
         LogErr.setLoc loc;
-        verifyType env ty;
-        verifyHead env param;
         map (verifyExpr env) defaults;
-        Option.app (verifyBlock blockEnv) block
+        Option.app (verifyBlock blockEnv) block;
+        verifyType env ty
     end
 
 
@@ -933,7 +972,8 @@ and verifyFixture (env:ENV)
                      (* FIXME: need to construct a sort of odd env for settings verification. *)
                      (* verifyHead instanceEnv settings; *)
                      map (verifyExpr instanceEnv) superArgs;
-                     verifyFunc instanceEnv func
+                     verifyFunc instanceEnv func;
+                     ()
                  end
          end
 
@@ -953,8 +993,9 @@ and verifyFixture (env:ENV)
         let
         in
             verifyType env ty;
-            Option.app (verifyFunc env) getter;
-            Option.app (verifyFunc env) setter
+            Option.map (verifyFunc env) getter;
+            Option.map (verifyFunc env) setter;
+            ()
         end
 
       | _ => ()
@@ -997,12 +1038,12 @@ and verifyTopFragment (prog:Fixture.PROGRAM)
                       (strict:bool) 
                       (frag:Ast.FRAGMENT) 
   : Ast.FRAGMENT =
-    if true (* FIXME: strict *) 
+    if strict 
     then
         let 
             val env = newEnv prog strict
         in
-            trace ["verifyTopFragment strict=", if strict then "true" else "false"];
+            trace ["verifyTopFragment"];
             if !doTraceFrag then
                 let in
                     print "verifyTopFragment:printing\n";

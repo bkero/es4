@@ -51,6 +51,7 @@ fun usage () =
                "    -3            process input files in 3rd edition mode\n",
                "(*) -4            process input files in 4th edition mode\n",
                "    -b            boot standard library from scratch (ignore image file)\n",
+               "    -bv           verify standard library",
                "    -q            quiet (suppress startup banner)\n",
                "\n",
                "    -h            display this help message and exit\n",
@@ -114,6 +115,7 @@ fun consumeOption (opt:string) : bool =
                                        SOME r => (r := true; false)
                                      | NONE => true)
       | ([#"-", #"b"]) => false
+      | ([#"-", #"b", #"v"]) => (Boot.verifyBuiltins := true; false)
       (*
       | (#"-" :: #"P" :: rest) =>
         (case Int.fromString (String.implode rest) of

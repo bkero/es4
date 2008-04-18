@@ -174,16 +174,14 @@ fun loadFiles (prog:Fixture.PROGRAM)
         f prog [] fs
     end
 
-val verifyBuiltins = false (* FIXME *)
+val verifyBuiltins = ref false (* FIXME *)
 
 fun verifyFiles prog fs =
     let
         fun ver (file, frag) =
             (trace ["verifying boot file ", file];
              (file,
-              if verifyBuiltins
-              then Verify.verifyTopFragment prog verifyBuiltins frag
-              else frag))
+              Verify.verifyTopFragment prog (!verifyBuiltins) frag))
     in
         map ver fs
     end
@@ -351,10 +349,10 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val _ = Mach.setRib glob (Fixture.getRootRib prog)
 
-        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
-        val clsFrag = Verify.verifyTopFragment prog verifyBuiltins clsFrag
-        val funFrag = Verify.verifyTopFragment prog verifyBuiltins funFrag
-        val ifaceFrag = Verify.verifyTopFragment prog verifyBuiltins ifaceFrag
+        val objFrag = Verify.verifyTopFragment prog (!verifyBuiltins) objFrag 
+        val clsFrag = Verify.verifyTopFragment prog (!verifyBuiltins) clsFrag
+        val funFrag = Verify.verifyTopFragment prog (!verifyBuiltins) funFrag
+        val ifaceFrag = Verify.verifyTopFragment prog (!verifyBuiltins) ifaceFrag
         val otherProgs = verifyFiles prog otherFrags
 
         val regs = Mach.makeInitialRegs prog glob
