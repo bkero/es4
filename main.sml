@@ -79,11 +79,8 @@ fun usage () =
                "        native    native operations\n",
                "        boot      standard library boot sequence\n",
                "        ns        namespaces in traces\n",
+               "        type      operations on types\n",
                "        stack     stack operations\n"])
-
-fun updateLangEd (regs:Mach.REGS)
-    : unit =
-    Fixture.updateLangEd (#prog regs) (!langEd)
 
 fun findTraceOption (tname:string)
     : (bool ref) option =
@@ -186,7 +183,7 @@ fun define prog argvRest =
         val frags = parse argvRest
         fun f prog accum (frag::frags) = 
             let 
-                val (prog', frag') = Defn.defTopFragment prog frag
+                val (prog', frag') = Defn.defTopFragment prog frag (!langEd)
             in
                 f prog' (frag'::accum) frags
             end
@@ -216,6 +213,7 @@ fun eval regs argvRest =
         val (prog, frags) = verify (#prog regs) argvRest
         val regs = Eval.withProg regs prog
     in
+        Mach.setLangEd regs (!langEd);
         Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
@@ -275,14 +273,14 @@ fun repl (regs:Mach.REGS)
             in
                 case toks of
                     [":quit"] => raise quitException
-                  | [":3"] => (langEd := 3; updateLangEd (!regsCell))
-                  | [":4"] => (langEd := 4; updateLangEd (!regsCell))
+                  | [":3"] => (langEd := 3)
+                  | [":4"] => (langEd := 4)
                   | [":q"] => raise quitException
                   | [":h"] => help ()
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell))
+                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)))
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
@@ -319,14 +317,16 @@ fun repl (regs:Mach.REGS)
                     in
                         if not (!doDefn) then () else
                         let
-                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
+                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag (!langEd)
                             val frag = Verify.verifyTopFragment prog true frag
                         in
                             regsCell := Eval.withProg regs prog;
                             if not (!doEval) then () else
                             let
-					            val _ = Mach.resetStack (!regsCell)
-                                val res = (Eval.evalTopFragment (!regsCell) frag)
+                                val regs = !regsCell
+					            val _ = Mach.resetStack regs
+                                val _ = Mach.setLangEd regs (!langEd)
+                                val res = (Eval.evalTopFragment regs frag)
 						            handle Eval.ThrowException v => (tidyUp (); v)
                             in
                                 case res of

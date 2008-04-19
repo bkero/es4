@@ -81,14 +81,8 @@ fun error ss = case !loc of
 
 fun namespace (ns:Ast.NAMESPACE) =
     case ns of
-        Ast.Intrinsic=> "intrinsic"
-      | Ast.Private i=> "<private " ^ (Ustring.toAscii i) ^ ">"
-      | Ast.Protected i=> "<protected " ^ (Ustring.toAscii i) ^ ">"
-      | Ast.Public i => "<public " ^ (Ustring.toAscii i) ^ ">"
-      | Ast.Internal i => "<internal " ^ (Ustring.toAscii i) ^ ">"
-      | Ast.UserNamespace i => "<user \"" ^ (Ustring.toAscii i) ^ "\">"
-      | Ast.AnonUserNamespace i => "<anon #" ^ (Int.toString i) ^ ">"
-      | Ast.LimitedNamespace (i,n) => "<limited " ^ (Ustring.toAscii i) ^ " => " ^ (namespace n) ^ ">"
+        Ast.OpaqueNamespace i => "<ns #" ^ (Int.toString i) ^ ">"
+	  | Ast.StringNamespace s => "<ns '" ^ (Ustring.toAscii s) ^"'>"
 
 fun fullName ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
 
@@ -141,13 +135,13 @@ fun ty t =
           | Ast.SpecialType Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
 	    "<TypeName: {" 
 	    ^ (nsssToString openNamespaces) 
 	    ^ "}::" 
 	    ^ (Ustring.toAscii ident) 
 	    ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => 
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) => 
 	    "<TypeName: " 
 	    ^ (nsExprToString qual) 
 	    ^ "::" 

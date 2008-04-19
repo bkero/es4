@@ -40,6 +40,7 @@ val doTrace = ref false
 fun log ss = LogErr.log ("[boot] " :: ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.hostError ss
+val langEd = 4
 
 
 fun lookupRoot (prog:Fixture.PROGRAM)
@@ -48,14 +49,19 @@ fun lookupRoot (prog:Fixture.PROGRAM)
     let
         val _ = trace ["fetching ", LogErr.name n, " class definition"];
         val rib = Fixture.getRootRib prog
+        val _ = trace ["fetching2 ", LogErr.name n, " class definition"];
         val fix = Fixture.getFixture rib (Ast.PropName n)
+        val _ = trace ["fetching3 ", LogErr.name n, " class definition"];
         val cls = case fix of
                       Ast.ClassFixture cls => cls
                     | _ => error [LogErr.name n, " did not resolve to a class fixture"]
+        val _ = trace ["fetching4 ", LogErr.name n, " class definition"];
         val Ast.Cls { instanceType, ... } = cls
+        val _ = trace ["fetching5 ", LogErr.name n, " class definition"];
         val ty = case instanceType of 
-                     Ast.Ty { expr = Ast.InstanceType ity, ... } => ity
+                     Ast.InstanceType ity => ity
                    | _ => error [LogErr.name n, " does not have an instance type"]
+        val _ = trace ["fetched ", LogErr.name n, " class definition"];
     in
         (cls, ty)
     end
@@ -90,7 +96,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.Ty { expr=Ast.InstanceType cty, ribId=NONE },
+                           { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
                                        dontEnum = true,
@@ -148,7 +154,7 @@ fun loadFile (prog:Fixture.PROGRAM)
         val frag = Parser.parseFile f
         val _ = trace ["defining boot file ", f]
     in
-        Defn.defTopFragment prog frag
+        Defn.defTopFragment prog frag langEd
     end
 
 fun loadFiles (prog:Fixture.PROGRAM) 
@@ -159,7 +165,7 @@ fun loadFiles (prog:Fixture.PROGRAM)
             let 
                 val _ = trace ["parsing and defining boot file ", file]
                 val frag = Parser.parseFile file
-                val (prog', frag') = Defn.defTopFragment prog frag
+                val (prog', frag') = Defn.defTopFragment prog frag langEd
             in
                 f prog' ((file, frag')::accum) files
             end
@@ -220,9 +226,9 @@ fun describeGlobal (regs:Mach.REGS) =
 
 fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
     let
-        fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.nons_Object orelse
+        fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.public_Object orelse
                                                            n = Name.intrinsic_Class orelse
-                                                           n = Name.nons_Function orelse
+                                                           n = Name.public_Function orelse
                                                            n = Name.intrinsic_Interface
                                                         then false
                                                         else true
@@ -233,10 +239,7 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
           | filterHeadOpt NONE = NONE
     in
         case frag of 
-            Ast.Package { name, fragments } => 
-            Ast.Package { name = name, 
-                          fragments = map filterOutRootClasses fragments }
-          | Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
+            Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
             Ast.Anon (Ast.Block { pragmas = pragmas, 
                                   defns = defns, 
                                   head = filterHeadOpt head, 
@@ -249,8 +252,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val dir = OS.Path.joinDirFile {dir = baseDir, file = "builtins"}
         fun builtin file = OS.Path.joinDirFile {dir = dir, file = file}
         val _ = Native.registerNatives ();
-        val langEd = 4
-        val prog = Fixture.mkProgram langEd Defn.initRib
+        val prog = Fixture.mkProgram Defn.initRib
 
         (*
          * We have to do a small bit of delicate work here because we have to 
@@ -301,8 +303,7 @@ fun boot (baseDir:string) : Mach.REGS =
 
                        builtin "Math.es",
                        builtin "Global.es",
-                       
-                       
+                                              
                        builtin "Name.es",
 
                        builtin "Error.es",
@@ -327,21 +328,22 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "Date.es",
                        builtin "MetaObjects.es", (* before JSON *)
                        builtin "JSON.es",
-                       builtin "Vector.es",
-                       builtin "Map.es",
+                       (* builtin "Vector.es", *)
+                       (* builtin "Map.es", *)
                        builtin "DecimalContext.es"
                  ]
 
-        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
-
         val glob = 
             let
-                val (_, objIty) = lookupRoot prog Name.nons_Object
+                val (_, objIty) = lookupRoot prog Name.public_Object
                 val objTag = Mach.ClassTag objIty
             in
                 Mach.newObj objTag Mach.Null NONE
             end
 
+        val _ = Mach.setRib glob (Fixture.getRootRib prog)
+
+        val objFrag = Verify.verifyTopFragment prog verifyBuiltins objFrag
         val clsFrag = Verify.verifyTopFragment prog verifyBuiltins clsFrag
         val funFrag = Verify.verifyTopFragment prog verifyBuiltins funFrag
         val ifaceFrag = Verify.verifyTopFragment prog verifyBuiltins ifaceFrag
@@ -350,11 +352,20 @@ fun boot (baseDir:string) : Mach.REGS =
         val regs = Mach.makeInitialRegs prog glob
         val _ = Mach.setBooting regs true
 
+        (* BEGIN SPEED HACK *)
+        (* 
+         * This wins a factor of 60 in performance. It's worth it.
+         * Just don't copy this publicense to the spec. 
+         *)
+        val _ = Type.cacheLoad := SOME (fn i => Mach.findInTyCache regs i)
+        val _ = Type.cacheSave := SOME (fn i => fn t => (Mach.updateTyCache regs (i, t); ()))
+        (* END SPEED HACK *)                
+
         val (objClass, objClassClosure, objClassObj) = 
-            instantiateRootClass regs Name.nons_Object
+            instantiateRootClass regs Name.public_Object
 
         val (_, _, classClassObj) = instantiateRootClass regs Name.intrinsic_Class
-        val (_, _, funClassObj) = instantiateRootClass regs Name.nons_Function
+        val (_, _, funClassObj) = instantiateRootClass regs Name.public_Function
         val (_, _, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface
 
         (* Allocate runtime representations of anything in the initRib. *)
@@ -365,22 +376,28 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val _ = describeGlobal regs;
     in
-        completeClassFixtures regs Name.nons_Object objClassObj;
+
+        trace ["completing class fixtures"];
+        completeClassFixtures regs Name.public_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
-        completeClassFixtures regs Name.nons_Function funClassObj;
+        completeClassFixtures regs Name.public_Function funClassObj;
         completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
 
         (* NB: order matters here. *)
+        trace ["initializing class prototypes"];
         Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
         Eval.initClassPrototype regs ifaceClassObj;
 
+        trace ["evaluating other files"];
         evalFiles regs otherFrags;
 
+        trace ["executing object constructor on global object"];
         runObjectConstructorOnGlobalObject 
             regs objClass objClassObj objClassClosure;
 
+        trace ["evaluating top fragments of root-class files"];
         Eval.evalTopFragment regs (filterOutRootClasses objFrag);
         Eval.evalTopFragment regs (filterOutRootClasses clsFrag);
         Eval.evalTopFragment regs (filterOutRootClasses funFrag);
@@ -391,6 +408,7 @@ fun boot (baseDir:string) : Mach.REGS =
         describeGlobal regs;
 
         (* Do a small bit of rewiring of the root prototype chains. *)
+        trace ["configuring root-class prototype chains"];
         Mach.setProto funClassObj (Eval.getPrototype regs funClassObj);
         Mach.setProto objClassObj (Mach.getProto funClassObj);
         Mach.setProto classClassObj (Mach.getProto funClassObj);
