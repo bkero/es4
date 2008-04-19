@@ -188,6 +188,7 @@ fun ty t =
 	    (ty expr) ^ (if nullable then "?" else "!")
           | Ast.InstanceType { name=n, ... } => 
 	    name n
+	  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"     
 	  | Ast.LamType { params, body } => 
 	    "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
     end

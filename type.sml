@@ -249,6 +249,9 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
                            typeArgs = map f typeArgs,
                            nonnullable=nonnullable, 
                            superTypes=superTypes, ty=ty, dynamic=dynamic } 
+      | Ast.TypeVarFixtureRef _ => ty
+(*      | _ => (error ["Unknown type ", LogErr.ty ty]; anyType)
+*)
 
 fun foreachTyExpr (f:Ast.TYPE_EXPR -> unit) (ty:Ast.TYPE_EXPR) : unit =
     let in

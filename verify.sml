@@ -274,8 +274,9 @@ fun verifyType (env:ENV)
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
         val norm = 
-            (* FIXME: it is *super wrong* to just be using the root rib here. *)
-            Type.normalize [Fixture.getRootRib (#prog env)] ty
+            (* FIXME: it is *super wrong* to just be using the root rib here. 
+            Type.normalize [Fixture.getRootRib (#prog env)] ty *)
+            Type.normalize (#ribs env) ty
             handle LogErr.TypeError e => 
                    let in
                        if (#strict env) 
@@ -324,9 +325,10 @@ and verifyHead (env:ENV)
         val Ast.Head (rib, inits) = head
         val env' = withRib env rib
     in        
-        trace ["verifying head with ", Int.toString (length rib), " entry rib"];
+        trace ["verifying head with rib ", LogErr.rib rib, " in ribs ", LogErr.ribs (#ribs env)];
         verifyRib env rib;
         verifyInits env' inits;
+        trace ["done with verifying head"];
         env'
     end
 
@@ -940,13 +942,19 @@ and verifyFunc (env:ENV)
                (func:Ast.FUNC)
     : Ast.TYPE_EXPR =
     let
-        val Ast.Func { name, fsig=_, native, block, param, defaults, ty, loc } = func
-        val blockEnv = verifyHead env param
+        val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
+                       native, block, param, defaults, ty, loc } = func
+(* FIXME: use Public "" as namespace of type variables? *)
+        val rib = map (fn id => (Ast.PropName {ns=Ast.Public (Ustring.fromString ""), id=id},
+                                 Ast.TypeVarFixture (Parser.nextAstNonce ())))
+                  typeParams
+        val env' = withRib env rib
+        val blockEnv = verifyHead env' param
     in
         LogErr.setLoc loc;
-        map (verifyExpr env) defaults;
+        map (verifyExpr env') defaults;
         Option.app (verifyBlock blockEnv) block;
-        verifyType env ty
+        verifyType env' ty
     end
 
 
