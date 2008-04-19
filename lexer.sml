@@ -391,21 +391,17 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         *)
         let
 	    fun readDouble (isHex:bool) (str:string) = 
-		let
-		    val n = if isHex 
-			    then 
+			if isHex 
+			then 
 				case Word32.fromString str of 
-				    SOME w => Word32.toLargeInt w
+				    SOME w => DoubleLiteral (Real64.fromLargeInt (Word32.toLargeInt w))
 				  | NONE => error ["LexError: error converting hex literal"]
-			    else 
-				case LargeInt.fromString str of
-				    SOME li => li
-				  | NONE => error ["LexError: error converting int literal"]
-		in
-		    DoubleLiteral (Real64.fromLargeInt n)
-		end
-
-            fun countExpChars chars =
+			else 
+				case Real64.fromString str of
+				    SOME li => DoubleLiteral li
+				  | NONE => error ["LexError: error converting double literal"]
+							
+        fun countExpChars chars =
             let
                 val numSignChars = countInRanges {min=0} [(0wx2B,0wx2B) , (0wx2D,0wx2D)] chars (* [+-] *)
                 val rest  = case numSignChars of
