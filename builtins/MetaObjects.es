@@ -33,13 +33,10 @@
  *
  */
 
-package
-{
-    import ECMAScript4_Internal.*;
 
+    use namespace ECMAScript4_Internal;
     use namespace helper;
     use namespace intrinsic;
-    use namespace __ES4__;
     
     helper function numberconversion(t)
         numbertypes.indexOf(t) != -1;
@@ -308,7 +305,6 @@ package
     registerMetaObject(String, Stringtype, classtypes);
     registerMetaObject(boolean, booleantype, classtypes);
     registerMetaObject(Boolean, Booleantype, classtypes);
-}
 
     /*
 

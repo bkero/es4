@@ -49,10 +49,6 @@
  * verified.
  */
 
-package
-{
-    use namespace __ES4__;
-
     /* E262-3 15.11.6.1; 15.11.7 */
     public dynamic class EvalError extends Error
     {
@@ -73,4 +69,3 @@ package
         /* INFORMATIVE */
         public prototype var message = "Illegal use of 'eval'";
     }
-}

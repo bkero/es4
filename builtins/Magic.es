@@ -55,10 +55,7 @@
  * magically know about "magic" when the library files are being
  * compiled.
  */
-package
-{
     use namespace intrinsic;
-    use namespace __ES4__;
 
     /* --------------------------------------------------------------
 
@@ -149,5 +146,3 @@ package
        containing the characters from A followed by the characters
        from B.  */
     magic native function stringAppend(a : string, b : string) : string;
-}
-

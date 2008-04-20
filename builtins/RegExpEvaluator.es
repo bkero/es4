@@ -40,13 +40,10 @@
  * Status: Complete, not reviewed, not tested.
  */
 
-package RegExpInternals
-{
-    use default namespace public;
+    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import Unicode.*;
+    use namespace RegExpInternals;
+    use default namespace RegExpInternals;
 
     /* Encapsulation of compiled regular expression as returned by the
        compiler.
@@ -481,7 +478,7 @@ package RegExpInternals
     class CharsetAdhoc! extends CharsetMixin implements CharsetMatcher
     {
         function CharsetAdhoc(s: string)
-            : cs = explodeString(s) 
+            : cs = Unicode::explodeString(s) 
             { }
 
         public function match(ctx: Context, c: string): boolean {
@@ -513,56 +510,56 @@ package RegExpInternals
         const tester: function(double): boolean;
     }
 
-    const charset_linebreak : CharsetMixin = new CharsetAdhoc(Unicode.linebreaks);
+    const charset_linebreak : CharsetMixin = new CharsetAdhoc(Unicode::linebreaks);
     const charset_notlinebreak : CharsetMixin = new CharsetComplement(charset_linebreak);
 
-    const charset_space : CharsetMixin = new CharsetAdhoc(Unicode.blanks + Unicode.linebreaks);
+    const charset_space : CharsetMixin = new CharsetAdhoc(Unicode::blanks + Unicode::linebreaks);
     const charset_notspace : CharsetMixin = new CharsetComplement(charset_space);
 
-    const charset_digit : CharsetMixin = new CharsetAdhoc(Unicode.decimal_digits);
+    const charset_digit : CharsetMixin = new CharsetAdhoc(Unicode::decimal_digits);
     const charset_notdigit : CharsetMixin = new CharsetComplement(charset_digit);
 
-    const charset_word : CharsetMixin = new CharsetAdhoc(Unicode.alphanumerics);
+    const charset_word : CharsetMixin = new CharsetAdhoc(Unicode::alphanumerics);
     const charset_notword : CharsetMixin = new CharsetComplement(charset_word);
 
     const unicode_named_classes = {
-        "L":  new CharsetUnicodeClass(Unicode.isUnicodeL),
-        "Ll": new CharsetUnicodeClass(Unicode.isUnicodeLl),
-        "Lm": new CharsetUnicodeClass(Unicode.isUnicodeLm),
-        "Lo": new CharsetUnicodeClass(Unicode.isUnicodeLo),
-        "Lt": new CharsetUnicodeClass(Unicode.isUnicodeLt),
-        "Lu": new CharsetUnicodeClass(Unicode.isUnicodeLu),
-        "M":  new CharsetUnicodeClass(Unicode.isUnicodeM),
-        "Mc": new CharsetUnicodeClass(Unicode.isUnicodeMc),
-        "Me": new CharsetUnicodeClass(Unicode.isUnicodeMe),
-        "Mn": new CharsetUnicodeClass(Unicode.isUnicodeMn),
-        "N":  new CharsetUnicodeClass(Unicode.isUnicodeN),
-        "Nd": new CharsetUnicodeClass(Unicode.isUnicodeNd),
-        "Nl": new CharsetUnicodeClass(Unicode.isUnicodeNl),
-        "No": new CharsetUnicodeClass(Unicode.isUnicodeNo),
-        "P":  new CharsetUnicodeClass(Unicode.isUnicodeP),
-        "Pc": new CharsetUnicodeClass(Unicode.isUnicodePc),
-        "Pd": new CharsetUnicodeClass(Unicode.isUnicodePd),
-        "Pe": new CharsetUnicodeClass(Unicode.isUnicodePe),
-        "Pf": new CharsetUnicodeClass(Unicode.isUnicodePf),
-        "Pi": new CharsetUnicodeClass(Unicode.isUnicodePi),
-        "Po": new CharsetUnicodeClass(Unicode.isUnicodePo),
-        "Ps": new CharsetUnicodeClass(Unicode.isUnicodePs),
-        "S":  new CharsetUnicodeClass(Unicode.isUnicodeS),
-        "Sc": new CharsetUnicodeClass(Unicode.isUnicodeSc),
-        "Sk": new CharsetUnicodeClass(Unicode.isUnicodeSk),
-        "Sm": new CharsetUnicodeClass(Unicode.isUnicodeSm),
-        "So": new CharsetUnicodeClass(Unicode.isUnicodeSo),
-        "Z":  new CharsetUnicodeClass(Unicode.isUnicodeZ),
-        "Zl": new CharsetUnicodeClass(Unicode.isUnicodeZl),
-        "Zp": new CharsetUnicodeClass(Unicode.isUnicodeZp),
-        "Zs": new CharsetUnicodeClass(Unicode.isUnicodeZs),
-        "C":  new CharsetUnicodeClass(Unicode.isUnicodeC),
-        "Cc": new CharsetUnicodeClass(Unicode.isUnicodeCc),
-        "Cf": new CharsetUnicodeClass(Unicode.isUnicodeCf),
-        "Cn": new CharsetUnicodeClass(Unicode.isUnicodeCn),
-        "Co": new CharsetUnicodeClass(Unicode.isUnicodeCo),
-        "Cs": new CharsetUnicodeClass(Unicode.isUnicodeCs)
+        "L":  new CharsetUnicodeClass(Unicode::isUnicodeL),
+        "Ll": new CharsetUnicodeClass(Unicode::isUnicodeLl),
+        "Lm": new CharsetUnicodeClass(Unicode::isUnicodeLm),
+        "Lo": new CharsetUnicodeClass(Unicode::isUnicodeLo),
+        "Lt": new CharsetUnicodeClass(Unicode::isUnicodeLt),
+        "Lu": new CharsetUnicodeClass(Unicode::isUnicodeLu),
+        "M":  new CharsetUnicodeClass(Unicode::isUnicodeM),
+        "Mc": new CharsetUnicodeClass(Unicode::isUnicodeMc),
+        "Me": new CharsetUnicodeClass(Unicode::isUnicodeMe),
+        "Mn": new CharsetUnicodeClass(Unicode::isUnicodeMn),
+        "N":  new CharsetUnicodeClass(Unicode::isUnicodeN),
+        "Nd": new CharsetUnicodeClass(Unicode::isUnicodeNd),
+        "Nl": new CharsetUnicodeClass(Unicode::isUnicodeNl),
+        "No": new CharsetUnicodeClass(Unicode::isUnicodeNo),
+        "P":  new CharsetUnicodeClass(Unicode::isUnicodeP),
+        "Pc": new CharsetUnicodeClass(Unicode::isUnicodePc),
+        "Pd": new CharsetUnicodeClass(Unicode::isUnicodePd),
+        "Pe": new CharsetUnicodeClass(Unicode::isUnicodePe),
+        "Pf": new CharsetUnicodeClass(Unicode::isUnicodePf),
+        "Pi": new CharsetUnicodeClass(Unicode::isUnicodePi),
+        "Po": new CharsetUnicodeClass(Unicode::isUnicodePo),
+        "Ps": new CharsetUnicodeClass(Unicode::isUnicodePs),
+        "S":  new CharsetUnicodeClass(Unicode::isUnicodeS),
+        "Sc": new CharsetUnicodeClass(Unicode::isUnicodeSc),
+        "Sk": new CharsetUnicodeClass(Unicode::isUnicodeSk),
+        "Sm": new CharsetUnicodeClass(Unicode::isUnicodeSm),
+        "So": new CharsetUnicodeClass(Unicode::isUnicodeSo),
+        "Z":  new CharsetUnicodeClass(Unicode::isUnicodeZ),
+        "Zl": new CharsetUnicodeClass(Unicode::isUnicodeZl),
+        "Zp": new CharsetUnicodeClass(Unicode::isUnicodeZp),
+        "Zs": new CharsetUnicodeClass(Unicode::isUnicodeZs),
+        "C":  new CharsetUnicodeClass(Unicode::isUnicodeC),
+        "Cc": new CharsetUnicodeClass(Unicode::isUnicodeCc),
+        "Cf": new CharsetUnicodeClass(Unicode::isUnicodeCf),
+        "Cn": new CharsetUnicodeClass(Unicode::isUnicodeCn),
+        "Co": new CharsetUnicodeClass(Unicode::isUnicodeCo),
+        "Cs": new CharsetUnicodeClass(Unicode::isUnicodeCs)
     };
 
     function unicodeClass(name: string, complement: boolean): CharsetMixin? {
@@ -571,4 +568,3 @@ package RegExpInternals
             return null;
         return complement ? new CharsetComplement(c): c;
     }
-}

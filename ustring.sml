@@ -316,9 +316,13 @@ val regexp_                  = fromString "regexp"
 val exception_               = fromString "exception"
 val emit_                    = fromString "emit"
 val parse_                   = fromString "parse"
+val public_                  = fromString "public"
+val private_                 = fromString "private"
+val protected_               = fromString "protected"
 val magic_                   = fromString "magic"
 val meta_                    = fromString "meta"
 val informative_             = fromString "informative"
+val intrinsic_               = fromString "intrinsic"
 val cursor_                  = fromString "cursor"
 val native_function_         = fromString "native function"
 val interface_               = fromString "interface"
@@ -408,6 +412,11 @@ val ror_                     = fromString "ror"
 val rol_                     = fromString "rol"
 
 val ES4_                     = fromString "__ES4__"
+val ECMAScript4_Internal_    = fromString "ECMAScript4_Internal"
+
+val Unicode_                 = fromString "Unicode"
+val helper_                  = fromString "helper"
+val RegExpInternals_         = fromString "RegExpInternals"
 
 val emptySource              = []
 

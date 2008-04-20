@@ -42,13 +42,10 @@
  * "double" value.
  */
 
-package
-{
-    use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
-    import ECMAScript4_Internal.*;
+    use default namespace public;
 
     __ES4__ type AnyNumber = (double|decimal|Number!);
 
@@ -122,4 +119,3 @@ package
         prototype function toPrecision(this: AnyNumber, precision)
             this.intrinsic::toPrecision(precision);
     }
-}

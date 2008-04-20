@@ -39,13 +39,8 @@
  *
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import JSON.*;
 
     /*
      * The boolean class is final and non-dynamic because most
@@ -86,4 +81,3 @@ package
         {
         }
     }
-}

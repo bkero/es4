@@ -55,14 +55,9 @@
  * (We would expect "+" to map to magic::stringAppend().)
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import ECMAScript4_Internal.*;
-    import JSON.*;
+    use namespace ECMAScript4_Internal;
 
     __ES4__ type AnyString = (string|String!);
 
@@ -375,4 +370,3 @@ package
         prototype function trim()
             string.trim(this.toString());
     }
-}

@@ -38,38 +38,6 @@ fun log ss = LogErr.log ("[fixture] " :: ss)
 fun error ss = LogErr.fixtureError ss
 fun trace ss = if (!doTrace) then log ss else ()
 
-(*
-fun cmpMname (a:Ast.MULTINAME, b:Ast.MULTINAME) 
-    : order = 
-    case Ustring.compare (#id a) (#id b) of
-	    LESS => LESS
-      | GREATER => GREATER
-      | EQUAL => (NameKey.collate (NameKey.collate NameKey.cmpNS)) ((#nss a), (#nss b))
-                     
-
-structure FixtureKey = struct 
-type ord_key = (Ast.RIB_ID option * Ast.MULTINAME)
-fun compare (a,b) = 
-    case (a,b) of 
-        ((NONE, an), (NONE, bn)) => cmpMname (an, bn)
-      | ((NONE, an), ((SOME bi), bn)) => LESS
-      | (((SOME ai), an), (NONE, bn)) => GREATER
-      | (((SOME ai), an), ((SOME bi), bn)) => 
-        if ai = bi
-        then cmpMname (an, bn)
-        else Int.compare (ai,bi)
-end
-structure FixtureMap = SplayMapFn (FixtureKey);
-
-structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
-structure IntMap = SplayMapFn (IntKey);
-
-
-datatype RIB_RECORD = 
-         GeneralRib of { parent: Ast.RIB_ID option,
-                         rib: Ast.RIB }
-*)
-
 
 (* -----------------------------------------------------------------------------
  * Operations on FIXTUREs and RIBs

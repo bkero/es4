@@ -468,19 +468,14 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Get => tn ()
       | Has => tn ()
       | Implements => tn ()
-      | Import => tn ()
       | Interface => tn ()
-      | Intrinsic => tn ()
       | Let => tn ()
       | Like => tn ()
       | Namespace => tn ()
       | Native => tn ()
       | Number => tn ()
       | Override => tn ()
-      | Package => tn ()
-      | Precision => tn ()
       | Prototype => tn ()
-      | Rounding => tn ()
       | Set => tn ()
       | Standard => tn ()
       | Static => tn ()
@@ -497,52 +492,16 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
 
 (*
     Qualifier
-        ReservedNamespace
         PropertyIdentifier
 *)
 
 and qualifier (ts0: TOKENS) =
     let
-        fun rn () =
-            let
-                val (ts1,nd1) = reservedNamespace ts0
-            in
-                (ts1,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
-            end
-    in case ts0 of
-        (Internal,  _) :: _ => rn ()
-      | (Intrinsic, _) :: _ => rn ()
-      | (Private,   _) :: _ => rn ()
-      | (Protected, _) :: _ => rn ()
-      | (Public,    _) :: _ => rn ()
-      | (Mult,      _) :: _ =>
-            let
-            in
-                (tl ts0, Ast.LexicalRef{ident=Ast.WildcardIdentifier, loc=locOf ts0})
-            end
-      | _ =>
-            let
-                val (ts1,nd1) = identifier ts0
-            in
-                (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}, loc=locOf ts0})
-            end
+        val (ts1,nd1) = identifier ts0
+    in
+        (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}, loc=locOf ts0})
     end
 
-and reservedNamespace (ts0: TOKENS) =
-    let val _ = trace([">> reservedNamespace with next=",tokenname(hd(ts0))])
-    in case ts0 of
-        (Internal, _) :: _ =>
-            (tl ts0, Ast.Internal Ustring.empty)  (* the definer computes the package name *)
-      | (Intrinsic, _) :: _ =>
-            (tl ts0, Ast.Intrinsic)
-      | (Private, _) :: tr =>
-            (tl ts0, Ast.Private Ustring.empty)
-      | (Protected, _) :: tr =>
-            (tl ts0, Ast.Protected Ustring.empty)
-      | (Public, _) :: tr =>
-            (tl ts0, Ast.Public Ustring.empty)
-      | _ => error ["unknown reserved namespace"]
-    end
 
 (*
     QualifiedNameIdentifier 
@@ -589,41 +548,17 @@ and qualifiedNameIdentifier (ts0: TOKENS, nd0: Ast.EXPR)
 
 and simpleQualifiedName (ts0: TOKENS)
     : (TOKENS * Ast.IDENT_EXPR) =
-    let val _ = trace ([">> simpleQualifiedName with next=", tokenname (hd (ts0))])
-        fun rn () =
-            let
-                val (ts1, nd1) = reservedNamespace(ts0)
-            in case ts1 of
-                   (DoubleColon, _) :: ts2 => qualifiedNameIdentifier (ts2, Ast.LiteralExpr(Ast.LiteralNamespace nd1))
-                 | _ => error ["qualified namespace without double colon"]
-            end
-    in case ts0 of
-        (Internal,  _) :: _ => rn ()
-      | (Intrinsic, _) :: _ => rn ()
-      | (Private,   _) :: _ => rn ()
-      | (Protected, _) :: _ => rn ()
-      | (Public,    _) :: _ => rn ()
-      | (Mult,      _) :: _ =>
-          let
-              val (ts1, nd1) = (tl ts0, Ast.WildcardIdentifier)
-          in case ts1 of
-              (DoubleColon, _) :: _ =>
-                  qualifiedNameIdentifier(tl ts1,Ast.LexicalRef ({ident=nd1, loc=locOf ts1}))
-            | _ =>
-                  (trace(["<< simpleQualifiedName with next=",tokenname(hd(ts1))]);
-                   (ts1,nd1))
-          end
-      | _ =>
-          let
-              val (ts1, nd1) = identifier(ts0)
-              val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
-          in case ts1 of
-              (DoubleColon, _) :: _ =>
-                  qualifiedNameIdentifier(tl ts1,Ast.LexicalRef ({ident=id, loc=locOf ts0}))
-            | _ =>
-                  (trace(["<< simpleQualifiedName with next=",tokenname(hd(ts1))]);
-                   (ts1,id))
-          end
+    let 
+        val _ = trace ([">> simpleQualifiedName with next=", tokenname (hd (ts0))])
+        val (ts1, nd1) = identifier(ts0)
+        val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
+    in 
+        case ts1 of
+            (DoubleColon, _) :: _ =>
+            qualifiedNameIdentifier(tl ts1,Ast.LexicalRef ({ident=id, loc=locOf ts0}))
+          | _ =>
+            (trace(["<< simpleQualifiedName with next=",tokenname(hd(ts1))]);
+             (ts1,id))
     end
 
 and expressionQualifiedName (ts0: TOKENS)
@@ -675,29 +610,13 @@ and qualifiedName (ts0: TOKENS)
 
 (*
     PrimaryName 
-        Path  .  PropertyName
         PropertyName
         AttributeName
 *)
 
 and primaryName (ts0: TOKENS)
     : (TOKENS * Ast.IDENT_EXPR) =
-    let val _ = trace ([">> primaryName with next=",tokenname (hd (ts0))])
-    in case ts0 of
-        (Identifier _, _) :: (Dot, _) :: _ =>
-            let
-                val (ts1, nd1) = path ts0
-            in case ts1 of
-                (Dot, _) :: _ =>
-                    let
-                       val (ts2, nd2) = propertyName (tl ts1)
-                    in
-                       (ts2, Ast.UnresolvedPath (nd1,nd2))
-                    end
-              | _ => LogErr.internalError ["primaryName"]
-            end
-      | _ => propertyName (ts0)
-    end
+    propertyName (ts0)
 
 (*
     Path    
@@ -1624,33 +1543,26 @@ and propertyOperator (ts0: TOKENS, nd0: Ast.EXPR)
                       | _ => error ["unknown token in propertyOperator"] (* e4x filter expr *)
                     end
       | (Dot, _) :: _ =>
-                    let
-                        fun notReserved () =
-                            let
-                                val (ts1,nd1) = propertyName (tl ts0)
-                            in
-                                (ts1, Ast.ObjectRef {base=nd0, ident=nd1, loc=locOf ts0})
-                            end
-                     in case (isreserved(hd (tl ts0)), tl ts0) of
-                        (false, _)               => notReserved ()
-                      | (true, (Intrinsic,_)::_) => notReserved ()
-                      | (true, (Private,_)::_)   => notReserved ()
-                      | (true, (Public,_)::_)    => notReserved ()
-                      | (true, (Protected,_)::_) => notReserved ()
-                      | (true, (Internal,_)::_)  => notReserved ()
-                      | (true, _) =>
-                            let
-                                val (ts1,nd1) = reservedIdentifier (tl ts0)
-                            in
-                                (ts1,Ast.ObjectRef
-                                         { base=nd0,
-                                           ident=Ast.Identifier
-                                                     { ident=nd1,
-                                                       openNamespaces=[] },
-                                           loc=locOf ts0})
-                            end
-                    end
-
+        
+        if isreserved(hd (tl ts0)) 
+        then
+            let
+                val (ts1,nd1) = reservedIdentifier (tl ts0)
+            in
+                (ts1,Ast.ObjectRef
+                         { base=nd0,
+                           ident=Ast.Identifier
+                                     { ident=nd1,
+                                       openNamespaces=[] },
+                           loc=locOf ts0})
+            end 
+        else
+            let
+                val (ts1,nd1) = propertyName (tl ts0)
+            in
+                (ts1, Ast.ObjectRef {base=nd0, ident=nd1, loc=locOf ts0})
+            end
+    
       | (LeftBracket, _) :: _ =>
         bracketsOrSlice (ts0, nd0)
 
@@ -1708,7 +1620,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPR)
 
         val intrinsic = Ast.LiteralExpr 
                             (Ast.LiteralNamespace 
-                                 (Ast.Intrinsic))
+                                 (Name.intrinsicNS))
         fun asSlice a b c = 
             Ast.CallExpr 
             { func = Ast.ObjectRef { base = nd0,
@@ -4477,7 +4389,7 @@ and letStatement (ts:TOKENS, w:OMEGA)
             let
                 val (ts1,nd1) = letBindingList (tl (tl ts))
                 val defn = Ast.VariableDefn {kind=Ast.LetVar,
-                                             ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace Name.noNS)),
+                                             ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace Name.publicNS)),
                                              static=false,
                                              prototype=false,
                                              bindings=nd1}
@@ -4785,7 +4697,6 @@ and directivesPrefix (ts:TOKENS, t:TAU)
         (RightBrace, _) :: _ => (ts,{pragmas=[],defns=[],body=[],head=NONE,loc=locOf ts})
       | (Eof, _) :: _ => (ts,{pragmas=[],defns=[],body=[],head=NONE,loc=locOf ts})
       | (Use, _) :: _ => nextDirective ()
-      | (Import, _) :: _ => nextDirective ()
       | _ =>
             let
                 val (ts2,nd2) = directivesPrefix' (ts,t)
@@ -4913,11 +4824,6 @@ and directive (ts:TOKENS, t:TAU, w:OMEGA)
       | (Prototype, _) :: _ => withAttribute ()
       | (Static,    _) :: _ => withAttribute ()
       | (Identifier _, _) :: (next, _) :: _ => maybeWithName next
-      | (Private,      _) :: (next, _) :: _ => maybeWithName next
-      | (Public,       _) :: (next, _) :: _ => maybeWithName next
-      | (Protected,    _) :: (next, _) :: _ => maybeWithName next
-      | (Internal,     _) :: (next, _) :: _ => maybeWithName next
-      | (Intrinsic,    _) :: (next, _) :: _ => maybeWithName next
       | _ => default ()
     end
 
@@ -4985,7 +4891,7 @@ and annotatableDirective (ts:TOKENS, attrs:ATTRS, GlobalScope, w:OMEGA)
   | annotatableDirective (ts,attrs,InterfaceScope,w) : (TOKENS * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective InterfaceScope with next=", tokenname(hd ts)])
         val attrs : ATTRS =
-            { ns = SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public Ustring.empty)))
+            { ns = SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Name.publicNS)))
             , override = false
             , static = false
             , final = false
@@ -5063,8 +4969,6 @@ and annotatableDirective (ts:TOKENS, attrs:ATTRS, GlobalScope, w:OMEGA)
         [  AssignmentExpressionallowList, allowIn  ]
 
     NamespaceAttribute
-        ReservedNamespace
-        PackageIdentifier  .  Identifier
         Identifier
 *)
 
@@ -5088,11 +4992,6 @@ and attributes (ts:TOKENS, attrs:ATTRS, t:TAU)
       | (Override,     _) :: _ => next ()
       | (Prototype,    _) :: _ => next ()
       | (Static,       _) :: _ => next ()
-      | (Private,      _) :: _ => next ()
-      | (Protected,    _) :: _ => next ()
-      | (Public,       _) :: _ => next ()
-      | (Internal,     _) :: _ => next ()
-      | (Intrinsic,    _) :: _ => next ()
       | (Identifier _, _) :: _ => next ()
       | _ =>
             let
@@ -5260,11 +5159,6 @@ and attribute (ts:TOKENS, attrs:ATTRS, GlobalScope)
           | (Override,     _) :: _ => error ["attributes not allowed on a interface methods"]
           | (Prototype,    _) :: _ => error ["attributes not allowed on a interface methods"]
           | (Static,       _) :: _ => error ["attributes not allowed on a interface methods"]
-          | (Private,      _) :: _ => error ["attributes not allowed on a interface methods"]
-          | (Protected,    _) :: _ => error ["attributes not allowed on a interface methods"]
-          | (Public,       _) :: _ => error ["attributes not allowed on a interface methods"]
-          | (Internal,     _) :: _ => error ["attributes not allowed on a interface methods"]
-          | (Intrinsic,    _) :: _ => error ["attributes not allowed on a interface methods"]
           | (Identifier _, _) :: _ => error ["attributes not allowed on a interface methods"]
           | _ =>
                 (ts,{
@@ -5283,16 +5177,11 @@ and attribute (ts:TOKENS, attrs:ATTRS, GlobalScope)
         in case ts of
             (Dynamic,      _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
           | (Final,        _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Native,       _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Override,     _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Prototype,    _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Static,       _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Private,      _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Protected,    _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Public,       _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Internal,     _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Intrinsic,    _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
-          | (Identifier _, _) :: _ => (error(["attributes not allowed on local definitions"]); error ["unknown token in attribute"])
+          | (Native,       _) :: _ => (error(["attributes not allowed on local definitions"]))
+          | (Override,     _) :: _ => (error(["attributes not allowed on local definitions"]))
+          | (Prototype,    _) :: _ => (error(["attributes not allowed on local definitions"]))
+          | (Static,       _) :: _ => (error(["attributes not allowed on local definitions"]))
+          | (Identifier _, _) :: _ => (error(["attributes not allowed on local definitions"]))
           | _ =>
             (ts,{
                     ns = ns,
@@ -5305,53 +5194,15 @@ and attribute (ts:TOKENS, attrs:ATTRS, GlobalScope)
                     rest = rest})
         end
 
-and namespaceAttribute (ts:TOKENS, GlobalScope)
+and namespaceAttribute (ts:TOKENS, _)
     : (TOKENS * Ast.EXPR option) =
     let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
-        fun withReservedNamespace () =
-            let
-                val (ts1,nd1) = reservedNamespace ts
-            in
-                (ts1, SOME (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
-            end
-    in case ts of
-        (Internal,  _) :: _ => withReservedNamespace ()
-      | (Intrinsic, _) :: _ => withReservedNamespace ()
-      | (Public,    _) :: _ => withReservedNamespace ()
-      | (Identifier s, _) :: _ =>
-            let
-            in
-                (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier {ident=s, openNamespaces=[]},
-                                              loc=locOf ts}))
-            end
-      | _ => error ["unknown token in namespaceAttribute"]
-    end
-  | namespaceAttribute (ts,ClassScope) =
-    let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
-        fun withReservedNamespace () =
-            let
-                val (ts1,nd1) = reservedNamespace ts
-            in
-                (ts1, SOME (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
-            end
-    in case ts of
-        (Internal,  _) :: _ => withReservedNamespace ()
-      | (Intrinsic, _) :: _ => withReservedNamespace ()
-      | (Private,   _) :: _ => withReservedNamespace ()
-      | (Protected, _) :: _ => withReservedNamespace ()
-      | (Public,    _) :: _ => withReservedNamespace ()
-      | (Identifier s, _) :: _ =>
-            let
-            in
-                (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]},
-                                              loc=locOf ts}))
-            end
-      | _ => error ["unknown token in namespaceAttribute"]
-    end
-  | namespaceAttribute (ts,_) =
-    let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
-    in case ts of
-        _ => error ["unknown token in namespaceAttribute"]
+    in
+        case ts of 
+            (Identifier s, _) :: _ =>
+            (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier {ident=s, openNamespaces=[]},
+                                          loc=locOf ts}))
+          | _ => error ["unknown token in namespaceAttribute"]
     end
 
 
@@ -6657,9 +6508,13 @@ and classDefinition (ts:TOKENS, attrs:ATTRS)
 
                 val (instanceStmts,body) = List.partition isInstanceInit body
 
+                val privateNS = Name.newOpaqueNS ()
+                val protectedNS = Name.newOpaqueNS ()
                 val classDefn = Ast.ClassDefn {ident=ident,
                                                nonnullable=nonnullable,
                                                ns=ns,
+                                               privateNS=privateNS,
+                                               protectedNS=protectedNS,
                                                final=final,
                                                dynamic=dynamic,
                                                params=params,
@@ -6674,6 +6529,8 @@ and classDefinition (ts:TOKENS, attrs:ATTRS)
                 (ts3,{pragmas=[],
                       body=[Ast.ClassBlock
                                 {ns=ns,
+                                 privateNS=privateNS,
+                                 protectedNS=protectedNS,
                                  ident=ident,
                                  name=NONE,
                                  block=Ast.Block {body=body,
@@ -6979,7 +6836,6 @@ and typeInitialisation (ts:TOKENS)
 
     Pragma
         UsePragma  Semicolon(full)
-        ImportPragma  Semicolon(full)
 
 *)
 
@@ -6995,7 +6851,6 @@ and pragmas (ts:TOKENS)
             end
     in case ts1 of
         (Use,    _) :: _ => next ()
-      | (Import, _) :: _ => next ()
       | _ =>
             (ts1, nd1)
     end
@@ -7007,13 +6862,6 @@ and pragma (ts:TOKENS)
         (Use, _) :: _ =>
             let
                 val (ts1,nd1) = usePragma ts
-                 val (ts2,nd2) = (semicolon (ts1,Full),nd1)
-            in
-                (ts2,nd2)
-            end
-      | (Import, _) :: _ =>
-            let
-                val (ts1,nd1) = importPragma ts
                  val (ts2,nd2) = (semicolon (ts1,Full),nd1)
             in
                 (ts2,nd2)
@@ -7072,7 +6920,6 @@ and pragmaItems (ts:TOKENS)
 
 (*
     PragmaItem
-        decimal
         standard
         strict
         default namespace SimpleTypeIdentifier
@@ -7082,88 +6929,26 @@ and pragmaItems (ts:TOKENS)
 and pragmaItem (ts:TOKENS)
     : (TOKENS * Ast.PRAGMA) =
     let val _ = trace([">> pragmaItem with next=", tokenname(hd ts)])
-        fun defaultNamespaceReserved () =
-            let
-                val (ts1,nd1) = reservedNamespace (tl (tl ts))
-            in
-                (ts1, Ast.UseDefaultNamespace (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
-            end
-    in case ts of
+    in 
+        case ts of
         (Standard, _) :: _ => (tl ts,Ast.UseStandard)
       | (Strict, _) :: _ => (tl ts,Ast.UseStrict)
-      | (Default, _) :: (Namespace, _) :: (Public,    _) :: _ => defaultNamespaceReserved ()
-      | (Default, _) :: (Namespace, _) :: (Internal,  _) :: _ => defaultNamespaceReserved ()
-      | (Default, _) :: (Namespace, _) :: (Intrinsic, _) :: _ => defaultNamespaceReserved ()
-      | (Default, _) :: (Namespace, _) :: (Protected, _) :: _ => defaultNamespaceReserved ()
-      | (Default, _) :: (Namespace, _) :: (Private,   _) :: _ => defaultNamespaceReserved ()
       | (Default, _) :: (Namespace, _) :: _ =>
-            let
-                val (ts1,nd1) = primaryName (tl (tl ts))
-            in
-                (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1, loc=locOf ts}))
-            end
-      | (Namespace, _) :: (Intrinsic, _) :: _ =>
-            let
-                val (ts1,nd1) = (tl (tl ts), Ast.LiteralExpr (Ast.LiteralNamespace Ast.Intrinsic))
-            in
-                (ts1, Ast.UseNamespace nd1)
-            end
+        let
+            val (ts1,nd1) = primaryName (tl (tl ts))
+        in
+            (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1, loc=locOf ts}))
+        end
       | (Namespace, _) :: _ =>
-            let
-                val (ts1,nd1) = primaryName (tl ts)
-            in
-                (ts1, Ast.UseNamespace (Ast.LexicalRef { ident = nd1, loc = locOf ts}))
-            end
+        let
+            val (ts1,nd1) = primaryName (tl ts)
+        in
+            (ts1, Ast.UseNamespace (Ast.LexicalRef { ident = nd1, loc = locOf ts}))
+        end
       | _ =>
-            LogErr.parseError ["invalid pragma"]
+        LogErr.parseError ["invalid pragma"]
     end
 
-(*
-    ImportPragma
-        import  ImportName
-
-    ImportName
-        PackageIdentifier  .  PropertyIdentifier
-*)
-
-and importPragma (ts:TOKENS)
-    : (TOKENS * Ast.PRAGMA list) =
-    let val _ = trace([">> importPragma with next=", tokenname(hd ts)])
-    in case ts of
-	   (Import, _) :: _ =>
-           let
-               val (ts1,(p,i)) = importName (tl ts)
-           in
-               (ts1,[Ast.Import {package=p,name=i}])
-           end
-      | _ => error ["unknown token in importPragma"]
-    end
-
-and importName (ts:TOKENS)
-    : (TOKENS * (Ast.IDENT list * Ast.IDENT)) =
-    let val _ = trace([">> importName with next=", tokenname(hd ts)])
-    in case ts of
-        (Identifier p, _) :: (Dot, _) :: _ =>
-            let
-                val (ts1,nd1) = (tl ts,p)
-                val (ts2,(p,i)) = importName (tl ts1)
-            in
-                (ts2,(nd1::p,i))
-            end
-      | (Mult, _) :: _ =>
-            let
-                val (ts1,nd1) = (tl ts, Ustring.asterisk)
-            in
-                (ts1,([],nd1))
-            end
-      | (Identifier p, _) :: _ =>
-            let
-                val (ts1,nd1) = (tl ts,p)
-            in
-                (ts1,([],nd1))
-            end
-      | _ => error ["unknown token in importName"]
-    end
 
 (* BLOCKS AND PROGRAMS *)
 
@@ -7343,57 +7128,10 @@ and subFragments (ts:TOKENS)
 
 and fragment (ts:TOKENS)
     : (TOKENS * Ast.FRAGMENT) =            
-    case ts of
-        (Internal, _) :: (Package, _) :: rest =>
-        let
-            val (ts1,nd1) = packageName rest
-            val (ts2,nd2) = subFragments (tl ts1)
-        in
-            (ts2, Ast.Package {name=nd1, fragments=nd2})
-        end
-      | (Package, _) :: (LeftBrace, _) :: rest =>
-        let
-            val (ts1,nd1) = subFragments (tl ts)
-        in
-            (ts1, Ast.Package {name=[], fragments=nd1})
-        end
-      | (Package, _) :: rest =>
-        let
-            val (ts1,nd1) = packageName rest
-            val (ts2,nd2) = subFragments ts1
-        in
-            (ts2, Ast.Package {name=nd1, fragments=nd2})
-        end
-
-      | (RightBrace, _) :: rest => 
-        error ["unexpected right brace opening fragment"]
-
-      (* FIXME: add code here to parse units *)
-
-
-      | _ => 
-        let
-            val (ts1, nd1) = directives (ts, GlobalScope)
-        in
-            (ts1, Ast.Anon (Ast.Block nd1))
-        end
-        
-and packageName (ts:TOKENS)
-    : TOKENS * Ast.IDENT list =
-    let val _ = trace([">> packageName with next=", tokenname(hd ts)])
-        val (ts1,nd1) = identifier ts
-    in case ts1 of
-        (Dot, _) :: (Identifier _, _) :: _ =>
-            let
-                val (ts2,nd2) = packageName (tl ts1)
-            in
-                (ts2,nd1::nd2)
-            end
-      | _ =>
-            let
-            in
-                (ts1,nd1::[])
-            end
+    let
+        val (ts1, nd1) = directives (ts, GlobalScope)
+    in
+        (ts1, Ast.Anon (Ast.Block nd1))
     end
 
 
@@ -7433,33 +7171,14 @@ fun lexLines (lines : Ustring.SOURCE list)
         Lexer.lex ("<no filename>", reader)
     end
 
-fun parseFrags [(Eof, _)] = ([], [])
-  | parseFrags ts = 
+fun parse ts = 
     let
         val (residual, frag) = fragment ts
     in
-        trace ["parsed fragment:"];
-        (if (!doTrace)
-         then Pretty.ppFragment frag
-         else ());
-        let 
-            val (residual, frags) = parseFrags residual
-        in
-            case residual of 
-                [] => (residual, frag :: frags)
-              | tok::_ => error ["residual token seen after parsing: ", tokenname tok]
-        end
-    end
-
-fun parse ts = 
-    let
-        val (_, frags) = parseFrags ts
-        val frag = case frags of 
-                       [x] => x
-                     | other => Ast.Package { name = [], 
-                                              fragments = other }
-    in
-        frag
+        case residual of 
+            [(Eof, _)] => frag
+          | [] => frag
+          | tok::_ => error ["residual token seen after parsing: ", tokenname tok]
     end
 
 fun logged thunk name =

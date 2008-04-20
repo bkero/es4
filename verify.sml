@@ -135,7 +135,7 @@ fun newEnv (prog:Fixture.PROGRAM)
       AnyBooleanType= Type.getNamedGroundType prog Name.ES4_AnyBoolean,
       booleanType   = Type.getNamedGroundType prog Name.ES4_boolean,
 
-      RegExpType    = Type.getNamedGroundType prog Name.nons_RegExp,
+      RegExpType    = Type.getNamedGroundType prog Name.public_RegExp,
 
       NamespaceType = Type.getNamedGroundType prog Name.ES4_Namespace,
 
@@ -188,7 +188,7 @@ and resolveExprToNamespace (env:ENV)
               | _ => 
                 let in
                     warning ["namespace expression did not resolve to namespace fixture"];
-                    Ast.Intrinsic
+                    Name.publicNS
                 end
         end
       | _ => error ["unexpected expression type ",
@@ -930,8 +930,8 @@ and verifyFunc (env:ENV)
     let
         val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
                        native, block, param, defaults, ty, loc } = func
-(* FIXME: use Public "" as namespace of type variables? *)
-        val rib = map (fn id => (Ast.PropName {ns=Ast.Public (Ustring.fromString ""), id=id},
+        (* FIXME: use public as namespace of type variables? *)
+        val rib = map (fn id => (Ast.PropName {ns=Name.publicNS, id=id},
                                  Ast.TypeVarFixture (Parser.nextAstNonce ())))
                   typeParams
         val env' = withRib env rib
@@ -949,7 +949,8 @@ and verifyFixture (env:ENV)
     : unit =
     case f of
      
-        Ast.ClassFixture (Ast.Cls {name, typeParams, nonnullable, 
+        Ast.ClassFixture (Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
+                                   typeParams, nonnullable, 
                                    dynamic, extends, implements, 
                                    classRib, instanceRib, instanceInits, 
                                    constructor, classType, instanceType }) =>
@@ -1015,8 +1016,7 @@ and verifyFragment (env:ENV)
                    (frag:Ast.FRAGMENT) 
   : unit = 
     case frag of 
-        Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
-      | Ast.Anon block => verifyBlock env block
+        Ast.Anon block => verifyBlock env block
 
 
 and verifyTopRib (prog:Fixture.PROGRAM)

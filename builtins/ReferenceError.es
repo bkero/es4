@@ -49,10 +49,6 @@
  * verified.
  */
 
-package
-{
-    use namespace __ES4__;
-
     /* E262-3 15.11.6.3; 15.11.7 */
     public dynamic class ReferenceError extends Error
     {
@@ -74,4 +70,3 @@ package
         public prototype var message = "Invalid reference value";
     }
 
-}

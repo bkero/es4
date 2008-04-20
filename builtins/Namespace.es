@@ -37,8 +37,6 @@
  *
  */
 
-package
-{
     __ES4__ final class Namespace
     {
         // No "length" because constructor is private, this may or may
@@ -52,4 +50,3 @@ package
         // during construction of the magic namespace itself. So we
         // insist on an empty ctor for the time being.
     }
-}

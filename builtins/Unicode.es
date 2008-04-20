@@ -33,41 +33,41 @@
  *
  */
 
-package Unicode
-{
+    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
-    use namespace __ES4__;
+    use namespace Unicode;
+    use default namespace Unicode;
 
     /* Unicode line break characters */
-    public const linebreaks = "\u000A\u000D\u0085\u2028\u2029";
+    const linebreaks = "\u000A\u000D\u0085\u2028\u2029";
 
     /* Unicode space characters, less character values below SPACE */
-    public const spaces = ("\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004" +
+    const spaces = ("\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004" +
                            "\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000");
 
     /* "Blank" characters: spaces plus space-like control characters */
-    public const blanks = "\t\v\f" + spaces;
+    const blanks = "\t\v\f" + spaces;
 
     /* Unicode decimal digit characters */
-    public const decimal_digits = "0123456789";
+    const decimal_digits = "0123456789";
 
     /* Unicode hex digit characters */
-    public const hex_digits = "0123456789abcdefABCDEF";
+    const hex_digits = "0123456789abcdefABCDEF";
 
     /* Word characters */
-    public const alphanumerics = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+    const alphanumerics = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
                                   "abcdefghijklmnopqrstuvwxyz" +
                                   "0123456789" +
                                   "_");
 
     /* Unicode format control characters */
-    public const format_controls = ("\u00AD\u0600\u0601\u0602\u0603" +
-                                    "\u06DD\u070F\u17B4\u17B5\u200B" +
-                                    "\u200C\u200D\u200E\u200F\u202A" +
-                                    "\u202B\u202C\u202D\u202E\u2060" +
-                                    "\u2061\u2062\u2063\u206A\u206B" +
-                                    "\u206C\u206D\u206E\u206F\uFEFF" +
-                                    "\uFFF9\uFFFA\uFFFB");
+    const format_controls = ("\u00AD\u0600\u0601\u0602\u0603" +
+                             "\u06DD\u070F\u17B4\u17B5\u200B" +
+                             "\u200C\u200D\u200E\u200F\u202A" +
+                             "\u202B\u202C\u202D\u202E\u2060" +
+                             "\u2061\u2062\u2063\u206A\u206B" +
+                             "\u206C\u206D\u206E\u206F\uFEFF" +
+                             "\uFFF9\uFFFA\uFFFB");
 
     /* Simple utility class for managing a constant set of characters
      * with quick lookup.
@@ -112,17 +112,17 @@ package Unicode
     const trimmable_space_chars =
         new CharSet(explodeString(blanks + "\n\r"));
 
-    public function isTrimmableSpace(c: string) : boolean
+    function isTrimmableSpace(c: string) : boolean
         trimmable_space_chars.contains(c);
 
 
     /* Utility functions for Regular Expressions */
 
-    public function isIdentifierStart(c) {
+    function isIdentifierStart(c) {
         return isUnicodeLetter(c.charCodeAt(0)) || c == '_' || c == '$';
     }
 
-    public function isIdentifierPart(c) {
+    function isIdentifierPart(c) {
         let cc: double = c.charCodeAt(0);
         return isIdentifierStart(c) ||
             isUnicodeMn(cc) || isUnicodeMc(cc) || isUnicodeNd(cc) || isUnicodePc(cc);
@@ -131,28 +131,28 @@ package Unicode
     const terminator_chars =
         new CharSet(explodeString(linebreaks));
 
-    public function isTerminator(c : string) : boolean
+    function isTerminator(c : string) : boolean
         terminator_chars.contains(c);
 
-    public function isTerminatorCode(cc : double) : boolean
+    function isTerminatorCode(cc : double) : boolean
         terminator_chars.containsCode(cc);
 
     const decimal_digit_chars =
         new CharSet(explodeString(decimal_digits));
 
-    public function isDecimalDigit(c: string) : boolean
+    function isDecimalDigit(c: string) : boolean
         decimal_digit_chars.contains(c);
 
-    public function decimalValue(c: string) : boolean
+    function decimalValue(c: string) : boolean
         c.charCodeAt(0) - "0".charCodeAt(0);
 
     const hex_digit_chars =
         new CharSet(explodeString(hex_digits));
 
-    public function isHexDigit(c: string) : boolean
+    function isHexDigit(c: string) : boolean
         hex_digit_chars.contains(c);
 
-    public function hexValue(c) : double {
+    function hexValue(c) : double {
         if (c >= "0" && c <= "9")
             return c.charCodeAt(0) - "0".charCodeAt(0);
         else
@@ -162,27 +162,27 @@ package Unicode
     const blank_chars =
         new CharSet(explodeString(blanks));
 
-    public function isBlank(c : string) : boolean
+    function isBlank(c : string) : boolean
         blank_chars.contains(c);
 
-    public function isBlankCode(cc : double) : boolean
+    function isBlankCode(cc : double) : boolean
         blank_chars.containsCode(cc);
 
     const word_chars =
         new CharSet(explodeString(alphanumerics));
 
-    public function isWordChar(c: string) : boolean
+    function isWordChar(c: string) : boolean
         word_chars.contains(c);
 
     const format_control = new CharSet(explodeString(format_controls));
 
-    public function isFormatControl(c)
+    function isFormatControl(c)
         format_control.contains(c);
 
-    public function isFormatControlCode(cc:double)
+    function isFormatControlCode(cc:double)
         format_control.containsCode(cc);
 
-    public function explodeString(s : string) : [string] {
+    function explodeString(s : string) : [string] {
         let cs = [] : [string];
         for ( let i=0 ; i < s.length ; i++ )
             cs[i] = s[i];
@@ -191,82 +191,82 @@ package Unicode
 
     /* Character classification according to the Unicode data table */
 
-    public function isUnicodeLu(cc: double): boolean
+    function isUnicodeLu(cc: double): boolean
         classify(table_Lu, cc);
 
-    public function isUnicodeLl(cc: double): boolean
+    function isUnicodeLl(cc: double): boolean
         classify(table_Ll, cc);
 
-    public function isUnicodeLt(cc: double): boolean
+    function isUnicodeLt(cc: double): boolean
         classify(table_Lt, cc);
 
-    public function isUnicodeLm(cc: double): boolean
+    function isUnicodeLm(cc: double): boolean
         classify(table_Lm, cc);
 
-    public function isUnicodeLo(cc: double): boolean
+    function isUnicodeLo(cc: double): boolean
         classify(table_Lo, cc);
 
-    public function isUnicodeL(cc: double): boolean
+    function isUnicodeL(cc: double): boolean
         isUnicodeLu(cc) ||
         isUnicodeLl(cc) ||
         isUnicodeLt(cc) ||
         isUnicodeLm(cc) ||
         isUnicodeLo(cc);
 
-    public function isUnicodeLetter(cc: double): boolean /* E262-3 7.6 */
+    function isUnicodeLetter(cc: double): boolean /* E262-3 7.6 */
         isUnicodeL(cc) ||
         isUnicodeNl(cc);
 
-    public function isUnicodeMn(cc: double): boolean
+    function isUnicodeMn(cc: double): boolean
         classify(table_Mn, cc);
 
-    public function isUnicodeMc(cc: double): boolean
+    function isUnicodeMc(cc: double): boolean
         classify(table_Mc, cc);
 
-    public function isUnicodeMe(cc: double): boolean
+    function isUnicodeMe(cc: double): boolean
         classify(table_Me, cc);
 
-    public function isUnicodeM(cc: double): boolean
+    function isUnicodeM(cc: double): boolean
         isUnicodeMn(cc) ||
         isUnicodeMc(cc) ||
         isUnicodeMe(cc);
 
-    public function isUnicodeNd(cc: double): boolean
+    function isUnicodeNd(cc: double): boolean
         classify(table_Nd, cc);
 
-    public function isUnicodeNl(cc: double): boolean
+    function isUnicodeNl(cc: double): boolean
         classify(table_Nl, cc);
 
-    public function isUnicodeNo(cc: double): boolean
+    function isUnicodeNo(cc: double): boolean
         classify(table_No, cc);
 
-    public function isUnicodeN(cc: double): boolean
+    function isUnicodeN(cc: double): boolean
         isUnicodeNd(cc) ||
         isUnicodeNl(cc) ||
         isUnicodeNo(cc);
 
-    public function isUnicodePc(cc: double): boolean
+    function isUnicodePc(cc: double): boolean
         classify(table_Pc, cc);
 
-    public function isUnicodePd(cc: double): boolean
+    function isUnicodePd(cc: double): boolean
         classify(table_Pd, cc);
 
-    public function isUnicodePs(cc: double): boolean
+    function isUnicodePs(cc: double): boolean
         classify(table_Ps, cc);
 
-    public function isUnicodePe(cc: double): boolean
+    function isUnicodePe(cc: double): boolean
         classify(table_Pe, cc);
 
-    public function isUnicodePi(cc: double): boolean
+    function isUnicodePi(cc: double): boolean
         classify(table_Pi, cc);
 
-    public function isUnicodePf(cc: double): boolean
+    function isUnicodePf(cc: double): boolean
         classify(table_Pf, cc);
 
-    public function isUnicodePo(cc: double): boolean
+    function isUnicodePo(cc: double): boolean
         classify(table_Po, cc);
 
-    public function isUnicodeP(cc: double): boolean
+    function isUnicodeP(cc: double): boolean
         isUnicodePc(cc) ||
         isUnicodePd(cc) ||
         isUnicodePs(cc) ||
@@ -275,74 +275,69 @@ package Unicode
         isUnicodePf(cc) ||
         isUnicodePo(cc);
 
-    public function isUnicodeSm(cc: double): boolean
+    function isUnicodeSm(cc: double): boolean
         classify(table_Sm, cc);
 
-    public function isUnicodeSc(cc: double): boolean
+    function isUnicodeSc(cc: double): boolean
         classify(table_Sc, cc);
 
-    public function isUnicodeSk(cc: double): boolean
+    function isUnicodeSk(cc: double): boolean
         classify(table_Sk, cc);
 
-    public function isUnicodeSo(cc: double): boolean
+    function isUnicodeSo(cc: double): boolean
         classify(table_So, cc);
 
-    public function isUnicodeS(cc: double): boolean
+    function isUnicodeS(cc: double): boolean
         isUnicodeSm(cc) ||
         isUnicodeSc(cc) ||
         isUnicodeSk(cc) ||
         isUnicodeSo(cc);
 
-    public function isUnicodeZs(cc: double): boolean
+    function isUnicodeZs(cc: double): boolean
         classify(table_Zs, cc);
 
-    public function isUnicodeZl(cc: double): boolean
+    function isUnicodeZl(cc: double): boolean
         classify(table_Zl, cc);
 
-    public function isUnicodeZp(cc: double): boolean
+    function isUnicodeZp(cc: double): boolean
         classify(table_Zp, cc);
 
-    public function isUnicodeZ(cc: double): boolean
+    function isUnicodeZ(cc: double): boolean
         isUnicodeZs(cc) ||
         isUnicodeZl(cc) ||
         isUnicodeZp(cc);
 
-    public function isUnicodeCc(cc: double): boolean
+    function isUnicodeCc(cc: double): boolean
         classify(table_Cc, cc);
 
-    public function isUnicodeCf(cc: double): boolean
+    function isUnicodeCf(cc: double): boolean
         classify(table_Cf, cc);
 
-    public function isUnicodeCs(cc: double): boolean
+    function isUnicodeCs(cc: double): boolean
         classify(table_Cs, cc);
 
-    public function isUnicodeCo(cc: double): boolean
+    function isUnicodeCo(cc: double): boolean
         classify(table_Co, cc);
 
-    public function isUnicodeCn(cc: double): boolean
+    function isUnicodeCn(cc: double): boolean
         classify(table_Cn, cc);
 
-    public function isUnicodeC(cc: double): boolean
+    function isUnicodeC(cc: double): boolean
         isUnicodeCc(cc) ||
         isUnicodeCf(cc) ||
         isUnicodeCs(cc) ||
         isUnicodeCo(cc) ||
         isUnicodeCn(cc);
 
-    public function toUpperCaseCharCode(i: double) : (double|[/*uint*/]) {
+    function toUpperCaseCharCode(i: double) : (double|[/*uint*/]) {
         var c = toUpperTbl(i);
         return c ? c : i;
     }
 
-    public function toLowerCaseCharCode(i: double) : (double|[/*uint*/]) {
+    function toLowerCaseCharCode(i: double) : (double|[/*uint*/]) {
         var c = toLowerTbl(i);
         return c ? c : i;
     }
-}
-
-package {
-    import Unicode.*;
 
     helper function isTrimmableSpace(x)
         Unicode.isTrimmableSpace(x);
-}

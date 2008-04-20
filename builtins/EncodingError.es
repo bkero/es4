@@ -47,11 +47,8 @@
  * verified.
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
 
     /* E262-3 15.11.6.1; 15.11.7 */
     dynamic class EncodingError extends Error
@@ -73,4 +70,3 @@ package
         /* INFORMATIVE */
         prototype var message = "Bad encoding";
     }
-}
