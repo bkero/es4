@@ -62,8 +62,6 @@ type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 datatype BINTYPEOP =
          Cast
        | Is
-       | Wrap
-       | To
 
 datatype BINOP =
          Plus
@@ -120,7 +118,7 @@ datatype UNOP =
        | BitwiseNot
        | LogicalNot
        | Type
-       | Splat
+       | Spread
 
 datatype VAR_DEFN_TAG =
          Const 
@@ -137,7 +135,6 @@ datatype SPECIAL_TY =
 datatype PRAGMA =
          UseNamespace of EXPR
        | UseDefaultNamespace of EXPR
-       | UseDecimalContext of EXPR
        | UseStrict
        | UseStandard
        | Import of
@@ -237,7 +234,6 @@ datatype PRAGMA =
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | LikeType of TYPE_EXPR
-       | WrapType of TYPE_EXPR
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }
@@ -372,8 +368,6 @@ datatype PRAGMA =
        | LiteralUndefined
        | LiteralDouble of Real64.real
        | LiteralDecimal of Decimal.DEC
-       | LiteralInt of Int32.int
-       | LiteralUInt of Word32.word
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
        | LiteralArray of
@@ -416,9 +410,6 @@ datatype PRAGMA =
          { ty: TYPE_EXPR, 
            getter: FUNC option,
            setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
-       | InheritedFixture of 
-         { baseName: NAME, 
-           baseTypeArgs: TYPE_EXPR list }
 
      and HEAD =
          Head of RIB * INITS

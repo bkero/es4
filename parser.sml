@@ -469,7 +469,6 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Has => tn ()
       | Implements => tn ()
       | Import => tn ()
-      | Int => tn ()
       | Interface => tn ()
       | Intrinsic => tn ()
       | Let => tn ()
@@ -486,12 +485,9 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
       | Standard => tn ()
       | Static => tn ()
       | Strict => tn ()
-      | To => tn ()
       | Type => tn ()
-      | UInt => tn ()
       | Undefined => tn ()
       | Use => tn ()
-      | Wrap => tn ()
       | Xml => tn ()
       | Yield => tn ()
       | _ => error ["expecting 'identifier' before '",tokenname (t,()),"'"]
@@ -1045,14 +1041,6 @@ and fieldName (ts:TOKENS)
         (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralDouble n)),
                                          openNamespaces = []})
 
-      | (IntLiteral n, _) :: ts1 => 
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralInt n)),
-                                         openNamespaces = []})
-
-      | (UIntLiteral n, _) :: ts1 => 
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralUInt n)),
-                                         openNamespaces = []})
-
       | _ =>
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -1107,28 +1095,28 @@ and arrayLiteral (ts0: TOKENS, alpha: ALPHA)
     end
 
 (*
-    SplatExpression
+    SpreadExpression
         ... AssignmentExpression(AllowColon, AllowIn)
 *)
-and splatExpression (ts0: TOKENS)
+and spreadExpression (ts0: TOKENS)
     : (TOKENS * Ast.EXPR list) =
-    let val _ = trace [">> splatExpression with next=", tokenname (hd ts0)]
+    let val _ = trace [">> spreadExpression with next=", tokenname (hd ts0)]
     in case ts0 of
            (TripleDot, _) :: ts1 =>
            let
                val (ts2, nd1) = assignmentExpression (ts1, AllowColon, AllowIn)
            in
-               (ts2, [Ast.UnaryExpr (Ast.Splat, nd1)])
+               (ts2, [Ast.UnaryExpr (Ast.Spread, nd1)])
            end
          | _ =>
-           error ["unknown token in splatExpression", tokenname (hd ts0)]
+           error ["unknown token in spreadExpression", tokenname (hd ts0)]
     end
 
 (*
     Elements
         empty
         LiteralElement
-        SplatExpression
+        SpreadExpression
         ,  ElementList
         LiteralElement  ,  ElementList
         LiteralElement  ElementComprehension
@@ -1147,7 +1135,7 @@ and elements (ts0: TOKENS)
             end
       | (TripleDot, _) :: _ =>
             let
-                val (ts1, nd1) = splatExpression ts0
+                val (ts1, nd1) = spreadExpression ts0
             in
                 (ts1, Ast.ListExpr nd1)
             end
@@ -1181,7 +1169,7 @@ and elements (ts0: TOKENS)
 (*
     ElementList
         empty
-        SplatExpression
+        SpreadExpression
         ,  ElementList
         LiteralElement
         LiteralElement  ,  ElementList
@@ -1204,7 +1192,7 @@ and elementList (ts0: TOKENS)
                 (ts1, (Ast.LiteralExpr Ast.LiteralUndefined) :: nd1)
             end
       | (TripleDot, _) :: _ =>
-            splatExpression ts0
+            spreadExpression ts0
       | _ =>
             let
                 val (ts1,nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
@@ -1371,8 +1359,6 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
 
       | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralDecimal n))
       | (DoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralDouble n))
-      | (IntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralInt n))
-      | (UIntLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralUInt n))
 
       | (StringLiteral s,_) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralString s))
       | (This, _) :: _ => 
@@ -1558,18 +1544,18 @@ and arguments (ts0: TOKENS)
     ArgumentList
         AssignmentExpression(AllowColon, AllowIn)
         AssignmentExpression(AllowColon, AllowIn)  ,  ArgumentList
-        SplatExpression
+        SpreadExpression
 
     refactored:
 
     ArgumentList
         AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
-        SplatExpression
+        SpreadExpression
 
     ArgumentListPrime
         empty
         , AssignmentExpression(AllowColon,AllowIn)  ArgumentListPrime
-        , SplatExpression
+        , SpreadExpression
 *)
 
 and argumentList (ts0: TOKENS)
@@ -1579,7 +1565,7 @@ and argumentList (ts0: TOKENS)
             let val _ = trace ([">> argumentList' with next=", tokenname (hd (ts0))])
             in case ts0 of
                 (Comma, _) :: (TripleDot, _) :: _ =>
-                    splatExpression (tl ts0)
+                    spreadExpression (tl ts0)
               | (Comma, _) :: _ =>
                     let
                         val (ts1, nd1) = assignmentExpression (tl ts0, AllowColon, AllowIn)
@@ -1596,7 +1582,7 @@ and argumentList (ts0: TOKENS)
     in
         case ts0 of
             (TripleDot, _) :: _ =>
-                splatExpression ts0
+                spreadExpression ts0
           | _ =>
             let
                 val (ts1, nd1) = assignmentExpression (ts0, AllowColon, AllowIn)
@@ -2331,23 +2317,11 @@ and relationalExpression (ts:TOKENS, a:ALPHA, b:BETA)
                     in
                         relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Cast,nd1,nd3),a,AllowIn)
                     end
-              | ((To, _) :: ts2, _) =>
-                    let
-                        val (ts3,nd3) = typeExpression (ts2)
-                    in
-                        relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.To,nd1,nd3),a,AllowIn)
-                    end
               | ((Is, _) :: ts2, _) =>
                     let
                         val (ts3,nd3) = typeExpression (ts2)
                     in
                         relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Is,nd1,nd3),a,AllowIn)
-                    end
-              | ((Wrap, _) :: ts2, _) =>
-                    let
-                        val (ts3,nd3) = typeExpression (ts2)
-                    in
-                        relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Wrap,nd1,nd3),a,AllowIn)
                     end
               | (_,_) =>
                     (trace(["<< relationalExpression"]);(ts1,nd1))
@@ -7115,13 +7089,7 @@ and pragmaItem (ts:TOKENS)
                 (ts1, Ast.UseDefaultNamespace (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
             end
     in case ts of
-        (Decimal, _) :: _ => 
-            let
-                val (ts1,nd1) = primaryExpression ((tl ts), AllowColon, NoIn)
-	    in
-                (ts1, Ast.UseDecimalContext nd1)
-            end
-      | (Standard, _) :: _ => (tl ts,Ast.UseStandard)
+        (Standard, _) :: _ => (tl ts,Ast.UseStandard)
       | (Strict, _) :: _ => (tl ts,Ast.UseStrict)
       | (Default, _) :: (Namespace, _) :: (Public,    _) :: _ => defaultNamespaceReserved ()
       | (Default, _) :: (Namespace, _) :: (Internal,  _) :: _ => defaultNamespaceReserved ()

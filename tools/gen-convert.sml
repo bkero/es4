@@ -53,8 +53,6 @@ struct
                    | UNITcvt
                    | BOOLcvt
                    | INTcvt
-                   | INT32cvt
-                   | UINT32cvt
                    | REAL64cvt
                    | DECcvt
                    | DECRMcvt
@@ -76,8 +74,6 @@ struct
 
 	   (* Some module-qualified type names we want to support. *)
            | IDty (IDENT (["Real64"], "real")) => REAL64cvt
-           | IDty (IDENT (["Word32"], "word")) => UINT32cvt
-           | IDty (IDENT (["Int32"], "int")) => INT32cvt
            | IDty (IDENT (["Decimal"], "DEC")) => DECcvt
            | IDty (IDENT (["Decimal"], "ROUNDING_MODE")) => DECRMcvt
            | IDty (IDENT (["Ustring"], "STRING")) => USTRINGcvt
@@ -154,14 +150,6 @@ struct
            | REAL64cvt => let val sym = gensym "r"
                         in
                             (IDpat sym, APPexp (ID "PrettyRep.Real64", ID sym))
-                        end
-           | UINT32cvt => let val sym = gensym "u"
-                        in
-                            (IDpat sym, APPexp (ID "PrettyRep.UInt32", ID sym))
-                        end
-           | INT32cvt => let val sym = gensym "i"
-                        in
-                            (IDpat sym, APPexp (ID "PrettyRep.Int32", ID sym))
                         end
            | DECcvt => let val sym = gensym "d"
                         in

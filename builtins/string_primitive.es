@@ -105,7 +105,7 @@ package
         helper static function fromCharCode(codes: Array): string {
             let s = "";
             for (let i=0, limit=codes.length ; i < limit ; ++i)
-                s += magic::fromCharCode(uint(codes[i] & 0x1FFFFF));
+                s += magic::fromCharCode(intrinsic::toUint(codes[i] & 0x1FFFFF));
             return s;
         }
 
@@ -147,7 +147,7 @@ package
             let ipos = helper::toInteger(pos);
             if (ipos < 0 || ipos >= S.length)
                 return "";
-            return magic::fromCharCode(magic::charCodeAt(S, uint(ipos)));
+            return magic::fromCharCode(magic::charCodeAt(S, intrinsic::toUint(ipos)));
         }
 
 
@@ -163,7 +163,7 @@ package
             let ipos = helper::toInteger(pos);
             if (ipos < 0 || ipos >= S.length)
                 return NaN;
-            return magic::charCodeAt(S, uint(ipos));
+            return magic::charCodeAt(S, intrinsic::toUint(ipos));
         }
 
 
@@ -218,7 +218,7 @@ package
             outer:
             for ( let k = m ; k < lim ; k++ ) {
                 for ( let w = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w)))
+                    if (magic::charCodeAt(S, intrinsic::toUint(k+w)) !== magic::charCodeAt(SS, intrinsic::toUint(w)))
                         continue outer;
                 }
                 return k;
@@ -253,7 +253,7 @@ package
             outer:
             for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {
                 for ( let w = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w)))
+                    if (magic::charCodeAt(S, intrinsic::toUint(k+w)) !== magic::charCodeAt(SS, intrinsic::toUint(w)))
                         continue outer;
                 }
                 return k;
@@ -344,7 +344,7 @@ package
         static function replace(self, s, r): string {
 
             // paragraph 4
-            let function substituteFunction(start: uint, end: uint, m: uint, cap: Array) : string {
+            let function substituteFunction(start: double, end: double, m: double, cap: Array) : string {
                 let A = [];
                 A[0] = S.substring(start, end);
                 for ( let i=0 ; i < m ; i++ )
@@ -355,7 +355,7 @@ package
             }
 
             // paragraph 5
-            let function substituteString(start: uint, end: uint, m: uint, cap: Array) : string {
+            let function substituteString(start: double, end: double, m: double, cap: Array) : string {
                 let s   = "";
                 let i   = 0;
                 let r   = /\$(?:(\$)|(\&)|(\`)|(\')|([0-9]{1,2}))/g;
@@ -380,7 +380,7 @@ package
                 return s;
             }
 
-            let function match( regexp, i : uint ) : [uint, CapArray]  {
+            let function match( regexp, i : double ) : [double, CapArray]  {
                 while (i <= S.length) {
                     let res : MatchResult = regexp.helper::match(S, i);
                     if (res !== null) {
@@ -396,7 +396,7 @@ package
             let replaceString = (r is string) ? r cast string : null;
             let replaceFun    = (r is Function) ? r cast Function : null;
 
-            let substitute : function (uint, uint, uint, Array) : string =
+            let substitute : function (double, double, double, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
 
             if (s !== null && s is RegExp) {
@@ -426,7 +426,7 @@ package
                     regexp.lastIndex = 0;
                     while (true) {
                         let oldLastIndex : double = regexp.lastIndex;
-                        let [i,res] = match(regexp, uint(oldLastIndex));
+                        let [i,res] = match(regexp, intrinsic::toUint(oldLastIndex));
 
                         if (res === null)
                             break;
@@ -498,7 +498,7 @@ package
 
         static function slice(object, start: AnyNumber=NaN, end: AnyNumber=NaN, step: AnyNumber=1) {
 
-            let len = uint(object.length);
+            let len = intrinsic::toUint(object.length);
 
             step = int(step);
             if (step == 0)
@@ -529,7 +529,7 @@ package
             string.split(this, separator, limit);
         */
 
-        intrinsic function split(separator:(string|RegExp!), limit: uint = uint.MAX_VALUE): Array!
+        intrinsic function split(separator:(string|RegExp!), limit: double = double.MAX_VALUE): Array!
             string.split(this, separator, limit)
 
         static function split(self, separator, limit) : Array! {
@@ -560,7 +560,7 @@ package
 
             // 1-6
             let A   = new Array;
-            let lim = limit === undefined ? uint.MAX_VALUE : uint(limit);
+            let lim = limit === undefined ? double.MAX_VALUE : double(limit);
             let S   = string(self);
             let s   = S.length;
             let p   = 0;
@@ -675,9 +675,9 @@ package
             let s = "";
 
             for ( let i=0, limit=S.length ; i < limit ; i++ ) {
-                let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,uint(i)));
-                if (u is uint)
-                    s += magic::fromCharCode(u);
+                let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
+                if (u is double)
+                    s += magic::fromCharCode(intrinsic::toUint(u));
                 else {
                     for ( let j=0 ; j < u.length ; j++ )
                         s += magic::fromCharCode(u[j]);
@@ -719,9 +719,9 @@ package
             let s   = "";
 
             for ( let i=0, limit=S.length ; i < limit ; i++ ) {
-                let u = Unicode.toUpperCaseCharCode(magic::charCodeAt(S,uint(i)));
-                if (u is uint)
-                    s += magic::fromCharCode(u);
+                let u = Unicode.toUpperCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
+                if (u is double)
+                    s += magic::fromCharCode(intrinsic::toUint(u));
                 else {
                     for ( let j=0 ; j < u.length ; j++ )
                         s += magic::fromCharCode(u[j]);
@@ -777,7 +777,7 @@ package
 
 
         /* E262-3 15.5.5.1: length. */
-        function get length() : uint
+        function get length() : double
             magic::stringLength(this);
 
         /* Catchall indexing operation. */

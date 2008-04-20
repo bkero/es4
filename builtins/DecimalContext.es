@@ -42,23 +42,23 @@ package
     
     __ES4__ final class DecimalContext
     {
-	static const ROUND_CEILING : uint = 0;
-        static const ROUND_FLOOR : uint = 1;
-        static const ROUND_UP : uint = 2;
-        static const ROUND_DOWN : uint = 3;
-	static const ROUND_HALF_UP : uint = 4;
-	static const ROUND_HALF_DOWN : uint = 5;
-	static const ROUND_HALF_EVEN : uint = 6;
+	static const ROUND_CEILING : double = 0;
+        static const ROUND_FLOOR : double = 1;
+        static const ROUND_UP : double = 2;
+        static const ROUND_DOWN : double = 3;
+	static const ROUND_HALF_UP : double = 4;
+	static const ROUND_HALF_DOWN : double = 5;
+	static const ROUND_HALF_EVEN : double = 6;
 	
-	const precision : uint;
-	const mode : uint;
+	const precision : double;
+	const mode : double;
 	
-        function DecimalContext(precision:uint=34, mode:uint=ROUND_HALF_EVEN) : 
+        function DecimalContext(precision:double=34, mode:double=ROUND_HALF_EVEN) : 
 	    precision = precision,
 	    mode = mode 
 	{}
 	    
-        meta static function invoke(precision:uint=34, mode:uint=ROUND_HALF_EVEN) : DecimalContext
+        meta static function invoke(precision:double=34, mode:double=ROUND_HALF_EVEN) : DecimalContext
             new DecimalContext(precision, mode);
         
         prototype function toString(this : DecimalContext)
