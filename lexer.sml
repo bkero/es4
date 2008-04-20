@@ -391,21 +391,17 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         *)
         let
 	    fun readDouble (isHex:bool) (str:string) = 
-		let
-		    val n = if isHex 
-			    then 
+			if isHex 
+			then 
 				case Word32.fromString str of 
-				    SOME w => Word32.toLargeInt w
+				    SOME w => DoubleLiteral (Real64.fromLargeInt (Word32.toLargeInt w))
 				  | NONE => error ["LexError: error converting hex literal"]
-			    else 
-				case LargeInt.fromString str of
-				    SOME li => li
-				  | NONE => error ["LexError: error converting int literal"]
-		in
-		    DoubleLiteral (Real64.fromLargeInt n)
-		end
-
-            fun countExpChars chars =
+			else 
+				case Real64.fromString str of
+				    SOME li => DoubleLiteral li
+				  | NONE => error ["LexError: error converting double literal"]
+							
+        fun countExpChars chars =
             let
                 val numSignChars = countInRanges {min=0} [(0wx2B,0wx2B) , (0wx2D,0wx2D)] chars (* [+-] *)
                 val rest  = case numSignChars of
@@ -734,9 +730,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"i"  => lexResOrId [(Ustring.fromSource "mplements", Implements),
                                              (Ustring.fromSource "nstanceof", InstanceOf),
                                              (Ustring.fromSource "nterface" , Interface),
-                                             (Ustring.fromSource "ntrinsic" , Intrinsic),
-                                             (Ustring.fromSource "nternal"  , Internal),
-                                             (Ustring.fromSource "mport"    , Import),
                                              (Ustring.fromSource "s"        , Is),
                                              (Ustring.fromSource "f"        , If),
                                              (Ustring.fromSource "n"        , In)]
@@ -748,14 +741,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "ull"      , Null),
                                              (Ustring.fromSource "ew"       , New)]
                       | #"o"  => lexResOrId [(Ustring.fromSource "verride"  , Override)]
-                      | #"p"  => lexResOrId [(Ustring.fromSource "rotected" , Protected),
-                                             (Ustring.fromSource "recision" , Precision),
-                                             (Ustring.fromSource "rototype" , Prototype),
-                                             (Ustring.fromSource "ackage"   , Package),
-                                             (Ustring.fromSource "rivate"   , Private),
-                                             (Ustring.fromSource "ublic"    , Public)]
-                      | #"r"  => lexResOrId [(Ustring.fromSource "ounding"  , Rounding),
-                                             (Ustring.fromSource "eturn"    , Return)]
+                      | #"p"  => lexResOrId [(Ustring.fromSource "rototype" , Prototype)]
+                      | #"r"  => lexResOrId [(Ustring.fromSource "eturn"    , Return)]
                       | #"s"  => lexResOrId [(Ustring.fromSource "tandard"  , Standard),
                                              (Ustring.fromSource "witch"    , Switch),
                                              (Ustring.fromSource "trict"    , Strict),

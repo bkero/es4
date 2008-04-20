@@ -53,7 +53,7 @@ structure NsMap = SplayMapFn (NsKey);
 structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
 structure NmMap = SplayMapFn (NmKey);
 
-structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
+structure StrKey = struct type ord_key = Ustring.STRING val compare = (fn (a,b) => Ustring.compare a b) end
 structure StrMap = SplayMapFn (StrKey);
 
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
@@ -876,9 +876,9 @@ fun newObject (t:VAL_TAG)
 fun nominalBaseOfTag (t:VAL_TAG)
     : Ast.NAME =
     case t of
-        ObjectTag _ => Name.nons_Object
-      | ArrayTag _ => Name.nons_Array
-      | FunctionTag _ => Name.nons_Function
+        ObjectTag _ => Name.public_Object
+      | ArrayTag _ => Name.public_Array
+      | FunctionTag _ => Name.public_Function
       | ClassTag ity => (#name ity)
       | NoTag => error ["searching for nominal base of no-tag object"]
 
