@@ -101,6 +101,15 @@ fun fname (n:Ast.FIXTURE_NAME) =
 	Ast.TempName n => "<temp " ^ (Int.toString n) ^ ">"
       | Ast.PropName n => name n
 
+fun rib (r:Ast.RIB) = 
+    "[rib: " ^ (join ", " (map (fn (n,f) => fname n) 
+			       (List.take(r,(Int.min(length r,10))))))
+    ^ "]"
+
+fun ribs (rs:Ast.RIBS) = 
+    "[ribs: " ^ (join ", " (map rib rs)) ^ "]"
+
+
 fun multiname (mn:Ast.MULTINAME) =
     let
 	fun fmtNss (nss:Ast.NAMESPACE list) = 
@@ -141,13 +150,13 @@ fun ty t =
           | Ast.SpecialType Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => 
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
 	    "<TypeName: {" 
 	    ^ (nsssToString openNamespaces) 
 	    ^ "}::" 
 	    ^ (Ustring.toAscii ident) 
 	    ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => 
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) => 
 	    "<TypeName: " 
 	    ^ (nsExprToString qual) 
 	    ^ "::" 
@@ -177,6 +186,7 @@ fun ty t =
 	    (ty expr) ^ (if nullable then "?" else "!")
           | Ast.InstanceType { name=n, ... } => 
 	    name n
+	  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"     
 	  | Ast.LamType { params, body } => 
 	    "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
     end

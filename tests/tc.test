@@ -67,14 +67,26 @@ let (z=2,y=3) y
 %% [this] verify, pass
 this
 
+%% [fn0] verify, pass
+(function f(){})
+
 %% [fn1] verify, pass
-(function f(x:int):int { return 1 });
+   (function f(x:int):int { return 1 });
 
 %% [fn2] verify, pass
 (function f(x:int):int { return 1 }) (4);
 
 %% [fn3] verify, pass
 (function f(x:int,y):int { return 1 }) (4,5);
+
+%% [fn3a] verify, fail
+(function f(x:int,y):int { return 1 }) (4);
+
+%% [fn3b] verify, fail
+(function f(x:int,y):int { return 1 }) ();
+
+%% [fn3c] verify, fail
+(function f(x:int,y):int { return 1 }) (4,5,6);
 
 %% [fn4] verify, pass
 let (f=function f() {}) f(3);
@@ -88,8 +100,26 @@ let (f:function(int):int=function f(x:int):int {return x}) f(3);
 %% [fn7] verify, pass
 (function f(...x):int { return 1 }) (4);
 
+%% [fn7a] verify, pass
+(function f(...x):int { return 1 }) (4,true,7);
+
+%% [fn7b] verify, pass
+(function f(y,...x):int { return 1 }) (4);
+
+%% [fn7c] verify, fail
+(function f(y,z,...x):int { return 1 }) (4);
+
 %% [fn8] verify, pass
-(function f.<X>(x:X):X { return x});
+function f.<X>(x:X):X { return x};
+
+%% [fn8a] verify, pass
+function f.<X>(x:X):X { return 1};
+
+%% [fn8b] verify, fail
+function f.<X>(x:Y):X { return x};
+
+%% [fn8c] verify, fail
+function f.<X>(x:X):Y { return x};
 
 %% [fn9] verify, pass
 let (f=1) f(3)
@@ -109,15 +139,20 @@ let (f:function(*):* =function f(x:int):int {return x}) f(3);
 %% [fn54] verify, pass
 let (f:function(int):int=function f(x:int):int {return x}) f(3);
 
-%% [fn55] verify, pass
-let (f:function(y)=function f(x:int):int {return x}) f(3);
+%% [fn55a] verify, pass
+let (f:function(int)=function f(x:int):int {return x}) f(3);
+
+%% [fn55b] verify, pass
+let (f:function(*)=function f(x:int):int {return x}) f(3);
+
+%% [fn55c] verify, fail
+let (f:function()=function f(x:int):int {return x}) f(3);
+
+%% [fn55d] verify, pass
+let (f:function(int)=function f(x:int):int {return x}) f(3);
 
 %% [fn56] verify, pass
 let (f:function(int):int=function f(x) {return x}) f(3);
-
-%% [classInStmt] verify, pass
-namespace N 
-{ class C {} };
 
 %% [badtype] verify, fail
 var x:int;
@@ -146,12 +181,23 @@ f = function(g:int):* { return g; };
 %% [generic1] verify, pass
 var f : function.<X>(int):int;
 
-%% [generic2] verify, pass
+%% [generic2a] verify, pass
+class C.<T> {}
+
+%% [generic2b] verify, pass
+class C.<T> {
+      function get() : C.<T> {
+      }
+}
+
+%% [generic2c] verify, pass
 class C.<T> {
       function get() : C.<T> {
          return new C.<T>();
       }
 }
+
+
 
 
 

@@ -58,10 +58,13 @@ structure StrMap = SplayMapFn (StrKey);
 
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
+
+structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
+structure IntMap = SplayMapFn (IntKey);
           
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
-val cachesz = 1024
+val cachesz = 4096
                                        
 type ATTRS = { dontDelete: bool,
                dontEnum: bool,
@@ -76,6 +79,7 @@ datatype VAL = Object of OBJ
          Obj of { ident: OBJ_IDENT,
                   tag: VAL_TAG,
                   props: PROP_BINDINGS,
+                  rib: Ast.RIB ref,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
 
@@ -96,7 +100,8 @@ datatype VAL = Object of OBJ
           doubleCache: (OBJ Real64Map.map) ref,
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
-          strCache: (OBJ StrMap.map) ref
+          strCache: (OBJ StrMap.map) ref,
+          tyCache: (Ast.TYPE_EXPR IntMap.map) ref (* well, mostly objs *)
          }
 
      and PROFILER =
@@ -149,7 +154,7 @@ datatype VAL = Object of OBJ
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
        | Function of FUN_CLOSURE
-       | Type of Ast.TY
+       | Type of Ast.TYPE_EXPR
        | NativeFunction of NATIVE_FUNCTION
 
      and SCOPE =
@@ -205,6 +210,7 @@ datatype VAL = Object of OBJ
            * Auxiliary machine/eval data structures, not exactly
            * spec-normative, but important! Embedded in REGS.
            *)
+          langEd: int ref,
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
@@ -255,14 +261,14 @@ withtype FUN_CLOSURE =
 
      and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
-     and PROP = { ty: Ast.TY,
+     and PROP = { ty: Ast.TYPE_EXPR,
                   state: PROP_STATE,
                   attrs: ATTRS }
 
      and PROP_BINDINGS = { max_seq: int,
 			               bindings: { seq: int,
 				                       prop: (* PROP *)
-				                                 { ty: Ast.TY,   
+				                                 { ty: Ast.TYPE_EXPR,   
 					                               state: PROP_STATE,
 					                               attrs: ATTRS } } NameMap.map } ref 
 			 
@@ -470,11 +476,6 @@ fun matchProps (fixedProps:bool)
         List.mapPartial tryNS nss
     end
 
-fun makeTy (te:Ast.TYPE_EXPR) 
-    : Ast.TY = 
-    Ast.Ty { expr = te,
-             ribId = NONE }
-
 fun getProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
     : PROP =
@@ -486,7 +487,7 @@ fun getProp (b:PROP_BINDINGS)
          * with value undefined. Any property not found
          * errors would have been caught by evalRefExpr
          *)
-        {ty=makeTy (Ast.SpecialType Ast.Undefined),
+        {ty=Ast.SpecialType Ast.Undefined,
          state=ValProp Undef,
          attrs={dontDelete=false,  (* unused attrs *)
                 dontEnum=false,
@@ -508,6 +509,35 @@ fun hasMagic (ob:OBJ) =
         case !magic of
             SOME _ => true
           | NONE => false
+
+fun setRib (obj:OBJ)
+           (r:Ast.RIB)
+    : unit =
+    let
+        val Obj { rib, ... } = obj
+    in
+        rib := r
+    end
+
+fun getRib (obj:OBJ)
+    : Ast.RIB =
+    let
+        val Obj { rib, ... } = obj
+    in
+        !rib
+    end
+
+fun getRibs (scope:SCOPE) 
+    : Ast.RIBS = 
+      let   
+          val Scope {object, parent, ...} = scope
+          val rib = getRib object
+      in
+          case parent of 
+              NONE => [rib]
+            | SOME p => rib :: (getRibs p)
+      end
+
 
 fun setPropDontEnum (props:PROP_BINDINGS)
                     (n:Ast.NAME)
@@ -545,6 +575,7 @@ fun newObj (t:VAL_TAG)
           tag = t,
           props = newPropBindings (),
           proto = ref p,
+          rib = ref [],
           magic = ref m }
 
 fun newObjNoTag _
@@ -727,17 +758,16 @@ fun inspect (v:VAL)
         fun id (Obj ob) = Int.toString (#ident ob)
 
         fun typ t = LogErr.ty t
-        fun ty (Ast.Ty { expr, ... }) = typ expr
 
         fun magType t = 
             case t of 
                 Class { cls = Ast.Cls { instanceType, classType, ... }, ... } => 
-                (" : instanceType=" ^ (ty instanceType) ^ ", classType=" ^ (ty classType))
+                (" : instanceType=" ^ (typ instanceType) ^ ", classType=" ^ (typ classType))
               | Interface { iface = Ast.Iface { instanceType, ... }, ... } => 
-                (" : instanceType=" ^ (ty instanceType))
+                (" : instanceType=" ^ (typ instanceType))
               | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
-                (" : " ^ (ty ty0))
-              | Type t => (" = " ^ (ty t))
+                (" : " ^ (typ ty0))
+              | Type t => (" = " ^ (typ t))
               | _ => ""
                 
         fun tag (Obj ob) =
@@ -783,7 +813,7 @@ fun inspect (v:VAL)
                               | NamespaceProp _ => "[namespace]"
                               | ValListProp _ => "[val list]"
                     in
-                        p indent ["   prop = ", LogErr.name n, ": ", ty ty0, att attrs,  " = "];
+                        p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];
                         case state of
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
@@ -892,7 +922,7 @@ fun needFunction (v:VAL)
               error ["require function object"])
 
 fun needType (v:VAL)
-    : (Ast.TY) =
+    : (Ast.TYPE_EXPR) =
     case needMagic v of
         Type t => t
       | _ => (inspect v 1; 
@@ -1048,6 +1078,23 @@ fun setBooting (regs:REGS)
         booting := isBooting
     end
 
+fun setLangEd (regs:REGS) 
+              (newLangEd:int)
+    : unit =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        langEd := newLangEd
+    end
+
+fun getLangEd (regs:REGS)               
+    : int =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        !langEd
+    end
+
 fun getSpecials (regs:REGS) =
     let 
         val { aux = Aux { specials = SpecialObjs ss, ... }, ... } = regs
@@ -1105,21 +1152,25 @@ fun updateCache cacheGetter
         then ((c := cacheInsert ((!c), k, v)); v)
         else v
     end
+        
 
 fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
 fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
+fun getTyCache (regs:REGS) = (#tyCache (getCaches regs)) 
 
 val findInDoubleCache = findInCache getDoubleCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
 val findInStrCache = findInCache getStrCache StrMap.find
+val findInTyCache = findInCache getTyCache IntMap.find
 
 val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
+val updateTyCache = updateCache getTyCache IntMap.numItems IntMap.insert
 
 fun makeGlobalScopeWith (global:OBJ) 
     : SCOPE =
@@ -1139,7 +1190,8 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                      { doubleCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
-                       strCache = ref StrMap.empty }
+                       strCache = ref StrMap.empty,
+                       tyCache = ref IntMap.empty }
         val specials = SpecialObjs 
                        { classClass = ref NONE,
                          interfaceClass = ref NONE,
@@ -1159,6 +1211,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          booleanFalse = ref NONE,
                          doubleNaN = ref NONE }
         val aux = Aux { booting = ref false,
+                        langEd = ref 4,
                         specials = specials,
                         stack = ref [],
                         objCache = ocache,

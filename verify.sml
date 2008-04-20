@@ -40,25 +40,25 @@ structure Verify = struct
 
 type STD_TYPES = { 
      AnyNumberType: Ast.TYPE_EXPR,
-     doubleType: Ast.TYPE_EXPR,
-     decimalType: Ast.TYPE_EXPR,
+     doubleType:    Ast.TYPE_EXPR,
+     decimalType:   Ast.TYPE_EXPR,
 
      AnyStringType: Ast.TYPE_EXPR,
-     stringType: Ast.TYPE_EXPR,
+     stringType:    Ast.TYPE_EXPR,
 
      AnyBooleanType: Ast.TYPE_EXPR,
-     booleanType: Ast.TYPE_EXPR,
+     booleanType:   Ast.TYPE_EXPR,
 
-     RegExpType: Ast.TYPE_EXPR,
+     RegExpType:    Ast.TYPE_EXPR,
 
      NamespaceType: Ast.TYPE_EXPR,
-     TypeType: Ast.TYPE_EXPR
+     TypeType:      Ast.TYPE_EXPR
 }
 
 type ENV = { returnType: Ast.TYPE_EXPR option,
              strict: bool,
              prog: Fixture.PROGRAM,
-             ribs: Ast.RIB list,
+             ribs: Ast.RIBS,
              stdTypes: STD_TYPES }
 
 fun withReturnType { returnType=_, strict, prog, ribs, stdTypes } returnType =
@@ -103,32 +103,17 @@ fun fmtType ty = if !doTrace
                  then LogErr.ty ty
                  else ""
 
+fun liftOption (f: 'a -> 'b) (x:'a option) (y:'b) : 'b =
+    case x of
+        NONE => y
+      | SOME xx => f xx
+
 (****************************** standard types *************************)
 
 val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
 val anyType         = Ast.SpecialType Ast.Any
-
-fun normalize (prog:Fixture.PROGRAM)
-              (strict:bool)              
-              (ty:Ast.TY)
-    : Ast.TY = 
-    Type.normalize prog [] ty 
-    handle LogErr.TypeError e => 
-           let in
-               if strict 
-               then 
-                   warning [e, " while normalizing ", 
-                            LogErr.ty (AstQuery.typeExprOf ty)]
-               else ();
-               ty
-           end
-                                
-fun makeTy (tyExpr:Ast.TYPE_EXPR) 
-    : Ast.TY =
-    Ast.Ty { expr = tyExpr,
-             ribId = NONE }
-
+                                           
 fun newEnv (prog:Fixture.PROGRAM) 
            (strict:bool) 
     : ENV = 
@@ -137,38 +122,39 @@ fun newEnv (prog:Fixture.PROGRAM)
      strict = strict,
      prog = prog, 
      ribs = [Fixture.getRootRib prog],
-
+     
      stdTypes = 
      {      
       AnyNumberType = Type.getNamedGroundType prog Name.ES4_AnyNumber,
-      doubleType = Type.getNamedGroundType prog Name.ES4_double,
-      decimalType = Type.getNamedGroundType prog Name.ES4_decimal,
+      doubleType    = Type.getNamedGroundType prog Name.ES4_double,
+      decimalType   = Type.getNamedGroundType prog Name.ES4_decimal,
 
       AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
-      stringType = Type.getNamedGroundType prog Name.ES4_string,
+      stringType    = Type.getNamedGroundType prog Name.ES4_string,
 
-      AnyBooleanType = Type.getNamedGroundType prog Name.ES4_AnyBoolean,
-      booleanType = Type.getNamedGroundType prog Name.ES4_boolean,
+      AnyBooleanType= Type.getNamedGroundType prog Name.ES4_AnyBoolean,
+      booleanType   = Type.getNamedGroundType prog Name.ES4_boolean,
 
-      RegExpType = Type.getNamedGroundType prog Name.nons_RegExp,
+      RegExpType    = Type.getNamedGroundType prog Name.nons_RegExp,
 
       NamespaceType = Type.getNamedGroundType prog Name.ES4_Namespace,
 
-      TypeType = Type.getNamedGroundType prog Name.intrinsic_Type
+      TypeType      = Type.getNamedGroundType prog Name.intrinsic_Type
      }
     }
 
 
 (******************* Utilities for dealing with ribs *********************)
+(* FIXME: need all these? maybe redundant with type.sml? *)
 
 fun resolveMnameToFixture (env:ENV)
-			  (mname:Ast.MULTINAME)
+			              (mname:Ast.MULTINAME)
     : Ast.FIXTURE option =
     case Multiname.resolveInRibs mname (#ribs env) of 
         NONE => NONE
       | SOME (ribs, n) =>
         SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
-
+        
 (* 
  * FIXME: It'd be nice to unify this with the namespace-expr resolver in 
  * defn.sml; unfortunately that uses ribId-based lookup not rib-list lookup,
@@ -177,16 +163,16 @@ fun resolveMnameToFixture (env:ENV)
  *)
 
 fun resolveIdentExprToMname (env:ENV)
-			    (ie:Ast.IDENT_EXPR)
+			                (ie:Ast.IDENT_EXPR)
     : Ast.MULTINAME = 
     case ie of                     
-	Ast.Identifier { ident, openNamespaces } => 
-	{ id = ident, nss = openNamespaces }
+	    Ast.Identifier { ident, openNamespaces } => 
+	    { id = ident, nss = openNamespaces }
       | Ast.QualifiedIdentifier { qual, ident } => 
-	{ id = ident, 
-	  nss = [[resolveExprToNamespace env qual]] }
+	    { id = ident, 
+	      nss = [[resolveExprToNamespace env qual]] }
       | _ =>  error ["unhandled type of lexical reference"]
-	     
+	          
 and resolveExprToNamespace (env:ENV)
                            (expr:Ast.EXPR)
     : Ast.NAMESPACE =
@@ -199,11 +185,30 @@ and resolveExprToNamespace (env:ENV)
         in
             case resolveMnameToFixture env mname of
                 SOME (Ast.NamespaceFixture ns) => ns
-              | _ => error ["namespace expression did not resolve ",
-			    "to namespace fixture"]
+              | _ => 
+                let in
+                    warning ["namespace expression did not resolve to namespace fixture"];
+                    Ast.Intrinsic
+                end
         end
       | _ => error ["unexpected expression type ",
 		    "in namespace context"]
+
+(* Returns the type of the given fixture *)
+fun typeOfFixture (env:ENV)
+			      (fixture:Ast.FIXTURE)
+    : Ast.TYPE_EXPR = 
+    case fixture of 	
+	    (* 
+	     * FIXME: classtypes should be turned into instancetypes of 
+	     * the static-class type, so we can look up static props on them
+	     * correctly. Abusing object types like this is no good.
+	     *)
+	    (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
+      | (Ast.ValFixture { ty, ... }) => ty	
+      | (Ast.VirtualValFixture { ty, ... }) => ty        
+      | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
+      | _ => anyType
 
 (* 
  * Note:this resolves a multiname to the type *of* the fixture denoted by that
@@ -211,218 +216,125 @@ and resolveExprToNamespace (env:ENV)
  * by the general type normalizer in type.sml.
  *)
 fun resolveMnameToFixtureTy (env:ENV)
-			    (mname:Ast.MULTINAME)
-    : Ast.TY = 
+			                (mname:Ast.MULTINAME)
+    : Ast.TYPE_EXPR = 
     case resolveMnameToFixture env mname of 	
-	(* 
-	 * FIXME: classtypes should be turned into instancetypes of 
-	 * the static-class type, so we can look up static props on them
-	 * correctly. Abusing object types like this is no good.
-	 *)
-	SOME (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
-      | SOME (Ast.ValFixture { ty, ... }) => ty	
-      | SOME (Ast.VirtualValFixture { ty, ... }) => ty        
-      | SOME (Ast.TypeFixture _) => makeTy (#TypeType (#stdTypes env))
-      | _ => makeTy anyType
-
+	    SOME fixture => typeOfFixture env fixture 
+      | NONE => 
+        let in
+            warning ["Unbound multiname ", LogErr.multiname mname
+                      , " in ribs ", LogErr.ribs (#ribs env)  
+                    ];
+            anyType
+        end
 
 
 (******************* Subtyping and Compatibility *************************)
 
-fun checkMatch (src:Ast.TYPE_EXPR) (* assignment src *)
+(* src and dst are normalized *)
+fun checkMatch (env:ENV)
+               (src:Ast.TYPE_EXPR) (* assignment src *)
 		       (dst:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
     let in
         trace ["checkMatch ", LogErr.ty src, " vs. ", LogErr.ty dst]; 
-        if Type.groundMatches src dst
+        if not (#strict env) orelse Type.groundMatches src dst
         then ()
-        else warning ["checkMatch failed: ", LogErr.ty src, " vs. ", LogErr.ty dst]
+        else warning 
+                 ["checkMatch: incompatible types in assignment: a value of type\n    ", 
+                  LogErr.ty src, 
+                  "\ncannot be put into a slot of type\n    ", 
+                  LogErr.ty dst]
     end
 
+(* t1 and t2 are normalized *)
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
                     (t2:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
     in
-        if Type.groundIsCompatibleSubtype t1 t2 then (* FIXME *)
-            t2
-        else if Type.groundIsCompatibleSubtype t2 t1 then
-            t1
-        else
-            Ast.UnionType [t1, t2]
+        if      Type.groundIsCompatibleSubtype t1 t2 then t2
+        else if Type.groundIsCompatibleSubtype t2 t1 then t1
+        else Ast.UnionType [t1, t2]
     end
-
 
 (******************** Verification **************************************************)
 
+(* Verification (aka normalization) converts a (non-closed) TYPE_EXPR into a 
+ * (closed, aka grounded) TYPE_EXPR. 
+ *)
+
 fun verifyType (env:ENV)
-               (ty:Ast.TY)
-    : (Ast.TY * Ast.TYPE_EXPR) =
-
-    (* 
-     * Verification converts a (non-closed) TY into a 
-     * (closed, aka grounded) TYPE_EXPR.
-     * It is a static error if a type cannot be closed.
-     * We return the closed type, since it may later be propogated
-     * outside of its current environment env.
-     *
-     * verifyType only called by verifyTy and verifyTypeExpr;
-     * result of verifyTy never used.
-     * -----
-     * Verification, if it runs, is obliged to come up with a best
-     * guess ground type expression for every type it sees. It does
-     * this because it performs some static reasoning and leaves
-     * behind a bunch of runtime checks.
-     * 
-     * As such, when we hit a TY, we try to reduce it to a
-     * TYPE_EXPR. If we get a non-ground type, we produce the special
-     * TYPE_EXPR "anyType", representing *, because it's the "best
-     * guess" at this stage.
-     * 
-     * We also return the normalized TY, as many of our callers are
-     * rewriting their type expressions and it gives us a chance to
-     * optimize away future runtime calculations of the same normal
-     * form.
-     *)
-    let
-        val norm = normalize (#prog env) (#strict env) ty
-    in
-        (norm, 
-         if Type.isGroundTy norm
-         then (AstQuery.typeExprOf norm)
-         else 
-             let in
-                 warning ["Type could not be closed: ", LogErr.ty (AstQuery.typeExprOf norm)];
-                 anyType
-             end)
-    end
-
-fun verifyTypeExpr (env:ENV)
-                   (ty:Ast.TY)
+               (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
-    
     let
-        val (ty,te) = verifyType env ty
+        val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
+        val norm = 
+            (* FIXME: it is *super wrong* to just be using the root rib here. 
+            Type.normalize [Fixture.getRootRib (#prog env)] ty *)
+            Type.normalize (#ribs env) ty
+            handle LogErr.TypeError e => 
+                   let in
+                       if (#strict env) 
+                       then 
+                           warning [e, " while normalizing ", LogErr.ty ty]
+                       else ();
+                       ty
+                   end
+        val _ = trace ["verifyType: back from normalize ", LogErr.ty ty]
     in
-        te
+        norm 
     end
 
-
-(*
-verifyTypeExpr env ty
-*)
-fun verifyTy (env:ENV)
-             (ty:Ast.TY)
-    : Ast.TY =
-    
-    let
-        val (ty,te) = verifyType env ty
-    in
-        ty
+and verifyFixtureName (env:ENV) (fname:Ast.FIXTURE_NAME) : Ast.TYPE_EXPR =
+    let in
+       (* trace ["Verifying fixture name ", LogErr.fname fname, 
+               " in ribs ", LogErr.ribs (#ribs env)]; *)
+        case List.find (fn (fname2,fixture) => fname2=fname) (hd (#ribs env)) of
+            SOME (_,f) => verifyType env (typeOfFixture env f)
+          | NONE => 
+            let in
+                warning ["Unbound fixture name ", LogErr.fname fname
+                          ," in ribs ", LogErr.ribs (#ribs env)
+                        ];
+                anyType
+            end
     end
-
-(*
-    HEAD
-*)
 
 and verifyInits (env:ENV) (inits:Ast.INITS)
     : unit =
-    (* FIXME - check type of name *)
-    (List.map (fn (name, expr) => verifyExpr env expr) inits; ())
+    let in
+        List.map 
+         (fn (name, expr) => checkMatch env 
+                                        (verifyExpr env expr) 
+                                        (verifyFixtureName env name)) 
+         inits; 
+        ()
+    end
 
-
-and verifyInitsOption (env:ENV)
-		              (inits:Ast.INITS option)
-    : unit =
-    case inits of
-        SOME inits => verifyInits env inits
-      | _ => LogErr.internalError ["missing inits"]
-
+(* verifyHead returns an extended environment *)
 
 and verifyHead (env:ENV) 
                (head:Ast.HEAD)
-    : unit =
+    : ENV =
     let
         val Ast.Head (rib, inits) = head
-        val _ = trace ["verifying head with ", 
-                       Int.toString (length rib), 
-                       " entry rib"];
+        val env' = withRib env rib
     in        
+        trace ["verifying head with rib ", LogErr.rib rib, " in ribs ", LogErr.ribs (#ribs env)];
         verifyRib env rib;
-        verifyInits env inits
+        verifyInits env' inits;
+        trace ["done with verifying head"];
+        env'
     end
 
-(*
-and verifyBinaryExpr (env:ENV)
-                     (e1:Ast.EXPR)
-                     (e2:Ast.EXPR)
-    : Ast.TYPE_EXPR =
-    let
-        val { prog, 
-              strict, 
-              stdTypes = 
-              { AnyNumberType, 
-                doubleType,
-                decimalType,
-
-                AnyStringType,
-                stringType,
-
-                AnyBooleanType, 
-                booleanType, 
-
-                RegExpType,
-
-                TypeType,
-                NamespaceType }, ... } = env
-        val t1 = verifyExpr env e1
-        val t2 = verifyExpr env e2
-        (* FIXME: these are way wrong. For the time being, just jam in star everywhere
-         * we know we don't know enough *)
-        val AdditionType = anyType
-        val CompareType = anyType
-        val LogicalType = anyType
-        (* FIXME: need to deal with operator overloading *)
-        val (expectedType1, expectedType2, resultType) =
-            case b of
-                Ast.Plus => (AdditionType, AdditionType, AdditionType)
-              | Ast.Minus => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.Times => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.Divide => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.Remainder => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.LeftShift => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.RightShift => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.RightShiftUnsigned => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.BitwiseAnd => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.BitwiseOr => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.BitwiseXor => (AnyNumberType, AnyNumberType, AnyNumberType)
-              | Ast.LogicalAnd => (booleanType, LogicalType, LogicalType)
-              | Ast.LogicalOr => (booleanType, LogicalType, LogicalType)
-              | Ast.InstanceOf => (anyType, anyType, booleanType)
-              | Ast.In => (anyType, anyType, booleanType)
-              | Ast.Equals => (anyType, anyType, booleanType)
-              | Ast.NotEquals => (anyType, anyType, booleanType)
-              | Ast.StrictEquals => (anyType, anyType, booleanType)
-              | Ast.StrictNotEquals => (anyType, anyType, booleanType)
-              | Ast.Less => (CompareType, CompareType, booleanType)
-              | Ast.LessOrEqual => (CompareType, CompareType, booleanType)
-              | Ast.Greater => (CompareType, CompareType, booleanType)
-              | Ast.GreaterOrEqual => (CompareType, CompareType, booleanType)
-              | Ast.Comma => (anyType, anyType, t2)
-    in
-        if strict
-        then 
-            let
-            in
-                checkMatch t1 expectedType1;
-                checkMatch t2 expectedType2
-            end
-        else ();
-        resultType
+and verifyLvalue (env:ENV)
+                 (expr : Ast.EXPR) 
+    : Ast.TYPE_EXPR = 
+    let in
+        (* FIXME: check an lvalue expression *)
+        verifyExpr env expr
     end
-*)
-
-and checkLvalue (expr : Ast.EXPR) = () (* FIXME *)
 
 and verifyExpr (env:ENV)
                (expr:Ast.EXPR)
@@ -445,51 +357,46 @@ and verifyExpr (env:ENV)
 
                 TypeType,
                 NamespaceType }, ... } = env
-        val _ = trace ["Verifying expr"]
+        val _ = trace ["Verifying expr "]
 
         fun verifySub (e:Ast.EXPR) : Ast.TYPE_EXPR = verifyExpr env e
-        fun verifySubList (es:Ast.EXPR list) : Ast.TYPE_EXPR list = verifyExprs env es
+        fun verifySubList (es:Ast.EXPR list) : Ast.TYPE_EXPR list = map (verifyExpr env) es
         fun verifySubOption (eo:Ast.EXPR option) : Ast.TYPE_EXPR option = Option.map verifySub eo
         fun binaryOpType (b:Ast.BINOP) t1 t2 : Ast.TYPE_EXPR =
             let
+                (* FIXME: these are way wrong. For the time being, just jam in star everywhere *)
                 val AdditionType = anyType
                 val CompareType = anyType
                 val LogicalType = anyType
                 val (expectedType1, expectedType2, resultType) =
                     case b of
-                         Ast.Plus => (AdditionType, AdditionType, AdditionType)
-                       | Ast.Minus => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.Times => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.Divide => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.Remainder => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.LeftShift => (AnyNumberType, AnyNumberType, AnyNumberType)
+                         Ast.Plus       => (AdditionType,  AdditionType,  AdditionType)
+                       | Ast.Minus      => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Times      => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Divide     => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.Remainder  => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.LeftShift  => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.RightShift => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.RightShiftUnsigned => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.BitwiseAnd => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.BitwiseOr => (AnyNumberType, AnyNumberType, AnyNumberType)
+                       | Ast.BitwiseOr  => (AnyNumberType, AnyNumberType, AnyNumberType)
                        | Ast.BitwiseXor => (AnyNumberType, AnyNumberType, AnyNumberType)
-                       | Ast.LogicalAnd => (booleanType, LogicalType, LogicalType)
-                       | Ast.LogicalOr => (booleanType, LogicalType, LogicalType)
-                       | Ast.InstanceOf => (anyType, anyType, booleanType)
-                       | Ast.In => (anyType, anyType, booleanType)
-                       | Ast.Equals => (anyType, anyType, booleanType)
-                       | Ast.NotEquals => (anyType, anyType, booleanType)
-                       | Ast.StrictEquals => (anyType, anyType, booleanType)
-                       | Ast.StrictNotEquals => (anyType, anyType, booleanType)
-                       | Ast.Less => (CompareType, CompareType, booleanType)
-                       | Ast.LessOrEqual => (CompareType, CompareType, booleanType)
-                       | Ast.Greater => (CompareType, CompareType, booleanType)
+                       | Ast.LogicalAnd => (booleanType,   LogicalType,   LogicalType)
+                       | Ast.LogicalOr  => (booleanType,   LogicalType,   LogicalType)
+                       | Ast.InstanceOf => (anyType,       anyType,       booleanType)
+                       | Ast.In         => (anyType,       anyType,       booleanType)
+                       | Ast.Equals     => (anyType,       anyType,       booleanType)
+                       | Ast.NotEquals  => (anyType,       anyType,       booleanType)
+                       | Ast.StrictEquals => (anyType,     anyType,       booleanType)
+                       | Ast.StrictNotEquals => (anyType,  anyType,       booleanType)
+                       | Ast.Less       => (CompareType,  CompareType,    booleanType)
+                       | Ast.LessOrEqual => (CompareType, CompareType,    booleanType)
+                       | Ast.Greater    => (CompareType,  CompareType,    booleanType)
                        | Ast.GreaterOrEqual => (CompareType, CompareType, booleanType)
-                       | Ast.Comma => (anyType, anyType, t2)
+                       | Ast.Comma      => (anyType,      anyType,        t2)
             in
-                if strict
-                then 
-                    let
-                    in
-                         checkMatch t1 expectedType1;
-                         checkMatch t2 expectedType2
-                    end
-                else ();
+                checkMatch env t1 expectedType1;
+                checkMatch env t2 expectedType2;
                 resultType
             end
     in
@@ -500,10 +407,7 @@ and verifyExpr (env:ENV)
                 val t2:Ast.TYPE_EXPR = verifySub e2
                 val t3:Ast.TYPE_EXPR = verifySub e3
             in
-                if strict
-                then checkMatch t1 booleanType
-                else ();
-                (* FIXME: this produces a union type. is that right? *)
+                checkMatch env t1 booleanType;
                 leastUpperBound t2 t3
             end
 
@@ -511,12 +415,6 @@ and verifyExpr (env:ENV)
             let
                 val t1 = verifySub e1
                 val t2 = verifySub e2
-                (* FIXME: these are way wrong. For the time being, just jam in star everywhere
-                 * we know we don't know enough *)
-                val AdditionType = anyType
-                val CompareType = anyType
-                val LogicalType = anyType
-                (* FIXME: need to deal with operator overloading *)
                 val resultType = binaryOpType b t1 t2
             in
                 resultType
@@ -525,18 +423,14 @@ and verifyExpr (env:ENV)
           | Ast.BinaryTypeExpr (b, e, ty) =>
             let
                 val t1 = verifySub e
-                val t2 = verifyTypeExpr env ty
+                val t2 = verifyType env ty
                 val resultType = case b of
                                      Ast.Is => booleanType
                                    | _ => t2
             in
-                if strict
-                then 
-                    case b of
-                        Ast.Is => ()
-                      | Ast.Cast => checkMatch t1 t2
-                else 
-                    ();
+                case b of
+                        Ast.Is => checkMatch env t1 t2
+                  | Ast.Cast => checkMatch env t1 t2;
                 resultType
             end
 
@@ -546,45 +440,41 @@ and verifyExpr (env:ENV)
                 val resultType = 
                     case u of
                         (* FIXME: these are probably mostly wrong *)
-                        Ast.Delete => booleanType
-                      | Ast.Void => undefinedType
-                      | Ast.Typeof => stringType
-                      | Ast.PreIncrement => AnyNumberType
-                      | Ast.PreDecrement => AnyNumberType
+                        Ast.Delete        => booleanType
+                      | Ast.Void          => undefinedType
+                      | Ast.Typeof        => stringType
+                      | Ast.PreIncrement  => AnyNumberType
+                      | Ast.PreDecrement  => AnyNumberType
                       | Ast.PostIncrement => AnyNumberType
                       | Ast.PostDecrement => AnyNumberType
-                      | Ast.UnaryPlus => AnyNumberType
-                      | Ast.UnaryMinus => AnyNumberType
-                      | Ast.BitwiseNot => AnyNumberType
-                      | Ast.LogicalNot => booleanType
-                      | Ast.Spread => Ast.ArrayType [anyType]
+                      | Ast.UnaryPlus     => AnyNumberType
+                      | Ast.UnaryMinus    => AnyNumberType
+                      | Ast.BitwiseNot    => AnyNumberType
+                      | Ast.LogicalNot    => booleanType
+                      | Ast.Spread        => Ast.ArrayType [anyType]
                       (* TODO: isn't this supposed to be the prefix of a type expression? *)
                       | Ast.Type => TypeType
             in
-                if strict
-                then 
-                    case u of
-                        (* FIXME: these are probably wrong *)
-                        Ast.Delete => ()
-                      | Ast.PreIncrement => checkMatch t AnyNumberType
-                      | Ast.PostIncrement => checkMatch t AnyNumberType
-                      | Ast.PreDecrement => checkMatch t AnyNumberType
-                      | Ast.PostDecrement => checkMatch t AnyNumberType
-                      | Ast.UnaryPlus => checkMatch t AnyNumberType
-                      | Ast.UnaryMinus => checkMatch t AnyNumberType
-                      | Ast.BitwiseNot => checkMatch t AnyNumberType
-                      | Ast.LogicalNot => checkMatch t booleanType
-                      (* TODO: Ast.Type? *)
-                      | _ => ()
-                else
-                    ();
+                case u of
+                    (* FIXME: these are probably wrong *)
+                    Ast.Delete => ()
+                  | Ast.PreIncrement => checkMatch env t AnyNumberType
+                  | Ast.PostIncrement => checkMatch env t AnyNumberType
+                  | Ast.PreDecrement => checkMatch env t AnyNumberType
+                  | Ast.PostDecrement => checkMatch env t AnyNumberType
+                  | Ast.UnaryPlus => checkMatch env t AnyNumberType
+                  | Ast.UnaryMinus => checkMatch env t AnyNumberType
+                  | Ast.BitwiseNot => checkMatch env t AnyNumberType
+                  | Ast.LogicalNot => checkMatch env t booleanType
+                  (* TODO: Ast.Type? *)
+                  | _ => ();
                 resultType
             end
             
           | Ast.TypeExpr t =>
             let
             in
-                verifyTy env t;
+                verifyType env t;
                 TypeType
             end
 
@@ -614,6 +504,48 @@ and verifyExpr (env:ENV)
 
           | Ast.LiteralExpr le =>
             let
+            in
+                case le of
+                    Ast.LiteralFunction func => 
+                    verifyFunc env func
+                  (*
+                  | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyType env ty
+                   *)
+
+                  | Ast.LiteralObject { expr, ty } =>
+                    let
+                        fun verifyField { kind, name, init } =
+                            (verifyExpr env init; ())
+                    in
+                        List.app verifyField expr;
+                        liftOption (verifyType env) ty anyType
+                    end                    
+
+                  (* FIXME handle comprehensions *)
+                  | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => 
+                    let                        
+                    in
+                        List.map (verifyExpr env) exprs;
+                        liftOption (verifyType env) ty (Ast.ArrayType [anyType])
+                    end
+
+                  | Ast.LiteralNull => nullType
+                  | Ast.LiteralUndefined => undefinedType
+                  | Ast.LiteralDouble _ => doubleType
+                  | Ast.LiteralDecimal _ => decimalType
+                  | Ast.LiteralInt _ => intType
+                  | Ast.LiteralUInt _ => uintType
+                  | Ast.LiteralBoolean _ => booleanType
+                  | Ast.LiteralString _ => stringType
+                  | Ast.LiteralXML _ => anyType
+                  | Ast.LiteralNamespace _ => NamespaceType
+                  | Ast.LiteralRegExp _ => RegExpType
+            end
+
+(*
+
+          | Ast.LiteralExpr le =>
+            let
                 val resultType = case le of
                                      Ast.LiteralNull => nullType
                                    | Ast.LiteralUndefined => undefinedType
@@ -621,16 +553,16 @@ and verifyExpr (env:ENV)
                                    | Ast.LiteralDecimal _ => decimalType
                                    | Ast.LiteralBoolean _ => booleanType
                                    | Ast.LiteralString _ => stringType
-                                   | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                   | Ast.LiteralArray { ty=SOME ty, ... } => verifyType env ty
                                    (* FIXME: how do we want to represent [*] ? *)
                                    | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [anyType]
                                    (* TODO: define this *)
                                    | Ast.LiteralXML _ => anyType
                                    | Ast.LiteralNamespace _ => NamespaceType
-                                   | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                   | Ast.LiteralObject { ty=SOME ty, ... } => verifyType env ty
                                    (* FIXME: how do we want to represent {*} ? *)
                                    | Ast.LiteralObject { ty=NONE, ... } => anyType
-                                   | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyTypeExpr env ty
+                                   | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyType env ty
                                    | Ast.LiteralRegExp _ => RegExpType
                 fun verifyField { kind, name, init } =
                     (verifyExpr env init; ())
@@ -643,7 +575,7 @@ and verifyExpr (env:ENV)
                     let
                     in
                         List.app verifyField expr;
-                        Option.map (verifyTy env) ty;
+                        Option.map (verifyType env) ty;
                         ()
                     end                    
                   (* FIXME handle comprehensions *)
@@ -651,66 +583,64 @@ and verifyExpr (env:ENV)
                     let                        
                     in
                         List.map (verifyExpr env) exprs;
-                        Option.map (verifyTy env) ty;
+                        Option.map (verifyType env) ty;
                         ()
                     end
                   | x => ();
                 resultType
             end
+*)
 
           | Ast.CallExpr {func, actuals} =>
             let
                 val t = verifySub func
-                val ts = verifySubList actuals
-                val resultType = case t of
-                                     Ast.FunctionType { result, ... } => result
-                                   | _ => anyType
+                val args = verifySubList actuals
             in
-                if strict
-                then 
-                    case t of
-                        Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
-                        if 
-                            (List.length actuals) < minArgs 
-                        then 
-                            warning ["too few actuals"]
-                        else 
-                            if (not hasRest) andalso
-                               ((List.length actuals) > (List.length params))
-                            then
-                                warning ["too many actuals"]
-                            else
-                                List.app (fn (formal, actual) => checkMatch actual formal)
-                                         (ListPair.zip (params, ts))
-                      | Ast.SpecialType Ast.Any => ()
+                case t of
+                    Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
+                    
+                    let fun checkargs args params =
+                            case (args,params,hasRest) of
+                                ([],[],false) => ()
+                              | ([], [restType], true) => ()
+                              | (args, [restType], true) =>
+                                checkMatch env (Ast.ArrayType args) restType
+                              | (a::ar, p::pr, _) =>
+                                let in
+                                    checkMatch env a p;
+                                    checkargs ar pr
+                                end
+                              | _ => warning ["too many actuals"]
+                    in
+                        checkargs args params;
+                        result
+                    end
+                  | Ast.SpecialType Ast.Any => anyType
+                                               
 		      (* 
 		       * FIXME: Actually have to handle instance types here, and hook into
 		       * their meta::invoke slot as well.
                * do not print error msgs for now, too noisy
 		       *)
-                      | _ => trace (* warning *) ["ill-typed call to type ", LogErr.ty t]
-                else 
-                    ();
-                resultType
+                  | _ => (warning ["ill-typed call to type ", LogErr.ty t]; anyType)
             end
 
             (* FIXME: what is this? *)
           | Ast.ApplyTypeExpr { expr, actuals } =>
             let
                 val t = verifySub expr
-                val actuals' = List.map (verifyTy env) actuals
+                val actuals' = List.map (verifyType env) actuals
             in
                 anyType
             end
 
-          | Ast.LetExpr { defs, head, body } =>
+          | Ast.LetExpr { defs=_, head as SOME (Ast.Head (rib, inits)), body } =>
             let
-                val defs' = defs 
-                val head' = Option.map (verifyHead env) head
-                (* FIXME: verify body with `head' rib in env *)
-                val t = verifySub body
+                val _ = verifyRib env rib
+                val env' = withRib env rib
             in
-                t
+                verifyInits env' inits;
+                verifyExpr env' body
             end
 
           | Ast.NewExpr { obj, actuals } =>
@@ -734,25 +664,29 @@ and verifyExpr (env:ENV)
             end
 
           | Ast.LexicalRef { ident, loc } =>
-	        if 
-		        strict
-	        then 
-		        let
-                    val _ = LogErr.setLoc loc
-		            val mname = resolveIdentExprToMname env ident
-		            val ty = resolveMnameToFixtureTy env mname
-		        in
-                    LogErr.setLoc loc;
-		            verifyTypeExpr env ty
-		        end
-	        else 
-		        anyType
+            let in
+                trace [ "lexicalref ", if strict then "strict" else "non-strict"];
+	            if 
+		            strict
+	            then 
+		            let
+                        val _ = LogErr.setLoc loc
+		                val mname = resolveIdentExprToMname env ident
+                        val _ = trace ["lexical ref mname ", LogErr.multiname mname]
+		                val ty = resolveMnameToFixtureTy env mname
+                        val _ = trace ["lexical ref ty ", LogErr.ty ty]
+		            in
+                        LogErr.setLoc loc;
+		                verifyType env ty
+		            end
+	            else 
+		            anyType
+            end
                 
           | Ast.SetExpr (a, le, re) =>
             let
-                val t1 = verifySub le
+                val t1 = verifyLvalue env le
                 val t2 = verifySub re
-                val _ = checkLvalue le;
                 val resultType =
                     case a of
                         Ast.Assign => t2
@@ -777,7 +711,7 @@ and verifyExpr (env:ENV)
                             binaryOpType binop t1 t2
                         end
             in
-                checkMatch resultType t1;
+                checkMatch env resultType t1;
                 t1
             end
 
@@ -800,18 +734,11 @@ and verifyExpr (env:ENV)
           | Ast.InitExpr (it, head, inits) =>
             let
             in
-                verifyHead env head;
-                verifyInits env inits;
+                verifyInits (verifyHead env head) inits;
                 anyType
             end
 
     end
-
-
-and verifyExprs (env:ENV)
-                (exprs:Ast.EXPR list)
-    : Ast.TYPE_EXPR list =
-    List.map (verifyExpr env) exprs
 
 
 and verifyExprAndCheck (env:ENV)
@@ -821,9 +748,7 @@ and verifyExprAndCheck (env:ENV)
     let 
         val ty = verifyExpr env expr
     in
-        if #strict env
-        then checkMatch ty expectedType
-        else ()
+       checkMatch env ty expectedType
     end
 
 (*
@@ -877,16 +802,12 @@ and verifyStmt (env:ENV)
             let 
                 val ty = verifyExpr env es
             in
-                if strict
-                then
                     (* FIXME: this does not work yet. Nothing sets returnType *)
                     (*
 	                 case returnType of
 	                     NONE => error ["return not allowed here"]
                        | SOME retTy => checkMatch ty retTy
                      *)
-                    ()
-                else 
                     ()
             end
 
@@ -960,7 +881,7 @@ and verifyStmt (env:ENV)
             let
             in
                 verifyExpr env cond;
-                verifyTy env ty;
+                verifyType env ty;
                 List.app (verifyCatchClause env) cases
             end
 
@@ -979,9 +900,9 @@ and verifyCatchClause (env:ENV)
         val {bindings, ty, rib, inits, block} = clause
         val blockEnv = withRibOpt env rib
     in
-        verifyTy env ty;
+        verifyType env ty;
         Option.app (verifyRib env) rib;
-        verifyInitsOption env inits;
+        Option.map (verifyInits env) inits;
         verifyBlock blockEnv block
     end
 
@@ -996,32 +917,32 @@ and verifyBlock (env:ENV)
                 (b:Ast.BLOCK)
     : unit =
     let
-        val Ast.Block { head, body, loc, pragmas, ... } = b
-	val env = withStrict env (strictness (#strict env) pragmas)
-        val ribOpt = case head of 
-			 NONE => NONE
-		       | SOME (Ast.Head (rib, _)) => SOME rib
-        val env = withRibOpt env ribOpt
-    in 
-        LogErr.setLoc loc;
-        Option.app (verifyHead env) head;
-        List.app (verifyStmt env) body
+       val Ast.Block { head as SOME head', body, loc, pragmas, ... } = b
+	    val env = withStrict env (strictness (#strict env) pragmas)
+        val _ = LogErr.setLoc loc
+        val env' = verifyHead env head'
+    in
+        List.app (verifyStmt env') body
     end
 
-
+(* returns the normalized type of this function *)
 and verifyFunc (env:ENV)
                (func:Ast.FUNC)
-    : unit =
+    : Ast.TYPE_EXPR =
     let
-        val Ast.Func { name, fsig, native, block, param, defaults, ty, loc } = func
-        val (Ast.Head (paramRib, _)) = param
-        val blockEnv = withRib env paramRib
+        val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
+                       native, block, param, defaults, ty, loc } = func
+(* FIXME: use Public "" as namespace of type variables? *)
+        val rib = map (fn id => (Ast.PropName {ns=Ast.Public (Ustring.fromString ""), id=id},
+                                 Ast.TypeVarFixture (Parser.nextAstNonce ())))
+                  typeParams
+        val env' = withRib env rib
+        val blockEnv = verifyHead env' param
     in
         LogErr.setLoc loc;
-        verifyTy env ty;
-        verifyHead env param;
-        verifyExprs env defaults;
-        Option.app (verifyBlock blockEnv) block
+        map (verifyExpr env') defaults;
+        Option.app (verifyBlock blockEnv) block;
+        verifyType env' ty
     end
 
 
@@ -1048,29 +969,31 @@ and verifyFixture (env:ENV)
                  in
                      (* FIXME: need to construct a sort of odd env for settings verification. *)
                      (* verifyHead instanceEnv settings; *)
-                     verifyExprs instanceEnv superArgs;
-                     verifyFunc instanceEnv func
+                     map (verifyExpr instanceEnv) superArgs;
+                     verifyFunc instanceEnv func;
+                     ()
                  end
          end
 
       (* FIXME: verify interfaces *)
 
-      | Ast.TypeFixture ty => (verifyTy env ty; ())
-      | Ast.ValFixture { ty, readOnly } => (verifyTy env ty; ())
+      | Ast.TypeFixture ty => (verifyType env ty; ())
+      | Ast.ValFixture { ty, readOnly } => (verifyType env ty; ())
       | Ast.MethodFixture { func, ty, ... } =>
         let
         in
             verifyFunc env func;
-            verifyTy env ty;
+            verifyType env ty;
             ()
         end
 
       | Ast.VirtualValFixture { ty, getter, setter} =>
         let
         in
-            verifyTy env ty;
-            Option.app (verifyFunc env) getter;
-            Option.app (verifyFunc env) setter
+            verifyType env ty;
+            Option.map (verifyFunc env) getter;
+            Option.map (verifyFunc env) setter;
+            ()
         end
 
       | _ => ()
@@ -1085,6 +1008,7 @@ and verifyRib (env:ENV)
             (trace ["verifying fixture: ", LogErr.fname name];
              verifyFixture env fixture)
     in
+        (* FIXME: should we check for duplicate bindings? *)
         List.app doFixture rib
     end
 
@@ -1111,26 +1035,27 @@ and verifyTopRib (prog:Fixture.PROGRAM)
 and verifyTopFragment (prog:Fixture.PROGRAM)
                       (strict:bool) 
                       (frag:Ast.FRAGMENT) 
-  : Ast.FRAGMENT = 
-    let 
-        val env = newEnv prog strict
-    in
-        (* print "verifyTopFragment\n";  *)
-        if !doTraceFrag then
-            let in
-                print "verifyTopFragment:printing\n";
-                Pretty.ppFragment frag;
-                TextIO.print "\n"
-            end
-        else ();
-        verifyFragment env frag;
-        trace ["verification complete ",
-              (if strict then "strict " else "nonstrict ")];
-
-
+  : Ast.FRAGMENT =
+    if strict 
+    then
+        let 
+            val env = newEnv prog strict
+        in
+            trace ["verifyTopFragment"];
+            if !doTraceFrag then
+                let in
+                    print "verifyTopFragment:printing\n";
+                    Pretty.ppFragment frag;
+                    TextIO.print "\n"
+                end
+            else ();
+            verifyFragment env frag;
+            trace ["verification complete ",
+                   (if strict then "strict " else "nonstrict ")];
+            frag
+        end
+    else
         frag
-    end
-
-
 end
+
 

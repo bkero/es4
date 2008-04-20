@@ -93,115 +93,26 @@ fun needFunctionType (t:Ast.TYPE_EXPR)
     in
         findType t isFunctionType "function"
     end
-
-fun typeExprOf (ty:Ast.TY) : Ast.TYPE_EXPR = 
-    let
-        val Ast.Ty { expr, ... } = ty
-    in
-        expr
-    end
-
-fun funcTy (func:Ast.FUNC)
-    : Ast.TY = 
-    let
-	    val Ast.Func { ty, ... } = func
-    in
-	    ty
-    end
-
-fun funcTypeParams (func:Ast.FUNC)
-    : Ast.IDENT list = 
-    let
-	    val Ast.Func { fsig = Ast.FunctionSignature { typeParams, ... }, ... } = func
-    in
-	    typeParams
-    end
-
-fun extractType (ty:Ast.TY) 
-    : (Ast.TYPE_EXPR * (Ast.RIB_ID option)) = 
-    case ty of 
-        Ast.Ty {expr, ribId} => (expr, ribId)
-                                              
-fun extractFuncType (ty:Ast.TY) 
-    : (Ast.FUNC_TYPE * (Ast.RIB_ID option)) = 
-    let
-        val Ast.Ty {expr, ribId} = ty
-    in
-        (needFunctionType expr, ribId)
-    end
-
-
-fun extractInstanceType (ty:Ast.TY) 
-    : (Ast.INSTANCE_TYPE * (Ast.RIB_ID option)) =
-    let
-        val Ast.Ty {expr, ribId} = ty
-    in
-        (needInstanceType expr, ribId)
-    end
-
-
-fun lift (q:('a -> Ast.TYPE_EXPR))
-         (x:(Ast.TY -> ('a * (Ast.RIB_ID option))))
-         (ty:Ast.TY) 
-    : (Ast.TY) =
-    let 
-        val (a, ribId) = x ty
-    in
-        Ast.Ty { expr = (q a),
-                 ribId = ribId }
-    end
-
-fun inject (q:Ast.TYPE_EXPR -> Ast.TYPE_EXPR) 
-           (ty:Ast.TY) 
-    : Ast.TY = 
-    lift q extractType ty
     
-
-and liftOpt (q:('a -> Ast.TYPE_EXPR option))
-            (x:(Ast.TY -> ('a * (Ast.RIB_ID option))))
-            (ty:Ast.TY) 
-    : (Ast.TY option) =
-    let
-        val (a, ribId) = x ty
-    in
-        case q a of 
-            NONE => NONE
-          | SOME expr => 
-            SOME (Ast.Ty { expr = expr,
-                           ribId = ribId })
-    end
-    
-val resultTyOfFuncTy = lift (#result) extractFuncType
-val resultTypeOfFuncTy = typeExprOf o resultTyOfFuncTy
-fun minArgsOfFuncTy (ty:Ast.TY) 
-    : int =
-    let 
-        val (fty, ribId) = extractFuncType ty
-    in
-        (#minArgs fty)
-    end
+val resultTyOfFuncTy = (#result) o needFunctionType
+val minArgsOfFuncTy = (#minArgs) o needFunctionType
 
 fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a) 
-                (funcTy:Ast.TY)                 
+                (funcTy:Ast.TYPE_EXPR)                 
     : 'a =
-    let
-        val (fty, _) = extractFuncType funcTy
-    in
-        q fty
-    end
+    q (needFunctionType funcTy)
 
-val paramTypesOfFuncTy = queryFuncTy (#params)
+val paramTysOfFuncTy = queryFuncTy (#params)
 val funcTyHasRest = queryFuncTy (#hasRest)
 
 
-fun singleParamTyOfFuncTy (ty:Ast.TY) 
-    : Ast.TY = 
+fun singleParamTyOfFuncTy (ty:Ast.TYPE_EXPR) 
+    : Ast.TYPE_EXPR = 
     let
-        val (funcTy, ribId) = extractFuncType ty
+        val funcTy = needFunctionType ty
     in 
         case (#params funcTy) of
-            [t] => Ast.Ty { expr=t,
-                            ribId = ribId }
+            [t] => t
           | _ => error ["singleParamTyOfFuncTy: non-unique parameter"]
     end    
                  
