@@ -90,9 +90,8 @@ val warningsAreFailures = ref false
 val doTrace = ref false
 val doTraceFrag = ref false
 val Any =  Ast.SpecialType Ast.Any
-fun log ss = LogErr.log ("[verify] " ::
-                         ss)
-fun trace ss = if (!doTrace) then log ss else ()
+fun log ss = LogErr.log ("[verify] " :: ss)
+fun trace ss = if (!doTrace) then log ("trace: "::ss) else ()
 fun error ss = LogErr.verifyError ss
 fun warning ss = 
     if !warningsAreFailures 
@@ -232,6 +231,13 @@ fun resolveMnameToFixtureTy (env:ENV)
             anyType
         end
 
+fun lookupFixtureName (ribs:Ast.RIBS) (fname:Ast.FIXTURE_NAME) : Ast.FIXTURE option =
+    case ribs of
+        [] => NONE
+      | rib::ribs =>
+        case List.find (fn (fname2,fixture) => fname2=fname) rib of
+            SOME (_,f) => SOME f
+          | NONE => lookupFixtureName ribs fname
 
 (******************* Subtyping and Compatibility *************************)
 
@@ -290,21 +296,23 @@ fun verifyType (env:ENV)
         norm 
     end
 
+
+
 and verifyFixtureName (env:ENV) (fname:Ast.FIXTURE_NAME) : Ast.TYPE_EXPR =
     let in
        (* trace ["Verifying fixture name ", LogErr.fname fname, 
                " in ribs ", LogErr.ribs (#ribs env)]; *)
-        case List.find (fn (fname2,fixture) => fname2=fname) (hd (#ribs env)) of
-            SOME (_,f) => verifyType env (typeOfFixture env f)
+        case lookupFixtureName (#ribs env) fname of
+            SOME f => verifyType env (typeOfFixture env f)
           | NONE => 
             let in
                 warning ["Unbound fixture name ", LogErr.fname fname
-                          ," in ribs ", LogErr.ribs (#ribs env)
+                       ," in ribs ", LogErr.ribs (#ribs env)
                         ];
                 anyType
             end
     end
-
+    
 and verifyInits (env:ENV) (inits:Ast.INITS)
     : unit =
     let in
@@ -1010,7 +1018,7 @@ and verifyFixture (env:ENV)
 
       | _ => ()
 
-
+(* The env does not yet include this rib *)
 and verifyRib (env:ENV)
               (rib:Ast.RIB)
     : unit =

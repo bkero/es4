@@ -104,10 +104,10 @@ fun fname (n:Ast.FIXTURE_NAME) =
 fun rib (r:Ast.RIB) = 
     "[rib: " ^ (join ", " (map (fn (n,f) => fname n) 
 			       (List.take(r,(Int.min(length r,10))))))
-    ^ "]"
+    ^ (if length r >10 then ", ...]" else "]")
 
 fun ribs (rs:Ast.RIBS) = 
-    "[ribs: " ^ (join ", " (map rib rs)) ^ "]"
+    "[ribs: \n    " ^ (join ",\n    " (map rib rs)) ^ "\n]"
 
 
 fun multiname (mn:Ast.MULTINAME) =
