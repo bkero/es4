@@ -533,8 +533,6 @@ and verifyExpr (env:ENV)
                   | Ast.LiteralUndefined => undefinedType
                   | Ast.LiteralDouble _ => doubleType
                   | Ast.LiteralDecimal _ => decimalType
-                  | Ast.LiteralInt _ => intType
-                  | Ast.LiteralUInt _ => uintType
                   | Ast.LiteralBoolean _ => booleanType
                   | Ast.LiteralString _ => stringType
                   | Ast.LiteralXML _ => anyType
