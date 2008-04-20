@@ -35,10 +35,7 @@
  *
  */
 
-package 
-{
     use default namespace public;
-    use namespace __ES4__;
     
     __ES4__ final class DecimalContext
     {
@@ -99,4 +96,3 @@ package
         override intrinsic function valueOf() : string
             intrinsic::toString();        
     }
-}

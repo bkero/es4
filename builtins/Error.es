@@ -49,16 +49,7 @@
  * verified.
  */
 
-// Vile hack.  See Object.es for documentation
-package org.ecmascript.vilehack.Error {
-    public namespace Private = "Error private";
-}
-
-package
-{
-    import org.ecmascript.vilehack.Error.*;
-
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     helper function isExactlyType(obj, t) {
         // FIXME.  What we want is
@@ -105,20 +96,19 @@ package
         public prototype var message = "Generic error";
 
         /* E262-3 15.11.4.4: toString */
-        public prototype function toString(this: Error)
-            this.Private::toString();
+        public prototype function toString()
+            this.private::toString();
 
         /* INFORMATIVE */
         // Explicit "this" qualification is required, in case they've been deleted
         // from the prototype.
         override intrinsic function toString()
-            Private::toString();
+            private::toString();
 
-        Private function toString() {
+        private function toString() {
             if (this.message !== undefined)
                 return string(this.name) + ": " + string(this.message);
             else
                 return string(this.name);
         }
     }
-}

@@ -188,7 +188,7 @@ and resolveExprToNamespace (env:ENV)
               | _ => 
                 let in
                     warning ["namespace expression did not resolve to namespace fixture"];
-                    Ast.Intrinsic
+                    Name.publicNS
                 end
         end
       | _ => error ["unexpected expression type ",
@@ -533,8 +533,6 @@ and verifyExpr (env:ENV)
                   | Ast.LiteralUndefined => undefinedType
                   | Ast.LiteralDouble _ => doubleType
                   | Ast.LiteralDecimal _ => decimalType
-                  | Ast.LiteralInt _ => intType
-                  | Ast.LiteralUInt _ => uintType
                   | Ast.LiteralBoolean _ => booleanType
                   | Ast.LiteralString _ => stringType
                   | Ast.LiteralXML _ => anyType
@@ -932,8 +930,8 @@ and verifyFunc (env:ENV)
     let
         val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
                        native, block, param, defaults, ty, loc } = func
-(* FIXME: use Public "" as namespace of type variables? *)
-        val rib = map (fn id => (Ast.PropName {ns=Ast.Public (Ustring.fromString ""), id=id},
+        (* FIXME: use public as namespace of type variables? *)
+        val rib = map (fn id => (Ast.PropName {ns=Name.publicNS, id=id},
                                  Ast.TypeVarFixture (Parser.nextAstNonce ())))
                   typeParams
         val env' = withRib env rib

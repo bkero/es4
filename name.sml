@@ -38,18 +38,23 @@ fun newOpaqueNS _ =
     (opaqueNsCounter := (!opaqueNsCounter) + 1;
      (Ast.OpaqueNamespace (!opaqueNsCounter)))
 	
-val publicNS = newOpaqueNS ()
 val ES4NS = newOpaqueNS ()
+val publicNS = newOpaqueNS ()
 val metaNS = newOpaqueNS ()
 val magicNS = newOpaqueNS ()
 val intrinsicNS = newOpaqueNS ()
 val informativeNS = newOpaqueNS ()
+val ECMAScript4_InternalNS = newOpaqueNS ()
+val helperNS = newOpaqueNS ()
+val UnicodeNS = newOpaqueNS ()
+val RegExpInternalsNS = newOpaqueNS ()
 
 fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
 fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
+fun ECMAScript4_Internal (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ECMAScript4_InternalNS }
 fun informative (id:Ast.IDENT) : Ast.NAME = { id = id, ns = informativeNS }
 
 (*
@@ -278,11 +283,19 @@ val meta_call = meta Ustring.call_
 val arguments = public Ustring.arguments_
 val empty = public Ustring.empty
 
-val public_ = public Ustring.public_
-val ES4_ = public Ustring.ES4_
-val meta_ = public Ustring.meta_
-val magic_ = public Ustring.magic_
-val informative_ = public Ustring.informative_
-val intrinsic_ = public Ustring.intrinsic_
+(* These are the property names that are opaque namespaces themselves are bound under. *)
+val public_ES4_ = public Ustring.ES4_
+
+val ES4_public_ = ES4 Ustring.public_
+val ES4_meta_ = ES4 Ustring.meta_
+val ES4_magic_ = ES4 Ustring.magic_
+val ES4_intrinsic_ = ES4 Ustring.intrinsic_
+
+val ES4_ECMAScript4_Internal_ = ES4 Ustring.ECMAScript4_Internal_
+
+val ECMAScript4_Internal_informative_ = ECMAScript4_Internal Ustring.informative_
+val ECMAScript4_Internal_helper_ = ECMAScript4_Internal Ustring.helper_
+val ECMAScript4_Internal_Unicode_ = ECMAScript4_Internal Ustring.Unicode_
+val ECMAScript4_Internal_RegExpInternals_ = ECMAScript4_Internal Ustring.RegExpInternals_
 
 end

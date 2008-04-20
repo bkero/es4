@@ -1014,7 +1014,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                         val prop = { state = Mach.ValProp v,
                                      ty = Ast.SpecialType Ast.Any,
                                      attrs = { dontDelete = false,
-                                               dontEnum = true,
+                                               dontEnum = false,
                                                readOnly = false,
                                                isFixed = false } }
                     in
@@ -1311,10 +1311,8 @@ and newName (regs:Mach.REGS)
         SOME obj => Mach.Object obj
       | NONE => 
         let 
-            val nsmag = Mach.Namespace (#ns n)
-            val idmag = Mach.String (#id n)
-            val nsval = Mach.Object (Mach.setMagic (Mach.newObjNoTag()) (SOME nsmag))
-            val idval = Mach.Object (Mach.setMagic (Mach.newObjNoTag()) (SOME idmag))
+            val nsval = newNamespace regs (#ns n)
+            val idval = newString regs (#id n)
             val v = instantiateGlobalClass 
                         regs Name.ES4_Name 
                         [nsval, idval]
@@ -1373,16 +1371,30 @@ and newFunctionFromClosure (regs:Mach.REGS)
         val tag = Mach.FunctionTag fty
 
         val _ = traceConstruct ["finding Function.prototype"]
-        val funClass = needObj regs (getValue regs (#global regs) 
-                                              Name.public_Function)
+        val funClassVal = getValue regs (#global regs) Name.public_Function
+        val funClass = needObj regs funClassVal 
+        val funClassClosure = Mach.needClass funClassVal
         val funProto = getPrototype regs funClass
         val _ = traceConstruct ["building new prototype chained to ",
                                 "Function.prototype"]
-	val newProtoObj = newObj regs
-        val newProtoObj = Mach.setProto newProtoObj funProto
-        val newProto = Mach.Object newProtoObj
+                
+        (* This is a little weird: we're construction function f, but f.prototype needs to 
+         * point to an instance of public::Function -- in order to behave "functiony" in the
+         * sense of prototypes and private implementation methods -- even though f.prototype
+         * is not going to have any function *magic* associated with it. 
+         * 
+         * We also wire the new f.prototype.__proto__ value to Object.prototype.                                        
+         *)
+
+        val newProtoObj = constructStandard regs funClass funClassClosure []
+        val _ = initClassPrototype regs newProtoObj
+	    val originalObjectProto = case !(Mach.getObjectClassSlot regs) of 
+				                      NONE => Mach.Null
+				                    | SOME obj => getPrototype regs obj
+        val newProtoObj = Mach.setProto newProtoObj originalObjectProto
+        val newProto = Mach.Object newProtoObj 
         val _ = traceConstruct ["built new prototype chained to ",
-                                "Function.prototype"]
+                                "Object.prototype"]
 
         val Mach.Obj { magic, ... } = funClass
         val obj = case (!magic) of
@@ -5074,6 +5086,7 @@ and callIteratorGet (regs:Mach.REGS)
         val iterator = needObj regs (newArray regs vals)
     in
         setValue regs iterator Name.public_cursor (newDouble regs 0.0);
+        Mach.inspect (Mach.Object iterator);
         iterator
     end
 
@@ -5092,6 +5105,7 @@ and callIteratorNext (regs:Mach.REGS)
                 val nextName       = Name.public (Mach.NumberToString cursor)
                 val newCursorValue = newDouble regs (cursor + 1.0)
             in
+                trace ["iterator next fetching ", fmtName nextName];
                 setValue regs iterator Name.public_cursor newCursorValue;
                 getValue regs iterator nextName
             end

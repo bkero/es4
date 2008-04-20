@@ -49,10 +49,6 @@
  * verified.
  */
 
-package
-{
-    use namespace __ES4__;
-
     /* E262-3 15.11.6.2; 15.11.7 */
     public dynamic class RangeError extends Error
     {
@@ -74,4 +70,3 @@ package
         public prototype var message = "Number value out of range";
     }
 
-}

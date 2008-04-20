@@ -43,6 +43,9 @@ fun error ss = LogErr.defnError ss
 fun trace ss = if (!doTrace) then log ss else ()
 fun trace2 (s, us) = if (!doTrace) then log [s, (Ustring.toAscii us)] else ()
 
+fun fmtName n = if (!doTrace) then LogErr.name n else ""
+fun fmtNs n = if (!doTrace) then LogErr.namespace n else ""
+
 (* 
  * We use a globally unique numbering of type variables, assigned once when
  * we walk the AST during definition. They are inserted in any ribs formed
@@ -120,12 +123,42 @@ type ENV =
        func: Ast.FUNC option }    
 
     
-val (initRib:Ast.RIB) = [ (Ast.PropName Name.public_, Ast.NamespaceFixture Name.publicNS),
-                          (Ast.PropName Name.ES4_, Ast.NamespaceFixture Name.ES4NS),
-                          (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
-                          (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
-                          (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS),
-                          (Ast.PropName Name.intrinsic_, Ast.NamespaceFixture Name.intrinsicNS) ]
+val (initRib:Ast.RIB) = 
+	[ 
+	 (* This is the new name that non-backward-compatibly pollutes the ES3 unqualified global. *)
+	 (Ast.PropName Name.public_ES4_, Ast.NamespaceFixture Name.ES4NS),
+	 
+	 (* These are the namespaces in ES4 that have spec-defined, normative roles and meanings. *)
+	 (Ast.PropName Name.ES4_public_, Ast.NamespaceFixture Name.publicNS),
+     (Ast.PropName Name.ES4_meta_, Ast.NamespaceFixture Name.metaNS),
+     (Ast.PropName Name.ES4_magic_, Ast.NamespaceFixture Name.magicNS),
+     (Ast.PropName Name.ES4_intrinsic_, Ast.NamespaceFixture Name.intrinsicNS),
+
+	 (* 
+	  * This is the namespace in ES4 that holds all additional non-normative namespaces of the 
+	  * standard library 
+	  *)
+	 
+	 (Ast.PropName Name.ES4_ECMAScript4_Internal_, Ast.NamespaceFixture Name.ECMAScript4_InternalNS),
+
+	 (* 
+	  * This is a namespace that *would* be defined in the standard library except that we 
+	  * define a bunch of native methods in it, and therefore wish to have access to it here.
+	  * In theory we could back off and look it up once the interpreter boots. It's just here
+	  * to be convenient.
+	  *)
+	 (Ast.PropName Name.ECMAScript4_Internal_informative_, Ast.NamespaceFixture Name.informativeNS),
+
+
+	 (* 
+	  * These are namespaces that *could* be defined in the boot process, but that code is 
+	  * sufficiently tangly and order-sensitive that it's much easier to define them here. 
+	  *)
+	 (Ast.PropName Name.ECMAScript4_Internal_helper_, Ast.NamespaceFixture Name.helperNS),
+	 (Ast.PropName Name.ECMAScript4_Internal_Unicode_, Ast.NamespaceFixture Name.UnicodeNS),
+	 (Ast.PropName Name.ECMAScript4_Internal_RegExpInternals_, Ast.NamespaceFixture Name.RegExpInternalsNS)
+	]
+
 
 fun getFullRibs (env:ENV)
     : Ast.RIBS = 
@@ -213,8 +246,8 @@ fun addNamespace (ns:Ast.NAMESPACE)
                  (opennss:Ast.NAMESPACE list) =
     if List.exists (fn x => ns = x) opennss
     (* FIXME: should be an error to open namspaces redundantly *)
-    then (trace ["skipping namespace ",LogErr.namespace ns]; opennss)   
-    else (trace ["adding namespace ", LogErr.namespace ns]; ns :: opennss)
+    then (trace ["skipping namespace ",fmtNs ns]; opennss)   
+    else (trace ["adding namespace ", fmtNs ns]; ns :: opennss)
 
 fun defNamespace (env:ENV)
                  (ns:Ast.NAMESPACE)
@@ -378,25 +411,25 @@ fun enterClass (env:ENV)
 			   (privateNS:Ast.NAMESPACE)
 			   (protectedNS:Ast.NAMESPACE)
 			   (parentProtectedNSs:Ast.NAMESPACE list)
-    : ENV =
+    : (ENV * Ast.RIB) =
     let
-		val localNamespaceRib = [ (Ast.PropName (Name.private privateNS), 
+ 		val localNamespaceRib = [ (Ast.PropName (Name.private privateNS), 
 								   Ast.NamespaceFixture privateNS),
 								  (Ast.PropName (Name.protected privateNS), 
 								   Ast.NamespaceFixture protectedNS) ]
-		val openNamespaces = ([privateNS, protectedNS] @ parentProtectedNSs) :: (#openNamespaces env)
 		val env = extendEnvironment env localNamespaceRib true
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, defaultNamespace, program, func } = env
+		val openNamespaces = ([privateNS, protectedNS] @ parentProtectedNSs) :: openNamespaces
 	in
-		{ innerRibs = innerRibs, 
-          outerRibs = outerRibs,
-          tempOffset = tempOffset,
-          openNamespaces = openNamespaces,
-          labels = labels,
-          defaultNamespace = defaultNamespace,
-          program = program,
-          func = func }		
+		({ innerRibs = innerRibs, 
+           outerRibs = outerRibs,
+           tempOffset = tempOffset,
+           openNamespaces = openNamespaces,
+           labels = labels,
+           defaultNamespace = defaultNamespace,
+           program = program,
+           func = func }, localNamespaceRib )
 	end
 
 
@@ -741,10 +774,15 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
                 fun targetFixture _ = if (Fixture.hasFixture derived n)
                                       then SOME (Fixture.getFixture derived n)
                                       else NONE
-                val _ = trace ["checking override of ", LogErr.fname n]
 				val canInherit = 
 					case (n, privateNS) of 
-						(Ast.PropName { ns, ...}, SOME pns) => ns = pns
+						(* NB: you can -- and must -- *inherit* the private fixtures,
+						 * in the sense that other inherited fixtures may refer to them 
+						 * as helpers. What you *can't* inherit is the binding for the
+						 * name "private". Nor can you *see* any of the inherited privates,
+						 * since you have no access to the base private namespace.
+						 *)
+						(Ast.PropName name, SOME pns) => not (name = (Name.private pns))
 					  | (Ast.PropName _, _) => true
 					  | (Ast.TempName _, _) => error ["inheriting temp fixture"]
             in
@@ -789,7 +827,6 @@ and implementFixtures (base:Ast.RIB)
                 fun targetFixture _ = if (Fixture.hasFixture derived n)
                                       then SOME (Fixture.getFixture derived n)
                                       else NONE
-                val _ = trace ["checking implementation of ", LogErr.fname n]
             in
                 case targetFixture () of
                     NONE => LogErr.defnError ["unimplemented interface method ", LogErr.fname n]
@@ -819,7 +856,7 @@ and resolveClassInheritance (env:ENV)
 						   instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
-        val _ = trace ["analyzing inheritance for ", LogErr.name name]
+        val _ = trace ["analyzing inheritance for ", fmtName name]
 
         val (extendsTy:Ast.TYPE_EXPR option, 
              instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
@@ -1037,12 +1074,11 @@ and analyzeClassBody (env:ENV)
 
         val ns = resolveExprOptToNamespace env ns
         val name = {id=ident, ns=ns}
-        val env = enterClass env privateNS protectedNS []
-        val _ = trace ["defining class ", LogErr.name name]
-
-        val staticEnv = extendEnvironment env [] true
+        val _ = trace ["defining class ", fmtName name]
+        val (staticEnv, localNamespaceRib) = enterClass env privateNS protectedNS []
         val (unhoisted,classRib,classInits) = defDefns staticEnv classDefns
         val classRib = (mergeRibs (#program env) unhoisted classRib)
+        val classRib = (mergeRibs (#program env) classRib localNamespaceRib)
 
         (* namespace and type definitions aren't normally hoisted *)
 
@@ -1559,9 +1595,8 @@ and defPragmas (env:ENV)
                         val env = modifiedEnv()
                         val ns = defExpr env ns
                         val namespace = resolveExprToNamespace env ns
-                        val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=Ustring.empty}]
+                        val _ = trace ["use default namespace ", fmtNs namespace]
                     in
-                        opennss := (namespace :: !opennss);
                         defaultNamespace := namespace;
                         Ast.UseDefaultNamespace ns
                     end
@@ -1987,15 +2022,16 @@ and defStmt (env:ENV)
                 (* filter out instance initializers *)
                 val (_,stmts) = List.partition isInstanceInit body
 
-                val namespace = resolveExprOptToNamespace env ns
-                val name = {ns=namespace, id=ident}
-
 				(* 
 				 * NB: Not able to see parent-protected NSs in class
 				 * block, only local private and protected! 
 				 *) 
-				val env =
+				val (env, _) =
 					enterClass env privateNS protectedNS []
+
+                val namespace = resolveExprOptToNamespace env ns
+                val name = {ns=namespace, id=ident}
+
 
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
@@ -2473,7 +2509,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
                         then [[Name.publicNS ], [Name.ES4NS]]
-                        else [[Name.publicNS ]]),
+                        else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,
       program = prog,

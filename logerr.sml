@@ -80,10 +80,29 @@ fun error ss = case !loc of
 		 | SOME l => log ("**ERROR** (near " :: (locToString l) :: ") " :: ss)
 
 fun namespace (ns:Ast.NAMESPACE) =
-    case ns of
-        Ast.OpaqueNamespace i => "<ns #" ^ (Int.toString i) ^ ">"
-	  | Ast.StringNamespace s => "<ns '" ^ (Ustring.toAscii s) ^"'>"
-
+	let
+		val specialNames = [
+			 (Name.ES4NS, "__ES4__"),
+			 (Name.publicNS, "public"),
+			 (Name.metaNS, "meta"),
+			 (Name.magicNS, "magic"),
+			 (Name.intrinsicNS, "intrinsic"),
+			 (Name.informativeNS, "informative"),
+			 (Name.ECMAScript4_InternalNS, "ECMAScript4_Internal"),
+			 (Name.helperNS, "helper"),
+			 (Name.UnicodeNS, "Unicode"),
+			 (Name.RegExpInternalsNS, "RegExpInternals")
+		]
+		fun specialName n = 
+			case List.find (fn (a,_) => a = n) specialNames of
+				NONE => ""
+			  | SOME (_, s) => "=" ^ s
+	in
+		case ns of
+			Ast.OpaqueNamespace i => "<ns #" ^ (Int.toString i) ^ (specialName ns) ^ ">"
+		  | Ast.StringNamespace s => "<ns '" ^ (Ustring.toAscii s) ^"'>"
+	end
+									 
 fun fullName ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
 
 fun name ({ns,id}:Ast.NAME) = if !doNamespaces

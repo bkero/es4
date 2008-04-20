@@ -280,6 +280,10 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "Internal.es",
                        builtin "Conversions.es",
 
+
+                       builtin "string_primitive.es",
+                       builtin "String.es",
+
                        (* 
                         * boolean before Boolean because the latter
                         * takes the prototype object set up by the
@@ -298,9 +302,6 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "double.es",
                        builtin "decimal.es",
                        builtin "Number.es",
-
-                       builtin "string_primitive.es",
-                       builtin "String.es",
 
                        builtin "Math.es",
                        builtin "Global.es",
@@ -356,7 +357,7 @@ fun boot (baseDir:string) : Mach.REGS =
         (* BEGIN SPEED HACK *)
         (* 
          * This wins a factor of 60 in performance. It's worth it.
-         * Just don't copy this publicense to the spec. 
+         * Just don't copy this nonsense to the spec. 
          *)
         val _ = Type.cacheLoad := SOME (fn i => Mach.findInTyCache regs i)
         val _ = Type.cacheSave := SOME (fn i => fn t => (Mach.updateTyCache regs (i, t); ()))
