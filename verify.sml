@@ -147,98 +147,6 @@ fun newEnv (prog:Fixture.PROGRAM)
     }
 
 
-(******************* Utilities for dealing with ribs *********************)
-(* FIXME: need all these? maybe redundant with type.sml? *)
-
-fun resolveMnameToFixture (env:ENV)
-			              (mname:Ast.MULTINAME)
-    : Ast.FIXTURE option =
-    case Multiname.resolveInRibs mname (#ribs env) of 
-        NONE => NONE
-      | SOME (ribs, n) =>
-        SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
-        
-(* 
- * FIXME: It'd be nice to unify this with the namespace-expr resolver in 
- * defn.sml; unfortunately that uses ribId-based lookup not rib-list lookup,
- * and we have dropped the ribIds by here. Maybe we should save them in the
- * ribs?
- *)
-
-fun resolveIdentExprToMname (env:ENV)
-			                (ie:Ast.IDENT_EXPR)
-    : Ast.MULTINAME = 
-    case ie of                     
-	    Ast.Identifier { ident, openNamespaces } => 
-	    { id = ident, nss = openNamespaces }
-      | Ast.QualifiedIdentifier { qual, ident } => 
-	    { id = ident, 
-	      nss = [[resolveExprToNamespace env qual]] }
-      | _ =>  error ["unhandled type of lexical reference"]
-	          
-and resolveExprToNamespace (env:ENV)
-                           (expr:Ast.EXPR)
-    : Ast.NAMESPACE =
-    case expr of
-        Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
-      | Ast.LexicalRef {ident, loc } =>
-        let
-            val _ = LogErr.setLoc loc
-            val mname = resolveIdentExprToMname env ident
-        in
-            case resolveMnameToFixture env mname of
-                SOME (Ast.NamespaceFixture ns) => ns
-              | _ => 
-                let in
-                    warning ["namespace expression did not resolve to namespace fixture"];
-                    Ast.Intrinsic
-                end
-        end
-      | _ => error ["unexpected expression type ",
-		    "in namespace context"]
-
-(* Returns the type of the given fixture *)
-fun typeOfFixture (env:ENV)
-			      (fixture:Ast.FIXTURE)
-    : Ast.TYPE_EXPR = 
-    case fixture of 	
-	    (* 
-	     * FIXME: classtypes should be turned into instancetypes of 
-	     * the static-class type, so we can look up static props on them
-	     * correctly. Abusing object types like this is no good.
-	     *)
-	    (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
-      | (Ast.ValFixture { ty, ... }) => ty	
-      | (Ast.VirtualValFixture { ty, ... }) => ty        
-      | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
-      | _ => anyType
-
-(* 
- * Note:this resolves a multiname to the type *of* the fixture denoted by that
- * multiname. It does not fetch a type named by a multiname; that's done 
- * by the general type normalizer in type.sml.
- *)
-fun resolveMnameToFixtureTy (env:ENV)
-			                (mname:Ast.MULTINAME)
-    : Ast.TYPE_EXPR = 
-    case resolveMnameToFixture env mname of 	
-	    SOME fixture => typeOfFixture env fixture 
-      | NONE => 
-        let in
-            warning ["Unbound multiname ", LogErr.multiname mname
-                      , " in ribs ", LogErr.ribs (#ribs env)  
-                    ];
-            anyType
-        end
-
-fun lookupFixtureName (ribs:Ast.RIBS) (fname:Ast.FIXTURE_NAME) : Ast.FIXTURE option =
-    case ribs of
-        [] => NONE
-      | rib::ribs =>
-        case List.find (fn (fname2,fixture) => fname2=fname) rib of
-            SOME (_,f) => SOME f
-          | NONE => lookupFixtureName ribs fname
-
 (******************* Subtyping and Compatibility *************************)
 
 (* src and dst are normalized *)
@@ -268,13 +176,151 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
         else Ast.UnionType [t1, t2]
     end
 
+(******************* Utilities for dealing with ribs *********************)
+(* FIXME: need all these? maybe redundant with type.sml? *)
+
+(*
+fun resolveMnameToFixture (ribs:Ast.RIBS)
+			              (mname:Ast.MULTINAME)
+    : Ast.FIXTURE option =
+    case Multiname.resolveInRibs mname ribs of 
+        NONE => NONE
+      | SOME (ribs, n) =>
+        SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
+
+fun resolveIdentExprToMname (env:ENV)
+                            (ribs:Ast.RIBS)
+			                (ie:Ast.IDENT_EXPR)
+    : Ast.MULTINAME option = 
+    case ie of                     
+	    Ast.Identifier { ident, openNamespaces } => 
+	    SOME { id = ident, nss = openNamespaces }
+      | Ast.QualifiedIdentifier { qual, ident } => 
+	    SOME { id = ident, 
+	           nss = [[resolveExprToNamespace env qual]] }
+      | _ =>  NONE
+	          
+
+(* 
+ * Note:this resolves a multiname to the type *of* the fixture denoted by that
+ * multiname in the given ribs, a. It does not fetch a type named by a multiname; that's done 
+ * by the general type normalizer in type.sml.
+ *)
+fun resolveMnameToFixtureTy (env:ENV)
+			                (mname:Ast.MULTINAME)
+    : Ast.TYPE_EXPR = 
+    case resolveMnameToFixture env mname of 	
+	    SOME fixture => typeOfFixture env fixture 
+      | NONE => 
+        let in
+            warning ["Unbound multiname ", LogErr.multiname mname
+                      , " in ribs ", LogErr.ribs (#ribs env)  
+                    ];
+            anyType
+        end
+
+fun lookupFixtureName (ribs:Ast.RIBS) (fname:Ast.FIXTURE_NAME) : Ast.FIXTURE option =
+    case ribs of
+        [] => NONE
+      | rib::ribs =>
+        case List.find (fn (fname2,fixture) => fname2=fname) rib of
+            SOME (_,f) => SOME f
+          | NONE => lookupFixtureName ribs fname
+
+*)
+
+fun resolveExprToNamespace (env:ENV)
+                           (expr:Ast.EXPR)
+    : Ast.NAMESPACE option =
+    case expr of
+        Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
+        SOME ns
+      | Ast.LexicalRef {ident= Ast.QualifiedIdentifier { qual=expr, ident }, loc } =>
+        let
+            val _ = LogErr.setLoc loc
+        in
+            case resolveExprToNamespace env expr of
+                NONE => NONE
+              | SOME ns => 
+                resolveExprToNamespace env  
+                                       (Ast.LexicalRef {ident=(Ast.Identifier { openNamespaces=[[ns]], 
+                                                                                ident=ident }), 
+                                                        loc=loc })
+        end
+      | Ast.LexicalRef {ident = Ast.Identifier { openNamespaces, ident }, loc} =>
+        let
+            val _ = LogErr.setLoc loc
+        in
+            case Multiname.resolveInRibs { id=ident, nss=openNamespaces} (#ribs env) of 
+                NONE => NONE (* no occurrence in ribs *)
+              | SOME (ribs, name) =>
+                let val (Ast.NamespaceFixture ns) = Fixture.getFixture (List.hd ribs) (Ast.PropName name) 
+                in
+                    SOME ns
+                end
+        end
+      | _ => NONE
+
+(* Returns the type of the given fixture. The result is not yet normalized,
+ * and so only makes sense in the environment the fixture was defined in. *)
+
+fun typeOfFixture (env:ENV)
+			      (fixture:Ast.FIXTURE)
+    : Ast.TYPE_EXPR = 
+    case fixture of 	
+	    (* 
+	     * FIXME: classtypes should be turned into instancetypes of 
+	     * the static-class type, so we can look up static props on them
+	     * correctly. Abusing object types like this is no good.
+	     *)
+	    (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
+      | (Ast.ValFixture { ty, ... }) => ty	
+      | (Ast.VirtualValFixture { ty, ... }) => ty        
+      | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
+      | _ => anyType
+
+(* Resolves an IDENT_EXPR in the given RIBS, and returns the type of
+ * that IDENT_EXPR, or NONE. The returned type still
+ *)
+
+fun resolveIdentExpr (env:ENV)
+                     (ribs:Ast.RIBS)
+                     (idexpr:Ast.IDENT_EXPR)
+    : Ast.TYPE_EXPR option =
+    let in
+        case idexpr of
+            Ast.QualifiedIdentifier { expr, ident } => 
+            let in
+                case resolveExprToNamespace env expr of
+                    SOME ns =>
+                    resolveIdentExpr env ribs
+                                     Ast.Identifier { openNamespaces = [[ns]], ident = ident}
+                  | NONE => NONE
+            end
+          | Ast.Identifier { openNamespaces, ident } =>
+            let 
+            in
+                case Multiname.resolveInRibs { id=ident, nss=openNamespaces} ribs of 
+                    NONE => NONE (* no occurrence in ribs *)
+                  | SOME (ribs, name) =>
+                    let val fixture = Fixture.getFixture (List.hd ribs) (Ast.PropName name)
+                        val ty = typeOfFixture env fixture
+                        val ty = verifyType (withRibs env ribs) ty
+                    in
+                        SOME ty
+                    end
+            end
+          | _ => NONE (* verifier does not handle these kinds of references *)
+    end
+
+
 (******************** Verification **************************************************)
 
 (* Verification (aka normalization) converts a (non-closed) TYPE_EXPR into a 
  * (closed, aka grounded) TYPE_EXPR. 
  *)
 
-fun verifyType (env:ENV)
+and verifyType (env:ENV)
                (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
@@ -343,9 +389,16 @@ and verifyHead (env:ENV)
 and verifyLvalue (env:ENV)
                  (expr : Ast.EXPR) 
     : Ast.TYPE_EXPR = 
-    let in
-        (* FIXME: check an lvalue expression *)
-        verifyExpr env expr
+    let
+    in
+        case expr of
+            (* FIXME: check for final fields *)
+            Ast.ObjectRef { base, ident, loc } => 
+            verifyExpr env expr
+          | Ast.LexicalRef { ident, loc } => 
+            verifyExpr env expr
+          | _ =>
+            (warning ["Not an lvalue"]; anyType)
     end
 
 and verifyExpr (env:ENV)
@@ -378,7 +431,9 @@ and verifyExpr (env:ENV)
         fun verifySubOption (eo:Ast.EXPR option) : Ast.TYPE_EXPR option = Option.map verifySub eo
         fun binaryOpType (b:Ast.BINOP) t1 t2 : Ast.TYPE_EXPR =
             let
-                (* FIXME: these are way wrong. For the time being, just jam in star everywhere *)
+                (* FIXME: these are way wrong. For the time being, just jam in star everywhere.
+                 * Fix when we know how numbers work. 
+                 *)
                 val AdditionType = anyType
                 val CompareType = anyType
                 val LogicalType = anyType
@@ -469,19 +524,19 @@ and verifyExpr (env:ENV)
                       | Ast.LogicalNot    => booleanType
                       | Ast.Splat         => Ast.ArrayType [anyType]
                       (* TODO: isn't this supposed to be the prefix of a type expression? *)
-                      | Ast.Type => TypeType
+                      | Ast.Type          => TypeType
             in
                 case u of
                     (* FIXME: these are probably wrong *)
-                    Ast.Delete => ()
-                  | Ast.PreIncrement => checkMatch env t AnyNumberType
+                    Ast.Delete        => ()
+                  | Ast.PreIncrement  => checkMatch env t AnyNumberType
                   | Ast.PostIncrement => checkMatch env t AnyNumberType
-                  | Ast.PreDecrement => checkMatch env t AnyNumberType
+                  | Ast.PreDecrement  => checkMatch env t AnyNumberType
                   | Ast.PostDecrement => checkMatch env t AnyNumberType
-                  | Ast.UnaryPlus => checkMatch env t AnyNumberType
-                  | Ast.UnaryMinus => checkMatch env t AnyNumberType
-                  | Ast.BitwiseNot => checkMatch env t AnyNumberType
-                  | Ast.LogicalNot => checkMatch env t booleanType
+                  | Ast.UnaryPlus     => checkMatch env t AnyNumberType
+                  | Ast.UnaryMinus    => checkMatch env t AnyNumberType
+                  | Ast.BitwiseNot    => checkMatch env t AnyNumberType
+                  | Ast.LogicalNot    => checkMatch env t booleanType
                   (* TODO: Ast.Type? *)
                   | _ => ();
                 resultType
@@ -523,10 +578,7 @@ and verifyExpr (env:ENV)
             in
                 case le of
                     Ast.LiteralFunction func => 
-                    verifyFunc env func
-                  (*
-                  | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyType env ty
-                   *)
+                    verifyFunc env func   
 
                   | Ast.LiteralObject { expr, ty } =>
                     let
@@ -545,69 +597,18 @@ and verifyExpr (env:ENV)
                         liftOption (verifyType env) ty (Ast.ArrayType [anyType])
                     end
 
-                  | Ast.LiteralNull => nullType
-                  | Ast.LiteralUndefined => undefinedType
-                  | Ast.LiteralDouble _ => doubleType
-                  | Ast.LiteralDecimal _ => decimalType
-                  | Ast.LiteralInt _ => intType
-                  | Ast.LiteralUInt _ => uintType
-                  | Ast.LiteralBoolean _ => booleanType
-                  | Ast.LiteralString _ => stringType
-                  | Ast.LiteralXML _ => anyType
+                  | Ast.LiteralNull        => nullType
+                  | Ast.LiteralUndefined   => undefinedType
+                  | Ast.LiteralDouble _    => doubleType
+                  | Ast.LiteralDecimal _   => decimalType
+                  | Ast.LiteralInt _       => intType
+                  | Ast.LiteralUInt _      => uintType
+                  | Ast.LiteralBoolean _   => booleanType
+                  | Ast.LiteralString _    => stringType
+                  | Ast.LiteralXML _       => anyType
                   | Ast.LiteralNamespace _ => NamespaceType
-                  | Ast.LiteralRegExp _ => RegExpType
+                  | Ast.LiteralRegExp _    => RegExpType
             end
-
-(*
-
-          | Ast.LiteralExpr le =>
-            let
-                val resultType = case le of
-                                     Ast.LiteralNull => nullType
-                                   | Ast.LiteralUndefined => undefinedType
-                                   | Ast.LiteralDouble _ => doubleType
-                                   | Ast.LiteralDecimal _ => decimalType
-                                   | Ast.LiteralInt _ => intType
-                                   | Ast.LiteralUInt _ => uintType
-                                   | Ast.LiteralBoolean _ => booleanType
-                                   | Ast.LiteralString _ => stringType
-                                   | Ast.LiteralArray { ty=SOME ty, ... } => verifyType env ty
-                                   (* FIXME: how do we want to represent [*] ? *)
-                                   | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [anyType]
-                                   (* TODO: define this *)
-                                   | Ast.LiteralXML _ => anyType
-                                   | Ast.LiteralNamespace _ => NamespaceType
-                                   | Ast.LiteralObject { ty=SOME ty, ... } => verifyType env ty
-                                   (* FIXME: how do we want to represent {*} ? *)
-                                   | Ast.LiteralObject { ty=NONE, ... } => anyType
-                                   | Ast.LiteralFunction (Ast.Func { ty, ... }) => verifyType env ty
-                                   | Ast.LiteralRegExp _ => RegExpType
-                fun verifyField { kind, name, init } =
-                    (verifyExpr env init; ())
-                    
-            in
-                case le of
-                    Ast.LiteralFunction func => 
-                    verifyFunc env func
-                  | Ast.LiteralObject { expr, ty } =>
-                    let
-                    in
-                        List.app verifyField expr;
-                        Option.map (verifyType env) ty;
-                        ()
-                    end                    
-                  (* FIXME handle comprehensions *)
-                  | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => 
-                    let                        
-                    in
-                        List.map (verifyExpr env) exprs;
-                        Option.map (verifyType env) ty;
-                        ()
-                    end
-                  | x => ();
-                resultType
-            end
-*)
 
           | Ast.CallExpr {func, actuals} =>
             let
@@ -684,21 +685,10 @@ and verifyExpr (env:ENV)
           | Ast.LexicalRef { ident, loc } =>
             let in
                 trace [ "lexicalref ", if strict then "strict" else "non-strict"];
-	            if 
-		            strict
-	            then 
-		            let
-                        val _ = LogErr.setLoc loc
-		                val mname = resolveIdentExprToMname env ident
-                        val _ = trace ["lexical ref mname ", LogErr.multiname mname]
-		                val ty = resolveMnameToFixtureTy env mname
-                        val _ = trace ["lexical ref ty ", LogErr.ty ty]
-		            in
-                        LogErr.setLoc loc;
-		                verifyType env ty
-		            end
-	            else 
-		            anyType
+                LogErr.setLoc loc;
+                case resolveIdentExpr env (#ribs env) ident of
+                    NONE => (warning ["unbound IDENT_EXPR ", LogErr.identExpr ident]; anyType)
+                  | SOME t => t
             end
                 
           | Ast.SetExpr (a, le, re) =>

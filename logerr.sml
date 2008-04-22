@@ -122,6 +122,12 @@ fun multiname (mn:Ast.MULTINAME) =
 	else "[...]::" ^ (Ustring.toAscii (#id mn))
     end
 
+fun identExpr (ide:Ast.IDENT_EXPR) =
+    case ide of
+	Ast.Identifier { ident, openNamespaces } =>
+	multiname {nss=openNamespaces, id=ident}
+      | _ => "other-IDENT_EXPR"
+
 fun ty t =
     let
         fun nsExprToString e =
