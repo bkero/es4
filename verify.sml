@@ -67,7 +67,7 @@ fun withReturnType { returnType=_, strict, prog, ribs, stdTypes } returnType =
     { returnType=returnType, strict=strict, prog=prog, ribs=ribs, stdTypes=stdTypes }
 
 fun withRibs { returnType, strict, prog, ribs=_, stdTypes } ribs =
-    { returnType=returnType, strict=strict, ribs=ribs, stdTypes=stdTypes }
+    { returnType=returnType, strict=strict, prog=prog, ribs=ribs, stdTypes=stdTypes }
 
 fun withStrict { returnType, strict=_, prog, ribs, stdTypes } strict =
     { returnType=returnType, strict=strict, prog=prog, ribs=ribs, stdTypes=stdTypes }
@@ -280,21 +280,21 @@ fun typeOfFixture (env:ENV)
       | _ => anyType
 
 (* Resolves an IDENT_EXPR in the given RIBS, and returns the type of
- * that IDENT_EXPR, or NONE. The returned type still
+ * that IDENT_EXPR, or NONE. The returned type has been verified.
  *)
 
-fun resolveIdentExpr (env:ENV)
-                     (ribs:Ast.RIBS)
-                     (idexpr:Ast.IDENT_EXPR)
+fun verifyIdentExpr (env:ENV)
+                    (ribs:Ast.RIBS)
+                    (idexpr:Ast.IDENT_EXPR)
     : Ast.TYPE_EXPR option =
     let in
         case idexpr of
-            Ast.QualifiedIdentifier { expr, ident } => 
+            Ast.QualifiedIdentifier { qual=expr, ident } => 
             let in
                 case resolveExprToNamespace env expr of
                     SOME ns =>
-                    resolveIdentExpr env ribs
-                                     Ast.Identifier { openNamespaces = [[ns]], ident = ident}
+                    verifyIdentExpr env ribs
+                                    (Ast.Identifier { openNamespaces = [[ns]], ident = ident})
                   | NONE => NONE
             end
           | Ast.Identifier { openNamespaces, ident } =>
@@ -325,7 +325,7 @@ and verifyType (env:ENV)
     : Ast.TYPE_EXPR =
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
-        val norm = 
+        val norm : Ast.TYPE_EXPR = 
             (* FIXME: it is *super wrong* to just be using the root rib here. 
             Type.normalize [Fixture.getRootRib (#prog env)] ty *)
             Type.normalize (#ribs env) ty
@@ -342,30 +342,32 @@ and verifyType (env:ENV)
         norm 
     end
 
-
-
-and verifyFixtureName (env:ENV) (fname:Ast.FIXTURE_NAME) : Ast.TYPE_EXPR =
-    let in
-       (* trace ["Verifying fixture name ", LogErr.fname fname, 
-               " in ribs ", LogErr.ribs (#ribs env)]; *)
-        case lookupFixtureName (#ribs env) fname of
-            SOME f => verifyType env (typeOfFixture env f)
-          | NONE => 
-            let in
-                warning ["Unbound fixture name ", LogErr.fname fname
-                       ," in ribs ", LogErr.ribs (#ribs env)
-                        ];
-                anyType
+and verifyFixtureName (env:ENV) 
+                      (ribs:Ast.RIBS)
+                      (fname:Ast.FIXTURE_NAME)
+    : Ast.TYPE_EXPR option =
+    case ribs of
+        [] => NONE
+      | rib::ribs' =>
+        if Fixture.hasFixture rib fname 
+        then
+            let val fixture = Fixture.getFixture rib fname
+                val ty = typeOfFixture env fixture
+                val ty = verifyType (withRibs env ribs) ty
+            in
+                SOME ty
             end
-    end
-    
+        else
+            verifyFixtureName env ribs' fname
+
 and verifyInits (env:ENV) (inits:Ast.INITS)
     : unit =
     let in
         List.map 
-         (fn (name, expr) => checkMatch env 
-                                        (verifyExpr env expr) 
-                                        (verifyFixtureName env name)) 
+         (fn (fname, expr) => 
+             case (verifyFixtureName env (#ribs env) fname) of
+                 SOME ty => checkMatch env (verifyExpr env expr) ty
+               | NONE => warning ["Unbound fixture name ", LogErr.fname fname, " in inits"])
          inits; 
         ()
     end
@@ -686,7 +688,7 @@ and verifyExpr (env:ENV)
             let in
                 trace [ "lexicalref ", if strict then "strict" else "non-strict"];
                 LogErr.setLoc loc;
-                case resolveIdentExpr env (#ribs env) ident of
+                case verifyIdentExpr env (#ribs env) ident of
                     NONE => (warning ["unbound IDENT_EXPR ", LogErr.identExpr ident]; anyType)
                   | SOME t => t
             end
