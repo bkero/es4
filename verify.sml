@@ -177,57 +177,6 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
     end
 
 (******************* Utilities for dealing with ribs *********************)
-(* FIXME: need all these? maybe redundant with type.sml? *)
-
-(*
-fun resolveMnameToFixture (ribs:Ast.RIBS)
-			              (mname:Ast.MULTINAME)
-    : Ast.FIXTURE option =
-    case Multiname.resolveInRibs mname ribs of 
-        NONE => NONE
-      | SOME (ribs, n) =>
-        SOME (Fixture.getFixture (List.hd ribs) (Ast.PropName n))
-
-fun resolveIdentExprToMname (env:ENV)
-                            (ribs:Ast.RIBS)
-			                (ie:Ast.IDENT_EXPR)
-    : Ast.MULTINAME option = 
-    case ie of                     
-	    Ast.Identifier { ident, openNamespaces } => 
-	    SOME { id = ident, nss = openNamespaces }
-      | Ast.QualifiedIdentifier { qual, ident } => 
-	    SOME { id = ident, 
-	           nss = [[resolveExprToNamespace env qual]] }
-      | _ =>  NONE
-	          
-
-(* 
- * Note:this resolves a multiname to the type *of* the fixture denoted by that
- * multiname in the given ribs, a. It does not fetch a type named by a multiname; that's done 
- * by the general type normalizer in type.sml.
- *)
-fun resolveMnameToFixtureTy (env:ENV)
-			                (mname:Ast.MULTINAME)
-    : Ast.TYPE_EXPR = 
-    case resolveMnameToFixture env mname of 	
-	    SOME fixture => typeOfFixture env fixture 
-      | NONE => 
-        let in
-            warning ["Unbound multiname ", LogErr.multiname mname
-                      , " in ribs ", LogErr.ribs (#ribs env)  
-                    ];
-            anyType
-        end
-
-fun lookupFixtureName (ribs:Ast.RIBS) (fname:Ast.FIXTURE_NAME) : Ast.FIXTURE option =
-    case ribs of
-        [] => NONE
-      | rib::ribs =>
-        case List.find (fn (fname2,fixture) => fname2=fname) rib of
-            SOME (_,f) => SOME f
-          | NONE => lookupFixtureName ribs fname
-
-*)
 
 fun resolveExprToNamespace (env:ENV)
                            (expr:Ast.EXPR)
