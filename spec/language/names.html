@@ -3,15 +3,23 @@
 <hr>
 <pre>
 FILE:                       spec/language/names.html
-DRAFT STATUS:               DRAFT 2 - REVIEWED - 2008-03-21
+DRAFT STATUS:               DRAFT 3 - REVIEWED - 2008-04-06
 AUTHORS:                    Jeff, Graydon
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
 REVIEWED AGAINST PROPOSALS: NO
-REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST CODE:      Compiled, not used
 SCOPE:                      The structure and resolution of names
 </pre>
+
+<NOTE>Some people have expressed concern over the readability of the SML code used in this specification. 
+This problem will be solved in a subsequent revision by a combination of re-writing and automated 
+"lowering" of the notation. The early drafts of the core language spec are concerned primarily with 
+capturing the precise semantics of ECMAScript, and testibility. We trust that early reviewers will 
+be patient enough and read carefully enough to understand the meaning we are trying to express here. 
+That said, if anything is unclear, in the code or the prose, please feel free to say so.
+
 <hr>
 
 <p>A property name consists of an identifier and a namespace qualifier.
@@ -21,7 +29,7 @@ other words if you can name a property, you can read it.
 
 <IMPL>
 <pre>
-type NAME = { namespace: NAMESPACE, identifier: IDENTIFIER }
+datatype NAME = Name of (NAMESPACE * IDENTIFIER)
 </pre>
 
 <p>Identfiers are Unicode strings.
@@ -41,21 +49,21 @@ identifiers. In this sense, a namespace is a kind of name parameter that can be 
 to control the meaning of a name.
 
 <p>Namespaces can be forgeable or unforgeable. A forgeable namespace can be replicated
-by creating another forgeable namespace with the same identifier string. An 
-unforgeable namespace is given a system defined unique ID that is hidden from program code.
+by creating another forgeable namespace with the same identifier string. Every
+unforgeable namespace is unique.
+
+<IMPL>
+{{{
+datatype NAMESPACE =
+         UnforgeableNamespace
+       | ForgeableNamespace of IDENTIFIER
+}}}
 
 <p>Any two forgeable namespaces with the same identifier string are considered equal.
 Every unforgeable namespace is considered non-equal to every other namespace.
 
 <IMPL>
-{{{
-datatype NAMESPACE =
-         UnforgeableNamespace of NAMESPACE_ID
-       | ForgeableNamespace of IDENTIFIER
-}}}
-{{{
-datatype NAMESPACE_ID = <LDOTS>
-}}}
+<INCLUDE file="mach.sml" name="fun compareNamespaces">
 
 === Compatibility Namespace ===
 
@@ -65,16 +73,59 @@ The compatibility namespace is an unforgeable namespace that is always open, and
 default namespace for definitions in the initial lexical scope of each ES program. Thus we 
 say that every property name in ES has a namespace, even if only the compatibility namespace.
 
+<NOTE>Namespace attributes are not allowed on local definitions. By default these
+names are qualified by the compatibility namespace. 
+
+<FIXME>There is currently no way to explictly qualify a reference with ''noNS''. 
+However, there is an important use case for this. Code inside of a //WithStatement// might
+want to refer to a local variable in an outer scope without the possibility of being
+shadowed by a property on the //with// object. It has been suggested that
+the keyword ''null'' could serve this purpose. The keyword ''public'' is unsuitable since
+the //with// object may contain properties in the public namespace. e.g.
+
+{{{
+    function f (o) {
+        var count = 10
+        with (o) {
+            for (var i = null::count; i > 0; --i) {
+                ...
+            }
+        }
+    }
+}}}
+
+<FIXME>The need to distinguish local names from ''public'' names also argues that the ''public'' namespace be
+different than the compatibility namespace, and that the public namespace be the default
+namespace for ES3 bindings on the global object and object literals. This provides a way to avoid
+shadowing by //with// bindings and still allows references to be explicitly qualified to explictly resolve
+conflicts. e.g.
+
+{{{
+    namespace N
+    var o = {x: 10, N::x: 20}
+    print (o.x)  // prints 10
+
+    {
+        use namespace N
+        print (o.x)   // ambiguous
+        print (o.public::x)  // prints 10
+        print (o.N::x)  // prints 20
+    }
+
+}}}
+
 <IMPL>
 <pre>
-val noNS = Ast.UnforgeableNamespace <LDOTS>
+val noNS = Ast.UnforgeableNamespace
 </pre>
+
 
 == References ==
 
 <p>A reference is an expression that refers to a property binding. A reference contains a name
 that is computed from either an //unqualified identifier// or a namespace //qualified identifier//.
-In this section we describe how the identifier part (''IDENTIFIER_EXPRESSION'' in the semantics) of a reference is resolved to a name.
+In this section we describe how the identifier part (''IDENTIFIER_EXPRESSION'') of a reference 
+is resolved to a property name and base object.
 
 <IMPL>
 <pre>
@@ -83,210 +134,196 @@ datatype IDENTIFIER_EXPRESSION =
        | QualifiedIdentifier of EXPRESSION * EXPRESSION
 </pre>
 
+=== Unqualified Identifiers ===
+
+<p>An unqualified identifier consists of a single expression that computes a string value.
+A name value is constructed at runtime by searching for a property name that has an identifier 
+that matches that string value and one of the open namespaces.
+
 === Qualified Identifiers ===
 
 <p>A qualified identifier consists of an expression that computes a namespace value and an 
 expression that computes a string value. A name value is constructed at runtime using the
 values of these expressions.
 
-=== Unqualified Identifiers ===
-
-<p>An unqualified identifier consists of a single expression that computes a string value.
-A name value is constructed at runtime by searching for a property name that has an identifier 
-that matches that string value and one of the open namespaces. 
-
 ==== Scope Chain ====
 
-<p>A scope chain contains a list of objects that are searched when evaluating a lexical
-reference. The exact specification of how scope chains are constructed is described in
+<p>A scope chain contains a list of objects that are searched when resolving an identifier. 
+The exact specification of how scope chains are constructed is described in
 //section ..: Execution//. For the purpose of specifying how names are resolved, it is
 sufficient to know that a scope chain yields a sequence of objects to be searched.
 
-<FIXME>Scope is the region of program text. In ES there are regions of text that correspond to
-the instantiation of objects that hold variables associated with that region of text. We 
-refer to those objects as scopes. I wonder
-if we can use more precise language that distinguishes between the lexical meaning of scope
-and the activation frames created when a scope is entered.
+<NOTE>A scope chain may include a class object (with class ''static'' properties), an
+instance object and one or more local scope objects in addition to the global, activation 
+and with objects of edition 3.
 
 ==== Open Namespaces ====
 
-<p>The open namespaces is a list of lists of namespace values. Each execution context extends 
-this list of lists with a new list of namespace values representing namespaces that are
-opened in that execution context.
+<p>The open namespaces are a list of lists of open namespace (''OPEN_NAMESPACE'') values. 
+Each execution context extends this list of lists with a new list of namespace values 
+representing namespaces that are opened in that execution context.
+
+<IMPL>
+{{{
+type OPEN_NAMESPACES = OPEN_NAMESPACE list list
+
+datatype OPEN_NAMESPACE =
+         OpenAll of NAMESPACE
+       | OpenFor of NAMESPACE * IDENTIFIER
+}}}
 
 <p>The ordering of the outer list is used to to priorize the search for
 a matching name. The order of the inner lists is not signficant as all
-namespaces opened in the same block are given the same priority. 
+namespaces opened in the same execution context are given the same priority. 
 
 <IMPL>
 {{{
-type OPEN_NAMESPACES = NAMESPACE list list
-}}}
-
-{{{
-fun extendOpenNamespaces (openNamespaces: OPEN_NAMESPACES) (namespaceList: NAMESPACE list)
-    : OPEN_NAMESPACES = 
-    namespaceList::openNamespaces
-}}}
-
-==== Unqualified Identifier Resolution ====
-
-<p>Unqualified identifiers are resolved to a name using the following informal algorithms.
-
-<p>**Identifier resolution** - given a list of scope objects, a set of all open namespaces and an
-identifier, search for a property name that matches the identifier.
-
-{{{
-* search the scope chain (Scope search) for a name that matches the identifier and one of the open namespaces.
-* if more than one name is matched, 
-  * select the name(s) with a more recently opened namespace (Scope selection).
-* if more than one name is still matched and the owning object is a class instance, 
-  * select the name(s) introduced in the least derived class (Inheritance selection).
-* if more than one name still matched, then report an error.
-* if one name is matched, then return that name.
-* return nil
-}}}
-
-<IMPL>
-{{{
-fun resolveIdentifier (scopes: OBJECT list, namespaces: NAMESPACE list list, identifier: IDENTIFIER)
-    : NAME option =
+fun extendOpenNamespaces (env: ENV, openNamespaceList: OPEN_NAMESPACE list)
+    : OPEN_NAMESPACES =
     let
-        val {scopes, ...} = env
-        val (object, names) = findNamesInScopes (scopes, List.concat namespaces, identifier)
+        val {openNamespaces, ...} = env
     in
-        case names of
-            [] => NONE
-          | name :: [] => SOME name
-          | _ =>
-            let
-                val names = selectNameByScope (names, namespaces)
-            in
-                case names of
-                    name :: [] => SOME name
-                  | [] => NONE
-                  | _ => SOME (selectNameByInheritance (names, inheritedClassesOf (valOf object)))
-            end
+        setOpenNamespaces (env, openNamespaceList::openNamespaces)
     end
 }}}
 
-<p>**Scope chain search** - given a scope chain, open namespaces and an identifier, search for a
-matching property name.
+==== Identifier Resolution ====
 
-{{{
-* for each scope in the scope chain
-  * search for a matching name in the current scope object (Object search)
-  * if a match is found, return that name
-  * continue with next scope
-* return nil
-}}}
+<p>Identifier expressions are resolved to an object and a property name using the following algorithms.
+
+<NOTE>References where the target object is provided (''ObjectRef'') are a degenerate case of a search 
+over a list of scope objects as with a ''LexicalRef''. Likewise, a qualified identifier ''QualifiedIdentifier''
+is a degenerate form of unqualified identifier ''Identifier'' where the set of possible qualifiers is 
+provided by the environment. The algorithms here are used to specify the meaning of both kinds 
+of references.
+
+<p>**Identifier resolution** - given an execution environment with a scope chain, a set of open 
+namespaces and an identifier, find a property name that matches the identifier.
+
+<p>Informally, identifiers are resolved to a name and an owning object by searching the list of scope 
+objects for a name that matches the identifier and at least one of the open namespaces. If more than 
+one name is matched, the scope of the open namespaces
+is used to select the matches in the most recently opened namespaces. If more than one namespace is still 
+matched and the owning object is a class instance, select further refine the set of matches by preferring
+the names introduced in the least derived class. If more than one name is still matched, then report an 
+error. If no names are matched, then return no value. Otherwise return the name and owning object.
 
 <IMPL>
-{{{
-fun findNamesInScopes ([], ...) = (NONE, [])
-  | findNamesInScopes (scopes: OBJECT list, namespaces: NAMESPACE list list, identifier: IDENTIFIER)
-    : (OBJECT option, NAME list) =
-    let
-        val object = hd scopes
-        val names = findNamesInObject (object, namespaces, identifier)
-    in
-        case names of
-            [] => findNamesInScopes (tl scopes, identifier, namespaces)
-          | _ => (SOME object, names)
-    end
-}}}
+<INCLUDE file="mach.sml" name="fun findName">
+
+<p>**Search object list** - given a list of objects, set of namespaces and an identifier, search for a
+matching property name
+
+<p>Informally, for each object in the object list, search for at least one matching name in the current 
+scope object. If one or more matches is found, return the matches; otherwise continue 
+with next scope. If all scope objects are searched, then return no value.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="fun findNamesInScope">
 
 <p>**Object search** - given an object, a set of namespaces and an identifier,
 search for a matching property name.
 
-{{{
-* for each object in the prototype chain
-  * for each namespace in the namespace set
-    * search for a matching name in the current object
-    * if a match is found, add name to set of matches
-    * continue with next namespace
-  * if at least one match is found, return that matches
-  * continue with next object in prototype chain
-* return nil
-}}}
+<p>Informally, for each object in the prototype chain and for each namespace in the given namespace set,
+search for a matching name in the current object. If a match is found, add that namespace to 
+set of matches and continue with next namespace. If at least one match is found, return 
+the matches; otherwise continue with next object in prototype chain. If all prototype objects are
+searched, then return no value.
 
 <IMPL>
-{{{
-fun findNamesInObject (NONE, ...) = []
-  | findNamesInObject (object: SOME OBJECT, namespaces: NAMESPACE list, identifier: IDENTIFIER)
-    : NAME list =
-    let
-        val names = hasNames (object, namespaces, identifier)
-    in
-        case names of
-            [] => findNamesInObject (prototype object, identifier, openNamespaces)
-          | _ => names
-    end
-}}}
+<INCLUDE file="mach.sml" name="fun findNamesInObject">
 
-<p>**Scope selection of a name** - given a list of lists of open
+<p>**Select namespaces by scope** - given a list of lists of open
 namespaces (most recently opened to least recently opened) and a set of names, 
 select the name(s) that is in the most recently opened namespace(s)
 
-{{{
-* for each set of namespaces in the open namespaces
-  * for each namespace in the set of namespaces
-    * for each name in the set of names
-      * if the namespace and the name's namespace are equal,
-        * add that name to the set of matches
-      * continue with the next name
-  * if matches is not empty, return matches
-  * continue with next set of namespaces
-* return nil
-}}}
+<p>Informally, for each set of namespaces in the list of sets of open namespaces and
+for each namespace in the set of namespaces and for each name in the set of names, if the namespace and the 
+name's namespace are the same, then add the namespace to the set of matching namespaces; continue with 
+the next namespace, if the set of matching namespaces is not empty, return that set; otherwise
+continue with next set of namespaces. If all sets of namespaces have been searched, then return an
+empty list.
 
 <IMPL>
-{{{
-fun selectNamesByScope ([], ...) = []
- |  selectNamesByScope (namespaces: NAMESPACE list list, names: NAME list)
-    : NAME list =
-    let
-         val names = selectNamesByNamespaces (hd namespaces, names)
-    in
-        case names of
-            [] => selectNameByScope (names, tl namespaces)
-          | _ => names
-    end
-}}}
+<INCLUDE file="mach.sml" name="fun selectNamespacesByScope">
 
-<p>**Inheritance selection of a name** - given an object and a set of names,
+<p>**Select namespaces by class** - given an object, a set of namespaces and an identifier,
 select the name that matches the most generic binding in that object. This
 step is necessary to avoid object integrity issues that arise when a derived
 class introduces a binding with the same identifier and a different namespace 
 in the open namespaces.
 
-{{{
-* for each class inherited from object, ordered from most generic to most derived
-  * for each names in the given set of names
-    * search for a matching name in the current class
-    * if a match is found, add name to set of matches
-    * continue with next name
-  * if matches is of length 1, then return match
-  * if matches is of length > 1, report an ambiguity error
-  * continue with next class
-* return nil
-}}}
+<p>Informally, for each class inherited from object, ordered from most generic to most derived, and
+for each namespace in the given set of namespaces, search for a matching name in the current 
+class. If a match is found then add name to set of matches. Continue with next name. If
+the set of maching namespaces is not empty then return that set; otherwise continue with next class.
+If all classes have been searched, then return and empty list.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="fun selectNamespacesByClass">
+
+<p>**Helper functions**
 
 <IMPL>
 {{{
-fun selectNameByInheritance (classes: CLASS list, ...) = throw "unresolved name error"
- |  selectNameByInheritance (classes: CLASS list, names: NAME list)
-    : NAME =
-    let
-        val {instanceBindings, ...} = hd classes
-        val selection = hasNames (instanceBindings, names)
-    in
-        case selection of
-            [] => selectNameByInheritance (tl classes, names)
-          | name :: [] => name
-          | _ => throw "ambiguous name error"
-    end
+fun head x = hd x (* return the first element of a list *)
+fun tail x = tl x (* return all but the first element of a list *)
+
+fun matchNamespaces (ns1: NAMESPACE list, ns2: NAMESPACE list)
+    : NAMESPACE list =
+    (* compute the intersection of two NAMESPACE lists *)
+    <LDOTS>
+
+fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
+    : NAMESPACE list =
+    (* get the namespaces of binding names that have a certain identifier *)
+    <LDOTS>
+
+fun getInstanceBindings (class: CLASS) 
+    : (NAME * DEFINITION) list =
+    (* get the instance bindings of a class *)
+    <LDOTS>
+
+fun getBindings (object: OBJECT option)
+    : (NAME * DEFINITION) list =
+    (* get the bindings of an object *)
+    <LDOTS>
+
+fun getPrototypeObject (object: OBJECT option)
+    : OBJECT option =
+    (* get the prototype (as in '[[proto]]') object of an object *)
+    <LDOTS>
+
+fun getScopeObject (scope: SCOPE option)
+    : OBJECT option =
+    (* get the first scope object of a scope chain *)
+    <LDOTS>
+
+fun getOuterScope (scope: SCOPE option)
+    : SCOPE option =
+    (* get the next outer scope (as in '[[parent]]') in a scope chain *)
+    <LDOTS>
+
+fun getScope ({scope,...}: ENV)
+    : SCOPE = 
+    (* get the scope chain of an execution environment *)
+    scope
+
+fun getOpenNamespaces (env: ENV, identifier: IDENTIFIER)
+    : NAMESPACE list list =
+    (* get the list of list of namespaces that are open for an identifier *)
+    <LDOTS>
 }}}
+<!--
+<INCLUDE file="mach.sml" name="fun matchNamespaces">
+<INCLUDE file="mach.sml" name="fun getScope">
+<INCLUDE file="mach.sml" name="fun inheritedClassesOf">
+<INCLUDE file="mach.sml" name="fun getScopeObject">
+<INCLUDE file="mach.sml" name="fun getBindings">
+<INCLUDE file="mach.sml" name="fun getNamespaces">
+<INCLUDE file="mach.sml" name="fun head">
+<INCLUDE file="mach.sml" name="fun tail">
+-->
 
 == Phased Identifier Resolution ==
 
@@ -296,6 +333,8 @@ is that if an identifier may be resolved in an earlier phase (e.g. the name of a
 program initialization), then its meaning shall remain fixed over the life of the program.
 Conceptually, this means that we need to model in the lookup mechanism the phases of execution 
 that involve name resolution.
+
+===== Implemenation Note =====
 
 <p>While this two-phase algorithm might appear to double the amount
 of work to do, in practical implementations it does the opposite,
@@ -311,5 +350,3 @@ example in cases of unqualified lexical references, or unqualified
 object references on typed objects -- because no new fixed property may be
 introduced at runtime that would make a successful match
 ambiguous.
-
-

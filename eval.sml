@@ -2078,6 +2078,21 @@ and evalObjectRefExpr (regs:Mach.REGS)
         getValue regs obj name
     end
 
+(*
+
+fun evalThisExpression (env: ENV)
+                       (kind: Ast.THIS_KIND option)
+    : Mach.VALUE =
+    let
+        val { this, thisFunction, thisGenerator, ... } = env
+    in
+        case kind of
+            Ast.FunctionThis => Mach.Object thisFunction
+          | Ast.GeneratorThis => Mach.Object thisGenerator
+          | _ => Mach.Object this
+    end
+
+*)
 
 and evalThisExpr (regs:Mach.REGS)
                  (kind:Ast.THIS_KIND option)
@@ -2639,7 +2654,9 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                    | _ => Mach.ValProp v)
               | _ => Mach.ValProp v
 
-        fun mergePropState (existingProp:Mach.PROP option) (newState:Mach.PROP_STATE) : Mach.PROP_STATE =
+        fun mergePropState (existingProp:Mach.PROP option) 
+                           (newState:Mach.PROP_STATE) 
+            : Mach.PROP_STATE =
             let
                 fun merge existing new =
                     case new of
@@ -2649,7 +2666,8 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 case newState of
                     Mach.VirtualValProp { getter = ng, setter = ns } => 
                         (case existingProp of
-                             SOME { state = Mach.VirtualValProp { getter = eg, setter = es }, ... } =>
+                             SOME { state = Mach.VirtualValProp { getter = eg, 
+                                                                  setter = es }, ... } =>
                                  Mach.VirtualValProp { getter = merge eg ng,
                                                        setter = merge es ns }
                            | _ => newState)
@@ -3781,6 +3799,30 @@ and evalIdentExpr (regs:Mach.REGS)
  * ES-262-3 11.2.1: Resolving member expressions to REFs.
  *)
 
+(*
+
+fun evalLexicalRef (env: ENV)
+                   (identifier: Ast.IDENTIFIER_EXPRESSION)
+                   (errIfNotFound: bool)
+    : (OBJECT * NAME) =
+    let
+        val {scope, ...} = env
+        val reference = Mach.findName (scope, identifier)
+    in case (reference, errIfNotFound) of
+        (NONE, true) => throwReferenceError (identifier)
+      | (NONE, false) => (getGlobal (env), getDefaultName (identifier))
+      | (SOME r, _) => r
+    end
+
+fun getDefaultName (identifier: Ast.IDENTIFIER_EXPRESSION)
+    : NAME =
+    case identifier of
+        QualifiedIdentifier {namespace, identifier} =>
+        (evalNamespaceRef (env, namespace), identifier)
+      | Identifier {identifier} =>
+        (Mach.publicNamespace, identifier)
+*)
+
 
 and evalLexicalRef (regs:Mach.REGS)
                    (expr:Ast.EXPR)
@@ -3803,7 +3845,8 @@ and evalLexicalRef (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME r => r
                           | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved lexical reference ", nomnToStr nomn]; dummyRef)
+                                    then (throwRefErr regs ["unresolved lexical reference ", 
+                                                            nomnToStr nomn]; dummyRef)
                                     else defaultRef (#global regs) nomn
             in
                 r
@@ -3811,6 +3854,23 @@ and evalLexicalRef (regs:Mach.REGS)
 
           | _ => error regs ["need lexical reference expression"]
     end
+
+(*
+
+fun evalObjectRef (env: ENV)
+                  (baseExpr: EXPRESSION)
+                  (identifier: IDENTIFIER_EXPRESSION)
+   : (OBJECT, NAME) =
+   let
+       val baseObject = evalExpr (env, baseExpr)
+       val reference = findName ([baseObject], identifier)
+    in case (reference, errIfNotFound) of
+        (NONE, true) => throwReferenceError (identifier)
+      | (NONE, false) => (baseObject, getDefaultName (identifier))
+      | (SOME r, _) => r
+   end
+ 
+*)
 
 and evalObjectRef (regs:Mach.REGS)
                   (expr:Ast.EXPR)
@@ -3835,8 +3895,10 @@ and evalObjectRef (regs:Mach.REGS)
                         case v of
                             Mach.Object ob => ob
                           | Mach.Wrapped (v',t) => extractFrom v'
-                          | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
-                          | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
+                          | Mach.Null => (throwRefErr regs ["object reference on null value"]; 
+                                          dummyObj)
+                          | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; 
+                                           dummyObj)
                 in
                     extractFrom v
                 end
@@ -3846,7 +3908,9 @@ and evalObjectRef (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME ro => ro
                           | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved object reference ", nomnToStr nomn]; dummyRef)
+                                    then (throwRefErr regs ["unresolved object reference ", 
+                                                            nomnToStr nomn]; 
+                                          dummyRef)
                                     else defaultRef ob nomn
                 val _ = LogErr.setLoc loc
                 val (holder, n) = r
@@ -4227,7 +4291,7 @@ and bindArgs (regs:Mach.REGS)
              * of 'arguments'.
              *)
             (Mach.addProp props Name.arguments { state = Mach.ValListProp args,  
-                                                 (* args is a better approximation than finalArgs *)
+                                     (* args is a better approximation than finalArgs *)
                                                  ty = makeTy (Name.typename Name.nons_Object),
                                                  attrs = { dontDelete = true,
                                                            dontEnum = true,
@@ -4414,9 +4478,12 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                   | SOME parentTy =>
                     let
                         val parentTy = evalTy classRegs parentTy
-                        val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
-                        val (superObj:Mach.OBJ) = instanceClass classRegs (AstQuery.needInstanceType parentTy)
-                        val (superClsClosure:Mach.CLS_CLOSURE) = Mach.needClass (Mach.Object superObj)
+                        val _ = traceConstruct ["initializing and constructing superclass ", 
+                                                Type.fmtType parentTy]
+                        val (superObj:Mach.OBJ) = instanceClass 
+                                         classRegs (AstQuery.needInstanceType parentTy)
+                        val (superClsClosure:Mach.CLS_CLOSURE) = 
+                                         Mach.needClass (Mach.Object superObj)
                         val (superRegs:Mach.REGS) = 
                             withThis (withScope classRegs (#env superClsClosure)) instanceObj
                     in

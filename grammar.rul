@@ -484,7 +484,7 @@ rul LiteralElement () : EXPRESSION =
 rul ElementComprehension () : EXPRESSION =
     LiteralElement ForInExpressionList OptionalIfCondition => 
     Ast.Comprehension (LiteralElement, ForInExpressionList, OptionalIfCondition)
-    
+
 rul ForInExpressionList () : (FOR_BINDING * EXPRESSION) =
     ForInExpression => 
     ForInExpression

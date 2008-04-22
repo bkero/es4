@@ -10,11 +10,6 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
 
-<p>There are four kinds of expressions: name, literal, value, and type.
-Literal expressions have a known type after parsing. Identifier expressions
-evaluate to a Name objects that are a part of a reference general expression. Type expressions compute
-values of type Type. General expressions include all other expressions.
-
 == Identifier Expressions ==
 
 <p>An ''IDENTIFIER_EXPRESSION'' evaluates to a ''NAME''.
@@ -30,7 +25,6 @@ described in the following sections.
 
 <pre>
 
-
 fun evalLiteralExpr (regs:Mach.REGS)
                     (lit:Ast.LITERAL)
     : Mach.VAL =
@@ -39,7 +33,8 @@ fun evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralDouble r => newDouble regs r
       | Ast.LiteralBoolean b => newBoolean regs b
       | Ast.LiteralString s => newString regs s
-      | Ast.LiteralArray {exprs=Ast.ListExpr exprs, ty} => evalLiteralArrayExpr regs exprs ty (* FIXME handle comprehensions *)
+      | Ast.LiteralArray {exprs=Ast.ListExpr exprs, ty} => 
+        evalLiteralArrayExpr regs exprs ty
       | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr regs expr ty
       | Ast.LiteralFunction f => newFunctionFromFunc regs (#scope regs) f
       | Ast.LiteralRegExp re => evalLiteralRegExp regs (#str re)
@@ -76,179 +71,24 @@ This expressions can be modified by an optional keyword: ''generator'' or ''func
 The modifier indicates whether the expression refers to the current this object, 
 generator or function.
 
-<pre>
-fun evalThisExpr (regs:Mach.REGS)
-                 (kind:Ast.THIS_KIND option)
-    : Mach.VAL = 
-    let
-        (* FIXME function and generator this *)
-        val { this, ... } = regs
-    in
-        Mach.Object this
-    end
-</pre>
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalThisExpression">
 
 === Lexical References ===
 
-<pre>
-fun evalLexicalRefExpr (regs:Mach.REGS)
-                  (ident:Ast.IDENT_EXPR)
-                  (loc:Ast.LOC option) 
-    : Mach.VAL =
-    let
-        val _ = LogErr.setLoc loc;
-        val expr = Ast.LexicalRef { ident = ident, loc = loc }
-        val (obj, name) = evalLexicalRef regs expr true
-        val _ = LogErr.setLoc loc;
-    in
-        getValue regs obj name
-    end
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalLexicalRef">
+<INCLUDE file="eval.sml" name="fun getDefaultName">
 
-fun evalLexicalRef (regs:Mach.REGS)
-                   (expr:Ast.EXPR)
-                   (errIfNotFound:bool)
-    : REF =
-    let
-        fun defaultRef obj nomn =
-            case nomn of
-                Multiname mname => (obj, Name.nons (#id mname))
-              | Name name => (obj, name)
-    in
-        case expr of
-            Ast.LexicalRef { ident, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-                val nomn = evalIdentExpr regs ident
-                val _ = LogErr.setLoc loc
-                val refOpt = resolveOnScopeChain (#scope regs) nomn
-                val _ = LogErr.setLoc loc
-                val r = case refOpt of
-                            SOME r => r
-                          | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved lexical reference ", nomnToStr nomn]; dummyRef)
-                                    else defaultRef (#global regs) nomn
-            in
-                r
-            end
-
-          | _ => error regs ["need lexical reference expression"]
-    end
-</pre>
 
 === ObjectRef ===
 
-<pre>
-fun evalObjectRefExpr (regs:Mach.REGS)
-                     (base:Ast.EXPR)
-                     (ident:Ast.IDENT_EXPR)
-                     (loc:Ast.LOC option)
-    : Mach.VAL =
-    let
-        val _ = LogErr.setLoc loc
-        val expr = Ast.ObjectRef { base = base, ident = ident, loc = loc }
-        val (_, (obj, name)) = evalObjectRef regs expr false
-        val _ = LogErr.setLoc loc
-    in
-        getValue regs obj name
-    end
-
-fun evalObjectRef (regs:Mach.REGS)
-                  (expr:Ast.EXPR)
-                  (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
-    let
-        fun defaultRef obj nomn =
-            case nomn of
-                Multiname mname => (obj, Name.nons (#id mname))
-              | Name name => (obj, name)
-    in
-        case expr of
-            Ast.ObjectRef { base, ident, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-                val v = evalExpr regs base
-                val _ = LogErr.setLoc loc
-                val nomn = evalIdentExpr regs ident
-                val _ = LogErr.setLoc loc
-                val ob = let
-                    fun extractFrom v = 
-                        case v of
-                            Mach.Object ob => ob
-                          | Mach.Wrapped (v',t) => extractFrom v'
-                          | Mach.Null => (throwRefErr regs ["object reference on null value"]; dummyObj)
-                          | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; dummyObj)
-                in
-                    extractFrom v
-                end
-                val _ = LogErr.setLoc loc
-                val refOpt = resolveName ob nomn
-                val _ = LogErr.setLoc loc
-                val r = case refOpt of
-                            SOME ro => ro
-                          | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved object reference ", nomnToStr nomn]; dummyRef)
-                                    else defaultRef ob nomn
-                val _ = LogErr.setLoc loc
-                val (holder, n) = r
-                val _ = trace ["resolved object ref to ", fmtName n,
-                               " on object #", Int.toString (getObjId holder),
-                               " with this=#", Int.toString (getObjId ob)]
-            in
-                (SOME ob, r)
-            end
-
-          | _ => error regs ["need object reference expression"]
-    end
-</pre>
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalObjectRef">
 
 === CallExpr ===
 
-<pre>
-and evalCallExpr (regs:Mach.REGS)
-                 (func:Ast.EXPR)
-                 (actuals:Ast.EXPR list)
-    : Mach.VAL = 
-    let
-        fun evalArgs _ = map (evalExpr regs) actuals
-    in
-        case func of
-            Ast.LexicalRef _ => evalCallMethodByExpr regs func (evalArgs ())
-                                
-          | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
-            evalSuperCall regs (#this regs) ident (evalArgs())
-
-          | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
-            evalSuperCall regs (needObj regs (evalExpr regs b)) ident (evalArgs())
-            
-          | Ast.ObjectRef _ => evalCallMethodByExpr regs func (evalArgs ())
-                               
-          | _ =>
-            let
-                val funcVal = evalExpr regs func
-                val funcObj = needObj regs funcVal
-                val args = evalArgs ()
-            in
-                evalCallByObj regs funcObj args
-            end
-    end
-</pre>
-
 === NewExpr ===
-
-<pre>
-fun evalNewExpr (regs:Mach.REGS)
-                (obj:Ast.EXPR)
-                (actuals:Ast.EXPR list)
-    : Mach.VAL = 
-    let
-        fun args _ = map (evalExpr regs) actuals
-        val rhs = evalExpr regs obj
-    in
-        case rhs of
-            Mach.Object ob => evalNewObj regs ob (args())
-          | _ => (throwTypeErr regs ["not a constructor"]; dummyVal)
-    end
-</pre>
 
 === ApplyTypeExpr ===
 === UnaryExpr ===
@@ -260,25 +100,12 @@ fun evalNewExpr (regs:Mach.REGS)
 === Conditional expressions ===
 
 <p>A conditional expression has the concrete syntax of //ConditionalExpression// 
-or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//. It is evaluated by the function //evalCondExpr// as 
+or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//. 
+ It is evaluated by the function //evalCondExpr// as 
 invoked by the function //evalExpr//.
 
 <IMPL>
-{{{
-fun evalCondExpr (regs:Mach.REGS)
-                 (cnd:Ast.EXPR)
-                 (thn:Ast.EXPR)
-                 (els:Ast.EXPR)
-    : Mach.VAL =
-    let
-        val v = evalExpr regs cnd
-        val b = toBoolean v
-    in
-        if b
-        then evalExpr regs thn
-        else evalExpr regs els
-    end
-}}}
+<INCLUDE file="eval.sml" name="and evalCondExpr">
 
 === SetExpr ===
 
@@ -301,76 +128,11 @@ operation, the value of the left side property is replaced with the value on the
 right side.
 
 <IMPL>
-{{{
-fun evalSetExpr (regs:Mach.REGS)
-                (aop:Ast.ASSIGNOP)
-                (lhs:Ast.EXPR)
-                (rhs:Ast.EXPR)
-    : Mach.VAL =
-    let
-        val (thisOpt, (obj, name)) = evalRefExpr regs lhs false
-        val v =
-            let
-                fun modifyWith bop =
-                    let val v = evalExpr regs rhs
-                    in 
-                        performBinop regs bop (getValue regs obj name) v
-                    end
-            in
-                case aop of
-                    Ast.Assign => evalExpr regs rhs
-                  | Ast.AssignPlus => modifyWith Ast.Plus
-                  | Ast.AssignMinus => modifyWith Ast.Minus
-                  | Ast.AssignTimes => modifyWith Ast.Times
-                  | Ast.AssignDivide => modifyWith Ast.Divide
-                  | Ast.AssignRemainder => modifyWith Ast.Remainder
-                  | Ast.AssignLeftShift => modifyWith Ast.LeftShift
-                  | Ast.AssignRightShift => modifyWith Ast.RightShift
-                  | Ast.AssignRightShiftUnsigned => modifyWith Ast.RightShiftUnsigned
-                  | Ast.AssignBitwiseAnd => modifyWith Ast.BitwiseAnd
-                  | Ast.AssignBitwiseOr => modifyWith Ast.BitwiseOr
-                  | Ast.AssignBitwiseXor => modifyWith Ast.BitwiseXor
-                  | Ast.AssignLogicalAnd =>
-                    let
-                        val a = getValue regs obj name
-                    in
-                        if toBoolean a
-                        then evalExpr regs rhs
-                        else a
-                    end
-                  | Ast.AssignLogicalOr =>
-                    let
-                        val a = getValue regs obj name
-                    in
-                        if toBoolean a
-                        then a
-                        else evalExpr regs rhs
-                    end
-            end
-    in 
-        case thisOpt of 
-            NONE => setValue regs obj name v
-          | SOME this => setValue regs this name v);
-        v
-    end
-}}}
 
+=== CommaExpression ===
 
-=== ListExpr ===
-
-<p>A //list expression// is evaluated by evaluating each of its elements, from first to last,
+<p>A //comma expression// is evaluated by evaluating each of its elements, from first to last,
 and returning the value of the last expression.
-
-<IMPL>
-{{{
-fun evalListExpr (regs:Mach.REGS)
-                 (exprList:Ast.EXPR list)
-    : Mach.VAL =
-    case exprList of
-        [] => malformed_list ()
-      | [expr] => evalExpr regs expr
-      | (expr::exprRest) => ((evalExpr regs expr); (evalListExpr regs exprRest))
-}}}
 
 === InitExpr ===
 
