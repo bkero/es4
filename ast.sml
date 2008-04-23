@@ -579,7 +579,7 @@ withtype
 
      and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
-           ty: TYPE_EXPR, 
+           ty: TYPE_EXPR,  (* CF: what is this for? *)
            rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
            inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option, TODO: replace by INITS?? *)
            block:BLOCK }

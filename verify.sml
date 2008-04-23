@@ -659,6 +659,17 @@ and verifyExpr2 (env:ENV)
 
 (*
 
+>> class d{var y;}
+>> var x:d
+>> x.y
+STRICT-MODE WARNING: ObjectRef on non-object type: (d|null)
+
+>> var w:d!;
+>> w.y
+STRICT-MODE WARNING: ObjectRef on non-object type: d
+
+
+
      and FIELD_TYPE =
            { name: IDENT,
              ty: TYPE_EXPR }
