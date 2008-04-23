@@ -222,6 +222,18 @@ class C.<T> {
       }
 }
 
+%% [catch1] verify, pass
+try {} catch(e) {}
+
+%% [Number.NaN] verify, pass
+Number.NaN
+
+%% [Number.POSITIVE_INFINITY] verify, pass
+Number.POSITIVE_INFINITY
+
+
+
+
 
 
 

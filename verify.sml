@@ -918,7 +918,7 @@ and verifyCatchClause (env:ENV)
     in
         verifyType env ty;
         Option.app (verifyRib env) rib;
-        Option.map (verifyInits env) inits;
+        Option.map (verifyInits blockEnv) inits;
         verifyBlock blockEnv block
     end
 
