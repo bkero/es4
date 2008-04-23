@@ -248,8 +248,7 @@ datatype PRAGMA =
          { expr:TYPE_EXPR,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
-       | TypeVarFixtureRef of TYPEVAR_NONCE  
-
+       | TypeVarFixtureRef of TYPEVAR_NONCE
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR

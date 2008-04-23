@@ -176,7 +176,9 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
         else Ast.UnionType [t1, t2]
     end
 
-(******************* Utilities for dealing with ribs *********************)
+(******************* Utilities for resolving IDENT_EXPRs *********************)
+
+(* Resolves the given expr to a namespace, or to NONE *)
 
 fun resolveExprToNamespace (env:ENV)
                            (expr:Ast.EXPR)
@@ -186,8 +188,8 @@ fun resolveExprToNamespace (env:ENV)
         SOME ns
       | Ast.LexicalRef {ident= Ast.QualifiedIdentifier { qual=expr, ident }, loc } =>
         let
-            val _ = LogErr.setLoc loc
         in
+            LogErr.setLoc loc;
             case resolveExprToNamespace env expr of
                 NONE => NONE
               | SOME ns => 
@@ -198,15 +200,14 @@ fun resolveExprToNamespace (env:ENV)
         end
       | Ast.LexicalRef {ident = Ast.Identifier { openNamespaces, ident }, loc} =>
         let
-            val _ = LogErr.setLoc loc
-        in
+         in
+            LogErr.setLoc loc;
             case Multiname.resolveInRibs { id=ident, nss=openNamespaces} (#ribs env) of 
                 NONE => NONE (* no occurrence in ribs *)
               | SOME (ribs, name) =>
-                let val (Ast.NamespaceFixture ns) = Fixture.getFixture (List.hd ribs) (Ast.PropName name) 
-                in
-                    SOME ns
-                end
+                case Fixture.getFixture (List.hd ribs) (Ast.PropName name) of
+                    Ast.NamespaceFixture ns => SOME ns
+                  | _ => NONE
         end
       | _ => NONE
 
@@ -231,6 +232,8 @@ fun typeOfFixture (env:ENV)
 (* Resolves an IDENT_EXPR in the given RIBS, and returns the type of
  * that IDENT_EXPR, or NONE. The returned type has been verified.
  *)
+
+(******************** Verification **************************************************)
 
 fun verifyIdentExpr (env:ENV)
                     (ribs:Ast.RIBS)
@@ -261,9 +264,6 @@ fun verifyIdentExpr (env:ENV)
             end
           | _ => NONE (* verifier does not handle these kinds of references *)
     end
-
-
-(******************** Verification **************************************************)
 
 (* Verification (aka normalization) converts a (non-closed) TYPE_EXPR into a 
  * (closed, aka grounded) TYPE_EXPR. 
@@ -355,6 +355,17 @@ and verifyLvalue (env:ENV)
 and verifyExpr (env:ENV)
                (expr:Ast.EXPR)
     : Ast.TYPE_EXPR =
+    let val _ = trace [">>> Verifying expr "]
+        val _ = if !doTrace then Pretty.ppExpr expr else ()
+        val r = verifyExpr2 env expr
+        val _ = trace ["<<< Verifying expr ", LogErr.ty r]
+    in
+        r
+    end
+
+and verifyExpr2 (env:ENV)
+               (expr:Ast.EXPR)
+    : Ast.TYPE_EXPR =
     let
         val { prog, 
               strict, 
@@ -375,8 +386,6 @@ and verifyExpr (env:ENV)
 
                 TypeType,
                 NamespaceType }, ... } = env
-        val _ = trace ["Verifying expr "]
-
         fun verifySub (e:Ast.EXPR) : Ast.TYPE_EXPR = verifyExpr env e
         fun verifySubList (es:Ast.EXPR list) : Ast.TYPE_EXPR list = map (verifyExpr env) es
         fun verifySubOption (eo:Ast.EXPR option) : Ast.TYPE_EXPR option = Option.map verifySub eo
@@ -622,16 +631,62 @@ and verifyExpr (env:ENV)
                 anyType
             end
 
-          | Ast.ObjectRef { base, ident, loc } =>
+          | Ast.ObjectRef { base, ident=idexpr, loc } =>
             let
                 val _ = LogErr.setLoc loc
                 val t = verifySub base
-                val _ = LogErr.setLoc loc
-                val ident' = ident
             in
-                (* FIXME: implement *)
-                anyType
+                case t of
+                    Ast.SpecialType Ast.Any => anyType
+                  | Ast.ObjectType fields =>
+                    let in
+                        case List.find
+                                 (fn {name, ty} => 
+                                     case idexpr of
+                                         (* FIXME: ignoring namespaces here *)
+                                         Ast.Identifier { ident, ... } => ident=name
+                                       | _ => false)
+                                 fields
+                         of
+                         SOME {name, ty} => ty
+                       | NONE => (warning ["Unknown field name ", LogErr.identExpr idexpr,
+                                           " in object type ", LogErr.ty t];
+                                  anyType)
+                    end
+                  | _ => (warning ["ObjectRef on non-object type: ", LogErr.ty t]; 
+                          anyType)
             end
+
+(*
+
+     and FIELD_TYPE =
+           { name: IDENT,
+             ty: TYPE_EXPR }
+
+
+     and IDENT_EXPR =
+         Identifier of
+           { ident : IDENT,
+             openNamespaces : NAMESPACE list list }
+(* CF: the above should be unified with
+        type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+   Perhaps Identifier should be Multiname
+*)
+       | QualifiedExpression of  (* type * *)
+           { qual : EXPR,
+             expr : EXPR }
+       | AttributeIdentifier of IDENT_EXPR
+       (* for bracket exprs: o[x] and @[x] *)
+       | ExpressionIdentifier of
+         { expr: EXPR,
+           openNamespaces : NAMESPACE list list }
+       | QualifiedIdentifier of
+           { qual : EXPR,
+             ident : Ustring.STRING }
+       | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
+       | WildcardIdentifier            (* CF: not really an identifier, should be part of T *)
+
+*)
 
           | Ast.LexicalRef { ident, loc } =>
             let in
