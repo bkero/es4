@@ -301,13 +301,6 @@ fun enterFragment (env:ENV)
         val { ribId, tempOffset, openNamespaces, 
               labels, className, packageName, 
               defaultNamespace, program, func } = env                                           
-        val newRibId = 
-            case frag of 
-                    Ast.Unit _ => 
-                    if (Fixture.inTopUnitRib program ribId)
-                    then ribId
-                    else  (SOME (Fixture.allocTopUnitRib program))
-                  | _ => ribId
     
         val (newDefaultNs, newPkgName, newOpenNss) = 
             case frag of 
@@ -321,7 +314,7 @@ fun enterFragment (env:ENV)
                 end
               | _ => (defaultNamespace, packageName, openNamespaces)
     in
-        { ribId = newRibId, 
+        { ribId = ribId, 
           tempOffset = tempOffset,
           openNamespaces = newOpenNss,
           labels = labels,
@@ -360,9 +353,6 @@ fun addToRib (env:ENV)
     : unit =
     let 
         val ribId = (#ribId env)
-        val ribId = if (Fixture.inGeneralRib (#program env) ribId)
-                    then ribId
-                    else NONE
     in
         Fixture.extendRib (#program env) ribId additions (Type.matches (#program env) [])
     end
@@ -1411,7 +1401,6 @@ and defFuncSig (env:ENV)
       s=[{f=[j],i=[],
         s=[i=10,j=20]}]}
 *)
-
              
 and defFunc (env:ENV) 
             (func:Ast.FUNC)
@@ -1470,7 +1459,6 @@ and defFunc (env:ENV)
     an assignment expression in the preamble of the defining block.
 
 *)
-
 
 and defFuncDefn (env:ENV) 
                 (f:Ast.FUNC_DEFN)
@@ -1534,7 +1522,6 @@ and defFuncDefn (env:ENV)
             [(newName, fixture)]
         end
 
-
 and defCtor (env:ENV) (ctor:Ast.CTOR)
     : Ast.CTOR =
     let
@@ -1543,7 +1530,6 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
     in
         Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc}
     end
-
 
 (*
     PRAGMA list
@@ -1578,9 +1564,7 @@ and defPragmas (env:ENV)
 
         fun defPragma x =
             case x of
-                Ast.UseDecimalContext e =>
-                Ast.UseDecimalContext (defExpr (modifiedEnv()) e)
-              | Ast.UseNamespace ns =>
+                Ast.UseNamespace ns =>
                     let
                         val env = modifiedEnv()
                         val ns = defExpr env ns
@@ -1662,7 +1646,6 @@ and defIdentExpr (env:ENV)
 
 
     end
-
 
 and defLiteral (env:ENV)
                (lit:Ast.LITERAL)
@@ -2521,12 +2504,7 @@ and defDefn (env:ENV)
       | Ast.ClassDefn cd =>
             let
                 val _ = trace ["defClass"]
-(* FIXME: we use classes inside statements 
-                val _ = 
-                    if Fixture.inGeneralRib (#program env) (#ribId env)
-                        then error ["ClassDefn inside general rib"]
-                        else ()
-*)
+                (* FIXME: we use classes inside statements *)
                 val (hoisted,def) = defClass env cd
             in
                 ([],hoisted,[])
@@ -2534,9 +2512,6 @@ and defDefn (env:ENV)
 
       | Ast.InterfaceDefn cd =>
             let
-                val _ = if Fixture.inGeneralRib (#program env) (#ribId env)
-                        then error ["ClassDefn inside general rib"]
-                        else ()
                 val (hoisted,def) = defInterface env cd
             in
                 ([],hoisted,[])
@@ -2659,21 +2634,16 @@ and defFragment (env:ENV)
     : Ast.FRAGMENT =
     let
         val env = enterFragment env frag
-        val frag' = 
-            case frag of 
-                Ast.Unit { name, fragments } => 
-                Ast.Unit { name = name, fragments = List.map (defFragment env) fragments }
-              | Ast.Package { name, fragments } => 
-                Ast.Package { name = name, fragments = List.map (defFragment env) fragments }
-              | Ast.Anon blk => 
-                let 
-                    val (blk, _) = defTopBlock env blk
-                in
-                    Ast.Anon blk
-                end
     in
-        Fixture.closeFragment (#program env) frag' (#ribId env);
-        frag'
+        case frag of 
+            Ast.Package { name, fragments } => 
+            Ast.Package { name = name, fragments = List.map (defFragment env) fragments }
+          | Ast.Anon blk => 
+            let 
+                val (blk, _) = defTopBlock env blk
+            in
+                Ast.Anon blk
+            end
     end
 
 and mkTopEnv (prog:Fixture.PROGRAM) 
@@ -2690,17 +2660,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       program = prog,
       func = NONE }
 
-and summarizeFragment (Ast.Unit { name, fragments }) = 
-    let
-        val n = case name of 
-                    SOME comps => LogErr.join "." (map Ustring.toAscii comps)
-                  | NONE => ""
-    in
-        LogErr.log ["unit ", n, " { "];
-        List.app summarizeFragment fragments;
-        LogErr.log ["}"]
-    end
-  | summarizeFragment (Ast.Package { name, fragments }) =
+and summarizeFragment (Ast.Package { name, fragments }) =
     (LogErr.log ["package ", (LogErr.join "." (map Ustring.toAscii name)), " { "];
      List.app summarizeFragment fragments;
      LogErr.log ["}"])

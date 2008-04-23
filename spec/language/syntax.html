@@ -1,0 +1,909 @@
+= Syntax =
+
+<p>This section defines the mapping from the surface syntax to the abstract, internal,
+representation of programs.
+
+== Source Text ==
+
+<p>ECMAScript source text is represetned as a sequence of characters in the Unicode character encoding,
+version 5 or later. 
+
+== Lexical Structure ==
+
+<p>The source text of an ES program is first converted into a sequence of input elements, which are either
+tokens, line terminators, comments, or white space. The source text is scanned from left to right,
+repeatedly taking the longest possible sequence of characters as the next input element.
+
+<p>There are two goal symbols for the lexical grammar. The //InputElementDiv// symbol is used in those
+syntactic grammar contexts where a division, ''/'', or //division-assignment//, ''/='', operator
+is permitted. The //InputElementRegExp// symbol is used in all other syntactic grammar contexts.
+
+<p>Note that contexts exist in the syntactic grammar where both a division and a //RegularExpressionLiteral//
+are permitted by the syntactic grammar; however, since the lexical grammar uses the //InputElementDiv// goal
+symbol in such cases, the opening slash is not recognised as starting a regular expression literal in such
+a context. As a workaround, one may enclose the regular expression literal in parenthesis.
+
+{{{
+InputElementDiv ::
+    WhiteSpace
+    LineTerminator
+    Comment
+    Token
+    DivPunctuator
+
+InputElementRegExpr ::
+    WhiteSpace
+    LineTerminator
+    Comment
+    Token
+    RegularExpressionLiteral
+}}}
+
+=== Tokens ===
+
+{{{
+Token ::
+    ReservedIdentifier
+    ContextuallyReservedIdentifier
+    Identifier
+    Punctuator
+    NumericLiteral
+    SingleLiteral
+}}}
+
+==== ReservedIdentifier ====
+
+<p>Reserved words cannot be used as identifiers.
+
+{{{
+ReservedIdentifier :: [one of]
+    break case cast catch class continue debugger default delete do else enum extends false 
+    finally for function if in instanceof internal is new null private protected public return 
+    super switch this throw true try typeof var void while with wrap
+}}}
+
+==== ContextuallyReservedIdentifier ====
+
+<p>//ContextuallyReservedIdentifier// may be used as property names, but have a specially
+meaning in specific syntactic contexts.
+
+{{{
+ContextuallyReservedIdentifier :: [one of]
+    const decimal double dynamic each eval final generator generic get has
+    implements import int interface let namespace native Number override
+    package precision prototype rounding set standard static strict to type uint 
+    undefined unit use xml yield
+}}}
+
+=== Identifier ===
+
+<p>Identifiers are interpreted according to the grammar given in //Section ..// of Version 5.0 of
+the Unicode standard, with small modifications. The grammar is base on both normative and
+informative character categories specified by the Unicode standard.
+
+<pre>
+//Identifier// ::
+    //IdentifierName// **but not** //ReservedWord//
+
+//IdentifierName// ::
+    //IdentifierStart//
+    //IdentifierName IdentifierPart//
+
+//IdentifierStart// ::
+    //UnicodeLetter//
+    **$**
+    **_**
+    **\** //UnicodeEscapeSequence//
+
+//IdentifierPart// ::
+    //IdentifierStart//
+    //UnicodeCombiningMark//
+    //UnicodeDigit//
+    //UnicodeConnectorPunctuation//
+    **\** //UnicodeEscapeSequence//
+
+//UnicodeLetter// ::
+    ...
+
+//UnicodeCombiningMark// ::
+    ...
+
+//UnicodeDigit// ::
+    ...
+
+//UnicodeConnectorPunctuation// ::
+    ...
+
+//UnicodeEscapeSequence// ::
+    ...
+
+//HexDigit// :: [one of]
+    **0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F**
+</pre>
+
+==== Punctuator ====
+
+{{{
+Punctuator :: [one of]
+    . .< .. ... ! != !== % %= & &= && &&= * *= + += ++ - -= --
+    / /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>=
+    ^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?
+}}}
+
+==== VirtualSemicolon ====
+
+<p>If the first through the n<sup>th</sup> tokens of an ES program form are
+grammatically valid but the first through then n+1<sup>st</sup> tokens, then
+the parser tries to parse the program again after inserting a //semicolon// (**;**) token
+between the n<sup>th</sup> and n+1<sup>th</sup> tokens
+
+==== StringLiteral ====
+
+<p>A string literal is zero or more characters enclosed in single or double quotes. Each
+character may be represented by an escape sequence.
+
+<IMPL>
+{{{
+StringLiteral ::
+    " DoubleStringCharactersOpt "
+    ' SingleStringCharactersOpt '
+
+...
+}}}
+
+==== NumberLiteral ====
+
+<p>A number literal represents a value of the type //double//.
+
+<IMPL> 
+{{{
+...
+}}}
+
+=== RegularExpression ===
+
+<p>A regular expression literal is an input element that is converted to a RegExp
+object (see //section ..: The RegExp class//) when it is scanned. The object is
+created before evaluation of the containing program or function begines. ...
+
+<IMPL>
+{{{
+RegularExpressionLiteral ::
+    / RegularExpressionBody / RegularExpressionFlags
+
+RegularExpressionBody ::
+    RegularExpressionFirstChar RegularExpressionChars
+
+RegularExpressionChars ::
+    [empty]
+    RegularExpressionChars RegularExpressionChar
+
+RegularExpressionFirstChar ::
+    NonTerminator [**but not** * or \ or /]
+    BackslashSequence
+
+BackslashSequence ::
+    NonTerminator [**but not** \ or /]
+    BackslashSequence
+
+BackslashSequence ::
+    \ NonTerminator
+
+NonTerminator ::
+    SourceCharacter [**but not** LineTerminator]
+
+RegularExpressionFlags ::
+    [empty]
+    RegularExpressionFlags IdentifierPart
+}}}
+
+<NOTE>Regular expression literals may not be empty; instead of representing an empty
+regular expression literal, the characters ''/''''/'' start a single line commment. To specify
+an empty regular expression, use ''/(?:)/''.
+
+== Program Structure ==
+
+=== Identifier Expresssions ===
+
+<p>Identifier expression have various surfaces representations including:
+//QualifiedName//, //PropertyName//, and //PrimaryName//. These expressions are 
+translated into one of two possible AST constructions:
+//Identifier// or //QualifiedIdentifier//.
+
+<IMPL>
+<pre>
+datatype IDENT_EXPR =
+         Identifier of EXPR
+       | QualifiedIdentifier of (EXPR * EXPR)
+</pre>
+
+==== Identifier ====
+
+<p>An //Identifier// is an ''IDENTIFIER'' that has the syntax of a **Identifier** token or a **ContextuallyReservedIdentifier** token.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Identifier () : IDENTIFIER =">
+
+==== Qualifier ====
+
+<p>A //Qualifier// is an ''EXPRESSION'' that has the syntax of an //Identifier// or a //ReservedNamespace//. //Qualifier// occurs on the left side of ''::'' in a //QualifiedName//.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Qualifier () : EXPRESSION =">
+
+==== ReservedNamespace ====
+
+<p>A //ReservedNamespace// is a ''NAMESPACE'' that is one of five **ContextuallyReservedIdentifiers** that name a system defined namespace. A //ReservedNamespace// may occur wherever a //Qualifier//, //NamespaceAttribute//, or //PrimaryExpression// may occur.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ReservedNamespace  () : NAMESPACE =">
+
+{{{
+fun getPackageIdentifier () 
+    : IDENT =
+    (* return the sequence of characters that identifies the current package *)
+}}}
+
+{{{
+fun getClassPrivateIdentifier () 
+    : int = ...
+    (* return the system generated integer value that uniquely identifies
+       the private namespace for this class *)
+}}}
+
+{{{
+fun getClassPrivateIdentifier () 
+    : int = ...
+    (* return the system generated integer values that uniquely identifies
+       the protected namespaces for this class *)
+}}}
+
+==== QualifiedNameIdentifier ====
+
+<p>A //QualifiedNameIdentifier// is an ''IDENTIFIER_EXPRESSION'' that the syntax of //Identifier//, //Brackets//, or one of the tokens **ReservedIdentifier**, **StringLiteral**, or **NumberLiteral**. //QualifiedNameIdentifier// occurs on the right side of ''::'' in //QualifiedName// and //PropertyOperator//.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul QualifiedNameIdentifier (namespace: EXPRESSION) : IDENTIFIER_EXPRESSION =">
+
+==== QualifiedName ====
+
+<p>A //QualifiedName// is an ''IDENTIFIER_EXPRESSION'' that may occur where a //PrimaryName// or //FieldName// occurs.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul QualifiedName () : IDENTIFIER_EXPRESSION =">
+
+==== PrimaryName ====
+
+<p>A //PrimaryName// is an ''IDENTIFIER_EXPRESSION'' that may occur in numerous syntactic contexts.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul PrimaryName () : IDENTIFIER_EXPRESSION =">
+
+=== Literal Expressions ===
+
+<p>Literal expressions are value expressions with a specific allocation type
+either implied by the literal or, in the case of an //ObjectLiteral// or //ArrayLiteral//,
+possibly specified by an optional type annotation.
+
+<IMPL>
+The abstract syntax for literal expressions is:
+
+<pre>
+datatype LITERAL =
+    LiteralNull
+  | LiteralUndefined
+  | LiteralBoolean of bool
+  | LiteralDouble of Real64.real
+  | LiteralString of Ustring.STRING
+  | LiteralArray of { exprs: EXPR list, ty: TY option }
+  | LiteralNamespace of NAMESPACE
+  | LiteralObject of{ expr : FIELD list, ty: TY option }
+  | LiteralFunction of FUNC
+  | LiteralRegExp of { str: Ustring.STRING }
+</pre>
+
+==== FunctionExpression ====
+
+<p>A //FunctionExpression// may occur where ever a //PrimaryExpression// may occur.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul FunctionExpression (alpha, beta) : LITERAL =">
+<INCLUDE file="grammar.rul" name="rul FunctionExpressionBody (alpha, beta) : BLOCK =">
+
+==== ObjectLiteral ====
+
+<p>An //ObjectLiteral// may occur wherever a //PrimaryExpression// may occur.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ObjectLiteral (NoColon) : LITERAL =">
+<INCLUDE file="grammar.rul" name="rul ObjectLiteral (AllowColon) : LITERAL =">
+<INCLUDE file="grammar.rul" name="rul FieldList">
+<INCLUDE file="grammar.rul" name="rul LiteralField">
+<INCLUDE file="grammar.rul" name="rul FieldKind">
+
+==== FieldName ====
+
+<p>A //FieldName// is an ''IDENTIFIER_EXPRESSION'' which can occur in an //ObjectLiteral//, an //ObjectPattern//, and a //RecordType//. A //FieldName// has the syntax of a //QualifiedName//, or one of the tokens **StringLiteral**, **NumberLiteral**, and **ReservedIdentifier**.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul FieldName">
+
+==== ArrayLiteral ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ArrayLiteral (NoColon) : LITERAL =">
+<INCLUDE file="grammar.rul" name="rul ArrayLiteral (AllowColon) : LITERAL =">
+<INCLUDE file="grammar.rul" name="rul Elements () : EXPRESSION list =">
+
+==== ElementList ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ElementList () : EXPRESSION list =">
+<INCLUDE file="grammar.rul" name="rul LiteralElement () : EXPRESSION =">
+
+==== ElementComprehension ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ElementComprehension () : EXPRESSION =">
+<INCLUDE file="grammar.rul" name="rul ForInExpressionList () : (FOR_BINDING * EXPRESSION) =">
+<INCLUDE file="grammar.rul" name="rul ForInExpression () : (FOR_BINDING * EXPRESSION) =">
+<INCLUDE file="grammar.rul" name="rul OptionalIfCondition () : EXPR option =">
+
+=== Expressions ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype EXPR">
+
+==== PrimaryExpression ====
+
+<p>A //PrimaryExpression// may occur wherever a //MemberExpression// may occur.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul PrimaryExpression (alpha, beta)">
+
+==== ParenExpression ====
+
+<p>A //ParenExpression// may occur in numerous expression contexts, all of which would be syntactically ambiguous if the parenthesis were omitted.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ParenExpression ()">
+
+==== ThisExpression ====
+
+<p>A //ThisExpression// may occur wherever a //PrimaryExpression// may occur.
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ThisExpression ()">
+
+==== LetExpression ====
+
+<p>A //LetExpression// may occur wherever a //PrimaryExpression// may occur.
+
+<p>A //LetEpression// allows the creation of a local scope within another ''EXPRESSION''. The head of a
+//LetExpression// has a lexical scope of the outer block and so bindings introduced in the head
+do not shadow outer names. The lexical scope of the body includes the head as the first frame
+in the scope chain.
+
+===== Sample =====
+
+<p>In the following example, two values are reversed before being used to compute a quotient.
+
+{{{
+... = let (x=y, y=x) x/y
+}}}
+
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul LetExpression (alpha, beta)">
+<INCLUDE file="grammar.rul" name="rul LetBindingList ()">
+<INCLUDE file="grammar.rul" name="rul NonemptyLetBindingList ()">
+
+==== SuperExpression ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul SuperExpression ()">
+==== Arguments ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Arguments ()">
+<INCLUDE file="grammar.rul" name="rul ArgumentList ()">
+
+==== PropertyOperator ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul PropertyOperator (base: EXPRESSION)">
+
+==== Brackets ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Brackets (base: EXPRESSION)">
+
+==== BracketsOrSlice ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BracketsOrSlice">
+
+==== SliceExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul SliceExpression">
+<INCLUDE file="grammar.rul" name="rul OptionalExpression">
+
+==== TypeApplication ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypeApplication">
+
+==== MemberExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul MemberExpression">
+
+==== CallExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul CallExpression">
+
+==== NewExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul NewExpression">
+
+==== LeftHandSideExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul LeftHandSideExpression">
+
+==== PostfixExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul PostfixExpression">
+
+==== UnaryExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul UnaryExpression">
+
+==== MultiplicativeExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul MultiplicativeExpression">
+
+==== AdditiveExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul AdditiveExpression">
+
+==== ShiftExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ShiftExpression">
+
+==== RelationalExpressiona, allowIn ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ShiftExpression">
+
+==== RelationalExpressiona, noIn ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul RelationalExpression (alpha, AllowIn)">
+<INCLUDE file="grammar.rul" name="rul RelationalExpression (alpha, NoIn)">
+
+==== EqualityExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul EqualityExpression">
+
+==== BitwiseAndExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BitwiseAndExpression">
+
+==== BitwiseXorExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BitwiseXorExpression">
+
+==== BitwiseOrExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BitwiseOrExpression">
+
+==== LogicalAndExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul LogicalAndExpression">
+
+==== LogicalOrExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul LogicalOrExpression">
+
+==== ConditionalExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ConditionalExpression">
+
+==== NonAssignmentExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul NonAssignmentExpression">
+
+==== UnaryTypeExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul UnaryTypeExpression">
+
+==== YieldExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul YieldExpression">
+
+==== AssignmentExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul AssignmentExpression">
+
+==== CompoundAssignmentOperator ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul CompoundAssignmentOperator">
+
+==== CommaExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul CommaExpression">
+
+=== Patterns ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype PATTERN =">
+
+<INCLUDE file="grammar.rul" name="rul Pattern(alpha, beta, gamma)">
+
+==== SimplePattern ====
+    
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul SimplePattern(alpha, beta, NoExpr)">
+<INCLUDE file="grammar.rul" name="rul SimplePattern(alpha, beta, AllowExpr)">
+
+==== ObjectPattern ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ObjectPattern">
+<INCLUDE file="grammar.rul" name="rul FieldListPattern">
+<INCLUDE file="grammar.rul" name="rul FieldPattern">
+
+==== ArrayPattern ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ArrayPattern">
+<INCLUDE file="grammar.rul" name="rul ElementListPattern">
+<INCLUDE file="grammar.rul" name="rul ElementPattern">
+
+==== TypedPattern ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypedPattern">
+<INCLUDE file="grammar.rul" name="rul TypedIdentifier">
+
+==== LikedPattern ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul LikedPattern">
+
+=== Type Expressions ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype TYPE_EXPR">
+
+==== TypeExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypeExpression">
+
+==== BasicTypeExpression ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BasicTypeExpression">
+
+==== FunctionType ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul FunctionType">
+<INCLUDE file="grammar.rul" name="rul FunctionSignatureType">
+<INCLUDE file="grammar.rul" name="rul ParametersType">
+<INCLUDE file="grammar.rul" name="rul NonemptyParametersType">
+<INCLUDE file="grammar.rul" name="rul ParameterInitType">
+<INCLUDE file="grammar.rul" name="rul ParameterType">
+<INCLUDE file="grammar.rul" name="rul RestParameterType">
+
+==== UnionType ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul UnionType">
+<INCLUDE file="grammar.rul" name="rul TypeUnionList">
+<INCLUDE file="grammar.rul" name="rul NonemptyTypeUnionList">
+
+==== RecordType ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul RecordType">
+<INCLUDE file="grammar.rul" name="rul FieldTypeList">
+<INCLUDE file="grammar.rul" name="rul NonemptyFieldTypeList">
+<INCLUDE file="grammar.rul" name="rul FieldType">
+
+==== ArrayType ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ArrayType">
+<INCLUDE file="grammar.rul" name="rul ElementTypeList">
+
+==== TypeExpressionList ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypeExpressionList">
+
+=== Statements ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype STATEMENT">
+<INCLUDE file="grammar.rul" name="datatype OMEGA">
+<INCLUDE file="grammar.rul" name="rul Statement">
+<INCLUDE file="grammar.rul" name="rul Substatement">
+
+==== Semicolon ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Semicolon (Abbrev)">
+<INCLUDE file="grammar.rul" name="rul Semicolon (NoShortIf)">
+<INCLUDE file="grammar.rul" name="rul Semicolon (Full)">
+
+==== EmptyStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul EmptyStatement">
+
+==== ExpressionStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ExpressionStatement">
+
+==== BlockStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BlockStatement">
+
+==== LabeledStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul LabeledStatement">
+
+==== IfStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul IfStatement (Abbrev">
+<INCLUDE file="grammar.rul" name="rul IfStatement (Full)">
+<INCLUDE file="grammar.rul" name="rul IfStatement (NoShortIf)">
+
+==== WithStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul WithStatement">
+
+==== SwitchStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul SwitchStatement">
+<INCLUDE file="grammar.rul" name="rul CaseElements">
+<INCLUDE file="grammar.rul" name="rul CaseElementsPrefix">
+<INCLUDE file="grammar.rul" name="rul CaseLabel">
+
+
+==== SwitchTypeStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul SwitchTypeStatement">
+<INCLUDE file="grammar.rul" name="rul TypeCaseElements">
+<INCLUDE file="grammar.rul" name="rul TypeCaseElement">
+
+==== DoStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul DoStatement">
+
+==== WhileStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul WhileStatement">
+
+==== ForStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ForStatement">
+<INCLUDE file="grammar.rul" name="rul ForInitialiser">
+<INCLUDE file="grammar.rul" name="rul ForInBinding">
+
+==== ContinueStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ContinueStatement">
+
+==== BreakStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul BreakStatement">
+
+==== ReturnStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ReturnStatement">
+
+==== ThrowStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ThrowStatement">
+
+==== TryStatement ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TryStatement">
+<INCLUDE file="grammar.rul" name="rul CatchClauses">
+<INCLUDE file="grammar.rul" name="rul CatchClause">
+
+=== Directives ===
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype TAU">
+<INCLUDE file="grammar.rul" name="rul Directives">
+<INCLUDE file="grammar.rul" name="rul DirectivesPrefix">
+<INCLUDE file="grammar.rul" name="rul Directive">
+
+==== AnnotatableDirectives ====
+
+<INCLUDE file="grammar.rul" name="datatype DEFINITION">
+<INCLUDE file="grammar.rul" name="rul AnnotatableDirective (Global">
+<INCLUDE file="grammar.rul" name="rul AnnotatableDirective (Class">
+<INCLUDE file="grammar.rul" name="rul AnnotatableDirective (Interface">
+<INCLUDE file="grammar.rul" name="rul AnnotatableDirective(Local">
+
+==== Attributes ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Attribute (Global">
+<INCLUDE file="grammar.rul" name="rul Attribute (Class">
+<INCLUDE file="grammar.rul" name="rul Attribute (Interface">
+<INCLUDE file="grammar.rul" name="rul Attribute (Local">
+<INCLUDE file="grammar.rul" name="rul NamespaceAttribute(Global)">
+<INCLUDE file="grammar.rul" name="rul NamespaceAttribute(Class)">
+
+
+=== VariableDefinition ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul VariableDefinition">
+<INCLUDE file="grammar.rul" name="rul VariableDefinitionKind">
+<INCLUDE file="grammar.rul" name="rul VariableBindingList">
+<INCLUDE file="grammar.rul" name="rul VariableBinding">
+<INCLUDE file="grammar.rul" name="rul VariableInitialisation">
+
+=== FunctionDefinition ===
+
+<INCLUDE file="grammar.rul" name="rul FunctionDeclaration">
+<INCLUDE file="grammar.rul" name="rul FunctionDefinition (Class">
+<INCLUDE file="grammar.rul" name="rul FunctionDefinition (tau">
+
+==== FunctionName ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul FunctionName">
+
+==== FunctionSignature ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul FunctionSignature">
+
+==== FunctionBody ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul FunctionBody">
+
+==== TypeParameter ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypeParameters">
+<INCLUDE file="grammar.rul" name="rul TypeParameterList">
+
+==== Parameters ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Parameters">
+<INCLUDE file="grammar.rul" name="rul NonemptyParameters">
+<INCLUDE file="grammar.rul" name="rul ParameterInit">
+<INCLUDE file="grammar.rul" name="rul Parameter">
+<INCLUDE file="grammar.rul" name="rul RestParameter">
+
+==== ResultType ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ResultType">
+
+=== ClassDefinition ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ClassDefinition">
+
+==== TypeSignature ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypeSignature">
+
+
+==== ClassInheritance ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ClassInheritance">
+<INCLUDE file="grammar.rul" name="rul TypeReferenceList">
+<INCLUDE file="grammar.rul" name="rul TypeReference">
+
+==== ClassBody ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ClassBody">
+
+==== ConstructorSignature ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ConstructorSignature">
+<INCLUDE file="grammar.rul" name="rul ConstructorInitialiser">
+<INCLUDE file="grammar.rul" name="rul SettingList">
+<INCLUDE file="grammar.rul" name="rul Setting">
+<INCLUDE file="grammar.rul" name="rul SuperInitialiser">
+
+=== InterfaceDefinition ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul InterfaceDefinition">
+
+==== InterfaceInheritance ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul InterfaceInheritance">
+
+==== InterfaceBody ====
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul InterfaceBody">
+
+=== TypeDefinition ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul TypeDefinition">
+<INCLUDE file="grammar.rul" name="rul TypeInitialisation">
+
+=== NamespaceDefinition ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul NamespaceDefinition">
+<INCLUDE file="grammar.rul" name="rul NamespaceInitialisation">
+
+=== PackageDefinition ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul PackageDefinition">
+<INCLUDE file="grammar.rul" name="rul PackageAttribute">
+<INCLUDE file="grammar.rul" name="rul PackageNameOpt">
+<INCLUDE file="grammar.rul" name="rul PackageName">
+<INCLUDE file="grammar.rul" name="rul PackageBody">
+
+=== Pragmas ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul Pragmas">
+<INCLUDE file="grammar.rul" name="rul Pragma">
+
+==== UsePragma ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul UsePragma">
+<INCLUDE file="grammar.rul" name="rul PragmaItems">
+<INCLUDE file="grammar.rul" name="rul PragmaItem">
+
+==== ImportPragma ====
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="rul ImportPragma">
+<INCLUDE file="grammar.rul" name="rul ImportName">
+
+=== Blocks ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype BLOCK">
+<INCLUDE file="grammar.rul" name="rul Block">
+
+=== Programs ===
+
+<IMPL>
+<INCLUDE file="grammar.rul" name="datatype PROGRAM">
+<INCLUDE file="grammar.rul" name="rul Program">
+
+=== Automatic Semicolon Insertion ===

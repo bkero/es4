@@ -356,7 +356,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 
         fun lexNumber () : unit =
         (*
-            The 3 lexical digit patterns fall into 4 final token types
+            The 3 lexical digit patterns fall into 2 final token types
             (including explicit qualifiers)
 
               HexIntLit
@@ -374,45 +374,34 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 0            . [0-9]*  ( [eE] [+-]? [0-9]+ )?
 
 
-              IntLiteral
-                {DecIntLit} i
-                {HexIntLit} i
-                {DecIntLit}
-
               DoubleLiteral
+				{HexIntLit}
+                {DecIntLit}
+                {DecLit}
+				{HexIntLit} d
                 {DecIntLit} d
                 {DecLit} d
-                {DecLit}
-
-              UIntLiteral
-                {DecIntLit} u
-                {HexIntLit} u
-                {HexIntLit}
 
               DecimalLiteral
                 {DecIntLit} m
                 {DecLit} m
 
             So we search for the first 3, then see at the end if there's a
-            trailing [iudm], and decide which of the 4 categories to convert to
+            trailing [dm], and decide which of the 2 categories to convert to
         *)
         let
-	    fun implicitRep (isHex:bool) (str:string) = 
-		let
-		    val n = if isHex 
-			    then 
+	    fun readDouble (isHex:bool) (str:string) = 
+			if isHex 
+			then 
 				case Word32.fromString str of 
-				    SOME w => Word32.toLargeInt w
+				    SOME w => DoubleLiteral (Real64.fromLargeInt (Word32.toLargeInt w))
 				  | NONE => error ["LexError: error converting hex literal"]
-			    else 
-				case LargeInt.fromString str of
-				    SOME li => li
-				  | NONE => error ["LexError: error converting int literal"]
-		in
-		    DoubleLiteral (Real64.fromLargeInt n)
-		end
-
-            fun countExpChars chars =
+			else 
+				case Real64.fromString str of
+				    SOME li => DoubleLiteral li
+				  | NONE => error ["LexError: error converting double literal"]
+							
+        fun countExpChars chars =
             let
                 val numSignChars = countInRanges {min=0} [(0wx2B,0wx2B) , (0wx2D,0wx2D)] chars (* [+-] *)
                 val rest  = case numSignChars of
@@ -500,63 +489,21 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         in
             case (tokType, lookahead tokLen) of
 		
-		(HexIntLit, 0wx69 (* i *)) => 
-		(case Int32.fromString numberAscii of
-		     SOME i => push (tokLen+1) (IntLiteral i)
-		   | NONE   => error ["LexError:  LEXER BUG in lexing HexIntLit(i)"])
-
-	      | (HexIntLit, 0wx75 (* u *)) => 
-		(case Word32.fromString numberAscii of
-                     SOME i => push (tokLen+1) (UIntLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing HexIntLit(u)"])
-
-	      | (HexIntLit, _) => 
-		(case Word32.fromString numberAscii of
-                     SOME i => push (tokLen) (UIntLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing HexIntLit(u)"])
-
-
-
-              | (DecIntLit, 0wx69 (* i *)) => 
-		(case Int32.fromString numberAscii of
-		     SOME i => push (tokLen+1) (IntLiteral i)
-		   | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(i)"])
-		
-              | (DecIntLit, 0wx75 (* u *)) => 
-		(case LargeInt.fromString numberAscii of
-                     SOME i => push (tokLen+1) (UIntLiteral (Word32.fromLargeInt i))
-                   | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(u)"])
-		
-              | (DecIntLit, 0wx64 (* d *)) => 
-		(case Real64.fromString numberAscii of
-                     SOME i => push (tokLen+1) (DoubleLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(d)"])
-
-              | (DecIntLit, 0wx6D (* m *)) => 
-		(case Decimal.fromStringDefault numberAscii of
-		     SOME i => push (tokLen+1) (DecimalLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(m)"])
-
-	      | (DecIntLit, _) => 
-		push tokLen (implicitRep false numberAscii)
-
-
-
-              | (DecLit   , 0wx6D (* m *)) => 
-		(case Decimal.fromStringDefault numberAscii of
-                     SOME i => push (tokLen+1) (DecimalLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing DecLit(m)"   ])
-
-              | (DecLit   , 0wx64 (* d *)) => 
-		(case Real64.fromString numberAscii of
-                     SOME i => push (tokLen+1) (DoubleLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing DecLit(d)"   ])
-
-              | (DecLit   , _) => 
-		(case Real64.fromString numberAscii of
-                     SOME i => push tokLen (DoubleLiteral i)
-                   | NONE   => error ["LexError:  LEXER BUG in lexing DecLit"   ])
-
+				(HexIntLit, 0wx64 (* d *)) =>  push (tokLen+1) (readDouble true numberAscii)
+			  | (HexIntLit, _) =>  push tokLen (readDouble true numberAscii)
+			  | (_, 0wx64 (* d *)) => push (tokLen+1) (readDouble false numberAscii)
+									  
+			  | (DecIntLit, 0wx6D (* m *)) => 
+				(case Decimal.fromStringDefault numberAscii of
+					 SOME i => push (tokLen+1) (DecimalLiteral i)
+				   | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(m)"])		  
+				
+			  | (DecLit   , 0wx6D (* m *)) => 
+				(case Decimal.fromStringDefault numberAscii of
+					 SOME i => push (tokLen+1) (DecimalLiteral i)
+				   | NONE   => error ["LexError:  LEXER BUG in lexing DecLit(m)"   ])
+				
+			  | (_, _) => push tokLen (readDouble false numberAscii)
           ;
           (* next char must NOT be isIdentifierChar *)
           if isIdentifierChar (lookahead 0)
@@ -786,7 +733,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "ntrinsic" , Intrinsic),
                                              (Ustring.fromSource "nternal"  , Internal),
                                              (Ustring.fromSource "mport"    , Import),
-                                             (Ustring.fromSource "nt"       , Int),
                                              (Ustring.fromSource "s"        , Is),
                                              (Ustring.fromSource "f"        , If),
                                              (Ustring.fromSource "n"        , In)]
@@ -817,17 +763,13 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "his"      , This),
                                              (Ustring.fromSource "ype"      , Type),
                                              (Ustring.fromSource "rue"      , True),
-                                             (Ustring.fromSource "ry"       , Try),
-                                             (Ustring.fromSource "o"        , To)]
+                                             (Ustring.fromSource "ry"       , Try)]
                       | #"u"  => lexResOrId [(Ustring.fromSource "ndefined" , Undefined),
-                                             (Ustring.fromSource "nit"      , Unit),
-                                             (Ustring.fromSource "int"      , UInt),
                                              (Ustring.fromSource "se"       , Use)]
                       | #"v"  => lexResOrId [(Ustring.fromSource "oid"      , Void),
                                              (Ustring.fromSource "ar"       , Var)]
                       | #"w"  => lexResOrId [(Ustring.fromSource "hile"     , While),
-                                             (Ustring.fromSource "ith"      , With),
-					     (Ustring.fromSource "rap"      , Wrap)]
+                                             (Ustring.fromSource "ith"      , With)]
                       | #"x"  => lexResOrId [(Ustring.fromSource "ml"       , Token.Xml)]
                       | #"y"  => lexResOrId [(Ustring.fromSource "ield"     , Yield)]
                     (* numbers *)

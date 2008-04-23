@@ -1,4 +1,4 @@
-dummy: language.html library.html
+dummy: language.html ##library.html
 
 language.html: stitch.py part2.html es4.css language/*.html ../builtins/*.es ../*.sml
 	python stitch.py part2.html language.html

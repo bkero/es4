@@ -90,9 +90,7 @@ structure IntMap = SplayMapFn (IntKey);
  *)
 
 datatype RIB_RECORD = 
-         OpenTopUnitRib 
-       | ClosedTopUnitRib of Ast.RIB
-       | GeneralRib of { parent: Ast.RIB_ID option,
+         GeneralRib of { parent: Ast.RIB_ID option,
                          rib: Ast.RIB }
 
 
@@ -219,7 +217,6 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
-           | Ast.InheritedFixture _ => "[inherited]"
     in
 	case n of
 	    Ast.TempName n => log ["temp #", Int.toString n, " -> ", fs]
@@ -315,29 +312,12 @@ fun allocGeneralRib (prog:PROGRAM)
     allocRibRec prog (GeneralRib { parent = parent, rib = [] })
 
 
-fun allocTopUnitRib (prog:PROGRAM)
-    : Ast.RIB_ID =
-    allocRibRec prog (OpenTopUnitRib)
-
-
 fun getRibRec (prog:PROGRAM)
               (ribId:Ast.RIB_ID)
     : RIB_RECORD = 
     case IntMap.find(!(#ribs prog), ribId) of
         NONE => error ["no rib record found for rib #", Int.toString ribId ]
       | SOME rr => rr
-
-
-fun closeTopUnitRib (prog:PROGRAM)
-                    (ribId:Ast.RIB_ID)
-    : unit = 
-    let
-        val { rootRib, ... } = prog
-    in
-        case getRibRec prog ribId of
-            OpenTopUnitRib => writeRibRec prog ribId (ClosedTopUnitRib (!rootRib))
-          | _ => error ["closing rib #", Int.toString ribId, ", which is not an open top unit"]
-    end
 
 
 (* 
@@ -359,20 +339,10 @@ fun getRibs (prog:PROGRAM)
             in
                 (rib :: parentRibs, parentClosed)
             end
-          | OpenTopUnitRib => getRibs prog NONE
-          | ClosedTopUnitRib rib => ([rib], true)
-
 
 fun ribIsClosed (prog:PROGRAM)
                 (ribId:Ast.RIB_ID option)
-    : bool = 
-    case ribId of 
-        NONE => false
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => ribIsClosed prog parent
-          | OpenTopUnitRib => false
-          | ClosedTopUnitRib _ => true
+    : bool = false
 
 
 fun saveRib (prog:PROGRAM)
@@ -385,8 +355,6 @@ fun saveRib (prog:PROGRAM)
         case getRibRec prog rid of 
             GeneralRib { parent, ... } => 
             writeRibRec prog rid (GeneralRib { parent=parent, rib=rib })
-          | _ => error ["saving rib #", Int.toString rid, 
-                        ", which is not a general rib"]
 
 
 fun extendRib (prog:PROGRAM)
@@ -400,8 +368,6 @@ fun extendRib (prog:PROGRAM)
                        | SOME rid => 
                          case getRibRec prog rid of 
                              GeneralRib { rib, ... } => rib
-                           | _ => error ["extending rib #", Int.toString rid, 
-                                         ", which is not a general rib"]
         val newRib = mergeRibs tyeq oldRib additions
     in
         saveRib prog ribId newRib
@@ -435,50 +401,6 @@ fun resolveToFixture (prog:PROGRAM)
                     end
             end
     end
-
-
-fun inGeneralRib (prog:PROGRAM)
-                 (ribId:Ast.RIB_ID option)
-    : bool =
-    case ribId of 
-        NONE => false
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => true
-          | OpenTopUnitRib => false
-          | ClosedTopUnitRib _ => false
-
-
-fun inTopUnitRib (prog:PROGRAM)
-                 (ribId:Ast.RIB_ID option)
-    : bool =
-    case ribId of 
-        NONE => false
-      | SOME rid => 
-        case getRibRec prog rid of 
-            GeneralRib { parent, ... } => inTopUnitRib prog parent
-          | OpenTopUnitRib => true
-          | ClosedTopUnitRib _ => true
-
-
-fun closeFragment (prog:PROGRAM)
-                  (frag:Ast.FRAGMENT)
-                  (ribId:Ast.RIB_ID option)
-    : unit = 
-    let
-        val { packageNames, ... } = prog
-    in
-        case frag of
-            Ast.Package { name, ... } => ()
-          | Ast.Anon block => ()
-          | Ast.Unit _ => 
-            (case ribId of 
-                 NONE => ()
-               | SOME rid => if inTopUnitRib prog ribId
-                             then ()
-                             else closeTopUnitRib prog rid)
-    end
-
 
 fun getRootRib (prog:PROGRAM)
     : Ast.RIB = 

@@ -67,10 +67,10 @@ package
         }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
-        prototype var name = "TypeError";
+        public prototype var name = "TypeError";
 
         /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Operand does not have the expected type";
+        public prototype var message = "Operand does not have the expected type";
     }
 }

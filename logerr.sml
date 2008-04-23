@@ -82,7 +82,6 @@ fun error ss = case !loc of
 fun namespace (ns:Ast.NAMESPACE) =
     case ns of
         Ast.Intrinsic=> "intrinsic"
-      | Ast.OperatorNamespace=> "operator"
       | Ast.Private i=> "<private " ^ (Ustring.toAscii i) ^ ">"
       | Ast.Protected i=> "<protected " ^ (Ustring.toAscii i) ^ ">"
       | Ast.Public i => "<public " ^ (Ustring.toAscii i) ^ ">"
@@ -172,8 +171,6 @@ fun ty t =
 	    "{" ^ fieldList fields ^ "}"
           | Ast.LikeType t => 
 	    "like(" ^ (ty t) ^ ")"
-          | Ast.WrapType t => 
-	    "wrap(" ^ (ty t) ^ ")"
           | Ast.AppType {base, args} => 
 	    (ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NullableType { expr, nullable } => 

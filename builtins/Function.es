@@ -110,7 +110,7 @@ package
         prototype meta function invoke(...args)
             undefined;
 
-        prototype var length : uint = 0;
+        prototype var length : double = 0;
 
         /* XXX: Function.prototype.toString */
         prototype function toString(this: Function)
@@ -208,7 +208,7 @@ package
 
         // IMPLEMENTATION ARTIFACT
 
-        // This is a getter because 'uint' is not defined by the time we
+        // This is a getter because 'double' is not defined by the time we
         // start constructing Functions.
         public function get length()
             magic::fnLength(this);

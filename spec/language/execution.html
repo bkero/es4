@@ -1,0 +1,258 @@
+= Execution =
+
+<STAT>
+
+<pre>
+FILE:                       spec/language/runtime.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-03-06
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+<p>Execution involves a depth first traversal of an AST constructed from
+a source program as described in section ..: Syntax. As programs are 
+started, function are activated, and blocks are entered, certain features
+of the execution environment are updated to reflect the environment in which
+that code gets executed.
+
+== Execution Contexts ==
+
+<DESC>An execution context includes a scope chain (''scope''), 
+this value (''this'')
+
+<IMPL>
+{{{
+type REGS = { scope: SCOPE
+            , this: OBJ }
+}}}
+
+=== Scopes ===
+
+<DESC>The AST of every program contains one or more HEAD ASTs described in 
+section ..: Fixtures. AST nodes that contain a HEAD include programs, 
+functions and blocks. As each of these kinds of nodes are evaluated their 
+corresponding head is evaluated to instantiate and initialize the scope 
+object of its execution context.
+
+<IMPL>
+{{{
+datatype SCOPE =
+         Scope of { object: OBJ
+                  , parent: SCOPE option
+                  , temps: TEMPS
+                  , kind: SCOPE_KIND }
+}}}
+
+==== Temporaries ====
+
+<DESC>Temporary variables (''TEMPS'') provide storage for unnamed intermediate values.
+
+<IMPL>
+{{{
+type TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
+}}}
+
+==== Scope Kind ====
+
+<DESC>Each scope (''SCOPE'') on a scope chain is of a particular kind 
+(''SCOPE_KIND''). The scope kind is used during method invocation to 
+determine the reciever object.
+
+<IMPL>
+{{{
+datatype SCOPE_KIND =
+         WithScope
+       | GlobalScope
+       | ActivationScope
+       | BlockScope
+}}}
+
+=== This ===
+
+<DESC>There is a ''this'' value associated with every active execution context. The ''this'' value
+depends on the caller and the type of code being executed and is determined when code enters
+the execution environment. This ''this'' value associcated with an execution environment is
+immutable.
+
+== Invoking Code ==
+
+<DESC>Upon entry into an execution context, fixture bindings are instantiated as properties of
+the scope object. Which environment a fixture gets associated with is determined by the 
+hoisting rules of the definition. All but ''let'' definitions get hoisted to the immediate outer
+global or function scope. ''let'' definitions are the exception, they result in fixtures in the 
+immediate block scope.
+
+<p>Changes to the execution state occur when blocks (''BLOCK'') are entered and exited.
+Each block includes a head (''HEAD'') and a body (''BODY''). The head consists of a
+list of fixtures (''fixtures'') and initializer expressions (''inits''). Upon entry to 
+a block a property binding is instantiated for each fixture, and the initializers are
+evaluated.
+
+=== Invoking Global Code ===
+
+<DESC>Before control enters a program (PROGRAM) the execution state is initialized. In
+this initial state, the scope chain contains one scope with the global object as its
+binding object.
+
+<p>
+Each program carries with it zero or more global fixtures.
+
+<p>
+Before global code is executed, the context is established. Program fixtures are
+instantiated to extend the global object before program code begins executing.
+
+<p>
+All other fixtures reside in a HEAD and result in a new scope object being
+instantiated.
+
+<IMPL>
+{{{
+fun evalFragment (regs:Mach.REGS)
+                 (frag:Ast.FRAGMENT)
+    : Mach.VAL =
+    let
+        fun lastVal [] = Mach.Undef
+          | lastVal x = List.last x
+    in
+        (case frag of 
+             Ast.Anon (Ast.Block {head=SOME (Ast.Head (rib, inits)), body, loc, ...}) => 
+             let
+                 val { scope, ... } = regs
+                 val Mach.Scope { temps, ...} = scope
+                 val obj = getBindingObj regs scope Ast.Hoisted
+             in
+                 allocObjRib regs obj NONE rib;
+                 evalInits regs obj temps;
+                 evalStmts regs body
+             end)
+        handle ThrowException v =>
+               let
+                   val loc = !LogErr.loc
+                   val exnStr = Ustring.toAscii (toUstring regs v)
+               in
+                   LogErr.setLoc loc;
+                   error regs ["uncaught exception: ", Ustring.toAscii (toUstring regs v)]
+               end
+    end
+}}}
+
+=== Invoking Function Code ===
+
+<IMPL>
+{{{
+type FUN_CLOSURE =
+         { func: Ast.FUNC
+         , this: OBJ option
+         , env: SCOPE }
+}}}
+
+{{{
+datatype FUNC =
+         Func of 
+         { name: FUNC_NAME
+         , block: BLOCK option (* NONE => abstract *)
+         , param: HEAD
+         , defaults: EXPR list
+         , ty: TY }
+}}}
+
+{{{
+and invokeFuncClosure (regs: Mach.REGS)
+                      (closure: Mach.FUN_CLOSURE)
+                      (args: Mach.VAL list)
+    : Mach.VAL =
+    let
+        val {func, this, env} = closure
+        val Ast.Func {name, block, param=Ast.Head (paramRib, paramInits), ty, ...} = func
+        val this = case this of
+                        SOME t => t
+                      | NONE => (#this regs)
+        val regs = withThis regs this
+        val regs = withScope regs env
+        val tyExpr = evalTy regs ty
+    in
+        let
+            val idStr = Ustring.toAscii (#ident name)
+            val strname = case (#kind name) of
+                              Ast.Ordinary => idStr
+                            | Ast.Operator => "operator " ^ idStr
+                            | Ast.Get => "get " ^ idStr
+                            | Ast.Set => "set " ^ idStr
+                            | Ast.Call => "call " ^ idStr
+                            | Ast.Has => "has " ^ idStr
+
+            val _ = Mach.push regs strname args
+
+            val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
+            val (varRegs:Mach.REGS) = extendScopeReg regs varObj Mach.ActivationScope
+            val (varScope:Mach.SCOPE) = (#scope varRegs)
+            val (Mach.Obj {props, ...}) = varObj
+        in
+            allocScopeRib varRegs paramRib;
+            bindArgs regs varScope func args;
+            evalScopeInits varRegs Ast.Local paramInits;
+            checkAllPropertiesInitialized regs varObj;
+            let
+                val res = case block of 
+                              NONE => Mach.Undef
+                            | SOME b => ((evalBlock varRegs b;
+                                          Mach.Undef)
+                                         handle ReturnException v => v)
+            in
+                Mach.pop regs;
+                res
+            end
+        end
+    end
+}}}
+
+=== Invoking Block Code ===
+
+<DESC>Local environments are introduced by statements that include a ''BLOCK'' and by //LetExpr//
+expressions. ''let'' declarations introduce bindings into the head of a local environment.
+
+<IMPL>
+{{{
+type BLOCK = { head: HEAD option
+             , body: STMT list
+             , ... }
+
+datatype HEAD = 
+         Head of FIXTURES * EXPRS
+
+}}}
+
+<DESC>When a block is entered the block's head is evaluated resulting in the execution
+context being extended. The body (''body: STMT list'') are evaluated in this updated
+execution context.
+
+<IMPL>
+{{{
+fun evalBlock (regs:Mach.REGS)
+              (block:Ast.BLOCK)
+    : Mach.VAL =
+    let
+        val Ast.Block {pragmas, head, body, loc, ...} = block
+        val regs = evalHead regs (valOf head)
+        val result = evalStmts regs body
+    in
+        result
+    end
+
+fun evalHead (env:Mach.REGS)
+             (head:Ast.HEAD)
+    : Mach.REGS =
+    let
+        val (Ast.Head (fixtures, inits)) = head
+        val obj = Mach.newObjNoTag ()
+        val newEnv = extendScopeReg env obj Mach.BlockScope
+        val {scope,...} = newEnv
+    in
+        allocScopeRib newEnv rib;
+        evalInits env obj (getScopeTemps scope) inits;
+        newEnv
+    end
+}}}

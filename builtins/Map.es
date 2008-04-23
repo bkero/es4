@@ -86,7 +86,7 @@ package
         public function Map(equals   /*: Callable*/ = (function (x,y) x === y), 
                             hashcode /*: Callable*/ = intrinsic::hashcode)
             : equals = equals
-            , hashcode = function (k) uint(hashcode(k) cast AnyNumber)
+            , hashcode = function (k) intrinsic::toUint(hashcode(k) cast AnyNumber)
             , population = 0
         {
         }
@@ -102,7 +102,7 @@ package
         }
 
         /* Return the number of mappings in the dictionary */
-        intrinsic function size() : uint
+        intrinsic function size() : double
             population;
 
         /* Return the value associated with 'key', or the default
@@ -260,7 +260,7 @@ package
                     fn(p.key, p.value);
         }
 
-        informative static function newTbl.<K,V>(limit: uint) : [internal::Box.<K,V>] {
+        informative static function newTbl.<K,V>(limit: double) : [internal::Box.<K,V>] {
             let a = [] : [internal::Box.<K,V>];
             a.limit = limit;
             return a;
@@ -271,7 +271,7 @@ package
         /* FIXME: #153, #XXX: support "function" as a type here */
         private const hashcode /*: function*/;        // key hash function
         private const equals /*: function*/;          // key equality tester
-        private var population: uint = 0;             // number of elements in the table */
+        private var population: double = 0;             // number of elements in the table */
 
         /* These are private to the implementation */
         /* We need to have REHASH_UP > REHASH_DOWN*2 for things to work */
@@ -279,7 +279,7 @@ package
         private const REHASH_UP = 1;                  /* rehash if population > REHASH_UP*limit */
         private const REHASH_DOWN = 1/3;              /* rehash if population < REHASH_DOWN*limit */
 
-        private var limit: uint = 10;                 /* number of buckets in the table */
+        private var limit: double = 10;                 /* number of buckets in the table */
 
 	/*
 	 * hash table : FIXME: should be "limit" but fixture is not visible during init (?)
@@ -290,7 +290,7 @@ package
 
     internal class Box.<K,V> 
     {
-        function Box(key:K, hash:uint, value:V) 
+        function Box(key:K, hash:double, value:V) 
             : key = key
             , hash = hash
             , value = value
@@ -300,7 +300,7 @@ package
         }
 
         var key: K;
-        var hash: uint;
+        var hash: double;
         var value: V;
         var prev: Box.<K,V>;
         var next: Box.<K,V>;

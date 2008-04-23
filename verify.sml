@@ -42,9 +42,6 @@ type STD_TYPES = {
      AnyNumberType: Ast.TYPE_EXPR,
      doubleType: Ast.TYPE_EXPR,
      decimalType: Ast.TYPE_EXPR,
-     intType: Ast.TYPE_EXPR,
-     uintType: Ast.TYPE_EXPR,
-     byteType: Ast.TYPE_EXPR,
 
      AnyStringType: Ast.TYPE_EXPR,
      stringType: Ast.TYPE_EXPR,
@@ -116,7 +113,7 @@ fun normalize (prog:Fixture.PROGRAM)
               (strict:bool)              
               (ty:Ast.TY)
     : Ast.TY = 
-    Type.normalize prog [] ty
+    Type.normalize prog [] ty 
     handle LogErr.TypeError e => 
            let in
                if strict 
@@ -146,9 +143,6 @@ fun newEnv (prog:Fixture.PROGRAM)
       AnyNumberType = Type.getNamedGroundType prog Name.ES4_AnyNumber,
       doubleType = Type.getNamedGroundType prog Name.ES4_double,
       decimalType = Type.getNamedGroundType prog Name.ES4_decimal,
-      intType = Type.getNamedGroundType prog Name.ES4_int,
-      uintType = Type.getNamedGroundType prog Name.ES4_uint,
-      byteType = Type.getNamedGroundType prog Name.ES4_byte,
 
       AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
       stringType = Type.getNamedGroundType prog Name.ES4_string,
@@ -235,18 +229,14 @@ fun resolveMnameToFixtureTy (env:ENV)
 
 (******************* Subtyping and Compatibility *************************)
 
-infix 4 ~<;
-
-fun (tleft ~< tright) = Type.groundMatches tleft tright
-
-fun checkMatch (t1:Ast.TYPE_EXPR) (* assignment src *)
-		       (t2:Ast.TYPE_EXPR) (* assignment dst *)
+fun checkMatch (src:Ast.TYPE_EXPR) (* assignment src *)
+		       (dst:Ast.TYPE_EXPR) (* assignment dst *)
     : unit =
     let in
-        trace ["checkMatch ", LogErr.ty t1, " vs. ", LogErr.ty t2]; 
-        if t1 ~< t2
+        trace ["checkMatch ", LogErr.ty src, " vs. ", LogErr.ty dst]; 
+        if Type.groundMatches src dst
         then ()
-        else warning ["checkMatch failed: ", LogErr.ty t1, " vs. ", LogErr.ty t2]
+        else warning ["checkMatch failed: ", LogErr.ty src, " vs. ", LogErr.ty dst]
     end
 
 fun leastUpperBound (t1:Ast.TYPE_EXPR)
@@ -254,9 +244,9 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
     in
-        if t1 ~< t2 then
+        if Type.groundIsCompatibleSubtype t1 t2 then (* FIXME *)
             t2
-        else if t2 ~< t1 then
+        else if Type.groundIsCompatibleSubtype t2 t1 then
             t1
         else
             Ast.UnionType [t1, t2]
@@ -270,6 +260,15 @@ fun verifyType (env:ENV)
     : (Ast.TY * Ast.TYPE_EXPR) =
 
     (* 
+     * Verification converts a (non-closed) TY into a 
+     * (closed, aka grounded) TYPE_EXPR.
+     * It is a static error if a type cannot be closed.
+     * We return the closed type, since it may later be propogated
+     * outside of its current environment env.
+     *
+     * verifyType only called by verifyTy and verifyTypeExpr;
+     * result of verifyTy never used.
+     * -----
      * Verification, if it runs, is obliged to come up with a best
      * guess ground type expression for every type it sees. It does
      * this because it performs some static reasoning and leaves
@@ -291,17 +290,11 @@ fun verifyType (env:ENV)
         (norm, 
          if Type.isGroundTy norm
          then (AstQuery.typeExprOf norm)
-         else anyType)
-    end
-
-fun verifyTy (env:ENV)
-             (ty:Ast.TY)
-    : Ast.TY =
-    
-    let
-        val (ty,te) = verifyType env ty
-    in
-        ty
+         else 
+             let in
+                 warning ["Type could not be closed: ", LogErr.ty (AstQuery.typeExprOf norm)];
+                 anyType
+             end)
     end
 
 fun verifyTypeExpr (env:ENV)
@@ -312,6 +305,20 @@ fun verifyTypeExpr (env:ENV)
         val (ty,te) = verifyType env ty
     in
         te
+    end
+
+
+(*
+verifyTypeExpr env ty
+*)
+fun verifyTy (env:ENV)
+             (ty:Ast.TY)
+    : Ast.TY =
+    
+    let
+        val (ty,te) = verifyType env ty
+    in
+        ty
     end
 
 (*
@@ -357,9 +364,6 @@ and verifyBinaryExpr (env:ENV)
               { AnyNumberType, 
                 doubleType,
                 decimalType,
-                intType,
-                uintType,
-                byteType,
 
                 AnyStringType,
                 stringType,
@@ -430,9 +434,6 @@ and verifyExpr (env:ENV)
               { AnyNumberType, 
                 doubleType,
                 decimalType,
-                intType,
-                uintType,
-                byteType,
 
                 AnyStringType,
                 stringType,
@@ -532,9 +533,7 @@ and verifyExpr (env:ENV)
                 if strict
                 then 
                     case b of
-                        Ast.To => checkMatch t1 t2
-                      | Ast.Is => ()
-                      | Ast.Wrap => ()
+                        Ast.Is => ()
                       | Ast.Cast => checkMatch t1 t2
                 else 
                     ();
@@ -558,7 +557,7 @@ and verifyExpr (env:ENV)
                       | Ast.UnaryMinus => AnyNumberType
                       | Ast.BitwiseNot => AnyNumberType
                       | Ast.LogicalNot => booleanType
-                      | Ast.Splat => Ast.ArrayType [anyType]
+                      | Ast.Spread => Ast.ArrayType [anyType]
                       (* TODO: isn't this supposed to be the prefix of a type expression? *)
                       | Ast.Type => TypeType
             in
@@ -620,8 +619,6 @@ and verifyExpr (env:ENV)
                                    | Ast.LiteralUndefined => undefinedType
                                    | Ast.LiteralDouble _ => doubleType
                                    | Ast.LiteralDecimal _ => decimalType
-                                   | Ast.LiteralInt _ => intType
-                                   | Ast.LiteralUInt _ => uintType
                                    | Ast.LiteralBoolean _ => booleanType
                                    | Ast.LiteralString _ => stringType
                                    | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
@@ -845,9 +842,6 @@ and verifyStmt (env:ENV)
               { AnyNumberType, 
                 doubleType,
                 decimalType,
-                intType,
-                uintType,
-                byteType,
 
                 AnyStringType,
                 stringType,
@@ -1099,8 +1093,7 @@ and verifyFragment (env:ENV)
                    (frag:Ast.FRAGMENT) 
   : unit = 
     case frag of 
-        Ast.Unit { fragments, ... } => List.app (verifyFragment env) fragments
-      | Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
+        Ast.Package { fragments, ... } => List.app (verifyFragment env) fragments        
       | Ast.Anon block => verifyBlock env block
 
 

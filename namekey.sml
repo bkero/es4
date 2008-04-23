@@ -35,7 +35,6 @@ structure NameKey = struct
 type ord_key = Ast.NAME
 
 val intrinsic = Ustring.fromCharCode 1
-val operator = Ustring.fromCharCode 2
 val private = Ustring.fromCharCode 3
 val protected = Ustring.fromCharCode 4
 val public = Ustring.fromCharCode 5
@@ -47,7 +46,6 @@ val lim = Ustring.fromCharCode 9
 fun decomposeNS ns =
     case ns of
 	Ast.Intrinsic => [intrinsic]
-      | Ast.OperatorNamespace => [operator]
       | Ast.Private ident => [private, ident]
       | Ast.Protected ident => [protected, ident]
       | Ast.Public ident => [public, ident]
