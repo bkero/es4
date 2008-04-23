@@ -1,0 +1,164 @@
+<html>
+<head>
+<title>assert expression</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1><code>assert</code> expression</h1>
+
+<hr>
+<pre>
+NAME:                       "'assert' expression"
+FILE:                       spec/language/assert.html
+CATEGORY:                   Expressions (E262-3 chapter 11)
+SOURCES:                    REFERENCE [1]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-11
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: N/A
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+REFERENCES
+
+[1] Thread on es4-discuss@mozilla.org on the 'Error' object
+[2] The 'Error' object specification
+
+</pre>
+<hr>
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> A new expression form <code>assert</code> is introduced.  Assert
+expressions simplify invariant checking in programs and allow programs
+to request reification of debugging information.
+
+
+<h2>Syntax</h2>
+
+<P><span class="pcounter"></span> There are two forms of the <code>assert</code> expression.
+
+<PRE>
+    "assert" "(" AssignmentExpression ")"
+    "assert" "(" AssignmentExpression "," AssignmentExpression ")"
+</PRE>
+
+<P><span class="pcounter"></span> The <code>assert</code> expression is a new <i>PrimaryExpression</i>.  The
+identifier <code>assert</code> is contextually reserved.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The parentheses in the expression are not optional, easing the
+porting of many programs that already use a single-argument <code>assert</code>
+function to provide similar (but simpler) functionality.
+
+<h2>Semantics</h2>
+
+<P><span class="pcounter"></span> The expression <code>assert(E)</code> evaluates <i>E</i> to <i>v</i> and converts
+<i>v</i> to a boolean <i>b</i>.  If <i>b</i> is <b>true</b> then the result of the
+<code>assert</code> expression is <i>v</i>.  Otherwise, an <b>AssertionError</b> is
+thrown.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The class <code>AssertionError</code> is a new subclass of <code>Error</code>.
+See [2].
+
+<P><span class="pcounter"></span> The expression <code>assert(E1,E2)</code> evaluates <i>E1</i> to <i>v1</i> and
+converts <i>v1</i> to a boolean <i>b</i>.  If <i>b</i> is <b>true</b> then the
+result of the <code>assert</code> expression is <i>v1</i>.  Otherwise, E2 is
+evaluated to yield a new value <i>v2</i>, which is thrown.
+
+
+<h2>Debugging information extraction</h2>
+
+<P><span class="pcounter"></span> When an assertion expression throws an exception value <i>v</i> and
+<i>v</i> is an instance of a subclass of the pre-defined class <code>Error</code>,
+then the run-time system should record information about the source
+location of the assertion failure in the appropriate fields of <i>v</i>.
+See [2].
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The intent is that the <code>context</code> and <code>backTrace</code> fields of
+the error object are given values that reflect the name or origin of
+the program source and the line number within that source where the
+assertion expression occured.  However, ES4 may not require that the
+implementation support the recording of that information.
+
+
+</body>
+</html>

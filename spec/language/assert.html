@@ -1,0 +1,79 @@
+= ''assert'' expression =
+
+<hr>
+<pre>
+NAME:                       "'assert' expression"
+FILE:                       spec/language/assert.html
+CATEGORY:                   Expressions (E262-3 chapter 11)
+SOURCES:                    REFERENCE [1]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-11
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: N/A
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+REFERENCES
+
+[1] Thread on es4-discuss@mozilla.org on the 'Error' object
+[2] The 'Error' object specification
+
+</pre>
+<hr>
+
+== Synopsis ==
+
+<P> A new expression form ''assert'' is introduced.  Assert
+expressions simplify invariant checking in programs and allow programs
+to request reification of debugging information.
+
+
+== Syntax ==
+
+<P> There are two forms of the ''assert'' expression.
+
+{{{
+    "assert" "(" AssignmentExpression ")"
+    "assert" "(" AssignmentExpression "," AssignmentExpression ")"
+}}}
+
+<P> The ''assert'' expression is a new //PrimaryExpression//.  The
+identifier ''assert'' is contextually reserved.
+
+<NOTE> The parentheses in the expression are not optional, easing the
+porting of many programs that already use a single-argument ''assert''
+function to provide similar (but simpler) functionality.
+
+== Semantics ==
+
+<P> The expression ''assert(E)'' evaluates //E// to //v// and converts
+//v// to a boolean //b//.  If //b// is **true** then the result of the
+''assert'' expression is //v//.  Otherwise, an **AssertionError** is
+thrown.
+
+<NOTE> The class ''AssertionError'' is a new subclass of ''Error''.
+See [2].
+
+<P> The expression ''assert(E1,E2)'' evaluates //E1// to //v1// and
+converts //v1// to a boolean //b//.  If //b// is **true** then the
+result of the ''assert'' expression is //v1//.  Otherwise, E2 is
+evaluated to yield a new value //v2//, which is thrown.
+
+
+== Debugging information extraction ==
+
+<P> When an assertion expression throws an exception value //v// and
+//v// is an instance of a subclass of the pre-defined class ''Error'',
+then the run-time system should record information about the source
+location of the assertion failure in the appropriate fields of //v//.
+See [2].
+
+<NOTE> The intent is that the ''context'' and ''backTrace'' fields of
+the error object are given values that reflect the name or origin of
+the program source and the line number within that source where the
+assertion expression occured.  However, ES4 may not require that the
+implementation support the recording of that information.
