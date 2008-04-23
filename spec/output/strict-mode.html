@@ -1,0 +1,368 @@
+<html>
+<head>
+<title>Strict mode</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Strict mode</h1>
+
+<hr>
+<pre>
+NAME:                       "Strict mode"
+FILE:                       spec/language/strict-mode.html
+CATEGORY:                   ?
+SOURCES:                    ?
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-10
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+</pre>
+<hr>
+
+
+<h2>Synopsis and background</h2>
+
+<h2>Syntax</h2>
+
+<P><span class="pcounter"></span> The pragma "use strict" enables strict mode for code within the
+scope of the pragma.
+
+<P><span class="pcounter"></span> The pragma takes the form of either an ES4 pragma or a do-nothing
+one-armed <code>if</code> statement:
+
+<PRE>
+    "use" "strict"
+    "if" "(" "false" ")" "use" "(" "strict" ")"
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The second form of the "use strict" pragma is a concession to
+ES3.1, because that form of the pragma is compatible with ES3 syntax.
+It is not recommended for ES4 code.
+
+<P><span class="pcounter"></span> There are two ways the "use strict" pragma can be used, depending
+on the context.
+
+<P><span class="pcounter"></span> In one use, the pragma can occur at the outermost level of the
+program, at the top level of a package block, or at the top level of
+(arbitrarily nested) top-level blocks that are not dependents of
+control flow statements.  In these cases, the scope of the pragma
+extends from the end of the pragma until the end of the program, the
+end of the package block, or the end of the top-level block, or until
+a "use standard" pragma is encountered.  The "use standard" pragma
+takes the form of either an ES4 pragma or a do-nothing one-armed
+<code>if</code> statement:
+
+<PRE>
+    "use" "standard"
+    "if" "(" "false" ")" "use" "(" "standard" ")"
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The "use standard" pragma is a concession to programs that
+intermix standard and strict parts.  It is restricted to the top level
+because ambiguities would result if it were to be used inside other
+scopes.
+
+<P><span class="pcounter"></span> In another use, the "use strict" pragma can occur inside any class
+body, function body, or block that is the dependent of a control flow
+statement.  In these cases, the pragma can be preceded in the body or
+block only by other pragmas, and the "use standard" pragma is not
+allowed.  In these cases, the scope of the pragma is the entire class,
+function, or block, with all nested functions or blocks.
+
+<P><span class="pcounter"></span> In the following, when the phrasing is used that a function or a
+piece of code "is strict" then the meaning is that the scope of some
+strict mode pragma includes the function or piece of code.
+
+
+<h2>Run-time checks</h2>
+
+<h3><code>this</code> never captures the global object</h3>
+
+<P><span class="pcounter"></span> In ES3, when a function is called "as a function" (that is, not as
+a method on some receiver object -- the notion is not syntactic, but
+can depend on the binding of the function) the value of <code>this</code>
+passed to the function is <b>null</b>.  The callee (or the call protocol)
+substitutes the callee's global object for the <b>null</b> value, so the
+value of <code>this</code> observed in the callee is the callee's global
+object.
+
+<P><span class="pcounter"></span> If the callee is strict, however, the <b>null</b> is not converted to
+the callee's global object.  Instead, if the callee evaluates the
+expression <code>this</code> when the value of <code>this</code> is <b>null</b> then a
+<b>ReferenceError</b> is thrown.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  We want to make that more precise but the current prose
+captures the intent well enough.
+
+<h3>Writing to properties</h3>
+
+<P><span class="pcounter"></span> If an assignment expression that is strict would write to a
+read-only property or variable then a <b>ReferenceError</b> is thrown.
+
+<h3>Creating global variables</h3>
+
+<P><span class="pcounter"></span> If an assignment expression that is strict would create a new
+property on the global object (regardless of whether the assignment is
+to a variable or to a property on an object that turns out to be the
+global object) then a <b>ReferenceError</b> is thrown.
+
+<h3>Deleting properties</h3>
+
+<P><span class="pcounter"></span> If a <code>delete</code> expression that is strict would delete a variable
+or property that is a fixture or that is marked as not removable, then
+a <b>ReferenceError</b> is thrown.
+
+<P><span class="pcounter"></span> If a <code>delete</code> expression that is strict would delete a variable
+that is not in scope or a property that is not an own property on the
+object from which it were to be deleted, then a <b>ReferenceError</b> is
+thrown.
+
+<h3>Arity checking</h3>
+
+<P><span class="pcounter"></span> If a function that is strict is called with fewer or more
+arguments than it expects then a <b>TypeError</b> is thrown.
+
+<h3><code>arguments</code></h3>
+
+<P><span class="pcounter"></span> If a function is strict then its <code>arguments</code> object does not
+share storage with the formal parameters of the function, and those
+properties of the <code>arguments</code> object that correspond to the formal
+parameters, as well as the <code>length</code> property of the <code>arguments</code>
+object, are neither writeable nor removable.
+
+<P><span class="pcounter"></span> If a function is strict and the implementation supports the ES1
+style <code>FunctionObject.arguments</code> facility, then a <b>ReferenceError</b>
+is thrown if the <code>arguments</code> property is accessed on any instance of
+the function.
+
+<h3><code>eval</code></h3>
+
+<P><span class="pcounter"></span> If the eval operator is strict and attempts to introduce a new
+binding into its inherited variable binding object then a
+<b>ReferenceError</b> is thrown (even if that binding object is the
+global object).
+
+<P><span class="pcounter"></span> If the eval operator is strict then the program it evaluates is
+also strict.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The global <code>eval</code> function is not strict.
+
+
+<h2>Compile-time checks</h2>
+
+<P><span class="pcounter"></span> A <b>SyntaxError</b> is thrown if any of the following conditions are
+violated.
+
+<h3><code>with</code></h3>
+
+<P><span class="pcounter"></span> A <code>with</code> statement cannot be strict.
+
+<h3>Names</h3>
+
+<P><span class="pcounter"></span> A strict function cannot have duplicate parameter names.
+
+<P><span class="pcounter"></span> A strict function cannot bind a name by <code>var</code> or by a top-level
+function definition if that name is also the name of a parameter to
+the function or the name <code>arguments</code>.
+
+<P><span class="pcounter"></span> A strict function cannot bind a name more than once by <code>var</code> or
+by a top-level function definition.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Duplicate definitions of names by <code>function</code>, <code>const</code>, or
+<code>let</code> inside a block is already illegal in the language (I hope).
+
+<P><span class="pcounter"></span> Strict object initializers cannot have duplicate property names.
+
+
+<h2>Candidates for inclusion</h2>
+
+<P><span class="pcounter"></span> I'm uncertain about the following because they require levels of
+analysis that I don't want to burden lightweight implementations with.
+I believe they fit in better with an optional verifier (part of a tool
+chain).  Lightweight variants can be defined but it's unclear how
+valuable those would be.
+
+
+<h3>Reference before definition</h3>
+
+<P><span class="pcounter"></span> (Heavyweight variant) In a strict function it is a static error if
+the compiler cannot prove, by definite assignment analysis for
+example, that a variable has always been initialized at every point
+where it is referenced.
+
+<P><span class="pcounter"></span> (Lightweight variant) In a strict function it is a static error if
+the compiler can prove, by simple forward attribute propagation for
+example, that a variable is never initialized at some point when it is
+referenced.  Consider for example this:
+
+<PRE>
+     function f(y) {
+         let x;
+         if (y == 1)
+             return x;    // clear error
+         return x;        // clear error
+         while (true) {   // backward edge kills analysis
+           if (y == 1)
+             return x;    // not an error
+         }
+     }
+</PRE>
+
+<P><span class="pcounter"></span> In my opinion the heavyweight variant should not be mandated and
+the lightweight variant is not very interesting, but it can be
+interesting to discuss it.
+
+
+<h3>Effect-free statements</h3>
+
+<P><span class="pcounter"></span> Provably effect-free statements cannot occur in strict code.
+
+<P><span class="pcounter"></span> There is a simple and fairly lightweight analysis here based on
+attribute synthesis in expressions: constants and references to
+variables and fields that are known not to invoke getters are
+effect-free; the results of primitive operations on useless values are
+effect-free (provided the types are known so that conversions can be
+taken into account); if an expression statement has an effect-free
+expression then the statement is effect-free and illegal.
+
+<P><span class="pcounter"></span> Again it's unclear how useful this is and whether it's not better
+considered as a part of a verifier.
+
+
+<h2>Partial rationale</h2>
+
+<P><span class="pcounter"></span> In a number of cases the utility of the strict mode restrictions
+should be self-evident and won't be justified here.  In some cases it
+is not.
+
+
+<h3><code>this</code> never captures the global object</h3>
+
+<P><span class="pcounter"></span> The utility of this is that functions don't gain access to the
+global object accidentally.  Since functions can't introduce new
+bindings in the global object in strict mode the restriction is more
+defense-in-depth than anything (after all, in ES4 the global object is
+available through the global variable <code>global</code>).
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Standard mode in ES4 and ES3.1 might already end up throwing an
+exception on access to <code>this</code> if the function was called as a
+function; that has yet to be settled.  However, that kind of a change
+is a real compatibility hazard, and allowing the program to opt in to
+the change by asking for strict mode is better.
+
+
+<h3><code>arguments</code></h3>
+
+<P><span class="pcounter"></span> The utility of making the arguments object read-only is that the
+aliasing with the formal parameters is unlikely to be desirable as
+the common case.
+
+<P><span class="pcounter"></span> The utility of making access to <code>FunctionObject.arguments</code> throw
+an exception is that the mechanism, if unchecked, allows arbitrary
+functions to look at and modify the <code>arguments</code> and formal
+parameters of active methods.  This is a privacy and security problem.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The change that makes the arguments object read-only fixes the
+problem where arbitrary code can change the formals of an active
+function, but not the problem where arbitrary can could inspect those
+formals.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  It's daring of us to standardize restrictions on the behavior
+of a feature that's not itself specified by the Standard.
+
+<P><span class="pcounter"></span> One suggestion that was made that I have not adopted in this draft
+is that if a reference to <code>arguments</code> is visible in the code of a
+strict function then the formals should be made read-only so that the
+captured arguments array would always hold the same values as the
+formals.  The problem with this, of course, is that <code>eval</code> can
+reference <code>arguments</code> without that reference being visible when the
+function is entered.  So what should happen if <code>arguments</code> is
+referenced by <code>eval</code> code after one of the formals has been changed?
+Is the <code>arguments</code> object captured at that point (not on function
+entry), and are the formals made read-only at that point?  It doesn't
+seem to be worth the bother to do this.
+
+
+</body>
+</html>

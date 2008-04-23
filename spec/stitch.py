@@ -405,6 +405,12 @@ def replaceHTML(m, hdrlvl):
 def replaceXREF(m):
     return "<span class=\"xref\">" + m.group(1) + "</span>"
 
+def removeInitialNewine(s):
+    if s[0] == "\n":
+        return s[1:]
+    else:
+        return s
+
 def replaceInclude(m, hdrlvl, fn):
     global currentlevel
     isSignature = re.search(r"^<SIGNATURE",m.group(0))
@@ -536,6 +542,8 @@ def process(fn, hdrlvl):
     text = re.sub(wikiformatLiteralRecover, revealLiteral, text)
     trace("include")
     text = re.sub(includetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
+    trace("numberpredefined")
+    text = re.sub(r"<PRE>\n","<PRE><span class=\"pcounter\"></span>", text)
     trace("done!")
     return text
 
@@ -543,12 +551,12 @@ if len(sys.argv) != 3:
     print "Usage: stitch inputfile outputfile"
     sys.exit(2)
 
-premerge = re.compile(r"^</PRE>\s*^<PRE>", re.M)
+#premerge = re.compile(r"^</PRE>\s*^<PRE>", re.M)
 # Python quality software:  Feed enough text to this RE and it whines about "recursion limit exceeded".
 # prenumber = re.compile(r"^<PRE>((?:.|\s)*?)^</PRE>", re.M)
 
 text = process(sys.argv[1], 1)
-text = re.sub(premerge, "", text);
+#text = re.sub(premerge, "", text);
 # See above
 # text = re.sub(prenumber, numberPreformatted, text);
 output = open(sys.argv[2], 'w')

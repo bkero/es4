@@ -1,0 +1,283 @@
+= Strict mode =
+
+<hr>
+<pre>
+NAME:                       "Strict mode"
+FILE:                       spec/language/strict-mode.html
+CATEGORY:                   ?
+SOURCES:                    ?
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-10
+REVIEWED AGAINST ES3:       N/A
+REVIEWED AGAINST ERRATA:    N/A
+REVIEWED AGAINST BASE DOC:  N/A
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+</pre>
+<hr>
+
+
+== Synopsis and background ==
+
+== Syntax ==
+
+<P> The pragma "use strict" enables strict mode for code within the
+scope of the pragma.
+
+<P> The pragma takes the form of either an ES4 pragma or a do-nothing
+one-armed ''if'' statement:
+
+{{{
+    "use" "strict"
+    "if" "(" "false" ")" "use" "(" "strict" ")"
+}}}
+
+<NOTE> The second form of the "use strict" pragma is a concession to
+ES3.1, because that form of the pragma is compatible with ES3 syntax.
+It is not recommended for ES4 code.
+
+<P> There are two ways the "use strict" pragma can be used, depending
+on the context.
+
+<P> In one use, the pragma can occur at the outermost level of the
+program, at the top level of a package block, or at the top level of
+(arbitrarily nested) top-level blocks that are not dependents of
+control flow statements.  In these cases, the scope of the pragma
+extends from the end of the pragma until the end of the program, the
+end of the package block, or the end of the top-level block, or until
+a "use standard" pragma is encountered.  The "use standard" pragma
+takes the form of either an ES4 pragma or a do-nothing one-armed
+''if'' statement:
+
+{{{
+    "use" "standard"
+    "if" "(" "false" ")" "use" "(" "standard" ")"
+}}}
+
+<NOTE> The "use standard" pragma is a concession to programs that
+intermix standard and strict parts.  It is restricted to the top level
+because ambiguities would result if it were to be used inside other
+scopes.
+
+<P> In another use, the "use strict" pragma can occur inside any class
+body, function body, or block that is the dependent of a control flow
+statement.  In these cases, the pragma can be preceded in the body or
+block only by other pragmas, and the "use standard" pragma is not
+allowed.  In these cases, the scope of the pragma is the entire class,
+function, or block, with all nested functions or blocks.
+
+<P> In the following, when the phrasing is used that a function or a
+piece of code "is strict" then the meaning is that the scope of some
+strict mode pragma includes the function or piece of code.
+
+
+== Run-time checks ==
+
+=== ''this'' never captures the global object ===
+
+<P> In ES3, when a function is called "as a function" (that is, not as
+a method on some receiver object -- the notion is not syntactic, but
+can depend on the binding of the function) the value of ''this''
+passed to the function is **null**.  The callee (or the call protocol)
+substitutes the callee's global object for the **null** value, so the
+value of ''this'' observed in the callee is the callee's global
+object.
+
+<P> If the callee is strict, however, the **null** is not converted to
+the callee's global object.  Instead, if the callee evaluates the
+expression ''this'' when the value of ''this'' is **null** then a
+**ReferenceError** is thrown.
+
+<FIXME> We want to make that more precise but the current prose
+captures the intent well enough.
+
+=== Writing to properties ===
+
+<P> If an assignment expression that is strict would write to a
+read-only property or variable then a **ReferenceError** is thrown.
+
+=== Creating global variables ===
+
+<P> If an assignment expression that is strict would create a new
+property on the global object (regardless of whether the assignment is
+to a variable or to a property on an object that turns out to be the
+global object) then a **ReferenceError** is thrown.
+
+=== Deleting properties ===
+
+<P> If a ''delete'' expression that is strict would delete a variable
+or property that is a fixture or that is marked as not removable, then
+a **ReferenceError** is thrown.
+
+<P> If a ''delete'' expression that is strict would delete a variable
+that is not in scope or a property that is not an own property on the
+object from which it were to be deleted, then a **ReferenceError** is
+thrown.
+
+=== Arity checking ===
+
+<P> If a function that is strict is called with fewer or more
+arguments than it expects then a **TypeError** is thrown.
+
+=== ''arguments'' ===
+
+<P> If a function is strict then its ''arguments'' object does not
+share storage with the formal parameters of the function, and those
+properties of the ''arguments'' object that correspond to the formal
+parameters, as well as the ''length'' property of the ''arguments''
+object, are neither writeable nor removable.
+
+<P> If a function is strict and the implementation supports the ES1
+style ''FunctionObject.arguments'' facility, then a **ReferenceError**
+is thrown if the ''arguments'' property is accessed on any instance of
+the function.
+
+=== ''eval'' ===
+
+<P> If the eval operator is strict and attempts to introduce a new
+binding into its inherited variable binding object then a
+**ReferenceError** is thrown (even if that binding object is the
+global object).
+
+<P> If the eval operator is strict then the program it evaluates is
+also strict.
+
+<NOTE> The global ''eval'' function is not strict.
+
+
+== Compile-time checks ==
+
+<P> A **SyntaxError** is thrown if any of the following conditions are
+violated.
+
+=== ''with'' ===
+
+<P> A ''with'' statement cannot be strict.
+
+=== Names ===
+
+<P> A strict function cannot have duplicate parameter names.
+
+<P> A strict function cannot bind a name by ''var'' or by a top-level
+function definition if that name is also the name of a parameter to
+the function or the name ''arguments''.
+
+<P> A strict function cannot bind a name more than once by ''var'' or
+by a top-level function definition.
+
+<NOTE> Duplicate definitions of names by ''function'', ''const'', or
+''let'' inside a block is already illegal in the language (I hope).
+
+<P> Strict object initializers cannot have duplicate property names.
+
+
+== Candidates for inclusion ==
+
+<P> I'm uncertain about the following because they require levels of
+analysis that I don't want to burden lightweight implementations with.
+I believe they fit in better with an optional verifier (part of a tool
+chain).  Lightweight variants can be defined but it's unclear how
+valuable those would be.
+
+
+=== Reference before definition ===
+
+<P> (Heavyweight variant) In a strict function it is a static error if
+the compiler cannot prove, by definite assignment analysis for
+example, that a variable has always been initialized at every point
+where it is referenced.
+
+<P> (Lightweight variant) In a strict function it is a static error if
+the compiler can prove, by simple forward attribute propagation for
+example, that a variable is never initialized at some point when it is
+referenced.  Consider for example this:
+
+{{{
+     function f(y) {
+         let x;
+         if (y == 1)
+             return x;    // clear error
+         return x;        // clear error
+         while (true) {   // backward edge kills analysis
+           if (y == 1)
+             return x;    // not an error
+         }
+     }
+}}}
+
+<P> In my opinion the heavyweight variant should not be mandated and
+the lightweight variant is not very interesting, but it can be
+interesting to discuss it.
+
+
+=== Effect-free statements ===
+
+<P> Provably effect-free statements cannot occur in strict code.
+
+<P> There is a simple and fairly lightweight analysis here based on
+attribute synthesis in expressions: constants and references to
+variables and fields that are known not to invoke getters are
+effect-free; the results of primitive operations on useless values are
+effect-free (provided the types are known so that conversions can be
+taken into account); if an expression statement has an effect-free
+expression then the statement is effect-free and illegal.
+
+<P> Again it's unclear how useful this is and whether it's not better
+considered as a part of a verifier.
+
+
+== Partial rationale ==
+
+<P> In a number of cases the utility of the strict mode restrictions
+should be self-evident and won't be justified here.  In some cases it
+is not.
+
+
+=== ''this'' never captures the global object ===
+
+<P> The utility of this is that functions don't gain access to the
+global object accidentally.  Since functions can't introduce new
+bindings in the global object in strict mode the restriction is more
+defense-in-depth than anything (after all, in ES4 the global object is
+available through the global variable ''global'').
+
+<NOTE> Standard mode in ES4 and ES3.1 might already end up throwing an
+exception on access to ''this'' if the function was called as a
+function; that has yet to be settled.  However, that kind of a change
+is a real compatibility hazard, and allowing the program to opt in to
+the change by asking for strict mode is better.
+
+
+=== ''arguments'' ===
+
+<P> The utility of making the arguments object read-only is that the
+aliasing with the formal parameters is unlikely to be desirable as
+the common case.
+
+<P> The utility of making access to ''FunctionObject.arguments'' throw
+an exception is that the mechanism, if unchecked, allows arbitrary
+functions to look at and modify the ''arguments'' and formal
+parameters of active methods.  This is a privacy and security problem.
+
+<NOTE> The change that makes the arguments object read-only fixes the
+problem where arbitrary code can change the formals of an active
+function, but not the problem where arbitrary can could inspect those
+formals.
+
+<NOTE> It's daring of us to standardize restrictions on the behavior
+of a feature that's not itself specified by the Standard.
+
+<P> One suggestion that was made that I have not adopted in this draft
+is that if a reference to ''arguments'' is visible in the code of a
+strict function then the formals should be made read-only so that the
+captured arguments array would always hold the same values as the
+formals.  The problem with this, of course, is that ''eval'' can
+reference ''arguments'' without that reference being visible when the
+function is entered.  So what should happen if ''arguments'' is
+referenced by ''eval'' code after one of the formals has been changed?
+Is the ''arguments'' object captured at that point (not on function
+entry), and are the formals made read-only at that point?  It doesn't
+seem to be worth the bother to do this.

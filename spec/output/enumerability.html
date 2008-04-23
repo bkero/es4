@@ -1,0 +1,294 @@
+<html>
+<head>
+<title>Enumeration</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Enumerability</h1>
+
+<hr>
+<pre>
+NAME:                       "Enumerability"
+FILE:                       spec/language/enumerability.html
+CATEGORY:                   Object model
+SOURCES:                    ?
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-10
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+
+OPEN ISSUES
+
+  * The rationale for the decision not to enumerate fixture properties
+    is a bit feeble.
+
+
+REFERENCES
+
+[1] proposals:iterators_and_generators
+[2] http:&#x2f;&#x2f;www.ecmascript.org/es4/spec/Object.html
+[3] proposals:bug_fixes [FOR.IN.LOOP.CREATION.ORDER]
+[4] ES3 spec 12.6.4
+[5] proposals:bug_fixes [ITERATE.NULL.AND.UNDEFINED]
+</pre>
+<hr>
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> The purpose of the present spec is to define what it means for a
+property of an object to be "enumerable", that is, what it means for
+the property to be discovered when the properties of an object are
+enumerated by <code>for</code>-<code>in</code> and <code>for</code>-<code>each</code>-<code>in</code> loops [4].
+
+<P><span class="pcounter"></span> This spec also describes in high level terms the facilities that
+are available to user programs to implement variations on enumeration.
+
+
+<h2>Enumeration and itemization in ES4</h2>
+
+<P><span class="pcounter"></span> According to [1], enumeration and itemization in ES4 is specified
+in terms of the new iterator protocols using a system-defined helper
+class called <code>Enumerator</code>.  A section below contains a brief
+description of how the translation is performed.  The central point is
+that enumeration is implemented by an <code>Enumerator</code> instance.
+
+<P><span class="pcounter"></span> The constructor of
+<code>Enumerator</code> optionally takes some namespace values:
+
+<PRE>
+    iterator class Enumerator.&lt;T&gt; {
+        public function Enumerator(obj, f, deep, ...namespaces) {
+            ...
+        }
+        public function next(): T {
+           ...
+        }
+    }
+</PRE>
+
+<P><span class="pcounter"></span> An <code>Enumerator</code> created on an object <i>obj</i> will produce (from
+its <code>next</code> method) a succession of the enumerable properties of
+<i>obj</i>: those dynamic properties of <i>obj</i> whose "enumerable"
+attribute [2] is set, filtered by the contents of <i>namespaces</i>.  If
+<i>deep</i> is true, then the objects in the prototype chain of <i>obj</i>
+are included in the enumeration.  Enumeration is always performed
+starting at <i>obj</i>; properties are produced in the order they were
+inserted into <i>obj</i> [3]; when the properties in <i>obj</i> are
+exhausted the process is repeated on the immediate prototype of
+<i>obj</i>, if any.
+
+<P><span class="pcounter"></span> There is a distinct namespace in ES4 known as the "compatibility
+namespace" or "no namespace".  In code, this namespace is denoted by
+the keyword <code>public</code>.
+
+<P><span class="pcounter"></span> When an <code>Enumerator</code> is created with an empty set of namespaces,
+it filters the enumerable attributes by the compatibility namespace,
+and all property names produced are <code>string</code> values -- the property
+name without the namespace, because the namespace is always the
+compatibility namespace.
+
+<P><span class="pcounter"></span> When an <code>Enumerator</code> is created with a nonempty set of
+namespaces, it filters the enumerable attributes by those namespaces
+only, and all property names produced are <code>Name</code> values: namespace
+and name pairs.
+
+<P><span class="pcounter"></span> (Punchline.)  Normal enumeration and itemization by the
+<code>for</code>-<code>in</code> and <code>for</code>-<code>each</code>-<code>in</code> loops result in the
+creation of <code>Enumerator</code> instances with an empty sets of namespaces
+and <i>deep</i> set to <b>true</b>.  Ergo, normal enumeration behaves as in
+ES3.
+
+<P><span class="pcounter"></span> Programs that needs to enumerate properties in specific
+namespaces, or that only need to perform shallow enumeration, can
+create custom <code>Enumerator</code> classes.  It is possible that ES4 ought
+to provide utility functions to make this simple, but experimentation
+will show.
+
+
+<h2>Rationale and discussion</h2>
+
+<P><span class="pcounter"></span> The rephrasing of enumeration in terms of iteration allows the
+<code>for</code>-<code>in</code> and <code>for</code>-<code>each</code>-<code>in</code> statements to be used for
+iteration, which is exceptionally handy.
+
+<P><span class="pcounter"></span> Regarding namespace filtering and enumeration by default of only
+public properties: Namespaces are used by user programs for privacy
+and integrity.  For example, the <code>private</code> attribute on properties
+and methods of a class is just the name of a system-generated
+namespace.  It would be a breach of privacy for arbitrary code to be
+able to enumerate arbitrary properties on an object, since the private
+property names would be revealed in the form of <code>Name</code> objects, from
+which the private namespace could be exposed.  Yet it is useful for
+code to enumerate properties in namespaces controlled by that code.
+So the compromise -- which is also right for compatibility with ES3 --
+is that only public properties are enumerated by default; all
+system-provided namespaces can be obtained by naming them (a class
+method can evaluate the expression <code>private</code> to obtain the object
+representing its private namespace); and custom <code>Enumerator</code>
+instances can be constructed to enumerate names in namespaces other
+than the public.
+
+<P><span class="pcounter"></span> The reason for not enumerating fixture properties is that this
+fits in well with a certain style of programming.  Consider constructing
+a prototype object:
+
+<PRE>
+    Func.prototype = const { toString: function () ..., 
+                             myMeth: function () ... }
+</PRE>
+
+<P><span class="pcounter"></span> The methods <code>toString</code> and <code>myMeth</code> are meant to be prototype
+methods, hence not enumerable.  But they are in the public namespace,
+and therefore enumerable by default.  However, the lock-down by the
+<code>const</code> prefix -- making them fixtures -- is taken as a signal that
+they are not "normal" public properties.  Hence it's probably right
+not to enumerate them.
+
+
+
+<h2>Primer: Translating enumeration into iteration</h2>
+
+<P><span class="pcounter"></span> For the full story, go to [1].
+
+<P><span class="pcounter"></span> The loop that is written like this in ES3:
+
+<PRE>
+    for (i in o)
+        ...
+</PRE>
+
+has this meaning in ES4:
+
+<PRE>
+    let IT = iterator::GET(o, true);
+    while (true) {
+        try {
+            i = IT.next();
+        }
+        catch (e : iterator::StopIterationClass) {
+            break;
+        }
+        ...
+    }
+</PRE>
+
+<P><span class="pcounter"></span> In the preceding fragment, <code>IT</code> is a fresh variable, <code>iterator::GET</code>
+is a system-supplied function shown below, and
+<code>iterator::StopIterationClass</code> is a class type.  Both of the latter are
+considered unforgeable (local rebindings do not shadow the original
+meanings we consider here).
+
+<P><span class="pcounter"></span> The function <code>GET</code> and its auxiliary <code>DEFAULT_GET</code> are defined
+as follows:
+
+<PRE>
+    iterator const function GET(start: !Object, deep: boolean): iterator::IteratorType.&lt;*&gt; {
+        if (start like iterator::IterableType.&lt;*&gt;)
+            return start.iterator::get(deep);
+        else
+            return iterator::DEFAULT_GET(start, deep);
+    }
+
+    iterator const function DEFAULT_GET(start: !Object, deep: boolean = false): iterator::IteratorType.&lt;(string|Name)&gt;
+        new Enumerator.&lt;(string|Name)&gt;(start,
+                                       function (id: (string|Name), obj: !Object): (string|Name) { return id },
+                                       deep);
+</PRE>
+
+<P><span class="pcounter"></span> In other words, if the object <code>o</code> is iterable -- if it provides
+its own iterator -- then its own iterator is used to control the loop,
+otherwise the default behavior is invoked.  It is the default behavior
+that interests us here since it implements the ES3 enumeration and
+itemization protocol.
+
+<P><span class="pcounter"></span> The default behavior, implemented by DEFAULT_GET, creates a new
+<code>Enumerator</code> instance, and this instance behaves in the way outlined
+earlier in this document.
+
+<P><span class="pcounter"></span> The behavior for <code>for</code>-<code>each</code>-<code>in</code> itemization is similar.
+
+
+</body>
+</html>

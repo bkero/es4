@@ -75,11 +75,6 @@ H4 {
     counter-reset: para;
 }
 
-@media print {
-/*    H1 { page-break-before: always } */
-    .copyright { page-break-before: always }
-}
-
 </style>
 </head>
 
@@ -90,7 +85,8 @@ H4 {
 
 <hr>
 <pre>
-NAME:                       "Error classes"
+NAME:                       "The classes 'Error', 'EvalError', 'RangeError', 'ReferenceError',
+                             'SyntaxError', 'TypeError', and 'URIError'"
 FILE:                       spec/library/Error.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCE [1]
@@ -101,8 +97,19 @@ REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
 REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
 REVIEWS:                    (none)
 IMPLEMENTATION STATUS:      ES4 RI
+TEST CASE STATUS:           Unknown
+
+CHANGES SINCE DRAFT 1 (2008-03-06)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+  * Presentation:
+    - improvements to status block above
+
 
 NOTES
 
@@ -154,8 +161,7 @@ whose instances represent specific classes of run-time errors.
 
 <P><span class="pcounter"></span> The class <code>Error</code> provides the following interface:
 
-<PRE>
-dynamic class Error extends Object 
+<PRE><span class="pcounter"></span>dynamic class Error extends Object 
 {
     public function Error(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -169,8 +175,7 @@ dynamic class Error extends Object
 
 <P><span class="pcounter"></span> The <code>Error</code> prototype object provides these direct properties:
 
-<PRE>
-    toString: function () &#x0085;
+<PRE><span class="pcounter"></span>    toString: function () &#x0085;
     name:     "Error"
     message:  &#x0085;
 </PRE>
@@ -185,8 +190,7 @@ If <i>message</i> is not <b>undefined</b>, the dynamic <code>message</code> prop
 of the newly constructed <code>Error</code> object is set to <code>string(<i>message</i>)</code>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function Error(message) {
+<PRE><span class="pcounter"></span>public function Error(message) {
     if (message !== undefined)
         this.message = string(message);
 }
@@ -202,8 +206,7 @@ creates and initialises a new <code>Error</code> object by invoking the
 <code>Error</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new Error(message);
 </PRE>
 
@@ -218,8 +221,7 @@ to an implementation-defined string.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A <code>string</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-override intrinsic function toString()
+<PRE><span class="pcounter"></span>override intrinsic function toString()
     Private::toString();
 </PRE>
 
@@ -238,8 +240,7 @@ user code.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The helper method <code>getClassName</code> returns a string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-override helper function getClassName() {
+<PRE><span class="pcounter"></span>override helper function getClassName() {
     if (helper::isExactlyType(this, EvalError) ||
         helper::isExactlyType(this, RangeError) ||
         helper::isExactlyType(this, ReferenceError) ||
@@ -249,8 +250,8 @@ override helper function getClassName() {
         return "Error";
     return super.helper::getClassName();
 }
-
-helper function isExactlyType(obj, cls)
+</PRE>
+<PRE><span class="pcounter"></span>helper function isExactlyType(obj, cls)
     let (objtype = reflect::typeOf(obj))
         cls.reflect::isSubtypeOf(objtype) && objtype.reflect::isSubtypeOf(cls);
 </PRE>
@@ -265,8 +266,7 @@ helper function isExactlyType(obj, cls)
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The prototype <code>toString</code> method returns a <code>string</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-prototype function toString(this: Error)
+<PRE><span class="pcounter"></span>public prototype function toString(this: Error)
     this.Private::toString();
 </PRE>
 
@@ -297,8 +297,7 @@ incompatible with its definition.  See sections XXX.
 
 <P><span class="pcounter"></span> The <code>EvalError</code> class provides this interface:
 
-<PRE>
-dynamic class EvalError extends Error
+<PRE><span class="pcounter"></span>dynamic class EvalError extends Error
 {
     public function EvalError(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -308,8 +307,7 @@ dynamic class EvalError extends Error
 </PRE>
 
 <P><span class="pcounter"></span> The <code>EvalError</code> prototype object provides these direct properties:
-<PRE>
-    name:    "EvalError"
+<PRE><span class="pcounter"></span>    name:    "EvalError"
     message: &#x0085;
 </PRE>
 
@@ -322,8 +320,7 @@ dynamic class EvalError extends Error
 object by delegating to the <code>Error</code> constructor.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function EvalError(message)
+<PRE><span class="pcounter"></span>public function EvalError(message)
     : super(message)
 {
 }
@@ -340,8 +337,7 @@ creates and initialises a new <code>EvalError</code> object by invoking the
 new <code>EvalError</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new EvalError(message);
 </PRE>
 
@@ -371,8 +367,7 @@ sections XXX.
 
 <P><span class="pcounter"></span> The <code>RangeError</code> class provides this interface:
 
-<PRE>
-dynamic class RangeError extends Error
+<PRE><span class="pcounter"></span>dynamic class RangeError extends Error
 {
     public function RangeError(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -382,8 +377,7 @@ dynamic class RangeError extends Error
 </PRE>
 
 <P><span class="pcounter"></span> The <code>RangeError</code> prototype object provides these direct properties:
-<PRE>
-    name:    "RangeError"
+<PRE><span class="pcounter"></span>    name:    "RangeError"
     message: &#x0085;
 </PRE>
 
@@ -396,8 +390,7 @@ dynamic class RangeError extends Error
 object by delegating to the <code>Error</code> constructor.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function RangeError(message)
+<PRE><span class="pcounter"></span>public function RangeError(message)
     : super(message)
 {
 }
@@ -414,8 +407,7 @@ creates and initialises a new <code>RangeError</code> object by invoking the
 new <code>RangeError</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new RangeError(message);
 </PRE>
 
@@ -442,8 +434,7 @@ detects an invalid reference value. See sections XXX.
 
 <h2>Synopsis</h2>
 
-<PRE>
-dynamic class ReferenceError extends Error
+<PRE><span class="pcounter"></span>dynamic class ReferenceError extends Error
 {
     public function ReferenceError(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -453,8 +444,7 @@ dynamic class ReferenceError extends Error
 </PRE>
 
 <P><span class="pcounter"></span> The <code>ReferenceError</code> prototype object provides these direct properties:
-<PRE>
-    name:    "ReferenceError"
+<PRE><span class="pcounter"></span>    name:    "ReferenceError"
     message: &#x0085;
 </PRE>
 
@@ -467,8 +457,7 @@ dynamic class ReferenceError extends Error
 object by delegating to the <code>Error</code> constructor.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function ReferenceError(message)
+<PRE><span class="pcounter"></span>public function ReferenceError(message)
     : super(message)
 {
 }
@@ -485,8 +474,7 @@ creates and initialises a new <code>ReferenceError</code> object by invoking the
 new <code>ReferenceError</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new ReferenceError(message);
 </PRE>
 
@@ -513,8 +501,7 @@ parsing error has occurred. See sections XXX.
 
 <h2>Synopsis</h2>
 
-<PRE>
-dynamic class SyntaxError extends Error
+<PRE><span class="pcounter"></span>dynamic class SyntaxError extends Error
 {
     public function SyntaxError(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -524,8 +511,7 @@ dynamic class SyntaxError extends Error
 </PRE>
 
 <P><span class="pcounter"></span> The <code>SyntaxError</code> prototype object provides these direct properties:
-<PRE>
-    name:    "SyntaxError"
+<PRE><span class="pcounter"></span>    name:    "SyntaxError"
     message: &#x0085;
 </PRE>
 
@@ -538,8 +524,7 @@ dynamic class SyntaxError extends Error
 object by delegating to the <code>Error</code> constructor.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function SyntaxError(message)
+<PRE><span class="pcounter"></span>public function SyntaxError(message)
     : super(message)
 {
 }
@@ -556,8 +541,7 @@ creates and initialises a new <code>SyntaxError</code> object by invoking the
 new <code>SyntaxError</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new SyntaxError(message);
 </PRE>
 
@@ -585,8 +569,7 @@ expected type. See sections XXX.
 
 <h2>Synopsis</h2>
 
-<PRE>
-dynamic class TypeError extends Error
+<PRE><span class="pcounter"></span>dynamic class TypeError extends Error
 {
     public function TypeError(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -596,8 +579,7 @@ dynamic class TypeError extends Error
 </PRE>
 
 <P><span class="pcounter"></span> The <code>TypeError</code> prototype object provides these direct properties:
-<PRE>
-    name:    "TypeError"
+<PRE><span class="pcounter"></span>    name:    "TypeError"
     message: &#x0085;
 </PRE>
 
@@ -610,8 +592,7 @@ dynamic class TypeError extends Error
 object by delegating to the <code>Error</code> constructor.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function TypeError(message)
+<PRE><span class="pcounter"></span>public function TypeError(message)
     : super(message)
 {
 }
@@ -628,8 +609,7 @@ creates and initialises a new <code>TypeError</code> object by invoking the
 new <code>TypeError</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new TypeError(message);
 </PRE>
 
@@ -657,8 +637,7 @@ definition. See sections XXX.
 
 <h2>Synopsis</h2>
 
-<PRE>
-dynamic class URIError extends Error
+<PRE><span class="pcounter"></span>dynamic class URIError extends Error
 {
     public function URIError(message) &#x0085
     static meta function invoke(message) &#x0085
@@ -668,8 +647,7 @@ dynamic class URIError extends Error
 </PRE>
 
 <P><span class="pcounter"></span> The <code>URIError</code> prototype object provides these direct properties:
-<PRE>
-    name:    "URIError"
+<PRE><span class="pcounter"></span>    name:    "URIError"
     message: &#x0085;
 </PRE>
 
@@ -682,8 +660,7 @@ dynamic class URIError extends Error
 object by delegating to the <code>Error</code> constructor.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function URIError(message)
+<PRE><span class="pcounter"></span>public function URIError(message)
     : super(message)
 {
 }
@@ -700,8 +677,7 @@ creates and initialises a new <code>URIError</code> object by invoking the
 new <code>URIError</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(message)
+<PRE><span class="pcounter"></span>static meta function invoke(message)
     new URIError(message);
 </PRE>
 
