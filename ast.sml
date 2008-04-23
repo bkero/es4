@@ -45,6 +45,15 @@ type RIB_ID = int
 
 type TYPEVAR_NONCE = int
 
+(* SPEC
+
+datatype NAMESPACE =
+         TransparentNamespace of IDENTIFIER
+       | OpaqueNamespace of NAMESPACE_ID
+
+type NAMESPACE_ID = ...
+*)
+
 datatype NAMESPACE =
          Intrinsic
        | Private of IDENT
@@ -229,6 +238,33 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENT * EXPR)
        | AssignStep of (EXPR * EXPR)
 
+(* SPEC
+
+datatype TYPE_EXPR =
+         AnyType
+       | NullType
+       | UndefinedType
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
+       | TypeName of IDENT_EXPR
+       | ElementTypeRef of (TYPE_EXPR * int)
+       | FieldTypeRef of (TYPE_EXPR * IDENT)
+       | FunctionType of FUNC_TYPE
+       | ObjectType of FIELD_TYPE list
+       | LikeType of TYPE_EXPR
+       | AppType of 
+         { base: TYPE_EXPR,
+           args: TYPE_EXPR list }
+       | LamType of
+         { params: IDENT list,
+           body: TYPE_EXPR }
+       | NullableType of 
+         { expr:TYPE_EXPR,
+           nullable:bool }
+       | InstanceType of INSTANCE_TYPE
+
+*)
+
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
@@ -296,6 +332,38 @@ datatype PRAGMA =
        | DXNStmt of {
              expr: EXPR }
 
+(* SPEC
+
+datatype EXPRESSION =
+         LiteralNull
+       | LiteralDouble of Real64.real
+       | LiteralDecimal of Decimal.DEC
+       | LiteralBoolean of bool
+       | LiteralString of Ustring.STRING
+       | LiteralArray of (EXPRESSION * TYPE_EXPRESSION option)
+       | LiteralObject of (FIELD list * TYPE_EXPRESSION option)
+       | LiteralFunction of FUNCTION
+       | LiteralRegExp of Ustring.STRING
+       | ConditionalExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
+       | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
+       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE_EXPRRESSION)
+       | UnaryExpr of (UNOP * EXPRESSION)
+       | TypeExpr of TYPE_EXPRESSION
+       | ThisExpr of THIS_KIND option
+       | YieldExpr of EXPRESSION option
+       | SuperExpr of EXPRESSION option
+       | CallExpr of (EXPRESSION * EXPRESSION list)
+       | ApplyTypeExpr of (EXPRESSION * TYPE_EXPRESSION list)
+       | LetExpr of (HEAD * EXPRESSION)
+       | NewExpr of (EXPRESSION * EXPRESSION list)
+       | ObjectRef of (EXPRESSION * IDENTIFIER_EXPRESSION)
+       | LexicalRef of (IDENTIFIER_EXPRESSION)
+       | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
+       | InitExpr of (INIT_TARGET * HEAD * INIT list)   (* HEAD is for temporaries *)
+       | ArrayComprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
+
+*)
+
      and EXPR =
          TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
@@ -305,7 +373,6 @@ datatype PRAGMA =
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
-       | LiteralExpr of LITERAL
        | CallExpr of {
              func: EXPR,
              actuals: EXPR list }
@@ -332,6 +399,7 @@ datatype PRAGMA =
        | GetTemp of int
        | GetParam of int
        | Comprehension of (EXPR * FOR_ENUM_HEAD list * EXPR option)
+       | LiteralExpr of LITERAL
 
      and INIT_TARGET = Hoisted
                      | Local
@@ -343,6 +411,20 @@ datatype PRAGMA =
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
+(* SPEC
+
+datatype IDENTIFIER_EXPRESSION =
+         Identifier { 
+             identifier: EXPRESSION,
+             namespaces: NAMESPACE_REF list list }
+       | QualifiedIdentifier { 
+             identifier: EXPRESSION,
+             namespace: NAMESPACE_REF }
+
+datatype NAMESPACE_REF =
+         NamespaceRef of EXPRESSION  (* resolves to a namespace fixture *)
+
+*)
      and IDENT_EXPR =
          Identifier of
            { ident : IDENT,

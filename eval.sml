@@ -1337,6 +1337,15 @@ and newArray (regs:Mach.REGS)
         a
     end
 
+(* SPEC
+
+fun evalRegExpInitialiser (env: ENV)
+                          (string: Ustring.STRING)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
 and newRegExp (regs:Mach.REGS)
               (pattern:Ustring.STRING)
               (flags:Ustring.STRING)
@@ -1353,10 +1362,28 @@ and newBuiltin (regs:Mach.REGS)
         regs n 
         [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
 
+(* SPEC
+
+fun evalDecimalLiteral (env: ENV)
+                       (decimal: Decimal.DEC)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
 and newDecimal (regs:Mach.REGS) 
                (n:Decimal.DEC)
     : Mach.VAL =
     newBuiltin regs Name.ES4_decimal (SOME (Mach.Decimal n))
+
+(* SPEC
+
+fun evalDoubleLiteral (env: ENV)
+                      (double: Real64.real)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
 
 and newDouble (regs:Mach.REGS) 
               (n:Real64.real)
@@ -1373,6 +1400,16 @@ and newStringWrapper (regs:Mach.REGS)
     : Mach.VAL =
     newBuiltin regs Name.nons_String (SOME (Mach.String s))
 
+(* SPEC
+
+fun evalStringLiteral (env: ENV)
+                     (s: Ustring.STRING)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
+
 and newString (regs:Mach.REGS)
               (s:Ustring.STRING)
     : Mach.VAL =
@@ -1384,6 +1421,15 @@ and newBooleanWrapper (regs:Mach.REGS)
                       (b:bool)
     : Mach.VAL =
     newBuiltin regs Name.nons_Boolean (SOME (Mach.Boolean b))
+
+(* SPEC
+
+fun evalBooleanLiteral (env: ENV)
+                       (b: bool)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
 
 and newBoolean (regs:Mach.REGS)
                (b:bool)
@@ -1922,6 +1968,93 @@ and typeCheck (regs:Mach.REGS)
                      " type=", LogErr.ty (typeOfVal regs v),
                      " wanted=", LogErr.ty tyExpr]
 
+(*
+
+fun evalExpression (env: ENV)
+                   (expr: Ast.EXPRESSION)
+    : Mach.VALUE =
+    case expr of
+        Ast.LiteralNull => 
+        Mach.Null
+
+      | Ast.LiteralUndefined => 
+        Mach.Undef
+
+      | Ast.LiteralDouble r => 
+        newDouble env r
+
+      | Ast.LiteralDecimal d => 
+        newDecimal env d
+
+      | Ast.LiteralBoolean b => 
+        newBoolean env b
+
+      | Ast.LiteralString s => 
+        newString env s
+
+      | Ast.LiteralFunction f => 
+        newFunctionFromFunc env f
+
+      | Ast.LiteralObject {expr, ty} => 
+        evalObjectInitialiser env expr ty
+
+      | Ast.LiteralArray (Ast.ListExpr exprs, typeExpr) =>
+        evalArrayInitialiser env exprs typeExpr
+
+      | Ast.LiteralRegExp regexp => 
+        evalRegExpInitialiser env (#str re)
+
+      | Ast.LexicalRef { ident, loc } => 
+        evalLexicalRefExpr env ident loc
+
+      | Ast.ObjectRef { base, ident, loc } => 
+        evalObjectRefExpr env base ident loc
+
+      | Ast.LetExpr {defs, body, head} => 
+        evalLetExpr env (valOf head) body
+
+      | Ast.ConditionalExpr (aexpr, bexpr, cexpr) => 
+        evalCondExpr env aexpr bexpr cexpr
+
+      | Ast.BinaryExpr (bop, aexpr, bexpr) => 
+        evalBinaryOp env bop aexpr bexpr
+
+      | Ast.UnaryExpr (unop, expr) => 
+        evalUnaryOp env unop expr
+
+      | Ast.TypeExpr ty => 
+        evalTypeExpr env (evalTy env ty)
+
+      | Ast.ThisExpr kind => 
+        evalThisExpr env kind
+
+      | Ast.SuperExpr _ => 
+        error env ["super expression in illegal context"]
+
+      | Ast.SetExpr (aop, pat, expr) => 
+        evalSetExpr env aop pat expr
+
+      | Ast.CallExpr { func, actuals } => 
+        evalCallExpr env func actuals
+
+      | Ast.NewExpr { obj, actuals } => 
+        evalNewExpr env obj actuals
+
+      | Ast.GetTemp n => 
+        evalGetTemp env n
+
+      | Ast.InitExpr (target,tempHead,inits) => 
+        evalInitExpr env target tempHead inits
+
+      | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) => 
+        evalBinaryTypeOp env typeOp expr tyExpr
+
+      | Ast.ApplyTypeExpr { expr, actuals } => 
+        evalApplyTypeExpr env expr (map (evalTy env) actuals)
+
+      | _ => LogErr.unimplError ["unhandled expression type"]    
+
+*)
 
 and evalExpr (regs:Mach.REGS)
              (expr:Ast.EXPR)
@@ -2105,6 +2238,15 @@ and evalExprsAndSpliceSpreads (regs:Mach.REGS)
         List.concat (map f exprs)
     end
 
+(* SPEC
+
+fun evalCallExpr (env: ENV)
+                 (func: Ast.EXPR)
+                 (actuals: Ast.EXPR list)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
 
 and evalCallExpr (regs:Mach.REGS)
                  (func:Ast.EXPR)
@@ -2134,6 +2276,15 @@ and evalCallExpr (regs:Mach.REGS)
             end
     end
 
+(* SPEC
+
+fun evalNewExpr (env: ENV)
+                (func: Ast.EXPR)
+                (actuals: Ast.EXPR list)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
 
 and evalNewExpr (regs:Mach.REGS)
                 (obj:Ast.EXPR)
@@ -2160,6 +2311,17 @@ and evalGetTemp (regs:Mach.REGS)
         trace ["GetTemp ", Int.toString n, " on scope #", Int.toString scopeId];
         Mach.getTemp temps n
     end
+
+(* SPEC
+
+fun evalInitExpr (env: ENV)
+                 (target: Ast.INIT_TARGET)
+                 (head: Ast.HEAD)
+                 (inits: Ast.INITS)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
 
 
 and evalInitExpr (regs:Mach.REGS)
@@ -2482,6 +2644,14 @@ and instanceInterface (regs:Mach.REGS)
     : Mach.OBJ = 
     instanceTypeRepresentative regs ity applyTypesToClass
 
+(* SPEC
+
+fun evalApplyTypeExpr (env: ENV)
+                      (expr: Ast.EXPR)
+                      (args: Ast.TYPE_EXPR list)
+    : Mach.VALUE =
+
+*)
 
 and evalApplyTypeExpr (regs:Mach.REGS)
                       (expr:Ast.EXPR)
@@ -2503,6 +2673,16 @@ and evalApplyTypeExpr (regs:Mach.REGS)
                                         Mach.approx v]; dummyVal)
     end
 
+
+(* SPEC
+
+fun evalArrayInitialiser (env: ENV)
+                         (elements: Mach.VALUE list)
+                         (typeExpr: Ast.TYPE_EXPRESSION)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
 
 and evalLiteralArrayExpr (regs:Mach.REGS)
                          (exprs:Ast.EXPR list)
@@ -2550,6 +2730,13 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
         Mach.Object obj
     end
 
+(*
+fun evalObjectInitialiser (env: ENV)
+                          (fields: Ast.FIELD list)
+                          (typeExpr: Ast.TYPE_EXPRESSION)
+    : Mach.VALUE =
+    (* FINISH ME *)
+*)
 
 and evalLiteralObjectExpr (regs:Mach.REGS)
                           (fields:Ast.FIELD list)
@@ -2644,6 +2831,14 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
         Mach.Object obj
     end
 
+(*
+
+fun evalRegExpInitialiser (env: ENV)
+                          (regexp: Ustring.STRING)
+    : MACH.VALUE =
+    (* FIXME *)
+
+*)
 
 and evalLiteralRegExp (regs:Mach.REGS)
                       (re:Ustring.STRING)
@@ -2680,7 +2875,6 @@ and evalLiteralExpr (regs:Mach.REGS)
 
       | Ast.LiteralXML _ => LogErr.unimplError ["unhandled literal XML"]
       | Ast.LiteralRegExp re => evalLiteralRegExp regs (#str re)
-
 
 and evalListExpr (regs:Mach.REGS)
                  (es:Ast.EXPR list)
@@ -2824,6 +3018,18 @@ and evalCallByObj (regs:Mach.REGS)
                  evalCallByRef regs (fobj, Name.meta_invoke) args true)
             else error regs ["evalCallByObj: calling non-callable object"]
 
+(* SPEC
+
+fun evalSetExpr (env: ENV)
+                (assignOp: Ast.ASSIGNOP)
+                (leftSide: Ast.EXPR)
+                (rightSide: Ast.EXPR)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
+
 
 and evalSetExpr (regs:Mach.REGS)
                 (aop:Ast.ASSIGNOP)
@@ -2923,6 +3129,17 @@ and evalDeleteOp (regs: Mach.REGS)
         else (Mach.delProp props name; newBoolean regs true)		    
     end
 
+(* SPEC
+
+fun evalUnaryExpr (env: ENV)
+                  (unaryOp: Ast.ASSIGNOP)
+                  (expr: Ast.EXPR)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
+
 and evalUnaryOp (regs:Mach.REGS)
                 (unop:Ast.UNOP)
                 (expr:Ast.EXPR)
@@ -3019,6 +3236,16 @@ and evalUnaryOp (regs:Mach.REGS)
             end
     end
 
+(* SPEC
+
+fun evalYieldExpr (env: ENV)
+                  (expr: Ast.EXPR)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
+
 and evalTypeExpr (regs:Mach.REGS)
                  (te:Ast.TYPE_EXPR)
     : Mach.VAL =
@@ -3033,7 +3260,6 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
       | _ => Mach.Null (* FIXME *)
-
 
 and wordToDouble (x:Word32.word) 
     : Real64.real =
@@ -3486,6 +3712,17 @@ and evalOperatorIs (regs:Mach.REGS)
           | _ => vt <* te
     end
 
+(* SPEC
+
+fun evalBinaryTypeExpr (env: ENV)
+                       (binaryTypeOp: Ast.BINTYPEOP)
+                       (expr: Ast.EXPR)
+                       (typeExpr: Ast.TYPE_EXPR)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
                      (expr:Ast.EXPR)
@@ -3584,6 +3821,18 @@ and evalOperatorComma (regs:Mach.REGS)
      evalExpr regs bexpr)
 
 
+(* SPEC
+
+fun evalBinaryExpr (env: ENV)
+                   (binaryOp: Ast.ASSIGNOP)
+                   (leftExpr: Ast.EXPR)
+                   (rightExpr: Ast.EXPR)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
+
 and evalBinaryOp (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (aexpr:Ast.EXPR)
@@ -3598,6 +3847,18 @@ and evalBinaryOp (regs:Mach.REGS)
       | _ => performBinop regs bop
                           (evalExpr regs aexpr)
                           (evalExpr regs bexpr)
+
+(* SPEC
+
+fun evalConditionalExpr (env: ENV)
+                        (condExpr: Ast.EXPR)
+                        (thenExpr: Ast.EXPR)
+                        (elseExpr: Ast.EXPR)
+    : Mach.VALUE =
+    (* FINISH ME *)
+
+*)
+
 
 
 and evalCondExpr (regs:Mach.REGS)
@@ -3822,8 +4083,19 @@ and evalRefExpr (regs:Mach.REGS)
     end
 
 (*
- EXPR = LetExpr
- *)
+
+fun evalLetExpr (env: ENV)
+                (head: Ast.HEAD)
+                (body: Ast.EXPR)
+    : Mach.VAL =
+    let
+        val letRegs = evalHead env head
+    in
+        evalExpr letRegs body
+    end
+
+*)
+
 and evalLetExpr (regs:Mach.REGS)
                 (head:Ast.HEAD)
                 (body:Ast.EXPR)

@@ -280,9 +280,9 @@ datatype STATEMENT =
        | ForStmt of FOR_STATEMENT
        | IfStmt of { cnd: EXPRESSION, thn: STATEMENT, els: STATEMENT }
        | WithStmt of { obj: EXPRESSION, ty: TYPE, body: STATEMENT }
-       | TryStmt of {block: BLOCK, catches: CATCH_CLAUSE list, 
+       | TryStmt of {block: BLOCK, catches: CATCH_CLAUSE list,
                      finally: BLOCK option}
-       | SwitchStmt of {head: HEAD, cond: EXPRESSION, labels: IDENTIFIER list, 
+       | SwitchStmt of {head: HEAD, cond: EXPRESSION, labels: IDENTIFIER list,
                         cases: CASE list}
        | SwitchTypeStmt of {cond: EXPRESSION, ty: TYPE, cases: CATCH_CLAUSE list}
 
@@ -317,46 +317,59 @@ datatype PROGRAM =
 rul Identifier () : IDENTIFIER =
     *Identifier* => 
     *Identifier*
+
   | *ContextuallyReservedIdentifier* => 
     *ContextuallyReservedIdentifier*
 
 rul Qualifier () : EXPRESSION =
     Identifier => 
     Ast.LexicalRef (Ast.Identifier (Identifier))
+
   | ReservedNamespace => 
     Ast.LiteralExpr (Ast.LiteralNamespace (ReservedNamespace))
 
 rul ReservedNamespace  () : NAMESPACE =
     'external' => 
     Ast.ForgeableNamespace (getPackageString ())
+
   | 'internal' => 
     getInternalNamespace ()
+
   | 'private' => 
     getPrivateNamespace ()
+
   | 'protected' => 
     getProtectedNamespace ()
+
   | 'public' => 
     getPublicNamespace ()
 
 rul QualifiedNameIdentifier () : EXPRESSION =
     Identifier =>
     Ast.LiteralExpr (Ast.StringLiteral (Identifier))
+
   | *ReservedIdentifier* => 
     Ast.LiteralExpr (Ast.StringLiteral (*ReservedIdentifier*))
+
   | *StringLiteral* => 
     Ast.LiteralExpr (Ast.StringLiteral (*StringLiteral*))
+
   | *NumberLiteral* => 
     Ast.LiteralExpr (Ast.LiteralString (toString (*NumberLiteral*))))
+
   | Brackets => 
     Brackets
 
 rul QualifiedName () : IDENTIFIER_EXPRESSION =
     Identifier =>
     Ast.Identifier (Identifier)
+
   | Qualifier '::' QualifiedNameIdentifier =>
     Ast.QualifiedIdentifier (Qualifier, QualifiedNameIdentifier)
+
   | ParenExpression '::' QualifiedNameIdentifier =>
     Ast.QualifiedIdentifier (ParenExpression, QualifiedNameIdentifier)
+
   | QualifiedName '::' QualifiedNameIdentifier =>
     Ast.QualifiedIdentifier (Ast.LexicalRef (QualifiedName), QualifiedNameIdentifier)
 
@@ -374,6 +387,7 @@ rul FunctionExpression (alpha, beta) : LITERAL =
         Ast.LiteralFunction (Ast.Func (ident, false, params, vars, defaults, 
                                        type, block))
     end
+
   | 'function' FunctionSignature FunctionExpressionBody(alpha, beta) => 
     let
         val ident = NONE
@@ -385,32 +399,41 @@ rul FunctionExpression (alpha, beta) : LITERAL =
     end
 
 rul FunctionExpressionBody (alpha, beta) : BLOCK =
+
     Block(Local) => 
     Block
+
   | AssignmentExpression(alpha, beta) =>
     Ast.Block (Ast.Head ([], []), Ast.ReturnStmt (AssignmentExpression :: []))
 
 rul ObjectLiteral (NoColon) : LITERAL =
+
     '{' FieldList '}' => 
     Ast.LiteralObject (Ast.FieldList, NONE)
 
 rul ObjectLiteral (AllowColon) : LITERAL =
+
     '{' FieldList '}' =>
     Ast.LiteralObject (FieldList, NONE)
+
   | '{' FieldList '}' ':' TypeExpression =>
     Ast.LiteralObject (FieldList, TypeExpression)
 
 rul FieldList () : FIELD list =
+
     empty =>
     []
+
   | LiteralField =>
     LiteralField :: []
+
   | LiteralField ',' FieldList =>
     LiteralField :: FieldList
 
 rul LiteralField () : FIELD =
     FieldKind FieldName ':' AssignmentExpression(AllowColon, AllowIn) => 
     (FieldKind, FieldName, AssignmentExpression)
+
   | FieldKind 'get' FieldName FunctionSignature FunctionExpressionBody(AllowColon, AllowIn) =>
     let
         val name = {kind=Ast.Get, ident=Ustring.empty}
@@ -421,6 +444,7 @@ rul LiteralField () : FIELD =
     in
         (FieldKind, FieldName, functionExpression)
     end
+
   | FieldKind 'set' FieldName FunctionSignature FunctionExpressionBody(AllowColon, AllowIn) =>
     let
         val name = {kind=Ast.Set, ident=Ustring.empty}
@@ -434,18 +458,23 @@ rul LiteralField () : FIELD =
 rul FieldKind () : VAR_DEFN_TAG option =
     empty => 
     NONE
+
   | 'const' => 
     SOME Ast.Const
+
   | 'var' => 
     SOME Ast.Var
 
 rul FieldName () : IDENTIFIER_EXPRESSION =
     QualifiedName => 
     QualifiedName
+
   | *StringLiteral* => 
     Ast.Identifier (*StringLiteral*)
+
   | *NumberLiteral* =>
     Ast.Identifier (*NumberLiteral*)
+
   | *ReservedIdentifier* =>
     Ast.Identifier (*ReservedIdentifier*)
 
@@ -456,24 +485,30 @@ rul ArrayLiteral (NoColon) : LITERAL =
 rul ArrayLiteral (AllowColon) : LITERAL =
     '[' Elements ']' => 
     Ast.LiteralArray (Elements, NONE)
+
   | '[' Elements ']' ':' TypeExpression => 
     Ast.LiteralArray (Elements, TypeExpression)
 
 rul Elements () : EXPRESSION list =
     ElementList => 
     ElementList
+
   | ElementComprehension => 
     ElementComprehension
 
 rul ElementList () : EXPRESSION list =
     empty => 
     []
+
   | LiteralElement => 
     LiteralElement
+
   | SplatExpression =>
     SplatExpression
+
   | ',' ElementList => 
     undefined :: ElementList
+
   | LiteralElement ',' ElementList => 
     LiteralElement :: ElementList
 
@@ -504,94 +539,85 @@ rul OptionalIfCondition () : EXPRESSION option =
     SOME ParenExpression
 
 rul PrimaryExpression (alpha, beta) : EXPRESSION =
-    'null' =>
-    Ast.LiteralExpr (Ast.LiteralNull)
-  | 'true' =>
-    Ast.LiteralExpr (Ast.LiteralBoolean true)
-  | 'false' =>
-    Ast.LiteralExpr (Ast.LiteralBoolean false)
-  | *NumberLiteral* => 
-    Ast.LiteralExpr (Ast.LiteralNumber (*NumberLiteral*))
-  | *StringLiteral* => 
-    Ast.LiteralExpr (Ast.LiteralString (*StringLiteral*))
-  | *RegularExpression* => 
-    Ast.LiteralExpr (Ast.LiteralRegExp (*RegularExpression*))
-  | ArrayLiteral(alpha) => 
-    Ast.LiteralExpr (ArrayLiteral)
-  | ObjectLiteral(alpha) => 
-    Ast.LiteralExpr (ObjectLiteral)
-  | FunctionExpression(alpha, beta) => 
-    Ast.LiteralExpr (FunctionExpression)
-  | ThisExpression => 
-    ThisExpression
-  | ParenExpression => 
-    ParenExpression
-  | LetExpression(alpha, beta) => 
-    LetExpression
-  | PrimaryName => 
-    Ast.LexicalRef (PrimaryName)
-  | ReservedNamespace => 
-    Ast.LiteralExpr (Ast.LiteralNamespace (ReservedNamespace))
+    'null'                          =>  Ast.LiteralNull
+  | 'true'                          =>  Ast.LiteralBoolean true
+  | 'false'                         =>  Ast.LiteralBoolean false
+  | *NumberLiteral*                 =>  Ast.LiteralNumber (*NumberLiteral*)
+  | *StringLiteral*                 =>  Ast.LiteralString (*StringLiteral*)
+  | *RegularExpression*             =>  Ast.RegExpInitialiser (*RegExpInitialiser*)
+  | ArrayInitialiser(alpha)         =>  ArrayInitialiser
+  | ObjectInitialiser(alpha)        =>  ObjectInitialiser
+  | FunctionExpression(alpha, beta) =>  FunctionExpression
+  | ThisExpression                  =>  ThisExpression
+  | ParenExpression                 =>  ParenExpression
+  | LetExpression(alpha, beta)      =>  LetExpression
+  | PrimaryName                     =>  Ast.LexicalRef (PrimaryName)
+
 
 rul ParenExpression () : EXPRESSION =
-    '(' CommaExpression(AllowColon, AllowIn) ')' => 
-    CommaExpression
+    '(' CommaExpression(AllowColon, AllowIn) ')'  =>  CommaExpression
 
 rul ThisExpression () : EXPRESSION =
-    'this' => 
-    Ast.ThisExpr (NONE)
-  | 'this' 'function' => 
-    Ast.ThisExpr (Ast.FunctionThis)
-  | 'this' 'generator' => 
-    Ast.ThisExpr (Ast.GeneratorThis)
+    'this'              =>  Ast.ThisExpr (NONE)
+  | 'this' 'function'   =>  Ast.ThisExpr (Ast.FunctionThis)
+  | 'this' 'generator'  =>  Ast.ThisExpr (Ast.GeneratorThis)
 
 rul LetExpression (alpha, beta) : EXPRESSION =
-    'let' '(' LetBindingList ')' AssignmentExpression(alpha, beta) => 
-    Ast.LetExpr (LetBindingList, AssignmentExpression)
+    'let' '(' LetBindingList ')' AssignmentExpression(alpha, beta) 
+                            => Ast.LetExpr (LetBindingList, AssignmentExpression)
 
 rul LetBindingList () : HEAD =
-    empty => 
-    ([], [])
-  | NonemptyLetBindingList => 
-    NonemptyLetBindingList
+    empty                   =>  ([], [])
+  | NonemptyLetBindingList  =>  NonemptyLetBindingList
 
 rul NonemptyLetBindingList () : HEAD =
     VariableBinding(AllowIn) => 
     VariableBinding
+
   | VariableBinding(AllowIn) ',' NonemptyLetBindingList => 
     VariableBinding :: NonemptyLetBindingList
 
 rul SuperExpression () : EXPRESSION =
     'super' => 
     Ast.SuperExpr (NONE)
+
   | 'super' ParenExpression => 
     Ast.SuperExpr (ParenExpression)
 
 rul Arguments () : EXPRESSION list =
     '(' ')' => 
     []
+
   | '(' SplatExpression ')' => 
     SplatExpression :: []
+
   | '(' ArgumentList ')' => 
     ArgumentList
+
   | '(' ArgumentList, SplatExpression ')' => 
     ArgumentList @ (SplatExpression :: [])
 
 rul ArgumentList () : EXPRESSION list =
     AssignmentExpression(AllowColon, AllowIn) => 
     AssignmentExpression :: []
+
   | ArgumentList ',' AssignmentExpression(AllowColon, AllowIn) => 
     ArgumentList @ (AssignmentExpression :: [])
 
 rul PropertyOperator (base: EXPRESSION) : EXPRESSION =
+
     '.' *ReservedIdentifier* => 
     Ast.ObjectRef (base, ReservedIdentifier)
+
   | '.' PrimaryName => 
     Ast.ObjectRef (base, PrimaryName)
+
   | '.' ParenExpression '::' QualifiedNameIdentifier(ParenExpression) => 
     Ast.ObjectRef (base, QualifiedNameIdentifier)
+
   | BracketsOrSlice(base) => 
     BracketsOrSlice
+
   | TypeApplication(base) => 
     TypeApplication
 
@@ -600,20 +626,26 @@ rul Brackets (base: EXPRESSION) : EXPRESSION =
     Ast.ObjectRef (base, Ast.Identifier (CommaExpression))
 
 rul BracketsOrSlice (base: EXPRESSION) : EXPRESSION =
+
     '[' CommaExpression(AllowColon, AllowIn) ']' => 
     Ast.ObjectRef (base, Ast.Identifier (CommaExpression))
+
   | '[' SliceExpression ']' => 
     Ast.ObjectRef (base, Ast.Identifier (SliceExpression))
 
 rul SliceExpression () : EXPRESSION =
+
     OptionalExpression ':' OptionalExpression => 
     Ast.SliceExpression (OptionalExpression, OptionalExpression, NONE)
+
   | OptionalExpression ':' OptionalExpression ':' OptionalExpression => 
     Ast.SliceExpression (OptionalExpression, OptionalExpression, OptionalExpression)
 
 rul OptionalExpression () : EXPRESSION option =
+
     empty => 
     NONE
+
   | CommaExpression(AllowColon, AllowIn) => 
     CommaExpression
 
@@ -622,44 +654,59 @@ rul TypeApplication (base: EXPRESSION) : EXPRESSION =
     Ast.TypeApplication (base, TypeExpressionList)
 
 rul MemberExpression (alpha, beta) : EXPRESSION =
+
     PrimaryExpression(alpha, beta) => 
     PrimaryExpression
+
   | 'new' MemberExpression(alpha, beta) Arguments => 
     Ast.NewExpr (MemberExpression, Arguments)
+
   | SuperExpression PropertyOperator =>
     PropertyOperator (SuperExpression)
+
   | MemberExpression(alpha, beta) PropertyOperator =>
     PropertyOperator (MemberExpression))
 
 rul CallExpression (alpha, beta) : EXPRESSION =
+
     MemberExpression(alpha, beta) Arguments => 
     Ast.CallExpr (MemberExpression, Arguments ())
+
   | CallExpression(alpha, beta) Arguments => 
     Ast.CallExpr (CallExpression, Arguments ())
+
   | CallExpression(alpha, beta) PropertyOperator => 
     PropertyOperator (CallExpression)
 
 rul NewExpression (alpha, beta) : EXPRESSION =
+
     MemberExpression(alpha, beta) => 
     MemberExpression
+
   | 'new' NewExpression(alpha, beta) => 
     Ast.NewExpr (NewExpression, [])
 
 rul LeftHandSideExpression (alpha, beta) : EXPRESSION =
+
     NewExpression(alpha, beta) => 
     NewExpression
+
   | CallExpression(alpha, beta) => 
     CallExpression
 
 rul PostfixExpression (alpha, beta) : EXPRESSION =
+
     LeftHandSideExpression(alpha, beta) => 
     LeftHandSideExpression
+
   | LeftHandSideExpression(alpha, beta) [no line break] '++' => 
     Ast.UnaryExpr (Ast.PostInc, LeftHandSideExpression)
+
   | LeftHandSideExpression(alpha, beta) [no line break] '--' => 
     Ast.UnaryExpr (Ast.PostDec, LeftHandSideExpression)
 
 rul UnaryExpression (alpha, beta) : EXPRESSION =
+
     PostfixExpression(alpha, beta) => 
     PostfixExpression
   | 'delete' PostfixExpression (alpha, beta) =>

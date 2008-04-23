@@ -1220,8 +1220,8 @@ fun tail x = tl x (* return all but the first element of a list *)
 
 fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
     case (n1, n2) of
-        (Ast.ForgeableNamespace s1, Ast.ForgeableNamespace s2) => s1 = s2
-      | (Ast.UnforgeableNamespace i1, Ast.UnforgeableNamespace i2) => n1 = n2
+        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
+      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
       | _ => false
 
 fun matchNamespaces (ns1: NAMESPACE list, ns2: NAMESPACE list)

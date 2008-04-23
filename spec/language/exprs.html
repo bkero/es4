@@ -1,71 +1,64 @@
 = Expressions =
 
+<hr>
 <pre>
 FILE:                       spec/language/expr.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-02-14
+DRAFT STATUS:               DRAFT 1 - ROUGH
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
 </pre>
-
-== Identifier Expressions ==
-
-<p>An ''IDENTIFIER_EXPRESSION'' evaluates to a ''NAME''.
-
-<IMPL>
-<INCLUDE file="eval.sml" name="and evalIdentExpr">
-
-== Literals ==
-
-<p>Null, number, boolean and string literals evaluate to the corresponding
-machine values. Array, Object, Function, and RegExp literals are evaluated as 
-described in the following sections.
-
-<pre>
-
-fun evalLiteralExpr (regs:Mach.REGS)
-                    (lit:Ast.LITERAL)
-    : Mach.VAL =
-    case lit of
-        Ast.LiteralNull => Mach.Null
-      | Ast.LiteralDouble r => newDouble regs r
-      | Ast.LiteralBoolean b => newBoolean regs b
-      | Ast.LiteralString s => newString regs s
-      | Ast.LiteralArray {exprs=Ast.ListExpr exprs, ty} => 
-        evalLiteralArrayExpr regs exprs ty
-      | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr regs expr ty
-      | Ast.LiteralFunction f => newFunctionFromFunc regs (#scope regs) f
-      | Ast.LiteralRegExp re => evalLiteralRegExp regs (#str re)
-</pre>
-
-=== Object literals ===
-
-<IMPL>
-<INCLUDE file="eval.sml" name="and evalLiteralObjectExpr">
-
-=== Array literals ===
-
-<IMPL>
-<INCLUDE file="eval.sml" name="and evalLiteralArrayExpr">
-
-=== RegExp literals ===
-
-<IMPL>
-<INCLUDE file="eval.sml" name="and evalLiteralRegExp">
+<hr>
 
 == Value Expressions ==
 
 A value expression has the concrete syntax of //ThisExpression//, //LetExpression//, ..., 
 and the abstract form of //LiteralExpr//, //ListExpr//, //LexicalRef//, //ObjectRef//,
-//LetExpr//, //TerneryExpr//, .... It is evaluated by the function //evalExpr// as 
-invoked by the function //evalStmt// and numerous other functions.
+//LetExpr//, //TerneryExpr//, ....
 
 <IMPL>
-<INCLUDE file="eval.sml" name="and evalExpr">
+<INCLUDE file="ast.sml" name="datatype EXPRESSION">
 
-=== This expressions ===
+=== Null Literal ===
+
+=== Double Literals ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalDoubleLiteral">
+
+=== Decimal Literals ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalDecimalLiteral">
+
+=== Boolean Literals ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalBooleanLiteral">
+
+=== String Literals ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalStringLiteral">
+
+=== Object Initialisers ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalObjectInitialiser">
+
+=== Array Initialisers ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalArrayInitialiser">
+
+=== Regular Expression Initialisers ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalRegExpInitialiser">
+
+=== This Expressions ===
 
 This expressions can be modified by an optional keyword: ''generator'' or ''function''. 
 The modifier indicates whether the expression refers to the current this object, 
@@ -74,30 +67,62 @@ generator or function.
 <IMPL>
 <INCLUDE file="eval.sml" name="fun evalThisExpression">
 
+=== Let Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalLetExpr">
+
 === Lexical References ===
 
 <IMPL>
 <INCLUDE file="eval.sml" name="fun evalLexicalRef">
 <INCLUDE file="eval.sml" name="fun getDefaultName">
 
-
-=== ObjectRef ===
+=== Object References ===
 
 <IMPL>
 <INCLUDE file="eval.sml" name="fun evalObjectRef">
 
-=== CallExpr ===
+=== Call Expressions ===
 
-=== NewExpr ===
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalCallExpr">
 
-=== ApplyTypeExpr ===
-=== UnaryExpr ===
-=== BinaryExpr ===
-=== BinaryTypeExpr ===
-=== TypeExpr ===
-=== YieldExpr ===
-=== LetExpr ===
-=== Conditional expressions ===
+=== New Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalNewExpr">
+
+=== Type Expressions ===
+
+
+
+=== Apply Type Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalApplyTypeExpr">
+
+=== Unary Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalUnaryExpr">
+
+=== Binary Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalBinaryExpr">
+
+=== Binary Type Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalBinaryTypeExpr">
+
+=== Yield Expressions ===
+
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalYieldExpr">
+
+=== Conditional Expressions ===
 
 <p>A conditional expression has the concrete syntax of //ConditionalExpression// 
 or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//. 
@@ -105,9 +130,9 @@ or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//.
 invoked by the function //evalExpr//.
 
 <IMPL>
-<INCLUDE file="eval.sml" name="and evalCondExpr">
+<INCLUDE file="eval.sml" name="fun evalConditionalExpr">
 
-=== SetExpr ===
+=== Set Expressions ===
 
 <p>A //set expression// has the concrete syntax of //AssignmentExpression// such as
 the simple form:
@@ -128,32 +153,26 @@ operation, the value of the left side property is replaced with the value on the
 right side.
 
 <IMPL>
+<INCLUDE file="eval.sml" name="fun evalSetExpr">
 
-=== CommaExpression ===
+=== Initialisation Expressions ===
 
-<p>A //comma expression// is evaluated by evaluating each of its elements, from first to last,
-and returning the value of the last expression.
-
-=== InitExpr ===
+<IMPL>
+<INCLUDE file="eval.sml" name="fun evalInitExpr">
 
 == Type Expressions ==
 
 <p>A type expression evaluates to a normalized type value.
 
 <IMPL>
-{{{
-fun evalTypeExpr (regs:Mach.REGS)
-                 (typeExpr:Ast.TYPE_EXPR)
-    : Mach.VAL = (* FIXME should be a type value *)
-    case typeExpr of
-        Ast.SpecialType st => Mach.Null (* FIXME *)
-      | Ast.UnionType ut => Mach.Null (* FIXME *)
-      | Ast.ArrayType a => Mach.Null (* FIXME *)
-      | Ast.TypeName tn => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
-      | Ast.FunctionType ft => Mach.Null (* FIXME *)
-      | Ast.ObjectType ot => Mach.Null (* FIXME *)
-      | Ast.LikeType lt => Mach.Null (* FIXME *)
-      | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
-      | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
-      | _ => Mach.Null (* FIXME *)
-}}}
+<INCLUDE file="ast.sml" name="datatype TYPE_EXPR">
+
+=== Any Type Expressions ===
+=== Null Type Expressions ===
+=== Undefined Type Expressions ===
+=== Type Name Reference ===
+=== Union Type Expressions ===
+=== Array Type Expressions ===
+=== Record Type Expressions ===
+=== Function Type Expressions ===
+=== Nullable Type Expressions ===

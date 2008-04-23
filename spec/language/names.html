@@ -53,11 +53,8 @@ by creating another forgeable namespace with the same identifier string. Every
 unforgeable namespace is unique.
 
 <IMPL>
-{{{
-datatype NAMESPACE =
-         UnforgeableNamespace
-       | ForgeableNamespace of IDENTIFIER
-}}}
+<INCLUDE file="ast.sml" name="datatype NAMESPACE">
+<INCLUDE file="ast.sml" name="type NAMESPACE_ID">
 
 <p>Any two forgeable namespaces with the same identifier string are considered equal.
 Every unforgeable namespace is considered non-equal to every other namespace.
@@ -128,11 +125,8 @@ In this section we describe how the identifier part (''IDENTIFIER_EXPRESSION'') 
 is resolved to a property name and base object.
 
 <IMPL>
-<pre>
-datatype IDENTIFIER_EXPRESSION =
-         Identifier of EXPRESSION
-       | QualifiedIdentifier of EXPRESSION * EXPRESSION
-</pre>
+<INCLUDE file="ast.sml" name="datatype IDENTIFIER_EXPRESSION">
+<INCLUDE file="ast.sml" name="datatype NAMESPACE_REF">
 
 === Unqualified Identifiers ===
 

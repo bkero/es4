@@ -382,12 +382,14 @@ The abstract syntax for literal expressions is:
 
 ==== FieldName ====
 
+
 <p>A //FieldName// is an ''IDENTIFIER_EXPRESSION'' which can occur in an //ObjectLiteral//, an //ObjectPattern//, and a //RecordType//. A //FieldName// has the syntax of a //QualifiedName//, or one of the tokens **StringLiteral**, **NumberLiteral**, and **ReservedIdentifier**.
 
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul FieldName">
 
 ==== ArrayLiteral ====
+
 
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul ArrayLiteral (NoColon) : LITERAL =">
@@ -424,10 +426,12 @@ The abstract syntax for literal expressions is:
 
 ==== PrimaryExpression ====
 
+
 <p>A //PrimaryExpression// may occur wherever a //MemberExpression// may occur.
 
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul PrimaryExpression (alpha, beta)">
+
 
 ==== ParenExpression ====
 
