@@ -177,8 +177,6 @@ package
             helper::bind(method, thisObj, args);
 
         static helper function bind(method, thisObj, args) {
-            if (thisObj === null)
-                throw new TypeError();
             return function (...moreargs) 
                        method.apply(thisObj, args.concat(moreargs));
         }

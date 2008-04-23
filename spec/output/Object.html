@@ -88,7 +88,7 @@ FILE:                       spec/library/Object.html
 CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-14
+DRAFT STATUS:               LAST CALL - 2008-03-20
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -96,6 +96,28 @@ REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      YES
 IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
+
+
+LAST CALL NOTES
+
+  * There will eventually be some editorial changes when the RI code
+    is updated.
+
+      - The names of the magic methods manipulating attributes will be
+        'positive' instead of 'negative' (eg, 'magic::getEnumerable'
+        instead of 'magic::getDontEnum')
+
+      - The use of 'Private' below will become uses of 'private'
+        (ticket #368)
+
+
+CHANGES SINCE DRAFT 3 (2008-03-14)
+
+  * (name cleanup) __createProperty__ renamed as __defineProperty__ to
+    mirror non-ES4 __defineGetter__ and __defineSetter__
+
+  * (typo) prototype __defineProperty__ arguments are really called
+    'enumerable', 'removable', 'deletable'.
 
 
 CHANGES SINCE DRAFT 2 (2008-03-10)
@@ -122,10 +144,6 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
   * Introduction of a specification-only protocol helper::getClassName
     for overriding class names for ES3 compatibility
 
-NOTES
-
-  * The use of 'Private' instead of 'private' below is a workaround
-    for a bug in the reference implementation (#368)
 
 
 REFERENCES
@@ -149,8 +167,7 @@ subclasses, but must to some extent behave as if they are (see <span class="xref
 
 <P><span class="pcounter"></span>The class <code>Object</code> provides this interface:
 
-<PRE>
-public dynamic class Object
+<PRE><span class="pcounter"></span>public dynamic class Object
 {
     public function Object(value=undefined) &#x0085
     static meta function invoke(value=undefined) &#x0085
@@ -163,19 +180,18 @@ public dynamic class Object
     intrinsic function hasOwnProperty(name: EnumerableId): boolean &#x0085
     intrinsic function isPrototypeOf(value): boolean &#x0085
     intrinsic function propertyIsEnumerable(name: EnumerableId): boolean &#x0085
-    intrinsic function __createProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void &#x0085
+    intrinsic function __defineProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void &#x0085
 }
 </PRE>
 
 <P><span class="pcounter"></span> The <code>Object</code> prototype object provides these direct properties:
-<PRE>
-    toString:             function () &#x0085;
+<PRE><span class="pcounter"></span>    toString:             function () &#x0085;
     toLocaleString:       function () &#x0085;
     valueOf:              function () &#x0085;
     hasOwnProperty:       function (name) &#x0085;
     isPrototypeOf:        function (value) &#x0085;
     propertyIsEnumerable: function (name) &#x0085;
-    __createProperty__:   function (name, value, dontEnum=undefined, dontDelete=undefined, readOnly=undefined) &#x0085;
+    __defineProperty__:   function (name, value, enumerable=undefined, removable=undefined, writable=undefined) &#x0085;
 </PRE>
 
 <P><span class="pcounter"></span> The <code>Object</code> prototype object is itself an instance of the class
@@ -209,8 +225,7 @@ values.  If <code>new Object</code> is evaluated on a host object, then actions
 are taken and a result is returned in an implementation dependent
 manner that may depend on the host object.
 
-<PRE>
-helper function makeObject(value=undefined) {
+<PRE><span class="pcounter"></span>helper function makeObject(value=undefined) {
     switch type (value) {
     case (s: string) {
         return new String(s);
@@ -240,8 +255,7 @@ or one arguments it performs a type conversion.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> It returns the converted value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke(value=undefined)
+<PRE><span class="pcounter"></span>static meta function invoke(value=undefined)
     new Object(value);
 </PRE>
 
@@ -261,11 +275,10 @@ to a string.
 name of the object, and <code>"]"</code>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function toString() : string
+<PRE><span class="pcounter"></span>intrinsic function toString() : string
     Private::toString();
-
-Private function toString(): string
+</PRE>
+<PRE><span class="pcounter"></span>Private function toString(): string
     "[object " + helper::getClassName() + "]";
 </PRE>
 
@@ -274,8 +287,7 @@ class.  This method is overridden in some of the pre-defined classes
 in order to provide backward compatibility with the 3rd Edition of this
 Standard: It is overridden by the class Error.
 
-<PRE>
-helper function getClassName()
+<PRE><span class="pcounter"></span>helper function getClassName()
     magic::getClassName(this);
 </PRE>
 
@@ -300,11 +312,10 @@ implementations do not use this parameter position for anything else.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toLocaleString</code> method returns a string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function toLocaleString() : string
+<PRE><span class="pcounter"></span>intrinsic function toLocaleString() : string
     Private::toLocaleString();
-
-Private function toLocaleString()
+</PRE>
+<PRE><span class="pcounter"></span>Private function toLocaleString()
     this.toString();
 </PRE>
 
@@ -322,11 +333,10 @@ constructor.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>valueOf</code> method returns an object value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function valueOf() : Object
+<PRE><span class="pcounter"></span>intrinsic function valueOf() : Object
     Private::valueOf();
-
-Private function valueOf(): Object
+</PRE>
+<PRE><span class="pcounter"></span>Private function valueOf(): Object
     this;
 </PRE>
 
@@ -344,11 +354,10 @@ method does not consider objects in the prototype chain.
 object contains the property, otherwise it returns <code>false</code>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function hasOwnProperty(name: EnumerableId): boolean
+<PRE><span class="pcounter"></span>intrinsic function hasOwnProperty(name: EnumerableId): boolean
     magic::hasOwnProperty(this, name);
-
-Private function hasOwnProperty(name: EnumerableId): boolean
+</PRE>
+<PRE><span class="pcounter"></span>Private function hasOwnProperty(name: EnumerableId): boolean
     magic::hasOwnProperty(this, name);
 </PRE>
 
@@ -361,8 +370,7 @@ is one of the member types of <code>EnumerableId</code> (<code>int</code>, <code
 <code>string</code>, and <code>Name</code>) and otherwise converts the argument to
 <code>string</code>.
 
-<PRE>
-helper function toEnumerableId(x) {
+<PRE><span class="pcounter"></span>helper function toEnumerableId(x) {
     switch type (x) {
     case (x: EnumerableId) { return x; }
     case (x: *)            { return string(x); }
@@ -381,11 +389,10 @@ helper function toEnumerableId(x) {
 returns <code>false</code>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function isPrototypeOf(value): boolean
+<PRE><span class="pcounter"></span>intrinsic function isPrototypeOf(value): boolean
     Private::isPrototypeOf(value);
-
-Private function isPrototypeOf(value): boolean {
+</PRE>
+<PRE><span class="pcounter"></span>Private function isPrototypeOf(value): boolean {
     if (!(value is Object))
         return false;
 
@@ -415,11 +422,10 @@ if the property does not exist on the <code>this</code> object; otherwise it
 returns the value of the enumerability flag.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function propertyIsEnumerable(name: EnumerableId): boolean
+<PRE><span class="pcounter"></span>intrinsic function propertyIsEnumerable(name: EnumerableId): boolean
     Private::propertyIsEnumerable(name);
-
-Private function propertyIsEnumerable(name) {
+</PRE>
+<PRE><span class="pcounter"></span>Private function propertyIsEnumerable(name) {
     if (!magic::hasOwnProperty(this, name))
         return false;
     return !magic::getPropertyIsDontEnum(this, name);
@@ -433,9 +439,9 @@ contains the named property on its local property list.  See <span class="xref">
 flag of the property.  See <span class="xref">magic:getPropertyIsDontEnum</span>.
 
 
-<h3>intrinsic::__createProperty__&nbsp;(&nbsp;name,&nbsp;value,&nbsp;enumerable=&#x0085;,&nbsp;removable=&#x0085;,&nbsp;writable=&#x0085;)</h3>
+<h3>intrinsic::__defineProperty__&nbsp;(&nbsp;name,&nbsp;value,&nbsp;enumerable=&#x0085;,&nbsp;removable=&#x0085;,&nbsp;writable=&#x0085;)</h3>
 
-<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>__createProperty__</code> method creates a new
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>__defineProperty__</code> method creates a new
 dynamic property named <i>name</i> on this object, giving it the value
 <i>value</i> and attributes determined by the parameters <i>enumerable</i>,
 <i>removable</i>, and <i>writable</i>.  If the property already exists, or
@@ -443,18 +449,24 @@ if a non-writable property with the same name exists on an object in
 the prototype chain of this object, then a <b>TypeError</b> exception is
 thrown.
 
-<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The name <code>__createProperty__</code> (with the leading and trailing
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The name <code>__defineProperty__</code> (with the leading and trailing
 underscores) has been chosen in order to minimize the risk of name
 collisions with existing content on the web.
 
-<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>__createProperty__</code> method returns nothing.
+<p class="note"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp;  The name <code>__defineProperty__</code> mirrors the names of the
+non-standard methods <code>__defineGetter__</code> and <code>__defineSetter__</code>
+that are provided by some implementations.  Those implementations may
+wish to extend the non-standard methods so that they provide control
+of at least enumerability and deletability in a manner compatible with
+<code>__defineProperty__</code>.
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>__defineProperty__</code> method returns nothing.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-intrinsic function __createProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void
-    Private::__createProperty__(name, value, enumerable, removable, writable);
-
-Private function __createProperty__(name, value, enumerable, removable, writable) {
+<PRE><span class="pcounter"></span>intrinsic function __defineProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void
+    Private::__defineProperty__(name, value, enumerable, removable, writable);
+</PRE>
+<PRE><span class="pcounter"></span>Private function __defineProperty__(name, value, enumerable, removable, writable) {
     if (!magic::hasOwnProperty(this, name))
         throw new TypeError(/* Property exists */);
 
@@ -503,27 +515,26 @@ corresponding intrinsic methods.
 methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-prototype function toString()
+<PRE><span class="pcounter"></span>prototype function toString()
     this.Private::toString();
-
-prototype function toLocaleString()
+</PRE>
+<PRE><span class="pcounter"></span>prototype function toLocaleString()
     this.Private::toLocaleString();
-
-prototype function valueOf()
+</PRE>
+<PRE><span class="pcounter"></span>prototype function valueOf()
     this.Private::valueOf();
-
-prototype function hasOwnProperty(name)
+</PRE>
+<PRE><span class="pcounter"></span>prototype function hasOwnProperty(name)
     this.Private::hasOwnProperty(helper::toEnumerableId(name));
-
-prototype function isPrototypeOf(value)
+</PRE>
+<PRE><span class="pcounter"></span>prototype function isPrototypeOf(value)
     this.Private::isPrototypeOf(value);
-
-prototype function propertyIsEnumerable(name)
+</PRE>
+<PRE><span class="pcounter"></span>prototype function propertyIsEnumerable(name)
     this.Private::propertyIsEnumerable(helper::toEnumerableId(name));
-
-prototype function __createProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
-    this.Private::__createProperty__(helper::toEnumerableId(name),
+</PRE>
+<PRE><span class="pcounter"></span>prototype function __defineProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
+    this.Private::__defineProperty__(helper::toEnumerableId(name),
                                      value,
                                      enumerable === undefined ? true : boolean(enumerable),
                                      removable === undefined ? true : boolean(removable),

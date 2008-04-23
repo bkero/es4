@@ -7,7 +7,7 @@ FILE:                       spec/library/Name.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-17
+DRAFT STATUS:               LAST CALL - 2008-03-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -20,7 +20,7 @@ TEST CASE STATUS:           ?
 
 CHANGES SINCE DRAFT 3 (2008-03-17)
 
-  * "static public" => "public static"
+  * None
 
 
 CHANGES SINCE DRAFT 2 (2008-03-10)
@@ -100,7 +100,6 @@ objects that are separately created from the same
 ''!=='' compare as not equal two ''Name'' objects that are separately
 created from (qualifier,identifier) pairs.
 
-
 == Methods on the ''Name'' class object ==
 
 === new Name ( id ) ===
@@ -131,14 +130,14 @@ public function Name( ns: Namespace?, id ) <LDOTS>
 
 <DESC> The ''Name'' class object called as a function creates a
 ''Name'' object by invoking the ''Name'' constructor on its
-argumen(s)
+argument(s).
 
 <RETN> The ''Name'' class object called as a function returns a
 ''Name'' object.
 
 <SHORTIMPL>
 {{{
-static meta function invoke( ...args )
+static meta function invoke( ...args ): Name!
     new Name(...args);
 }}}
 

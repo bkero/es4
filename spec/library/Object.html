@@ -7,7 +7,7 @@ FILE:                       spec/library/Object.html
 CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-14
+DRAFT STATUS:               LAST CALL - 2008-03-20
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -15,6 +15,28 @@ REVIEWED AGAINST PROPOSALS: YES
 REVIEWED AGAINST CODE:      YES
 IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
+
+
+LAST CALL NOTES
+
+  * There will eventually be some editorial changes when the RI code
+    is updated.
+
+      - The names of the magic methods manipulating attributes will be
+        'positive' instead of 'negative' (eg, 'magic::getEnumerable'
+        instead of 'magic::getDontEnum')
+
+      - The use of 'Private' below will become uses of 'private'
+        (ticket #368)
+
+
+CHANGES SINCE DRAFT 3 (2008-03-14)
+
+  * (name cleanup) __createProperty__ renamed as __defineProperty__ to
+    mirror non-ES4 __defineGetter__ and __defineSetter__
+
+  * (typo) prototype __defineProperty__ arguments are really called
+    'enumerable', 'removable', 'deletable'.
 
 
 CHANGES SINCE DRAFT 2 (2008-03-10)
@@ -41,10 +63,6 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
   * Introduction of a specification-only protocol helper::getClassName
     for overriding class names for ES3 compatibility
 
-NOTES
-
-  * The use of 'Private' instead of 'private' below is a workaround
-    for a bug in the reference implementation (#368)
 
 
 REFERENCES
@@ -83,7 +101,7 @@ public dynamic class Object
     <SIGNATURE file="Object.es" name="intrinsic function hasOwnProperty">
     <SIGNATURE file="Object.es" name="intrinsic function isPrototypeOf">
     <SIGNATURE file="Object.es" name="intrinsic function propertyIsEnumerable">
-    <SIGNATURE file="Object.es" name="intrinsic function __createProperty__">
+    <SIGNATURE file="Object.es" name="intrinsic function __defineProperty__">
 }
 }}}
 
@@ -95,7 +113,7 @@ public dynamic class Object
     hasOwnProperty:       function (name) <LDOTS>
     isPrototypeOf:        function (value) <LDOTS>
     propertyIsEnumerable: function (name) <LDOTS>
-    __createProperty__:   function (name, value, dontEnum=undefined, dontDelete=undefined, readOnly=undefined) <LDOTS>
+    __defineProperty__:   function (name, value, enumerable=undefined, removable=undefined, writable=undefined) <LDOTS>
 }}}
 
 <P> The ''Object'' prototype object is itself an instance of the class
@@ -297,9 +315,9 @@ target="magic:hasOwnProperty">.
 flag of the property.  See <XREF target="magic:getPropertyIsDontEnum">.
 
 
-=== intrinsic::__createProperty__ ( name, value, enumerable=<LDOTS>, removable=<LDOTS>, writable=<LDOTS>) ===
+=== intrinsic::__defineProperty__ ( name, value, enumerable=<LDOTS>, removable=<LDOTS>, writable=<LDOTS>) ===
 
-<DESC> The intrinsic ''__createProperty__'' method creates a new
+<DESC> The intrinsic ''__defineProperty__'' method creates a new
 dynamic property named //name// on this object, giving it the value
 //value// and attributes determined by the parameters //enumerable//,
 //removable//, and //writable//.  If the property already exists, or
@@ -307,15 +325,22 @@ if a non-writable property with the same name exists on an object in
 the prototype chain of this object, then a **TypeError** exception is
 thrown.
 
-<NOTE> The name ''__createProperty__'' (with the leading and trailing
+<NOTE> The name ''__defineProperty__'' (with the leading and trailing
 underscores) has been chosen in order to minimize the risk of name
 collisions with existing content on the web.
 
-<RETN> The intrinsic ''__createProperty__'' method returns nothing.
+<IMPLNOTE> The name ''__defineProperty__'' mirrors the names of the
+non-standard methods ''__defineGetter__'' and ''__defineSetter__''
+that are provided by some implementations.  Those implementations may
+wish to extend the non-standard methods so that they provide control
+of at least enumerability and deletability in a manner compatible with
+''__defineProperty__''.
+
+<RETN> The intrinsic ''__defineProperty__'' method returns nothing.
 
 <SHORTIMPL>
-<INCLUDE file="Object.es" name="intrinsic function __createProperty__">
-<INCLUDE file="Object.es" name="Private function __createProperty__">
+<INCLUDE file="Object.es" name="intrinsic function __defineProperty__">
+<INCLUDE file="Object.es" name="Private function __defineProperty__">
 
 <p> The function ''magic::hasOwnProperty'' tests whether the object
 contains the named property on its local property list.  See <XREF
@@ -355,7 +380,7 @@ methods return.
 <INCLUDE file="Object.es" name="prototype function hasOwnProperty">
 <INCLUDE file="Object.es" name="prototype function isPrototypeOf">
 <INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
-<INCLUDE file="Object.es" name="prototype function __createProperty__">
+<INCLUDE file="Object.es" name="prototype function __defineProperty__">
 
 
 <!-- End of Object.html -->

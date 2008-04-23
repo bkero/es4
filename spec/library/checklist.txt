@@ -1,11 +1,13 @@
 component           pri   status     
 
+Library meta              Shipped 2008-03-21
+
 Intro
-Global               *    Draft 1 2008-03-12 / Draft 2 ready(?)
-Object                    Draft 3 2008-03-14
-Function                  Draft 2 2008-03-14
-Name                      Draft 3 2008-03-17
-Namespace                 Draft 2 2008-03-17
+Global               *    Draft 1 2008-03-12 / Draft 2 shipped; comments
+Object                    LAST CALL 2008-03-20 / bugs reported, people still annoyed with __defineProperty__
+Function                  LAST CALL 2008-03-20 / issues about triplicity of "call"; version param on "new Function"
+Name                 +    LAST CALL 2008-03-20; comments
+Namespace            +    Draft 3 2008-03-20; comments
 Array                +
 String
 string
@@ -13,18 +15,28 @@ Boolean
 boolean
 Number
 double
-decimal
 Math
 Date
 RegExp
-Error, ...                Draft 1 2008-03-06 / line number & file name debate, nothing conclusive or concrete
-Map                  -    Draft 3 2008-03-10 / fix to static meta::invoke pending
+Error, ...                Draft 1 2008-03-06 / debuginfo debate, lth needs to follow up Bugzilla thread
+Map                       LAST CALL 2008-03-20 / bugs
 Vector               +    Draft 1 (incomplete) / completion pending, comments to incorporate
 Reflection
-uint32ops
 
 
+object initializer   +    Draft 3 2008-04-10 (STABLE) / should remove meta:: forms probably
+array initializer         Draft 1 2008-04-08
+classes/interfaces  +++
+eval                +++
+strict mode               Draft 1 2008-04-10
+enumerability             Draft 1 2008-04-10
+destructuring
+conditional comp.    +    Needs to involve Brendan, Maciej
+assert expression         Draft 1 2008-04-11 / minor debate
 
-line continuation    !    Closed
-line terminator norm !    Closed
-triple quoting            Pending / Brendan
+
+type system perf     +    For the benefit of Apple
+
+line continuation    !    Closed 2008-03-15
+line terminator norm !    Closed 2008-03-15
+triple quoting            Pending / Brendan  [nuked]

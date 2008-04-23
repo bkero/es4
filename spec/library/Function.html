@@ -7,7 +7,7 @@ FILE:                       spec/library/Function.html
 CATEGORY:                   Pre-defined classes  (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2], [3], [5]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 2 - 2008-03-14
+DRAFT STATUS:               LAST CALL - 2008-03-20
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -16,6 +16,13 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 2 (2008-03-14)
+
+  * The 'thisObj' parameter of 'bind' may be null (it still has to be
+    provided explicitly), since there's no particular reason to restrict
+    bind from working against the global object.
 
 
 CHANGES SINCE DRAFT 1 (2008-03-10)
@@ -28,14 +35,6 @@ CHANGES SINCE DRAFT 1 (2008-03-10)
 
   * Replaced note about host functions being "anything" with a
     paragraph about the type 'Callable'.
-
-OPEN ISSUES
-
-  * ES3 restrictions on argArray having to be an Array or an arguments
-    object in Function.prototype.apply have been removed here.
-
-  * Is it reasonable to allow the thisObj parameter to bind to be null
-    (so that it defaults to the global object of the bind function)?
 
 
 NOTES

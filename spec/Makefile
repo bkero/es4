@@ -17,6 +17,9 @@ output/Global.html: Global.html library/global.html $(LIBDEPS)
 output/Object.html: Object.html library/Object.html $(LIBDEPS) 
 	python stitch.py Object.html output/Object.html
 
+output/Date.html: Date.html library/Date.html $(LIBDEPS) 
+	python stitch.py Date.html output/Date.html
+
 output/Function.html: Function.html library/Function.html $(LIBDEPS) 
 	python stitch.py Function.html output/Function.html
 
@@ -34,6 +37,24 @@ output/Map.html: Map.html library/Map.html $(LIBDEPS)
 
 output/Error.html: Error.html library/Error.html $(LIBDEPS)
 	python stitch.py Error.html output/Error.html
+
+output/enumerability.html: enumerability.html language/enumerability.html $(LIBDEPS)
+	python stitch.py enumerability.html output/enumerability.html
+
+output/assert.html: assert.html language/assert.html $(LIBDEPS)
+	python stitch.py assert.html output/assert.html
+
+output/strict-mode.html: strict-mode.html language/strict-mode.html $(LIBDEPS)
+	python stitch.py strict-mode.html output/strict-mode.html
+
+output/object-literals.html: object-literals.html language/object-literals.html $(LIBDEPS)
+	python stitch.py object-literals.html output/object-literals.html
+
+output/array-literals.html: array-literals.html language/array-literals.html $(LIBDEPS)
+	python stitch.py array-literals.html output/array-literals.html
+
+output/meta-issues.html: meta-issues.html library/meta-issues.html $(LIBDEPS)
+	python stitch.py meta-issues.html output/meta-issues.html
 
 typesystem.html: stitch.py parttypes.html es4.css typesystem/*.html ../builtins/*.es ../*.sml
 	python stitch.py parttypes.html typesystem.html
