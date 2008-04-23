@@ -107,13 +107,13 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        prototype meta function invoke(...args)
+        public prototype meta function invoke(...args)
             undefined;
 
-        prototype var length : double = 0;
+        public prototype var length : double = 0;
 
         /* XXX: Function.prototype.toString */
-        prototype function toString(this: Function)
+        public prototype function toString(this: Function)
             this.Private::toString();
 
         override intrinsic function toString() : string
@@ -124,7 +124,7 @@ package
 
 
         /* E262-3 15.3.4.3: Function.prototype.apply */
-        prototype function apply(/*this: Callable,*/ thisArg=undefined, argArray=undefined)
+        public prototype function apply(/*this: Callable,*/ thisArg=undefined, argArray=undefined)
             Function.apply(this,
                            thisArg === undefined ? null : thisArg, 
                            argArray === undefined ? null : argArray);
@@ -150,7 +150,7 @@ package
            "length" of the function, so the length of
            Function.prototype.call is 1, which is what we want.
         */
-        prototype function call(/*this: Callable,*/ thisObj=undefined, ...args)
+        public prototype function call(/*this: Callable,*/ thisObj=undefined, ...args)
             Function.apply(this, 
                            thisObj === undefined ? null : thisObj, 
                            args);
@@ -167,7 +167,7 @@ package
         /* E262-4 draft: "bind" is a static method on the Function object and
            also a method on function objects.
         */
-        prototype function bind(/*this: Callable,*/ thisObj, ...args)
+        public prototype function bind(/*this: Callable,*/ thisObj, ...args)
             Function.helper::bind(this, thisObj, args);
 
         intrinsic function bind(thisObj: Object, ...args)
@@ -203,7 +203,7 @@ package
         /* Source code for decompilation, installed by the constructor */
         var source : string?;
 
-        prototype function toSource()
+        public prototype function toSource()
             this.source;
 
         // IMPLEMENTATION ARTIFACT

@@ -18,6 +18,12 @@ IMPLEMENTATION STATUS:      ES4 RI
 TEST CASE STATUS:           Unknown
 
 
+CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
 LAST CALL NOTES
 
   * (Tickets #247, #289, and e-mail discussion.) The meta::invoke
@@ -308,11 +314,11 @@ pairs, respectively.  The iterator method ''get'' iterates over keys
 being called on instances of ''Map''.  They all delegate to the
 corresponding intrinsic method on their ''this'' object.
 
-<INCLUDE file="Map.es" name="prototype function size">
-<INCLUDE file="Map.es" name="prototype function get">
-<INCLUDE file="Map.es" name="prototype function put">
-<INCLUDE file="Map.es" name="prototype function has">
-<INCLUDE file="Map.es" name="prototype function remove">
-<INCLUDE file="Map.es" name="prototype function clear">
+<INCLUDE file="Map.es" name="public prototype function size">
+<INCLUDE file="Map.es" name="public prototype function get">
+<INCLUDE file="Map.es" name="public prototype function put">
+<INCLUDE file="Map.es" name="public prototype function has">
+<INCLUDE file="Map.es" name="public prototype function remove">
+<INCLUDE file="Map.es" name="public prototype function clear">
 
 <!-- End of Map.html -->

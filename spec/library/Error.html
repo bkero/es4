@@ -23,6 +23,9 @@ TEST CASE STATUS:           Unknown
 
 CHANGES SINCE DRAFT 1 (2008-03-06)
 
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
   * Presentation:
     - improvements to status block above
 
@@ -167,7 +170,7 @@ helper function isExactlyType(obj, cls)
 <RETN> The prototype ''toString'' method returns a ''string'' object.
 
 <SHORTIMPL>
-<INCLUDE file="Error.es" name="prototype function toString">
+<INCLUDE file="Error.es" name="public prototype function toString">
 
 == Value properties on the ''Error'' prototype object ==
 

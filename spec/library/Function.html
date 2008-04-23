@@ -18,6 +18,12 @@ IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
 
 
+CHANGES SINCE DRAFT 3 (LAST CALL - 2008-03-20)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
 CHANGES SINCE DRAFT 2 (2008-03-14)
 
   * The 'thisObj' parameter of 'bind' may be null (it still has to be
@@ -357,7 +363,7 @@ created object.
 <P> When the ''Function'' prototype object is invoked it accepts any
 arguments and returns **undefined**:
 
-<INCLUDE file="Function.es" name="prototype meta function invoke">
+<INCLUDE file="Function.es" name="public prototype meta function invoke">
 
 
 == Methods on the ''Function'' prototype object ==
@@ -366,10 +372,10 @@ arguments and returns **undefined**:
 type adjustments and then perform the same actions as their intrinsic
 counterparts:
 
-<INCLUDE file="Function.es" name="prototype function toString">
-<INCLUDE file="Function.es" name="prototype function apply">
-<INCLUDE file="Function.es" name="prototype function bind">
-<INCLUDE file="Function.es" name="prototype function call">
+<INCLUDE file="Function.es" name="public prototype function toString">
+<INCLUDE file="Function.es" name="public prototype function apply">
+<INCLUDE file="Function.es" name="public prototype function bind">
+<INCLUDE file="Function.es" name="public prototype function call">
 
 
 == Value properties on the ''Function'' prototype object ==
@@ -379,7 +385,7 @@ counterparts:
 <P> The initial value of the ''length'' prototype property is 0.
 
 <IMPL>
-<INCLUDE file="Function.es" name="prototype var length">
+<INCLUDE file="Function.es" name="public prototype var length">
 
 <COMP> The "length" property of the prototype is not obviously
 required by the 3rd Edition of this Standard, but MSIE, Firefox,

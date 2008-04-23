@@ -19,7 +19,7 @@ Math
 Date
 RegExp
 Error, ...                Draft 1 2008-03-06 / debuginfo debate, lth needs to follow up Bugzilla thread
-Map                       LAST CALL 2008-03-20 / bugs
+Map                  +    LAST CALL 2008-03-20 / bugs
 Vector               +    Draft 1 (incomplete) / completion pending, comments to incorporate
 Reflection
 

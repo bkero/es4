@@ -81,7 +81,7 @@ package
         static meta function invoke(a, b=undefined): Name
             new Name(a, b);
         
-        prototype function toString(this : Name)
+        public prototype function toString(this : Name)
             this.Private::toString();
         
         override intrinsic function toString() : string
@@ -93,7 +93,7 @@ package
             return string(qualifier) + "::" + identifier;
         }
         
-        prototype function valueOf(this : Name)
+        public prototype function valueOf(this : Name)
             this.Private::toString();
         
         override intrinsic function valueOf() : string

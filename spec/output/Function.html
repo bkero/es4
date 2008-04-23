@@ -470,7 +470,7 @@ created object.
 <P><span class="pcounter"></span> When the <code>Function</code> prototype object is invoked it accepts any
 arguments and returns <b>undefined</b>:
 
-<PRE><span class="pcounter"></span>prototype meta function invoke(...args)
+<PRE><span class="pcounter"></span>public prototype meta function invoke(...args)
     undefined;
 </PRE>
 
@@ -481,18 +481,18 @@ arguments and returns <b>undefined</b>:
 type adjustments and then perform the same actions as their intrinsic
 counterparts:
 
-<PRE><span class="pcounter"></span>prototype function toString(this: Function)
+<PRE><span class="pcounter"></span>public prototype function toString(this: Function)
     this.Private::toString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function apply(this: Callable, thisArg=undefined, argArray=undefined)
+<PRE><span class="pcounter"></span>public prototype function apply(this: Callable, thisArg=undefined, argArray=undefined)
     Function.apply(this,
                    thisArg === undefined ? null : thisArg,
                    argArray === undefined ? null : argArray);
 </PRE>
-<PRE><span class="pcounter"></span>prototype function bind(this: Callable, thisObj, ...args)
+<PRE><span class="pcounter"></span>public prototype function bind(this: Callable, thisObj, ...args)
     Function.helper::bind(this, thisObj, args);
 </PRE>
-<PRE><span class="pcounter"></span>prototype function call(this: Callable, thisObj=undefined, ...args)
+<PRE><span class="pcounter"></span>public prototype function call(this: Callable, thisObj=undefined, ...args)
     Function.apply(this,
                    thisObj === undefined ? null : thisObj,
                    args);
@@ -506,7 +506,7 @@ counterparts:
 <P><span class="pcounter"></span> The initial value of the <code>length</code> prototype property is 0.
 
 <P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
-<PRE><span class="pcounter"></span>prototype var length : uint = 0;
+<PRE><span class="pcounter"></span>public prototype var length : double = 0;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The "length" property of the prototype is not obviously

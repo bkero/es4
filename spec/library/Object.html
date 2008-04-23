@@ -30,6 +30,12 @@ LAST CALL NOTES
         (ticket #368)
 
 
+CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
 CHANGES SINCE DRAFT 3 (2008-03-14)
 
   * (name cleanup) __createProperty__ renamed as __defineProperty__ to
@@ -374,13 +380,13 @@ corresponding intrinsic methods.
 methods return.
 
 <SHORTIMPL>
-<INCLUDE file="Object.es" name="prototype function toString">
-<INCLUDE file="Object.es" name="prototype function toLocaleString">
-<INCLUDE file="Object.es" name="prototype function valueOf">
-<INCLUDE file="Object.es" name="prototype function hasOwnProperty">
-<INCLUDE file="Object.es" name="prototype function isPrototypeOf">
-<INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
-<INCLUDE file="Object.es" name="prototype function __defineProperty__">
+<INCLUDE file="Object.es" name="public prototype function toString">
+<INCLUDE file="Object.es" name="public prototype function toLocaleString">
+<INCLUDE file="Object.es" name="public prototype function valueOf">
+<INCLUDE file="Object.es" name="public prototype function hasOwnProperty">
+<INCLUDE file="Object.es" name="public prototype function isPrototypeOf">
+<INCLUDE file="Object.es" name="public prototype function propertyIsEnumerable">
+<INCLUDE file="Object.es" name="public prototype function __defineProperty__">
 
 
 <!-- End of Object.html -->

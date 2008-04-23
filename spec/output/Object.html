@@ -111,6 +111,12 @@ LAST CALL NOTES
         (ticket #368)
 
 
+CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
 CHANGES SINCE DRAFT 3 (2008-03-14)
 
   * (name cleanup) __createProperty__ renamed as __defineProperty__ to
@@ -515,25 +521,25 @@ corresponding intrinsic methods.
 methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>prototype function toString()
+<PRE><span class="pcounter"></span>public prototype function toString()
     this.Private::toString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toLocaleString()
+<PRE><span class="pcounter"></span>public prototype function toLocaleString()
     this.Private::toLocaleString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function valueOf()
+<PRE><span class="pcounter"></span>public prototype function valueOf()
     this.Private::valueOf();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function hasOwnProperty(name)
+<PRE><span class="pcounter"></span>public prototype function hasOwnProperty(name)
     this.Private::hasOwnProperty(helper::toEnumerableId(name));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function isPrototypeOf(value)
+<PRE><span class="pcounter"></span>public prototype function isPrototypeOf(value)
     this.Private::isPrototypeOf(value);
 </PRE>
-<PRE><span class="pcounter"></span>prototype function propertyIsEnumerable(name)
+<PRE><span class="pcounter"></span>public prototype function propertyIsEnumerable(name)
     this.Private::propertyIsEnumerable(helper::toEnumerableId(name));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function __defineProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
+<PRE><span class="pcounter"></span>public prototype function __defineProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
     this.Private::__defineProperty__(helper::toEnumerableId(name),
                                      value,
                                      enumerable === undefined ? true : boolean(enumerable),

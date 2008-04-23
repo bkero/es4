@@ -99,6 +99,12 @@ IMPLEMENTATION STATUS:      ES4 RI
 TEST CASE STATUS:           ?
 
 
+CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
 CHANGES SINCE DRAFT 3 (2008-03-17)
 
   * None
@@ -261,7 +267,7 @@ operations as their corresponding intrinsic methods perform.
 corresponding intrinsic methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>prototype function toString(this : Name)
+<PRE><span class="pcounter"></span>public prototype function toString(this : Name)
     this.Private::toString();
 </PRE>
 
