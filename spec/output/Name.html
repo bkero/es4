@@ -88,7 +88,7 @@ FILE:                       spec/library/Name.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-17
+DRAFT STATUS:               LAST CALL - 2008-03-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -97,6 +97,17 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4 RI
 TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
+CHANGES SINCE DRAFT 3 (2008-03-17)
+
+  * None
 
 
 CHANGES SINCE DRAFT 2 (2008-03-10)
@@ -147,13 +158,12 @@ subclass of <code>Object</code> that reflects a property name as a pair of
 
 <P><span class="pcounter"></span> The class <code>Name</code> provides the following interface:
 
-<PRE>
-__ES4__ final class Name extends Object
+<PRE><span class="pcounter"></span>__ES4__ final class Name extends Object
 {
     public function Name(...args) &#x0085;
     static meta function invoke(...args): Name &#x0085;
     
-    public static const length = 2
+    static public const length = 2
 
     override intrinsic function toString() : string &#x0085
 
@@ -164,8 +174,7 @@ __ES4__ final class Name extends Object
 
 <P><span class="pcounter"></span> The <code>Name</code> prototype object provides the following direct properties:
 
-<PRE>
-    toString: function (this: Name) &#x0085;
+<PRE><span class="pcounter"></span>    toString: function (this: Name) &#x0085;
 </PRE>
 
 <h2>Operators</h2>
@@ -176,7 +185,6 @@ objects that are separately created from the same
 <code>!==</code> compare as not equal two <code>Name</code> objects that are separately
 created from (qualifier,identifier) pairs.
 
-
 <h2>Methods on the <code>Name</code> class object</h2>
 
 <h3>new&nbsp;Name&nbsp;(&nbsp;id&nbsp;)</h3>
@@ -186,8 +194,7 @@ created from (qualifier,identifier) pairs.
 and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function Name( id ) &#x0085;
+<PRE><span class="pcounter"></span>public function Name( id ) &#x0085;
 </PRE>
 
 <h3>new&nbsp;Name(&nbsp;ns,&nbsp;id&nbsp;)</h3>
@@ -199,22 +206,20 @@ public function Name( id ) &#x0085;
 <P><span class="pcounter"></span> <i>ns</i> may be <b>null</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-public function Name( ns: Namespace?, id ) &#x0085;
+<PRE><span class="pcounter"></span>public function Name( ns: Namespace?, id ) &#x0085;
 </PRE>
 
 <h3>Name&nbsp;(&nbsp;...args&nbsp;)</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The <code>Name</code> class object called as a function creates a
 <code>Name</code> object by invoking the <code>Name</code> constructor on its
-argumen(s)
+argument(s).
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Name</code> class object called as a function returns a
 <code>Name</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-static meta function invoke( ...args )
+<PRE><span class="pcounter"></span>static meta function invoke( ...args ): Name!
     new Name(...args);
 </PRE>
 
@@ -228,11 +233,10 @@ to a string.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns a string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-override intrinsic function toString() : string
+<PRE><span class="pcounter"></span>override intrinsic function toString() : string
     Private::toString();
-
-Private function toString() : string {
+</PRE>
+<PRE><span class="pcounter"></span>Private function toString() : string {
     if (qualifier === null)
         return identifier;
     return string(qualifier) + "::" + identifier;
@@ -263,8 +267,7 @@ operations as their corresponding intrinsic methods perform.
 corresponding intrinsic methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-prototype function toString(this : Name)
+<PRE><span class="pcounter"></span>public prototype function toString(this : Name)
     this.Private::toString();
 </PRE>
 

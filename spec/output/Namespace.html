@@ -83,15 +83,33 @@ H4 {
 
 <HR>
 <pre>
+NAME:                       "The class 'Namespace'"
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 2 - 2008-03-17
+CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 3 - 2008-03-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  YES
 REVIEWED AGAINST PROPOSALS: N/A
 REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4 RI (partly)
+TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 2 (2008-03-17)
+
+  * There is a public constructor for Namespace objects 
+
+  * The 'Namespace' class object can be invoked as a function
+
+  * There is a getter for a 'name' property on Namespace objects
+
+  * The 'toString' method is tagged "override"
+
+  * Presentation: More elaborate status block above
 
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
@@ -99,19 +117,20 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
   * Presentation: added an explicit "extends Object" clause
 
   * Namespaces are explicitly designated nullable and a null value is
-    tied to the compatibility namespace noNS.
+    tied to the compatibility namespace noNS
 
   * The behavior of the 'toString' method has been tightly specified
-    to allow Namespace objects to be compared predictably.
+    to allow Namespace objects to be compared predictably
 
 
-OPEN ISSUES
+NOTES
 
-  * Namespace objects in ES4 are more opaque than the Namespace
-    objects in the base document and in E4X, both of which expose
-    "prefix" and "name" properties.  ES4 is not supporting E4X, and
-    the base document was probably influenced by E4X, so this
-    may not be a big deal, but it should be discussed.
+  * "Forgeable" and "unforgeable" namespaces are discussed in the
+    language spec.  A forgeable namespace is created from a string, as
+    with 'namespace f = "my namespace"'.  An unforgeable namespace is
+    created not from a string, as with 'namespace u'
+
+  * The constructor and the 'name' getter are compatible with E4X
 
 
 REFERENCES
@@ -123,19 +142,11 @@ REFERENCES
 <HR>
 
 <P><span class="pcounter"></span> The class <code>Namespace</code> is a final, non-dynamic, nullable,
-direct subclass of <code>Object</code>.  It reflects a namespace as an opaque
-datum.
+direct subclass of <code>Object</code>.
 
-<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Namespaces are created as a result of the evaluation of the
-<code>namespace</code> pragma, which defines a new namespace and creates a
-binding for it.  Namespaces are reflected as <code>Namespace</code> objects
-when namespace bindings are referenced in expressions.
-
-<p class="note"><b>NOTE</b>&nbsp;&nbsp;  A <code>Namespace</code> object can be created with an explicit name by
-providing the name as a string in the <code>namespace</code> pragma.
-
-<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Generally a <b>null</b> namespace value is used to denote the
-compatibility namespace <b>noNS</b>.
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  <code>Namespace</code> values can be created by <code>new</code> expressions in
+the user program or by the evaluation of a <code>namespace</code> definition,
+which creates a new namespace and a constant binding for it.
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The <code>Namespace</code> class is new in the 4th Edition of this
 Standard.
@@ -144,42 +155,77 @@ Standard.
 
 <P><span class="pcounter"></span> The class <code>Namespace</code> provides the following interface:
 
-<PRE>
-__ES4__ final class Namespace extends Object
+<PRE><span class="pcounter"></span>__ES4__ final class Namespace extends Object
 {
-    intrinsic function toString(): string &#x0085;
+    public function Namespace(name=undefined) &#x0085;
+    static meta function invoke(x) &#x0085;
+
+    static public const length = 1
+
+    override intrinsic function toString(): string &#x0085;
+
+    public function get name(): (string|undefined) &#x0085;
 }
 </PRE>
 
 <P><span class="pcounter"></span> The <code>Namespace</code> prototype object provides the following direct
 properties:
 
-<PRE>
-    toString: function () &#x0085;
+<PRE><span class="pcounter"></span>    toString: function () &#x0085;
 </PRE>
+
 
 <h2>Operators</h2>
 
-<P><span class="pcounter"></span> The operators <code>==</code> and <code>===</code> compare as equal two non-opaque
-<code>Namespace</code> objects that are separately created from the same string;
-similarly, the operators <code>!=</code> and <code>!==</code> compare as not equal two
-<code>Namespace</code> objects that are separately created from dissimilar strings.
+<P><span class="pcounter"></span> The operators <code>==</code> and <code>===</code> compare forgeable <code>Namespace</code>
+objects by comparing their names as obtained by the <code>name</code> accessor,
+see below.  Forgeable namespaces with the same name are equal by those
+operators.
+
+<P><span class="pcounter"></span> In all other cases, <code>Namespace</code> objects are equal only to
+themselves.
 
 
 <h2>Methods on the <code>Namespace</code> class object</h2>
 
-<P><span class="pcounter"></span> There are no methods on the <code>Namespace</code> class object.  In
-particular, the class <code>Namespace</code> does not have a publicly
-accessible constructor.
+<h3>new&nbsp;Namespace(name=&#x0085;)</h3>
 
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> When the <code>Namespace</code> constructor is called with no arguments
+or with the argument <b>undefined</b> it returns a new unforgeable
+<code>Namespace</code> object.  The returned object is unequal to every
+previously existing <code>Namespace</code> object.
+
+<P><span class="pcounter"></span> When the <code>Namespace</code> constructor is called with an argument
+<i>name</i> that is not <b>undefined</b> it converts <i>name</i> to string and
+returns a new forgeable namespace whose name is the converted value.
+
+<P class="implsection"><b>Implementation</b>
+<PRE><span class="pcounter"></span>public function Namespace(name=undefined) &#x0085;
+</PRE>
+
+<h3>Namespace(x)</h3>
+
+<P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Namespace</code> class object called as a function returns a
+<code>Namespace</code> object.  If <i>x</i> is a <code>Namespace</code> object then it is
+returned.  Otherwise a new <code>Namespace</code> object is constructed by 
+invoking the <code>Namespace</code> constructor on <i>x</i>.
+
+<P class="implsection"><b>Implementation</b>
+<PRE><span class="pcounter"></span>static meta function invoke( x ): Namespace! {
+    if (x is Namespace!)
+        return x;
+    return new Namespace(x);
+}
+</PRE>
 
 <h2>Methods on <code>Namespace</code> instances</h2>
 
 <h3>intrinsic::toString()</h3>
 
 <P class="section"><b>Description</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method converts the <code>Namespace</code>
-object to a string.  If the <code>Namespace</code> object was created with an
-explicit name then the string contains that name as a substring.
+object to a string.  If the <code>Namespace</code> object is forgeable (it was
+created with an explicit name) then the string returned by
+<code>toString</code> contains the name as a substring.
 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>toString</code> method returns an implementation-defined
 string.  
@@ -190,10 +236,23 @@ respectively.  <i>T1</i> and <i>T2</i> are equal if and only if <i>N1</i> is
 equal to <i>N2</i> (by <code>===</code> or <code>==</code>).
 
 <P><span class="pcounter"></span> Suppose the intrinsic <code>toString</code> method is invoked on two
-different non-opaque namespaces <i>N1</i> and <i>N2</i> created from strings
+different forgeable namespaces <i>N1</i> and <i>N2</i> created from strings
 <i>S1</i> and <i>S2</i>, yielding strings <i>T1</i> and <i>T2</i>, respectively.
 <i>T1</i> and <i>T2</i> have the same relationship (determined by the
 relational operators) as <i>S1</i> and <i>S2</i>.
+
+
+<h2>Value Properties on <code>Namespace</code> instances</h2>
+
+<h3>name</h3>
+
+<P class="section"><b>Description</b> <P><span class="pcounter"></span> If this <code>Namespace</code> object is a forgeable namespace then the
+value of the property <code>name</code> is the string name with which the
+namespace was constructed.
+
+<P><span class="pcounter"></span> If this <code>Namespace</code> object is an unforgeable namespace then the
+value of the property <code>name</code> is <b>undefined</b>.
+
 
 <h2>Methods on the <code>Namespace</code> prototype object</h2>
 
@@ -204,8 +263,7 @@ their corresponding intrinsic methods.
 their corresponding intrinsic methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE>
-prototype function toString(this:Namespace)
+<PRE><span class="pcounter"></span>prototype function toString(this:Namespace)
     this.intrinsic::toString()
 </PRE>
 

@@ -1,0 +1,565 @@
+= Object initializer syntax =
+
+<hr>
+<pre>
+NAME:                       "Object initializer syntax"
+FILE:                       spec/language/object-literals.html
+CATEGORY:                   Expressions (E262-3 chapter 11)
+SOURCES:                    ES3; REFERENCES [1]-[7]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 3 - 2008-04-10
+REVIEWED AGAINST ES3:       YES
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  YES
+REVIEWED AGAINST PROPOSALS: YES
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   YES
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+
+OPEN ISSUES
+
+  (Note, in the absense of debate on the following issues the
+  resolution will invariably be to make no changes to the draft.)
+
+  * There is no way to control enumerability of a property without
+    giving it a non-public namespace or making it a fixture.  One
+    possibility without adding yet another keyword is to signal
+    non-enumerability by the explicit use of the 'public' namespace:
+
+       { public::x: 10 }  /* not enumerable */
+
+    It's unambiguous but feels a little hackish, since the rule
+    for enumerability is that public properties are enumerable.
+
+  * There is no way to seal the object created by an object
+    initializer, as a prefix 'const' annotation only distributes
+    across the fields of the object and does not imply anything about
+    the object as a whole.
+
+  * The meta::prototype facility does not allow 'null' as a value.
+    Brendan thinks it's important that it should allow that in order
+    to allow objects to work as primitive (but reliable) maps; I'm not
+    sure what the impact will be.  In particular, objects thus created
+    cease to behave like other objects in the system, as they will
+    have no (prototype) method suite.  Of course, the intrinsic
+    methods will still be there.  Discuss.
+
+  * It would be possible to replace 'meta::get()', 'meta::set()',
+    'meta::has()', 'meta::delete()', 'meta::invoke()', and
+    'meta::prototype()' with 'get*()', 'set*()', 'has*()',
+    'delete*()', 'invoke*()', and '__proto__', respectively.  The
+    purpose would be to avoid having to worry about whether the
+    identifier 'meta' can be used as a syntax marker in the way it
+    currently is.
+
+
+CHANGES SINCE DRAFT 2 (2008-04-07)
+
+  * Removed the copying of type information from initializing
+    expressions to fixtures in the case of 'const' and 'var' annotated
+    properties
+
+  * Made it possible to make a getter/setter pair into a fixture
+    by annotating the getter and setter with 'var'.
+
+  * Many(!) small wording changes and bug fixes (thanks to Brendan)
+
+
+CHANGES SINCE DRAFT 1 (2008-03-20)
+
+  * Added optional 'const' and 'var' prefixes to the initializer to
+    imply 'const' or 'var' for all fields.
+
+  * Specified that a 'const' or 'var' prefix on a field records the
+    type of the value being stored in the type of the object, absent
+    any other annotation; the previous draft used '*' for the types.
+
+  * Specified that repeated field names are allowed only if the
+    initializer as a whole does not use any new ES4 features
+
+  * Introduced catch-all methods 'meta::get' and so on
+
+  * Introduced 'meta::prototype'
+
+  * Added the facility described in [6] for annotating the initializer
+    with a nominal class type.
+
+  * Added "Open issues" section; one more reference; wording changes.
+
+
+REFERENCES
+
+[1] ES4 base document
+[2] Ticket #164
+[3] Ticket #165
+[4] Ticket #219
+[5] Ticket #319
+[6] Ticket #370
+[7] Bug fixes proposal, item about comma at the end of the field list
+[8] Compatibilities document
+[9] Enumerability spec (forthcoming)
+[10] Ticket to be filed: should allow :void on expression closures
+</pre>
+<hr>
+
+
+== Synopsis ==
+
+<P> This draft spec tries to pin down everything that has been
+proposed and tentatively agreed about object initializer syntax and
+semantics.  A brief rationale is attached at the end.
+
+
+== Primary syntax ==
+
+<P> In its general form an object initializer is comprised of an
+optional keyword (''const'' or ''var''), followed by a brace-delimited
+comma-separated list of fields with the last field optionally followed
+by a comma, followed by an optional type annotation.
+
+{{{
+    ObjInit ::= ["const" | "var"] "{" ( ( Field "," )* Field ","? )? "}" [ ":" Type ]
+    Field   ::= FieldName ":" AssignmentExpression
+              | "var" FieldName ":" AssignmentExpression
+              | "const" FieldName ":" AssignmentExpression
+              | ["var"] "get" FieldName "(" ")" [":" Type] FunctionBody
+              | ["var"] "set" FieldName "(" Param ")" [ ":" "void" ] FunctionBody
+              | "meta" "::" "prototype" ":" AssignmentExpression
+              | "meta" "::" "get" "(" Param ")" [":" Type] FunctionBody
+              | "meta" "::" "set" "(" Param "," Param ")" [ ":" "void" ] FunctionBody
+              | "meta" "::" "has" "(" Param ")" [":" "boolean"] FunctionBody
+              | "meta" "::" "delete" "(" Param ")" [ ":" "void" ] FunctionBody
+              | "meta" "::" "invoke" "(" ( Param ( "," Param )* )? ")" [ ":" Type ] FunctionBody
+    FieldName ::= AnyIdentifier | AnyIdentifier "::" AnyIdentifier | LiteralString | LiteralNumber
+    AnyIdentifier ::= Identifier | ReservedWord
+}}}
+
+<P> If a FieldName has a qualifier then the qualifier must name a
+binding created by a ''namespace'' directive and the qualifier cannot
+be the name of a reserved namespace (''meta'', ''intrinsic'',
+''reflect'', and so on).
+
+<P> The "Type" that annotates the initializer must be a record type or
+a class type whose constructor accepts zero arguments.
+
+<P> The ''FunctionBody'' of a getter, ''meta::get'', ''meta::has'',
+and ''meta::invoke'' may be a block or an expression.  The
+''FunctionBody'' of a setter, ''meta::set'', and ''meta::delete'' must
+be a block.  (See also [10].)
+
+<P> It is possible to have a getter without a setter and a setter
+without a getter.  A compatible getter or setter will be generated for
+the missing method.  The generated setter method receives a value and
+discards it silently (this corresponds with the view that writing to
+ReadOnly properties fails silently).  The generated getter method
+throws a **ReferenceError**.
+
+<P> If the initializer is prefixed by ''const'' then ''const'' is
+implied for each of the fields in the structure.  Every field must be
+a ''fieldname:value'' field, and none of the fields may have
+''const'' or ''var'' annotations.
+
+<P> If the initializer is prefixed by ''var'' then ''var'' is implied
+for each of the fields in the structure.  A field must be either
+''fieldname:value'', a getter, or a setters, and none of the fields
+may have ''const'' or ''var'' annotations.
+
+<P> Field names may be repeated only if the initializer as a whole
+looks like an object initializer as defined in E262-3 (1999), ie, all
+fields are of the ''FieldName&nbsp;:&nbsp;AssignmentExpression'' form,
+there is no ''const'' or ''var'' qualifier on the initializer as a
+whole, and there is no type annotation on the initializer.
+
+
+=== Construction ===
+
+<P> Unlike the case in ES3, the program can't shadow the binding for
+''Object'' in order to invoke an alternative object constructor for
+object initializers.
+
+<NOTE> Though ES4 is incompatible with ES3 here, most real-world
+implementations of ES3 do not respect shadowing binding for ''Object''
+when evaluating object initializers, and the incompatibility is of no
+consequence.  See [8].
+
+<P> If a type annotates the initializer and that type is a class type
+then the object initializer syntax is shorthand for the creation of an
+instance of that type with assignments to properties of the fields of
+that instance.  In other words, given
+
+{{{
+   class Point { var x, y }
+}}}
+
+then
+
+{{{
+   { x: 10, y: 20 } : Point
+}}}
+
+is shorthand for
+
+{{{
+   (let (TMP = new Point)
+     (TMP.x = 10,
+      TMP.y = 20,
+      TMP))
+}}}
+
+for some fresh variable TMP.  In this case, all fields of the object
+literal must be of the ''FieldName&nbsp;:&nbsp;AssignmentExpression''
+form.  (See the Rationale section for a discussion of why this is
+desirable.)
+
+<P> In all other cases, the initializer evaluates to an instance of
+''Object'' or an anonymous subtype of ''Object'', as described in the
+rest of this document.
+
+
+== Secondary syntax ==
+
+<P> Suppose T is a structural record type:
+
+{{{
+    type T = { x: int, y: double }
+}}}
+
+<P> Then the ''new'' operator can be used as follows:
+
+{{{
+    new T(10, 2.5)
+}}}
+
+<P> The meaning of this is precisely:
+
+{{{
+    { x: 10, y: 2.5 } : T
+}}}
+
+<P> There must be as many arguments to ''new'' as there are fields in
+''T''.  The initializers are matched with fields by the order in which
+they appear.
+
+
+== Semantics of subphrases ==
+
+=== Types and fixtures ===
+
+<P> If a property name in the record type that annotates the literal
+matches a field name in the literal then the field is a fixture (as
+opposed to a dynamic property) and the type of the fixture is the type
+of the property given in the record type.  The following makes ''x'' a
+fixture and gives it the type ''int'':
+
+{{{
+    { x: 10 } : { x: int }
+}}}
+
+<P> The type of the value must be of the type of the field, or must be
+convertible to the type of the field.
+
+<P> If a literal field is annotated by ''const'' or ''var'' and the
+field is also named in the record type that annotates the literal then
+the type of the property is the type given in the record type, not the
+type implied by the initial value of the property (see below).
+
+<P> If a property name in the record type matches a field name that is
+a getter and/or a setter then:
+
+<UL>
+
+<LI> either the getter has no return type annotation (in which case
+the type from the record type will be applied to the getter) or the
+return type must be equal to the type present for the property in the
+record type;
+
+<LI> either the setter has no parameter type annotation (in which case
+the type from the record type will be applied to the parameter) or the
+parameter type must be equal to the type present for the property in
+the record type; and
+
+<LI> following resolution of the previous two points, the return type of the 
+(generated) getter, the parameter type of the (generated) setter, and the
+type in the record type must all be equal.
+
+</UL>
+
+<P> Fields may be present in the field list that are not present in
+the type, but not vice versa.  I.e., the following is legal:
+
+{{{
+    x = { x: 10, y: 20, z: 30 } : { x: int, y: int }
+}}}
+
+<P> A field that does not have a matching explicit type annotation in
+the record type is dynamic, which is to say it is deletable.  Note in
+particular that this applies to getters and setters.  A getter/setter
+pair can be deleted only as a unit.
+
+<P> If a field name that has a getter/setter pair is not mentioned in
+the record type for the object initializer then the getter's return
+type must be equal to the setter's parameter type.
+
+
+=== Namespaces ===
+
+<P> Fields are in the public namespace if they don't have an explicit
+qualifier.
+
+<NOTE> The ''use default namespace'' pragma does not apply to object
+initializers.
+
+
+=== Enumerability ===
+
+<P> As outlined elsewhere [9], fixture properties are never
+enumerable.  Dynamic fields are enumerable if they are in the public
+namespace and their ''enumerable'' attribute is set.
+
+<P> All dynamic fields created by an object initializer have their
+''enumerable'' attribute set (though the attribute setting is only
+relevant if the fields are public).
+
+
+=== const ===
+
+<P> The ''const'' attribute introduces a fixture.  The meaning of
+
+{{{
+    { const x: E }
+}}}
+
+is the same as the meaning of
+
+{{{
+    { x: E } : { x: * }
+}}}
+
+with the additional constraint that the ''writable'' attribute on
+''x'' is disabled (''x'' is ReadOnly in ES3 terms).
+
+
+=== var ===
+
+<P> The ''var'' attribute introduces a fixture.  The meaning of
+
+{{{
+    { var x: E }
+}}}
+
+is the same as the meaning of
+
+{{{
+    { x: E } : { x: * }
+}}}
+
+<NOTE> Object initializers using the ''var'' attribute can always
+be rewritten as type-annotated initializers.
+
+
+=== Getters and setters ===
+
+<P> A getter (''get Name() <LDOTS>'') must not take any arguments.
+
+<P> A getter must not be declared to return ''void''.
+
+<P> A setter (''set Name() <LDOTS>'') may be declared as returning
+''void'' but must not be declared as returning any other type.
+
+<P> If the program reads a property from an object and that property
+was named by a getter, then the getter method is invoked and the 
+value returned by the getter method is returned to the program.
+
+<P> If the program writes a property to an object and that property
+was named by a setter, then the setter method is invoked with the
+value being written as its only argument.  The value returned by the
+setter method, if any, is discarded.
+
+<P> Inside the getter and setter methods the value of ''this'' refers
+to the object on which the property access was performed.
+
+<NOTE> That is the same rule as for normal method invocation.
+
+<P> If a getter or setter is prefixed by ''var'' then the
+getter/setter pair is a fixture.  If the initializer has both a getter
+and a setter for the same field then both or neither must be annotated
+''var''.
+
+
+=== Catch-all methods ===
+
+<P> Catch-all methods (''meta::get'', ''meta::set'', ''meta::has'',
+''meta::delete'', and ''meta::invoke'') are the values of read-only
+fixture properties on the object that is created by the object
+initializer expression.
+
+<NOTE> The full catch-all protocol is described elsewhere.  Here is a
+summary.
+
+<P class="note"> Some catch-all methods are invoked when an object
+property is accessed by a primitive protocol and the property is not a
+fixture of the object.  In ES3 terms, ''meta::get'' is invoked by
+[[Get]]; ''meta::set'' is invoked by [[Put]]; ''meta::has'' is invoked
+by [[HasProperty]]; and ''meta::delete'' is invoked by [[Delete]].
+These four catch-all methods receive the name of the property being
+accessed as the first argument (currently encoded as a Name, a string,
+or a nonnegative integer value below 2<SUP>32</SUP>-1).
+
+<P class="note"> The catch-all methods handling properties are always
+invoked, even if a property being sought is defined as a dynamic
+property on the object.
+
+<P class="note"> The catch-all method ''meta::invoke'' is invoked when
+the object is called as a function.
+
+<P class="note"> A catch-all method operates on the own object (the
+value of ''this'') and can either terminate normally by returning or
+else signal to its caller -- by throwing a distinguished exception --
+that default behavior should be invoked on the object.
+
+<P> A catch-all field is syntactically distinguished by the use of the
+identifier ''meta'' in a namespace position.  At the time the object
+initializer is evaluated the name ''meta'' must reference a namespace
+binding, that namespace binding must come from an scope object that is
+not introduced by ''with'', and the value of the namespace binding
+must be the ''meta'' namespace defined in the global object.
+
+<NOTE> The previous paragraph attempts to express the notion that the
+binding for ''meta'' is invariant so that we can rely on its meaning
+as syntax.  There is more to be said on that matter; the above
+language will be adjusted as some of these details are worked out.
+See also OPEN ISSUES.
+
+<P> Catch-all methods can have type annotations in their parameter and
+return positions.
+
+<P> Catch-all properties can appear in the record type that annotates
+the initializer.  Any types for catch-all properties in the record
+type must be equal to the declared types of the catch-all methods in
+the initializer itself.
+
+<P> Even if not mentioned in the record type that annotates the
+initializer, catch-all properties have field types derived from the
+annotations on the catch-all methods.
+
+
+=== meta::prototype ===
+
+<P> The special field name ''meta::prototype'' allows a value to be
+specified for the internal [[Prototype]] object of the newly
+constructed object.
+
+<P> The value for ''meta::prototype'' must not be undefined or null.
+
+<P> As for catch-all methods, this field is syntactically
+distinguished by the use of the ''meta'' namespace.  At the time the
+object initializer is evaluated the name ''meta'' must reference the
+immutable binding for the ''meta'' namespace in the global object.
+
+<P> The syntax ''meta::prototype'' exists for initializing the
+[[Prototype]] object only; it is not available for reading the
+[[Prototype]] value from the object in any context.
+
+
+== Rationale ==
+
+<P> (Will not be part of the final spec.)
+
+<P> The provision for an optional trailing comma comes from an early
+bug fix proposal.  It benefits machine-generated code and maintenance
+of lengthy initializers; ES3 array initializers permit a trailing
+comma; and the same convention is available in C.
+
+<P> Getters and setters have found a lot of use on the web and are a
+much-desired feature, even the ES3.1 group has been debating it.  They
+are implemented in the form presented here in Firefox, Opera, and
+Safari, at least.
+
+<P> ''const'' fields are motivated by the practical need to protect
+some object fields from being deleted or changed while staying within
+the easy to manage world of object initializers (ES4 classes would do
+the job but are more heavyweight by far).  Structural type annotations
+cannot express what ''const'' can express, either.  Some examples of
+the use of ''const'' are presented in the paper, "Evolutionary
+programming and gradual typing in ECMAScript 4", available from
+ecmascript.org.
+
+<P> ''var'' fields are similar to ''const'' fields in that they
+prevent fields from being deleted while staying within the easy to
+manage world of unannotated object initializers.  (''var'' fields can
+be expressed by structural type annotations and are a syntactic
+convenience.)
+
+<P> Allowing a single ''const'' or ''var'' to cover all fields in the
+initializer simplifies programs.
+
+<P> Syntax for catchalls is provided because it's sugar for
+functionality that is almost available. However, restrictions on the
+use of the ''meta'' namespace (which is reserved by the language
+implementation) prevent the creation of fields like this:
+
+{{{
+    meta::get: function (name) ...
+}}}
+
+and it is clearer to provide the functionality directly.
+
+<P> Given that the full catch-all syntax, e.g.  ''meta::get()'', has
+parentheses as well as the quasi-keyword ''meta'', there's no
+ambiguity about what's going on (except for ''meta::prototype''), and
+programs aren't prevented from using ''meta'' as a variable or
+property name in any context (only from evaluating object initializers
+containing catch-alls in contexts where a binding of ''meta'' shadows
+the original binding).
+
+<P> Syntax for setting up the prototype chain is provided because it's
+a common need and because it provides power that is not available
+without the new syntax.  (ES3 style constructor functions can only
+create objects of the empty object type; field types cannot be
+introduced.  Yet ES3 style constructor functions are the only other
+means available to create a custom prototype chain.)  Also, the
+initializer-based syntax prevents cycles in the prototype graph.
+
+<P> Structural type annotations on object initializers are a
+convenient shorthand for creating typed fixtures on objects without
+having to go the roundabout way through full classes.  "I want to
+guarantee that these fields are here and that they have these types."
+It's lightweight integrity.
+
+<P> The ''new'' syntax is part of the evolutionary programming agenda
+and is yet another point on the continuum between ES3 programs and
+class-based ES4 programs (the syntax abstracts away from the type T
+that is the subject of ''new'' -- whether it's a class or a structural
+type).  For example
+
+{{{
+   type Point = { x:double, y:double }
+   new Point(10, 20)
+}}}
+
+can change into
+
+{{{
+   class Point { var x: double, y: double }
+   new Point(10, 20)
+}}}
+
+<P> Nominal type annotations on object initializers further the
+evolutionary programming agenda in that objects described by
+structural types can be migrated to classes with only surface changes;
+existing object initializer expressions that use the structural type
+will continue to work when the type becomes a class.  For example,
+
+{{{
+   type Point = { x:double, y:double }
+   { x:10, y:20 } : Point
+}}}
+
+can change into
+
+{{{
+   class Point { var x: double, y: double }
+   { x:10, y:20 } : Point
+}}}

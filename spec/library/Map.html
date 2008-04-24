@@ -7,7 +7,7 @@ FILE:                       spec/library/Map.html
 CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2], [3]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 3 - 2008-03-11
+DRAFT STATUS:               LAST CALL - 2008-03-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -18,12 +18,36 @@ IMPLEMENTATION STATUS:      ES4 RI
 TEST CASE STATUS:           Unknown
 
 
-OPEN ISSUES
+CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
 
-  * 'intrinsic::clear' uses 'iterator::get' and 'intrinsic::remove' to
-    perform removal.  That is by design (it allows overridden methods
-    that observe or modify iteration and removal to work during
-    clearing as well).  But is it desirable?
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
+
+
+LAST CALL NOTES
+
+  * (Tickets #247, #289, and e-mail discussion.) The meta::invoke
+    method will change when we change the meaning of statics in
+    parameterized classes.  Concrete types 'K' and 'V' will have to be
+    used in the invocation, and the returned 'Map' instance will be
+    from 'K' to 'V' instead of from 'EnumerableId' to '*', like this:
+
+       Map.&lt;string,int&gt;( { x: 10, y: 20 } )
+
+  * Should the WG adopt some proposal for default type parameters for
+    ES4 (not very likely) then the default values for 'K' and 'V' will
+    be 'EnumerableId' and '*'.
+
+  * The WG has agreed that for a parameterized type Cls and type T,
+    Cls.&lt;T&gt; is a subtype of Cls.&lt;*&gt;.  That has yet to be
+    fully formalized, but it is used here.
+
+
+CHANGES SINCE DRAFT 3 (2008-03-11)
+
+  * The type previously known as 'function' is now known as 'Callable'
+
+  * Cleaned out FIXME comments in the text.
 
 
 CHANGES SINCE DRAFT 2 (2008-03-03)
@@ -59,26 +83,6 @@ CHANGES SINCE DRAFT 1 (2008-02-29)
     an explicit type, fixing the next field.
 
 
-NOTES
-
-  * Informative methods:
-
-    Informative methods on ''Map'' do not call program-visible (i.e.,
-    public, protected, intrinsic, reflect, meta, iterator, or
-    prototype) methods on their 'this' object except as explicitly
-    specified in this document.
-
-    (The above clarification belongs in a general preface to the
-    library.)
-
-  * Subtyping for parameterized classes: We've agreed that for a
-    parameterized type Cls and type T, Cls.&lt;T&gt; is a subtype of
-    Cls.&lt;*&gt;.  That has yet to be fully formalized.  The Map
-    class relies on that subtyping rule for its 'this' constraints on
-    prototype methods, and for type testing in the static
-    'meta::invoke' method.
-
-
 REFERENCES
 
 [1] http:&#x2F;&#x2F;wiki.ecmascript.org/doku.php?id=proposals:dictionary
@@ -105,8 +109,8 @@ keys and compute hash values for keys.
 {{{
 __ES4__ dynamic class Map.<K,V> extends Object
 {
-    public function Map(equals:   function = (function(a,b) a === b),
-                        hashcode: function = intrinsic::hashcode) <LDOTS>
+    public function Map(equals:   Callable = (function(a,b) a === b),
+                        hashcode: Callable = intrinsic::hashcode) <LDOTS>
 
     <SIGNATURE file="Map.es" name="static meta function invoke">
     static public const length = 2;
@@ -123,8 +127,8 @@ __ES4__ dynamic class Map.<K,V> extends Object
     <SIGNATURE file="Map.es" name="iterator function getValues">
     <SIGNATURE file="Map.es" name="iterator function getItems">
 
-    private const equals   : function = <LDOTS>
-    private const hashcode : function = <LDOTS>
+    private const equals   : Callable = <LDOTS>
+    private const hashcode : Callable = <LDOTS>
     private var population : uint = <LDOTS>
 }
 }}}
@@ -182,12 +186,6 @@ the number of associations in the table to zero.
 
 <INCLUDE file="Map.es" name="public function Map">
 
-<FIXME> (Ticket #153) The parameters to the ''Map'' constructor should
-be constrained to be ''function'', but not any more than that (because
-that would be bad UI for scripts).  Currently the RI does not support
-''function'' as a type annotation, so the current implementation of
-the constructor is unconstrained.
-
 === Map( object ) ===
 
 <DESC> When the ''Map'' class object is called as a function, it
@@ -201,10 +199,6 @@ object.
 
 <SHORTIMPL>
 <INCLUDE file="Map.es" name="static meta function invoke">
-
-<FIXME> (Tickets #247, #289, and e-mail discussion.) This method will
-change if we change the meaning of statics in parameterized classes:
-the map would be from ''K'' to ''V'' instead of from ''EnumerableId'' to ''*''.
 
 
 == Methods on ''Map'' instances ==
@@ -320,11 +314,11 @@ pairs, respectively.  The iterator method ''get'' iterates over keys
 being called on instances of ''Map''.  They all delegate to the
 corresponding intrinsic method on their ''this'' object.
 
-<INCLUDE file="Map.es" name="prototype function size">
-<INCLUDE file="Map.es" name="prototype function get">
-<INCLUDE file="Map.es" name="prototype function put">
-<INCLUDE file="Map.es" name="prototype function has">
-<INCLUDE file="Map.es" name="prototype function remove">
-<INCLUDE file="Map.es" name="prototype function clear">
+<INCLUDE file="Map.es" name="public prototype function size">
+<INCLUDE file="Map.es" name="public prototype function get">
+<INCLUDE file="Map.es" name="public prototype function put">
+<INCLUDE file="Map.es" name="public prototype function has">
+<INCLUDE file="Map.es" name="public prototype function remove">
+<INCLUDE file="Map.es" name="public prototype function clear">
 
 <!-- End of Map.html -->

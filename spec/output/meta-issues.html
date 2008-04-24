@@ -1,0 +1,420 @@
+<html>
+<head>
+<title>Library meta-issues</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Tutorial Introduction to the ES4 Library Draft</h1>
+
+<P><span class="pcounter"></span> The ES4 library specification is expressed in terms of ES4
+fragments: the specification uses executable -- and testable -- ES4
+code in places where the ES3 specification uses pseudocode.  As a
+consequence, the draft library specicifaction makes some assumptions
+about what ES4 will look like when it is finished.
+
+<P><span class="pcounter"></span> This guide contains an outline of some aspects of ES4 that it will
+be useful or necessary for the readers of the draft specification to
+know, beyond what is in ES3.
+
+<P><span class="pcounter"></span> This guide will not be a part of the final ES4 specification.
+
+
+<h2>Namespaces, names</h2>
+
+<P><span class="pcounter"></span> ES4 places all names in namespaces.  A name is in exactly one
+namespace and it is placed in that namespace by prefixing the binding
+keyword for the name (<code>class</code>, <code>var</code>, <code>const</code>, <code>function</code>, and
+others) with the namespace name.  If <code>MyNS</code> is a namespace then
+
+<PRE>
+    MyNS var x 
+</PRE>
+
+creates a variable whose fully qualified name is <code>MyNS::x</code>.
+
+<P><span class="pcounter"></span> There are several pre-defined namespaces.  The namespace
+<code>__ES4__</code> is used for all top-level names that are new to ES4 if
+they're not in one of the other namespaces.  Important pre-defined
+namespaces are <code>__ES4__::intrinsic</code> and <code>__ES4__::reflect</code>.
+
+<P><span class="pcounter"></span> (Two new names are not in any of the new namespaces: <code>__ES4__</code>
+and <code>__ECMASCRIPT_VERSION__</code>.)
+
+<P><span class="pcounter"></span> In order to avoid having to fully qualify names all the time,
+namespaces can be <i>opened</i>; the names defined in the namespace will
+then be available without qualificiation.  The namespace <code>__ES4__</code>
+is opened for all ES4 code, so in practice the two pre-defined
+namespaces listed above are known just as <code>intrinsic</code> and
+<code>reflect</code>.
+
+<P><span class="pcounter"></span> Opening a namespace may introduce ambiguities, which can be
+resolved by fully qualifying ambiguous names.  Ambiguities are not
+common because a namespace opened in an inner lexical scope takes
+precedence over namespaces opened in outer scopes.
+
+<P><span class="pcounter"></span> The <code>intrinsic</code> namespace is reserved; user code is not allowed
+to introduce new names in this namespace.  The <code>intrinsic</code> namespace
+is used primarily for methods in the pre-defined classes.  For every
+prototype method <i>M</i> there is a corresponding intrinsic method <i>M</i>
+in the class.  For example, there is <code>Array.prototype.concat</code> and
+also an <code>intrinsic::concat</code> method on <code>Array</code> instances.  The
+prototype methods are fully compatible with ES3 in the types they
+accept and how they convert values.  The intrinsic methods normally
+have more tightly constrained signatures and, like all class methods,
+are immutable (though they can be overridden in subclasses -- that's
+allowed even for user code).
+
+<P><span class="pcounter"></span> The <code>intrinsic</code> namespace provides integrity (code that calls an
+intrinsic method will know that it references the original method, it
+is not at the mercy of changes to the prototype method) and
+optimization opportunities (early binding to the slot that holds the
+method in the presence of type annotations).  The specification of the
+pre-defined classes in terms of ES4 code makes use of other
+pre-defined classes and their methods, and pre-defined methods are
+careful to call intrinsic methods to invoke known behavior and to call
+public methods to invoke explicitly variant behavior.  Normally, such
+invocations are always explicitly qualified in the text in order to
+avoid any ambiguity in the reader's mind.
+
+
+<h2>Types and annotations</h2>
+
+<P><span class="pcounter"></span> Bindings in ES4 are typed, and the type can be provided explicitly
+in the definition of a binding by following the bingind's name with a
+colon and the type:
+
+<PRE>
+    var x: Array
+</PRE>
+
+<P><span class="pcounter"></span> If the type is omitted, it is "*" (read as "any"), which means the
+binding has no type constraint.  If we assume just run-time type
+checking, then a check is performed every time a value is stored into
+an annotated variable: the type of the value must be a subtype of the
+annotated type.  Effectively, properties are subject to a write
+barrier.
+
+<P><span class="pcounter"></span> Functions can be annotated as well, in both their parameter and
+return positions.  Annotations on parameters constrain how the
+function can be called.  Annotations in the return position constrains
+what the function can return:
+
+<PRE>
+    function f(x: string): RegExp { ... }
+</PRE>
+
+<P><span class="pcounter"></span> There are two classes of types, nominal types and structural
+types.
+
+<P><span class="pcounter"></span> Nominal types are introduced by class definitions and interface
+definitions.  Values of nominal types are created by instantiating
+classes (using the "new" operator).  The syntax and semantics are
+broadly as in Java: A nominal type is equal only to itself; a value is
+of a class type only if it was instantiated from that type; and it is
+of an interface type only if it was instantiated from a class type
+that declares that it implements that interface.  (Unlike in Java, the
+access control keywords such as <code>private</code> and <code>public</code> are
+actually aliases for language-provided namespaces.)
+
+<P><span class="pcounter"></span> Methods on classes appear as function definitions in the class
+body.  The class instance is in scope in the body of a method, as is
+the class object (holding the static properties).
+
+<P><span class="pcounter"></span> Structural types are record types (for example <code>{x:int,y:int}</code>),
+array types (for example <code>[int]</code>), tuple types (for example
+<code>[int,string]</code>), union types (for example <code>(int|string|RegExp)</code>),
+function types (for example <code>function(int):boolean)</code>, and some
+special types (<code>null</code> and <code>undefined</code>).  A structural type is
+equal to any other structural type that has the same fields with the
+same types (in any order), and a value is of a structural type if it
+has fixed (non-deletable) fields with the names and types given by the
+structural type.  (So if <code>Point</code> is a class with <code>x</code> and <code>y</code>
+integer fields, an instance of <code>Point</code> is of the structural type
+<code>{x:int,y:int}</code>.)  Structural types can't be recursive.
+
+<P><span class="pcounter"></span> Types can be given names by type definitions:
+
+<PRE>
+    type Num = (int|double)
+</PRE>
+
+<P><span class="pcounter"></span> Type definitions, class definitions, and interface definitions can
+be parameterized:
+
+<PRE>
+    class Map.&#60;K,V> { ... }
+    type Box.&#60;T> = { value: T }
+</PRE>
+
+<P><span class="pcounter"></span> Record and array types are instantiated by suffixing the literal
+with the type:
+
+<PRE>
+    { value: 7 } : Box.&#60;int>
+    [1,2,3] : [int]
+</PRE>
+
+<P><span class="pcounter"></span> Any type is a subtype of <code>*</code>, and <code>Box.<T></code> is a subtype of
+<code>Box.<*></code>, for any T.
+
+<P><span class="pcounter"></span> One of the important aspecs of the type system is that the types
+provide a specification for fixtures on the objects that are of the
+type: in any value of type <code>Box.<T></code>, the <code>value</code> property can't be
+removed.  (Instances of structural types can always have extra
+non-fixture fields, as can instances of classes designated <code>dynamic</code>.)
+
+
+<h2>Functions</h2>
+
+<P><span class="pcounter"></span> Functions can take optional arguments (they have default values)
+and rest arguments:
+
+<PRE>
+    function f(x, y=0) { ... }   // y is optional
+    function f(x, ...rest) { ... }
+</PRE>
+
+<P><span class="pcounter"></span> The rest argument appears as a regular <code>Array</code> object holding
+the excess parameter values.
+
+<P><span class="pcounter"></span> Function bodies that contain a simple return statement (which
+typically returns the result of a call to another function) are
+common; ES4 introduces a shorthand -- extensively used in the library
+draft specifications -- where the body is a brace-less expression:
+
+<PRE>
+    function f(x, y)
+      g(x*2, y, 0)
+</PRE>
+
+
+<h2>Informative and helper methods</h2>
+
+<P><span class="pcounter"></span> The library specification is normative, which means the ES4 code
+in the specification is normative too.  In order to avoid
+overspecification the specification factors out non-normative sections
+as methods in the <code>informative</code> namespace.  The informative methods
+are described by prose.  A good example is the global hashcode
+function:
+
+<PRE>
+    intrinsic const function hashcode(o): double {
+        switch type (o) {
+        case (x: null)       { return 0 }
+        case (x: undefined)  { return 0 }
+        case (x: AnyBoolean) { return Number(x) }
+        case (x: AnyNumber)  { return intrinsic::toUint(x) }
+        case (x: AnyString)  { return informative::stringHash(x) }
+        case (x: Namespace)  { return informative::namespaceHash(x) }
+        case (x: Name)       { return informative::nameHash(x) }
+        case (x: *)          { return informative::objectHash(x) }
+        }
+    }
+</PRE>
+
+<P><span class="pcounter"></span> Hashing on <b>null</b>, <b>undefined</b>, booleans, and numbers are
+normatively specified, but hashing on strings, names, namespaces, and
+other objects are only informatively specified.
+
+<P><span class="pcounter"></span> In order to share code, the specification also factors out
+commonalities as methods in the <code>helper</code> namespace.  A common case
+is where both prototype methods and intrinsic methods take a variable
+number of arguments, as for the concat method in <code>Array</code>:
+
+        prototype function concat(...items)
+            Array.helper::concat(this, items);
+
+        intrinsic function concat(...items): Array
+            Array.helper::concat(this, items);
+
+<P><span class="pcounter"></span> (In this case the <code>helper</code> function is a static method on the
+<code>Array</code> class, because that accomodates the static <code>concat</code> method
+too.)
+
+<P><span class="pcounter"></span> The <code>private</code> namespace is used in a manner similar to the
+<code>helper</code> namespace.
+
+<P><span class="pcounter"></span> The <code>helper</code> functions are normative in the sense that they
+define the functionality of a method, eg in the order of operations on
+a data structure.  But <code>helper</code> functions are not visible in a real
+implementation, they are not part of the API, and a real
+implementation does not reserve the <code>helper</code> namespace.
+
+<P><span class="pcounter"></span> In a similar manner, the prose description for an <code>informative</code>
+functions defines its functionality but leaves the implementation more
+room for variations.  The <code>informative</code> functions are not visible in
+a real implementation, they are not part of the API, and a real
+implementation does not reserve the <code>implementation</code> namespace.
+
+<P><span class="pcounter"></span> A final constraint on <code>informative</code> functions is that they do 
+not call program-visible (i.e., public, protected, intrinsic, reflect, 
+meta, iterator, or prototype) methods on their 'this' object except 
+as explicitly specified in the specification.
+
+
+<h2>Meta-level methods</h2>
+
+<P><span class="pcounter"></span> The pre-defined namespace "meta" is used for methods that
+participate in language-level protocols: invocation, property access,
+and property update.  A class that defines a <code>meta::invoke</code> fixture
+is callable as a function (the <code>meta::invoke</code> method is invoked in
+response to the call); the <code>meta::get</code>, <code>meta::set</code>,
+<code>meta::has</code>, and <code>meta::delete</code> methods are invoked in response to
+accesses to all dynamic (non-fixture) properties on the object, and
+respectively read a property value, update a property, query the
+existence of a property, and remove a property.
+
+<P><span class="pcounter"></span> The meta methods have have static and instance forms.  This is
+particularly prominent for <code>meta::invoke</code>.  Given a class <code>Cls</code>
+with a static <code>meta::invoke</code> method:
+
+<PRE>
+    class Cls { 
+        static meta function invoke(...)
+        ... 
+    }
+</PRE>
+
+you can call <code>Cls</code> as a function:
+
+<PRE>
+    x = y + Cls(z);
+</PRE>
+
+<P><span class="pcounter"></span> This is used by many classes to implement converters to the class
+type.
+
+<P><span class="pcounter"></span> Given a class <code>Cls</code> with an instance <code>meta::invoke</code> method:
+
+<PRE>
+    class Cls {
+        meta function invoke(...) ... 
+    }
+</PRE>
+
+then it is the instances of <code>Cls</code> that are themselves callable:
+
+<PRE>
+    c = new Cls;
+    x = y + c(z);
+</PRE>
+
+<P><span class="pcounter"></span> This is used in some instances to make arbitrary objects callable,
+and is used to model the fact that instances of Functions are
+themselves callable as functions.
+
+
+<h2>magic</h2>
+
+<P><span class="pcounter"></span> The specification makes use of a pre-defined namespace "magic".
+This namespace is reserved in the specification but not in any actual
+implementation of the language.  It is used only to tag top-level
+functions that are implementation hooks.  The hooks provide
+functionality that is not available in the language, for example,
+accessing the internal <code>[[prototype]]</code> property of objects.
+
+<P><span class="pcounter"></span> Magic functions are defined by prose for the moment; it is
+probable that they will be (at least partly) exposed as Standard ML
+fragments later, in the style of the semantic functions we're planning
+for other parts of the specification.
+
+
+<h2>Non-nullable types, primitive types</h2>
+
+<P><span class="pcounter"></span> Occasionally in the library draft specification you will see an
+exclamation point added to the end of a type expression:
+
+<PRE>
+    class Namespace {
+        static meta function invoke(x): Namespace! 
+            ....
+    }
+</PRE>
+
+<P><span class="pcounter"></span> The exclamation point indicates a "non-nullable reference", ie, in
+this case that the value returned may never be <b>null</b>.  Similar
+annotations are used for parameter types in some cases.
+
+<P><span class="pcounter"></span> The primitive types of the language are the classes <code>string</code>,
+<code>boolean</code>, and <code>double</code>.  These correspond to the primitive types
+in ES3.  They are non-nullable types; that is, a function returning
+<code>string</code> will never return **null*..
+
+
+</body>
+</html>
