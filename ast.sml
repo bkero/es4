@@ -246,7 +246,7 @@ datatype TYPE_EXPR =
        | UndefinedType
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | TypeName of IDENT_EXPR
+       | TypeReference of REFERENCE
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE
@@ -285,6 +285,29 @@ datatype TYPE_EXPR =
          { expr:TYPE_EXPR,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
+
+(* SPEC
+
+datatype STATEMENT =
+         EmptyStmt
+       | ExprStmt of EXPR
+       | ForStmt of FOR_STMT
+       | ForInStmt of FOR_ENUM_STMT
+       | ThrowStmt of EXPR
+       | ReturnStmt of EXPR
+       | BreakStmt of IDENT option
+       | ContinueStmt of IDENT option
+       | BlockStmt of BLOCK
+       | LabeledStmt of (IDENT * STMT)
+       | WhileStmt of WHILE_STMT
+       | DoWhileStmt of WHILE_STMT
+       | IfStmt of (EXPR * STMT * STMT)
+       | WithStmt of (EXPR * STMT)
+       | TryStmt of TRY_STMT
+       | SwitchStmt of SWITCH_STMT
+       | SwitchTypeStmt of SWITCH_TYPE_STMT
+
+*)
 
      and STMT =
          EmptyStmt
@@ -356,11 +379,15 @@ datatype EXPRESSION =
        | ApplyTypeExpr of (EXPRESSION * TYPE_EXPRESSION list)
        | LetExpr of (HEAD * EXPRESSION)
        | NewExpr of (EXPRESSION * EXPRESSION list)
-       | ObjectRef of (EXPRESSION * IDENTIFIER_EXPRESSION)
-       | LexicalRef of (IDENTIFIER_EXPRESSION)
-       | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
+       | GetExpr of REFERENCE
+       | SetExpr of (ASSIGNOP * REFERENCE * EXPRESSION)
        | InitExpr of (INIT_TARGET * HEAD * INIT list)   (* HEAD is for temporaries *)
        | ArrayComprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
+
+datatype REFERENCE =
+         LexicalReference of IDENTIFIER_EXPRESSION
+       | ObjectReference of (EXPRESSION * IDENTIFIER_EXPRESSION)
+
 
 *)
 
@@ -422,7 +449,7 @@ datatype IDENTIFIER_EXPRESSION =
              namespace: NAMESPACE_REF }
 
 datatype NAMESPACE_REF =
-         NamespaceRef of EXPRESSION  (* resolves to a namespace fixture *)
+         NamespaceRef of REFERENCE (* resolves to a namespace fixture *)
 
 *)
      and IDENT_EXPR =
@@ -468,6 +495,20 @@ datatype NAMESPACE_REF =
      (* RIBs are built by the definition phase, not the parser; but they 
       * are patched back into the AST in class-definition and block
       * nodes, so we must define them here. *)
+(*
+datatype FIXTURE =
+         NamespaceFixture of NAMESPACE
+       | ClassFixture of CLS
+       | InterfaceFixture of IFACE
+       | TypeVarFixture of TYPEVAR_FIXTURE
+       | TypeFixture of TY
+       | MethodFixture of METHOD
+       | ValFixture of VAL_FIXTURE
+       | VirtualValFixture of VIRTUAL_VAL_FIXTURE
+*)
+
+     and HEAD =
+         Head of RIB * INITS
 
 (* ClassFixture only at package level,
  * VirtualValFixture only in classes,

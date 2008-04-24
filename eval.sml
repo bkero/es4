@@ -1975,83 +1975,55 @@ fun evalExpression (env: ENV)
     : Mach.VALUE =
     case expr of
         Ast.LiteralNull => 
-        Mach.Null
-
+            Mach.Null
       | Ast.LiteralUndefined => 
-        Mach.Undef
-
+            Mach.Undef
       | Ast.LiteralDouble r => 
-        newDouble env r
-
+            newDouble env r
       | Ast.LiteralDecimal d => 
-        newDecimal env d
-
+            newDecimal env d
       | Ast.LiteralBoolean b => 
-        newBoolean env b
-
+            newBoolean env b
       | Ast.LiteralString s => 
-        newString env s
-
+            newString env s
       | Ast.LiteralFunction f => 
-        newFunctionFromFunc env f
-
+            newFunctionFromFunc env f
       | Ast.LiteralObject {expr, ty} => 
-        evalObjectInitialiser env expr ty
-
+            evalObjectInitialiser env expr ty
       | Ast.LiteralArray (Ast.ListExpr exprs, typeExpr) =>
-        evalArrayInitialiser env exprs typeExpr
-
+            evalArrayInitialiser env exprs typeExpr
       | Ast.LiteralRegExp regexp => 
-        evalRegExpInitialiser env (#str re)
-
-      | Ast.LexicalRef { ident, loc } => 
-        evalLexicalRefExpr env ident loc
-
-      | Ast.ObjectRef { base, ident, loc } => 
-        evalObjectRefExpr env base ident loc
-
+            evalRegExpInitialiser env (#str re)
+      | Ast.GetExpr ref =>
+            evalGetExpr env ref
       | Ast.LetExpr {defs, body, head} => 
-        evalLetExpr env (valOf head) body
-
+            evalLetExpr env (valOf head) body
       | Ast.ConditionalExpr (aexpr, bexpr, cexpr) => 
-        evalCondExpr env aexpr bexpr cexpr
-
+            evalCondExpr env aexpr bexpr cexpr
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 
-        evalBinaryOp env bop aexpr bexpr
-
+            evalBinaryOp env bop aexpr bexpr
       | Ast.UnaryExpr (unop, expr) => 
-        evalUnaryOp env unop expr
-
+            evalUnaryOp env unop expr
       | Ast.TypeExpr ty => 
-        evalTypeExpr env (evalTy env ty)
-
+            evalTypeExpr env (evalTy env ty)
       | Ast.ThisExpr kind => 
-        evalThisExpr env kind
-
+            evalThisExpr env kind
       | Ast.SuperExpr _ => 
-        error env ["super expression in illegal context"]
-
+            error env ["super expression in illegal context"]
       | Ast.SetExpr (aop, pat, expr) => 
-        evalSetExpr env aop pat expr
-
+            evalSetExpr env aop pat expr
       | Ast.CallExpr { func, actuals } => 
-        evalCallExpr env func actuals
-
+            evalCallExpr env func actuals
       | Ast.NewExpr { obj, actuals } => 
-        evalNewExpr env obj actuals
-
+            evalNewExpr env obj actuals
       | Ast.GetTemp n => 
-        evalGetTemp env n
-
+            evalGetTemp env n
       | Ast.InitExpr (target,tempHead,inits) => 
-        evalInitExpr env target tempHead inits
-
+            evalInitExpr env target tempHead inits
       | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) => 
-        evalBinaryTypeOp env typeOp expr tyExpr
-
+            evalBinaryTypeOp env typeOp expr tyExpr
       | Ast.ApplyTypeExpr { expr, actuals } => 
-        evalApplyTypeExpr env expr (map (evalTy env) actuals)
-
+            evalApplyTypeExpr env expr (map (evalTy env) actuals)
       | _ => LogErr.unimplError ["unhandled expression type"]    
 
 *)
@@ -2124,6 +2096,18 @@ and evalExpr (regs:Mach.REGS)
 
       | _ => LogErr.unimplError ["unhandled expression type"]    
 
+(* SPEC
+
+fun evalGetExpr (env: ENV)
+                (ref: Ast.REFERENCE)
+    : Mach.VALUE =
+    let
+        val (_, (obj, name)) = evalReference env ident true
+    in
+        getValue env obj name
+    end
+
+*)
 
 and evalLexicalRefExpr (regs:Mach.REGS)
                   (ident:Ast.IDENT_EXPR)
@@ -3028,8 +3012,6 @@ fun evalSetExpr (env: ENV)
     (* FINISH ME *)
 
 *)
-
-
 
 and evalSetExpr (regs:Mach.REGS)
                 (aop:Ast.ASSIGNOP)
@@ -4070,6 +4052,22 @@ and evalObjectRef (regs:Mach.REGS)
           | _ => error regs ["need object reference expression"]
     end
 
+(* SPEC
+
+fun evalReference (env: ENV)
+                  (ref: REFERENCE)
+                  (errIfNotFound:bool)
+    : (Mach.OBJECT option * REF) =
+    let
+    in
+        case expr of
+            Ast.LexicalRef _ => (NONE, evalLexicalRef regs expr errIfNotFound)
+          | Ast.ObjectRef _ => evalObjectRef regs expr errIfNotFound
+          | _ => error regs ["need lexical or object-reference expression"]
+    end
+
+*)
+
 and evalRefExpr (regs:Mach.REGS)
                 (expr:Ast.EXPR)
                 (errIfNotFound:bool)
@@ -4214,12 +4212,60 @@ and evalStmts (regs:Mach.REGS)
       (* FIXME: need to keep the last non-empty value and fixup abrupt completions here *)
       | [] => Mach.Undef
 
+(* SPEC
+
+fun evalStatement (env: Mach.ENV)
+                  (stmt: Ast.STATEMENT)
+    : Mach.VALUE =
+    case stmt of
+        Ast.EmptyStmt => 
+            Mach.Undef
+      | Ast.ExprStmt e => 
+            evalExpr env e
+      | Ast.IfStmt {cnd,thn,els} => 
+            evalIfStmt env cnd thn els
+      | Ast.WhileStmt w => 
+            evalWhileStmt env w
+      | Ast.DoWhileStmt w => 
+            evalDoWhileStmt env w
+      | Ast.WithStmt { obj, ty, body } => 
+            evalWithStmt env obj ty body
+      | Ast.SwitchStmt { cond, cases, labels } => 
+            evalSwitchStmt env cond cases labels
+      | Ast.ForStmt w => 
+            evalForStmt env w
+      | Ast.ReturnStmt r => 
+            evalReturnStmt env r
+      | Ast.BreakStmt lbl => 
+            evalBreakStmt env lbl
+      | Ast.ContinueStmt lbl => 
+            evalContinueStmt env lbl
+      | Ast.ThrowStmt t => 
+            evalThrowStmt env t
+      | Ast.LabeledStmt (lab, s) => 
+            evalLabelStmt env lab s
+      | Ast.BlockStmt b => 
+            evalBlock env b
+      | Ast.ClassBlock c => 
+            evalClassBlock env c
+      | Ast.LetStmt b => 
+            evalBlock env b
+      | Ast.TryStmt { block, catches, finally } => 
+            evalTryStmt env block catches finally
+      | Ast.SwitchTypeStmt { cond, ty, cases } => 
+            evalSwitchTypeStmt env cond ty cases
+      | Ast.ForInStmt w => 
+            evalForInStmt env w
+      | _ => error env ["Shouldn't happen: failed to match in Eval.evalStmt."]
+
+*)
 
 and evalStmt (regs:Mach.REGS)
              (stmt:Ast.STMT)
     : Mach.VAL =
     case stmt of
-        Ast.ExprStmt e => evalExpr regs e
+        Ast.EmptyStmt => Mach.Undef
+      | Ast.ExprStmt e => evalExpr regs e
       | Ast.IfStmt {cnd,thn,els} => evalIfStmt regs cnd thn els
       | Ast.WhileStmt w => evalWhileStmt regs w
       | Ast.DoWhileStmt w => evalDoWhileStmt regs w
@@ -4235,7 +4281,6 @@ and evalStmt (regs:Mach.REGS)
       | Ast.BlockStmt b => evalBlock regs b
       | Ast.ClassBlock c => evalClassBlock regs c
       | Ast.LetStmt b => evalBlock regs b
-      | Ast.EmptyStmt => Mach.Undef
       | Ast.TryStmt { block, catches, finally } =>
         evalTryStmt regs block catches finally
       | Ast.SwitchTypeStmt { cond, ty, cases } =>
@@ -5312,6 +5357,23 @@ and evalClassBlock (regs:Mach.REGS)
         evalBlock classRegs block
     end
 
+(* SPEC
+
+fun evalIfStatement (env: ENV)
+                    (conditionExpr: Ast.EXPRESSION)
+                    (thenStmt: Ast.STATEMENT)
+                    (elseStmt: Ast.STATEMENT)
+    : Mach.VALUE =
+    let
+        val conditionValue = evalExpr regs conditionExpr
+        val booleanConditionValue = toBoolean conditionValue
+    in
+        if booleanConditionValue
+        then evalStmt env thenStmt
+        else evalStmt env elseStmt
+    end
+
+*)
 
 and evalIfStmt (regs:Mach.REGS)
                (cnd:Ast.EXPR)
@@ -5327,6 +5389,19 @@ and evalIfStmt (regs:Mach.REGS)
         else evalStmt regs els
     end
 
+(* SPEC
+
+fun evalLabeledStatement (env: ENV)
+                         (label: Ast.IDENT)
+                         (stmt: Ast.STMT)
+    : Mach.VALUE =
+    evalStmt env stmt
+    handle BreakException exnLabel =>
+           if labelMatch [label] exnLabel
+           then Mach.Undef
+           else raise BreakException exnLabel
+
+*)
 
 and evalLabelStmt (regs:Mach.REGS)
                   (lab:Ast.IDENT)

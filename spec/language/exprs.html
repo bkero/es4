@@ -18,44 +18,44 @@ A value expression has the concrete syntax of //ThisExpression//, //LetExpressio
 and the abstract form of //LiteralExpr//, //ListExpr//, //LexicalRef//, //ObjectRef//,
 //LetExpr//, //TerneryExpr//, ....
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="ast.sml" name="datatype EXPRESSION">
 
 === Null Literal ===
 
 === Double Literals ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalDoubleLiteral">
 
 === Decimal Literals ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalDecimalLiteral">
 
 === Boolean Literals ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalBooleanLiteral">
 
 === String Literals ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalStringLiteral">
 
 === Object Initialisers ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalObjectInitialiser">
 
 === Array Initialisers ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalArrayInitialiser">
 
 === Regular Expression Initialisers ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalRegExpInitialiser">
 
 === This Expressions ===
@@ -64,33 +64,36 @@ This expressions can be modified by an optional keyword: ''generator'' or ''func
 The modifier indicates whether the expression refers to the current this object, 
 generator or function.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalThisExpression">
 
 === Let Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalLetExpr">
 
-=== Lexical References ===
+=== Get Expressions ===
 
-<IMPL>
+===== Semantics =====
+<INCLUDE file="eval.sml" name="fun evalGetExpr">
+<INCLUDE file="eval.sml" name="fun evalReference">
+<INCLUDE file="eval.sml" name="fun evalObjectRef">
 <INCLUDE file="eval.sml" name="fun evalLexicalRef">
 <INCLUDE file="eval.sml" name="fun getDefaultName">
 
 === Object References ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalObjectRef">
 
 === Call Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalCallExpr">
 
 === New Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalNewExpr">
 
 === Type Expressions ===
@@ -99,27 +102,27 @@ generator or function.
 
 === Apply Type Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalApplyTypeExpr">
 
 === Unary Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalUnaryExpr">
 
 === Binary Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalBinaryExpr">
 
 === Binary Type Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalBinaryTypeExpr">
 
 === Yield Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalYieldExpr">
 
 === Conditional Expressions ===
@@ -129,7 +132,7 @@ or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//.
  It is evaluated by the function //evalCondExpr// as 
 invoked by the function //evalExpr//.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalConditionalExpr">
 
 === Set Expressions ===
@@ -152,19 +155,19 @@ right side and the binary operation specified. In the case of the simple assignm
 operation, the value of the left side property is replaced with the value on the 
 right side.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalSetExpr">
 
 === Initialisation Expressions ===
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalInitExpr">
 
 == Type Expressions ==
 
 <p>A type expression evaluates to a normalized type value.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="ast.sml" name="datatype TYPE_EXPR">
 
 === Any Type Expressions ===
