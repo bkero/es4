@@ -653,11 +653,25 @@ and verifyExpr2 (env:ENV)
                                            " in object type ", LogErr.ty t];
                                   anyType)
                     end
+(*
+                  | Ast.InstanceType 
+*)
                   | _ => (warning ["ObjectRef on non-object type: ", LogErr.ty t]; 
                           anyType)
             end
 
 (*
+
+
+     and INSTANCE_TYPE =
+          {  name: NAME,
+             typeParams: IDENT list,      
+             typeArgs: TYPE_EXPR list,
+             nonnullable: bool,           (* redundant, ignored in verify.sml *)
+             superTypes: TYPE_EXPR list,  (* redundant, ignored in verify.sml *)
+             ty: TYPE_EXPR,               (* redundant, ignored in verify.sml *)
+             dynamic: bool }              (* redundant, ignored in verify.sml *)
+
 
 >> class d{var y;}
 >> var x:d
