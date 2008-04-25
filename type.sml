@@ -228,8 +228,6 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
                            nullable = nullable }
       | Ast.ObjectType fields => 
         Ast.ObjectType (mapObjTy f fields)
-      | Ast.LikeType t => 
-        Ast.LikeType (f t)
       | Ast.UnionType tys =>
         Ast.UnionType (map f tys)
       | Ast.ArrayType tys => 
@@ -297,7 +295,6 @@ fun normalizeNullsInner (ty:Ast.TYPE_EXPR)
             case ty of 
                 Ast.SpecialType Ast.Null => true
               | Ast.NullableType { expr, nullable } => nullable
-              | Ast.LikeType t => containsNull t
               | Ast.UnionType tys => List.exists containsNull tys
               | _ => false
 
@@ -305,9 +302,6 @@ fun normalizeNullsInner (ty:Ast.TYPE_EXPR)
             case ty of 
                 Ast.SpecialType Ast.Null => NONE
               | Ast.NullableType { expr, nullable } => stripNulls expr 
-              | Ast.LikeType t => (case stripNulls t of 
-                                       NONE => NONE
-                                     | SOME t1 => SOME (Ast.LikeType t1))
               | Ast.UnionType tys => 
                 (case List.mapPartial stripNulls tys of
                      [] => NONE
@@ -662,17 +656,9 @@ fun groundMatchesGeneric (b:BICOMPAT)
     else
     case (b, v, ty1, ty2) of 
 
-      (* A-LIKE-COV *)
-        (_, _, Ast.LikeType lt1, Ast.LikeType lt2) => 
-        groundMatchesGeneric b v lt2 lt2
-
-      (* A-LIKE *)
-      | (_, Covariant, _, Ast.LikeType lt2) => 
-        groundMatchesGeneric b v ty1 lt2
-
       (* A-GENERIC *)
       (* FIXME: need to alpha-rename so have consistent parameters *)
-      | (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
+        (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
         groundMatchesGeneric b v (#body lt1) (#body lt2)
 
       (* A-OBJ *)

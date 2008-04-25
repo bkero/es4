@@ -219,28 +219,29 @@ datatype PRAGMA =
 
 (* SPEC
 
-datatype TYPE_EXPR =
-         AnyType
-       | NullType
+datatype TYPE =
+         NullType
+       | AnyType
        | UndefinedType
-       | UnionType of TYPE_EXPR list
-       | ArrayType of TYPE_EXPR list
-       | TypeReference of REFERENCE
-       | ElementTypeRef of (TYPE_EXPR * int)
-       | FieldTypeRef of (TYPE_EXPR * IDENT)
-       | FunctionType of FUNC_TYPE
-       | ObjectType of FIELD_TYPE list
-       | LikeType of TYPE_EXPR
-       | AppType of 
-         { base: TYPE_EXPR,
-           args: TYPE_EXPR list }
-       | LamType of
-         { params: IDENT list,
-           body: TYPE_EXPR }
-       | NullableType of 
-         { expr:TYPE_EXPR,
-           nullable:bool }
-       | InstanceType of INSTANCE_TYPE
+       | IdentType  of IDENT_EXPR
+       | RecordType of  (IDENT_EXPR * TYPE) list
+       | ArrayType  of TYPE list
+       | UnionType  of TYPE list
+       | FunctionType of { thisType: TYPE option,
+                           params: TYPE list,
+                           minArgs: int, 
+                           hasRest: bool,
+                           result: TYPE
+                         }
+       | NullableType of (TYPE * bool)
+       | GenericType of (IDENT list * TYPE)
+       | AppType of (TYPE * TYPE list)
+       | ObjectRefType of (TYPE * IDENT_EXPR)
+       | NominalType of NAME
+
+generic fn has all type
+
+Tapp on generic fn has 
 
 *)
 
@@ -253,7 +254,6 @@ datatype TYPE_EXPR =
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
-       | LikeType of TYPE_EXPR
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }

@@ -617,9 +617,6 @@ and valAllocState (regs:Mach.REGS)
       | Ast.ObjectType _ =>
         Mach.ValProp (Mach.Null)
         
-      | Ast.LikeType ty => 
-        valAllocState regs ty
-        
       | Ast.AppType {base, ...} =>
         valAllocState regs base
         
@@ -922,7 +919,6 @@ and isDynamic (regs:Mach.REGS)
           | typeIsDynamic (Ast.ArrayType _) = true
           | typeIsDynamic (Ast.FunctionType _) = true
           | typeIsDynamic (Ast.ObjectType _) = true
-          | typeIsDynamic (Ast.LikeType _) = true
           | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body
           | typeIsDynamic (Ast.NullableType {expr, nullable}) = typeIsDynamic expr
           | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
@@ -3150,7 +3146,6 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.ObjectType ot => Mach.Null (* FIXME *)
-      | Ast.LikeType lt => Mach.Null (* FIXME *)
       | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
       | _ => Mach.Null (* FIXME *)
@@ -3598,11 +3593,11 @@ and evalOperatorIs (regs:Mach.REGS)
             end
     in
         case te of 
-            (* IS-LIKE *)
+        (*    (* IS-LIKE *)
             Ast.LikeType lte => isLike v lte
                                 
           (* IS-OK *)
-          | _ => vt <* te
+          |*) _ => vt <* te
     end
 
 (* SPEC

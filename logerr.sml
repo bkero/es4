@@ -201,8 +201,6 @@ fun ty t =
 
           | Ast.ObjectType fields => 
 	    "{" ^ fieldList fields ^ "}"
-          | Ast.LikeType t => 
-	    "like(" ^ (ty t) ^ ")"
           | Ast.AppType {base, args} => 
 	    (ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NullableType { expr, nullable } => 

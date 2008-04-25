@@ -1851,8 +1851,6 @@ and defTypeExpr (env:ENV)
         Ast.ArrayType (map (defTypeExpr env) tys)
       | Ast.ObjectType tys =>
         Ast.ObjectType (map (defFieldType env) tys)
-      | Ast.LikeType ty => 
-        Ast.LikeType (defTypeExpr env ty)
       | Ast.NullableType { expr, nullable } =>
         Ast.NullableType { expr = defTypeExpr env expr,
                            nullable = nullable }
