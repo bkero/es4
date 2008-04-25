@@ -1,13 +1,453 @@
-Definitions are introduced by 'var', 'function', 'let', 'const', 'class', 'interface', 'type', 'namespace'.
+= Definitions =
 
-Definitions have a scope.
+<hr>
+<pre>
+NAME:                       "Definitions"
+FILE:                       spec/language/definitions.html
+CATEGORY:                   Expressions 
+SOURCES:                    ?
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+</pre>
+<hr>
 
-Scopes are:
-  - global scope (for class, interface, type, namespace)
-  - block scope (for let, function, const)
-  - function scope (for hoisted vars only)
-  - expression scope (for let-expressions)
-  - class scope (static, instance?, interface?) (for var, function, const, type, namespace)
+== Overview ==
 
-Definitions bind names that are visible in the entire scope.
+=== Binding forms and scopes ===
+
+<P> (Some of this may belong elsewhere in the spec but I felt it was
+necessary to gather it all here, for the moment.)
+
+<P> //Names// are //bound// in //scopes// by //defining forms// and
+//binding forms//.
+
+<P> The defining forms are //VariableDefinition//,
+//FunctionDefinition//, //ClassDefinition//, //InterfaceDefinition//,
+//TypeDefinition//, //NamespaceDefinition//.  Except in block scopes
+(see below) a defining form permits the name to be qualified by a
+namespace.  The current default namespace is used if no qualifier is
+present.
+
+<P> (The initial default namespace in any block scope is ''public'', and it is
+not legal to set a different default namespace in a block scope.
+Therefore all names bound in block scopes are in the ''public''
+namespace.)
+
+<P> The binding forms are //FunctionExpression//, //LetExpression//,
+//CatchClause//, //TypeCaseElement//, //LetStatement//,
+//LetBlockStatement//, //ForStatement//, and //ArrayComprehension//.
+The binding forms do not permit names to be qualified by namespaces;
+all names bound by these forms are in the ''public'' namespace.
+
+<P> Names can be //created// in the global scope at run-time by means
+of assignment.  (Run-time creation of names is not possible in strict
+code.)  These names can have non-''public'' namespace qualifiers.
+
+<P> Names are also //introduced// in scopes by the //WithStatement//.
+(The //WithStatement// is disallowed in strict code.)
+
+<P> Bound, created, and introduced names are visible in the entire
+scope of the binding.  However, scoping is static -- it is determined
+by the source text -- and bindings in inner scopes can //shadow//
+bindings in outer scopes.
+
+<P> Names that are introduced by defining forms and binding forms are
+//fixtures//: they are guaranteed always to be present at run-time.
+
+<P> The following are the scopes and the forms that introduce names in
+those scopes:
+
+<UL>
+  <LI> The global scope is shared between multiple //Programs//.  It
+  contains pre-defined bindings (the language-defined libraries and
+  any host-defined extensions) and is extended when definitions have
+  an effect on it.  A possibly unbounded sequence of //Programs//
+  operates upon the global scope in a linear order.  A definition
+  introduced by a later //Program// is visible to every earlier
+  //Program//.
+
+  <P > The forms that introduce names into the global environment are
+  //VariableDefinition//, //ClassDefinition//,
+  //InterfaceDefinition//, //TypeDefinition//,
+  //NamespaceDefinition//, //FunctionDefinition//, and
+  //AssignmentStatement//.
+
+
+  <LI> The class static scope extends from the left curly brace that
+  starts the class body to the right curly brace that ends the class
+  body.  The class static scope is nested within the global scope.
+
+  <P > The forms that introduce names into the class static scope are
+  the ''static'' annotated forms of //VariableDefinition//,
+  //TypeDefinition//, //NamespaceDefinition//, and
+  //FunctionDefinition//.  The class static scope cannot be extended
+  at run-time or by definitions following the right brace of the class
+  body.
+
+  <P > The outer scope of a function defined in the class static scope
+  is that class static scope.
+
+
+  <LI> The class instance scope is defined by multiple disjoint pieces
+  of text.  It extends from the left curly brace that starts the class
+  body to the right curly brace that ends the class body.  It also
+  incorporates the class instance scope of its direct superclass
+  (which incorporates the class instance scope of //its// direct
+  superclass, and so on).
+
+  <P > The class instance scope for a class definition is nested within
+  the class static scope for that definition.
+
+  <P > The forms that introduce names into the class instance scope are
+  //VariableDefinition// and //FunctionDefinition//.
+
+  <P > The outer scope of a function defined in the class instance
+  scope is that instance scope; however, a function inherited from a
+  superclass is closed in the instance scope of the class from which
+  it is inherited.
+
+
+  <LI> The function scope extends from the left parenthesis of the
+  function parameter list through the right curly brace that ends the
+  function body (or the end of the expression, for an expression
+  closure).
+
+  <P > Since a static initializer block for a class is treated as an
+  anonymous function, the function scope extends also from the left
+  curly brace of the initializer block through the closing right curly
+  brace.
+
+  <P > (Constructor scope?)
+
+  <P > The forms that introduce names into a function scope are
+  //VariableDefinition// and //FunctionDefinition//.
+
+
+  <LI> The block scope is introduced by the left curly brace of
+  certain source phrases (//Block//, //SwitchStatement//,
+  //CatchClause//, //TypeCaseElement//, and //LetBlockStatement//) and
+  extends to the matching right curly brace. 
+
+  <P > The forms that introduce names into a block scope are
+  //VariableDefinition// and //FunctionDefinition//.
+  //LetBlockStatement//, //CatchClause//, and //TypeCaseElement//.
+
+
+  <LI> The statement scope is introduced by a binding statement form
+  (a //WithStatement// or a binding //ForStatement//) and extends
+  through the end of the statement's substatement.
+
+  <P > There are no forms to introduce new names into statement scopes
+  apart from the binding statement forms themselves.
+
+
+  <LI> The expression scope is introduced by the left parenthesis of a
+  //LetExpression//, the name of a named //FunctionExpression//, or
+  the left square bracket of an //ArrayComprehension//.  The scope
+  extends to the end of the //LetExpression//, the end of the
+  //FunctionExpression//, or to the matching right square bracket of
+  the array comprehension.
+
+  <P > There are no forms to introduce new names into expression scopes
+  except the names introduced by those expression forms themselves:
+  the names introduced in the //LetExpression// head, the name of the
+  //FunctionExpression//, and the names introduced by ''for'' and
+  ''let'' clauses in the //ArrayComprehension//.
+  
+</UL>
+
+<P> As a rule it is not legal to introduce the same name in the same
+scope more than once.  (Note in particular that top-level bindings in
+a function are bound in the same scope as the function's parameters
+and its ''arguments'' object.)
+
+<P> However, in "strict" code more than one ''var'' (or ''let'')
+binding can introduce the same name in the same global, function, or
+block scope, provided the two bindings have the same type annotation
+(or no annotation at all).  The binding keyword used to bind the name
+must be the same in all the binding forms that introduce the name.
+(Parameters and the ''arguments'' object are assumed to be bound by
+some system-internal binding form, not ''var'', and duplicate
+parameter names are not allowed.)
+
+<P> Additionally, in "standard" mode the following are also allowed
+(in order to be compatible with ES3):
+
+<UL>
+
+  <LI> Parameter bindings and the ''arguments'' binding are assumed to
+  be bound as if by ''var'', so duplicate parameter names are allowed,
+  as are ''var'' bindings in a function body that bind names that are
+  also bound as parameters.
+
+  <LI> Multiple ''var'' and ''function'' forms may bind the same name,
+  provided the bindings are all unannotated.
+  
+</UL>
+
+=== Note on shadowing ===
+
+<P> "use namespace" controls the shadowing, to an extent.  A shadowed
+identifier in a base class may sometimes be made visible in a subclass
+by means of a //SuperExpression//.
+
+=== Source-to-source transformations ===
+
+<P> It's probably useful to note the following rewrites:
+
+{{{
+    let (a=b, c=d) {
+        ...
+    }
+}}}
+
+becomes
+
+{{{
+    {
+        let T1 = b, T2 = d
+        {
+            let a = T1, b = T2
+            {
+                ...
+            }
+        }
+    }
+}}}
+
+<P> While this:
+
+{{{
+    for ( let i=j ; i < n ; i++ )
+        ...
+}}}
+
+becomes this:
+
+{{{
+    let (T=j) {
+        let i;
+        for ( i=T ; i < n ; i++ )
+            ...
+    }
+}}}
+
+<P> And this:
+
+{{{
+    var x = function f() { ... }
+}}}
+
+becomes this:
+
+{{{
+    var x = let (f = function() { ...}) f
+}}}
+
+<P> Finally, an array comprehension that binds names:
+
+{{{
+    [i*j+k for (i in ...) for (j in ...) let (k = ...)]
+}}}
+
+becomes:
+
+{{{
+    (function () {
+        let i, j, k;
+        let T = []
+        for (i in ...) {
+            for (j in ...) {
+                k = ...;
+                T[T.length] = i*j+k
+            }
+        }
+        return T;
+    })()
+}}}
+
+<FIXME> Note that the names are not bound by the ''for'' and ''let''
+clauses, this makes a difference if the array initializer expression
+captures them.  I suspect that's probably a bug, but it's how Brendan
+explained it.
+
+
+== Forward definitions ==
+
+<P> The following kinds of forward definition are available and are
+legal on the top level only.  (It would make syntactic sense to allow
+forward static ''type'' definitions in classes but since the type
+would have to be introduced in the class body anyway it has no(?)
+utility.)
+
+{{{
+    ns [dynamic] [final] class Cls.&lt;T,...&gt;
+    ns interface Iface.&lt;T,...&gt;
+    ns type T.&lt;T,...&gt;
+}}}
+
+
+== Initialization ==
+
+<P> There is an order here.  Following is a sketch of how I think it
+needs to work.  I haven't yet looked at the reference implementation.
+
+<UL>
+  <LI> All names introduced in the scope are defined in the scope.
+  Names that would replace existing forward-declared bindings are
+  ignored (provided that ...).  Names that would replace existing reserved
+  names cause errors to be signalled (obviously only the first such
+  name can be detected).
+
+  <LI> Namespace definitions are evaluated in an order such that there
+  are no forward references during evaluation.  Circularities cause
+  syntax errors.
+
+  <LI> Type definitions are evaluated in an order such that there are
+  no forward references during type expression evaluation.
+  Forward-declared types are initialized with placeholder type objects
+  at the outset.  If a type definition names a forward-declared type
+  name then the definition must match the particulars of the forward
+  declaration (type parameters).  If a forward declaration names an
+  existing forward declaration or an actual definition then the
+  forward declaration must match the particulars of the existing name.
+
+  <LI> Interface definitions are evaluated in an order such that there
+  are no forward references during interface definition.
+  Forward-declared interfaces are initialized with placeholder
+  interface objects.  If an interface definition names a forward
+  declared binding then there must be a match.  etc.
+
+  <LI> Class definitions are evaluated in an order that etc.  Note
+  that this does not require the base classes to be available, nor
+  does it require types referenced from the class body to be
+  available, but everything that's not available must be present as a
+  forward definition.
+
+  <LI> Functions are installed in function bindings, in file
+  definition order.
+
+  <LI> Variables not also named by functions are given undefined
+  values (per ES3)
+
+  <LI> The code in the scope, if any, is run in file definition order.
+  This includes running static class initializers are run in file
+  definition order.  When the class initializers are run, all the
+  types referenced by static parts of the class must be fully
+  available: all forward references must be resolved.
+
+  <LI> When the (dynamically) first instance of a class is created
+  sometime later the instance template is initialized.  At that point,
+  all base classes and all types used by instance methods and instance
+  variables must be fully resolved.
+
+</UL>
+
+<P> The static initializer for a parameterized class may be run
+multiple times, once for each first instantiation of the class.
+Instantiations must be hash-consed; ''Cls.&lt;double&gt;'' denotes the
+same class everywhere and the static initializer is only run once.
+
+
+== NamespaceDefinition ==
+
+<P> A //NamespaceDefinition// introduces an immutable, initialized
+binding for a (possibly qualified) name into the appropriate scope.
+
+<P> (To be replaced by the ASTs eventually.)
+
+<pre>
+    ns namespace N1
+    ns namespace N2 = N1
+    ns namespace N3 = "org.ecmascript.es4"
+</pre>
+
+<P> The value of the new binding is a ''Namespace'' object.
+
+<P> If the //NamespaceDefinition// has an initialization clause whose
+value is a //PrimaryName// then that name must resolve to a namespace
+value at compile time, and the value of the new binding is the same
+(in terms of ''==='') as the value of the initialization clause.
+
+<FIXME> For compile-time resolution of namespaces and types, see
+chapter 666.
+
+
+== TypeDefinition ==
+
+<P> A //TypeDefinition// introduces an immutable, initialized binding
+for a (possibly qualified) name into the appropriate scope.
+
+<pre>
+    ns type T = TypeExpression
+    ns type T.&lt;T1,...&gt; = TypeExpression
+</pre>
+
+<P> The //TypeExpression// is evaluated in the scope of the type
+definition.
+
+<P> The //TypeExpression// must be a compile-time resolvable type
+expression, possibly after substituting (?) the type parameters //T1//
+in //TypeExpression//.
+
+<FIXME> Substitution almost certainly not what we're looking for here.
+Presumably the chapter on types will have the right notions here.
+
+<P> The value of the new binding is an object implementing the
+''reflect::Type'' interface and one of its subinterfaces.  For
+example, a type object representing a uniont type implements the
+''reflect::UnionType'' interface.
+
+<P> If the //TypeExpression// is a //PrimaryName// then the value of
+the new binding is the same (in terms of ''==='') as the value of the
+//TypeExpression//.
+
+<FIXME> In fact, all types are normalized in some sense, so more types
+than that are equal and that fact needs to be reflected here.
+Presumably that also goes for resolved parameterzed types, but what
+about unresolved parameterized types?
+
+
+== VariableDefinition ==
+
+<P> We have ''var'', ''const'', and ''let'' forms.
+
+<P> ''var'' forms are hoisted out of block scopes to the enclosing
+global or function scope, so the scope of a ''var'' binding is not the
+block but the enclosing global or function scope.  But the initializer
+clause, if any, stays put.
+
+<P> ''let'' and ''const'' forms are not hoisted.  Their scope is the
+entire block, function, class, or global scope.  But the intializer
+clause, if any, stays put.
+
+<P> If a ''let'' or ''const'' bound variable is read before it has
+been initialized then a **ReferenceError** is thrown.
+
+<P> A ''const'' bound variable can be written at most once.  A
+subsequent write causes a **ReferenceError** to be thrown.
+
+<FIXME> It is probably a language bug -- resulting from the old
+thinking about ''let'' scope as different from ''var'' scope -- that
+''let'' can't be used to introduce names in class static and class
+instance scopes, since the read barrier check might be valuable there.
+
+
+== FunctionDefinition ==
+
+<P> We have the ''function'' and ''const function'' forms.
+
+
+== ClassDefinition ==
+
+
+== InterfaceDefinition ==
 

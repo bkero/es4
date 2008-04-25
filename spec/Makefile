@@ -50,6 +50,9 @@ output/strict-mode.html: strict-mode.html language/strict-mode.html $(LIBDEPS)
 output/object-literals.html: object-literals.html language/object-literals.html $(LIBDEPS)
 	python stitch.py object-literals.html output/object-literals.html
 
+output/definitions.html: definitions.html language/definitions.html $(LIBDEPS)
+	python stitch.py definitions.html output/definitions.html
+
 output/array-literals.html: array-literals.html language/array-literals.html $(LIBDEPS)
 	python stitch.py array-literals.html output/array-literals.html
 
