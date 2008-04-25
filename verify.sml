@@ -85,6 +85,7 @@ fun withRibOpt { returnType, strict, prog, ribs, stdTypes} extn =
 (* Local tracing machinery *)
 
 val warningsAreFailures = ref false
+val traceWarnings = ref false
 val doTrace = ref false
 val doTraceFrag = ref false
 val Any =  Ast.SpecialType Ast.Any
@@ -94,7 +95,10 @@ fun error ss = LogErr.verifyError ss
 fun warning ss = 
     if !warningsAreFailures 
     then error ss
-    else LogErr.log("STRICT-MODE WARNING: " :: ss)
+    else 
+        if !traceWarnings
+        then LogErr.log("STRICT-MODE WARNING: " :: ss)
+        else ()
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
