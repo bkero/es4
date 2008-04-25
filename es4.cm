@@ -67,8 +67,8 @@ is
     control.sml
     main.sml
     ast.sml (lambdasplit: infinity)
-    visit.sig
-    visit.sml
+    visitor.sig
+    visitor.sml
     pretty.sml
     pretty-cvt.sml
     pretty-rep.sml

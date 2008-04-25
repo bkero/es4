@@ -419,6 +419,7 @@ val rol_                     = fromString "rol"
 
 val ES4_                     = fromString "__ES4__"
 val ECMAScript4_Internal_    = fromString "ECMAScript4_Internal"
+val iterator_                = fromString "iterator"
 
 val Unicode_                 = fromString "Unicode"
 val helper_                  = fromString "helper"
