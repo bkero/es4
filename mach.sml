@@ -1208,12 +1208,18 @@ fun getNativeFunction (name:Ast.NAME)
 (* begin names experiment *)
 
 (*
+type IDENTIFIER = Ast.IDENTIFIER
+type NAMESPACE = Ast.NAMESPACE
+
 datatype NAME = Name of (NAMESPACE * IDENTIFIER)
 
 type ENV = REGS
 type CLASS = Ast.CLS
 type OBJECT = OBJ
 type DEFINITION = Ast.FIXTURE
+
+type NAMESPACE_SET = NAMESPACE list
+type OPEN_NAMESPACES = NAMESPACE_SET list 
 
 fun head x = hd x (* return the first element of a list *)
 fun tail x = tl x (* return all but the first element of a list *)
@@ -1224,9 +1230,9 @@ fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
       | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
       | _ => false
 
-fun matchNamespaces (ns1: NAMESPACE list, ns2: NAMESPACE list)
-    : NAMESPACE list =
-    (* compute the intersection of two NAMESPACE lists *)
+fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
+    : NAMESPACE_SET =
+    (* compute the intersection of two NAMESPACE_SETs *)
     []
 
 fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
@@ -1265,58 +1271,58 @@ fun getScope ({scope,...}: ENV)
 
 fun selectNamespacesByClass ([], _, _) = []
  |  selectNamespacesByClass (classes: CLASS list, 
-                             namespaces: NAMESPACE list, 
+                             namespaces: NAMESPACE_SET, 
                              identifier: IDENTIFIER)
     : NAMESPACE list =
     let
         val class = head (classes)
         val bindings = getInstanceBindings (class)
         val bindingNamespaces = getNamespaces (bindings, identifier)
-        val matches = matchNamespaces (bindingNamespaces, namespaces)
+        val matches = intersectNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
             [] => selectNamespacesByClass (tail (classes), namespaces, identifier)
           | _ => matches
     end
 
-fun selectNamespacesByScope ([], _) = []
- |  selectNamespacesByScope (namespacesList: NAMESPACE list list,
-                             namespaces: NAMESPACE list)
+fun selectNamespacesByOpenNamespaces ([], _) = []
+ |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
+                                      namespaces: NAMESPACE_SET)
     : NAMESPACE list =
     let
-        val matches = matchNamespaces (head (namespacesList), namespaces)
+        val matches = intersectNamespaces (head (namespacesList), namespaces)
     in
         case matches of
             [] => selectNamespacesByScope (tail (namespacesList), namespaces)
           | _ => matches
     end
 
-fun findNamesInObject (NONE, _, _) = []
-  | findNamesInObject (SOME object: OBJECT option, 
-                       namespaces: NAMESPACE list, 
-                       identifier: IDENTIFIER)
-    : NAMESPACE list =
+fun objectSearch (NONE, _, _) = []
+  | objectSearch (SOME object: OBJECT option, 
+                  namespaces: NAMESPACE_SET, 
+                  identifier: IDENTIFIER)
+    : NAMESPACE_SET =
     let
         val bindings = getBindings (object)
         val bindingNamespaces = getNamespaces (bindings, identifier)
         val matches = matchNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
-            [] => findNamesInObject (getPrototypeObject (object), namespaces, identifier)
+            [] => objectSearch (getPrototypeObject (object), namespaces, identifier)
           | _ => matches
     end
 
-fun findNamesInScope (NONE, _, _) = NONE
-  | findNamesInScope (SOME scope: SCOPE option, 
-                      namespaces: NAMESPACE list, 
+fun objectListSearch ([], _, _) = NONE
+  | objectListSearch (objects: OBJECT list, 
+                      namespaces: NAMESPACE_SET, 
                       identifier: IDENTIFIER)
-    : (OBJECT * NAMESPACE list) option =
+    : (OBJECT * NAMESPACE_SET) option =
     let
-        val object = getScopeObject (scope)
-        val matches = findNamesInObject (SOME object, namespaces, identifier)
+        val object = head (objects)
+        val matches = objectSearch (SOME object, namespaces, identifier)
     in
         case matches of
-            [] => findNamesInScope (getOuterScope (scope), namespaces, identifier)
+            [] => objectListSearch (tail (objects), namespaces, identifier)
           | _ => SOME (object, matches)
     end
 
@@ -1326,19 +1332,18 @@ fun inheritedClassesOf (object: OBJECT)
 
 exception RuntimeError of string
 
-fun findName (scope: SCOPE, identifier: IDENTIFIER)
+fun findName (objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
     : (OBJECT * NAME) option =
     let
-        val openNamespaces = getOpenNamespaces (SOME scope, identifier)
         val namespaces = List.concat (openNamespaces)
-        val matches = findNamesInScope (SOME scope, namespaces, identifier)
+        val matches = objectListSearch (objects, namespaces, identifier)
     in
         case matches of
             NONE => NONE
           | SOME (object, namespace :: []) => SOME (object, Name (namespace, identifier))
-          | SOME (object, _) =>
+          | SOME (object, namespaces) =>
             let
-                val matches = selectNamespacesByScope (openNamespaces, namespaces)
+                val matches = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
             in
                 case matches of
                     namespace :: [] => SOME (object, Name (namespace, identifier))
@@ -1346,8 +1351,7 @@ fun findName (scope: SCOPE, identifier: IDENTIFIER)
                   | _ =>
                     let
                         val classList = inheritedClassesOf (object)
-                        val matches = selectNamespacesByClass (classList, namespaces, 
-                                                               identifier)
+                        val matches = selectNamespacesByClass (classList, namespaces, identifier)
                     in case matches of
                         namespace :: [] => SOME (object, Name (namespace, identifier))
                       | [] => raise (RuntimeError "internal error")

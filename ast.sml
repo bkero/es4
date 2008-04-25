@@ -507,9 +507,6 @@ datatype FIXTURE =
        | VirtualValFixture of VIRTUAL_VAL_FIXTURE
 *)
 
-     and HEAD =
-         Head of RIB * INITS
-
 (* ClassFixture only at package level,
  * VirtualValFixture only in classes,
  *)
