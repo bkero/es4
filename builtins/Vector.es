@@ -424,10 +424,10 @@
         prototype function unshift(this:Vector.<*>, ...items)
             this.helper::unshift(items);
 
-        iterator function get(deep: boolean = false) : iterator::IteratorType.<uint>
+        iterator function get(deep: boolean = false) : iterator::IteratorType.<double>
             getKeys(deep);
 
-        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<uint> {
+        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<double> {
             let i = 0;
             let a = this;
             return { 
@@ -437,7 +437,7 @@
                             return i++;
                         throw iterator::StopIteration;
                     }
-            } : iterator::IteratorType.<uint>;
+            } : iterator::IteratorType.<double>;
         }
 
         iterator function getValues(deep: boolean = false) : iterator::IteratorType.<T> {
@@ -453,7 +453,7 @@
             } : iterator::IteratorType.<T>;
         }
 
-        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[uint,T]> {
+        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[double,T]> {
             let i = 0;
             let a = this;
             return { 
@@ -463,7 +463,7 @@
                         return [i,a[i++]];  // Yes, that's well-defined
                     throw iterator::StopIteration;
                 }
-            } : iterator::IteratorType.<[uint,T]>;
+            } : iterator::IteratorType.<[double,T]>;
         }
 
         informative function getLength()
@@ -481,7 +481,7 @@
         }
 
         informative function defaultValue(t) {
-            if (t === int || t === uint || t === double || t === decimal || t === Number)
+            if (t === double || t === decimal || t === Number)
                 return 0;
             if (t === string || t === String)
                 return "";

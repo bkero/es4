@@ -289,7 +289,7 @@ fun normalizeRefs (ty:Ast.TYPE_EXPR)
                                    
 (* ----------------------------------------------------------------------------- *)
 
-fun normalizeNulls (ty:Ast.TYPE_EXPR)
+fun normalizeNullsInner (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     let
         val nullTy = Ast.SpecialType Ast.Null
@@ -325,6 +325,11 @@ fun normalizeNulls (ty:Ast.TYPE_EXPR)
                 SOME t => t
               | NONE => Ast.UnionType []
     end
+
+fun normalizeNulls (ty:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR = 
+    mapTyExpr normalizeNulls (normalizeNullsInner ty)
+
 
 (* ----------------------------------------------------------------------------- *)
 (* FIXME: also need to normalize (C|D) and (D|C) to the same type.

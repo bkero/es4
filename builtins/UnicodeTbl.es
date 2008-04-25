@@ -69,7 +69,7 @@
     function expandTable(tbl, cc:double) {
         while (tbl.watermark < cc) {
             if (tbl.ptr == tbl.data.length)
-                tbl.watermark = uint.MAX_VALUE;
+                tbl.watermark = double.MAX_VALUE;
             else {
                 let c = tbl.data.charCodeAt(tbl.ptr++);
                 // 0x2D is '-', we're looking for '--'
