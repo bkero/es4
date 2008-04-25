@@ -1,0 +1,538 @@
+<html>
+<head>
+<title>Definitions, etc</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Definitions</h1>
+
+<hr>
+<pre>
+NAME:                       "Definitions"
+FILE:                       spec/language/definitions.html
+CATEGORY:                   Expressions 
+SOURCES:                    ?
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+</pre>
+<hr>
+
+<h2>Overview</h2>
+
+<h3>Binding forms and scopes</h3>
+
+<P><span class="pcounter"></span> (Some of this may belong elsewhere in the spec but I felt it was
+necessary to gather it all here, for the moment.)
+
+<P><span class="pcounter"></span> <i>Names</i> are <i>bound</i> in <i>scopes</i> by <i>defining forms</i> and
+<i>binding forms</i>.
+
+<P><span class="pcounter"></span> The defining forms are <i>VariableDefinition</i>,
+<i>FunctionDefinition</i>, <i>ClassDefinition</i>, <i>InterfaceDefinition</i>,
+<i>TypeDefinition</i>, <i>NamespaceDefinition</i>.  Except in block scopes
+(see below) a defining form permits the name to be qualified by a
+namespace.  The current default namespace is used if no qualifier is
+present.
+
+<P><span class="pcounter"></span> (The initial default namespace in any block scope is <code>public</code>, and it is
+not legal to set a different default namespace in a block scope.
+Therefore all names bound in block scopes are in the <code>public</code>
+namespace.)
+
+<P><span class="pcounter"></span> The binding forms are <i>FunctionExpression</i>, <i>LetExpression</i>,
+<i>CatchClause</i>, <i>TypeCaseElement</i>, <i>LetStatement</i>,
+<i>LetBlockStatement</i>, <i>ForStatement</i>, and <i>ArrayComprehension</i>.
+The binding forms do not permit names to be qualified by namespaces;
+all names bound by these forms are in the <code>public</code> namespace.
+
+<P><span class="pcounter"></span> Names can be <i>created</i> in the global scope at run-time by means
+of assignment.  (Run-time creation of names is not possible in strict
+code.)  These names can have non-<code>public</code> namespace qualifiers.
+
+<P><span class="pcounter"></span> Names are also <i>introduced</i> in scopes by the <i>WithStatement</i>.
+(The <i>WithStatement</i> is disallowed in strict code.)
+
+<P><span class="pcounter"></span> Bound, created, and introduced names are visible in the entire
+scope of the binding.  However, scoping is static -- it is determined
+by the source text -- and bindings in inner scopes can <i>shadow</i>
+bindings in outer scopes.
+
+<P><span class="pcounter"></span> Names that are introduced by defining forms and binding forms are
+<i>fixtures</i>: they are guaranteed always to be present at run-time.
+
+<P><span class="pcounter"></span> The following are the scopes and the forms that introduce names in
+those scopes:
+
+<UL>
+  <LI> The global scope is shared between multiple <i>Programs</i>.  It
+  contains pre-defined bindings (the language-defined libraries and
+  any host-defined extensions) and is extended when definitions have
+  an effect on it.  A possibly unbounded sequence of <i>Programs</i>
+  operates upon the global scope in a linear order.  A definition
+  introduced by a later <i>Program</i> is visible to every earlier
+  <i>Program</i>.
+
+  <P > The forms that introduce names into the global environment are
+  <i>VariableDefinition</i>, <i>ClassDefinition</i>,
+  <i>InterfaceDefinition</i>, <i>TypeDefinition</i>,
+  <i>NamespaceDefinition</i>, <i>FunctionDefinition</i>, and
+  <i>AssignmentStatement</i>.
+
+
+  <LI> The class static scope extends from the left curly brace that
+  starts the class body to the right curly brace that ends the class
+  body.  The class static scope is nested within the global scope.
+
+  <P > The forms that introduce names into the class static scope are
+  the <code>static</code> annotated forms of <i>VariableDefinition</i>,
+  <i>TypeDefinition</i>, <i>NamespaceDefinition</i>, and
+  <i>FunctionDefinition</i>.  The class static scope cannot be extended
+  at run-time or by definitions following the right brace of the class
+  body.
+
+  <P > The outer scope of a function defined in the class static scope
+  is that class static scope.
+
+
+  <LI> The class instance scope is defined by multiple disjoint pieces
+  of text.  It extends from the left curly brace that starts the class
+  body to the right curly brace that ends the class body.  It also
+  incorporates the class instance scope of its direct superclass
+  (which incorporates the class instance scope of <i>its</i> direct
+  superclass, and so on).
+
+  <P > The class instance scope for a class definition is nested within
+  the class static scope for that definition.
+
+  <P > The forms that introduce names into the class instance scope are
+  <i>VariableDefinition</i> and <i>FunctionDefinition</i>.
+
+  <P > The outer scope of a function defined in the class instance
+  scope is that instance scope; however, a function inherited from a
+  superclass is closed in the instance scope of the class from which
+  it is inherited.
+
+
+  <LI> The function scope extends from the left parenthesis of the
+  function parameter list through the right curly brace that ends the
+  function body (or the end of the expression, for an expression
+  closure).
+
+  <P > Since a static initializer block for a class is treated as an
+  anonymous function, the function scope extends also from the left
+  curly brace of the initializer block through the closing right curly
+  brace.
+
+  <P > (Constructor scope?)
+
+  <P > The forms that introduce names into a function scope are
+  <i>VariableDefinition</i> and <i>FunctionDefinition</i>.
+
+
+  <LI> The block scope is introduced by the left curly brace of
+  certain source phrases (<i>Block</i>, <i>SwitchStatement</i>,
+  <i>CatchClause</i>, <i>TypeCaseElement</i>, and <i>LetBlockStatement</i>) and
+  extends to the matching right curly brace. 
+
+  <P > The forms that introduce names into a block scope are
+  <i>VariableDefinition</i> and <i>FunctionDefinition</i>.
+  <i>LetBlockStatement</i>, <i>CatchClause</i>, and <i>TypeCaseElement</i>.
+
+
+  <LI> The statement scope is introduced by a binding statement form
+  (a <i>WithStatement</i> or a binding <i>ForStatement</i>) and extends
+  through the end of the statement's substatement.
+
+  <P > There are no forms to introduce new names into statement scopes
+  apart from the binding statement forms themselves.
+
+
+  <LI> The expression scope is introduced by the left parenthesis of a
+  <i>LetExpression</i>, the name of a named <i>FunctionExpression</i>, or
+  the left square bracket of an <i>ArrayComprehension</i>.  The scope
+  extends to the end of the <i>LetExpression</i>, the end of the
+  <i>FunctionExpression</i>, or to the matching right square bracket of
+  the array comprehension.
+
+  <P > There are no forms to introduce new names into expression scopes
+  except the names introduced by those expression forms themselves:
+  the names introduced in the <i>LetExpression</i> head, the name of the
+  <i>FunctionExpression</i>, and the names introduced by <code>for</code> and
+  <code>let</code> clauses in the <i>ArrayComprehension</i>.
+  
+</UL>
+
+<P><span class="pcounter"></span> As a rule it is not legal to introduce the same name in the same
+scope more than once.  (Note in particular that top-level bindings in
+a function are bound in the same scope as the function's parameters
+and its <code>arguments</code> object.)
+
+<P><span class="pcounter"></span> However, in "strict" code more than one <code>var</code> (or <code>let</code>)
+binding can introduce the same name in the same global, function, or
+block scope, provided the two bindings have the same type annotation
+(or no annotation at all).  The binding keyword used to bind the name
+must be the same in all the binding forms that introduce the name.
+(Parameters and the <code>arguments</code> object are assumed to be bound by
+some system-internal binding form, not <code>var</code>, and duplicate
+parameter names are not allowed.)
+
+<P><span class="pcounter"></span> Additionally, in "standard" mode the following are also allowed
+(in order to be compatible with ES3):
+
+<UL>
+
+  <LI> Parameter bindings and the <code>arguments</code> binding are assumed to
+  be bound as if by <code>var</code>, so duplicate parameter names are allowed,
+  as are <code>var</code> bindings in a function body that bind names that are
+  also bound as parameters.
+
+  <LI> Multiple <code>var</code> and <code>function</code> forms may bind the same name,
+  provided the bindings are all unannotated.
+  
+</UL>
+
+<h3>Note on shadowing</h3>
+
+<P><span class="pcounter"></span> "use namespace" controls the shadowing, to an extent.  A shadowed
+identifier in a base class may sometimes be made visible in a subclass
+by means of a <i>SuperExpression</i>.
+
+<h3>Source-to-source transformations</h3>
+
+<P><span class="pcounter"></span> It's probably useful to note the following rewrites:
+
+<PRE>
+    let (a=b, c=d) {
+        ...
+    }
+</PRE>
+
+becomes
+
+<PRE>
+    {
+        let T1 = b, T2 = d
+        {
+            let a = T1, b = T2
+            {
+                ...
+            }
+        }
+    }
+</PRE>
+
+<P><span class="pcounter"></span> While this:
+
+<PRE>
+    for ( let i=j ; i &#60; n ; i++ )
+        ...
+</PRE>
+
+becomes this:
+
+<PRE>
+    let (T=j) {
+        let i;
+        for ( i=T ; i &#60; n ; i++ )
+            ...
+    }
+</PRE>
+
+<P><span class="pcounter"></span> And this:
+
+<PRE>
+    var x = function f() { ... }
+</PRE>
+
+becomes this:
+
+<PRE>
+    var x = let (f = function() { ...}) f
+</PRE>
+
+<P><span class="pcounter"></span> Finally, an array comprehension that binds names:
+
+<PRE>
+    [i*j+k for (i in ...) for (j in ...) let (k = ...)]
+</PRE>
+
+becomes:
+
+<PRE>
+    (function () {
+        let i, j, k;
+        let T = []
+        for (i in ...) {
+            for (j in ...) {
+                k = ...;
+                T[T.length] = i*j+k
+            }
+        }
+        return T;
+    })()
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Note that the names are not bound by the <code>for</code> and <code>let</code>
+clauses, this makes a difference if the array initializer expression
+captures them.  I suspect that's probably a bug, but it's how Brendan
+explained it.
+
+
+<h2>Forward definitions</h2>
+
+<P><span class="pcounter"></span> The following kinds of forward definition are available and are
+legal on the top level only.  (It would make syntactic sense to allow
+forward static <code>type</code> definitions in classes but since the type
+would have to be introduced in the class body anyway it has no(?)
+utility.)
+
+<PRE>
+    ns [dynamic] [final] class Cls.&lt;T,...&gt;
+    ns interface Iface.&lt;T,...&gt;
+    ns type T.&lt;T,...&gt;
+</PRE>
+
+
+<h2>Initialization</h2>
+
+<P><span class="pcounter"></span> There is an order here.  Following is a sketch of how I think it
+needs to work.  I haven't yet looked at the reference implementation.
+
+<UL>
+  <LI> All names introduced in the scope are defined in the scope.
+  Names that would replace existing forward-declared bindings are
+  ignored (provided that ...).  Names that would replace existing reserved
+  names cause errors to be signalled (obviously only the first such
+  name can be detected).
+
+  <LI> Namespace definitions are evaluated in an order such that there
+  are no forward references during evaluation.  Circularities cause
+  syntax errors.
+
+  <LI> Type definitions are evaluated in an order such that there are
+  no forward references during type expression evaluation.
+  Forward-declared types are initialized with placeholder type objects
+  at the outset.  If a type definition names a forward-declared type
+  name then the definition must match the particulars of the forward
+  declaration (type parameters).  If a forward declaration names an
+  existing forward declaration or an actual definition then the
+  forward declaration must match the particulars of the existing name.
+
+  <LI> Interface definitions are evaluated in an order such that there
+  are no forward references during interface definition.
+  Forward-declared interfaces are initialized with placeholder
+  interface objects.  If an interface definition names a forward
+  declared binding then there must be a match.  etc.
+
+  <LI> Class definitions are evaluated in an order that etc.  Note
+  that this does not require the base classes to be available, nor
+  does it require types referenced from the class body to be
+  available, but everything that's not available must be present as a
+  forward definition.
+
+  <LI> Functions are installed in function bindings, in file
+  definition order.
+
+  <LI> Variables not also named by functions are given undefined
+  values (per ES3)
+
+  <LI> The code in the scope, if any, is run in file definition order.
+  This includes running static class initializers are run in file
+  definition order.  When the class initializers are run, all the
+  types referenced by static parts of the class must be fully
+  available: all forward references must be resolved.
+
+  <LI> When the (dynamically) first instance of a class is created
+  sometime later the instance template is initialized.  At that point,
+  all base classes and all types used by instance methods and instance
+  variables must be fully resolved.
+
+</UL>
+
+<P><span class="pcounter"></span> The static initializer for a parameterized class may be run
+multiple times, once for each first instantiation of the class.
+Instantiations must be hash-consed; <code>Cls.&lt;double&gt;</code> denotes the
+same class everywhere and the static initializer is only run once.
+
+
+<h2>NamespaceDefinition</h2>
+
+<P><span class="pcounter"></span> A <i>NamespaceDefinition</i> introduces an immutable, initialized
+binding for a (possibly qualified) name into the appropriate scope.
+
+<P><span class="pcounter"></span> (To be replaced by the ASTs eventually.)
+
+<pre>
+    ns namespace N1
+    ns namespace N2 = N1
+    ns namespace N3 = "org.ecmascript.es4"
+</pre>
+
+<P><span class="pcounter"></span> The value of the new binding is a <code>Namespace</code> object.
+
+<P><span class="pcounter"></span> If the <i>NamespaceDefinition</i> has an initialization clause whose
+value is a <i>PrimaryName</i> then that name must resolve to a namespace
+value at compile time, and the value of the new binding is the same
+(in terms of <code>===</code>) as the value of the initialization clause.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  For compile-time resolution of namespaces and types, see
+chapter 666.
+
+
+<h2>TypeDefinition</h2>
+
+<P><span class="pcounter"></span> A <i>TypeDefinition</i> introduces an immutable, initialized binding
+for a (possibly qualified) name into the appropriate scope.
+
+<pre>
+    ns type T = TypeExpression
+    ns type T.&lt;T1,...&gt; = TypeExpression
+</pre>
+
+<P><span class="pcounter"></span> The <i>TypeExpression</i> is evaluated in the scope of the type
+definition.
+
+<P><span class="pcounter"></span> The <i>TypeExpression</i> must be a compile-time resolvable type
+expression, possibly after substituting (?) the type parameters <i>T1</i>
+in <i>TypeExpression</i>.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Substitution almost certainly not what we're looking for here.
+Presumably the chapter on types will have the right notions here.
+
+<P><span class="pcounter"></span> The value of the new binding is an object implementing the
+<code>reflect::Type</code> interface and one of its subinterfaces.  For
+example, a type object representing a uniont type implements the
+<code>reflect::UnionType</code> interface.
+
+<P><span class="pcounter"></span> If the <i>TypeExpression</i> is a <i>PrimaryName</i> then the value of
+the new binding is the same (in terms of <code>===</code>) as the value of the
+<i>TypeExpression</i>.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  In fact, all types are normalized in some sense, so more types
+than that are equal and that fact needs to be reflected here.
+Presumably that also goes for resolved parameterzed types, but what
+about unresolved parameterized types?
+
+
+<h2>VariableDefinition</h2>
+
+<P><span class="pcounter"></span> We have <code>var</code>, <code>const</code>, and <code>let</code> forms.
+
+<P><span class="pcounter"></span> <code>var</code> forms are hoisted out of block scopes to the enclosing
+global or function scope, so the scope of a <code>var</code> binding is not the
+block but the enclosing global or function scope.  But the initializer
+clause, if any, stays put.
+
+<P><span class="pcounter"></span> <code>let</code> and <code>const</code> forms are not hoisted.  Their scope is the
+entire block, function, class, or global scope.  But the intializer
+clause, if any, stays put.
+
+<P><span class="pcounter"></span> If a <code>let</code> or <code>const</code> bound variable is read before it has
+been initialized then a <b>ReferenceError</b> is thrown.
+
+<P><span class="pcounter"></span> A <code>const</code> bound variable can be written at most once.  A
+subsequent write causes a <b>ReferenceError</b> to be thrown.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  It is probably a language bug -- resulting from the old
+thinking about <code>let</code> scope as different from <code>var</code> scope -- that
+<code>let</code> can't be used to introduce names in class static and class
+instance scopes, since the read barrier check might be valuable there.
+
+
+<h2>FunctionDefinition</h2>
+
+<P><span class="pcounter"></span> We have the <code>function</code> and <code>const function</code> forms.
+
+
+<h2>ClassDefinition</h2>
+
+
+<h2>InterfaceDefinition</h2>
+
+
+
+</body>
+</html>
