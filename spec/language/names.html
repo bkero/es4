@@ -189,11 +189,13 @@ object and a matching namepace set can therefore be assumed for the remainder of
 namespace. If multiple names match, a matching subset is selected using open namespaces based
 namespace selection.
 
-<p>Again, if the selection causes no namespaces to match, an error is signaled. If one namepace
-matches, resolution completes with a name formed from the identifier and that namespace. If multiple
-namespaces still match, a further subset is selected using the class based namespace selection,
-considering the classes inherited by the object. This is the final attempt: exactly one namespace
-must match, or else an error will be signaled.
+<p>Again, if the selection causes no namespaces to match, an error is signaled. 
+
+<p>If one namepace matches, resolution completes with a name formed from the identifier and that namespace. 
+
+<p>If multiple namespaces still match, a further subset is selected using the class based namespace
+selection, considering the classes inherited by the object. This is the final attempt: exactly one
+namespace must match, or else an error will be signaled.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="fun findName">
@@ -335,29 +337,3 @@ fun getOpenNamespaces (env: ENV, identifier: IDENTIFIER)
 <INCLUDE file="mach.sml" name="fun head">
 <INCLUDE file="mach.sml" name="fun tail">
 -->
-
-== Phased Identifier Resolution ==
-
-<p>To avoid the problem of dynamic properties shadowing fixed properties, it is necessary to
-resolve names in such as way that gives priority to fixed properties. The relevant principle
-is that if an identifier may be resolved in an earlier phase (e.g. the name of a type during
-program initialization), then its meaning shall remain fixed over the life of the program.
-Conceptually, this means that we need to model in the lookup mechanism the phases of execution 
-that involve name resolution.
-
-===== Implemenation Note =====
-
-<p>While this two-phase algorithm might appear to double the amount
-of work to do, in practical implementations it does the opposite,
-greatly reducing the cost of identifier resolution. The reason is that
-the set of fixed properties visible in many contexts can be calculated
-statically during parsing and compilation, and identifier references
-can be resolved to names once during this stage, and never again at
-runtime.
-
-<p>Even if identifier resolution is delayed until runtime, a successful
-resolution to a fixed property can frequently be cached -- for
-example in cases of unqualified lexical references, or unqualified
-object references on typed objects -- because no new fixed property may be
-introduced at runtime that would make a successful match
-ambiguous.
