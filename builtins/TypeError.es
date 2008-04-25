@@ -49,10 +49,6 @@
  * verified.
  */
 
-package
-{
-    use namespace __ES4__;
-
     /* E262-3 15.11.6.5; 15.11.7 */
     public dynamic class TypeError extends Error
     {
@@ -73,4 +69,3 @@ package
         /* INFORMATIVE */
         public prototype var message = "Operand does not have the expected type";
     }
-}

@@ -37,11 +37,7 @@
  * Status: not reviewed against specs, not tested.
  */
 
-package
-{
-    import ECMAScript4_Internal.*;
-
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     __ES4__ class Vector.<T>
     {

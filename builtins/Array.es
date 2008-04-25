@@ -38,14 +38,9 @@
  * Status: not reviewed against specs.
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import ECMAScript4_Internal.*;
-    import JSON.*;
+    use namespace ECMAScript4_Internal;
 
     // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
@@ -738,4 +733,3 @@ package
 
         qsort( lo, hi );
     }
-}

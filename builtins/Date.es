@@ -43,16 +43,12 @@
  * extensive use of expression functions.
  */
 
-package
-{
-    import ECMAScript4_Internal.*;
-    import JSON.*;
-
-    use default namespace public;
+    use namespace ECMAScript4_Internal;
     use namespace helper;
     use namespace informative;
     use namespace intrinsic;
-    use namespace __ES4__;
+
+    use default namespace public;
 
     const NOARG = {};
 
@@ -1052,4 +1048,3 @@ package
             s = "0" + s;
         return s;
     }
-}

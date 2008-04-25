@@ -41,12 +41,10 @@
  * "Math", and for intrinsic methods on objects of this type.
  */
 
-package MathInternals
-{
+    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
-    use namespace __ES4__;
 
-    import ECMAScript4_Internal.*;
+    ECMAScript4_Internal namespace MathInternals;
 
     type AnyNumber = (double|decimal);
     type FloatNumber = (double|decimal);
@@ -114,7 +112,7 @@ package MathInternals
         return r;
     }
 
-    public dynamic final class Math
+    MathInternals dynamic final class Math
     {
         /* The intrinsics can't be static, because if they are they
          * won't be visible through an object reference.
@@ -512,16 +510,16 @@ package MathInternals
         }
 
         // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
-        public const E: double = double.E;
-        public const LN10: double = double.LN10;
-        public const LN2: double = double.LN2;
-        public const LOG2E: double = double.LOG2E;
-        public const LOG10E: double = double.LOG10E;
-        public const PI: double = double.PI;
-        public const SQRT1_2: double = double.SQRT1_2;
-        public const SQRT2: double = double.SQRT2;
+        MathInternals const E: double = double.E;
+        MathInternals const LN10: double = double.LN10;
+        MathInternals const LN2: double = double.LN2;
+        MathInternals const LOG2E: double = double.LOG2E;
+        MathInternals const LOG10E: double = double.LOG10E;
+        MathInternals const PI: double = double.PI;
+        MathInternals const SQRT1_2: double = double.SQRT1_2;
+        MathInternals const SQRT2: double = double.SQRT2;
 
-        function Math() {
+        MathInternals function Math() {
         }
 
         // E262 specifies that length=2 for these.
@@ -529,31 +527,9 @@ package MathInternals
         // min.length = 2;
 
     }
-}
 
-package
-{
-    // A curious note: 'import helper = ECMAScript4_Internal.helper'
-    // should also work, but presently does not. A bug!
-    //
-    // Also strange/disquieting aspect of the language design: such an
-    // aliased import causes the establishment of a new permanent
-    // public alias-fixture (currently implemented with getters and
-    // setters) named 'helper', whereas 'import
-    // ECMAScript4_Internal.*' merely opens the package namespace for
-    // us to use in multiname lookup here.
-    //
-    // What I *want* is to say "I'd like to use the namespace helper
-    // from ECMAScript4_Internal, and call it helper, just here".
-    //
-    // As far as I know there's no way to say that in the current language,
-    // which is pretty bad. It's similar to the problem of not being able to
-    // denote the public namespace in a different package.
 
-    import MathInternals.Math;
-    import ECMAScript4_Internal.*;
-
-    intrinsic const Math : MathInternals.Math = new MathInternals.Math();
+    intrinsic const Math : MathInternals::Math = new MathInternals::Math();
 
     // 15.8.2 Public function Properties of the Math Object.  These
     // are {DE} only.
@@ -649,4 +625,3 @@ package
     
     Math.public::tan = 
         function (x) intrinsic::Math.intrinsic::tan(helper::toAnyNumber(x));
-}

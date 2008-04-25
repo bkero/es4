@@ -40,36 +40,8 @@
  * Status: Complete; Not reviewed against spec.
  */
 
-// Unspeakably vile hack, part the first.
-//
-// There are several language and RI bugs being worked around here.
-//
-// The first (#368) is that "private" is not open in prototype methods,
-// so we define our own "Private" namespace to hack around that.
-//
-// The second is that nothing can precede package definitions in
-// a file, so we hack around that by putting the definition inside
-// a package that's private to this file (by virtue of having
-// a distinguished name).
 
-package org.ecmascript.vilehack.Object {
-    public namespace Private = "Object private";
-}
-
-package
-{
-    import org.ecmascript.vilehack.Object.*;
-
-    use namespace __ES4__;
-
-    // IMPLEMENTATION ARTIFACT.
-    //
-    // Importing EcmaScript4_Internal here is not good enough,
-    // probably because it's probably loaded later in boot.sml.  So
-    // redefine the namespace locally with the right public tag; this
-    // causes no problems.
-
-    namespace helper = "helper";
+    use namespace ECMAScript4_Internal;
 
     public dynamic class Object
     {
@@ -87,12 +59,12 @@ package
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         public prototype function toString()
-            this.Private::toString();
+            this.private::toString();
 
         intrinsic function toString() : string
-            Private::toString();
+            private::toString();
 
-        Private function toString(): string
+        private function toString(): string
             "[object " + helper::getClassName() + "]";
 
         helper function getClassName()
@@ -100,29 +72,29 @@ package
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         public prototype function toLocaleString()
-            this.Private::toLocaleString();
+            this.private::toLocaleString();
 
         intrinsic function toLocaleString() : string
-            Private::toLocaleString();
+            private::toLocaleString();
 
-        Private function toLocaleString()
+        private function toLocaleString()
             this.toString();
 
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
         public prototype function valueOf()
-            this.Private::valueOf();
+            this.private::valueOf();
 
         intrinsic function valueOf() : Object
-            Private::valueOf();
+            private::valueOf();
 
-        Private function valueOf(): Object
+        private function valueOf(): Object
             this;
 
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         public prototype function hasOwnProperty(name)
-            this.Private::hasOwnProperty(helper::toEnumerableId(name));
+            this.private::hasOwnProperty(helper::toEnumerableId(name));
 
         // Bootstrapping barfs if this does not go directly to the magic,
         // though I don't know why.  Could be that Object is not fully
@@ -130,18 +102,18 @@ package
         intrinsic function hasOwnProperty(name: EnumerableId): boolean
             magic::hasOwnProperty(this, name);
 
-        Private function hasOwnProperty(name: EnumerableId): boolean
+        private function hasOwnProperty(name: EnumerableId): boolean
             magic::hasOwnProperty(this, name);
 
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
         public prototype function isPrototypeOf(value)
-            this.Private::isPrototypeOf(value);
+            this.private::isPrototypeOf(value);
 
         intrinsic function isPrototypeOf(value): boolean
-            Private::isPrototypeOf(value);
+            private::isPrototypeOf(value);
 
-        Private function isPrototypeOf(value): boolean {
+        private function isPrototypeOf(value): boolean {
             if (!(value is Object))
                 return false;
 
@@ -159,12 +131,12 @@ package
         /* E262-4 draft proposals:enumerability */
 
         public prototype function propertyIsEnumerable(name)
-            this.Private::propertyIsEnumerable(helper::toEnumerableId(name));
+            this.private::propertyIsEnumerable(helper::toEnumerableId(name));
 
         intrinsic function propertyIsEnumerable(name: EnumerableId): boolean 
-            Private::propertyIsEnumerable(name);
+            private::propertyIsEnumerable(name);
 
-        Private function propertyIsEnumerable(name) {
+        private function propertyIsEnumerable(name) {
             if (!magic::hasOwnProperty(this, name))
                 return false;
             return !magic::getPropertyIsDontEnum(this, name);
@@ -172,13 +144,13 @@ package
 
         /* Old code
         prototype function propertyIsEnumerable(name, flag=undefined)
-            this.Private::propertyIsEnumerable(helper::toEnumerableId(name), 
+            this.private::propertyIsEnumerable(helper::toEnumerableId(name), 
                                                flag === undefined ? flag : boolean(flag));
 
         intrinsic function propertyIsEnumerable(name: EnumerableId, flag: (boolean|undefined) = undefined): boolean 
-            Private::propertyIsEnumerable(name, flag);
+            private::propertyIsEnumerable(name, flag);
 
-        Private function propertyIsEnumerable(name, flag) {
+        private function propertyIsEnumerable(name, flag) {
             if (!magic::hasOwnProperty(this, name))
                 return false;
 
@@ -191,16 +163,16 @@ package
         */
 
         public prototype function __defineProperty__(name, value, enumerable=undefined, removable=undefined, writable=undefined)
-            this.Private::__defineProperty__(helper::toEnumerableId(name),
+            this.private::__defineProperty__(helper::toEnumerableId(name),
                                              value,
                                              enumerable === undefined ? true : boolean(enumerable),
                                              removable === undefined ? true : boolean(removable),
                                              writable === undefined ? true : boolean(writable));
 
         intrinsic function __defineProperty__(name: EnumerableId, value, enumerable:boolean=true, removable:boolean=true, writable:boolean=true): void
-            Private::__defineProperty__(name, value, enumerable, removable, writable);
+            private::__defineProperty__(name, value, enumerable, removable, writable);
 
-        Private function __defineProperty__(name, value, enumerable, removable, writable) {
+        private function __defineProperty__(name, value, enumerable, removable, writable) {
             if (!magic::hasOwnProperty(this, name))
                 throw new TypeError(/* Property exists */);
 
@@ -217,4 +189,3 @@ package
             magic::setPropertyIsReadOnly(this, name, !writable);
         }
     }
-}

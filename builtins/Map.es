@@ -69,11 +69,7 @@
  * to create it.
  */
 
-package
-{
-    import ECMAScript4_Internal.*;
-
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     __ES4__ dynamic class Map.<K,V>
     {

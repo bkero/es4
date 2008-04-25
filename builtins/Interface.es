@@ -38,11 +38,8 @@
  *
  */
 
-package
-{
     use default namespace public;
 
     intrinsic class Interface
     {
     }
-}

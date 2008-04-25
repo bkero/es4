@@ -48,12 +48,11 @@
  * start with the digit '0'.
  */
 
-package RegExpInternals
-{
+    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import Unicode.*;
+    use namespace Unicode;
+    use namespace RegExpInternals;
+    use default namespace RegExpInternals;
 
     intrinsic class RegExpCompiler
     {
@@ -757,4 +756,3 @@ package RegExpInternals
                            "  msg: " + msg );
         }
     }
-}

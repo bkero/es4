@@ -32,37 +32,30 @@
  *)
 structure Name = struct
 
-val (anonNsCounter:int ref) = ref 0
-fun newAnonNS _ =
+val (opaqueNsCounter:int ref) = ref 0
+fun newOpaqueNS _ =
     (* safe: will raise Overflow when we run out of namespaces. *)
-    (anonNsCounter := (!anonNsCounter) + 1;
-     (Ast.AnonUserNamespace (!anonNsCounter)))
+    (opaqueNsCounter := (!opaqueNsCounter) + 1;
+     (Ast.OpaqueNamespace (!opaqueNsCounter)))
+	
+val ES4NS = newOpaqueNS ()
+val publicNS = newOpaqueNS ()
+val metaNS = newOpaqueNS ()
+val magicNS = newOpaqueNS ()
+val intrinsicNS = newOpaqueNS ()
+val informativeNS = newOpaqueNS ()
+val ECMAScript4_InternalNS = newOpaqueNS ()
+val helperNS = newOpaqueNS ()
+val UnicodeNS = newOpaqueNS ()
+val RegExpInternalsNS = newOpaqueNS ()
 
-val metaNS = newAnonNS ()
-val magicNS = newAnonNS ()
-val informativeNS = newAnonNS ()
-val noNS = Ast.Public Ustring.empty
-val ES4NS = Ast.Public Ustring.ES4_
-val intrinsicNS = Ast.Intrinsic
-
-(*
- * FIXME: mangling a name into a string is bad form. We really want to
- * have derived namespaces like Private and Protected refer to their
- * containing namespace-qualified name of their containing class, rather
- * than the mangled form of their containing class.
- *)
-fun mangle (n:Ast.NAME) : Ast.IDENT =
-    Ustring.fromString (LogErr.fullName n)
-
-fun make (id:Ast.IDENT) (ns:Ast.NAMESPACE) : Ast.NAME = { id = id, ns = ns }
+fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
+fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
-fun informative (id:Ast.IDENT) : Ast.NAME = { id = id, ns = informativeNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
-fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
-fun public (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Public (mangle cls) }
-fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
-fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
+fun ECMAScript4_Internal (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ECMAScript4_InternalNS }
+fun informative (id:Ast.IDENT) : Ast.NAME = { id = id, ns = informativeNS }
 
 (*
  * To reference a name as a type expression, you need
@@ -74,6 +67,16 @@ fun typename (n:Ast.NAME) =
 					  { ident = (#id n),
 						qual = Ast.LiteralExpr
 								   (Ast.LiteralNamespace (#ns n)) }, NONE)
+
+
+(* 
+ * These are the names that the per-class opaque namespaces 
+ * 'private' and 'protected' get bound to *inside* the rib 
+ * of a given class. You pass in the private namespace
+ *)
+fun private privateClsNs = { ns=privateClsNs, id=Ustring.private_ }
+fun protected privateClsNs = { ns=privateClsNs, id=Ustring.protected_ }
+
 																		   
 (*
  * Names that are supposed to be present in the global scope
@@ -94,19 +97,19 @@ val ES4_Namespace = ES4 Ustring.Namespace_
 
 (* From Name.es *)
 val ES4_Name = ES4 Ustring.Name_
-val nons_qualifier = nons Ustring.qualifier_
-val nons_identifier = nons Ustring.identifier_
+val public_qualifier = public Ustring.qualifier_
+val public_identifier = public Ustring.identifier_
 
 (* From Object.es *)
-val nons_Object = nons Ustring.Object_
+val public_Object = public Ustring.Object_
 
 (* From Error.es *)
-val nons_Error = nons Ustring.Error_
-val nons_EvalError = nons Ustring.EvalError_
-val nons_RangeError = nons Ustring.RangeError_
-val nons_ReferenceError = nons Ustring.ReferenceError_
-val nons_SyntaxError = nons Ustring.SyntaxError_
-val nons_TypeError = nons Ustring.TypeError_
+val public_Error = public Ustring.Error_
+val public_EvalError = public Ustring.EvalError_
+val public_RangeError = public Ustring.RangeError_
+val public_ReferenceError = public Ustring.ReferenceError_
+val public_SyntaxError = public Ustring.SyntaxError_
+val public_TypeError = public Ustring.TypeError_
 
 (* From Conversions.es *)
 val intrinsic_ToPrimitive = intrinsic Ustring.ToPrimitive_
@@ -125,18 +128,18 @@ val intrinsic_decodeURIComponent = intrinsic Ustring.decodeURIComponent_
 val intrinsic_encodeURI = intrinsic Ustring.encodeURI_
 val intrinsic_encodeURIComponent = intrinsic Ustring.encodeURIComponent_
 
-val nons_NaN = nons Ustring.NaN_
-val nons_Infinity = nons Ustring.Infinity_
-val nons_undefined = nons Ustring.undefined_
-val nons_eval = nons Ustring.eval_
-val nons_parseInt = nons Ustring.parseInt_
-val nons_parseFloat = nons Ustring.parseFloat_
-val nons_isNaN = nons Ustring.isNaN_
-val nons_isFinite = nons Ustring.isFinite_
-val nons_decodeURI = nons Ustring.decodeURI_
-val nons_decodeURIComponent = nons Ustring.decodeURIComponent_
-val nons_encodeURI = nons Ustring.encodeURI_
-val nons_encodeURIComponent = nons Ustring.encodeURIComponent_
+val public_NaN = public Ustring.NaN_
+val public_Infinity = public Ustring.Infinity_
+val public_undefined = public Ustring.undefined_
+val public_eval = public Ustring.eval_
+val public_parseInt = public Ustring.parseInt_
+val public_parseFloat = public Ustring.parseFloat_
+val public_isNaN = public Ustring.isNaN_
+val public_isFinite = public Ustring.isFinite_
+val public_decodeURI = public Ustring.decodeURI_
+val public_decodeURIComponent = public Ustring.decodeURIComponent_
+val public_encodeURI = public Ustring.encodeURI_
+val public_encodeURIComponent = public Ustring.encodeURIComponent_
 
 val intrinsic_print = intrinsic Ustring.print_
 val intrinsic_load = intrinsic Ustring.load_
@@ -148,17 +151,17 @@ val intrinsic_readHTTP = intrinsic Ustring.readHTTP_
 val intrinsic_explodeDouble = intrinsic Ustring.explodeDouble_
 
 (* From Function.es *)
-val nons_Function = nons Ustring.Function_
+val public_Function = public Ustring.Function_
 
 (* From Boolean.es *)
-val nons_Boolean = nons Ustring.Boolean_
+val public_Boolean = public Ustring.Boolean_
 val ES4_AnyBoolean = ES4 Ustring.AnyBoolean_
 
 (* From boolean_primitive.es *)
 val ES4_boolean = ES4 Ustring.boolean_
 
 (* From Number.es *)
-val nons_Number = nons Ustring.Number_
+val public_Number = public Ustring.Number_
 val ES4_AnyNumber = ES4 Ustring.AnyNumber_
 
 (* From double.es *)
@@ -168,29 +171,25 @@ val ES4_double = ES4 Ustring.double_
 val ES4_decimal = ES4 Ustring.decimal_
 
 (* From String.es *)
-val nons_String = nons Ustring.String_
+val public_String = public Ustring.String_
 val ES4_AnyString = ES4 Ustring.AnyString_
 
 (* From string_primitive.es *)
 val ES4_string = ES4 Ustring.string_
 
 (* From Array.es *)
-val nons_Array = nons Ustring.Array_
+val public_Array = public Ustring.Array_
 
 (* From Date.es *)
-val nons_Date = nons Ustring.Date_
+val public_Date = public Ustring.Date_
 
 (* From RegExp.es *)
-val nons_RegExp = nons Ustring.RegExp_
-
-(* From JSON.es *)
-val JSON_emit = { ns = Ast.Public Ustring.JSON_, id = Ustring.emit_ }
-val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
+val public_RegExp = public Ustring.RegExp_
 
 (* From DecimalContext.es *)
 val ES4_DecimalContext = ES4 Ustring.DecimalContext_
-val nons_precision = nons Ustring.precision_
-val nons_mode = nons Ustring.mode_
+val public_precision = public Ustring.precision_
+val public_mode = public Ustring.mode_
 
 
 (*
@@ -267,27 +266,36 @@ val magic_construct = magic Ustring.construct_
  * Property names that have special meanings to the interpreter.
  *)
 
-val nons_constructor = nons Ustring.constructor_
-val nons_length = nons Ustring.length_
-val nons_cursor = nons Ustring.cursor_
-val private_Array__length = private nons_Array (Ustring.fromString "_length")
-val nons_source = nons Ustring.source_
-val nons_prototype = nons Ustring.prototype_
-val nons_toString = nons Ustring.toString_
-val nons_valueOf = nons Ustring.valueOf_
-val nons_global = nons Ustring.global_
+val public_constructor = public Ustring.constructor_
+val public_length = public Ustring.length_
+val public_cursor = public Ustring.cursor_
+val public_source = public Ustring.source_
+val public_prototype = public Ustring.prototype_
+val public_toString = public Ustring.toString_
+val public_valueOf = public Ustring.valueOf_
+val public_global = public Ustring.global_
 val meta_invoke = meta Ustring.invoke_
 val meta_get = meta Ustring.get_
 val meta_set = meta Ustring.set_
 val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
 
-val arguments = nons Ustring.arguments_
-val empty = nons Ustring.empty
+val arguments = public Ustring.arguments_
+val empty = public Ustring.empty
 
-val meta_ = nons Ustring.meta_
-val magic_ = nons Ustring.magic_
-val informative_ = nons Ustring.informative_
-val ES4_ = nons Ustring.ES4_
+(* These are the property names that are opaque namespaces themselves are bound under. *)
+val public_ES4_ = public Ustring.ES4_
+
+val ES4_public_ = ES4 Ustring.public_
+val ES4_meta_ = ES4 Ustring.meta_
+val ES4_magic_ = ES4 Ustring.magic_
+val ES4_intrinsic_ = ES4 Ustring.intrinsic_
+
+val ES4_ECMAScript4_Internal_ = ES4 Ustring.ECMAScript4_Internal_
+
+val ECMAScript4_Internal_informative_ = ECMAScript4_Internal Ustring.informative_
+val ECMAScript4_Internal_helper_ = ECMAScript4_Internal Ustring.helper_
+val ECMAScript4_Internal_Unicode_ = ECMAScript4_Internal Ustring.Unicode_
+val ECMAScript4_Internal_RegExpInternals_ = ECMAScript4_Internal Ustring.RegExpInternals_
 
 end

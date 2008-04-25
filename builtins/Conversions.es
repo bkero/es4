@@ -38,10 +38,7 @@
    reason not to expose them, though we could certainly hide them.
 */
 
-package
-{
     use namespace intrinsic;
-    use namespace __ES4__;
 
     // Unused functions have been commented out.  lth / 2007-09-07
 
@@ -72,4 +69,3 @@ package
         return new Object(value);
     }
     */
-}

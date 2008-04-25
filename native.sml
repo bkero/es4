@@ -233,8 +233,8 @@ fun getClassOfObject (regs:Mach.REGS)
 (*  This is wrong, because eg "Number" is classified as "Double" because it
  *  stores a double value magically.
         case !magic of
-            SOME (Mach.Function _) => Eval.findVal globalScope Name.nons_Function
-          | SOME (Mach.NativeFunction _) => Eval.findVal globalScope Name.nons_Function
+            SOME (Mach.Function _) => Eval.findVal globalScope Name.public_Function
+          | SOME (Mach.NativeFunction _) => Eval.findVal globalScope Name.public_Function
           | SOME (Mach.String _) => Eval.findVal globalScope Name.intrinsic_string
           | SOME (Mach.Decimal _) => Eval.findVal globalScope Name.intrinsic_decimal
           | SOME (Mach.Int _) => Eval.findVal globalScope Name.intrinsic_int
@@ -243,18 +243,18 @@ fun getClassOfObject (regs:Mach.REGS)
           | SOME (Mach.Boolean _) => Eval.findVal globalScope Name.intrinsic_boolean
           | _ =>
             (case tag of
-                 Mach.ObjectTag _ => Eval.findVal globalScope Name.nons_Object
-               | Mach.ArrayTag _ => Eval.findVal globalScope Name.nons_Array
-               | Mach.FunctionTag _ => Eval.findVal globalScope Name.nons_Function
+                 Mach.ObjectTag _ => Eval.findVal globalScope Name.public_Object
+               | Mach.ArrayTag _ => Eval.findVal globalScope Name.public_Array
+               | Mach.FunctionTag _ => Eval.findVal globalScope Name.public_Function
                | Mach.ClassTag name => Eval.findVal globalScope name
-               | Mach.NoTag => Eval.findVal globalScope Name.nons_Object)
+               | Mach.NoTag => Eval.findVal globalScope Name.public_Object)
 *)
         case tag of
-            Mach.ObjectTag _ => Eval.findVal regs globalScope Name.nons_Object
-          | Mach.ArrayTag _ => Eval.findVal regs globalScope Name.nons_Array
-          | Mach.FunctionTag _ => Eval.findVal regs globalScope Name.nons_Function
+            Mach.ObjectTag _ => Eval.findVal regs globalScope Name.public_Object
+          | Mach.ArrayTag _ => Eval.findVal regs globalScope Name.public_Array
+          | Mach.FunctionTag _ => Eval.findVal regs globalScope Name.public_Function
           | Mach.ClassTag ity => Mach.Object (Eval.instanceClass regs ity)
-          | Mach.NoTag => Eval.findVal regs globalScope Name.nons_Object
+          | Mach.NoTag => Eval.findVal regs globalScope Name.public_Object
     end
 
 

@@ -65,16 +65,11 @@
  * type of "this".
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import Unicode.*
-    import RegExpInternals.*
-    import ECMAScript4_Internal.*;
-    import JSON.*;
+    use namespace ECMAScript4_Internal;
+    use namespace Unicode;
+    use namespace RegExpInternals;
 
     __ES4__ final class string!
     {
@@ -793,4 +788,3 @@ package
         {
         }
     }
-}

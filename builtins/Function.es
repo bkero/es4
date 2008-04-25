@@ -46,16 +46,8 @@
  * just fine.
  */
 
-// Vile hack.  See Object.es for documentation
-package org.ecmascript.vilehack.Function {
-    public namespace Private = "Function private";
-}
-
-package
-{
-    import org.ecmascript.vilehack.Function.*;
-
     use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     public dynamic class Function
     {
@@ -114,12 +106,12 @@ package
 
         /* XXX: Function.prototype.toString */
         public prototype function toString(this: Function)
-            this.Private::toString();
+            this.private::toString();
 
         override intrinsic function toString() : string
-            Private::toString();
+            private::toString();
 
-        Private function toString(): string
+        private function toString(): string
             source || "function ( ) { }";
 
 
@@ -218,4 +210,3 @@ package
             // ignore it
         }
     }
-}

@@ -246,7 +246,7 @@ fun mapTyExpr (f:(Ast.TYPE_EXPR -> Ast.TYPE_EXPR))
                            typeParams=typeParams,
                            typeArgs = map f typeArgs,
                            nonnullable=nonnullable, 
-                           superTypes=superTypes, ty=ty, dynamic=dynamic } 
+                           superTypes=superTypes, ty=ty, dynamic=dynamic }
       | Ast.TypeVarFixtureRef _ => ty
 (*      | _ => (error ["Unknown type ", LogErr.ty ty]; anyType)
 *)
@@ -397,12 +397,8 @@ fun normalizeNames (useCache:bool)
     let
         fun getFixture (mname : Ast.MULTINAME) : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
             case Multiname.resolveInRibs mname env of 
-                SOME (ribs, name) => 
-                let 
-                    val (rib::_) = ribs 
-                in
-                    (ribs, name, Fixture.getFixture rib (Ast.PropName name))
-                end
+                SOME (rib::ribs, name) => 
+                (rib::ribs, name, Fixture.getFixture rib (Ast.PropName name))
               | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
                             " in type expression ", LogErr.ty ty,
                             " in ribs ", LogErr.ribs env]
@@ -463,7 +459,6 @@ fun normalizeNames (useCache:bool)
             (* FIXME: sure this is not a reference to a type var? *)
             getType { id = ident, nss = [[ getNamespaceForExpr qual ]] }
                 
-              | Ast.TypeName (Ast.WildcardIdentifier, _) => Ast.SpecialType Ast.Any
               | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
               | Ast.LamType { params, body } => 
                 Ast.LamType { params = params, 
@@ -525,6 +520,7 @@ fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPR list) (ty:Ast.TYPE_EXPR)
                     if id = id'
                     then arg
                     else lookup idRest argRest
+                  | _ => error ["substTypes: parameter / argument length mismatch"]
         in 
             lookup ids args
         end
@@ -746,15 +742,15 @@ fun groundMatchesGeneric (b:BICOMPAT)
       (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
 
       | (_, _, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-	List.exists (nameEq name) [ Name.nons_Array,
-					                     Name.nons_Object ]
+	    List.exists (nameEq name) [ Name.public_Array,
+					                Name.public_Object ]
         
       | (_, _, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
-	List.exists (nameEq name) [ Name.nons_Object ]
+	    List.exists (nameEq name) [ Name.public_Object ]
         
       | (_, _, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-	List.exists (nameEq name) [ Name.nons_Function, 
-					                     Name.nons_Object ]
+	    List.exists (nameEq name) [ Name.public_Function, 
+					                Name.public_Object ]
         
       | (_, _, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
@@ -776,14 +772,14 @@ and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
         fun isNumericType n = 
             List.exists (nameEq n) [ Name.ES4_double, 
                                           Name.ES4_decimal,
-                                          Name.nons_Number ]
+                                          Name.public_Number ]
         fun isStringType n = 
             List.exists (nameEq n) [ Name.ES4_string,
-                                          Name.nons_String ]
+                                          Name.public_String ]
 
         fun isBooleanType n = 
             List.exists (nameEq n) [ Name.ES4_boolean,
-                                          Name.nons_Boolean ]
+                                          Name.public_Boolean ]
     in
         case (srcInstance, dstInstance) of
             ((SOME src), (SOME dst)) => 

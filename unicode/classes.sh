@@ -32,7 +32,7 @@
 # Generate all the class tables into one file, 'classes.es'
 
 (echo "/* See UnicodeTbl.es for instructions */"
-echo "package Unicode {"
+echo "use default namespace Unicode; "
 ./class.sh Lu
 ./class.sh Ll
 ./class.sh Lt
