@@ -104,23 +104,44 @@ fun fname (n:Ast.FIXTURE_NAME) =
 fun rib (r:Ast.RIB) = 
     "[rib: " ^ (join ", " (map (fn (n,f) => fname n) 
 			       (List.take(r,(Int.min(length r,10))))))
-    ^ "]"
+    ^ (if length r >10 then ", ...]" else "]")
 
 fun ribs (rs:Ast.RIBS) = 
-    "[ribs: " ^ (join ", " (map rib rs)) ^ "]"
+    "[ribs: \n    " ^ (join ",\n    " (map rib rs)) ^ "\n]"
 
 
 fun multiname (mn:Ast.MULTINAME) =
     let
 	fun fmtNss (nss:Ast.NAMESPACE list) = 
-	    "[" ^ (join ", " (map namespace nss)) ^ "]"
+	    "(" ^ (join ", " (map namespace nss)) ^ ")"
 	fun fmtNsss (nsss:Ast.NAMESPACE list list) = 
-	    "[" ^ (join ", " (map fmtNss nsss)) ^ "]"
+	    "{" ^ (join ", " (map fmtNss nsss)) ^ "}"
     in
 	if !doNamespaces
 	then (fmtNsss (#nss mn)) ^ "::" ^ (Ustring.toAscii (#id mn))
 	else "[...]::" ^ (Ustring.toAscii (#id mn))
     end
+
+fun identExpr (ide:Ast.IDENT_EXPR) =
+   let
+        fun nsExprToString e =
+            case e of
+                Ast.LiteralExpr (Ast.LiteralNamespace ns) => namespace ns
+              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
+              | _ => (error ["unexpected expression in type namespace context"]; "")
+   in 
+       case ide of
+	   Ast.Identifier { ident, openNamespaces } =>
+	   multiname {nss=openNamespaces, id=ident}
+	 | Ast.QualifiedIdentifier { qual, ident } => 
+	   "(" 
+	   ^ (nsExprToString qual) 
+	   ^ "::" 
+	   ^ (Ustring.toAscii ident) 
+	   ^ ")"
+      | _ => "other-IDENT_EXPR"
+   end
+
 
 fun ty t =
     let
@@ -137,7 +158,8 @@ fun ty t =
             join ", " (map ty tys)
         fun typeOrList tys =
             join "|" (map ty tys)
-        fun fieldToString {name, ty=fieldType} = (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
+        fun fieldToString {name, ty=fieldType} = 
+	    (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
         fun fieldList fields =
             join ", " (map fieldToString fields)
         fun identList fields =
@@ -150,20 +172,8 @@ fun ty t =
           | Ast.SpecialType Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}, _) => 
-	    "<TypeName: {" 
-	    ^ (nsssToString openNamespaces) 
-	    ^ "}::" 
-	    ^ (Ustring.toAscii ident) 
-	    ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) => 
-	    "<TypeName: " 
-	    ^ (nsExprToString qual) 
-	    ^ "::" 
-	    ^ (Ustring.toAscii ident) 
-	    ^ ">"
-          | Ast.TypeName _ => "<TypeName: ...>"
-          | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
+          | Ast.TypeName (idexpr, _) => identExpr idexpr
+	  | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
           | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
           | Ast.FunctionType {params, result, hasRest, ...} => 
 	    "function (" 

@@ -178,6 +178,31 @@ f = function(g:int):int { return g; };
 var f : function(int):int;
 f = function(g:int):* { return g; };
 
+
+
+
+%% [objref1] verify, pass
+let (x=1) x.y;
+
+%% [objref2] verify, fail
+let x:{}=1;
+
+%% [objref3] verify, pass
+let (x={y:1}) x.y;
+
+%% [objref4] verify, fail
+let (x:{}={y:1}) 
+    x.y;
+
+%% [objref5] verify, pass
+let (x:{y:int}={y:1}) x.y;
+
+%% [objref6] verify, pass
+let (x:{y:*}={y:1}) x.y;
+
+
+
+
 %% [generic1] verify, pass
 var f : function.<X>(int):int;
 
@@ -196,6 +221,18 @@ class C.<T> {
          return new C.<T>();
       }
 }
+
+%% [catch1] verify, pass
+try {} catch(e) {}
+
+%% [Number.NaN] verify, pass
+Number.NaN
+
+%% [Number.POSITIVE_INFINITY] verify, pass
+Number.POSITIVE_INFINITY
+
+
+
 
 
 
