@@ -33,10 +33,7 @@
  *
  */
 
-package JSON
-{
     use namespace intrinsic;
-    use namespace __ES4__;
 
     // JSON formatting with cycle checking.
 
@@ -347,4 +344,3 @@ package JSON
 
         throw new EncodingError();
     }
-}

@@ -39,11 +39,7 @@
  * Status: not reviewed against specs.
  */
 
-package
-{
-    import ECMAScript4_Internal.*;
-
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity
@@ -71,13 +67,15 @@ package
         }
     }
 
+    /*
     iterator type IteratorType.<T> = {
-        next: function () : T
+        next: function () : *
     };
+    */
 
-    iterator type IterableType.<T> = {
+    // iterator type IterableType.<T> = {
         /* iterator::get: function (boolean=) : iterator::IteratorType.<T>*/
-    };
+    // };
       
     iterator class StopIterationClass {
         function toString() : string 
@@ -547,4 +545,3 @@ package
     // The non-virtual property get/set helpers.
     intrinsic native function get(obj:Object!, name:string) : *;
     intrinsic native function set(obj:Object!, name:string, val:*) : void;
-}

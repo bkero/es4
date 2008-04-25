@@ -53,11 +53,10 @@
  * The raw unicode character data and the scripts to process them are
  * in the directory ../unicode.
  */
-
-package Unicode
-{
+    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
-    use namespace __ES4__;
+    use namespace Unicode;
+    use default namespace Unicode;
 
     function makeTable(data) {
         var t = [];
@@ -70,7 +69,7 @@ package Unicode
     function expandTable(tbl, cc:double) {
         while (tbl.watermark < cc) {
             if (tbl.ptr == tbl.data.length)
-                tbl.watermark = uint.MAX_VALUE;
+                tbl.watermark = double.MAX_VALUE;
             else {
                 let c = tbl.data.charCodeAt(tbl.ptr++);
                 // 0x2D is '-', we're looking for '--'
@@ -135,5 +134,3 @@ package Unicode
         initLowerTbl();
         return lowerTbl[i];
     }
-
-}

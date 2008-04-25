@@ -42,16 +42,13 @@
  * See RegExpEvaluator.es for the evaluator and compiled code representation.
  */
 
-package
-{
-    use default namespace public;
+    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
-    use namespace __ES4__;
+    use namespace Unicode;
+    use namespace RegExpInternals;
 
-    import Unicode.*;
-    import RegExpInternals.*;
-    import ECMAScript4_Internal.*;
-
+    use default namespace public;
+ 
     /* E262-3 15.10: Regular expression object */
     public dynamic class RegExp
     {
@@ -218,4 +215,3 @@ package
                    (sticky ? "y" : "");
         }
     }
-}

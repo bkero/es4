@@ -134,8 +134,6 @@
        to subclass Function.
 */
 
-package
-{
     const DEBUG = false;
 
     class TypeClass 
@@ -582,4 +580,3 @@ package
         var keys = new Array;
         var values = new Array;
     }
-}

@@ -69,11 +69,7 @@
  * to create it.
  */
 
-package
-{
-    import ECMAScript4_Internal.*;
-
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     __ES4__ dynamic class Map.<K,V>
     {
@@ -83,9 +79,8 @@ package
          * predicates must always agree: if two objects are equal,
          * they must hash to the same value.
          */
-        /* FIXME: #153, #XXX: support "function" as a type meaning "any function" */
-        public function Map(equals   /*: function*/ = (function (x,y) x === y), 
-                            hashcode /*: function*/ = intrinsic::hashcode)
+        public function Map(equals   /*: Callable*/ = (function (x,y) x === y), 
+                            hashcode /*: Callable*/ = intrinsic::hashcode)
             : equals = equals
             , hashcode = function (k) intrinsic::toUint(hashcode(k) cast AnyNumber)
             , population = 0

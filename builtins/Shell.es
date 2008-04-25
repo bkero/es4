@@ -32,8 +32,6 @@
  *
  */
 
-package
-{
     // non-standard helpers that a variety of tests in our testsuite use.
 
     intrinsic native function print(x);
@@ -112,5 +110,3 @@ package
         return gVersion;
     }
     public function toString() { return "[object global]" }
-
-}

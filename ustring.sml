@@ -190,7 +190,7 @@ fun wcharToChar   (c:WCHAR) : char  = internal_wcharToChar   c
 fun toAscii      (s:STRING   ) : string = internal_toEscapedAscii s
 fun toFilename   (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
 
-fun fromString   (s:string   ) : STRING = internal_fromString   s  (* Should be used sparingly. *)
+fun fromString   (s:string   ) : STRING = internal_fromString   s    (* Should be used sparingly. *)
 fun fromSource   (s:string   ) : SOURCE = internal_fromSource   s
 fun fromInt      (i:int      ) : STRING = internal_fromInt      i
 fun fromInt32    (i:Int32.int) : STRING = internal_fromInt32    i
@@ -316,9 +316,13 @@ val regexp_                  = fromString "regexp"
 val exception_               = fromString "exception"
 val emit_                    = fromString "emit"
 val parse_                   = fromString "parse"
+val public_                  = fromString "public"
+val private_                 = fromString "private"
+val protected_               = fromString "protected"
 val magic_                   = fromString "magic"
 val meta_                    = fromString "meta"
 val informative_             = fromString "informative"
+val intrinsic_               = fromString "intrinsic"
 val cursor_                  = fromString "cursor"
 val native_function_         = fromString "native function"
 val generator_               = fromString "generator"
@@ -414,7 +418,11 @@ val ror_                     = fromString "ror"
 val rol_                     = fromString "rol"
 
 val ES4_                     = fromString "__ES4__"
-val iterator_                = fromString "iterator"
+val ECMAScript4_Internal_    = fromString "ECMAScript4_Internal"
+
+val Unicode_                 = fromString "Unicode"
+val helper_                  = fromString "helper"
+val RegExpInternals_         = fromString "RegExpInternals"
 
 val emptySource              = []
 

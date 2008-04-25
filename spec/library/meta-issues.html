@@ -1,0 +1,372 @@
+= Tutorial Introduction to the ES4 Library Draft =
+
+<P> The ES4 library specification is expressed partly in terms of ES4
+fragments: the specification uses executable -- and testable -- ES4
+code in places where the ES3 specification uses pseudocode.  As a
+consequence, the draft library specification makes some assumptions
+about what ES4 will look like when it is finished.
+
+<P> This guide contains an outline of some aspects of ES4 that it will
+be necessary for the reader of the draft specification to know, beyond
+what is in ES3.  Details are presented in the language definition part
+of the Specification.
+
+<P> This guide will not be a part of the final ES4 specification.
+
+
+== Namespaces, names ==
+
+<P> ES4 places all names in namespaces.  A name is in exactly one
+namespace and it is placed in that namespace by prefixing a binding
+keyword (''class'', ''var'', ''const'', ''function'', and others) with
+the namespace name.  If ''MyNS'' is a namespace then
+
+{{{
+    MyNS var x 
+}}}
+
+creates a variable whose fully qualified name is ''MyNS::x''.  The
+latter syntax can also be used to create namespaced dynamic properties
+on objects:
+
+{{{
+
+   obj.MyNS::x = 37
+}}}
+
+<P> There are several pre-defined namespaces.  The namespace
+''__ES4__'' is used for all top-level names that are new to ES4 if
+they're not in one of the other namespaces.  Important pre-defined
+namespaces are ''__ES4__::intrinsic'' and ''__ES4__::reflect''.
+
+<P> (Two new names are not in any of the new namespaces: ''__ES4__''
+and ''__ECMASCRIPT_VERSION__'' are both in the //compatibility namespace//,
+which is a pre-defined "empty" namespace.  All top-level bindings defined
+by ES3, as well as all prototype properties, are in the compatibility
+namespace.)
+
+<P> In order to avoid having to fully qualify names all the time,
+namespaces can be //opened//; the names defined in the namespace will
+then be available without qualificiation.  The namespace ''__ES4__''
+is opened for all ES4 code, so in practice the two pre-defined
+namespaces listed above are known just as ''intrinsic'' and
+''reflect''.
+
+<P> Opening a namespace may introduce an ambiguity in that an
+unqualified name may reference two different bindings.  The ambiguity
+can be resolved by fully qualifying ambiguous names.  (Ambiguities are
+not common because a namespace opened in an inner lexical scope takes
+precedence over namespaces opened in outer scopes.)
+
+<P> The ''intrinsic'' namespace is reserved; user code is not allowed
+to introduce new names in this namespace.  The ''intrinsic'' namespace
+is used primarily for methods in the pre-defined classes.  For every
+prototype method //M// there is a corresponding intrinsic method //M//
+in the class.  For example, there is ''Array.prototype.concat'' and
+also an ''intrinsic::concat'' method on ''Array'' instances.  The
+prototype methods are fully compatible with ES3 in the types they
+accept and how they convert values.  The intrinsic methods normally
+have more tightly constrained signatures and, like all class methods,
+are immutable (though they can be overridden in subclasses -- that's
+allowed even for user code).
+
+<P> The ''intrinsic'' namespace provides integrity (code that calls an
+intrinsic method will know that it references the original method, it
+is not at the mercy of changes to the prototype method) and
+optimization opportunities (early binding to the slot that holds the
+method in the presence of type annotations).
+
+<P> The specification of the pre-defined classes in terms of ES4 code
+makes use of other pre-defined classes and their methods, and
+pre-defined methods are careful to call intrinsic methods to invoke
+known behavior and to call public methods to invoke explicitly variant
+behavior.  Normally, such invocations are always explicitly qualified
+in the text in order to avoid any ambiguity in the reader's mind.
+
+== Name lookup ==
+
+<P> The lookup rules for object properties is such that dynamic
+properties cannot shadow fixed properties, and properties defined in
+subclasses cannot shadow properties that are statically visible from
+the base class.
+
+<P> The language uses lexical block scope, and as a general rule (and
+absent uses of ''eval'', ''with'', and certain dynamic name forms) a
+name expression references the innermost statically visible binding
+of that name.
+
+
+== Types and annotations ==
+
+<P> Bindings in ES4 are typed, and a type annotation can be provided
+explicitly in the definition of a binding by following the binding's
+name with a colon and the type:
+
+{{{
+    var x: Array
+}}}
+
+<P> If the type is omitted, it is "*" (read as "any"), which means the
+binding has no type constraint.  If we assume just run-time type
+checking, then a check is performed every time a value is stored into
+an annotated variable: the type of the value must be a subtype of the
+annotated type.
+
+<P> Functions can be annotated as well, in both their parameter and
+return positions.  Annotations on parameters constrain how the
+function can be called.  Annotations in the return position constrains
+what the function can return:
+
+{{{
+    function f(x: string): RegExp { ... }
+}}}
+
+<P> There are two classes of types, nominal types and structural
+types.
+
+<P> Nominal types are introduced by class definitions and interface
+definitions.  Values of nominal types are created by instantiating
+classes (using the "new" operator).  The syntax and semantics are
+broadly as in Java: A nominal type is equal only to itself; a value is
+of a class type only if it was instantiated from that type; and it is
+of an interface type only if it was instantiated from a class type
+that declares that it implements that interface.  (Unlike in Java, the
+access control keywords such as ''private'' and ''public'' are
+actually aliases for language-provided namespaces.)
+
+<P> Methods on classes appear as function definitions in the class
+body.  The class instance is in scope in the body of a method, as is
+the class object (holding the static properties).
+
+<P> Classes can be tagged as ''dynamic'', in which case properties can
+be added to instances of the class at run-time.
+
+<P> Classes and methods can be tagged ''final'', in which case the
+class can't be subclassed or the method can't be overridden.
+
+<P> Structural types are record types (for example ''{x:int,y:int}''),
+array types (for example ''[int]''), tuple types (for example
+''[int,string]''), union types (for example ''(int|string|RegExp)''),
+function types (for example ''function(int):boolean)'', and some
+special types (''null'' and ''undefined'').  A structural type is
+equal to any other structural type that has the same fields with the
+same types (in any order), and a value is of a structural type if it
+has fixed (non-deletable) fields with the names and types given by the
+structural type.  (So if ''Point'' is a class with ''x'' and ''y''
+integer fields, an instance of ''Point'' is of the structural type
+''{x:int,y:int}''.)  Structural types can't be recursive.
+
+<P> Types can be given names by type definitions:
+
+{{{
+    type Num = (int|double)
+}}}
+
+<P> Type definitions, class definitions, and interface definitions can
+be parameterized:
+
+{{{
+    class Map.<K,V> { ... }
+    type Box.<T> = { value: T }
+}}}
+
+<P> Record and array types are instantiated by suffixing the literal
+with the type:
+
+{{{
+    { value: 7 } : Box.<int>
+    [1,2,3] : [int]
+}}}
+
+<P> Any type is a subtype of ''*'', and ''Box.&lt;T&gt;'' is a subtype of
+''Box.&lt;*&gt;'', for any T.
+
+<P> One of the important aspecs of the type system is that the types
+provide a specification for fixed properties on the objects that are
+of the type: in any value of type ''Box.&lt;T&gt;'', the ''value'' property
+can't be removed.
+
+
+== Functions ==
+
+<P> Functions can take optional arguments (they have default values)
+and rest arguments:
+
+{{{
+    function f(x, y=0) { ... }   // y is optional
+    function f(x, ...rest) { ... }
+}}}
+
+<P> The rest argument appears as a regular ''Array'' object holding
+the excess parameter values.
+
+<P> Function bodies that contain a simple return statement (which
+typically returns the result of a call to another function) are
+common; ES4 introduces a shorthand -- extensively used in the library
+draft specifications -- where the body is a brace-less expression:
+
+{{{
+    function f(x, y)
+      g(x*2, y, 0)
+}}}
+
+
+== Informative and helper methods ==
+
+<P> The library specification is normative, which means the ES4 code
+in the specification is normative too.  In order to avoid
+overspecification, non-normative sections of code have been factored
+out as methods in the ''informative'' namespace.  The informative
+methods are always described by prose.  A good example is the global
+hashcode function:
+
+{{{
+    intrinsic const function hashcode(o): double {
+        switch type (o) {
+        case (x: null)       { return 0 }
+        case (x: undefined)  { return 0 }
+        case (x: AnyBoolean) { return Number(x) }
+        case (x: AnyNumber)  { return intrinsic::toUint(x) }
+        case (x: AnyString)  { return informative::stringHash(x) }
+        case (x: Namespace)  { return informative::namespaceHash(x) }
+        case (x: Name)       { return informative::nameHash(x) }
+        case (x: *)          { return informative::objectHash(x) }
+        }
+    }
+}}}
+
+<P> Hashing on **null**, **undefined**, booleans, and numbers is
+normatively specified, but hashing on strings, names, namespaces, and
+other objects is only informatively specified.
+
+<P> In order to share code, the specification also factors out
+commonalities as methods in the ''helper'' namespace.  A common case
+is where both prototype methods and intrinsic methods take a variable
+number of arguments, as for the concat method in ''Array'':
+
+        prototype function concat(...items)
+            Array.helper::concat(this, items);
+
+        intrinsic function concat(...items): Array
+            Array.helper::concat(this, items);
+
+<P> (In this case the ''helper'' function is a static method on the
+''Array'' class, because that accomodates the static ''concat'' method
+too.)
+
+<P> The ''private'' namespace is sometimes used in a manner similar to
+the ''helper'' namespace.  (Often the choice between ''private'' and
+''helper'' seems arbitrary.  As a general rule, ''private'' is used
+for auxiliary instance methods, and ''helper'' is used for auxiliary
+static methods and global functions.  This rule is not being
+consistently followed at present, but that will be cleaned up
+eventually.)
+
+<P> The ''helper'' and ''private'' functions //are normative// in the
+sense that they define the detailed functionality of a method, eg in
+the order of operations on a data structure.  But ''helper'' functions
+are not visible in a real implementation, they are not part of the
+API, and a real implementation does not reserve the ''helper''
+namespace.  (Of course ''private'' functions are not visible in real
+implementations either.)
+
+<P> In a similar manner, the prose description for an ''informative''
+functions defines its functionality normatively but leaves the
+implementation more room for variations.  The ''informative''
+functions are not visible in a real implementation, they are not part
+of the API, and a real implementation does not reserve the
+''implementation'' namespace.
+
+<P> A final constraint on ''informative'' functions is that they do
+not call program-visible (i.e., public, protected, intrinsic, reflect,
+meta, iterator, or prototype) methods on their ''this'' object except
+when explicitly specified to do so.
+
+
+== Meta-level methods ==
+
+<P> The pre-defined namespace "meta" is used for methods that
+participate in language-level protocols: invocation, property access,
+and property update.  A class that defines a ''meta::invoke'' fixture
+is callable as a function (the ''meta::invoke'' method is invoked in
+response to the call); the ''meta::get'', ''meta::set'',
+''meta::has'', and ''meta::delete'' methods are invoked in response to
+accesses to all dynamic properties on the object, and respectively
+read a property value, update a property, query the existence of a
+property, and remove a property.
+
+<P> The meta methods have have static and instance forms.  This is
+particularly prominent for ''meta::invoke''.  Given a class ''Cls''
+with a static ''meta::invoke'' method:
+
+{{{
+    class Cls { 
+        static meta function invoke(...)
+        ... 
+    }
+}}}
+
+you can call ''Cls'' as a function:
+
+{{{
+    x = y + Cls(z);
+}}}
+
+<P> This is used by many classes to implement converters to the class
+type.
+
+<P> Given a class ''Cls'' with an instance ''meta::invoke'' method:
+
+{{{
+    class Cls {
+        meta function invoke(...) ... 
+    }
+}}}
+
+then it is the instances of ''Cls'' that are themselves callable:
+
+{{{
+    c = new Cls;
+    x = y + c(z);
+}}}
+
+<P> This is used in some instances to make arbitrary objects callable,
+and is used to model the fact that instances of Functions are
+themselves callable as functions.
+
+
+== magic ==
+
+<P> The specification makes use of a pre-defined namespace "magic".
+This namespace is reserved in the specification but not in any actual
+implementation of the language.  It is used only to tag top-level
+functions that are implementation hooks.  The hooks provide
+functionality that is not available in the language, for example,
+accessing the internal [[Prototype]] property of objects.
+
+<P> Magic functions are defined by prose for the moment; it is likely
+that they will be (at least partly) exposed as Standard ML fragments
+later, in the style of the semantic functions we're planning for other
+parts of the specification.
+
+
+== Non-nullable types, primitive types ==
+
+<P> Occasionally in the library draft specification you will see an
+exclamation point added to the end of a type expression:
+
+{{{
+    class Namespace {
+        static meta function invoke(x): Namespace! 
+            ....
+    }
+}}}
+
+<P> The exclamation point indicates a "non-nullable reference", ie, in
+this case that the value returned may never be **null**.  Similar
+annotations are used for parameter types in some cases.
+
+<P> The primitive types of the language are the classes ''string'',
+''boolean'', and ''double''.  These correspond to the primitive types
+in ES3.  They are non-nullable types; that is, a function returning
+''string'' will never return **null**.

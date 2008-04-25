@@ -41,19 +41,20 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
 type IDENT = Ustring.STRING
 
-type RIB_ID = int
+type NONCE = int
 
-type TYPEVAR_NONCE = int
+(* SPEC
 
 datatype NAMESPACE =
-         Intrinsic
-       | Private of IDENT
-       | Protected of IDENT
-       | Public of IDENT
-       | Internal of IDENT
-       | UserNamespace of Ustring.STRING
-       | AnonUserNamespace of int
-       | LimitedNamespace of (IDENT * NAMESPACE)
+         TransparentNamespace of IDENTIFIER
+       | OpaqueNamespace of NAMESPACE_ID
+
+type NAMESPACE_ID = ...
+*)
+
+datatype NAMESPACE =
+         OpaqueNamespace of NONCE
+       | StringNamespace of Ustring.STRING
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
@@ -121,7 +122,7 @@ datatype UNOP =
        | Spread
 
 datatype VAR_DEFN_TAG =
-         Const
+         Const 
        | Var
        | LetVar
        | LetConst
@@ -137,9 +138,6 @@ datatype PRAGMA =
        | UseDefaultNamespace of EXPR
        | UseStrict
        | UseStandard
-       | Import of
-           { package: IDENT list,
-             name: IDENT }
 
      and FUNC_NAME_KIND =
          Ordinary
@@ -148,52 +146,50 @@ datatype PRAGMA =
        | Set
        | Call
        | Has
-
-     and TY = 
-         Ty of 
-         { expr: TYPE_EXPR,
-           ribId: RIB_ID option }
          
      and CLS =
          Cls of
            { name: NAME,
+             privateNS: NAMESPACE,
+             protectedNS: NAMESPACE,
+             parentProtectedNSs: NAMESPACE list,
              typeParams: IDENT list,
              nonnullable: bool,
              dynamic: bool,
-             extends: TY option,
-             implements: TY list,
+             extends: TYPE_EXPR option,
+             implements: TYPE_EXPR list,
              classRib: RIB,
              instanceRib: RIB,
              instanceInits: HEAD,
              constructor: CTOR option,
-             classType: TY,  (* ObjectType *)
-             instanceType: TY }
+             classType: TYPE_EXPR,  (* ObjectType *)
+             instanceType: TYPE_EXPR }
 
      and IFACE =
          Iface of
            { name: NAME,
              typeParams: IDENT list,
              nonnullable: bool,
-             extends: TY list,
+             extends: TYPE_EXPR list,
              instanceRib: RIB,
-             instanceType: TY }
+             instanceType: TYPE_EXPR }
 
      and CTOR =
          Ctor of 
          { settings: HEAD, (* FIXME should be a EXPR list of LetExpr of InitExpr *)
            superArgs: EXPR list,
            func: FUNC }
-
+ 
      and FUNC =
          Func of 
          { name: FUNC_NAME,
-           fsig: FUNC_SIG,
+           fsig: FUNC_SIG,                       (* redundant, not used in verify *)
            native: bool,
            generator: bool,
            block: BLOCK option, (* NONE => abstract *)
-           param: HEAD,
+           param: HEAD,         (* CF: not sure what this is ... *)
            defaults: EXPR list,
-           ty: TY,
+           ty: TYPE_EXPR,
            loc: LOC option }
          
      and DEFN =
@@ -205,7 +201,7 @@ datatype PRAGMA =
        | NamespaceDefn of NAMESPACE_DEFN
        | TypeDefn of TYPE_DEFN
 
-     and FUNC_SIG =
+     and FUNC_SIG =                             (* redundant, not used in verify *)
          FunctionSignature of 
          { typeParams: IDENT list,
            params: BINDINGS,
@@ -230,16 +226,43 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENT * EXPR)
        | AssignStep of (EXPR * EXPR)
 
+(* SPEC
+
+datatype TYPE =
+         NullType
+       | AnyType
+       | UndefinedType
+       | IdentType  of IDENT_EXPR
+       | RecordType of  (IDENT_EXPR * TYPE) list
+       | ArrayType  of TYPE list
+       | UnionType  of TYPE list
+       | FunctionType of { thisType: TYPE option,
+                           params: TYPE list,
+                           minArgs: int, 
+                           hasRest: bool,
+                           result: TYPE
+                         }
+       | NullableType of (TYPE * bool)
+       | GenericType of (IDENT list * TYPE)
+       | AppType of (TYPE * TYPE list)
+       | ObjectRefType of (TYPE * IDENT_EXPR)
+       | NominalType of NAME
+
+generic fn has all type
+
+Tapp on generic fn has 
+
+*)
+
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | TypeName of IDENT_EXPR
+       | TypeName of (IDENT_EXPR * NONCE option)
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
-       | LikeType of TYPE_EXPR
        | AppType of 
          { base: TYPE_EXPR,
            args: TYPE_EXPR list }
@@ -250,6 +273,30 @@ datatype PRAGMA =
          { expr:TYPE_EXPR,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
+       | TypeVarFixtureRef of NONCE  
+
+(* SPEC
+
+datatype STATEMENT =
+         EmptyStmt
+       | ExprStmt of EXPR
+       | ForStmt of FOR_STMT
+       | ForInStmt of FOR_ENUM_STMT
+       | ThrowStmt of EXPR
+       | ReturnStmt of EXPR
+       | BreakStmt of IDENT option
+       | ContinueStmt of IDENT option
+       | BlockStmt of BLOCK
+       | LabeledStmt of (IDENT * STMT)
+       | WhileStmt of WHILE_STMT
+       | DoWhileStmt of WHILE_STMT
+       | IfStmt of (EXPR * STMT * STMT)
+       | WithStmt of (EXPR * STMT)
+       | TryStmt of TRY_STMT
+       | SwitchStmt of SWITCH_STMT
+       | SwitchTypeStmt of SWITCH_TYPE_STMT
+
+*)
 
      and STMT =
          EmptyStmt
@@ -279,7 +326,7 @@ datatype PRAGMA =
              els: STMT }
        | WithStmt of {
              obj: EXPR,
-             ty: TY,
+             ty: TYPE_EXPR,
              body: STMT }
        | TryStmt of {
              block: BLOCK,
@@ -292,29 +339,66 @@ datatype PRAGMA =
              cases: CASE list }
        | SwitchTypeStmt of {
              cond: EXPR,
-             ty: TY,
+             ty: TYPE_EXPR,
              cases: CATCH_CLAUSE list }
        | DXNStmt of {
              expr: EXPR }
 
+(* SPEC
+
+datatype EXPRESSION =
+         LiteralNull
+       | LiteralDouble of Real64.real
+       | LiteralDecimal of Decimal.DEC
+       | LiteralBoolean of bool
+       | LiteralString of Ustring.STRING
+       | LiteralArray of (EXPRESSION * TYPE_EXPRESSION option)
+       | LiteralObject of (FIELD list * TYPE_EXPRESSION option)
+       | LiteralFunction of FUNCTION
+       | LiteralRegExp of Ustring.STRING
+       | ConditionalExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
+       | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
+       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE_EXPRRESSION)
+       | UnaryExpr of (UNOP * EXPRESSION)
+       | TypeExpr of TYPE_EXPRESSION
+       | ThisExpr of THIS_KIND option
+       | YieldExpr of EXPRESSION option
+       | SuperExpr of EXPRESSION option
+       | CallExpr of (EXPRESSION * EXPRESSION list)
+       | ApplyTypeExpr of (EXPRESSION * TYPE_EXPRESSION list)
+       | LetExpr of (HEAD * EXPRESSION)
+       | NewExpr of (EXPRESSION * EXPRESSION list)
+       | GetExpr of REFERENCE
+       | SetExpr of (ASSIGNOP * REFERENCE * EXPRESSION)
+       | InitExpr of (INIT_TARGET * HEAD * INIT list)   (* HEAD is for temporaries *)
+       | ArrayComprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
+
+datatype REFERENCE =
+         LexicalReference of IDENTIFIER_EXPRESSION
+       | ObjectReference of (EXPRESSION * IDENTIFIER_EXPRESSION)
+
+
+*)
+
      and EXPR =
          TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
-       | BinaryTypeExpr of (BINTYPEOP * EXPR * TY)
+       | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
        | UnaryExpr of (UNOP * EXPR)
-       | TypeExpr of TY
+       | TypeExpr of TYPE_EXPR
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
-       | LiteralExpr of LITERAL
        | CallExpr of {
              func: EXPR,
              actuals: EXPR list }
        | ApplyTypeExpr of {
              expr: EXPR,  (* apply expr to type list *)
-             actuals: TY list }
+             actuals: TYPE_EXPR list }
+
+       (* defs are rewritten into head by defn phase, and so defs are ignored in verifier and in eval *)
        | LetExpr of {
-             defs: BINDINGS,
+             defs: BINDINGS,  
              body: EXPR,
              head: HEAD option }
        | NewExpr of {
@@ -333,6 +417,7 @@ datatype PRAGMA =
        | GetTemp of int
        | GetParam of int
        | Comprehension of (EXPR * FOR_ENUM_HEAD list * EXPR option)
+       | LiteralExpr of LITERAL
 
      and INIT_TARGET = Hoisted
                      | Local
@@ -344,10 +429,28 @@ datatype PRAGMA =
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
+(* SPEC
+
+datatype IDENTIFIER_EXPRESSION =
+         Identifier { 
+             identifier: EXPRESSION,
+             namespaces: NAMESPACE_REF list list }
+       | QualifiedIdentifier { 
+             identifier: EXPRESSION,
+             namespace: NAMESPACE_REF }
+
+datatype NAMESPACE_REF =
+         NamespaceRef of REFERENCE (* resolves to a namespace fixture *)
+
+*)
      and IDENT_EXPR =
          Identifier of
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
+(* CF: the above should be unified with
+        type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+   Perhaps Identifier should be Multiname
+*)
        | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
@@ -359,8 +462,6 @@ datatype PRAGMA =
        | QualifiedIdentifier of
            { qual : EXPR,
              ident : Ustring.STRING }
-       | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
-       | WildcardIdentifier
 
      and LITERAL =
          LiteralNull
@@ -371,22 +472,32 @@ datatype PRAGMA =
        | LiteralString of Ustring.STRING
        | LiteralArray of
            { exprs: EXPR,  (* FIXME: more specific type here *)
-             ty:TY option }
+             ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
        | LiteralObject of
            { expr : FIELD list,
-             ty: TY option }
+             ty: TYPE_EXPR option }
        | LiteralFunction of FUNC
        | LiteralRegExp of
            { str: Ustring.STRING }
 
      and BLOCK = Block of DIRECTIVES
 
-
      (* RIBs are built by the definition phase, not the parser; but they 
       * are patched back into the AST in class-definition and block
       * nodes, so we must define them here. *)
+(*
+datatype FIXTURE =
+         NamespaceFixture of NAMESPACE
+       | ClassFixture of CLS
+       | InterfaceFixture of IFACE
+       | TypeVarFixture of TYPEVAR_FIXTURE
+       | TypeFixture of TY
+       | MethodFixture of METHOD
+       | ValFixture of VAL_FIXTURE
+       | VirtualValFixture of VIRTUAL_VAL_FIXTURE
+*)
 
 (* ClassFixture only at package level,
  * VirtualValFixture only in classes,
@@ -395,19 +506,19 @@ datatype PRAGMA =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
-       | TypeVarFixture of TYPEVAR_NONCE
-       | TypeFixture of TY
+       | TypeVarFixture of NONCE
+       | TypeFixture of TYPE_EXPR
        | MethodFixture of
            { func: FUNC,
-             ty: TY,
+             ty: TYPE_EXPR,
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool }
        | ValFixture of
-           { ty: TY,
+           { ty: TYPE_EXPR,
              readOnly: bool }
        | VirtualValFixture of
-         { ty: TY, 
+         { ty: TYPE_EXPR, 
            getter: FUNC option,
            setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
 
@@ -418,17 +529,30 @@ withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and RIB = (FIXTURE_NAME * FIXTURE) list
-     and RIBS = ((FIXTURE_NAME * FIXTURE) list) list
+     and RIBS = RIB list
      and INITS = (FIXTURE_NAME * EXPR) list
 
+(* cf: a class ref of the form C.<int> is represented as
+  AppType
+  { base = LamType
+             { params = ["X"],
+               body = InstanceType
+                        { name = { ns = Public "", id = "C"},
+                          typeParams = ["X"],
+                          typeArgs = [], 
+                          ... }},
+    args = ... }
+
+  In the above AST, typeArgs is implicitly ["X"]
+*)
      and INSTANCE_TYPE =
           {  name: NAME,
-             typeParams: IDENT list,
+             typeParams: IDENT list,      
              typeArgs: TYPE_EXPR list,
-             nonnullable: bool,
-             superTypes: TYPE_EXPR list,
-             ty: TYPE_EXPR,
-             dynamic: bool }
+             nonnullable: bool,           (* redundant, ignored in verify.sml *)
+             superTypes: TYPE_EXPR list,  (* redundant, ignored in verify.sml *)
+             ty: TYPE_EXPR,               (* redundant, ignored in verify.sml *)
+             dynamic: bool }              (* redundant, ignored in verify.sml *)
 
      and FIELD =
            { kind: VAR_DEFN_TAG,
@@ -443,8 +567,8 @@ withtype
          { params: TYPE_EXPR list,
            result: TYPE_EXPR,
            thisType: TYPE_EXPR option,
-           hasRest: bool,
-           minArgs: int }
+           hasRest: bool,         (* if true, the last elem in params is array type *)
+           minArgs: int }         (* necessary because some of params can have defaults *)
 
      and FUNC_DEFN =
            { kind : VAR_DEFN_TAG,
@@ -472,6 +596,8 @@ withtype
 
      and CLASS_DEFN =
            { ns: EXPR option,
+             privateNS: NAMESPACE,
+             protectedNS: NAMESPACE,
              ident: IDENT,             
              nonnullable: bool,
              dynamic: bool,
@@ -499,9 +625,11 @@ withtype
 
      and CLASS_BLOCK = 
          { ns: EXPR option,
+           protectedNS: NAMESPACE,
+           privateNS: NAMESPACE,
            ident: IDENT,
            name: NAME option,
-             block: BLOCK }
+           block: BLOCK }
 
      and FOR_ENUM_HEAD =  (* FIXME: use this in FOR_ENUM_STMT *)
            { isEach: bool,
@@ -524,7 +652,7 @@ withtype
              body: STMT }
 
      and FOR_STMT =
-           { rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
+           { rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)  (* CF: list option seems redundant *)
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
                      ns : EXPR option,
@@ -553,14 +681,14 @@ withtype
 
      and CASE =
            { label: EXPR option,
-             inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
+             inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option, replace by INITS?? *)
              body: BLOCK }   (* FIXME: should be STMT list *)
 
      and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
-           ty: TY, 
+           ty: TYPE_EXPR,  (* CF: what is this for? *)
            rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
-           inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
+           inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option, TODO: replace by INITS?? *)
            block:BLOCK }
 
      and FUNC_NAME =
@@ -568,15 +696,12 @@ withtype
              ident : IDENT }
 
 type VIRTUAL_VAL_FIXTURE =
-           { ty: TY, 
+           { ty: TYPE_EXPR, 
              getter: FUNC option,
              setter: FUNC option }
 
 datatype FRAGMENT = 
          
-         Package of { name: IDENT list,
-                      fragments: FRAGMENT list }
-
-       | Anon of BLOCK
+         Anon of BLOCK
 
 end

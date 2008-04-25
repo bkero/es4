@@ -1,0 +1,209 @@
+= Enumerability =
+
+<hr>
+<pre>
+NAME:                       "Enumerability"
+FILE:                       spec/language/enumerability.html
+CATEGORY:                   Object model
+SOURCES:                    ?
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-10
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   NO
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+
+OPEN ISSUES
+
+  * The rationale for the decision not to enumerate fixture properties
+    is a bit feeble.
+
+
+REFERENCES
+
+[1] proposals:iterators_and_generators
+[2] http:&#x2f;&#x2f;www.ecmascript.org/es4/spec/Object.html
+[3] proposals:bug_fixes [FOR.IN.LOOP.CREATION.ORDER]
+[4] ES3 spec 12.6.4
+[5] proposals:bug_fixes [ITERATE.NULL.AND.UNDEFINED]
+</pre>
+<hr>
+
+== Synopsis ==
+
+<P> The purpose of the present spec is to define what it means for a
+property of an object to be "enumerable", that is, what it means for
+the property to be discovered when the properties of an object are
+enumerated by ''for''-''in'' and ''for''-''each''-''in'' loops [4].
+
+<P> This spec also describes in high level terms the facilities that
+are available to user programs to implement variations on enumeration.
+
+
+== Enumeration and itemization in ES4 ==
+
+<P> According to [1], enumeration and itemization in ES4 is specified
+in terms of the new iterator protocols using a system-defined helper
+class called ''Enumerator''.  A section below contains a brief
+description of how the translation is performed.  The central point is
+that enumeration is implemented by an ''Enumerator'' instance.
+
+<P> The constructor of
+''Enumerator'' optionally takes some namespace values:
+
+{{{
+    iterator class Enumerator.&lt;T&gt; {
+        public function Enumerator(obj, f, deep, ...namespaces) {
+            ...
+        }
+        public function next(): T {
+           ...
+        }
+    }
+}}}
+
+<P> An ''Enumerator'' created on an object //obj// will produce (from
+its ''next'' method) a succession of the enumerable properties of
+//obj//: those dynamic properties of //obj// whose "enumerable"
+attribute [2] is set, filtered by the contents of //namespaces//.  If
+//deep// is true, then the objects in the prototype chain of //obj//
+are included in the enumeration.  Enumeration is always performed
+starting at //obj//; properties are produced in the order they were
+inserted into //obj// [3]; when the properties in //obj// are
+exhausted the process is repeated on the immediate prototype of
+//obj//, if any.
+
+<P> There is a distinct namespace in ES4 known as the "compatibility
+namespace" or "no namespace".  In code, this namespace is denoted by
+the keyword ''public''.
+
+<P> When an ''Enumerator'' is created with an empty set of namespaces,
+it filters the enumerable attributes by the compatibility namespace,
+and all property names produced are ''string'' values -- the property
+name without the namespace, because the namespace is always the
+compatibility namespace.
+
+<P> When an ''Enumerator'' is created with a nonempty set of
+namespaces, it filters the enumerable attributes by those namespaces
+only, and all property names produced are ''Name'' values: namespace
+and name pairs.
+
+<P> (Punchline.)  Normal enumeration and itemization by the
+''for''-''in'' and ''for''-''each''-''in'' loops result in the
+creation of ''Enumerator'' instances with an empty sets of namespaces
+and //deep// set to **true**.  Ergo, normal enumeration behaves as in
+ES3.
+
+<P> Programs that needs to enumerate properties in specific
+namespaces, or that only need to perform shallow enumeration, can
+create custom ''Enumerator'' classes.  It is possible that ES4 ought
+to provide utility functions to make this simple, but experimentation
+will show.
+
+
+== Rationale and discussion ==
+
+<P> The rephrasing of enumeration in terms of iteration allows the
+''for''-''in'' and ''for''-''each''-''in'' statements to be used for
+iteration, which is exceptionally handy.
+
+<P> Regarding namespace filtering and enumeration by default of only
+public properties: Namespaces are used by user programs for privacy
+and integrity.  For example, the ''private'' attribute on properties
+and methods of a class is just the name of a system-generated
+namespace.  It would be a breach of privacy for arbitrary code to be
+able to enumerate arbitrary properties on an object, since the private
+property names would be revealed in the form of ''Name'' objects, from
+which the private namespace could be exposed.  Yet it is useful for
+code to enumerate properties in namespaces controlled by that code.
+So the compromise -- which is also right for compatibility with ES3 --
+is that only public properties are enumerated by default; all
+system-provided namespaces can be obtained by naming them (a class
+method can evaluate the expression ''private'' to obtain the object
+representing its private namespace); and custom ''Enumerator''
+instances can be constructed to enumerate names in namespaces other
+than the public.
+
+<P> The reason for not enumerating fixture properties is that this
+fits in well with a certain style of programming.  Consider constructing
+a prototype object:
+
+{{{
+    Func.prototype = const { toString: function () ..., 
+                             myMeth: function () ... }
+}}}
+
+<P> The methods ''toString'' and ''myMeth'' are meant to be prototype
+methods, hence not enumerable.  But they are in the public namespace,
+and therefore enumerable by default.  However, the lock-down by the
+''const'' prefix -- making them fixtures -- is taken as a signal that
+they are not "normal" public properties.  Hence it's probably right
+not to enumerate them.
+
+
+
+== Primer: Translating enumeration into iteration ==
+
+<P> For the full story, go to [1].
+
+<P> The loop that is written like this in ES3:
+
+{{{
+    for (i in o)
+        ...
+}}}
+
+has this meaning in ES4:
+
+{{{
+    let IT = iterator::GET(o, true);
+    while (true) {
+        try {
+            i = IT.next();
+        }
+        catch (e : iterator::StopIterationClass) {
+            break;
+        }
+        ...
+    }
+}}}
+
+<P> In the preceding fragment, ''IT'' is a fresh variable, ''iterator::GET''
+is a system-supplied function shown below, and
+''iterator::StopIterationClass'' is a class type.  Both of the latter are
+considered unforgeable (local rebindings do not shadow the original
+meanings we consider here).
+
+<P> The function ''GET'' and its auxiliary ''DEFAULT_GET'' are defined
+as follows:
+
+{{{
+    iterator const function GET(start: !Object, deep: boolean): iterator::IteratorType.&lt;*&gt; {
+        if (start like iterator::IterableType.&lt;*&gt;)
+            return start.iterator::get(deep);
+        else
+            return iterator::DEFAULT_GET(start, deep);
+    }
+
+    iterator const function DEFAULT_GET(start: !Object, deep: boolean = false): iterator::IteratorType.&lt;(string|Name)&gt;
+        new Enumerator.&lt;(string|Name)&gt;(start,
+                                       function (id: (string|Name), obj: !Object): (string|Name) { return id },
+                                       deep);
+}}}
+
+<P> In other words, if the object ''o'' is iterable -- if it provides
+its own iterator -- then its own iterator is used to control the loop,
+otherwise the default behavior is invoked.  It is the default behavior
+that interests us here since it implements the ES3 enumeration and
+itemization protocol.
+
+<P> The default behavior, implemented by DEFAULT_GET, creates a new
+''Enumerator'' instance, and this instance behaves in the way outlined
+earlier in this document.
+
+<P> The behavior for ''for''-''each''-''in'' itemization is similar.

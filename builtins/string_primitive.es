@@ -65,16 +65,11 @@
  * type of "this".
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import Unicode.*
-    import RegExpInternals.*
-    import ECMAScript4_Internal.*;
-    import JSON.*;
+    use namespace ECMAScript4_Internal;
+    use namespace Unicode;
+    use namespace RegExpInternals;
 
     __ES4__ final class string!
     {
@@ -536,7 +531,10 @@ package
 
             type matcher = (string|RegExp!);
 
-            function splitMatch(R: matcher, S: string, q: double) : [double, [string]]? {
+            // FIXME: when 'let function' goes away, ensure that this doesn't hoist away from
+            // the definition of type matcher.
+
+            let function splitMatch(R: matcher, S: string, q: double) : [double, [string]]? {
                 switch type (R) {
                 case (x: string) {
                     let r = x.length;
@@ -790,4 +788,3 @@ package
         {
         }
     }
-}

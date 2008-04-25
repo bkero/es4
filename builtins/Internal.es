@@ -34,16 +34,9 @@
  * Software ASA, and others.
  */
 
-package ECMAScript4_Internal  // private to the implementation
-{
-    use default namespace public;
 
-    //    namespace informative;
-    public namespace helper = "helper";
-
-    public class None {
+    ECMAScript4_Internal class None {
     }
 
-    public const NONE = new None;
-}
+    ECMAScript4_Internal const NONE = new ECMAScript4_Internal::None;
 

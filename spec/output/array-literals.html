@@ -1,0 +1,417 @@
+<html>
+<head>
+<title>Array initializers</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Array initializer syntax</h1>
+
+<hr>
+<pre>
+NAME:                       "Array initializer syntax"
+FILE:                       spec/language/array-literals.html
+CATEGORY:                   Expressions (E262-3 chapter 11)
+SOURCES:                    ES3; REFERENCES [1]-[7]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 1 - 2008-04-08
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    YES
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+REVIEWED AGAINST TICKETS:   YES
+IMPLEMENTATION STATUS:      ?
+TEST CASE STATUS:           ?
+
+
+OPEN ISSUES
+
+  * A splicing shorthand has been introduced for ES4 array
+    initializers.  In order to be compatible with other uses of the
+    same syntax (destructuring, rest arguments, the spread operator)
+    only one splice is allowed.  That may be a foolish consistency.
+
+
+REFERENCES
+
+[1] proposals:structural_types_and_typing_of_initializers
+[2] ES4 base document
+[3] Ticket #66
+[4] Ticket #120
+[5] Ticket #249
+[6] Ticket #319
+[7] Ticket #370
+</pre>
+<hr>
+
+<h2>Synopsis</h2>
+
+<P><span class="pcounter"></span> This draft pulls together everything that has been proposed and
+tentatively agreed about array initializer syntax and semantics.
+
+
+<h2>Primary syntax</h2>
+
+<P><span class="pcounter"></span> In its general form an array initializer is comprised of an
+optional keyword (<code>const</code> or <code>var</code>), followed by a
+bracket-delimited comma-separated list of optional expressions with
+the last expression optionally followed by a triple-period token and a
+final expression, followed by an optional type annotation.
+
+<PRE>
+   [ "const" | "var" ] "[" Body "]" [ ":" Type ]
+</PRE>
+
+where <i>Body</i> is one of
+
+<PRE>
+   AssignmentExpression? ( "," AssignmentExpression? )*
+   ( AssignmentExpression? "," )* "..." AssignmentExpression
+</PRE>
+
+<P><span class="pcounter"></span> The "Type" that annotates the initializer must be a structural
+array type or a nominal class type whose constructor accepts zero
+arguments.
+
+
+<h3>Creating Array objects</h3>
+
+<P><span class="pcounter"></span> If the annotating type is absent, or if the annotating type is a
+structural array type, then the following rules apply.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  Some informative remarks about structural array types are
+included at the end of the document.
+
+<P><span class="pcounter"></span> As in ES3, an elided expression leaves a hole in the array (by the
+same syntactic rules, not repeated here).
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The value of a hole can be read provided the type of the hole
+has a default value (as do primitive string, number, and boolean
+values as well as nullable object types and the "any" type <code>*</code>).
+The details are defined by another draft spec but there are some
+informative comments in the later section on structural array types.
+
+<P><span class="pcounter"></span> The final optional expression of the form <code>... E</code> evaluates
+<i>E</i> to yield some object <i>v</i> and splices some properties of <i>v</i>
+into the new array object.  <i>v</i> need not be an instance of
+<code>Array</code>, but it needs to provide a value for <code>length</code> and to allow
+elements with names in the range <code>0</code> to <code>length-1</code> (suitably
+clamped) to be queried for their presence and, if present, to be read.
+If a property with a name <i>n</i> in that range is missing from <i>v</i>
+then the property in the new object that <i>v[n]</i> would have
+initialized will be a hole.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  The above needs to be formalized properly, obviously.
+
+<P><span class="pcounter"></span> If the array initializer is prefixed by <code>const</code> or <code>var</code> then
+the array properties created will be created as fixtures; if the
+prefix is <code>const</code> those fixtures will additionally be read-only.
+
+<P><span class="pcounter"></span> The general form of Type is <code>[T0,</code>&#x0085;<code>,Tk,...Tr]</code> where
+<i>T0</i> through <i>Tk</i> (the <i>fixed</i> types) and <i>Tr</i> (the <i>rest</i>
+type) are all optional.  The initializer must provide a (possibly
+elided) value for each of <i>T0</i> through <i>Tk</i>, and may provide
+additional values only if <i>Tr</i> is present.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  If the initializer is prefixed by <code>const</code> or <code>var</code>, or if
+there are types <i>T0</i> through <i>Tk</i> present in the type, then array
+elements can still be elided from the initializer and there can be
+holes in any spliced-in object.  However, the missing properties will
+be present as uninitialized fixtures on the object, not as missing
+dynamic properties.  So
+<code>1</code>&nbsp;<code>in</code>&nbsp;<code>[1,,3]:[double,double,...double]</code> will
+return <b>true</b>.  A longer discussion is included below, in the
+section on structural array types.
+
+
+<h3>Creating arbitrary objects with numbered properties</h3>
+
+<P><span class="pcounter"></span> If the annotating type is a class type whose constructor accepts
+zero arguments then the <code>const</code> and <code>var</code> keywords must not be
+present.
+
+<P><span class="pcounter"></span> In this case, the expression evaluates to a new instance of the
+class type where successive initializer values have been assigned to
+numbered properties of the new object and the length of the
+initializer has been assigned to the <code>length</code> property of the new
+object.
+
+<P><span class="pcounter"></span> In other words, 
+
+<PRE>
+    [1,,3,,] : Vector.&lt;double&gt;
+</PRE>
+
+is syntactic sugar for
+
+<PRE>
+    (let (TMP = new Vector.&lt;double&gt;)
+      (TMP[0] = 1,
+       TMP[2] = 3,
+       TMP.length = 4,
+       TMP))
+</PRE>
+
+for a fresh variable TMP.
+
+
+<h2>Secondary syntax</h2>
+
+<P><span class="pcounter"></span> Suppose T is a structural array type:
+
+<PRE>
+   type T = [...double]
+</PRE>
+
+<P><span class="pcounter"></span> Then the <code>new</code> operator can be used as follows:
+
+<PRE>
+   new T( 10 )
+   new T( 5, 1.0 )
+</PRE>
+
+<P><span class="pcounter"></span> The meaning of the above two phrases is exactly:
+
+<PRE>
+   [,,,,,,,,,,] : T
+   [1.0, 1.0, 1.0, 1.0, 1.0] : T
+</PRE>
+
+<P><span class="pcounter"></span> In other words, used with a structural array type the <code>new</code>
+operator takes one or two arguments.  The first argument is always the
+length.  The second argument, if present, is the initial value to use
+for the properties at indices below the length.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The array type can be of any kind: with or without fixed types
+or a rest type.
+
+
+<h2>Rationale</h2>
+
+<P><span class="pcounter"></span> This section is informational and will not be part of the finished
+Standard.
+
+<P><span class="pcounter"></span> The splicing syntax is symmetric with the prefix <code>...</code> syntax in
+in destructuring array patterns:
+
+<PRE>
+    var [x,y,...z] = E
+</PRE>
+
+<P><span class="pcounter"></span> To remain compatible with the destructuring syntax, the splicing
+syntax is only allowed at the end of the literal -- it doesn't make
+sense to have an open destructuring pattern in the middle of a
+pattern.
+
+<P><span class="pcounter"></span> However, that may be taking compatibility too far, as there are
+obvious uses for having multiple splices (just as there are uses for
+allowing multiple spread operators in a function call).
+
+<P><span class="pcounter"></span> The <code>new</code> syntax furthers the evolutionary programming agenda
+and is yet another point on the continuum between ES3 programs and
+class-based ES4 programs (the syntax abstracts away from the type T
+that is the subject of <code>new</code> -- whether it's a class or a structural
+type).  For example, 
+
+<PRE>
+   type Doubles = [...double]
+   new Doubles(10)
+</PRE>
+
+evolves easily to
+
+<PRE>
+   type Doubles = Vector.&lt;double&gt;
+   new Doubles(10)
+</PRE>
+
+
+<P><span class="pcounter"></span> Nominal type annotations on array initializers further the
+evolutionary programming agenda, allowing programs that use structural
+array types as annotations on literals to be changed easily to use
+class types instead.  For example,
+
+<PRE>
+   type Doubles = [...double]
+   [1,2,3]:Doubles
+</PRE>
+
+evolves easily to
+
+<PRE>
+   type Doubles = Vector.&lt;double&gt;
+   [1,2,3]:Doubles
+</PRE>
+
+<P><span class="pcounter"></span> In addition, <code>[1,2,3]:Vector.&lt;double&gt;</code> is by itself a
+fairly reasonable way to write down a vector datum.
+
+
+<h2>Structural array types</h2>
+
+<P><span class="pcounter"></span> This section is informational; a separate spec will explain array
+types in detail.
+
+<P><span class="pcounter"></span> A structural array type is comprised of some possibly empty
+sequence of <i>fixed</i> types <i>T0</i> through <i>Tk</i> followed by an
+optional <i>rest</i> type <i>Tr</i>.  Elements in the type can be elided;
+elided elements default to the "any" type <code>*</code>.
+
+<PRE>
+    "[" ( Type? "," )* ("..." Type)? "]"
+</PRE>
+
+<P><span class="pcounter"></span> Examples:
+
+<PRE>
+    [...double]          /* doubles, length >= 0 */
+    [string, ...double]  /* one string followed by doubles; length >= 1 */
+    [string, double]     /* one string and one double, length = 2 */
+    [string, , string]   /* [string, *, string] */
+    []                   /* length = 0 */
+</PRE>
+
+<P><span class="pcounter"></span> An object <i>v</i> is said to be of an array type <i>T</i> if <i>v</i> is
+an instance of (a subtype of) <code>Array</code> and has the fields required by
+<i>T</i>.  That is, if <i>T</i> is <code>[T0,</code>&#x0085;<code>,Tk,...Tr]</code> then <i>v</i> must have
+fixed type constraints <i>T0</i> through <i>Tk</i> on properties named 0 through
+<i>k</i>, and a general constraint <i>Tr</i> on properties named <i>k+1</i>
+through 2<SUP>32</SUP>-2.
+
+<P><span class="pcounter"></span> The fixed type constraints are handled by means of fixtures: fields
+named 0 through <i>k</i> are fixtures.  The general constraint <i>Tr</i>
+on the other hand applies to dynamic properties.
+
+<P><span class="pcounter"></span> Effectively (and making use of some imaginary syntax), we can
+say that
+
+<PRE>
+   [string, double, ...boolean]
+</PRE>
+
+is essentially this record type:
+
+<PRE>
+   { 0: string, 1: double, 2...: boolean, length: double }
+</PRE>
+
+(apart from a lot of methods defined on <code>Array</code> objects).
+
+<P><span class="pcounter"></span> This split between fixture and dynamic properties looks like it
+could cause trouble, but as it happens it will not.
+
+<P><span class="pcounter"></span> The reason is that it could cause trouble is that there is a
+two-pass name lookup algorithm that gives priority to fixture
+properties, and that means that in the above object the property 1 and
+the property 2 would be treated differently though both are logically
+array properties.  That would seem bizarre.
+
+<P><span class="pcounter"></span> The reason that it does not cause problem in practice is that the
+difference between fixture and dynamic properties is not observable in
+an object that has been created by annotating array initializers with
+a structural array type.  Such an object would have
+<code>Array.prototype</code> as its <code>[[Prototype]]</code> and it's not possible for the
+program to introduce new fixtures on the prototype object.  In other words, the
+array objects created this way have strictly more fixtures than all
+the objects in their prototype chains.  Thus the two-pass name lookup
+algorithm will never find a fixture in a prototype that in effect
+shadows a dynamic, index-named property in the object itself.
+
+<P><span class="pcounter"></span> The final wrinkle (alluded to earlier) is that fixture properties
+may be elided from the initializer.  For example, consider this object:
+
+<PRE>
+   ["foo", ,] : [string, double]
+</PRE>
+
+<P><span class="pcounter"></span> The property "1" can't be missing, because the type requires that
+it be there: the object "is of that type", so by definition the
+property "1" must always exist, and the type of that property must
+always be <code>double</code>.  For a property to "have a type" (other than a
+rest type) is to be a fixed property.
+
+<P><span class="pcounter"></span> There is a simple interpretation for this (also alluded to
+earlier): the property is in the object, but it is uninitialized.  If
+the type of the property has a default value, then that value is
+produced when the property is read.  Otherwise, the property cannot be
+read before it has been written (or a run-time error occurs).  That
+happens for instances of non-nullable user-defined classes.
+
+
+</body>
+</html>

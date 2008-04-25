@@ -2,39 +2,54 @@
 
 <HR>
 <pre>
+NAME:                       "The class 'Namespace'"
 FILE:                       spec/library/Namespace.html
-DRAFT STATUS:               DRAFT 2 - 2008-03-17
+CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
+SPEC AUTHOR:                Lars
+DRAFT STATUS:               DRAFT 3 - 2008-03-20
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  YES
 REVIEWED AGAINST PROPOSALS: N/A
 REVIEWED AGAINST CODE:      YES
+REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4 RI (partly)
+TEST CASE STATUS:           ?
 
 
 CHANGES SINCE DRAFT 2 (2008-03-17)
 
+  * There is a public constructor for Namespace objects 
+
+  * The 'Namespace' class object can be invoked as a function
+
+  * There is a getter for a 'name' property on Namespace objects
+
   * The 'toString' method is tagged "override"
+
+  * Presentation: More elaborate status block above
+
 
 CHANGES SINCE DRAFT 1 (2008-03-05)
 
   * Presentation: added an explicit "extends Object" clause
 
   * Namespaces are explicitly designated nullable and a null value is
-    tied to the compatibility namespace noNS.
+    tied to the compatibility namespace noNS
 
   * The behavior of the 'toString' method has been tightly specified
-    to allow Namespace objects to be compared predictably.
+    to allow Namespace objects to be compared predictably
 
 
-OPEN ISSUES
+NOTES
 
-  * Namespace objects in ES4 are more opaque than the Namespace
-    objects in the base document and in E4X, both of which expose
-    "prefix" and "name" properties.  ES4 is not supporting E4X, and
-    the base document was probably influenced by E4X, so this
-    may not be a big deal, but it should be discussed.
+  * "Forgeable" and "unforgeable" namespaces are discussed in the
+    language spec.  A forgeable namespace is created from a string, as
+    with 'namespace f = "my namespace"'.  An unforgeable namespace is
+    created not from a string, as with 'namespace u'
+
+  * The constructor and the 'name' getter are compatible with E4X
 
 
 REFERENCES
@@ -46,19 +61,11 @@ REFERENCES
 <HR>
 
 <P> The class ''Namespace'' is a final, non-dynamic, nullable,
-direct subclass of ''Object''.  It reflects a namespace as an opaque
-datum.
+direct subclass of ''Object''.
 
-<NOTE> Namespaces are created as a result of the evaluation of the
-''namespace'' pragma, which defines a new namespace and creates a
-binding for it.  Namespaces are reflected as ''Namespace'' objects
-when namespace bindings are referenced in expressions.
-
-<NOTE> A ''Namespace'' object can be created with an explicit name by
-providing the name as a string in the ''namespace'' pragma.
-
-<NOTE> Generally a **null** namespace value is used to denote the
-compatibility namespace **noNS**.
+<NOTE> ''Namespace'' values can be created by ''new'' expressions in
+the user program or by the evaluation of a ''namespace'' definition,
+which creates a new namespace and a constant binding for it.
 
 <COMP> The ''Namespace'' class is new in the 4th Edition of this
 Standard.
@@ -70,7 +77,14 @@ Standard.
 {{{
 __ES4__ final class Namespace extends Object
 {
+    public function Namespace(name=undefined) <LDOTS>
+    static meta function invoke(x) <LDOTS>
+
+    static public const length = 1
+
     override intrinsic function toString(): string <LDOTS>
+
+    public function get name(): (string|undefined) <LDOTS>
 }
 }}}
 
@@ -81,28 +95,60 @@ properties:
     toString: function () <LDOTS>
 }}}
 
+
 == Operators ==
 
-<P> The operators ''=='' and ''==='' compare as equal two non-opaque
-''Namespace'' objects that are separately created from the same string;
-similarly, the operators ''!='' and ''!=='' compare as not equal two
-''Namespace'' objects that are separately created from dissimilar strings.
+<P> The operators ''=='' and ''==='' compare forgeable ''Namespace''
+objects by comparing their names as obtained by the ''name'' accessor,
+see below.  Forgeable namespaces with the same name are equal by those
+operators.
+
+<P> In all other cases, ''Namespace'' objects are equal only to
+themselves.
 
 
 == Methods on the ''Namespace'' class object ==
 
-<P> There are no methods on the ''Namespace'' class object.  In
-particular, the class ''Namespace'' does not have a publicly
-accessible constructor.
+=== new Namespace(name=<LDOTS>) ===
 
+<RETN> When the ''Namespace'' constructor is called with no arguments
+or with the argument **undefined** it returns a new unforgeable
+''Namespace'' object.  The returned object is unequal to every
+previously existing ''Namespace'' object.
+
+<P> When the ''Namespace'' constructor is called with an argument
+//name// that is not **undefined** it converts //name// to string and
+returns a new forgeable namespace whose name is the converted value.
+
+<SHORTIMPL>
+{{{
+public function Namespace(name=undefined) <LDOTS>
+}}}
+
+=== Namespace(x) ===
+
+<RETN> The ''Namespace'' class object called as a function returns a
+''Namespace'' object.  If //x// is a ''Namespace'' object then it is
+returned.  Otherwise a new ''Namespace'' object is constructed by 
+invoking the ''Namespace'' constructor on //x//.
+
+<SHORTIMPL>
+{{{
+static meta function invoke( x ): Namespace! {
+    if (x is Namespace!)
+        return x;
+    return new Namespace(x);
+}
+}}}
 
 == Methods on ''Namespace'' instances ==
 
 === intrinsic::toString() ===
 
 <DESC> The intrinsic ''toString'' method converts the ''Namespace''
-object to a string.  If the ''Namespace'' object was created with an
-explicit name then the string contains that name as a substring.
+object to a string.  If the ''Namespace'' object is forgeable (it was
+created with an explicit name) then the string returned by
+''toString'' contains the name as a substring.
 
 <RETN> The ''toString'' method returns an implementation-defined
 string.  
@@ -113,10 +159,23 @@ respectively.  //T1// and //T2// are equal if and only if //N1// is
 equal to //N2// (by ''==='' or ''=='').
 
 <P> Suppose the intrinsic ''toString'' method is invoked on two
-different non-opaque namespaces //N1// and //N2// created from strings
+different forgeable namespaces //N1// and //N2// created from strings
 //S1// and //S2//, yielding strings //T1// and //T2//, respectively.
 //T1// and //T2// have the same relationship (determined by the
 relational operators) as //S1// and //S2//.
+
+
+== Value Properties on ''Namespace'' instances ==
+
+=== name ===
+
+<DESC> If this ''Namespace'' object is a forgeable namespace then the
+value of the property ''name'' is the string name with which the
+namespace was constructed.
+
+<P> If this ''Namespace'' object is an unforgeable namespace then the
+value of the property ''name'' is **undefined**.
+
 
 == Methods on the ''Namespace'' prototype object ==
 

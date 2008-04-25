@@ -46,14 +46,9 @@
  *    might be done.
  */
 
-package
-{
     use default namespace public;
     use namespace intrinsic;
-    use namespace __ES4__;
-
-    import ECMAScript4_Internal.*;
-    import JSON.*;
+    use namespace ECMAScript4_Internal;
 
     // The [[Prototype]] of "double" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
@@ -160,4 +155,3 @@ package
         {
         }
     }
-}

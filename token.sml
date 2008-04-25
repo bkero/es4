@@ -115,13 +115,9 @@ datatype TOKEN =
     | If
     | In
     | InstanceOf
-    | Internal
     | Is
     | New
     | Null
-    | Private
-    | Protected
-    | Public
     | Return
     | Super
     | Switch
@@ -149,19 +145,14 @@ datatype TOKEN =
     | Get
     | Has
     | Implements
-    | Import
     | Interface
-    | Intrinsic
     | Let
     | Like
     | Namespace
     | Native
     | Number
     | Override
-    | Package
-    | Precision
     | Prototype
-    | Rounding
     | Set
     | Standard
     | Static
@@ -180,7 +171,6 @@ datatype TOKEN =
     | DecimalLiteral of Decimal.DEC
     | DoubleLiteral of Real64.real
 
-    | PackageIdentifier of Ustring.STRING
     | RegexpLiteral of Ustring.STRING
     | StringLiteral of Ustring.STRING
     | XmlLiteral
@@ -222,13 +212,9 @@ fun isreserved (t,_) =
       | If => true
       | In => true
       | InstanceOf => true
-      | Internal => true
       | Is => true
       | New => true
       | Null => true
-      | Private => true
-      | Protected => true
-      | Public => true
       | Return => true
       | Super => true
       | Switch => true
@@ -326,13 +312,9 @@ fun tokenname (t,_) =
       | If => "if"
       | In => "in"
       | InstanceOf => "instanceof"
-      | Internal => "internal"
       | Is => "is"
       | New => "new"
       | Null => "null"
-      | Private => "private"
-      | Protected => "protected"
-      | Public => "public"
       | Return => "return"
       | Super => "super"
       | Switch => "switch"
@@ -360,19 +342,14 @@ fun tokenname (t,_) =
       | Get => "get"
       | Has => "has"
       | Implements => "implements"
-      | Import => "import"
       | Interface => "interface"
-      | Intrinsic => "intrinsic"
       | Let => "let"
       | Like => "like"
       | Namespace => "namespace"
       | Native => "native"
       | Number => "number"
       | Override => "override"
-      | Package => "package"
-      | Precision => "precision"
       | Prototype => "prototype"
-      | Rounding => "rounding"
       | Set => "set"
       | Standard => "standard"
       | Static => "static"
@@ -390,7 +367,6 @@ fun tokenname (t,_) =
       | DecimalLiteral x => Decimal.toString(x) ^ "m"
       | DoubleLiteral x => Real64.toString(x) ^ "d"
 
-      | PackageIdentifier x => "packageidentifier("^(Ustring.toAscii x)^")"
       | RegexpLiteral x => "regexp("^(Ustring.toAscii x)^")"
       | StringLiteral x => "string("^(Ustring.toAscii x)^")"
       | XmlLiteral => "xmlliteral()"

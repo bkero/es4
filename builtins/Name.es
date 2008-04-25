@@ -35,16 +35,7 @@
  *
  */
 
-// Vile hack.  See Object.es for documentation
-package org.ecmascript.vilehack.Name {
-    public namespace Private = "Name private";
-}
-
-package 
-{
-    import org.ecmascript.vilehack.Name.*;
-
-    use namespace __ES4__;
+    use namespace ECMAScript4_Internal;
 
     __ES4__ final class Name extends String 
     {
@@ -55,17 +46,17 @@ package
         // but doesn't work, ticket #364 I think.
 
         static helper function analyzeArgs (a, b) {
+            if (a is Name)
+                return a;
             if (a is Namespace)
                 return analyzeWithNamespace(a, b);
             if (b === undefined) {
-                if (a is Name)
-                    return a;
-                return analyzeWithNamespace(null, a);
+                return analyzeWithNamespace(public, a);
             }
             throw new TypeError();                        
         
             function analyzeWithNamespace(ns, x) {
-                if (x is AnyNumber && isIntegral(x) && x > 0 && x <= 0xFFFFFFFF || x is AnyString)
+                if ((x is AnyNumber && isIntegral(x) && x > 0 && x <= 0xFFFFFFFF) || x is AnyString)
                     return { qualifier: ns, identifier: string(x) };
                 throw TypeError();
             }
@@ -81,25 +72,24 @@ package
         static meta function invoke(a, b=undefined): Name
             new Name(a, b);
         
-        prototype function toString(this : Name)
-            this.Private::toString();
+        public prototype function toString(this : Name)
+            this.private::toString();
         
         override intrinsic function toString() : string
-            Private::toString();
+            private::toString();
 
-        Private function toString() : string {
-            if (qualifier === null)
+        private function toString() : string {
+            if (qualifier === public)
                 return identifier;
             return string(qualifier) + "::" + identifier;
         }
         
-        prototype function valueOf(this : Name)
-            this.Private::toString();
+        public prototype function valueOf(this : Name)
+            this.private::toString();
         
         override intrinsic function valueOf() : string
-            Private::toString();
+            private::toString();
         
         public const qualifier  : Namespace,
                      identifier : string;
     }
-}

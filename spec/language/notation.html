@@ -13,6 +13,22 @@ REVIEWED AGAINST CODE:      NO
 <hr>
 
 == Grammar Notation ==
+
+The productions of the grammar are given in standard EBNF notation, as
+defined by ISO 14977, with the following modifications to integrate
+ISO 10646 code points.
+
+When consisting only of typographically unambiguous code points within
+the initial 128 codes (in the range 0 through 127 inclusive), the
+terminals of the grammar are written literally, following the
+convention of ISO 14977.
+
+When containing code points 128 and above, or typographically
+ambiguous code points under 128, the terminals of the grammar are
+written by denoting the numeric value of each code point in the
+terminal in sequence. This is done following the convention of writing
+"U+", followed by a hexadecimal number indicating the code point.
+
 === Lexical Syntax ===
 === RegExp Syntax ===
 === Numeric Syntax ===

@@ -1,7 +1,35 @@
 = Syntax =
 
-<p>This section defines the mapping from the surface syntax to the abstract, internal,
-representation of programs.
+<hr>
+<pre>
+FILE:                       spec/language/syntax.html
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-04-04
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST ERRATA:    NO
+REVIEWED AGAINST BASE DOC:  NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+NOTATION: 
+
+About the 'rul' notation
+- 'rul' definitions are an extension to SML that provide a way to express 
+  syntax direct translations of programs
+- The identifier after 'rul' is the name of the  non-terminal being defined
+- The text between the name and the '=' defines the signature in SML syntax
+- Productions are listed after the '=' character that ends the signature
+- Each production consists of a pattern (similar to its counterpart in 
+  the normative grammar) including non-terminals references with arguments, 
+  followed by an action (an SML expression after the '=>') that computes 
+  the corresponding AST value
+- Identifiers in the action part refer to the result of translating the 
+  non-terminal in the pattern part with the same name. If there is more 
+  than one non-terminal with the same name, then they are matched according 
+  to their relative order
+</pre>
+<hr>
+
+<p>This section defines the mapping from the surface syntax of programs to the abstract
+form used to define the semantics of the language.
 
 == Source Text ==
 
@@ -47,32 +75,31 @@ Token ::
     ContextuallyReservedIdentifier
     Identifier
     Punctuator
-    NumericLiteral
-    SingleLiteral
+    NumberLiteral
+    StringLiteral
 }}}
 
 ==== ReservedIdentifier ====
 
-<p>Reserved words cannot be used as identifiers.
+<p>//ReservedIdentifier// cannot be used as identifiers.
 
 {{{
 ReservedIdentifier :: [one of]
-    break case cast catch class continue debugger default delete do else enum extends false 
-    finally for function if in instanceof internal is new null private protected public return 
-    super switch this throw true try typeof var void while with wrap
+  break case cast catch class continue debugger default delete do else false 
+  finally for function if in instanceof internal is new null private protected 
+  public return super switch this throw true try type typeof var void while with
 }}}
 
 ==== ContextuallyReservedIdentifier ====
 
-<p>//ContextuallyReservedIdentifier// may be used as property names, but have a specially
-meaning in specific syntactic contexts.
+<p>//ContextuallyReservedIdentifier//s may be used as property names, but have a special
+meaning in the syntactic contexts where they are explicitly referenced in the grammar.
 
 {{{
 ContextuallyReservedIdentifier :: [one of]
-    const decimal double dynamic each eval final generator generic get has
-    implements import int interface let namespace native Number override
-    package precision prototype rounding set standard static strict to type uint 
-    undefined unit use xml yield
+  const dynamic each eval extends external final generator get implements 
+  import interface let namespace native override package prototype set static 
+  strict undefined use xml yield
 }}}
 
 === Identifier ===
@@ -87,7 +114,7 @@ informative character categories specified by the Unicode standard.
 
 //IdentifierName// ::
     //IdentifierStart//
-    //IdentifierName IdentifierPart//
+ //IdentifierName IdentifierPart//
 
 //IdentifierStart// ::
     //UnicodeLetter//
@@ -203,19 +230,60 @@ an empty regular expression, use ''/(?:)/''.
 
 == Program Structure ==
 
+<p>The semantics of ECMAScript programs is described in terms of an abstract syntax. The major
+structure of programs is dominated by several syntactic types:
+''BLOCK'',
+''DEFINITION'',
+''STATEMENT'', and
+''EXPRESSION''
+
+<p>A ''BLOCK'' consists of a head that introduces property definitions, and a body that is a ''STATEMENT list''.
+Blocks occur in many places in the program syntax including //Programs//, //FunctionDefinitions//, 
+//ClassDefinitions//, //InterfaceDefinitions//, //FunctionDefinitions//, //LetExpressions// and various kinds
+of statements. Blocks introduce a lexical scope.
+
+<p>A ''DEFINITION'' describes a fixed property. Definitions include //NamespaceDefinitions//, //ClassDefinitions//,
+//InterfaceDefinitions//, //TypeDefinitions//, //FunctionDefinitions//, and //VariableDefinitions//.
+
+<p>A ''STATEMENT'' provides one of various control flow constructs.
+
+<p>An ''EXPRESSION'' computes a value. There are serveral sub-categories of expressions. 
+
+<p>A ''LITERAL'' expression is a shorthand for creating an instance of one of several built-in classes. 
+Array and object literals can be given an optional allocation type. 
+
+<p>A ''TYPE_EXPRESSION'' 
+is a constant expression that computes a ''TYPE'' value. A constant expression is 
+guaranteed to compute the same value over the life of the program. 
+
+<p>A ''NAMESPACE_EXPRESSION'' 
+is a constant expression that computes a ''NAMESPACE'' value. 
+
+<p>An ''IDENTIFIER_EXPRESSION'' computes a ''NAME'' and is occur as part of one of several 
+reference expressions.
+
+===== Derived Syntax =====
+
+<p>There are several derived forms that don't appear in the abstract syntax of a fully 
+parsed program.
+
+<p>A ''PATTERN'' is desugared into a list of atomic assignments or bindings. A ''PACKAGE'' 
+is desugared into more primitive ''NAMESPACE'' constructs.
+
 === Identifier Expresssions ===
 
-<p>Identifier expression have various surfaces representations including:
+<p>Identifier expressions have various surfaces representations including:
 //QualifiedName//, //PropertyName//, and //PrimaryName//. These expressions are 
 translated into one of two possible AST constructions:
 //Identifier// or //QualifiedIdentifier//.
 
+
 <IMPL>
-<pre>
-datatype IDENT_EXPR =
-         Identifier of EXPR
-       | QualifiedIdentifier of (EXPR * EXPR)
-</pre>
+<INCLUDE file="grammar.rul" name="type IDENTIFIER">
+<INCLUDE file="grammar.rul" name="datatype NAMESPACE">
+<INCLUDE file="grammar.rul" name="datatype IDENTIFIER_EXPRESSION">
+<INCLUDE file="grammar.rul" name="datatype NAMESPACE_EXPRESSION">
+
 
 ==== Identifier ====
 
@@ -260,17 +328,18 @@ fun getClassPrivateIdentifier ()
 
 ==== QualifiedNameIdentifier ====
 
-<p>A //QualifiedNameIdentifier// is an ''IDENTIFIER_EXPRESSION'' that the syntax of //Identifier//, //Brackets//, or one of the tokens **ReservedIdentifier**, **StringLiteral**, or **NumberLiteral**. //QualifiedNameIdentifier// occurs on the right side of ''::'' in //QualifiedName// and //PropertyOperator//.
+
+<p>A //QualifiedNameIdentifier// is an ''EXPRESSION'' that the syntax of //Identifier//, //Brackets//, or one of the tokens **ReservedIdentifier**, **StringLiteral**, or **NumberLiteral**. //QualifiedNameIdentifier// occurs on the right side of ''::'' in //QualifiedName// and //PropertyOperator//.
 
 <IMPL>
-<INCLUDE file="grammar.rul" name="rul QualifiedNameIdentifier (namespace: EXPRESSION) : IDENTIFIER_EXPRESSION =">
+<INCLUDE file="grammar.rul" name="rul QualifiedNameIdentifier">
 
 ==== QualifiedName ====
 
 <p>A //QualifiedName// is an ''IDENTIFIER_EXPRESSION'' that may occur where a //PrimaryName// or //FieldName// occurs.
 
 <IMPL>
-<INCLUDE file="grammar.rul" name="rul QualifiedName () : IDENTIFIER_EXPRESSION =">
+<INCLUDE file="grammar.rul" name="rul QualifiedName">
 
 ==== PrimaryName ====
 
@@ -288,19 +357,9 @@ possibly specified by an optional type annotation.
 <IMPL>
 The abstract syntax for literal expressions is:
 
-<pre>
-datatype LITERAL =
-    LiteralNull
-  | LiteralUndefined
-  | LiteralBoolean of bool
-  | LiteralDouble of Real64.real
-  | LiteralString of Ustring.STRING
-  | LiteralArray of { exprs: EXPR list, ty: TY option }
-  | LiteralNamespace of NAMESPACE
-  | LiteralObject of{ expr : FIELD list, ty: TY option }
-  | LiteralFunction of FUNC
-  | LiteralRegExp of { str: Ustring.STRING }
-</pre>
+<INCLUDE file="grammar.rul" name="datatype LITERAL">
+<INCLUDE file="grammar.rul" name="type FIELD">
+<INCLUDE file="grammar.rul" name="datatype VAR_DEFN_TAG">
 
 ==== FunctionExpression ====
 
@@ -323,12 +382,14 @@ datatype LITERAL =
 
 ==== FieldName ====
 
+
 <p>A //FieldName// is an ''IDENTIFIER_EXPRESSION'' which can occur in an //ObjectLiteral//, an //ObjectPattern//, and a //RecordType//. A //FieldName// has the syntax of a //QualifiedName//, or one of the tokens **StringLiteral**, **NumberLiteral**, and **ReservedIdentifier**.
 
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul FieldName">
 
 ==== ArrayLiteral ====
+
 
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul ArrayLiteral (NoColon) : LITERAL =">
@@ -347,19 +408,30 @@ datatype LITERAL =
 <INCLUDE file="grammar.rul" name="rul ElementComprehension () : EXPRESSION =">
 <INCLUDE file="grammar.rul" name="rul ForInExpressionList () : (FOR_BINDING * EXPRESSION) =">
 <INCLUDE file="grammar.rul" name="rul ForInExpression () : (FOR_BINDING * EXPRESSION) =">
-<INCLUDE file="grammar.rul" name="rul OptionalIfCondition () : EXPR option =">
+<INCLUDE file="grammar.rul" name="rul OptionalIfCondition">
 
 === Expressions ===
 
 <IMPL>
-<INCLUDE file="grammar.rul" name="datatype EXPR">
+<INCLUDE file="grammar.rul" name="datatype EXPRESSION">
+<INCLUDE file="grammar.rul" name="datatype INIT_TARGET">
+<INCLUDE file="grammar.rul" name="type NAME_REF">
+<INCLUDE file="grammar.rul" name="type INIT">
+<INCLUDE file="grammar.rul" name="type HEAD">
+<INCLUDE file="grammar.rul" name="datatype BINOP">
+<INCLUDE file="grammar.rul" name="datatype BINTYPEOP">
+<INCLUDE file="grammar.rul" name="datatype UNOP">
+<INCLUDE file="grammar.rul" name="datatype THIS_KIND">
+<INCLUDE file="grammar.rul" name="type FOR_ENUM_HEAD">
 
 ==== PrimaryExpression ====
+
 
 <p>A //PrimaryExpression// may occur wherever a //MemberExpression// may occur.
 
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul PrimaryExpression (alpha, beta)">
+
 
 ==== ParenExpression ====
 
@@ -592,10 +664,110 @@ in the scope chain.
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul LikedPattern">
 
+==== Desugaring Patterns ====
+
+{{{
+        Notation
+
+        []             list
+        (fl,el)        head
+        fl             fixture list
+        el             expr list
+        il             init list
+        sl             stmt list
+        it             init target = VAR, LET (default=LET)
+        ie             init expr
+        se             set expr
+
+        initexpr       init it (fl,el) il
+        letexpr        let (fl,el) el
+        block          (fl,el) sl
+      
+
+        Binding Patterns
+
+        var x = y      ([x]) ... () {init VAR () [x=y]}
+        var [x] = y    ([x]) ... () {init VAR ([t0],[init t0=y]) [x=t0[0]])
+
+        let (x=y) ...  ([x],[init (x=y)]) ...
+        let x=y        ([x],[]) {init () x=y}
+
+        Assignment Patterns
+
+        x = y          [],  set x=y
+        [x] = y        [],  let ([t0],[init t0=y]) [set x=t0[0]]
+
+        Block Structure
+
+        { }            () {}
+        {stmt}         () {stmt}
+        {let x}        ([x],[x=undef]) {}       is undef the right val?
+        {var x = y; let z = y}
+                       ([x],[]) ... ([z],[]) {init VAR () x=y; init LET () z=y}
+
+
+        assignment, create a let for each aggregate, a temp for
+        each level of nesting
+
+        x = y              set x=y
+        [x] = y            let (t0=y) set x=t0[0]
+        [[x]] = y          let (t0=y) let (t1=t0[0]) set x=t1[0]
+        [[x],[x]] = y      let (t0=y) let (t1=t0[0]) set x=t1[0]
+                                    , let (t1=t0[1]) set x=t1[0]
+        
+        initialization, create an init rather than a set for the
+        leaf nodes
+
+        var x = v            let (t0=v) init () [x=t0]
+        var [x] = v          let (t0=v) init () [x=t0[0]]
+        var [x,[y,z]] = v    let (t0=v) init () [x=t0[0]]
+                                      , let (t1=t0[1]) init () [y=t1[0], z=t1[1]]
+        var [x,[y,[z]]] = v  let (t0=v) init () [x=t0[0]]
+                                      , let (t1=t0[1]) init () [y=t1[0]
+                                                     , let (t2=t1[0]) init () [z=t2[0]]
+
+        for initialization, we need to know the namespace and the target 
+        so we make INITS to go into the InitExpr inside the LetExpr
+
+        let x = y          init x=y
+
+        flattening.
+
+        var [x,[y,z]] = v  let (t0=v) init () [x=t0[0]]
+                                    , let (t1=t0[1]) init () [y=t1[0], z=t1[0]]
+
+                           t0=v
+                           x=t0[0]
+                           t1=t0[1]
+                           y=t1[0]
+                           z=t1[1]
+        head = {[t0,x,t1,y,z],
+
+        flattening doesn't work because it mixes named and temporary
+        fixtures
+
+        lets and params have the same problem. both allow destructuring
+        patterns that can expand into a nested expression.
+
+        let ([x,[y,z]]=v) ...
+
+        top heads only have named fixtures. sub heads only have temporaries.
+        temporaries are always immediately initialized. a head is a list of
+        fixtures and a list of expressions. the expressions get evaluated
+        in the scope outside the head.
+
+        settings is a sub head. it has temporary fixtures and init exprs that
+        target instance variables
+
+        */
+}}}
+
+<INCLUDE file="parser.sml" name="fun desugarPattern">
+
 === Type Expressions ===
 
 <IMPL>
-<INCLUDE file="grammar.rul" name="datatype TYPE_EXPR">
+<INCLUDE file="grammar.rul" name="datatype TYPE_EXPRESSION">
 
 ==== TypeExpression ====
 
@@ -745,6 +917,13 @@ in the scope chain.
 ==== AnnotatableDirectives ====
 
 <INCLUDE file="grammar.rul" name="datatype DEFINITION">
+<INCLUDE file="grammar.rul" name="datatype CLASS">
+<INCLUDE file="grammar.rul" name="datatype INTERFACE">
+<INCLUDE file="grammar.rul" name="datatype FUNCTION">
+<INCLUDE file="grammar.rul" name="datatype METHOD">
+<INCLUDE file="grammar.rul" name="datatype CONSTRUCTOR">
+<INCLUDE file="grammar.rul" name="datatype VAR">
+<INCLUDE file="grammar.rul" name="datatype ACCESSOR">
 <INCLUDE file="grammar.rul" name="rul AnnotatableDirective (Global">
 <INCLUDE file="grammar.rul" name="rul AnnotatableDirective (Class">
 <INCLUDE file="grammar.rul" name="rul AnnotatableDirective (Interface">
@@ -868,8 +1047,22 @@ in the scope chain.
 
 === PackageDefinition ===
 
-<IMPL>
+<p>A package definition syntactic derivation of several other forms include a block,
+two namespaces, and several 'use' pragmas. 
+
 <INCLUDE file="grammar.rul" name="rul PackageDefinition">
+
+<p>The desugaring of a package includes the following steps:
+
+<p>
+   - Set the current package name<br>
+   - Get the 'external' and 'internal' package namespaces given a name and package attribute<br>
+   - If the attribute is "final", then the internal namespace shall be unique to this definition<br>
+   - Insert 'use default namespace external' in 'block'<br>
+   - Insert 'use namespace internal' and 'use namespace external' in 'block'<br>
+
+
+<INCLUDE file="grammar.rul" name="fun desugarPackage">
 <INCLUDE file="grammar.rul" name="rul PackageAttribute">
 <INCLUDE file="grammar.rul" name="rul PackageNameOpt">
 <INCLUDE file="grammar.rul" name="rul PackageName">
@@ -906,4 +1099,4 @@ in the scope chain.
 <INCLUDE file="grammar.rul" name="datatype PROGRAM">
 <INCLUDE file="grammar.rul" name="rul Program">
 
-=== Automatic Semicolon Insertion ===
+

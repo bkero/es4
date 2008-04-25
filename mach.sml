@@ -53,21 +53,28 @@ structure NsMap = SplayMapFn (NsKey);
 structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
 structure NmMap = SplayMapFn (NmKey);
 
-structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
+structure StrKey = struct type ord_key = Ustring.STRING val compare = (fn (a,b) => Ustring.compare a b) end
 structure StrMap = SplayMapFn (StrKey);
 
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
+
+structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
+structure IntMap = SplayMapFn (IntKey);
           
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
-val cachesz = 1024
+val cachesz = 4096
                                        
 type ATTRS = { dontDelete: bool,
                dontEnum: bool,
                readOnly: bool,
                isFixed: bool }     
-             
+
+type IDENTIFIER = Ustring.STRING
+
+type NAMESPACE = Ast.NAMESPACE
+
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -76,6 +83,7 @@ datatype VAL = Object of OBJ
          Obj of { ident: OBJ_IDENT,
                   tag: VAL_TAG,
                   props: PROP_BINDINGS,
+                  rib: Ast.RIB ref,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
 
@@ -96,7 +104,8 @@ datatype VAL = Object of OBJ
           doubleCache: (OBJ Real64Map.map) ref,
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
-          strCache: (OBJ StrMap.map) ref
+          strCache: (OBJ StrMap.map) ref,
+          tyCache: (Ast.TYPE_EXPR IntMap.map) ref (* well, mostly objs *)
          }
 
      and PROFILER =
@@ -151,7 +160,7 @@ datatype VAL = Object of OBJ
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
        | Function of FUN_CLOSURE
-       | Type of Ast.TY
+       | Type of Ast.TYPE_EXPR
        | NativeFunction of NATIVE_FUNCTION
        | Generator of GEN
 
@@ -208,6 +217,7 @@ datatype VAL = Object of OBJ
            * Auxiliary machine/eval data structures, not exactly
            * spec-normative, but important! Embedded in REGS.
            *)
+          langEd: int ref,
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
@@ -270,14 +280,14 @@ withtype FUN_CLOSURE =
 
      and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
-     and PROP = { ty: Ast.TY,
+     and PROP = { ty: Ast.TYPE_EXPR,
                   state: PROP_STATE,
                   attrs: ATTRS }
 
      and PROP_BINDINGS = { max_seq: int,
 			               bindings: { seq: int,
 				                       prop: (* PROP *)
-				                                 { ty: Ast.TY,   
+				                                 { ty: Ast.TYPE_EXPR,   
 					                               state: PROP_STATE,
 					                               attrs: ATTRS } } NameMap.map } ref 
 			 
@@ -485,11 +495,6 @@ fun matchProps (fixedProps:bool)
         List.mapPartial tryNS nss
     end
 
-fun makeTy (te:Ast.TYPE_EXPR) 
-    : Ast.TY = 
-    Ast.Ty { expr = te,
-             ribId = NONE }
-
 fun getProp (b:PROP_BINDINGS)
             (n:Ast.NAME)
     : PROP =
@@ -501,7 +506,7 @@ fun getProp (b:PROP_BINDINGS)
          * with value undefined. Any property not found
          * errors would have been caught by evalRefExpr
          *)
-        {ty=makeTy (Ast.SpecialType Ast.Undefined),
+        {ty=Ast.SpecialType Ast.Undefined,
          state=ValProp Undef,
          attrs={dontDelete=false,  (* unused attrs *)
                 dontEnum=false,
@@ -523,6 +528,35 @@ fun hasMagic (ob:OBJ) =
         case !magic of
             SOME _ => true
           | NONE => false
+
+fun setRib (obj:OBJ)
+           (r:Ast.RIB)
+    : unit =
+    let
+        val Obj { rib, ... } = obj
+    in
+        rib := r
+    end
+
+fun getRib (obj:OBJ)
+    : Ast.RIB =
+    let
+        val Obj { rib, ... } = obj
+    in
+        !rib
+    end
+
+fun getRibs (scope:SCOPE) 
+    : Ast.RIBS = 
+      let   
+          val Scope {object, parent, ...} = scope
+          val rib = getRib object
+      in
+          case parent of 
+              NONE => [rib]
+            | SOME p => rib :: (getRibs p)
+      end
+
 
 fun setPropDontEnum (props:PROP_BINDINGS)
                     (n:Ast.NAME)
@@ -560,6 +594,7 @@ fun newObj (t:VAL_TAG)
           tag = t,
           props = newPropBindings (),
           proto = ref p,
+          rib = ref [],
           magic = ref m }
 
 fun newObjNoTag _
@@ -743,17 +778,16 @@ fun inspect (v:VAL)
         fun id (Obj ob) = Int.toString (#ident ob)
 
         fun typ t = LogErr.ty t
-        fun ty (Ast.Ty { expr, ... }) = typ expr
 
         fun magType t = 
             case t of 
                 Class { cls = Ast.Cls { instanceType, classType, ... }, ... } => 
-                (" : instanceType=" ^ (ty instanceType) ^ ", classType=" ^ (ty classType))
+                (" : instanceType=" ^ (typ instanceType) ^ ", classType=" ^ (typ classType))
               | Interface { iface = Ast.Iface { instanceType, ... }, ... } => 
-                (" : instanceType=" ^ (ty instanceType))
+                (" : instanceType=" ^ (typ instanceType))
               | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
-                (" : " ^ (ty ty0))
-              | Type t => (" = " ^ (ty t))
+                (" : " ^ (typ ty0))
+              | Type t => (" = " ^ (typ t))
               | _ => ""
                 
         fun tag (Obj ob) =
@@ -799,7 +833,7 @@ fun inspect (v:VAL)
                               | NamespaceProp _ => "[namespace]"
                               | ValListProp _ => "[val list]"
                     in
-                        p indent ["   prop = ", LogErr.name n, ": ", ty ty0, att attrs,  " = "];
+                        p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];
                         case state of
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
@@ -862,9 +896,9 @@ fun newObject (t:VAL_TAG)
 fun nominalBaseOfTag (t:VAL_TAG)
     : Ast.NAME =
     case t of
-        ObjectTag _ => Name.nons_Object
-      | ArrayTag _ => Name.nons_Array
-      | FunctionTag _ => Name.nons_Function
+        ObjectTag _ => Name.public_Object
+      | ArrayTag _ => Name.public_Array
+      | FunctionTag _ => Name.public_Function
       | ClassTag ity => (#name ity)
       | NoTag => error ["searching for nominal base of no-tag object"]
 
@@ -908,7 +942,7 @@ fun needFunction (v:VAL)
               error ["require function object"])
 
 fun needType (v:VAL)
-    : (Ast.TY) =
+    : (Ast.TYPE_EXPR) =
     case needMagic v of
         Type t => t
       | _ => (inspect v 1; 
@@ -1064,6 +1098,23 @@ fun setBooting (regs:REGS)
         booting := isBooting
     end
 
+fun setLangEd (regs:REGS) 
+              (newLangEd:int)
+    : unit =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        langEd := newLangEd
+    end
+
+fun getLangEd (regs:REGS)               
+    : int =
+    let 
+        val { aux = Aux { langEd, ...}, ... } = regs
+    in
+        !langEd
+    end
+
 fun getSpecials (regs:REGS) =
     let 
         val { aux = Aux { specials = SpecialObjs ss, ... }, ... } = regs
@@ -1123,21 +1174,25 @@ fun updateCache cacheGetter
         then ((c := cacheInsert ((!c), k, v)); v)
         else v
     end
+        
 
 fun getDoubleCache (regs:REGS) = (#doubleCache (getCaches regs)) 
 fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
 fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
 fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
+fun getTyCache (regs:REGS) = (#tyCache (getCaches regs)) 
 
 val findInDoubleCache = findInCache getDoubleCache Real64Map.find
 val findInNsCache = findInCache getNsCache NsMap.find
 val findInNmCache = findInCache getNmCache NmMap.find
 val findInStrCache = findInCache getStrCache StrMap.find
+val findInTyCache = findInCache getTyCache IntMap.find
 
 val updateDoubleCache = updateCache getDoubleCache Real64Map.numItems Real64Map.insert
 val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
 val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
+val updateTyCache = updateCache getTyCache IntMap.numItems IntMap.insert
 
 fun makeGlobalScopeWith (global:OBJ) 
     : SCOPE =
@@ -1157,7 +1212,8 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                      { doubleCache = ref Real64Map.empty,
                        nsCache = ref NsMap.empty,
                        nmCache = ref NmMap.empty,
-                       strCache = ref StrMap.empty }
+                       strCache = ref StrMap.empty,
+                       tyCache = ref IntMap.empty }
         val specials = SpecialObjs 
                        { classClass = ref NONE,
                          interfaceClass = ref NONE,
@@ -1178,6 +1234,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                          doubleNaN = ref NONE,
                          generatorClass = ref NONE }
         val aux = Aux { booting = ref false,
+                        langEd = ref 4,
                         specials = specials,
                         stack = ref [],
                         objCache = ocache,
@@ -1309,8 +1366,161 @@ fun closeGen (Gen state)
       | _ => state := ClosedGen
 *)
 
+(* begin names experiment *)
+
+(*
+type IDENTIFIER = Ast.IDENTIFIER
+type NAMESPACE = Ast.NAMESPACE
+
+datatype NAME = Name of (NAMESPACE * IDENTIFIER)
+
+type ENV = REGS
+type CLASS = Ast.CLS
+type OBJECT = OBJ
+type DEFINITION = Ast.FIXTURE
+
+type NAMESPACE_SET = NAMESPACE list
+type OPEN_NAMESPACES = NAMESPACE_SET list 
+
+fun head x = hd x (* return the first element of a list *)
+fun tail x = tl x (* return all but the first element of a list *)
+
+fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
+    case (n1, n2) of
+        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
+      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
+      | _ => false
+
+fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
+    : NAMESPACE_SET =
+    (* compute the intersection of two NAMESPACE_SETs *)
+    []
+
+fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
+    : NAMESPACE list =
+    (* get the namespaces of binding names that have a certain identifier *)
+    []
+
+fun getInstanceBindings (class: CLASS) 
+    : (NAME * DEFINITION) list =
+    (* get the instance bindings of a class *)
+    []
+
+fun getBindings (object: OBJECT)
+    : (NAME * DEFINITION) list =
+    (* get the bindings of an object *)
+    []
+
+fun getPrototypeObject (object: OBJECT)
+    : OBJECT option =
+    (* get the prototype (as in '[[proto]]') object of an object *)
+    NONE
+
+fun getScopeObject (Scope {object,...} : SCOPE)
+    : OBJECT =
+    (* get the first scope object of a scope chain *)
+    object
+
+fun getOuterScope (Scope {parent, ...}: SCOPE)
+    : SCOPE option =
+    parent
+
+fun getScope ({scope,...}: ENV)
+    : SCOPE = 
+    (* get the scope chain of an execution environment *)
+    scope
+
+fun selectNamespacesByClass ([], _, _) = []
+ |  selectNamespacesByClass (classes: CLASS list, 
+                             namespaces: NAMESPACE_SET, 
+                             identifier: IDENTIFIER)
+    : NAMESPACE list =
+    let
+        val class = head (classes)
+        val bindings = getInstanceBindings (class)
+        val bindingNamespaces = getNamespaces (bindings, identifier)
+        val matches = intersectNamespaces (bindingNamespaces, namespaces)
+    in
+        case matches of
+            [] => selectNamespacesByClass (tail (classes), namespaces, identifier)
+          | _ => matches
+    end
+
+fun selectNamespacesByOpenNamespaces ([], _) = []
+ |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
+                                      namespaces: NAMESPACE_SET)
+    : NAMESPACE list =
+    let
+        val matches = intersectNamespaces (head (namespacesList), namespaces)
+    in
+        case matches of
+            [] => selectNamespacesByScope (tail (namespacesList), namespaces)
+          | _ => matches
+    end
+
+fun objectSearch (NONE, _, _) = []
+  | objectSearch (SOME object: OBJECT option, 
+                  namespaces: NAMESPACE_SET, 
+                  identifier: IDENTIFIER)
+    : NAMESPACE_SET =
+    let
+        val bindings = getBindings (object)
+        val bindingNamespaces = getNamespaces (bindings, identifier)
+        val matches = matchNamespaces (bindingNamespaces, namespaces)
+    in
+        case matches of
+            [] => objectSearch (getPrototypeObject (object), namespaces, identifier)
+          | _ => matches
+    end
+
+fun objectListSearch ([], _, _) = NONE
+  | objectListSearch (objects: OBJECT list, 
+                      namespaces: NAMESPACE_SET, 
+                      identifier: IDENTIFIER)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val object = head (objects)
+        val matches = objectSearch (SOME object, namespaces, identifier)
+    in
+        case matches of
+            [] => objectListSearch (tail (objects), namespaces, identifier)
+          | _ => SOME (object, matches)
+    end
+
+fun inheritedClassesOf (object: OBJECT)
+    : CLASS list =
+    []
+
+exception RuntimeError of string
+
+fun findName (objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
+    : (OBJECT * NAME) option =
+    let
+        val namespaces = List.concat (openNamespaces)
+        val matches = objectListSearch (objects, namespaces, identifier)
+    in
+        case matches of
+            NONE => NONE
+          | SOME (object, namespace :: []) => SOME (object, Name (namespace, identifier))
+          | SOME (object, namespaces) =>
+            let
+                val matches = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
+            in
+                case matches of
+                    namespace :: [] => SOME (object, Name (namespace, identifier))
+                  | [] => NONE
+                  | _ =>
+                    let
+                        val classList = inheritedClassesOf (object)
+                        val matches = selectNamespacesByClass (classList, namespaces, identifier)
+                    in case matches of
+                        namespace :: [] => SOME (object, Name (namespace, identifier))
+                      | [] => raise (RuntimeError "internal error")
+                      | _ => raise (RuntimeError "ambiguous reference")
+                    end
+            end
+    end
+*)
+
 end
-
-
-
 

@@ -51,6 +51,7 @@ fun usage () =
                "    -3            process input files in 3rd edition mode\n",
                "(*) -4            process input files in 4th edition mode\n",
                "    -b            boot standard library from scratch (ignore image file)\n",
+               "    -bv           verify standard library",
                "    -q            quiet (suppress startup banner)\n",
                "\n",
                "    -h            display this help message and exit\n",
@@ -79,11 +80,8 @@ fun usage () =
                "        native    native operations\n",
                "        boot      standard library boot sequence\n",
                "        ns        namespaces in traces\n",
+               "        type      operations on types\n",
                "        stack     stack operations\n"])
-
-fun updateLangEd (regs:Mach.REGS)
-    : unit =
-    Fixture.updateLangEd (#prog regs) (!langEd)
 
 fun findTraceOption (tname:string)
     : (bool ref) option =
@@ -94,6 +92,7 @@ fun findTraceOption (tname:string)
       | "defn" => SOME (Defn.doTrace)
       | "defnsum" => SOME (Defn.doTraceSummary)
       | "verify" => SOME (Verify.doTrace) 
+      | "verify_warn" => SOME (Verify.traceWarnings) 
       | "verified" => SOME (Verify.doTraceFrag) 
       | "eval" => SOME (Eval.doTrace)
       | "mach" => SOME (Mach.doTrace)
@@ -117,6 +116,7 @@ fun consumeOption (opt:string) : bool =
                                        SOME r => (r := true; false)
                                      | NONE => true)
       | ([#"-", #"b"]) => false
+      | ([#"-", #"b", #"v"]) => (Boot.verifyBuiltins := true; false)
       (*
       | (#"-" :: #"P" :: rest) =>
         (case Int.fromString (String.implode rest) of
@@ -138,22 +138,22 @@ val failure = OS.Process.failure
 (* FIXME: should use more portable OS.Process.exit *)
 fun withEofHandler thunk =
     (thunk (); 0)
-    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1)
+(*    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1) *)
 
 fun withHandlers thunk =
     (thunk (); 0)
     handle
-    LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
-  | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
-  | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
-  | LogErr.TypeError e => (print ("**ERROR** TypeError: " ^ e ^ "\n"); 1)
+    LogErr.LexError e    => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
+  | LogErr.ParseError e  => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
+  | LogErr.NameError e   => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
+  | LogErr.TypeError e   => (print ("**ERROR** TypeError: " ^ e ^ "\n"); 1)
   | LogErr.FixtureError e => (print ("**ERROR** FixtureError: " ^ e ^ "\n"); 1)
-  | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
-  | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
-  | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
+  | LogErr.DefnError e   => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
+  | LogErr.EvalError e   => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
+  | LogErr.MachError e   => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
   | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
-  | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
-  | LogErr.AstError e => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
+  | LogErr.HostError e   => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
+  | LogErr.AstError e    => (print ("**ERROR** AstError: " ^ e ^ "\n"); 1)
   | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
 
 datatype COMMAND =
@@ -186,7 +186,7 @@ fun define prog argvRest =
         val frags = parse argvRest
         fun f prog accum (frag::frags) = 
             let 
-                val (prog', frag') = Defn.defTopFragment prog frag
+                val (prog', frag') = Defn.defTopFragment prog frag (!langEd)
             in
                 f prog' (frag'::accum) frags
             end
@@ -216,6 +216,7 @@ fun eval regs argvRest =
         val (prog, frags) = verify (#prog regs) argvRest
         val regs = Eval.withProg regs prog
     in
+        Mach.setLangEd regs (!langEd);
         Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
@@ -275,14 +276,14 @@ fun repl (regs:Mach.REGS)
             in
                 case toks of
                     [":quit"] => raise quitException
-                  | [":3"] => (langEd := 3; updateLangEd (!regsCell))
-                  | [":4"] => (langEd := 4; updateLangEd (!regsCell))
+                  | [":3"] => (langEd := 3)
+                  | [":4"] => (langEd := 4)
                   | [":q"] => raise quitException
                   | [":h"] => help ()
                   | [":help"] => help ()
                   | [":?"] => help ()
                   | ["?"] => help ()
-                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)); updateLangEd (!regsCell))
+                  | [":reboot"] => (regsCell := Boot.boot (valOf (!progDir)))
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
@@ -319,14 +320,16 @@ fun repl (regs:Mach.REGS)
                     in
                         if not (!doDefn) then () else
                         let
-                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag
+                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag (!langEd)
                             val frag = Verify.verifyTopFragment prog true frag
                         in
                             regsCell := Eval.withProg regs prog;
                             if not (!doEval) then () else
                             let
-					            val _ = Mach.resetStack (!regsCell)
-                                val res = (Eval.evalTopFragment (!regsCell) frag)
+                                val regs = !regsCell
+					            val _ = Mach.resetStack regs
+                                val _ = Mach.setLangEd regs (!langEd)
+                                val res = (Eval.evalTopFragment regs frag)
 						            handle Eval.ThrowException v => (tidyUp (); v)
                             in
                                 case res of

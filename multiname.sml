@@ -99,15 +99,8 @@ fun matchFixtures  (rib:Ast.RIB)
               | Ast.PropName n =>
                 let
                     val {id,ns} = n
-                    fun matchNS candidateNS =
-                        case candidateNS of
-                            Ast.LimitedNamespace (ident,limNS) =>
-                            if id = ident
-                            then ns = limNS
-                            else false
-                          | _ => ns = candidateNS
                 in
-                    if searchId = id andalso (List.exists matchNS nss)
+                    if searchId = id andalso (List.exists (fn x => x = ns) nss)
                     then SOME n
                     else NONE
                 end

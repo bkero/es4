@@ -49,10 +49,6 @@
  * verified.
  */
 
-package
-{
-    use namespace __ES4__;
-
     /* E262-3 15.11.6.6; 15.11.7 */
     public dynamic class URIError extends Error
     {
@@ -73,4 +69,3 @@ package
         /* INFORMATIVE */
         prototype var message = "Abuse of URI method";
     }
-}
