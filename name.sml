@@ -71,10 +71,10 @@ fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
 
 fun typename (n:Ast.NAME) =
     Ast.TypeName (Ast.QualifiedIdentifier
-		      { ident = (#id n),
-			qual = Ast.LiteralExpr
-				   (Ast.LiteralNamespace (#ns n)) })
-
+					  { ident = (#id n),
+						qual = Ast.LiteralExpr
+								   (Ast.LiteralNamespace (#ns n)) }, NONE)
+																		   
 (*
  * Names that are supposed to be present in the global scope
  * once we finish booting.

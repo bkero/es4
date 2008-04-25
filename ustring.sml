@@ -190,7 +190,7 @@ fun wcharToChar   (c:WCHAR) : char  = internal_wcharToChar   c
 fun toAscii      (s:STRING   ) : string = internal_toEscapedAscii s
 fun toFilename   (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
 
-fun fromString   (s:string   ) : STRING = internal_fromString   s  (* Should be used sparingly. *)
+fun fromString   (s:string   ) : STRING = internal_fromString   s    (* Should be used sparingly. *)
 fun fromSource   (s:string   ) : SOURCE = internal_fromSource   s
 fun fromInt      (i:int      ) : STRING = internal_fromInt      i
 fun fromInt32    (i:Int32.int) : STRING = internal_fromInt32    i

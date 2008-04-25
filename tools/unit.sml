@@ -314,7 +314,7 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Verify, arg, source } =>
 	 (let
 	      val frag = parse source
-	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag
+	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag 4
 	      val _ = (Verify.warningsAreFailures := true )
 	      val frag = Verify.verifyTopFragment prog true frag
 	  in
@@ -326,7 +326,7 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Eval, arg, source } =>
 	 (let
 	      val frag = parse source
-	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag
+	      val (prog, frag) = Defn.defTopFragment (#prog regs) frag 4
 	      val frag = Verify.verifyTopFragment prog true frag
 	      val res = Eval.evalTopFragment regs frag
 	  in
