@@ -3120,14 +3120,14 @@ and typeExpression (ts0:TOKENS)
     : (TOKENS * Ast.TYPE_EXPR) =
     let val _ = trace ([">> typeExpression with next=", tokenname (hd ts0)])
     in case ts0 of
-        (Like, _) :: _ =>
+(*        (Like, _) :: _ =>
             let
                 val (ts1, nd1) = nullableTypeExpression (tl ts0)
             in
                 trace (["<< typeExpression with next=", tokenname (hd ts1)]);
                 (ts1, Ast.LikeType nd1)
             end
-      | _ =>
+      |*)  _ =>
             let
                 val (ts1, nd1) = nullableTypeExpression (ts0)
             in
