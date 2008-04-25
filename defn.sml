@@ -2281,7 +2281,7 @@ and defNamespaceDefn (env:ENV)
                             (* FIXME: a nonce perhaps? *)
                             NONE => Name.newOpaqueNS ()
                           | SOME (Ast.LiteralExpr (Ast.LiteralString s)) =>
-                            Ast.StringNamespace s
+                            Ast.TransparentNamespace s
                           | SOME (Ast.LexicalRef lref) =>
                             resolveExprToNamespace env (Ast.LexicalRef lref)
                           | _ => LogErr.evalError ["illegal form of namespace initializer"]

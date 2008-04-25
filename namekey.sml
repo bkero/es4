@@ -34,10 +34,10 @@ structure NameKey = struct
 
 type ord_key = Ast.NAME
 
-fun cmpNS (Ast.OpaqueNamespace _, Ast.StringNamespace _) = LESS
-  | cmpNS (Ast.StringNamespace _, Ast.OpaqueNamespace _) = GREATER
+fun cmpNS (Ast.OpaqueNamespace _, Ast.TransparentNamespace _) = LESS
+  | cmpNS (Ast.TransparentNamespace _, Ast.OpaqueNamespace _) = GREATER
   | cmpNS (Ast.OpaqueNamespace i, Ast.OpaqueNamespace j) = Int.compare (i, j)
-  | cmpNS (Ast.StringNamespace i, Ast.StringNamespace j) = Ustring.compare i j
+  | cmpNS (Ast.TransparentNamespace i, Ast.TransparentNamespace j) = Ustring.compare i j
 
 (* FIXME: SML.NET doesn't implement List.collate *)
 fun collate (cmp:('a * 'a -> order))

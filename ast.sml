@@ -42,19 +42,11 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 type IDENT = Ustring.STRING
 
 type NONCE = int
-
-(* SPEC
+type NAMESPACE_ID = NONCE
 
 datatype NAMESPACE =
-         TransparentNamespace of IDENTIFIER
+         TransparentNamespace of Ustring.STRING
        | OpaqueNamespace of NAMESPACE_ID
-
-type NAMESPACE_ID = ...
-*)
-
-datatype NAMESPACE =
-         OpaqueNamespace of NONCE
-       | StringNamespace of Ustring.STRING
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 

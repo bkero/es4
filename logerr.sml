@@ -100,7 +100,7 @@ fun namespace (ns:Ast.NAMESPACE) =
 	in
 		case ns of
 			Ast.OpaqueNamespace i => "<ns #" ^ (Int.toString i) ^ (specialName ns) ^ ">"
-		  | Ast.StringNamespace s => "<ns '" ^ (Ustring.toAscii s) ^"'>"
+		  | Ast.TransparentNamespace s => "<ns '" ^ (Ustring.toAscii s) ^"'>"
 	end
 									 
 fun fullName ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "

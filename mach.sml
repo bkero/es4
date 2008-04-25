@@ -1260,8 +1260,7 @@ fun getNativeFunction (name:Ast.NAME)
 
 (* begin names experiment *)
 
-(*
-type IDENTIFIER = Ast.IDENTIFIER
+type IDENTIFIER = Ast.IDENT
 type NAMESPACE = Ast.NAMESPACE
 
 datatype NAME = Name of (NAMESPACE * IDENTIFIER)
@@ -1282,6 +1281,7 @@ fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
         (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
       | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
       | _ => false
+(*
 
 fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
     : NAMESPACE_SET =

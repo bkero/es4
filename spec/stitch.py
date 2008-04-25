@@ -543,7 +543,13 @@ def process(fn, hdrlvl):
     trace("include")
     text = re.sub(includetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
     trace("numberpredefined")
-    text = re.sub(r"<PRE>\n","<PRE><span class=\"pcounter\"></span>", text)
+    
+    # FIXME (comment by graydon): this last substitution doubly-counterizes blocks that were
+    # added by <INCLUDE>, so it winds up looking like junk with overlapping numbers. Don't
+    # know if this is crucial for some other aspect of formatting. Disabling for now.
+    #
+    # text = re.sub(r"<PRE>\n","<PRE><span class=\"pcounter\"></span>", text)
+
     trace("done!")
     return text
 

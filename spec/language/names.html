@@ -184,14 +184,14 @@ meaning of both kinds of reference and both kinds of identifier.
 sets, search for an object in the list and a property name on the object that matches identifier and
 namespaces.
 
-Informally, references are resolved to a name and an object containing a property binding with that
+<p>Informally, references are resolved to a name and an object containing a property binding with that
 name. Initially, resolution considers all currently open namespaces at once -- the union of all open
 namespaces -- regardless of the nesting structure of the open namespaces. Object list search is then
 performed. If no namespaces, or no object, are returned by object list search, an error is
 signaled. An object and a matching namepace set can therefore be assumed for the remainder of
 resolution.
 
-If one namespace matches, resolution completes with a name formed from the identifier and that
+<p>If one namespace matches, resolution completes with a name formed from the identifier and that
 namespace. If multiple names match, a matching subset is selected using the open namespaces
 list. Again, if the selection causes no namespaces to match, an error is signaled. If one namepace
 matches, resolution completes with a name formed from the identifier and that namespace. If multiple
