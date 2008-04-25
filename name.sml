@@ -54,6 +54,7 @@ fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
+fun helper (id:Ast.IDENT) : Ast.NAME = { id = id, ns = helperNS }
 fun ECMAScript4_Internal (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ECMAScript4_InternalNS }
 fun informative (id:Ast.IDENT) : Ast.NAME = { id = id, ns = informativeNS }
 
@@ -300,5 +301,7 @@ val ECMAScript4_Internal_informative_ = ECMAScript4_Internal Ustring.informative
 val ECMAScript4_Internal_helper_ = ECMAScript4_Internal Ustring.helper_
 val ECMAScript4_Internal_Unicode_ = ECMAScript4_Internal Ustring.Unicode_
 val ECMAScript4_Internal_RegExpInternals_ = ECMAScript4_Internal Ustring.RegExpInternals_
+
+val helper_GeneratorImpl = helper Ustring.GeneratorImpl_
 
 end

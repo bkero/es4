@@ -92,8 +92,7 @@
         function close() : void;
     }
 
-    // FIXME: this should be in an internal namespace
-    iterator class GeneratorImpl/*.<O, I, E>*/ implements iterator::Generator/*.<O, I, E>*/ {
+    helper class GeneratorImpl/*.<O, I, E>*/ implements iterator::Generator/*.<O, I, E>*/ {
         public function next() /*: O*/
             this.send(undefined)
 

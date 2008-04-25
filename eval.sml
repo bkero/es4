@@ -5090,7 +5090,9 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			(Name.ES4_decimal, Mach.getDecimalClassSlot),
 			
 			(Name.ES4_boolean, Mach.getBooleanClassSlot),
-			(Name.public_Boolean, Mach.getBooleanWrapperClassSlot)
+			(Name.public_Boolean, Mach.getBooleanWrapperClassSlot),
+
+            (Name.helper_GeneratorImpl, Mach.getGeneratorClassSlot)
 		    ]
 		    fun f (n,id) = Mach.nameEq name n
 		in
@@ -5098,7 +5100,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			NONE => ()
 		      | SOME (_,func) => 
 			let
-                val _ = TextIO.print ("binding special identity for class " ^ LogErr.name name ^ "\n")
+                (*val _ = TextIO.print ("binding special identity for class " ^ LogErr.name name ^ "\n")*)
 			    val _ = trace ["binding special identity for class ", fmtName name]
 			    val cell = func regs
 			in
