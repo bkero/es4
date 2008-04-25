@@ -923,7 +923,7 @@ We extend the matching relation to allow int-to-boolean conversions:
 We extend \fun{convert} as follows:
 \[
 \begin{array}{rcll}
-	\convert{v}{T} 		&=& v 		&\mbox{if $\istype v T$} \\
+	\convert{v}{T} 		&=& v 		&\mbox{if $\istype{v}{T}$} \\
 	\convert{0}{\Bool} &=& \false \\
 	\convert{n}{\Bool} &=& \true 	 &n\not=0\\
 %	\convert{v}{\wrapty T} &=& v	&\mbox{if $\istype v T$} \\
@@ -933,15 +933,6 @@ We extend \fun{convert} as follows:
 %	\istype{a_S}{T} &\mbox{if}& \sigma(a)=\objv{l_i:v_i} \mbox{ and }T=\objty{l_i:T_i} \mbox{ and } \istype {v_i}{\likety{T_i}}
 \end{array}
 \]
-The new relation $\istype{v}{T}$ checks if the value $v$ matches the type $T$:
-\begin{trules}
-%\headtrule{$\istype{v}{T}$}{Dynamic type check}
-\trule{Is-Ok}{
-		\comsubtype{\allocty{v}}{T}
-	}{
-		\istype{v}{T}
-	}
-\end{trules}
 %
 We add the type checking and optimization rules for the wrap operation and boolean constants:
 \begin{trules}
