@@ -9,7 +9,7 @@ structure PrettyCvt = struct
    and cvtNONCE n20 = PrettyRep.Int n20
    and cvtNAMESPACE (OpaqueNamespace x21) = PrettyRep.Ctor ("OpaqueNamespace", 
           SOME (cvtNONCE x21))
-     | cvtNAMESPACE (StringNamespace s24) = PrettyRep.Ctor ("StringNamespace", 
+     | cvtNAMESPACE (TransparentNamespace s24) = PrettyRep.Ctor ("TransparentNamespace", 
           SOME (PrettyRep.UniStr s24))
    and cvtNAME {ns=x27, id=x28} = PrettyRep.Rec [("ns", cvtNAMESPACE x27), 
           ("id", cvtIDENT x28)]

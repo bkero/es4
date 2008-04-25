@@ -1265,10 +1265,8 @@ type NAMESPACE = Ast.NAMESPACE
 
 datatype NAME = Name of (NAMESPACE * IDENTIFIER)
 
-type ENV = REGS
 type CLASS = Ast.CLS
 type OBJECT = OBJ
-type DEFINITION = Ast.FIXTURE
 
 type NAMESPACE_SET = NAMESPACE list
 type OPEN_NAMESPACES = NAMESPACE_SET list 
@@ -1281,46 +1279,76 @@ fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
         (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
       | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
       | _ => false
-(*
 
 fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
     : NAMESPACE_SET =
     (* compute the intersection of two NAMESPACE_SETs *)
-    []
+    (* INFORMATIVE *)
+    List.filter (fn n1 => List.exists (fn n2 => compareNamespaces (n1, n2)) ns2) ns1
 
-fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
+fun getNamespaces (names: NAME list, identifier: IDENTIFIER)
     : NAMESPACE list =
-    (* get the namespaces of binding names that have a certain identifier *)
-    []
+    (* get the namespaces of names that have a certain identifier *)
+    (* INFORMATIVE *)
+    List.mapPartial (fn (Name (ns,id)) => if id = identifier then SOME ns else NONE) names
 
-fun getInstanceBindings (class: CLASS) 
-    : (NAME * DEFINITION) list =
+fun getBindingNamespaces (object: OBJECT, 
+                          identifier: IDENTIFIER,
+                          namespaces: NAMESPACE_SET,
+                          fixedOnly: bool)
+    : NAMESPACE_SET =
+    (* 
+     * get the namespaces of names (optionally, only the names of
+     * fixed properties) that have a certain identifier
+     * and any of a certain set of namespaces, and are bound in a
+     * certain object. 
+     *)
+    (* INFORMATIVE *)
+    let
+        val Obj { props, ... } = object
+        fun tryNS ns = 
+            let
+                val name = { id = identifier, ns = ns }
+            in
+                case findProp props name of 
+                    NONE => NONE
+                  | SOME {attrs={isFixed, ...}, ...} => 
+                    if fixedOnly
+                    then if isFixed
+                         then SOME ns
+                         else NONE
+                    else SOME ns
+            end
+    in
+        List.mapPartial tryNS namespaces
+    end
+    
+fun getInstanceBindingNamespaces (class: CLASS, 
+                                  identifier: IDENTIFIER,
+                                  namespaces: NAMESPACE_SET)
+    : NAMESPACE_SET =
+    (* 
+     * get the namespaces of names that have a certain identifier
+     * and any of a certain set of namespaces, and are bound in 
+     * instances of a certain class. 
+     *)
+    (* INFORMATIVE *)
+    (* FIXME: implement! *)
+    namespaces
+    
+fun getInstanceBindingNames (class: CLASS) 
+    : NAME list =
     (* get the instance bindings of a class *)
+    (* INFORMATIVE *)
+    (* FIXME: implement! *)
     []
 
-fun getBindings (object: OBJECT)
-    : (NAME * DEFINITION) list =
-    (* get the bindings of an object *)
-    []
-
-fun getPrototypeObject (object: OBJECT)
+fun getPrototypeObject (Obj {proto, ...}: OBJECT)
     : OBJECT option =
     (* get the prototype (as in '[[proto]]') object of an object *)
-    NONE
-
-fun getScopeObject (Scope {object,...} : SCOPE)
-    : OBJECT =
-    (* get the first scope object of a scope chain *)
-    object
-
-fun getOuterScope (Scope {parent, ...}: SCOPE)
-    : SCOPE option =
-    parent
-
-fun getScope ({scope,...}: ENV)
-    : SCOPE = 
-    (* get the scope chain of an execution environment *)
-    scope
+    case !proto of 
+        Object obj => SOME obj
+      | _ => NONE
 
 fun selectNamespacesByClass ([], _, _) = []
  |  selectNamespacesByClass (classes: CLASS list, 
@@ -1329,8 +1357,7 @@ fun selectNamespacesByClass ([], _, _) = []
     : NAMESPACE list =
     let
         val class = head (classes)
-        val bindings = getInstanceBindings (class)
-        val bindingNamespaces = getNamespaces (bindings, identifier)
+        val bindingNamespaces = getInstanceBindingNamespaces (class, identifier, namespaces)
         val matches = intersectNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
@@ -1346,37 +1373,37 @@ fun selectNamespacesByOpenNamespaces ([], _) = []
         val matches = intersectNamespaces (head (namespacesList), namespaces)
     in
         case matches of
-            [] => selectNamespacesByScope (tail (namespacesList), namespaces)
+            [] => selectNamespacesByOpenNamespaces (tail (namespacesList), namespaces)
           | _ => matches
     end
 
-fun objectSearch (NONE, _, _) = []
+fun objectSearch (NONE, _, _, _) = NONE
   | objectSearch (SOME object: OBJECT option, 
                   namespaces: NAMESPACE_SET, 
-                  identifier: IDENTIFIER)
-    : NAMESPACE_SET =
+                  identifier: IDENTIFIER, 
+                  fixedOnly: bool)
+    : (OBJECT * NAMESPACE_SET) option =
     let
-        val bindings = getBindings (object)
-        val bindingNamespaces = getNamespaces (bindings, identifier)
-        val matches = matchNamespaces (bindingNamespaces, namespaces)
+        val matches = getBindingNamespaces (object, identifier, namespaces, fixedOnly)
     in
         case matches of
-            [] => objectSearch (getPrototypeObject (object), namespaces, identifier)
-          | _ => matches
+            [] => objectSearch (getPrototypeObject (object), namespaces, identifier, fixedOnly)
+          | _ => SOME (object, matches)
     end
 
-fun objectListSearch ([], _, _) = NONE
+fun objectListSearch ([], _, _, _) = NONE
   | objectListSearch (objects: OBJECT list, 
                       namespaces: NAMESPACE_SET, 
-                      identifier: IDENTIFIER)
+                      identifier: IDENTIFIER,
+                      fixedOnly: bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
         val object = head (objects)
-        val matches = objectSearch (SOME object, namespaces, identifier)
+        val matches = objectSearch (SOME object, namespaces, identifier, fixedOnly)
     in
         case matches of
-            [] => objectListSearch (tail (objects), namespaces, identifier)
-          | _ => SOME (object, matches)
+            NONE => objectListSearch (tail (objects), namespaces, identifier, fixedOnly)
+          | _ => matches
     end
 
 fun inheritedClassesOf (object: OBJECT)
@@ -1389,30 +1416,33 @@ fun findName (objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN
     : (OBJECT * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
-        val matches = objectListSearch (objects, namespaces, identifier)
+        val matches = objectListSearch (objects, namespaces, identifier, true)
+        val matches' = case matches of 
+                           NONE => objectListSearch (objects, namespaces, identifier, false)
+                         | _ => matches
     in
-        case matches of
+        case matches' of
             NONE => NONE
           | SOME (object, namespace :: []) => SOME (object, Name (namespace, identifier))
-          | SOME (object, namespaces) =>
+          | SOME (object, namespaces') =>
             let
-                val matches = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
+                val matches'' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces')
             in
-                case matches of
+                case matches'' of
                     namespace :: [] => SOME (object, Name (namespace, identifier))
                   | [] => NONE
                   | _ =>
                     let
                         val classList = inheritedClassesOf (object)
-                        val matches = selectNamespacesByClass (classList, namespaces, identifier)
-                    in case matches of
-                        namespace :: [] => SOME (object, Name (namespace, identifier))
-                      | [] => raise (RuntimeError "internal error")
-                      | _ => raise (RuntimeError "ambiguous reference")
+                        val matches''' = selectNamespacesByClass (classList, namespaces, identifier)
+                    in 
+                        case matches''' of
+                            namespace :: [] => SOME (object, Name (namespace, identifier))
+                          | [] => raise (RuntimeError "internal error")
+                          | _ => raise (RuntimeError "ambiguous reference")
                     end
             end
     end
-*)
 
 end
 

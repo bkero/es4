@@ -273,14 +273,14 @@ fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
     (* get the namespaces of binding names that have a certain identifier *)
     <LDOTS>
 
-fun getInstanceBindings (class: CLASS) 
-    : (NAME * DEFINITION) list =
-    (* get the instance bindings of a class *)
+fun getInstanceBindingNames (class: CLASS) 
+    : NAME list =
+    (* get the instance binding names of a class *)
     <LDOTS>
 
-fun getBindings (object: OBJECT option)
-    : (NAME * DEFINITION) list =
-    (* get the bindings of an object *)
+fun getBindingNames (object: OBJECT option)
+    : NAME list =
+    (* get the binding names of an object *)
     <LDOTS>
 
 fun getPrototypeObject (object: OBJECT option)
@@ -313,7 +313,7 @@ fun getOpenNamespaces (env: ENV, identifier: IDENTIFIER)
 <INCLUDE file="mach.sml" name="fun getScope">
 <INCLUDE file="mach.sml" name="fun inheritedClassesOf">
 <INCLUDE file="mach.sml" name="fun getScopeObject">
-<INCLUDE file="mach.sml" name="fun getBindings">
+<INCLUDE file="mach.sml" name="fun getBindingNames">
 <INCLUDE file="mach.sml" name="fun getNamespaces">
 <INCLUDE file="mach.sml" name="fun head">
 <INCLUDE file="mach.sml" name="fun tail">

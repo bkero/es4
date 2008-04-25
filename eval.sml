@@ -4071,28 +4071,15 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
 and resolveName (obj:Mach.OBJ)
                 (nomn:NAME_OR_MULTINAME)
     : REF option =
-    let
-        fun matchFixedBinding (Mach.Obj {props, ...}) n nss
-          = Mach.matchProps true props n nss
-        fun matchBinding (Mach.Obj {props, ...}) n nss
-          = Mach.matchProps false props n nss
-        fun getObjProto (Mach.Obj {proto, ...}) =
-            case (!proto) of
-                Mach.Object ob => SOME ob
-              | _ => NONE
-        fun getObjProps (Mach.Obj {props, ...}) = props
-    in
-        case nomn of
-            Name name => findValue obj name
-          | Multiname mname =>
-            let
-                val fixedRefOpt = Multiname.resolve mname obj matchFixedBinding getObjProto
-            in
-                case fixedRefOpt of
-                    NONE => Multiname.resolve mname obj matchBinding getObjProto
-                  | ro => ro
-            end
-    end
+    case nomn of
+        Name name => findValue obj name
+      | Multiname mname =>
+        let
+            val fixedRefOpt = Mach.findName ([obj], (#id mname), (#nss mname))
+        in
+            (* this is so silly *)
+            Option.map (fn (obj, Mach.Name (ns,id)) => (obj, {ns=ns, id=id})) fixedRefOpt
+        end
 
 
 and labelMatch (stmtLabels:Ast.IDENT list)
