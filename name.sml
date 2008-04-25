@@ -246,6 +246,9 @@ val magic_stringLength = magic Ustring.stringLength_
 val magic_fromCharCode = magic Ustring.fromCharCode_
 val magic_charCodeAt = magic Ustring.charCodeAt_
 val magic_fnLength = magic Ustring.fnLength_
+val magic_genSend = magic Ustring.genSend_
+val magic_genThrow = magic Ustring.genThrow_
+val magic_genClose = magic Ustring.genClose_
 val magic_apply = magic Ustring.apply_
 
 val magic_toPrimitive = magic Ustring.toPrimitive_

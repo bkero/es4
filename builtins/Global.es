@@ -86,6 +86,32 @@ package
 
     iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
 
+    iterator interface Generator/*.<O, I, E>*/ {
+        function next()/* : O*/;
+        function send(i/*: I*/)/* : O*/;
+        // FIXME: needs to be called `throw' but the parser can't handle this right now
+        function throw_(e/*: E*/)/* : O*/;
+        function close() : void;
+    }
+
+    // FIXME: this should be in an internal namespace
+    iterator class GeneratorImpl/*.<O, I, E>*/ implements iterator::Generator/*.<O, I, E>*/ {
+        public function next() /*: O*/
+            this.send(undefined)
+
+        public function send(i/*: I*/) /*: O*/
+            magic::genSend(this, i)
+
+        public function throw_(e/*: E*/) /*: O*/
+            magic::genThrow(this, e)
+
+        public function close() : void
+            magic::genClose(this)
+
+        //public function toString()
+        //    "[object Generator]"
+    }
+
     // 15.1.2.1 eval (x)
     //
     // FIXME: This should probably be an intrinsic::eval that looks

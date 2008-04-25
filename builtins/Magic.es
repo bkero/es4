@@ -127,6 +127,16 @@ package
 
     /* ----------------------------------------------------------------
 
+       GENERATOR MANIPULATION.  */
+
+    magic native function genSend(g : Object!, x : *) : *;
+
+    magic native function genThrow(g : Object!, x : *) : *;
+
+    magic native function genClose(g : Object!) : *;
+
+    /* ----------------------------------------------------------------
+
        STRING MANIPULATION.  Strings contain string data in some
        unspecified way - there is no representation of string data in
        the language.  The following magic functions access and set

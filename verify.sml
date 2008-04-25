@@ -1013,7 +1013,7 @@ and verifyFunc (env:ENV)
                (func:Ast.FUNC)
     : unit =
     let
-        val Ast.Func { name, fsig, native, block, param, defaults, ty, loc } = func
+        val Ast.Func { name, fsig, native, generator, block, param, defaults, ty, loc } = func
         val (Ast.Head (paramRib, _)) = param
         val blockEnv = withRib env paramRib
     in

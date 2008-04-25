@@ -1,4 +1,6 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
+structure Control = Control (type RESULT = Mach.GEN_SIGNAL);
+
 structure Eval = struct
 (*
  * The following licensing terms and conditions apply and must be
@@ -1524,6 +1526,101 @@ and newNativeFunction (regs:Mach.REGS)
 	Mach.Object obj
     end
 
+and newGen (execBody:unit -> Mach.VAL)
+    : Mach.GEN =
+let
+    (* temporarily bogus state; reassigned immediately below *)
+    val state = ref Mach.ClosedGen
+in
+    (* this must be done via assignment because of the recursive reference to `state' *)
+    state := Mach.NewbornGen (fn () =>
+                                 Control.reset (fn () =>
+                                                   ((execBody (); Mach.CloseSig)
+                                                    handle ThrowException v => Mach.ThrowSig v)
+                                                   before state := Mach.ClosedGen));
+    Mach.Gen state
+end
+
+and newGenerator (regs:Mach.REGS)
+                 (body:unit -> Mach.VAL)
+    : Mach.VAL =
+let
+    val gen = newGen body
+    val v = newObject regs
+in
+    case v of
+        Mach.Object obj => Mach.setMagic obj (SOME (Mach.Generator gen))
+      | _ => error regs ["newObject did not produce an object"];
+    v
+end
+
+and yieldFromGen (regs:Mach.REGS)
+                 (Mach.Gen state)
+                 (v : Mach.VAL)
+    : Mach.VAL =
+    case !state of
+        Mach.RunningGen => (case Control.shift (fn k => (state := Mach.DormantGen k;
+                                                         Mach.YieldSig v)) of
+                                Mach.SendSig v' => v'
+                              | Mach.ThrowSig v' => raise (ThrowException v')
+                              | _ => error regs ["generator protocol"])
+      | _ => error regs ["yield from dormant or dead generator"]
+
+and sendToGen (regs:Mach.REGS)
+              (Mach.Gen state)
+              (v : Mach.VAL)
+    : Mach.VAL =
+    case !state of
+        Mach.RunningGen => error regs ["already running"]
+      (* FIXME: needs to throw StopIteration *)
+      | Mach.ClosedGen => raise (ThrowException Mach.Undef)
+      | Mach.NewbornGen f =>
+        if Mach.isUndef v then
+            (* FIXME: needs to throw a string with an error message *)
+            raise (ThrowException Mach.Undef)
+        else
+            (state := Mach.RunningGen;
+             case f () of
+                 Mach.YieldSig v' => v'
+               | Mach.ThrowSig v' => raise (ThrowException v')
+               (* FIXME: needs to throw StopIteration *)
+               | Mach.CloseSig => raise (ThrowException Mach.Undef)
+               | _ => error regs ["generator protocol"])
+      | Mach.DormantGen k =>
+        (state := Mach.RunningGen;
+         case k (Mach.SendSig v) of
+             Mach.YieldSig v' => v'
+           | Mach.ThrowSig v' => raise (ThrowException v')
+           (* FIXME: needs to throw StopIteration *)
+           | Mach.CloseSig => raise (ThrowException Mach.Undef)
+           | _ => error regs ["generator protocol"])
+
+and throwToGen (regs:Mach.REGS)
+               (Mach.Gen state)
+               (v : Mach.VAL)
+    : Mach.VAL =
+    case !state of
+        Mach.RunningGen => error regs ["already running"]
+      | Mach.ClosedGen => raise (ThrowException v)
+      | Mach.NewbornGen f =>
+        (* XXX: confirm this semantics with /be *)
+        (state := Mach.ClosedGen; raise (ThrowException v))
+      | Mach.DormantGen k =>
+        (state := Mach.RunningGen;
+         case k (Mach.ThrowSig v) of
+             Mach.YieldSig v' => v'
+           | Mach.ThrowSig v' => raise (ThrowException v')
+           | Mach.CloseSig => raise (ThrowException v)
+           | _ => error regs ["generator protocol"])
+
+and closeGen (regs:Mach.REGS)
+             (Mach.Gen state)
+    : unit =
+    case !state of
+        Mach.RunningGen => error regs ["already running"]
+      | _ => state := Mach.ClosedGen
+
+
 (*
  * ES-262-3 9.8 ToString.
  *
@@ -2424,6 +2521,7 @@ and applyTypesToFunction (regs:Mach.REGS)
                 val newFunc = Ast.Func { name = (#name f), 
                                          fsig = (#fsig f),
                                          native = (#native f),
+                                         generator = (#generator f),
                                          block = (#block f),
                                          param = (#param f),
                                          defaults = (#defaults f),
@@ -3946,7 +4044,7 @@ and invokeFuncClosure (regs:Mach.REGS)
         val _ = trace ["entering func closure in scope #", 
                        Int.toString (getObjId (getScopeObj env))]
         val _ = traceScope env
-        val Ast.Func { name, block, param=Ast.Head (paramRib, paramInits), ty, ... } = func
+        val Ast.Func { name, block, generator, param=Ast.Head (paramRib, paramInits), ty, ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", 
                                          Int.toString (getObjId t)]; t)
@@ -3985,11 +4083,23 @@ and invokeFuncClosure (regs:Mach.REGS)
             trace ["invokeFuncClosure: evaluating block"];
             let
                 val blockRegs = withThisFun varRegs thisFun 
+                fun evalBody () =
+                    case block of
+                        NONE => Mach.Undef
+                      | SOME b => ((evalBlock blockRegs b;
+                                    Mach.Undef)
+                                   handle ReturnException v => v)
+                val res = if generator then
+                              newGenerator regs evalBody
+                          else
+                              evalBody ()
+(*
                 val res = case block of 
                               NONE => Mach.Undef
                             | SOME b => ((evalBlock blockRegs b;
                                           Mach.Undef)
                                          handle ReturnException v => v)
+*)
             in
                 Mach.pop regs;
                 res
@@ -4700,6 +4810,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			NONE => ()
 		      | SOME (_,func) => 
 			let
+                val _ = TextIO.print ("binding special identity for class " ^ LogErr.name name ^ "\n")
 			    val _ = trace ["binding special identity for class ", fmtName name]
 			    val cell = func regs
 			in

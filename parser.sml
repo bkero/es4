@@ -98,6 +98,22 @@ fun unwrapTy (ty:Ast.TY)
     in 
         expr
     end
+
+fun isGeneratorFunction (block:Ast.BLOCK) =
+    let
+        open CheckAst
+        infix withVisitExpr withVisitFunc
+
+        fun visitExpr (expr, _) =
+            case expr of
+                Ast.YieldExpr _ => Stop true
+              | _ => Cont false
+
+        val visitor = default withVisitExpr visitExpr
+                              withVisitFunc skip
+    in
+        foldStmt (visitor, Ast.BlockStmt block, false)
+    end
     
 (*
 
@@ -799,6 +815,7 @@ and functionExpression (ts0: TOKENS, alpha: ALPHA, beta: BETA)
                                            fsig=nd1,
                                            block=SOME nd2,
                                            native=false,
+                                           generator=isGeneratorFunction nd2,
                                            defaults=[],
                                            param=Ast.Head ([],[]),
                                            ty=functionTypeFromSignature nd1,
@@ -821,6 +838,7 @@ and functionExpression (ts0: TOKENS, alpha: ALPHA, beta: BETA)
                                                     fsig=nd2,
                                                     block=SOME nd3,
                                                     native=false,
+                                                    generator=isGeneratorFunction nd3,
                                                     param=Ast.Head ([],[]),
                                                     defaults=[],
                                                     ty=ty,
@@ -987,6 +1005,7 @@ and literalField (ts:TOKENS)
                                                fsig=fsig,
                                                block=SOME block,
                                                native=false,
+                                               generator=isGeneratorFunction block,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig,
@@ -1006,6 +1025,7 @@ and literalField (ts:TOKENS)
                                                fsig=fsig,
                                                block=SOME block,
                                                native=false,
+                                               generator=isGeneratorFunction block,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig,
@@ -5562,6 +5582,7 @@ and functionDeclaration (ts:TOKENS, attrs:ATTRS)
                                                               defaults=[],
                                                               ty=functionTypeFromSignature nd2,
                                                               native=native,
+                                                              generator=false,
                                                               block=NONE,
                                                               loc=unionLoc (SOME funcStartLoc) (locOf ts)}}],
                       body=[],
@@ -5623,6 +5644,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                            defaults=[],
                                                                            ty=functionTypeFromSignature nd3,
                                                                            native=false,
+                                                                           generator=isGeneratorFunction nd4,
                                                                            loc=unionLoc (locOf ts) blockLoc,
                                                                            block=SOME nd4}})],
                               body=[],
@@ -5633,6 +5655,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                     let
                         val (ts4,nd4,listLoc) = listExpression (ts3, AllowColon, AllowIn)
                         val (ts4,nd4) = (semicolon (ts4,Full),nd4)
+                        val block = Ast.Block { pragmas=[],
+                                                defns=[],
+                                                body=[Ast.ReturnStmt nd4],
+                                                head=NONE,
+                                                loc=listLoc}
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.ConstructorDefn (Ast.Ctor
@@ -5644,13 +5671,17 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                              defaults=[],
                                                              ty=functionTypeFromSignature nd3,
                                                              native=false,
+                                                             generator=isGeneratorFunction block,
                                                              loc=unionLoc (locOf ts) listLoc,
-                                                             block=SOME (Ast.Block
+                                                             block=SOME block}})],
+(*
+                                                                        (Ast.Block
                                                                              {pragmas=[],
                                                                               defns=[],
                                                                               body=[Ast.ReturnStmt nd4],
                                                                               head=NONE,
                                                                               loc=listLoc})}})],
+*)
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5675,6 +5706,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
+                                             generator=isGeneratorFunction nd4,
                                              loc=unionLoc (locOf ts) blockLoc,
                                              block=SOME nd4}
                     in
@@ -5695,6 +5727,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                     let
                         val (ts4,nd4,listLoc) = listExpression (ts3, AllowColon, AllowIn)
                         val (ts4,nd4) = (semicolon (ts4,Full),nd4)
+                        val block = Ast.Block { pragmas=[],
+                                                defns=[],
+                                                body=[Ast.ReturnStmt nd4],
+                                                head=NONE,
+                                                loc=listLoc}
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1,
@@ -5709,12 +5746,16 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                       defaults=[],
                                                                       ty=functionTypeFromSignature nd3,
                                                                       native=false,
+                                                                      generator=isGeneratorFunction block,
                                                                       loc=unionLoc (locOf ts) listLoc,
-                                                                      block=SOME (Ast.Block { pragmas=[],
+                                                                      block=SOME block}}],
+(*
+                                                                                 (Ast.Block { pragmas=[],
                                                                                               defns=[],
                                                                                               body=[Ast.ReturnStmt nd4],
                                                                                               head=NONE,
                                                                                               loc=listLoc})}}],
+*)
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5736,6 +5777,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              loc=unionLoc (locOf ts) blockLoc,
                                              native=false,
+                                             generator=isGeneratorFunction nd4,
                                              block=SOME nd4}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
@@ -5757,6 +5799,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                         val (ts4,nd4,listLoc) = listExpression (ts3, AllowColon, AllowIn)
                         val (ts4,nd4) = (semicolon (ts4,Full),nd4)
                         val ident = (#ident nd2)
+                        val block = Ast.Block { pragmas=[],
+                                                defns=[],
+                                                body=[Ast.ReturnStmt nd4],
+                                                head=NONE,
+                                                loc=listLoc }
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
                                              param=Ast.Head ([],[]),
@@ -5764,11 +5811,15 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              loc=unionLoc (locOf ts) listLoc,
                                              native=false,
-                                             block=SOME (Ast.Block {pragmas=[],
+                                             generator=isGeneratorFunction block,
+                                             block=SOME block}
+(*
+                                                        (Ast.Block {pragmas=[],
                                                                     defns=[],
                                                                     body=[Ast.ReturnStmt nd4],
                                                                     head=NONE,
                                                                     loc=listLoc})}
+*)
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident,
                                                        Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
@@ -5806,6 +5857,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                              ty=ty,
                              loc=unionLoc (locOf ts) blockLoc,
                              native=false,
+                             generator=isGeneratorFunction nd4,
                              block=SOME nd4}
 
         fun hasNonStar (ts) : bool =

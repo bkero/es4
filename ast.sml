@@ -189,6 +189,7 @@ datatype PRAGMA =
          { name: FUNC_NAME,
            fsig: FUNC_SIG,
            native: bool,
+           generator: bool,
            block: BLOCK option, (* NONE => abstract *)
            param: HEAD,
            defaults: EXPR list,

@@ -129,7 +129,9 @@ datatype VAL = Object of OBJ
 
           booleanTrue : (OBJ option) ref,
           booleanFalse : (OBJ option) ref,
-          doubleNaN : (OBJ option) ref
+          doubleNaN : (OBJ option) ref,
+
+          generatorClass : (OBJ option) ref
          }
 
      and FRAME = 
@@ -151,6 +153,7 @@ datatype VAL = Object of OBJ
        | Function of FUN_CLOSURE
        | Type of Ast.TY
        | NativeFunction of NATIVE_FUNCTION
+       | Generator of GEN
 
      and SCOPE =
          Scope of { object: OBJ,
@@ -211,6 +214,18 @@ datatype VAL = Object of OBJ
           objCache: OBJ_CACHE, 
           profiler: PROFILER 
          }
+
+     and GEN_STATE = NewbornGen of (unit -> GEN_SIGNAL)
+                   | DormantGen of (GEN_SIGNAL -> GEN_SIGNAL)
+                   | RunningGen
+                   | ClosedGen
+
+     and GEN_SIGNAL = YieldSig of VAL
+                    | ThrowSig of VAL
+                    | SendSig of VAL
+                    | CloseSig
+
+     and GEN = Gen of GEN_STATE ref
 
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
@@ -274,7 +289,7 @@ exception BreakException of (Ast.IDENT option)
 exception TailCallException of (unit -> VAL)
 exception ThrowException of VAL
 exception ReturnException of VAL
-exception StopIterationException
+exception StopIterationException (* FIXME: I think this is useless (DAH) *)
 
 fun isObject (v:VAL) : bool =
     case v of
@@ -639,6 +654,7 @@ fun magicToUstring (magic:MAGIC)
       | Function _ => Ustring.fromString "[function Function]"
       | Type _ => Ustring.fromString "[type Type]"
       | NativeFunction _ => Ustring.fromString "[function Function]"
+      | Generator _ => Ustring.fromString "[object vanilla Generator]" (* FIXME: remove vanilla *)
 
 
 (*
@@ -1076,6 +1092,8 @@ fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs))
 fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
 fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs)) 
 
+fun getGeneratorClassSlot (regs:REGS) = (#generatorClass (getSpecials regs))
+
 fun getCaches (regs:REGS) =
     let 
         val { aux = Aux { objCache = ObjCache vc, ... }, ... } = regs
@@ -1157,7 +1175,8 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
 
                          booleanTrue = ref NONE,
                          booleanFalse = ref NONE,
-                         doubleNaN = ref NONE }
+                         doubleNaN = ref NONE,
+                         generatorClass = ref NONE }
         val aux = Aux { booting = ref false,
                         specials = specials,
                         stack = ref [],
@@ -1200,6 +1219,95 @@ fun getNativeFunction (name:Ast.NAME)
     in
         search (!nativeFunctions)
     end
+
+(* generator stuff *)
+
+(*
+structure Control = Control (type RESULT = GEN_SIGNAL);
+
+fun newGen (execBody:unit -> VAL)
+    : GEN =
+let
+    (* temporarily bogus state; reassigned immediately below *)
+    val state = ref ClosedGen
+in
+    (* this must be done via assignment because of the recursive reference to `state' *)
+    state := NewbornGen (fn () =>
+                            Control.reset (fn () =>
+                                              ((execBody (); CloseSig)
+                                               handle ThrowException v => ThrowSig v)
+                                              before state := ClosedGen));
+    Gen state
+end
+
+fun newGenerator (body:unit -> VAL)
+    : VAL =
+let
+    val gen = newGen body
+    val tag = ObjectTag []
+    val proto = Undef
+in
+    newObject tag proto (SOME (Generator gen))
+end
+
+fun yieldFromGen (Gen state) (v : VAL)
+    : VAL =
+    case !state of
+        RunningGen => (case Control.shift (fn k => (state := DormantGen k; YieldSig v)) of
+                           SendSig v' => v'
+                         | ThrowSig v' => raise (ThrowException v')
+                         | _ => error ["generator protocol"])
+      | _ => error ["yield from dormant or dead generator"]
+
+fun sendToGen (Gen state) (v : VAL)
+    : VAL =
+    case !state of
+        RunningGen => error ["already running"]
+      (* FIXME: needs to throw StopIteration *)
+      | ClosedGen => raise (ThrowException Undef)
+      | NewbornGen f =>
+        if isUndef v then
+            (* FIXME: needs to throw a string with an error message *)
+            raise (ThrowException Undef)
+        else
+            (state := RunningGen;
+             case f () of
+                 YieldSig v' => v'
+               | ThrowSig v' => raise (ThrowException v')
+               (* FIXME: needs to throw StopIteration *)
+               | CloseSig => raise (ThrowException Undef)
+               | _ => error ["generator protocol"])
+      | DormantGen k =>
+        (state := RunningGen;
+         case k (SendSig v) of
+             YieldSig v' => v'
+           | ThrowSig v' => raise (ThrowException v')
+           (* FIXME: needs to throw StopIteration *)
+           | CloseSig => raise (ThrowException Undef)
+           | _ => error ["generator protocol"])
+
+fun throwToGen (Gen state) (v : VAL)
+    : VAL =
+    case !state of
+        RunningGen => error ["already running"]
+      | ClosedGen => raise (ThrowException v)
+      | NewbornGen f =>
+        (* XXX: confirm this semantics with /be *)
+        (state := ClosedGen; raise (ThrowException v))
+      | DormantGen k =>
+        (state := RunningGen;
+         case k (ThrowSig v) of
+             YieldSig v' => v'
+           | ThrowSig v' => raise (ThrowException v')
+           | CloseSig => raise (ThrowException v)
+           | _ => error ["generator protocol"])
+
+fun closeGen (Gen state)
+    : unit =
+    case !state of
+        RunningGen => error ["already running"]
+      | _ => state := ClosedGen
+*)
 
 end
 
