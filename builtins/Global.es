@@ -84,6 +84,32 @@
 
     iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
 
+    iterator interface Generator {
+        function next();
+        function send(i);
+        // FIXME: needs to be called `throw' but the parser can't handle this right now
+        function throw_(e);
+        function close() : void;
+    }
+
+    helper class GeneratorImpl implements iterator::Generator {
+        public function next()
+            this.send(undefined)
+
+        public function send(i)
+            magic::genSend(this, i)
+
+        public function throw_(e)
+            magic::genThrow(this, e)
+
+        public function close() : void
+            magic::genClose(this)
+
+        // FIXME: this gets trumped by Mach.magicToUstring
+        //public function toString()
+        //    "[object Generator]"
+    }
+
     // 15.1.2.1 eval (x)
     //
     // FIXME: This should probably be an intrinsic::eval that looks

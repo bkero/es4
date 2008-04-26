@@ -964,7 +964,7 @@ and verifyFunc (env:ENV)
     : Ast.TYPE_EXPR =
     let
         val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
-                       native, block, param, defaults, ty, loc } = func
+                       native, generator, block, param, defaults, ty, loc } = func
         (* FIXME: use public as namespace of type variables? *)
         val rib = map (fn id => (Ast.PropName {ns=Name.publicNS, id=id},
                                  Ast.TypeVarFixture (Parser.nextAstNonce ())))
