@@ -394,16 +394,20 @@ fun normalizeNames (useCache:bool)
                    (ty:Ast.TYPE_EXPR)                    
   : Ast.TYPE_EXPR = 
     let
-        fun getFixture (mname : Ast.MULTINAME) : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
-            case Multiname.resolveInRibs mname env of 
+        fun getFixture (mname : Ast.MULTINAME) 
+                       (rootRib : Ast.RIB option) 
+            : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
+            case Fixture.findName (env, (#id mname), (#nss mname), rootRib) of 
                 SOME (rib::ribs, name) => 
                 (rib::ribs, name, Fixture.getFixture rib (Ast.PropName name))
               | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
                             " in type expression ", LogErr.ty ty,
                             " in ribs ", LogErr.ribs env]
                      
-        fun getType (mname : Ast.MULTINAME) : Ast.TYPE_EXPR = 
-            case getFixture mname of 
+        fun getType (mname : Ast.MULTINAME) 
+                    (rootRib : Ast.RIB option) 
+            : Ast.TYPE_EXPR = 
+            case getFixture mname rootRib of 
                 (env', _,  Ast.TypeFixture ty') => 
                 (* Pulling ty out of env', need to normalize first, in the right environment *)
                 normalizeNames useCache env' [] ty'
@@ -426,8 +430,10 @@ fun normalizeNames (useCache:bool)
                                     " in type expression ", LogErr.ty ty, 
                                     " is not a type"]
 
-        fun getNamespace (mname : Ast.MULTINAME) : Ast.NAMESPACE = 
-            case getFixture mname of 
+        fun getNamespace (mname : Ast.MULTINAME) 
+                         (rootRib : Ast.RIB option) 
+            : Ast.NAMESPACE = 
+            case getFixture mname rootRib of 
                 (_, _, Ast.NamespaceFixture ns) => ns
               | (_, n, _) => error ["name ", LogErr.name  n, 
                                  " in qualifier of type expression ", LogErr.ty ty, 
@@ -437,26 +443,26 @@ fun normalizeNames (useCache:bool)
             case expr of
                 Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
                                                              
-              | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
+              | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces, rootRib}, loc  } =>
                 (LogErr.setLoc loc;
-                 getNamespace {id = ident, nss = openNamespaces})
+                 getNamespace {id = ident, nss = openNamespaces} rootRib)
                 
               | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
                 (LogErr.setLoc loc; 
-                 getNamespace { id = ident, nss = [[ getNamespaceForExpr qual ]] })
+                 getNamespace { id = ident, nss = [[ getNamespaceForExpr qual ]] } NONE)
                 
               | _ => error ["dynamic qualifier in namespace of type expression ", LogErr.ty ty]
 
         fun doResolve _ =         
             case ty of 
-                Ast.TypeName (Ast.Identifier { ident, openNamespaces }, _) => 
-            if List.exists (fn i => i=ident) ids
-            then ty (* local binding, don't replace *)
-            else getType { id = ident, nss = openNamespaces }
-                
+                Ast.TypeName (Ast.Identifier { ident, openNamespaces, rootRib }, _) => 
+                if List.exists (fn i => i=ident) ids
+                then ty (* local binding, don't replace *)
+                else getType { id = ident, nss = openNamespaces } rootRib
+                     
               | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) =>
-            (* FIXME: sure this is not a reference to a type var? *)
-            getType { id = ident, nss = [[ getNamespaceForExpr qual ]] }
+                (* FIXME: sure this is not a reference to a type var? *)
+                getType { id = ident, nss = [[ getNamespaceForExpr qual ]] } NONE
                 
               | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
               | Ast.LamType { params, body } => 
@@ -494,7 +500,7 @@ fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
     end
 
 fun makeTypeName (id:Ast.IDENT) : Ast.TYPE_EXPR = 
-    Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[] }, NONE)
+    Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[], rootRib=NONE }, NONE)
 
 
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".

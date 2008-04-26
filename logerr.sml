@@ -144,7 +144,7 @@ fun identExpr (ide:Ast.IDENT_EXPR) =
               | _ => (error ["unexpected expression in type namespace context"]; "")
    in 
        case ide of
-	   Ast.Identifier { ident, openNamespaces } =>
+	   Ast.Identifier { ident, openNamespaces, ... } =>
 	   multiname {nss=openNamespaces, id=ident}
 	 | Ast.QualifiedIdentifier { qual, ident } => 
 	   "(" 

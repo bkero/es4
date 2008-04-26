@@ -59,6 +59,7 @@
     __ES4__ namespace iterator;
 
     __ES4__ type EnumerableId = (double|string|Name);
+    __ES4__ type EnumerableIdArray = Array; // FIXME: [...EnumerableId]
 
     helper function toEnumerableId(x) {
         switch type (x) {
@@ -67,15 +68,82 @@
         }
     }
 
-    /*
-    iterator type IteratorType.<T> = {
-        next: function () : *
+    iterator type IteratorType = { // FIXME: .<T>
+        next: function () : * // FIXME: should be return type T
     };
-    */
 
-    // iterator type IterableType.<T> = {
-        /* iterator::get: function (boolean=) : iterator::IteratorType.<T>*/
-    // };
+    iterator class Enumerator.<T> {
+        type ResultFun = function(EnumerableId, Object!) : *; // FIXME: T
+
+        function Enumerator(v, f: ResultFun, e: boolean = false) {
+            initial_obj = (v is Object) ? v : null;
+            current_obj = initial_obj;
+            current_ids = magic::getEnumerableIds(initial_obj); // FIXME: need magic::getEnumerableIds
+            result_fun = f;
+            enumerate = e;
+        }
+
+        meta static function invoke(v) : iterator::IteratorType
+            new Enumerator(v);
+
+        function get(e : boolean = false) : IteratorType // FIXME: in iterator namespace
+            (e == enumerate) ? this : new Enumerator.<*>(initial_obj, result_fun, e); // FIXME: T
+
+        public function next() : T {
+            if (current_obj === null)
+                throw iterator::StopIteration;
+
+        loop:
+            while (true) {
+                if (current_index === current_ids.length) {
+                    if (!enumerate)
+                        throw iterator::StopIteration;
+
+                    // No more properties in current_obj: try walking up the prototype chain.
+                    current_obj = magic::getPrototype(current_obj);
+                    if (current_obj === null)
+                        throw iterator::StopIteration;
+
+                    current_ids = magic::getEnumerableIds(current_obj);
+                    current_index = 0;
+                }
+
+                let id : EnumerableId = current_ids[current_index++];
+
+                // Check for a shadowing property from initial_obj to current_obj on the prototype chain.
+                for (let obj : Object = initial_obj; obj !== current_obj; obj = magic::getPrototype(obj)) {
+                    if (magic::hasOwnProperty(obj, id))
+                        continue loop;
+                }
+
+                // Check whether name is still bound in order to skip deleted properties.
+                if (magic::hasOwnProperty(current_obj, id))
+                    return result_fun(id, initial_obj);
+            }
+        }
+
+        private var initial_obj   : Object,
+                    current_obj   : Object,
+                    current_ids   : EnumerableIdArray,
+                    current_index : double,
+                    result_fun    : ResultFun,
+                    enumerate     : boolean;
+    }
+
+    iterator const function GET(start: Object!, deep: boolean): IteratorType
+        (start is iterator::IterableType)
+        ? start.iterator::get(deep)
+        : iterator::DEFAULT_GET(start, deep)
+
+    iterator const function DEFAULT_GET(start: Object!, deep: boolean): IteratorType // FIXME: .<string>
+        new Enumerator.<string>(start,
+                                function (id: string, obj: Object!): string
+                                    (id is Name) ? id.identifier : string(id),
+                                deep)
+
+    iterator type IterableType = { // FIXME: .<T>
+        get: function (boolean=) : iterator::IteratorType // FIXME: .<T>, in iterator namespace
+    };
       
     iterator class StopIterationClass {
         function toString() : string 

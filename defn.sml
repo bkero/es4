@@ -219,7 +219,7 @@ fun isInstanceInit (s:Ast.STMT)
 fun resolve (env:ENV)
             (mname:Ast.MULTINAME)
     : (Ast.NAME * Ast.FIXTURE) =
-    case Multiname.resolveInRibs mname (getFullRibs env) of 
+    case Fixture.findName ((getFullRibs env), (#id mname), (#nss mname), (SOME (List.last (#outerRibs env)))) of 
         SOME (rib::ribs, name) => (name, Fixture.getFixture rib (Ast.PropName name))
       | _ => LogErr.defnError ["multiname did not resolve ", LogErr.multiname mname]
 
@@ -1243,7 +1243,7 @@ and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BIND
             SOME ns => Ast.PropName {ns=ns,id=id}
           | _ =>
                 let
-                    val mname = identExprToMultiname env (Ast.Identifier {ident=id,openNamespaces=[]})
+                    val mname = identExprToMultiname env (Ast.Identifier {ident=id,openNamespaces=[],rootRib=NONE})
                     val ({ns,id},f) = resolve env mname
                 in
                     Ast.PropName {ns=ns,id=id}
@@ -1622,7 +1622,8 @@ and defIdentExpr (env:ENV)
         case ie of
             Ast.Identifier { ident, ... } =>
             Ast.Identifier { ident=ident,
-                             openNamespaces=openNamespaces }
+                             openNamespaces=openNamespaces,
+                             rootRib=SOME (List.last (#outerRibs env))}
 
           | Ast.AttributeIdentifier ai =>
             Ast.AttributeIdentifier (defIdentExpr env ai)
@@ -1676,30 +1677,6 @@ and defLiteral (env:ENV)
             Ast.LiteralNamespace (defNamespace env ns)
 
           | _ => lit   (* FIXME: other cases to handle here *)
-    end
-
-and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
-    : Ast.EXPR =
-    let
-    in case (expr, path) of
-        (NONE, ident::identList) =>
-            let
-                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]},loc=NONE}
-            in
-                resolveObjectPath env identList (SOME base)
-            end
-      | (SOME expr, ident::identList) =>
-            let
-                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]},loc=NONE}
-            in
-                resolveObjectPath env identList (SOME base)
-            end
-      | (SOME expr, []) =>
-            let
-            in
-                expr
-            end
-      | _ => LogErr.internalError ["unhandled case in resolveObjectPath"]
     end
 
 

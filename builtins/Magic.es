@@ -88,6 +88,9 @@
     /* Retrieve the kth superinterface of iface, or null. */
     magic native function getSuperInterface(iface: Interface!, k: double) : Interface;
 
+    /* Retrieve the array of enumerable properties of o, in property creation order. */
+    magic native function getEnumerableIds(o : Object) : Array; // FIXME: EnumerableIdArray
+
     /* Retrieve the possibly null [[Prototype]] property of o */
     magic native function getPrototype(o : Object!) : Object;
 

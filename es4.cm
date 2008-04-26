@@ -46,9 +46,7 @@ Library
     structure Token
     structure Lexer
     structure Parser
-    structure Multiname
     structure Defn
-    signature FIXTURE
     structure Fixture
     structure Type
     structure Verify
@@ -80,9 +78,7 @@ is
     token.sml (lambdasplit: infinity)
     lexer.sml (lambdasplit: infinity)
     parser.sml
-    multiname.sml (lambdasplit: infinity)
     defn.sml (lambdasplit: infinity)
-    fixture.sig
     fixture.sml (lambdasplit: infinity)
     type.sml (lambdasplit: infinity)
     verify.sml (lambdasplit: infinity)

@@ -438,7 +438,8 @@ datatype NAMESPACE_REF =
      and IDENT_EXPR =
          Identifier of
            { ident : IDENT,
-             openNamespaces : NAMESPACE list list }
+             openNamespaces : NAMESPACE list list,
+             rootRib: RIB option  }
 (* CF: the above should be unified with
         type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
    Perhaps Identifier should be Multiname
