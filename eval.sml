@@ -1,4 +1,6 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
+structure Control = Control (type RESULT = Mach.GEN_SIGNAL);
+
 structure Eval = struct
 (*
  * The following licensing terms and conditions apply and must be
@@ -72,17 +74,13 @@ exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
+exception StopIterationException
 
 exception InternalError
 
-(* Dummy values to permit raising exceptions in non-unit type contexts. *)
-val dummyVal = Mach.Null
-val dummyObj = Mach.newObj Mach.NoTag Mach.Null NONE
-val dummyObjId = 0
-val dummyRef = (dummyObj, Name.public_global)
-val dummyTypeExpr = Ast.SpecialType Ast.Any
-val dummyNs = Name.publicNS
-
+fun throwExn (v:Mach.VAL)
+    : 'a =
+    raise (ThrowException v)
 
 infix 4 <*;
 fun tsub <* tsup = Type.groundIsCompatibleSubtype tsub tsup
@@ -136,12 +134,13 @@ fun extendScopeReg (r:Mach.REGS)
                    (kind:Mach.SCOPE_KIND)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
         val scope = extendScope scope ob kind
     in
         { scope = scope,
           this = this,
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global,
           prog = prog,
           aux = aux }
@@ -151,11 +150,12 @@ fun withThis (r:Mach.REGS)
              (newThis:Mach.OBJ)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = scope, 
           this = newThis, 
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global, 
           prog = prog,
           aux = aux }
@@ -165,11 +165,27 @@ fun withThisFun (r:Mach.REGS)
                 (newThisFun:Mach.OBJ option)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = newThisFun,
+          thisGen = thisGen,
+          global = global, 
+          prog = prog,
+          aux = aux }
+    end
+
+fun withThisGen (r:Mach.REGS)
+                (newThisGen:Mach.OBJ option)
+    : Mach.REGS =
+    let
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+    in
+        { scope = scope, 
+          this = this, 
+          thisFun = thisFun,
+          thisGen = newThisGen,
           global = global, 
           prog = prog,
           aux = aux }
@@ -179,11 +195,12 @@ fun withScope (r:Mach.REGS)
               (newScope:Mach.SCOPE)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = newScope, 
           this = this, 
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global, 
           prog = prog,
           aux = aux }
@@ -193,11 +210,12 @@ fun withProg (r:Mach.REGS)
              (newProg:Fixture.PROGRAM)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global, 
           prog = newProg,
           aux = aux }
@@ -776,19 +794,16 @@ and getValueOrVirtual (regs:Mach.REGS)
             SOME prop =>
             (case (#state prop) of
                  Mach.TypeProp =>
-                 (throwTypeErr regs ["getValue on a type property: ",
-                                     LogErr.name name]; 
-                  dummyVal)
+                 throwExn (newTypeErr regs ["getValue on a type property: ",
+                                            LogErr.name name])
 
                | Mach.TypeVarProp =>
-                 (throwTypeErr regs ["getValue on a type variable property: ",
-                                     LogErr.name name];
-                  dummyVal)
+                 throwExn (newTypeErr regs ["getValue on a type variable property: ",
+                                            LogErr.name name])
 
                | Mach.UninitProp =>
-                 (throwTypeErr regs ["getValue on an uninitialized property: ",
-                                     LogErr.name name];
-                  dummyVal)
+                 throwExn (newTypeErr regs ["getValue on an uninitialized property: ",
+                                            LogErr.name name])
 
                | Mach.VirtualValProp { getter, ... } =>
                  if doVirtual
@@ -855,25 +870,30 @@ and getValue (regs:Mach.REGS)
                   | _ =>
                     if isDynamic regs obj
                     then Mach.Undef
-                    else (throwTypeErr 
-                              regs 
-                              ["attempting to get nonexistent property ",
-                               LogErr.name name,
-                               " from non-dynamic object"]; dummyVal)
+                    else throwExn (newTypeErr
+                                       regs
+                                       ["attempting to get nonexistent property ",
+                                        LogErr.name name,
+                                        " from non-dynamic object"])
             end
     in
         getValueOrVirtual regs obj name true propNotFound
     end
 
 
-and typeOpFailure (regs:Mach.REGS)
+and newTypeOpFailure (regs:Mach.REGS)
                   (prefix:string)
                   (v:Mach.VAL)
                   (tyExpr:Ast.TYPE_EXPR)
-    : unit =
+    : Mach.VAL =
+    newTypeErr regs [prefix, ": val=", Mach.approx v,
+                     " type=", LogErr.ty (typeOfVal regs v),
+                     " wanted=", LogErr.ty tyExpr]
+(*
     throwTypeErr regs [prefix, ": val=", Mach.approx v,
                        " type=", LogErr.ty (typeOfVal regs v),
                        " wanted=", LogErr.ty tyExpr]
+*)
     
 and checkAndConvert (regs:Mach.REGS)
                     (v:Mach.VAL)
@@ -888,8 +908,7 @@ and checkAndConvert (regs:Mach.REGS)
             let
                 val (classType:Ast.TYPE_EXPR) =
                     case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
-                        NONE => (typeOpFailure regs "incompatible types w/o conversion" v tyExpr; 
-                                 dummyTypeExpr)
+                        NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
                 val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
@@ -946,10 +965,9 @@ and badPropAccess (regs:Mach.REGS)
               | Mach.NativeFunctionProp _ => "native function"
               | Mach.VirtualValProp _ => "virtual"
     in
-        throwTypeErr regs ["bad property ", accessKind, 
-                           " on ", existingPropKind, 
-                           " ", LogErr.name propName];
-        ()
+        throwExn (newTypeErr regs ["bad property ", accessKind,
+                                   " on ", existingPropKind, 
+                                   " ", LogErr.name propName])
     end
 
 
@@ -982,16 +1000,16 @@ and setValueOrVirtual (regs:Mach.REGS)
                     
                     Mach.MethodProp _ =>
                     if readOnly
-                    then throwTypeErr regs ["setValue on read-only method property: ",
-                                            LogErr.name name]
+                    then throwExn (newTypeErr regs ["setValue on read-only method property: ",
+                                                    LogErr.name name])
                     else write ()  (* ES3 style mutable fun props are readOnly *)
 
                   | Mach.VirtualValProp { setter, ... } =>
                     if doVirtual
                     then 
                         case setter of 
-                            NONE => throwTypeErr regs ["attempting to write to a virtual property without a setter: ",
-                                                       LogErr.name name]
+                            NONE => throwExn (newTypeErr regs ["attempting to write to a virtual property without a setter: ",
+                                                               LogErr.name name])
                           | SOME s => (invokeFuncClosure (withThis regs obj) s NONE [v]; ())
                     else 
                         write ()
@@ -1016,7 +1034,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                     in
                         if isDynamic regs obj
                         then Mach.addProp props name prop
-                        else throwTypeErr regs ["attempting to add property to non-dynamic object"]
+                        else throwExn (newTypeErr regs ["attempting to add property to non-dynamic object"])
                     end
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
@@ -1132,27 +1150,26 @@ and instantiateGlobalClass (regs:Mach.REGS)
                              " did not resolve to object"]
     end
 
-and throwExn (regs:Mach.REGS)
-             (name:Ast.NAME) 
-             (args:string list)
-    : unit =
+and newExn (regs:Mach.REGS)
+           (name:Ast.NAME)
+           (args:string list)
+    : Mach.VAL =
     if Mach.isBooting regs
     then error regs ["trapped ThrowException during boot: ", 
                      LogErr.name name, "(", String.concat args, ")"]
-    else raise ThrowException 
-                   (instantiateGlobalClass 
-                        regs name 
-                        [((newString regs) o Ustring.fromString o String.concat) args])
+    else instantiateGlobalClass
+             regs name
+             [((newString regs) o Ustring.fromString o String.concat) args]
 
-and throwTypeErr (regs:Mach.REGS)
-                 (args:string list)
-    : unit =
-    throwExn regs Name.public_TypeError args
+and newTypeErr (regs:Mach.REGS)
+               (args:string list)
+    : Mach.VAL =
+    newExn regs Name.public_TypeError args
 
-and throwRefErr (regs:Mach.REGS)
-                (args:string list)
-    : unit =
-    throwExn regs Name.public_ReferenceError args
+and newRefErr (regs:Mach.REGS)
+              (args:string list)
+    : Mach.VAL =
+    newExn regs Name.public_ReferenceError args
 
 and needNamespace (regs:Mach.REGS)
                   (v:Mach.VAL)
@@ -1161,8 +1178,8 @@ and needNamespace (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => (throwTypeErr regs ["need namespace"]; dummyNs))
-      | _ => (throwTypeErr regs ["need namespace"]; dummyNs)
+           | _ => throwExn (newTypeErr regs ["need namespace"]))
+      | _ => throwExn (newTypeErr regs ["need namespace"])
 
 and needNamespaceOrNull (regs:Mach.REGS)
                         (v:Mach.VAL)
@@ -1171,9 +1188,9 @@ and needNamespaceOrNull (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => (throwTypeErr regs ["need namespace"]; dummyNs))
+           | _ => throwExn (newTypeErr regs ["need namespace"]))
       | Mach.Null => Name.publicNS
-      | _ => (throwTypeErr regs ["need namespace"]; dummyNs)
+      | _ => throwExn (newTypeErr regs ["need namespace"])
 
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
@@ -1197,7 +1214,7 @@ and needObj (regs:Mach.REGS)
     : Mach.OBJ =
     case v of
         Mach.Object ob => ob
-      | _ => (throwTypeErr regs ["need object"]; dummyObj)
+      | _ => throwExn (newTypeErr regs ["need object"])
 
 and newObject (regs:Mach.REGS) =
     instantiateGlobalClass 
@@ -1474,6 +1491,128 @@ and newNativeFunction (regs:Mach.REGS)
 	Mach.Object obj
     end
 
+and getStopIteration (regs:Mach.REGS) =
+    let
+        fun getIteratorNamespace ()
+            : Ast.NAMESPACE =
+            needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
+        val name = { id = Ustring.StopIteration_, ns = getIteratorNamespace () }
+    in
+        getValue regs (#global regs) name
+    end
+
+and newGen (execBody:unit -> Mach.VAL)
+    : Mach.GEN =
+    let
+        (* temporary state, reassigned below *)
+        val state = ref Mach.ClosedGen 
+    in
+        (* this must be done via assignment because of the recursive reference to `state' *)
+        state := Mach.NewbornGen (fn () =>
+                                     Control.reset (fn () =>
+                                                       ((execBody (); Mach.CloseSig)
+                                                        handle ThrowException v => Mach.ThrowSig v
+                                                             | StopIterationException => Mach.StopSig)
+                                                       before state := Mach.ClosedGen));
+        Mach.Gen state
+    end
+
+and newGenerator (regs:Mach.REGS)
+                 (execBody:Mach.OBJ -> Mach.VAL)
+    : Mach.VAL =
+    let
+        fun getGeneratorClass ()
+            : Mach.OBJ =
+            case getValue regs (#global regs) Name.helper_GeneratorImpl of
+                Mach.Object cls => cls
+              | _ => error regs ["helper::GeneratorImpl is not an object"]
+        fun newGeneratorObj (cls:Mach.OBJ)
+            : Mach.OBJ =
+            case evalNewObj regs cls [] of
+                Mach.Object obj => obj
+              | _ => error regs ["evalNewObj did not produce an object"]
+        val obj = newGeneratorObj (getGeneratorClass ())
+        val gen = newGen (fn () => execBody obj)
+    in
+        Mach.setMagic obj (SOME (Mach.Generator gen));
+        Mach.Object obj
+    end
+
+and yieldFromGen (regs:Mach.REGS)
+                 (Mach.Gen state)
+                 (v : Mach.VAL)
+    : Mach.VAL =
+    case !state of
+        Mach.RunningGen => (case Control.shift (fn k => (state := Mach.DormantGen k;
+                                                         Mach.YieldSig v)) of
+                                Mach.SendSig v' => v'
+                              | Mach.ThrowSig v' => raise (ThrowException v')
+                              | Mach.StopSig => raise StopIterationException
+                              | _ => error regs ["generator protocol"])
+      | _ => error regs ["yield from dormant or dead generator"]
+
+and sendToGen (regs:Mach.REGS)
+              (Mach.Gen state)
+              (v : Mach.VAL)
+    : Mach.VAL =
+    let
+    in
+        case !state of
+            Mach.RunningGen => error regs ["already running"]
+          | Mach.ClosedGen => raise StopIterationException
+          | Mach.NewbornGen f =>
+            if Mach.isUndef v then
+                (state := Mach.RunningGen;
+                 case f () of
+                     Mach.YieldSig v' => v'
+                   | Mach.ThrowSig v' => raise (ThrowException v')
+                   | Mach.StopSig => raise StopIterationException
+                   | Mach.CloseSig => raise StopIterationException
+                   | _ => error regs ["generator protocol"])
+            else
+                let val s = Ustring.toAscii (toUstring regs v)
+                            handle ThrowException _ => "<<value>>" (* XXX: what's the best thing to do here? *)
+                                 | StopIterationException => "StopIteration"
+                in
+                    throwExn (newTypeErr regs ["attempt to send ", s, " to newborn generator"])
+                end
+          | Mach.DormantGen k =>
+            (state := Mach.RunningGen;
+             case k (Mach.SendSig v) of
+                 Mach.YieldSig v' => v'
+               | Mach.ThrowSig v' => raise (ThrowException v')
+               | Mach.StopSig => raise StopIterationException
+               | Mach.CloseSig => raise StopIterationException
+               | _ => error regs ["generator protocol"])
+    end
+
+and throwToGen (regs:Mach.REGS)
+               (Mach.Gen state)
+               (v : Mach.VAL)
+    : Mach.VAL =
+    case !state of
+        Mach.RunningGen => error regs ["already running"]
+      | Mach.ClosedGen => raise (ThrowException v)
+      | Mach.NewbornGen f =>
+        (* XXX: confirm this semantics with be *)
+        (state := Mach.ClosedGen; raise (ThrowException v))
+      | Mach.DormantGen k =>
+        (state := Mach.RunningGen;
+         case k (Mach.ThrowSig v) of
+             Mach.YieldSig v' => v'
+           | Mach.ThrowSig v' => raise (ThrowException v')
+           | Mach.StopSig => raise StopIterationException
+           | Mach.CloseSig => raise (ThrowException v)
+           | _ => error regs ["generator protocol"])
+
+and closeGen (regs:Mach.REGS)
+             (Mach.Gen state)
+    : unit =
+    case !state of
+        Mach.RunningGen => error regs ["already running"]
+      | _ => state := Mach.ClosedGen
+
+
 (*
  * ES-262-3 9.8 ToString.
  *
@@ -1540,7 +1679,7 @@ and defaultValue (regs:Mach.REGS)
     in
         if isPrimitive vb
         then vb
-        else (throwTypeErr regs ["defaultValue"]; dummyVal)
+        else throwExn (newTypeErr regs ["defaultValue"])
     end
 
 and isPrimitive (v:Mach.VAL)
@@ -1998,6 +2137,9 @@ and evalExpr (regs:Mach.REGS)
       | Ast.ApplyTypeExpr { expr, actuals } =>
         evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
 
+      | Ast.YieldExpr expr =>
+        evalYieldExpr regs expr
+
       | _ => LogErr.unimplError ["unhandled expression type"]    
 
 (* SPEC
@@ -2061,8 +2203,7 @@ and evalThisExpr (regs:Mach.REGS)
                  (kind:Ast.THIS_KIND option)
     : Mach.VAL = 
     let
-        (* FIXME generator this *)
-        val { this, thisFun, ... } = regs
+        val { this, thisFun, thisGen, ... } = regs
     in
         case kind of
             SOME Ast.FunctionThis => 
@@ -2070,6 +2211,11 @@ and evalThisExpr (regs:Mach.REGS)
                  SOME obj => Mach.Object obj
                (* this error should never occur, since it will be raised earlier in defn *)
                | _ => error regs ["error: 'this function' used in a non-function context"])
+          | SOME Ast.GeneratorThis =>
+            (case thisGen of
+                 SOME obj => Mach.Object obj
+               (* DAH: this error should also never occur? *)
+               | _ => error regs ["error: 'this generator' used in a non-generator-function context"])
           | _ => Mach.Object this
     end
 
@@ -2184,7 +2330,7 @@ and evalNewExpr (regs:Mach.REGS)
     in
         case rhs of
             Mach.Object ob => evalNewObj regs ob (args())
-          | _ => (throwTypeErr regs ["not a constructor"]; dummyVal)
+          | _ => throwExn (newTypeErr regs ["not a constructor"])
     end
 
 
@@ -2491,6 +2637,7 @@ and applyTypesToFunction (regs:Mach.REGS)
                 val newFunc = Ast.Func { name = (#name f), 
                                          fsig = (#fsig f),
                                          native = (#native f),
+                                         generator = (#generator f),
                                          block = (#block f),
                                          param = (#param f),
                                          defaults = (#defaults f),
@@ -2561,10 +2708,32 @@ and evalApplyTypeExpr (regs:Mach.REGS)
                 then applyTypesToInterface regs v args
 *)
                 else 
-                    (throwTypeErr regs ["applying types to unknown base value: ",
-                                        Mach.approx v]; dummyVal)
+                    throwExn (newTypeErr regs ["applying types to unknown base value: ",
+                                               Mach.approx v])
     end
 
+
+and evalYieldExpr (regs:Mach.REGS)
+                  (expr:Ast.EXPR option)
+    : Mach.VAL =
+    let
+        val { thisGen, ... } = regs
+    in
+        case thisGen of
+            SOME (Mach.Obj { magic, ... }) =>
+            (case !magic of
+                 SOME (Mach.Generator gen) =>
+                 let
+                     val v = case expr of
+                                 NONE => Mach.Undef
+                               | SOME expr => evalExpr regs expr
+                 in
+                     yieldFromGen regs gen v
+                 end
+               | _ => error regs ["this generator is not a generator"])
+          (* this should never happen *)
+          | NONE => error regs ["yield expression in a non-generator function context"]
+    end
 
 (* SPEC
 
@@ -2816,7 +2985,7 @@ and evalNewObj (regs:Mach.REGS)
         case (!magic) of
             SOME (Mach.Class c) => constructClassInstance regs obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction regs obj f args
-          | _ => (throwTypeErr regs ["operator 'new' applied to unknown object"]; dummyVal)
+          | _ => throwExn (newTypeErr regs ["operator 'new' applied to unknown object"])
 
 
 and evalCallMethodByExpr (regs:Mach.REGS)
@@ -3623,7 +3792,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             Ast.Cast =>
             if evalOperatorIs regs v (evalTy regs ty)
             then v
-            else (typeOpFailure regs "cast failed" v ty; dummyVal)
+            else throwExn (newTypeOpFailure regs "cast failed" v ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end
 
@@ -3636,7 +3805,7 @@ and hasInstance (regs:Mach.REGS)
         val proto = getPrototype regs obj
         val targId = case proto of 
                          (Mach.Object (Mach.Obj { ident, ... })) => ident
-                       | _ => (throwTypeErr regs ["no 'prototype' property found in [[hasInstance]]"]; dummyObjId)
+                       | _ => throwExn (newTypeErr regs ["no 'prototype' property found in [[hasInstance]]"])
         fun tryVal v' = 
             case v' of 
                 Mach.Null => false
@@ -3680,8 +3849,7 @@ and evalInstanceOf (regs:Mach.REGS)
           | SOME (Mach.Interface _) => objHasInstance regs ob a
           | SOME (Mach.Function _) => objHasInstance regs ob a
           | SOME (Mach.NativeFunction _) => objHasInstance regs ob a
-          | _ => (throwTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"]; 
-                  dummyVal)
+          | _ => throwExn (newTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"])
     end
 
 
@@ -3697,7 +3865,7 @@ and evalOperatorIn (regs:Mach.REGS)
         case b of
             Mach.Object obj =>
             newBoolean regs (hasValue obj aname)
-          | _ => (throwTypeErr regs ["operator 'in' applied to non-object"]; dummyVal)
+          | _ => throwExn (newTypeErr regs ["operator 'in' applied to non-object"])
     end
 
 
@@ -3880,8 +4048,8 @@ and evalLexicalRef (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME r => r
                           | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved lexical reference ", 
-                                                            nomnToStr nomn]; dummyRef)
+                                    then throwExn (newRefErr regs ["unresolved lexical reference ",
+                                                                   nomnToStr nomn])
                                     else defaultRef (#global regs) nomn
             in
                 r
@@ -3929,10 +4097,8 @@ and evalObjectRef (regs:Mach.REGS)
                     fun extractFrom v = 
                         case v of
                             Mach.Object ob => ob
-                          | Mach.Null => (throwRefErr regs ["object reference on null value"]; 
-                                          dummyObj)
-                          | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; 
-                                           dummyObj)
+                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
                 in
                     extractFrom v
                 end
@@ -3942,9 +4108,8 @@ and evalObjectRef (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME ro => ro
                           | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved object reference ", 
-                                                            nomnToStr nomn]; 
-                                          dummyRef)
+                                    then throwExn (newRefErr regs ["unresolved object reference ",
+                                                                   nomnToStr nomn])
                                     else defaultRef ob nomn
                 val _ = LogErr.setLoc loc
                 val (holder, n) = r
@@ -4182,7 +4347,7 @@ and invokeFuncClosure (regs:Mach.REGS)
         val _ = trace ["entering func closure in scope #", 
                        Int.toString (getObjId (getScopeObj env))]
         val _ = traceScope env
-        val Ast.Func { name, block, param=Ast.Head (paramRib, paramInits), ty, ... } = func
+        val Ast.Func { name, block, generator, param=Ast.Head (paramRib, paramInits), ty, ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", 
                                          Int.toString (getObjId t)]; t)
@@ -4221,11 +4386,23 @@ and invokeFuncClosure (regs:Mach.REGS)
             trace ["invokeFuncClosure: evaluating block"];
             let
                 val blockRegs = withThisFun varRegs thisFun 
-                val res = case block of 
+                val res = case block of
                               NONE => Mach.Undef
-                            | SOME b => ((evalBlock blockRegs b;
-                                          Mach.Undef)
-                                         handle ReturnException v => v)
+                            | SOME b =>
+                              if generator then
+                                  let
+                                      fun body (thisGen:Mach.OBJ) =
+                                          (evalBlock (withThisGen blockRegs (SOME thisGen)) b;
+                                           Mach.Undef)
+                                          handle ReturnException v => v
+                                  in
+                                      (* FIXME: this is the wrong Mach.REGS *)
+                                      newGenerator regs body
+                                  end
+                              else
+                                  ((evalBlock (withThisGen blockRegs NONE) b;
+                                    Mach.Undef)
+                                   handle ReturnException v => v)
             in
                 Mach.pop regs;
                 res
@@ -4278,10 +4455,19 @@ and evalTryStmt (regs:Mach.REGS)
     in
         evalBlock regs block
         handle ThrowException v =>
-               case catch regs v catches of
-                   SOME fix => finishWith fix
-                 | NONE => (finishWith v;
-                            raise ThrowException v)
+               (case catch regs v catches of
+                    SOME fix => finishWith fix
+                  | NONE => (finishWith v;
+                             raise ThrowException v))
+             | StopIterationException =>
+               let
+                   val v = getStopIteration regs
+               in
+                   case catch regs v catches of
+                       SOME fix => finishWith fix
+                     | NONE => (finishWith v;
+                                raise StopIterationException)
+               end
     end
 
 
@@ -4929,7 +5115,9 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			(Name.ES4_decimal, Mach.getDecimalClassSlot),
 			
 			(Name.ES4_boolean, Mach.getBooleanClassSlot),
-			(Name.public_Boolean, Mach.getBooleanWrapperClassSlot)
+			(Name.public_Boolean, Mach.getBooleanWrapperClassSlot),
+
+            (Name.helper_GeneratorImpl, Mach.getGeneratorClassSlot)
 		    ]
 		    fun f (n,id) = Mach.nameEq name n
 		in
@@ -4937,6 +5125,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 			NONE => ()
 		      | SOME (_,func) => 
 			let
+                (*val _ = TextIO.print ("binding special identity for class " ^ LogErr.name name ^ "\n")*)
 			    val _ = trace ["binding special identity for class ", fmtName name]
 			    val cell = func regs
 			in
@@ -5468,7 +5657,7 @@ and callIteratorNext (regs:Mach.REGS)
                 getValue regs iterator nextName
             end
         else
-            raise Mach.StopIterationException
+            raise StopIterationException
     end
 
 and evalForInStmt (regs:Mach.REGS)
@@ -5515,7 +5704,7 @@ and evalForInStmt (regs:Mach.REGS)
             fun loop (accum:Mach.VAL option) =
                 let
                     val v = (SOME (callIteratorNext forInRegs iterator)
-                             handle Mach.StopIterationException =>
+                             handle StopIterationException =>
                                     NONE)
                     val b = (case v of
                                  NONE => false
@@ -5703,6 +5892,13 @@ and evalFragment (regs:Mach.REGS)
                in
                    LogErr.setLoc loc;
                    error regs ["uncaught exception: ", exnStr]
+               end
+             | StopIterationException =>
+               let
+                   val loc = !LogErr.loc
+               in
+                   LogErr.setLoc loc;
+                   error regs ["uncaught StopIteration exception"]
                end
     end
 

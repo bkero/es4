@@ -560,7 +560,7 @@ fun normalizeLambdas (ty:Ast.TYPE_EXPR) : Ast.TYPE_EXPR =
                                nonnullable, superTypes, ty, dynamic } =>
             Ast.InstanceType { name=name, 
                                typeParams=typeParams,
-                               typeArgs = if typeArgs=[] 
+                               typeArgs = if List.null typeArgs
                                           then map makeTypeName typeParams 
                                           else typeArgs,
                                nonnullable=nonnullable, 
@@ -724,8 +724,8 @@ fun groundMatchesGeneric (b:BICOMPAT)
                     groundMatchesGeneric b Invariant ty1 ty2
                   | (ty1::tys1, ty2::tys2) => 
                     groundMatchesGeneric b Invariant ty1 ty2
-                    andalso check (if tys1=[] then [ty1] else tys1)
-                                  (if tys2=[] then [ty2] else tys2)
+                    andalso check (if List.null tys1 then [ty1] else tys1)
+                                  (if List.null tys2 then [ty2] else tys2)
         in
             check tys1 tys2
         end

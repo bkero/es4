@@ -33,8 +33,15 @@
 
 Library
     structure LogErr
+    signature ESCAPE
+    structure Escape
+    signature CONTROL
+    functor Control
     structure Main
     structure Ast
+    signature VISITOR
+    functor Visitor
+    structure CheckAst
     structure Pretty
     structure Token
     structure Lexer
@@ -57,8 +64,14 @@ Library
     structure Version
 is
     logerr.sml (lambdasplit: infinity)
+    escape.sig
+    escape-smlnj.sml
+    control.sig
+    control.sml
     main.sml
     ast.sml (lambdasplit: infinity)
+    visitor.sig
+    visitor.sml
     pretty.sml
     pretty-cvt.sml
     pretty-rep.sml

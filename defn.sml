@@ -1423,7 +1423,7 @@ and defFunc (env:ENV)
     : (Ast.HEAD * Ast.EXPR list * Ast.FUNC) = (* (settings, superArgs, func) *)    
     let
         val _ = trace [">> defFunc"]
-        val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
+        val Ast.Func {name, fsig, block, ty, native, generator, loc, ...} = func
         fun findFuncType env e = 
             case e of 
                 Ast.LamType { params, body } => 
@@ -1459,6 +1459,7 @@ and defFunc (env:ENV)
                    param = Ast.Head (mergeRibs (#program env) paramRib hoisted, 
                                      paramInits),
                    native=native,
+                   generator=generator,
                    loc=loc})
     end
 
