@@ -331,6 +331,21 @@ fun getSuperInterface (regs:Mach.REGS)
 
 
 (*
+ * Retrieve the array of enumerable properties of o, in property creation order.
+ *
+ * magic native function getEnumerableIds(o : Object) : iterator::EnumerableIdArray;
+ *)
+fun getEnumerableIds (regs:Mach.REGS)
+                     (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val v = rawNth vals 0
+    in
+        error ["not yet implemented"]
+    end
+
+
+(*
  * Retrieve the possibly null [[Prototype]] property of o
  *
  * magic native function getPrototype(o : Object!) : Object;
@@ -1087,6 +1102,7 @@ fun registerNatives _ =
         addFn 1 Name.magic_getSuperClass getSuperClass;
         addFn 2 Name.magic_getImplementedInterface getImplementedInterface;
         addFn 2 Name.magic_getSuperInterface getSuperInterface;
+        addFn 1 Name.magic_getEnumerableIds getEnumerableIds;
         addFn 1 Name.magic_getPrototype getPrototype;
         addFn 2 Name.magic_hasOwnProperty hasOwnProperty;
         addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
