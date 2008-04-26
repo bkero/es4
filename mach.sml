@@ -138,7 +138,9 @@ datatype VAL = Object of OBJ
 
           booleanTrue : (OBJ option) ref,
           booleanFalse : (OBJ option) ref,
-          doubleNaN : (OBJ option) ref
+          doubleNaN : (OBJ option) ref,
+
+          generatorClass : (OBJ option) ref
          }
 
      and FRAME = 
@@ -160,6 +162,7 @@ datatype VAL = Object of OBJ
        | Function of FUN_CLOSURE
        | Type of Ast.TYPE_EXPR
        | NativeFunction of NATIVE_FUNCTION
+       | Generator of GEN
 
      and SCOPE =
          Scope of { object: OBJ,
@@ -222,6 +225,18 @@ datatype VAL = Object of OBJ
           profiler: PROFILER 
          }
 
+     and GEN_STATE = NewbornGen of (unit -> GEN_SIGNAL)
+                   | DormantGen of (GEN_SIGNAL -> GEN_SIGNAL)
+                   | RunningGen
+                   | ClosedGen
+
+     and GEN_SIGNAL = YieldSig of VAL
+                    | ThrowSig of VAL
+                    | SendSig of VAL
+                    | CloseSig
+
+     and GEN = Gen of GEN_STATE ref
+
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
@@ -240,6 +255,7 @@ withtype FUN_CLOSURE =
           scope: SCOPE,
           this: OBJ,
           thisFun: OBJ option,
+          thisGen: OBJ option,
           global: OBJ,
           prog: Fixture.PROGRAM,          
           aux: AUX
@@ -249,6 +265,7 @@ withtype FUN_CLOSURE =
          { func: ({ scope: SCOPE, 
                     this: OBJ, 
                     thisFun: OBJ option,
+                    thisGen: OBJ option,
                     global: OBJ, 
                     prog: Fixture.PROGRAM, 
                     aux: AUX } (* REGS *)
@@ -277,15 +294,6 @@ withtype FUN_CLOSURE =
 					                               attrs: ATTRS } } NameMap.map } ref 
 			 
 			 
-(* Exceptions for control transfer. *)
-
-exception ContinueException of (Ast.IDENT option)
-exception BreakException of (Ast.IDENT option)
-exception TailCallException of (unit -> VAL)
-exception ThrowException of VAL
-exception ReturnException of VAL
-exception StopIterationException
-
 fun isObject (v:VAL) : bool =
     case v of
         Object _ => true
@@ -674,6 +682,8 @@ fun magicToUstring (magic:MAGIC)
       | Function _ => Ustring.fromString "[function Function]"
       | Type _ => Ustring.fromString "[type Type]"
       | NativeFunction _ => Ustring.fromString "[function Function]"
+      (* XXX: why does this trump the toString method? *)
+      | Generator _ => Ustring.fromString "[object Generator]"
 
 
 (*
@@ -1127,6 +1137,8 @@ fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs))
 fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
 fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs)) 
 
+fun getGeneratorClassSlot (regs:REGS) = (#generatorClass (getSpecials regs))
+
 fun getCaches (regs:REGS) =
     let 
         val { aux = Aux { objCache = ObjCache vc, ... }, ... } = regs
@@ -1213,7 +1225,8 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
 
                          booleanTrue = ref NONE,
                          booleanFalse = ref NONE,
-                         doubleNaN = ref NONE }
+                         doubleNaN = ref NONE,
+                         generatorClass = ref NONE }
         val aux = Aux { booting = ref false,
                         langEd = ref 4,
                         specials = specials,
@@ -1224,6 +1237,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         { this = glob,
           global = glob,          
           thisFun = NONE,
+          thisGen = NONE,
           scope = makeGlobalScopeWith glob,
           prog = prog,
           aux = aux }

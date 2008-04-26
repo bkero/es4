@@ -177,6 +177,7 @@ datatype PRAGMA =
          { name: FUNC_NAME,
            fsig: FUNC_SIG,                       (* redundant, not used in verify *)
            native: bool,
+           generator: bool,
            block: BLOCK option, (* NONE => abstract *)
            param: HEAD,         (* CF: not sure what this is ... *)
            defaults: EXPR list,
@@ -520,7 +521,8 @@ withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and RIB = (FIXTURE_NAME * FIXTURE) list
-     and RIBS = RIB list
+     and RIBS = ((FIXTURE_NAME * FIXTURE) list) (* RIB *)
+                list
      and INITS = (FIXTURE_NAME * EXPR) list
 
 (* cf: a class ref of the form C.<int> is represented as
