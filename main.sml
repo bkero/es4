@@ -88,7 +88,6 @@ fun findTraceOption (tname:string)
     case tname of
         "lex" => SOME (Lexer.doTrace)
       | "parse" => SOME (Parser.doTrace)
-      | "name" => SOME (Multiname.doTrace)
       | "defn" => SOME (Defn.doTrace)
       | "defnsum" => SOME (Defn.doTraceSummary)
       | "verify" => SOME (Verify.doTrace) 

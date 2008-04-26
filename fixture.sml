@@ -31,7 +31,7 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
-structure Fixture :> FIXTURE = struct
+structure Fixture = struct
 
 val doTrace = ref false
 fun log ss = LogErr.log ("[fixture] " :: ss)
@@ -158,7 +158,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
 		   | Ast.TypeVarFixture _ => "[typeVar]"
-		   | Ast.TypeFixture t => ("[type] = " ^ LogErr.ty t)
+		   | Ast.TypeFixture t => ("[type]" ^ LogErr.ty t)
 		   | Ast.MethodFixture _ => "[method]"
 		   | Ast.ValFixture _ => "[val]"
 		   | Ast.VirtualValFixture _ => "[virtualVal]"
@@ -174,7 +174,7 @@ fun printRib (rib:Ast.RIB) =
 
 
 (* -----------------------------------------------------------------------------
- * Operations on PROGRAMs -- NB: much of PROGRAM is mutable.
+ * Operations on PROGRAMs 
  * ----------------------------------------------------------------------------- *)
                 
 type PROGRAM = { rootRib: Ast.RIB,
@@ -220,5 +220,147 @@ fun addPackageName (prog:PROGRAM)
 fun getPackageNames (prog:PROGRAM)
     : Ast.IDENT list list = 
     (#packageNames prog)
+
+
+(* -----------------------------------------------------------------------------
+ * Static variant of name-resolution algorithm: mirrors Mach.findName
+ * ----------------------------------------------------------------------------- *)
+
+type IDENTIFIER = Ast.IDENT
+type NAMESPACE = Ast.NAMESPACE
+
+type CLASS = Ast.CLS
+type NAME = Ast.NAME
+
+type NAMESPACE_SET = NAMESPACE list
+type OPEN_NAMESPACES = NAMESPACE_SET list 
+
+fun head x = hd x (* return the first element of a list *)
+fun tail x = tl x (* return all but the first element of a list *)
+
+fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
+    case (n1, n2) of
+        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
+      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
+      | _ => false
+
+fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
+    : NAMESPACE_SET =
+    (* compute the intersection of two NAMESPACE_SETs *)
+    (* INFORMATIVE *)
+    List.filter (fn n1 => List.exists (fn n2 => compareNamespaces (n1, n2)) ns2) ns1
+
+fun selectNamespacesByRootRib (identifier: IDENTIFIER,
+                               namespaces: NAMESPACE_SET,
+                               rootRib: Ast.RIB)
+    : NAMESPACE_SET = 
+    List.filter (fn ns => hasFixture rootRib (Ast.PropName {id=identifier, ns=ns})) namespaces
+
+fun selectNamespacesByOpenNamespaces ([], _) = []
+ |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
+                                      namespaces: NAMESPACE_SET)
+    : NAMESPACE list =
+    let
+        val matches = intersectNamespaces (head (namespacesList), namespaces)
+    in
+        case matches of
+            [] => selectNamespacesByOpenNamespaces (tail (namespacesList), namespaces)
+          | _ => matches
+    end
+
+fun ribSearch (rib: Ast.RIB, 
+               namespaces: NAMESPACE_SET, 
+               identifier: IDENTIFIER)
+    : (Ast.RIB * NAMESPACE_SET) option =
+    case List.filter (fn ns => hasFixture rib (Ast.PropName {ns=ns,id=identifier})) namespaces of
+        [] => NONE
+      | m => SOME (rib, m)
+
+fun ribListSearch ([], _, _) = NONE
+  | ribListSearch (ribs: Ast.RIBS, 
+                   namespaces: NAMESPACE_SET, 
+                   identifier: IDENTIFIER)
+    : (Ast.RIBS * NAMESPACE_SET) option =
+    let
+        val rib = head (ribs)
+        val matches = ribSearch (rib, namespaces, identifier)
+    in
+        case matches of
+            NONE => ribListSearch (tail (ribs), namespaces, identifier)
+          | SOME (_, m) => SOME (ribs, m)
+    end
+
+fun getInstanceBindingNamespaces (class: CLASS, 
+                                  identifier: IDENTIFIER,
+                                  namespaces: NAMESPACE_SET)
+    : NAMESPACE_SET =
+    (* 
+     * get the namespaces of names that have a certain identifier
+     * and any of a certain set of namespaces, and are bound in 
+     * instances of a certain class. 
+     *)
+    (* INFORMATIVE *)
+    (* FIXME: implement! *)
+    namespaces
+
+fun selectNamespacesByClass ([], namespaces, _) = namespaces
+ |  selectNamespacesByClass (classes: CLASS list, 
+                             namespaces: NAMESPACE_SET, 
+                             identifier: IDENTIFIER)
+    : NAMESPACE list =
+    let
+        val class = head (classes)
+        val bindingNamespaces = getInstanceBindingNamespaces (class, identifier, namespaces)
+        val matches = intersectNamespaces (bindingNamespaces, namespaces)
+    in
+        case matches of
+            [] => selectNamespacesByClass (tail (classes), namespaces, identifier)
+          | _ => matches
+    end
+
+fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, rootRib: Ast.RIB option)
+    : (Ast.RIBS * NAME) option =
+    let
+        val namespaces = List.concat (openNamespaces)
+        val matches = ribListSearch (ribs, namespaces, identifier)
+    in
+        case matches of
+            NONE => NONE
+          | SOME (ribs, namespace :: []) => SOME (ribs, {ns=namespace, id=identifier})
+          | SOME (ribs, namespaces') =>
+            let
+                val matches' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces')
+            in
+                case matches' of
+                    namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
+                  | [] => NONE
+                  | _ =>
+                    let
+                        (* FIXME: we don't know how to map from a rib back to the declaring class. Bleah. *)
+                        val classList = [] (* inheritedClassesOf (ribs) *)
+                        val matches'' = selectNamespacesByClass (classList, namespaces, identifier)
+                    in 
+                        case matches'' of
+                            namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
+                          | [] => raise (LogErr.NameError "internal error")
+                          | _ => 
+                            if length ribs = 1
+                            then 
+                                (case rootRib of 
+                                     NONE => raise (LogErr.NameError "ambiguous reference")
+                                   | SOME rr => 
+                                     (case selectNamespacesByRootRib (identifier, matches'', rr) of
+                                          namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
+                                        | [] => raise (LogErr.NameError "internal error")
+                                        | _ => raise (LogErr.NameError "ambiguous reference")))
+                            else
+                                raise (LogErr.NameError "ambiguous reference")
+                    end
+            end
+    end
+
+
+
+
 
 end

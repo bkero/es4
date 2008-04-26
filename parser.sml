@@ -499,7 +499,7 @@ and qualifier (ts0: TOKENS) =
     let
         val (ts1,nd1) = identifier ts0
     in
-        (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}, loc=locOf ts0})
+        (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[], rootRib=NONE}, loc=locOf ts0})
     end
 
 
@@ -551,7 +551,7 @@ and simpleQualifiedName (ts0: TOKENS)
     let 
         val _ = trace ([">> simpleQualifiedName with next=", tokenname (hd (ts0))])
         val (ts1, nd1) = identifier(ts0)
-        val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
+        val id = Ast.Identifier {ident=nd1, openNamespaces=[], rootRib=NONE}
     in 
         case ts1 of
             (DoubleColon, _) :: _ =>
@@ -738,7 +738,8 @@ and functionExpression (ts0: TOKENS, alpha: ALPHA, beta: BETA)
                         val bindings = [Ast.Binding { ident = bid, ty = ty }]
                         val inits = [Ast.InitStep (bid, Ast.LiteralExpr expr)]
                         val res = Ast.LexicalRef { ident = Ast.Identifier { ident = ident, 
-                                                                            openNamespaces = []}, 
+                                                                            openNamespaces = [], 
+                                                                            rootRib=NONE}, 
                                                    loc = SOME funcStartLoc }
                     in
                         (* 
@@ -950,7 +951,7 @@ and fieldName (ts:TOKENS)
     : (TOKENS * Ast.IDENT_EXPR) =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))])
     in case ts of
-        (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[]})
+        (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[], rootRib=NONE})
 
       | (DecimalLiteral n, _) :: ts1 => 
         (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralDecimal n)),
@@ -964,7 +965,7 @@ and fieldName (ts:TOKENS)
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
             in
-                (ts1,Ast.Identifier {ident=nd1,openNamespaces=[]})  (* todo: allow qualified identifier *)
+                (ts1,Ast.Identifier {ident=nd1,openNamespaces=[], rootRib=NONE})  (* todo: allow qualified identifier *)
             end
     end
 
@@ -1553,7 +1554,7 @@ and propertyOperator (ts0: TOKENS, nd0: Ast.EXPR)
                          { base=nd0,
                            ident=Ast.Identifier
                                      { ident=nd1,
-                                       openNamespaces=[] },
+                                       openNamespaces=[], rootRib=NONE },
                            loc=locOf ts0})
             end 
         else
@@ -5200,7 +5201,7 @@ and namespaceAttribute (ts:TOKENS, _)
     in
         case ts of 
             (Identifier s, _) :: _ =>
-            (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier {ident=s, openNamespaces=[]},
+            (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier {ident=s, openNamespaces=[],rootRib=NONE},
                                           loc=locOf ts}))
           | _ => error ["unknown token in namespaceAttribute"]
     end

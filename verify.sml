@@ -195,14 +195,15 @@ fun resolveExprToNamespace (env:ENV)
               | SOME ns => 
                 resolveExprToNamespace env  
                                        (Ast.LexicalRef {ident=(Ast.Identifier { openNamespaces=[[ns]], 
-                                                                                ident=ident }), 
+                                                                                ident=ident, 
+                                                                                rootRib=NONE }), 
                                                         loc=loc })
         end
-      | Ast.LexicalRef {ident = Ast.Identifier { openNamespaces, ident }, loc} =>
+      | Ast.LexicalRef {ident = Ast.Identifier { openNamespaces, ident, rootRib }, loc} =>
         let
          in
             LogErr.setLoc loc;
-            case Multiname.resolveInRibs { id=ident, nss=openNamespaces} (#ribs env) of 
+            case Fixture.findName ((#ribs env), ident, openNamespaces, rootRib) of 
                 NONE => NONE (* no occurrence in ribs *)
               | SOME (ribs, name) =>
                 case Fixture.getFixture (List.hd ribs) (Ast.PropName name) of
@@ -246,13 +247,13 @@ fun verifyIdentExpr (env:ENV)
                 case resolveExprToNamespace env expr of
                     SOME ns =>
                     verifyIdentExpr env ribs
-                                    (Ast.Identifier { openNamespaces = [[ns]], ident = ident})
+                                    (Ast.Identifier { openNamespaces = [[ns]], ident = ident, rootRib=NONE})
                   | NONE => NONE
             end
-          | Ast.Identifier { openNamespaces, ident } =>
+          | Ast.Identifier { openNamespaces, ident, rootRib } =>
             let 
             in
-                case Multiname.resolveInRibs { id=ident, nss=openNamespaces} ribs of 
+                case Fixture.findName (ribs, ident, openNamespaces, rootRib) of 
                     NONE => NONE (* no occurrence in ribs *)
                   | SOME (ribs, name) =>
                     let val fixture = Fixture.getFixture (List.hd ribs) (Ast.PropName name)
