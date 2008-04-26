@@ -1555,36 +1555,34 @@ and sendToGen (regs:Mach.REGS)
               (Mach.Gen state)
               (v : Mach.VAL)
     : Mach.VAL =
-    let
-    in
-        case !state of
-            Mach.RunningGen => error regs ["already running"]
-          | Mach.ClosedGen => raise StopIterationException
-          | Mach.NewbornGen f =>
-            if Mach.isUndef v then
-                (state := Mach.RunningGen;
-                 case f () of
-                     Mach.YieldSig v' => v'
-                   | Mach.ThrowSig v' => raise (ThrowException v')
-                   | Mach.StopSig => raise StopIterationException
-                   | Mach.CloseSig => raise StopIterationException
-                   | _ => error regs ["generator protocol"])
-            else
-                let val s = Ustring.toAscii (toUstring regs v)
-                            handle ThrowException _ => "<<value>>" (* XXX: what's the best thing to do here? *)
-                                 | StopIterationException => "StopIteration"
-                in
-                    throwExn (newTypeErr regs ["attempt to send ", s, " to newborn generator"])
-                end
-          | Mach.DormantGen k =>
+    case !state of
+        Mach.RunningGen => error regs ["already running"]
+      | Mach.ClosedGen => raise StopIterationException
+      | Mach.NewbornGen f =>
+        if Mach.isUndef v then
             (state := Mach.RunningGen;
-             case k (Mach.SendSig v) of
+             case f () of
                  Mach.YieldSig v' => v'
                | Mach.ThrowSig v' => raise (ThrowException v')
                | Mach.StopSig => raise StopIterationException
                | Mach.CloseSig => raise StopIterationException
                | _ => error regs ["generator protocol"])
-    end
+        else
+            let val s = Ustring.toAscii (toUstring regs v)
+                    (* FIXME: what's the best thing to do here? *)
+                    handle ThrowException _ => "<<value>>"
+                         | StopIterationException => "StopIteration"
+            in
+                throwExn (newTypeErr regs ["attempt to send ", s, " to newborn generator"])
+            end
+      | Mach.DormantGen k =>
+        (state := Mach.RunningGen;
+         case k (Mach.SendSig v) of
+             Mach.YieldSig v' => v'
+           | Mach.ThrowSig v' => raise (ThrowException v')
+           | Mach.StopSig => raise StopIterationException
+           | Mach.CloseSig => raise StopIterationException
+           | _ => error regs ["generator protocol"])
 
 and throwToGen (regs:Mach.REGS)
                (Mach.Gen state)
@@ -1594,7 +1592,7 @@ and throwToGen (regs:Mach.REGS)
         Mach.RunningGen => error regs ["already running"]
       | Mach.ClosedGen => raise (ThrowException v)
       | Mach.NewbornGen f =>
-        (* XXX: confirm this semantics with be *)
+        (* FIXME: confirm this semantics with be *)
         (state := Mach.ClosedGen; raise (ThrowException v))
       | Mach.DormantGen k =>
         (state := Mach.RunningGen;
