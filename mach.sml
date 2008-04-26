@@ -231,8 +231,9 @@ datatype VAL = Object of OBJ
                    | ClosedGen
 
      and GEN_SIGNAL = YieldSig of VAL
-                    | ThrowSig of VAL
                     | SendSig of VAL
+                    | ThrowSig of VAL
+                    | StopSig
                     | CloseSig
 
      and GEN = Gen of GEN_STATE ref

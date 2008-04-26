@@ -74,12 +74,6 @@ exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
-(* FIXME: incompatible with the way I'm doing generator StopIteration.
-   - datatype EXN = Throw of Mach.VAL
-                  | StopIteration
-   - exception ThrowException of Mach.EXN
-   - catch ThrowException StopIteration returns iterator::StopIteration
-*)
 exception StopIterationException
 
 exception InternalError
@@ -1497,6 +1491,16 @@ and newNativeFunction (regs:Mach.REGS)
 	Mach.Object obj
     end
 
+and getStopIteration (regs:Mach.REGS) =
+    let
+        fun getIteratorNamespace ()
+            : Ast.NAMESPACE =
+            needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
+        val name = { id = Ustring.StopIteration_, ns = getIteratorNamespace () }
+    in
+        getValue regs (#global regs) name
+    end
+
 and newGen (execBody:unit -> Mach.VAL)
     : Mach.GEN =
     let
@@ -1507,7 +1511,8 @@ and newGen (execBody:unit -> Mach.VAL)
         state := Mach.NewbornGen (fn () =>
                                      Control.reset (fn () =>
                                                        ((execBody (); Mach.CloseSig)
-                                                        handle ThrowException v => Mach.ThrowSig v)
+                                                        handle ThrowException v => Mach.ThrowSig v
+                                                             | StopIterationException => Mach.StopSig)
                                                        before state := Mach.ClosedGen));
         Mach.Gen state
     end
@@ -1542,6 +1547,7 @@ and yieldFromGen (regs:Mach.REGS)
                                                          Mach.YieldSig v)) of
                                 Mach.SendSig v' => v'
                               | Mach.ThrowSig v' => raise (ThrowException v')
+                              | Mach.StopSig => raise StopIterationException
                               | _ => error regs ["generator protocol"])
       | _ => error regs ["yield from dormant or dead generator"]
 
@@ -1550,31 +1556,23 @@ and sendToGen (regs:Mach.REGS)
               (v : Mach.VAL)
     : Mach.VAL =
     let
-        fun stopIteration () =
-            let
-                fun getIteratorNamespace ()
-                    : Ast.NAMESPACE =
-                    needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
-                val name = { id = Ustring.StopIteration_, ns = getIteratorNamespace () }
-                val si = getValue regs (#global regs) name
-            in
-                raise (ThrowException si)
-            end
     in
         case !state of
             Mach.RunningGen => error regs ["already running"]
-          | Mach.ClosedGen => stopIteration ()
+          | Mach.ClosedGen => raise StopIterationException
           | Mach.NewbornGen f =>
             if Mach.isUndef v then
                 (state := Mach.RunningGen;
                  case f () of
                      Mach.YieldSig v' => v'
                    | Mach.ThrowSig v' => raise (ThrowException v')
-                   | Mach.CloseSig => stopIteration ()
+                   | Mach.StopSig => raise StopIterationException
+                   | Mach.CloseSig => raise StopIterationException
                    | _ => error regs ["generator protocol"])
             else
                 let val s = Ustring.toAscii (toUstring regs v)
                             handle ThrowException _ => "<<value>>" (* XXX: what's the best thing to do here? *)
+                                 | StopIterationException => "StopIteration"
                 in
                     throwExn (newTypeErr regs ["attempt to send ", s, " to newborn generator"])
                 end
@@ -1583,7 +1581,8 @@ and sendToGen (regs:Mach.REGS)
              case k (Mach.SendSig v) of
                  Mach.YieldSig v' => v'
                | Mach.ThrowSig v' => raise (ThrowException v')
-               | Mach.CloseSig => stopIteration ()
+               | Mach.StopSig => raise StopIterationException
+               | Mach.CloseSig => raise StopIterationException
                | _ => error regs ["generator protocol"])
     end
 
@@ -1602,6 +1601,7 @@ and throwToGen (regs:Mach.REGS)
          case k (Mach.ThrowSig v) of
              Mach.YieldSig v' => v'
            | Mach.ThrowSig v' => raise (ThrowException v')
+           | Mach.StopSig => raise StopIterationException
            | Mach.CloseSig => raise (ThrowException v)
            | _ => error regs ["generator protocol"])
 
@@ -4493,10 +4493,19 @@ and evalTryStmt (regs:Mach.REGS)
     in
         evalBlock regs block
         handle ThrowException v =>
-               case catch regs v catches of
-                   SOME fix => finishWith fix
-                 | NONE => (finishWith v;
-                            raise ThrowException v)
+               (case catch regs v catches of
+                    SOME fix => finishWith fix
+                  | NONE => (finishWith v;
+                             raise ThrowException v))
+             | StopIterationException =>
+               let
+                   val v = getStopIteration regs
+               in
+                   case catch regs v catches of
+                       SOME fix => finishWith fix
+                     | NONE => (finishWith v;
+                                raise StopIterationException)
+               end
     end
 
 
@@ -5921,6 +5930,13 @@ and evalFragment (regs:Mach.REGS)
                in
                    LogErr.setLoc loc;
                    error regs ["uncaught exception: ", exnStr]
+               end
+             | StopIterationException =>
+               let
+                   val loc = !LogErr.loc
+               in
+                   LogErr.setLoc loc;
+                   error regs ["uncaught StopIteration exception"]
                end
     end
 
