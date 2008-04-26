@@ -294,15 +294,6 @@ withtype FUN_CLOSURE =
 					                               attrs: ATTRS } } NameMap.map } ref 
 			 
 			 
-(* Exceptions for control transfer. *)
-
-exception ContinueException of (Ast.IDENT option)
-exception BreakException of (Ast.IDENT option)
-exception TailCallException of (unit -> VAL)
-exception ThrowException of VAL
-exception ReturnException of VAL
-exception StopIterationException (* FIXME: I think this is useless (DAH) *)
-
 fun isObject (v:VAL) : bool =
     case v of
         Object _ => true

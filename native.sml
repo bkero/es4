@@ -681,11 +681,12 @@ fun get (regs:Mach.REGS)
                   | _ =>
                     if Eval.isDynamic regs obj
                     then Mach.Undef
-                    else (Eval.throwTypeErr 
-                              regs 
-                              ["attempting to get nonexistent property ",
-                               LogErr.name name,
-                               "from non-dynamic object"]; Eval.dummyVal)
+                    else Eval.throwExn
+                             (Eval.newTypeErr
+                                  regs 
+                                  ["attempting to get nonexistent property ",
+                                   LogErr.name name,
+                                   "from non-dynamic object"])
             end
     in
         Eval.getValueOrVirtual regs obj name false propNotFound

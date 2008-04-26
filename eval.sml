@@ -74,17 +74,19 @@ exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
+(* FIXME: incompatible with the way I'm doing generator StopIteration.
+   - datatype EXN = Throw of Mach.VAL
+                  | StopIteration
+   - exception ThrowException of Mach.EXN
+   - catch ThrowException StopIteration returns iterator::StopIteration
+*)
+exception StopIterationException
 
 exception InternalError
 
-(* Dummy values to permit raising exceptions in non-unit type contexts. *)
-val dummyVal = Mach.Null
-val dummyObj = Mach.newObj Mach.NoTag Mach.Null NONE
-val dummyObjId = 0
-val dummyRef = (dummyObj, Name.public_global)
-val dummyTypeExpr = Ast.SpecialType Ast.Any
-val dummyNs = Name.publicNS
-
+fun throwExn (v:Mach.VAL)
+    : 'a =
+    raise (ThrowException v)
 
 infix 4 <*;
 fun tsub <* tsup = Type.groundIsCompatibleSubtype tsub tsup
@@ -798,19 +800,16 @@ and getValueOrVirtual (regs:Mach.REGS)
             SOME prop =>
             (case (#state prop) of
                  Mach.TypeProp =>
-                 (throwTypeErr regs ["getValue on a type property: ",
-                                     LogErr.name name]; 
-                  dummyVal)
+                 throwExn (newTypeErr regs ["getValue on a type property: ",
+                                            LogErr.name name])
 
                | Mach.TypeVarProp =>
-                 (throwTypeErr regs ["getValue on a type variable property: ",
-                                     LogErr.name name];
-                  dummyVal)
+                 throwExn (newTypeErr regs ["getValue on a type variable property: ",
+                                            LogErr.name name])
 
                | Mach.UninitProp =>
-                 (throwTypeErr regs ["getValue on an uninitialized property: ",
-                                     LogErr.name name];
-                  dummyVal)
+                 throwExn (newTypeErr regs ["getValue on an uninitialized property: ",
+                                            LogErr.name name])
 
                | Mach.VirtualValProp { getter, ... } =>
                  if doVirtual
@@ -877,25 +876,30 @@ and getValue (regs:Mach.REGS)
                   | _ =>
                     if isDynamic regs obj
                     then Mach.Undef
-                    else (throwTypeErr 
-                              regs 
-                              ["attempting to get nonexistent property ",
-                               LogErr.name name,
-                               " from non-dynamic object"]; dummyVal)
+                    else throwExn (newTypeErr
+                                       regs
+                                       ["attempting to get nonexistent property ",
+                                        LogErr.name name,
+                                        " from non-dynamic object"])
             end
     in
         getValueOrVirtual regs obj name true propNotFound
     end
 
 
-and typeOpFailure (regs:Mach.REGS)
+and newTypeOpFailure (regs:Mach.REGS)
                   (prefix:string)
                   (v:Mach.VAL)
                   (tyExpr:Ast.TYPE_EXPR)
-    : unit =
+    : Mach.VAL =
+    newTypeErr regs [prefix, ": val=", Mach.approx v,
+                     " type=", LogErr.ty (typeOfVal regs v),
+                     " wanted=", LogErr.ty tyExpr]
+(*
     throwTypeErr regs [prefix, ": val=", Mach.approx v,
                        " type=", LogErr.ty (typeOfVal regs v),
                        " wanted=", LogErr.ty tyExpr]
+*)
     
 and checkAndConvert (regs:Mach.REGS)
                     (v:Mach.VAL)
@@ -910,8 +914,7 @@ and checkAndConvert (regs:Mach.REGS)
             let
                 val (classType:Ast.TYPE_EXPR) =
                     case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
-                        NONE => (typeOpFailure regs "incompatible types w/o conversion" v tyExpr; 
-                                 dummyTypeExpr)
+                        NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
                 val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
@@ -968,10 +971,9 @@ and badPropAccess (regs:Mach.REGS)
               | Mach.NativeFunctionProp _ => "native function"
               | Mach.VirtualValProp _ => "virtual"
     in
-        throwTypeErr regs ["bad property ", accessKind, 
-                           " on ", existingPropKind, 
-                           " ", LogErr.name propName];
-        ()
+        throwExn (newTypeErr regs ["bad property ", accessKind,
+                                   " on ", existingPropKind, 
+                                   " ", LogErr.name propName])
     end
 
 
@@ -1004,16 +1006,16 @@ and setValueOrVirtual (regs:Mach.REGS)
                     
                     Mach.MethodProp _ =>
                     if readOnly
-                    then throwTypeErr regs ["setValue on read-only method property: ",
-                                            LogErr.name name]
+                    then throwExn (newTypeErr regs ["setValue on read-only method property: ",
+                                                    LogErr.name name])
                     else write ()  (* ES3 style mutable fun props are readOnly *)
 
                   | Mach.VirtualValProp { setter, ... } =>
                     if doVirtual
                     then 
                         case setter of 
-                            NONE => throwTypeErr regs ["attempting to write to a virtual property without a setter: ",
-                                                       LogErr.name name]
+                            NONE => throwExn (newTypeErr regs ["attempting to write to a virtual property without a setter: ",
+                                                               LogErr.name name])
                           | SOME s => (invokeFuncClosure (withThis regs obj) s NONE [v]; ())
                     else 
                         write ()
@@ -1038,7 +1040,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                     in
                         if isDynamic regs obj
                         then Mach.addProp props name prop
-                        else throwTypeErr regs ["attempting to add property to non-dynamic object"]
+                        else throwExn (newTypeErr regs ["attempting to add property to non-dynamic object"])
                     end
                 fun catchAll _ =
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
@@ -1154,27 +1156,26 @@ and instantiateGlobalClass (regs:Mach.REGS)
                              " did not resolve to object"]
     end
 
-and throwExn (regs:Mach.REGS)
-             (name:Ast.NAME) 
-             (args:string list)
-    : unit =
+and newExn (regs:Mach.REGS)
+           (name:Ast.NAME)
+           (args:string list)
+    : Mach.VAL =
     if Mach.isBooting regs
     then error regs ["trapped ThrowException during boot: ", 
                      LogErr.name name, "(", String.concat args, ")"]
-    else raise ThrowException 
-                   (instantiateGlobalClass 
-                        regs name 
-                        [((newString regs) o Ustring.fromString o String.concat) args])
+    else instantiateGlobalClass
+             regs name
+             [((newString regs) o Ustring.fromString o String.concat) args]
 
-and throwTypeErr (regs:Mach.REGS)
-                 (args:string list)
-    : unit =
-    throwExn regs Name.public_TypeError args
+and newTypeErr (regs:Mach.REGS)
+               (args:string list)
+    : Mach.VAL =
+    newExn regs Name.public_TypeError args
 
-and throwRefErr (regs:Mach.REGS)
-                (args:string list)
-    : unit =
-    throwExn regs Name.public_ReferenceError args
+and newRefErr (regs:Mach.REGS)
+              (args:string list)
+    : Mach.VAL =
+    newExn regs Name.public_ReferenceError args
 
 and needNamespace (regs:Mach.REGS)
                   (v:Mach.VAL)
@@ -1183,8 +1184,8 @@ and needNamespace (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => (throwTypeErr regs ["need namespace"]; dummyNs))
-      | _ => (throwTypeErr regs ["need namespace"]; dummyNs)
+           | _ => throwExn (newTypeErr regs ["need namespace"]))
+      | _ => throwExn (newTypeErr regs ["need namespace"])
 
 and needNamespaceOrNull (regs:Mach.REGS)
                         (v:Mach.VAL)
@@ -1193,9 +1194,9 @@ and needNamespaceOrNull (regs:Mach.REGS)
         Mach.Object (Mach.Obj ob) =>
         (case !(#magic ob) of
              SOME (Mach.Namespace n) => n
-           | _ => (throwTypeErr regs ["need namespace"]; dummyNs))
+           | _ => throwExn (newTypeErr regs ["need namespace"]))
       | Mach.Null => Name.publicNS
-      | _ => (throwTypeErr regs ["need namespace"]; dummyNs)
+      | _ => throwExn (newTypeErr regs ["need namespace"])
 
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
@@ -1219,7 +1220,7 @@ and needObj (regs:Mach.REGS)
     : Mach.OBJ =
     case v of
         Mach.Object ob => ob
-      | _ => (throwTypeErr regs ["need object"]; dummyObj)
+      | _ => throwExn (newTypeErr regs ["need object"])
 
 and newObject (regs:Mach.REGS) =
     instantiateGlobalClass 
@@ -1575,8 +1576,7 @@ and sendToGen (regs:Mach.REGS)
                 let val s = Ustring.toAscii (toUstring regs v)
                             handle ThrowException _ => "<<value>>" (* XXX: what's the best thing to do here? *)
                 in
-                    throwTypeErr regs ["attempt to send ", s, " to newborn generator"];
-                    dummyVal
+                    throwExn (newTypeErr regs ["attempt to send ", s, " to newborn generator"])
                 end
           | Mach.DormantGen k =>
             (state := Mach.RunningGen;
@@ -1679,7 +1679,7 @@ and defaultValue (regs:Mach.REGS)
     in
         if isPrimitive vb
         then vb
-        else (throwTypeErr regs ["defaultValue"]; dummyVal)
+        else throwExn (newTypeErr regs ["defaultValue"])
     end
 
 and isPrimitive (v:Mach.VAL)
@@ -2330,7 +2330,7 @@ and evalNewExpr (regs:Mach.REGS)
     in
         case rhs of
             Mach.Object ob => evalNewObj regs ob (args())
-          | _ => (throwTypeErr regs ["not a constructor"]; dummyVal)
+          | _ => throwExn (newTypeErr regs ["not a constructor"])
     end
 
 
@@ -2708,8 +2708,8 @@ and evalApplyTypeExpr (regs:Mach.REGS)
                 then applyTypesToInterface regs v args
 *)
                 else 
-                    (throwTypeErr regs ["applying types to unknown base value: ",
-                                        Mach.approx v]; dummyVal)
+                    throwExn (newTypeErr regs ["applying types to unknown base value: ",
+                                               Mach.approx v])
     end
 
 
@@ -2985,7 +2985,7 @@ and evalNewObj (regs:Mach.REGS)
         case (!magic) of
             SOME (Mach.Class c) => constructClassInstance regs obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction regs obj f args
-          | _ => (throwTypeErr regs ["operator 'new' applied to unknown object"]; dummyVal)
+          | _ => throwExn (newTypeErr regs ["operator 'new' applied to unknown object"])
 
 
 and evalCallMethodByExpr (regs:Mach.REGS)
@@ -3792,7 +3792,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             Ast.Cast =>
             if evalOperatorIs regs v (evalTy regs ty)
             then v
-            else (typeOpFailure regs "cast failed" v ty; dummyVal)
+            else throwExn (newTypeOpFailure regs "cast failed" v ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
     end
 
@@ -3805,7 +3805,7 @@ and hasInstance (regs:Mach.REGS)
         val proto = getPrototype regs obj
         val targId = case proto of 
                          (Mach.Object (Mach.Obj { ident, ... })) => ident
-                       | _ => (throwTypeErr regs ["no 'prototype' property found in [[hasInstance]]"]; dummyObjId)
+                       | _ => throwExn (newTypeErr regs ["no 'prototype' property found in [[hasInstance]]"])
         fun tryVal v' = 
             case v' of 
                 Mach.Null => false
@@ -3849,8 +3849,7 @@ and evalInstanceOf (regs:Mach.REGS)
           | SOME (Mach.Interface _) => objHasInstance regs ob a
           | SOME (Mach.Function _) => objHasInstance regs ob a
           | SOME (Mach.NativeFunction _) => objHasInstance regs ob a
-          | _ => (throwTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"]; 
-                  dummyVal)
+          | _ => throwExn (newTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"])
     end
 
 
@@ -3866,7 +3865,7 @@ and evalOperatorIn (regs:Mach.REGS)
         case b of
             Mach.Object obj =>
             newBoolean regs (hasValue obj aname)
-          | _ => (throwTypeErr regs ["operator 'in' applied to non-object"]; dummyVal)
+          | _ => throwExn (newTypeErr regs ["operator 'in' applied to non-object"])
     end
 
 
@@ -4049,8 +4048,8 @@ and evalLexicalRef (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME r => r
                           | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved lexical reference ", 
-                                                            nomnToStr nomn]; dummyRef)
+                                    then throwExn (newRefErr regs ["unresolved lexical reference ",
+                                                                   nomnToStr nomn])
                                     else defaultRef (#global regs) nomn
             in
                 r
@@ -4098,10 +4097,8 @@ and evalObjectRef (regs:Mach.REGS)
                     fun extractFrom v = 
                         case v of
                             Mach.Object ob => ob
-                          | Mach.Null => (throwRefErr regs ["object reference on null value"]; 
-                                          dummyObj)
-                          | Mach.Undef => (throwRefErr regs ["object reference on undefined value"]; 
-                                           dummyObj)
+                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
                 in
                     extractFrom v
                 end
@@ -4111,9 +4108,8 @@ and evalObjectRef (regs:Mach.REGS)
                 val r = case refOpt of
                             SOME ro => ro
                           | NONE => if errIfNotFound
-                                    then (throwRefErr regs ["unresolved object reference ", 
-                                                            nomnToStr nomn]; 
-                                          dummyRef)
+                                    then throwExn (newRefErr regs ["unresolved object reference ",
+                                                                   nomnToStr nomn])
                                     else defaultRef ob nomn
                 val _ = LogErr.setLoc loc
                 val (holder, n) = r
@@ -5690,7 +5686,7 @@ and callIteratorNext (regs:Mach.REGS)
                 getValue regs iterator nextName
             end
         else
-            raise Mach.StopIterationException
+            raise StopIterationException
     end
 
 and evalForInStmt (regs:Mach.REGS)
@@ -5737,7 +5733,7 @@ and evalForInStmt (regs:Mach.REGS)
             fun loop (accum:Mach.VAL option) =
                 let
                     val v = (SOME (callIteratorNext forInRegs iterator)
-                             handle Mach.StopIterationException =>
+                             handle StopIterationException =>
                                     NONE)
                     val b = (case v of
                                  NONE => false
