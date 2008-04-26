@@ -488,6 +488,42 @@ fun fnLength (regs:Mach.REGS)
         Eval.newDouble regs (Real64.fromInt len)
     end
 
+fun genSend (regs:Mach.REGS)
+            (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val arg = rawNth vals 1
+    in
+        case !magic of
+            SOME (Mach.Generator gen) => Eval.sendToGen regs gen arg
+          | _ => error ["wrong kind of magic to genSend"]
+    end
+
+fun genThrow (regs:Mach.REGS)
+             (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val arg = rawNth vals 1
+    in
+        case !magic of
+            SOME (Mach.Generator gen) => Eval.throwToGen regs gen arg
+          | _ => error ["wrong kind of magic to genSend"]
+    end
+
+fun genClose (regs:Mach.REGS)
+             (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val Mach.Obj { magic, ... } = nthAsObj vals 0
+    in
+        case !magic of
+            SOME (Mach.Generator gen) => Eval.closeGen regs gen
+          | _ => error ["wrong kind of magic to genSend"];
+        Mach.Undef
+    end
+
 
 (* Given a string and a position in that string, return the
  * numeric value of the character at that position in the
@@ -988,7 +1024,8 @@ fun typename (regs:Mach.REGS)
            | SOME (Mach.Interface _) => Eval.newString regs Ustring.interface_
            | SOME (Mach.Function _) => Eval.newString regs Ustring.function_
            | SOME (Mach.Type _) => Eval.newString regs Ustring.type_
-           | SOME (Mach.NativeFunction _) => Eval.newString regs Ustring.native_function_)
+           | SOME (Mach.NativeFunction _) => Eval.newString regs Ustring.native_function_
+           | SOME (Mach.Generator _) => Eval.newString regs Ustring.generator_)
 
 fun dumpFunc (regs:Mach.REGS)
              (vals:Mach.VAL list)
@@ -1061,6 +1098,9 @@ fun registerNatives _ =
 
         addFn 3 Name.magic_apply apply;
         addFn 1 Name.magic_fnLength fnLength;
+        addFn 2 Name.magic_genSend genSend;
+        addFn 2 Name.magic_genThrow genThrow;
+        addFn 1 Name.magic_genClose genClose;
 
         addFn 2 Name.magic_charCodeAt charCodeAt;
         addFn 1 Name.magic_fromCharCode fromCharCode;

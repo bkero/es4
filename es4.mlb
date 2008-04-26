@@ -4,6 +4,10 @@ local
     $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
     $(SML_LIB)/basis/mlton.mlb
 
+    escape.sig
+    escape-mlton.sml
+    control.sig
+    control.sml
     ustring.sml
     decimal-params.sml
     ann "allowFFI true" in
@@ -11,14 +15,16 @@ local
     end
     decimal.sml
     ast.sml
+    visitor.sig
+    visitor.sml
     pretty-rep.sml
     pretty-cvt.sml
     pretty.sml
-    logerr.sml
-    ast-query.sml
     name.sml
     namekey.sml
     namemap.sml
+    logerr.sml
+    ast-query.sml
     multiname.sml
     fixture.sig
     fixture.sml
