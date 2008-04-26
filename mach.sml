@@ -255,6 +255,7 @@ withtype FUN_CLOSURE =
           scope: SCOPE,
           this: OBJ,
           thisFun: OBJ option,
+          thisGen: OBJ option,
           global: OBJ,
           prog: Fixture.PROGRAM,          
           aux: AUX
@@ -264,6 +265,7 @@ withtype FUN_CLOSURE =
          { func: ({ scope: SCOPE, 
                     this: OBJ, 
                     thisFun: OBJ option,
+                    thisGen: OBJ option,
                     global: OBJ, 
                     prog: Fixture.PROGRAM, 
                     aux: AUX } (* REGS *)
@@ -689,7 +691,8 @@ fun magicToUstring (magic:MAGIC)
       | Function _ => Ustring.fromString "[function Function]"
       | Type _ => Ustring.fromString "[type Type]"
       | NativeFunction _ => Ustring.fromString "[function Function]"
-      | Generator _ => Ustring.fromString "[object vanilla Generator]" (* FIXME: remove vanilla *)
+      (* XXX: why does this trump the toString method? *)
+      | Generator _ => Ustring.fromString "[object Generator]"
 
 
 (*
@@ -1243,6 +1246,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
         { this = glob,
           global = glob,          
           thisFun = NONE,
+          thisGen = NONE,
           scope = makeGlobalScopeWith glob,
           prog = prog,
           aux = aux }
@@ -1276,251 +1280,6 @@ fun getNativeFunction (name:Ast.NAME)
     in
         search (!nativeFunctions)
     end
-
-(* generator stuff *)
-
-(*
-structure Control = Control (type RESULT = GEN_SIGNAL);
-
-fun newGen (execBody:unit -> VAL)
-    : GEN =
-let
-    (* temporarily bogus state; reassigned immediately below *)
-    val state = ref ClosedGen
-in
-    (* this must be done via assignment because of the recursive reference to `state' *)
-    state := NewbornGen (fn () =>
-                            Control.reset (fn () =>
-                                              ((execBody (); CloseSig)
-                                               handle ThrowException v => ThrowSig v)
-                                              before state := ClosedGen));
-    Gen state
-end
-
-fun newGenerator (body:unit -> VAL)
-    : VAL =
-let
-    val gen = newGen body
-    val tag = ObjectTag []
-    val proto = Undef
-in
-    newObject tag proto (SOME (Generator gen))
-end
-
-fun yieldFromGen (Gen state) (v : VAL)
-    : VAL =
-    case !state of
-        RunningGen => (case Control.shift (fn k => (state := DormantGen k; YieldSig v)) of
-                           SendSig v' => v'
-                         | ThrowSig v' => raise (ThrowException v')
-                         | _ => error ["generator protocol"])
-      | _ => error ["yield from dormant or dead generator"]
-
-fun sendToGen (Gen state) (v : VAL)
-    : VAL =
-    case !state of
-        RunningGen => error ["already running"]
-      (* FIXME: needs to throw StopIteration *)
-      | ClosedGen => raise (ThrowException Undef)
-      | NewbornGen f =>
-        if isUndef v then
-            (* FIXME: needs to throw a string with an error message *)
-            raise (ThrowException Undef)
-        else
-            (state := RunningGen;
-             case f () of
-                 YieldSig v' => v'
-               | ThrowSig v' => raise (ThrowException v')
-               (* FIXME: needs to throw StopIteration *)
-               | CloseSig => raise (ThrowException Undef)
-               | _ => error ["generator protocol"])
-      | DormantGen k =>
-        (state := RunningGen;
-         case k (SendSig v) of
-             YieldSig v' => v'
-           | ThrowSig v' => raise (ThrowException v')
-           (* FIXME: needs to throw StopIteration *)
-           | CloseSig => raise (ThrowException Undef)
-           | _ => error ["generator protocol"])
-
-fun throwToGen (Gen state) (v : VAL)
-    : VAL =
-    case !state of
-        RunningGen => error ["already running"]
-      | ClosedGen => raise (ThrowException v)
-      | NewbornGen f =>
-        (* XXX: confirm this semantics with /be *)
-        (state := ClosedGen; raise (ThrowException v))
-      | DormantGen k =>
-        (state := RunningGen;
-         case k (ThrowSig v) of
-             YieldSig v' => v'
-           | ThrowSig v' => raise (ThrowException v')
-           | CloseSig => raise (ThrowException v)
-           | _ => error ["generator protocol"])
-
-fun closeGen (Gen state)
-    : unit =
-    case !state of
-        RunningGen => error ["already running"]
-      | _ => state := ClosedGen
-*)
-
-(* begin names experiment *)
-
-(*
-type IDENTIFIER = Ast.IDENTIFIER
-type NAMESPACE = Ast.NAMESPACE
-
-datatype NAME = Name of (NAMESPACE * IDENTIFIER)
-
-type ENV = REGS
-type CLASS = Ast.CLS
-type OBJECT = OBJ
-type DEFINITION = Ast.FIXTURE
-
-type NAMESPACE_SET = NAMESPACE list
-type OPEN_NAMESPACES = NAMESPACE_SET list 
-
-fun head x = hd x (* return the first element of a list *)
-fun tail x = tl x (* return all but the first element of a list *)
-
-fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
-    case (n1, n2) of
-        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
-      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
-      | _ => false
-
-fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
-    : NAMESPACE_SET =
-    (* compute the intersection of two NAMESPACE_SETs *)
-    []
-
-fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
-    : NAMESPACE list =
-    (* get the namespaces of binding names that have a certain identifier *)
-    []
-
-fun getInstanceBindings (class: CLASS) 
-    : (NAME * DEFINITION) list =
-    (* get the instance bindings of a class *)
-    []
-
-fun getBindings (object: OBJECT)
-    : (NAME * DEFINITION) list =
-    (* get the bindings of an object *)
-    []
-
-fun getPrototypeObject (object: OBJECT)
-    : OBJECT option =
-    (* get the prototype (as in '[[proto]]') object of an object *)
-    NONE
-
-fun getScopeObject (Scope {object,...} : SCOPE)
-    : OBJECT =
-    (* get the first scope object of a scope chain *)
-    object
-
-fun getOuterScope (Scope {parent, ...}: SCOPE)
-    : SCOPE option =
-    parent
-
-fun getScope ({scope,...}: ENV)
-    : SCOPE = 
-    (* get the scope chain of an execution environment *)
-    scope
-
-fun selectNamespacesByClass ([], _, _) = []
- |  selectNamespacesByClass (classes: CLASS list, 
-                             namespaces: NAMESPACE_SET, 
-                             identifier: IDENTIFIER)
-    : NAMESPACE list =
-    let
-        val class = head (classes)
-        val bindings = getInstanceBindings (class)
-        val bindingNamespaces = getNamespaces (bindings, identifier)
-        val matches = intersectNamespaces (bindingNamespaces, namespaces)
-    in
-        case matches of
-            [] => selectNamespacesByClass (tail (classes), namespaces, identifier)
-          | _ => matches
-    end
-
-fun selectNamespacesByOpenNamespaces ([], _) = []
- |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
-                                      namespaces: NAMESPACE_SET)
-    : NAMESPACE list =
-    let
-        val matches = intersectNamespaces (head (namespacesList), namespaces)
-    in
-        case matches of
-            [] => selectNamespacesByScope (tail (namespacesList), namespaces)
-          | _ => matches
-    end
-
-fun objectSearch (NONE, _, _) = []
-  | objectSearch (SOME object: OBJECT option, 
-                  namespaces: NAMESPACE_SET, 
-                  identifier: IDENTIFIER)
-    : NAMESPACE_SET =
-    let
-        val bindings = getBindings (object)
-        val bindingNamespaces = getNamespaces (bindings, identifier)
-        val matches = matchNamespaces (bindingNamespaces, namespaces)
-    in
-        case matches of
-            [] => objectSearch (getPrototypeObject (object), namespaces, identifier)
-          | _ => matches
-    end
-
-fun objectListSearch ([], _, _) = NONE
-  | objectListSearch (objects: OBJECT list, 
-                      namespaces: NAMESPACE_SET, 
-                      identifier: IDENTIFIER)
-    : (OBJECT * NAMESPACE_SET) option =
-    let
-        val object = head (objects)
-        val matches = objectSearch (SOME object, namespaces, identifier)
-    in
-        case matches of
-            [] => objectListSearch (tail (objects), namespaces, identifier)
-          | _ => SOME (object, matches)
-    end
-
-fun inheritedClassesOf (object: OBJECT)
-    : CLASS list =
-    []
-
-exception RuntimeError of string
-
-fun findName (objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
-    : (OBJECT * NAME) option =
-    let
-        val namespaces = List.concat (openNamespaces)
-        val matches = objectListSearch (objects, namespaces, identifier)
-    in
-        case matches of
-            NONE => NONE
-          | SOME (object, namespace :: []) => SOME (object, Name (namespace, identifier))
-          | SOME (object, namespaces) =>
-            let
-                val matches = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
-            in
-                case matches of
-                    namespace :: [] => SOME (object, Name (namespace, identifier))
-                  | [] => NONE
-                  | _ =>
-                    let
-                        val classList = inheritedClassesOf (object)
-                        val matches = selectNamespacesByClass (classList, namespaces, identifier)
-                    in case matches of
-                        namespace :: [] => SOME (object, Name (namespace, identifier))
-                      | [] => raise (RuntimeError "internal error")
-                      | _ => raise (RuntimeError "ambiguous reference")
-                    end
-            end
-    end
-*)
 
 end
 

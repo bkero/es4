@@ -84,27 +84,28 @@
 
     iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
 
-    iterator interface Generator/*.<O, I, E>*/ {
-        function next()/* : O*/;
-        function send(i/*: I*/)/* : O*/;
+    iterator interface Generator {
+        function next();
+        function send(i);
         // FIXME: needs to be called `throw' but the parser can't handle this right now
-        function throw_(e/*: E*/)/* : O*/;
+        function throw_(e);
         function close() : void;
     }
 
-    helper class GeneratorImpl/*.<O, I, E>*/ implements iterator::Generator/*.<O, I, E>*/ {
-        public function next() /*: O*/
+    helper class GeneratorImpl implements iterator::Generator {
+        public function next()
             this.send(undefined)
 
-        public function send(i/*: I*/) /*: O*/
+        public function send(i)
             magic::genSend(this, i)
 
-        public function throw_(e/*: E*/) /*: O*/
+        public function throw_(e)
             magic::genThrow(this, e)
 
         public function close() : void
             magic::genClose(this)
 
+        // FIXME: this gets trumped by Mach.magicToUstring
         //public function toString()
         //    "[object Generator]"
     }

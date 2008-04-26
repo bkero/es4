@@ -33,6 +33,8 @@
 
 Library
     structure LogErr
+    signature ESCAPE
+    structure Escape
     signature CONTROL
     functor Control
     structure Main
@@ -64,6 +66,9 @@ Library
     structure Version
 is
     logerr.sml (lambdasplit: infinity)
+    escape.sig
+    escape-smlnj.sml
+    control.sig
     control.sml
     main.sml
     ast.sml (lambdasplit: infinity)

@@ -43,31 +43,6 @@
  *   http://www.ccs.neu.edu/home/dherman
  *)
 
-signature ESCAPE =
-sig
-    type VOID
-    val coerce : VOID -> 'a
-    val escape : (('a -> VOID) -> 'a) -> 'a
-end;
-
-structure Escape : ESCAPE =
-struct
-    datatype VOID = Void of VOID;
-    fun coerce (Void v) = coerce v;
-    open SMLofNJ.Cont;
-    fun abort thunk = throw (isolate thunk) ();
-    fun escape f =
-        callcc (fn k => abort (fn () => (f (fn x => throw k x); ())));
-end;
-
-signature CONTROL =
-sig
-    (* for our purposes, this will be instantiated at Mach.GEN_SIGNAL *)
-    type RESULT
-    val shift : (('a -> RESULT) -> RESULT) -> 'a
-    val reset : (unit -> RESULT) -> RESULT
-end;
-
 functor Control (type RESULT) : CONTROL =
 struct
     open Escape;

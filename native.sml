@@ -495,7 +495,9 @@ fun genSend (regs:Mach.REGS)
         val Mach.Obj { magic, ... } = nthAsObj vals 0
         val arg = rawNth vals 1
     in
-        error ["not yet implemented"]
+        case !magic of
+            SOME (Mach.Generator gen) => Eval.sendToGen regs gen arg
+          | _ => error ["wrong kind of magic to genSend"]
     end
 
 fun genThrow (regs:Mach.REGS)
@@ -505,7 +507,9 @@ fun genThrow (regs:Mach.REGS)
         val Mach.Obj { magic, ... } = nthAsObj vals 0
         val arg = rawNth vals 1
     in
-        error ["not yet implemented"]
+        case !magic of
+            SOME (Mach.Generator gen) => Eval.throwToGen regs gen arg
+          | _ => error ["wrong kind of magic to genSend"]
     end
 
 fun genClose (regs:Mach.REGS)
@@ -514,7 +518,10 @@ fun genClose (regs:Mach.REGS)
     let
         val Mach.Obj { magic, ... } = nthAsObj vals 0
     in
-        error ["not yet implemented"]
+        case !magic of
+            SOME (Mach.Generator gen) => Eval.closeGen regs gen
+          | _ => error ["wrong kind of magic to genSend"];
+        Mach.Undef
     end
 
 

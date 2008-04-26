@@ -138,12 +138,13 @@ fun extendScopeReg (r:Mach.REGS)
                    (kind:Mach.SCOPE_KIND)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
         val scope = extendScope scope ob kind
     in
         { scope = scope,
           this = this,
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global,
           prog = prog,
           aux = aux }
@@ -153,11 +154,12 @@ fun withThis (r:Mach.REGS)
              (newThis:Mach.OBJ)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = scope, 
           this = newThis, 
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global, 
           prog = prog,
           aux = aux }
@@ -167,11 +169,27 @@ fun withThisFun (r:Mach.REGS)
                 (newThisFun:Mach.OBJ option)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = newThisFun,
+          thisGen = thisGen,
+          global = global, 
+          prog = prog,
+          aux = aux }
+    end
+
+fun withThisGen (r:Mach.REGS)
+                (newThisGen:Mach.OBJ option)
+    : Mach.REGS =
+    let
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+    in
+        { scope = scope, 
+          this = this, 
+          thisFun = thisFun,
+          thisGen = newThisGen,
           global = global, 
           prog = prog,
           aux = aux }
@@ -181,11 +199,12 @@ fun withScope (r:Mach.REGS)
               (newScope:Mach.SCOPE)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = newScope, 
           this = this, 
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global, 
           prog = prog,
           aux = aux }
@@ -195,11 +214,12 @@ fun withProg (r:Mach.REGS)
              (newProg:Fixture.PROGRAM)
     : Mach.REGS =
     let
-        val { scope, this, thisFun, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, prog, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
+          thisGen = thisGen,
           global = global, 
           prog = newProg,
           aux = aux }
@@ -1478,31 +1498,39 @@ and newNativeFunction (regs:Mach.REGS)
 
 and newGen (execBody:unit -> Mach.VAL)
     : Mach.GEN =
-let
-    (* temporarily bogus state; reassigned immediately below *)
-    val state = ref Mach.ClosedGen
-in
-    (* this must be done via assignment because of the recursive reference to `state' *)
-    state := Mach.NewbornGen (fn () =>
-                                 Control.reset (fn () =>
-                                                   ((execBody (); Mach.CloseSig)
-                                                    handle ThrowException v => Mach.ThrowSig v)
-                                                   before state := Mach.ClosedGen));
-    Mach.Gen state
-end
+    let
+        (* temporary state, reassigned below *)
+        val state = ref Mach.ClosedGen 
+    in
+        (* this must be done via assignment because of the recursive reference to `state' *)
+        state := Mach.NewbornGen (fn () =>
+                                     Control.reset (fn () =>
+                                                       ((execBody (); Mach.CloseSig)
+                                                        handle ThrowException v => Mach.ThrowSig v)
+                                                       before state := Mach.ClosedGen));
+        Mach.Gen state
+    end
 
 and newGenerator (regs:Mach.REGS)
-                 (body:unit -> Mach.VAL)
+                 (execBody:Mach.OBJ -> Mach.VAL)
     : Mach.VAL =
-let
-    val gen = newGen body
-    val v = newObject regs
-in
-    case v of
-        Mach.Object obj => Mach.setMagic obj (SOME (Mach.Generator gen))
-      | _ => error regs ["newObject did not produce an object"];
-    v
-end
+    let
+        fun getGeneratorClass ()
+            : Mach.OBJ =
+            case getValue regs (#global regs) Name.helper_GeneratorImpl of
+                Mach.Object cls => cls
+              | _ => error regs ["helper::GeneratorImpl is not an object"]
+        fun newGeneratorObj (cls:Mach.OBJ)
+            : Mach.OBJ =
+            case evalNewObj regs cls [] of
+                Mach.Object obj => obj
+              | _ => error regs ["evalNewObj did not produce an object"]
+        val obj = newGeneratorObj (getGeneratorClass ())
+        val gen = newGen (fn () => execBody obj)
+    in
+        Mach.setMagic obj (SOME (Mach.Generator gen));
+        Mach.Object obj
+    end
 
 and yieldFromGen (regs:Mach.REGS)
                  (Mach.Gen state)
@@ -1520,30 +1548,44 @@ and sendToGen (regs:Mach.REGS)
               (Mach.Gen state)
               (v : Mach.VAL)
     : Mach.VAL =
-    case !state of
-        Mach.RunningGen => error regs ["already running"]
-      (* FIXME: needs to throw StopIteration *)
-      | Mach.ClosedGen => raise (ThrowException Mach.Undef)
-      | Mach.NewbornGen f =>
-        if Mach.isUndef v then
-            (* FIXME: needs to throw a string with an error message *)
-            raise (ThrowException Mach.Undef)
-        else
+    let
+        fun stopIteration () =
+            let
+                fun getIteratorNamespace ()
+                    : Ast.NAMESPACE =
+                    needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
+                val name = { id = Ustring.StopIteration_, ns = getIteratorNamespace () }
+                val si = getValue regs (#global regs) name
+            in
+                raise (ThrowException si)
+            end
+    in
+        case !state of
+            Mach.RunningGen => error regs ["already running"]
+          | Mach.ClosedGen => stopIteration ()
+          | Mach.NewbornGen f =>
+            if Mach.isUndef v then
+                (state := Mach.RunningGen;
+                 case f () of
+                     Mach.YieldSig v' => v'
+                   | Mach.ThrowSig v' => raise (ThrowException v')
+                   | Mach.CloseSig => stopIteration ()
+                   | _ => error regs ["generator protocol"])
+            else
+                let val s = Ustring.toAscii (toUstring regs v)
+                            handle ThrowException _ => "<<value>>" (* XXX: what's the best thing to do here? *)
+                in
+                    throwTypeErr regs ["attempt to send ", s, " to newborn generator"];
+                    dummyVal
+                end
+          | Mach.DormantGen k =>
             (state := Mach.RunningGen;
-             case f () of
+             case k (Mach.SendSig v) of
                  Mach.YieldSig v' => v'
                | Mach.ThrowSig v' => raise (ThrowException v')
-               (* FIXME: needs to throw StopIteration *)
-               | Mach.CloseSig => raise (ThrowException Mach.Undef)
+               | Mach.CloseSig => stopIteration ()
                | _ => error regs ["generator protocol"])
-      | Mach.DormantGen k =>
-        (state := Mach.RunningGen;
-         case k (Mach.SendSig v) of
-             Mach.YieldSig v' => v'
-           | Mach.ThrowSig v' => raise (ThrowException v')
-           (* FIXME: needs to throw StopIteration *)
-           | Mach.CloseSig => raise (ThrowException Mach.Undef)
-           | _ => error regs ["generator protocol"])
+    end
 
 and throwToGen (regs:Mach.REGS)
                (Mach.Gen state)
@@ -1553,7 +1595,7 @@ and throwToGen (regs:Mach.REGS)
         Mach.RunningGen => error regs ["already running"]
       | Mach.ClosedGen => raise (ThrowException v)
       | Mach.NewbornGen f =>
-        (* XXX: confirm this semantics with /be *)
+        (* XXX: confirm this semantics with be *)
         (state := Mach.ClosedGen; raise (ThrowException v))
       | Mach.DormantGen k =>
         (state := Mach.RunningGen;
@@ -2095,6 +2137,9 @@ and evalExpr (regs:Mach.REGS)
       | Ast.ApplyTypeExpr { expr, actuals } =>
         evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
 
+      | Ast.YieldExpr expr =>
+        evalYieldExpr regs expr
+
       | _ => LogErr.unimplError ["unhandled expression type"]    
 
 (* SPEC
@@ -2158,8 +2203,7 @@ and evalThisExpr (regs:Mach.REGS)
                  (kind:Ast.THIS_KIND option)
     : Mach.VAL = 
     let
-        (* FIXME generator this *)
-        val { this, thisFun, ... } = regs
+        val { this, thisFun, thisGen, ... } = regs
     in
         case kind of
             SOME Ast.FunctionThis => 
@@ -2167,6 +2211,11 @@ and evalThisExpr (regs:Mach.REGS)
                  SOME obj => Mach.Object obj
                (* this error should never occur, since it will be raised earlier in defn *)
                | _ => error regs ["error: 'this function' used in a non-function context"])
+          | SOME Ast.GeneratorThis =>
+            (case thisGen of
+                 SOME obj => Mach.Object obj
+               (* DAH: this error should also never occur? *)
+               | _ => error regs ["error: 'this generator' used in a non-generator-function context"])
           | _ => Mach.Object this
     end
 
@@ -2663,6 +2712,28 @@ and evalApplyTypeExpr (regs:Mach.REGS)
                                         Mach.approx v]; dummyVal)
     end
 
+
+and evalYieldExpr (regs:Mach.REGS)
+                  (expr:Ast.EXPR option)
+    : Mach.VAL =
+    let
+        val { thisGen, ... } = regs
+    in
+        case thisGen of
+            SOME (Mach.Obj { magic, ... }) =>
+            (case !magic of
+                 SOME (Mach.Generator gen) =>
+                 let
+                     val v = case expr of
+                                 NONE => Mach.Undef
+                               | SOME expr => evalExpr regs expr
+                 in
+                     yieldFromGen regs gen v
+                 end
+               | _ => error regs ["this generator is not a generator"])
+          (* this should never happen *)
+          | NONE => error regs ["yield expression in a non-generator function context"]
+    end
 
 (* SPEC
 
@@ -4370,23 +4441,23 @@ and invokeFuncClosure (regs:Mach.REGS)
             trace ["invokeFuncClosure: evaluating block"];
             let
                 val blockRegs = withThisFun varRegs thisFun 
-                fun evalBody () =
-                    case block of
-                        NONE => Mach.Undef
-                      | SOME b => ((evalBlock blockRegs b;
+                val res = case block of
+                              NONE => Mach.Undef
+                            | SOME b =>
+                              if generator then
+                                  let
+                                      fun body (thisGen:Mach.OBJ) =
+                                          (evalBlock (withThisGen blockRegs (SOME thisGen)) b;
+                                           Mach.Undef)
+                                          handle ReturnException v => v
+                                  in
+                                      (* FIXME: this is the wrong Mach.REGS *)
+                                      newGenerator regs body
+                                  end
+                              else
+                                  ((evalBlock (withThisGen blockRegs NONE) b;
                                     Mach.Undef)
                                    handle ReturnException v => v)
-                val res = if generator then
-                              newGenerator regs evalBody
-                          else
-                              evalBody ()
-(*
-                val res = case block of 
-                              NONE => Mach.Undef
-                            | SOME b => ((evalBlock blockRegs b;
-                                          Mach.Undef)
-                                         handle ReturnException v => v)
-*)
             in
                 Mach.pop regs;
                 res

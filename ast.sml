@@ -529,7 +529,8 @@ withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and RIB = (FIXTURE_NAME * FIXTURE) list
-     and RIBS = RIB list
+     and RIBS = ((FIXTURE_NAME * FIXTURE) list) (* RIB *)
+                list
      and INITS = (FIXTURE_NAME * EXPR) list
 
 (* cf: a class ref of the form C.<int> is represented as

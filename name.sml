@@ -294,6 +294,7 @@ val ES4_public_ = ES4 Ustring.public_
 val ES4_meta_ = ES4 Ustring.meta_
 val ES4_magic_ = ES4 Ustring.magic_
 val ES4_intrinsic_ = ES4 Ustring.intrinsic_
+val ES4_iterator_ = ES4 Ustring.iterator_
 
 val ES4_ECMAScript4_Internal_ = ES4 Ustring.ECMAScript4_Internal_
 
