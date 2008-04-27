@@ -175,16 +175,16 @@
         prototype function clear(this: Map.<*,*>)
             this.intrinsic::clear();
 
-        iterator function get(deep: boolean = false) : iterator::IteratorType.<K>
+        iterator function get(deep: boolean = false) : iterator::Iterator.<K>
             iterator::getKeys(deep);
 
-        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<K>
+        iterator function getKeys(deep: boolean = false) : iterator::Iterator.<K>
             helper::iterate.<K>(function (a,k,v) { a.push(k) });
 
-        iterator function getValues(deep: boolean = false) : iterator::IteratorType.<V>
+        iterator function getValues(deep: boolean = false) : iterator::Iterator.<V>
             helper::iterate.<V>(function (a,k,v) { a.push(v) });
 
-        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[K,V]>
+        iterator function getItems(deep: boolean = false) : iterator::Iterator.<[K,V]>
             helper::iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
 
         helper function iterate.<T>(f) {
@@ -198,7 +198,7 @@
                                 return a[i++];
                             throw iterator::StopIteration;
                         }
-            } : iterator::IteratorType.<T>;
+            } : iterator::Iterator.<T>;
         }
 
         // Documented behavior: the key in the table is the left

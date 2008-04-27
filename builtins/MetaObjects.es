@@ -75,11 +75,11 @@
     }
 
 
-    intrinsic type ClassTypeIterator = *;   // FIXME: iterator::IteratorType.<ClassType>
-    intrinsic type NominalTypeIterator = *; // FIXME: iterator::IteratorType.<NominalType>
-    intrinsic type FieldIterator = *;       // FIXME: iterator::IteratorType.<Field>
-    intrinsic type TypeIterator = *;        // FIXME: iterator::IteratorType.<Type>;
-    intrinsic type ValueIterator = *;       // FIXME: iterator::IteratorType.<*>;
+    intrinsic type ClassTypeIterator = *;   // FIXME: iterator::Iterator.<ClassType>
+    intrinsic type NominalTypeIterator = *; // FIXME: iterator::Iterator.<NominalType>
+    intrinsic type FieldIterator = *;       // FIXME: iterator::Iterator.<Field>
+    intrinsic type TypeIterator = *;        // FIXME: iterator::Iterator.<Type>;
+    intrinsic type ValueIterator = *;       // FIXME: iterator::Iterator.<*>;
 
     intrinsic interface Type 
     {
@@ -321,7 +321,7 @@
         //function value(): *;
     }
 
-    //type FieldValueIterator = iterator::IteratorType.<FieldValue>;
+    //type FieldValueIterator = iterator::Iterator.<FieldValue>;
 
     interface RecordType extends Type
     {

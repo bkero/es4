@@ -68,11 +68,11 @@
         }
     }
 
-    iterator type IteratorType = { // FIXME: .<T>
+    iterator type Iterator = { // FIXME: .<T>
         next: function () : * // FIXME: should be return type T
     };
 
-    iterator class Enumerator.<T> {
+    iterator class Enumerator { // FIXME: .<T>
         type ResultFun = function(EnumerableId, Object!) : *; // FIXME: T
 
         function Enumerator(v, f: ResultFun, e: boolean = false) {
@@ -83,13 +83,13 @@
             enumerate = e;
         }
 
-        meta static function invoke(v) : iterator::IteratorType
+        meta static function invoke(v) : iterator::Iterator
             new Enumerator(v);
 
-        function get(e : boolean = false) : IteratorType // FIXME: in iterator namespace
-            (e == enumerate) ? this : new Enumerator.<*>(initial_obj, result_fun, e); // FIXME: T
+        function get(e : boolean = false) : iterator::Iterator // FIXME: in iterator namespace
+            (e == enumerate) ? this : new Enumerator(initial_obj, result_fun, e); // FIXME: .<T>
 
-        public function next() : T {
+        public function next() : * { // FIXME: T
             if (current_obj === null)
                 throw iterator::StopIteration;
 
@@ -130,19 +130,21 @@
                     enumerate     : boolean;
     }
 
-    iterator const function GET(start: Object!, deep: boolean): IteratorType
-        (start is iterator::IterableType)
+    iterator const function GET(start: Object!, deep: boolean): iterator::Iterator
+        (start is iterator::Iterable)
         ? start.iterator::get(deep)
         : iterator::DEFAULT_GET(start, deep)
 
-    iterator const function DEFAULT_GET(start: Object!, deep: boolean): IteratorType // FIXME: .<string>
-        new Enumerator.<string>(start,
-                                function (id: string, obj: Object!): string
-                                    (id is Name) ? id.identifier : string(id),
-                                deep)
+    iterator const function DEFAULT_GET(start: Object!, deep: boolean): iterator::Iterator { // FIXME: .<string>
+        var e = new iterator::Enumerator(start,
+                                         function (id: string, obj: Object!): string
+                                             (id is Name) ? id.identifier : string(id),
+                                         deep);
+        return e;
+    }
 
-    iterator type IterableType = { // FIXME: .<T>
-        get: function (boolean=) : iterator::IteratorType // FIXME: .<T>, in iterator namespace
+    iterator type Iterable = { // FIXME: .<T>
+        get: function (boolean=) : iterator::Iterator // FIXME: .<T>, in iterator namespace
     };
       
     iterator class StopIterationClass {
