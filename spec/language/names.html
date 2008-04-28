@@ -60,7 +60,7 @@ namespace is specified to be equal only to itself. This is also true in the SML 
 two opaque namespaces are ever given the same system-assigned identifier.
 
 <IMPL>
-<INCLUDE file="mach.sml" name="fun compareNamespaces">
+<INCLUDE file="fixture.sml" name="fun compareNamespaces">
 
 === The Public and 4th Edition Namespaces ===
 
@@ -242,7 +242,7 @@ sets. If the end of the list of open namespace sets is reached without producing
 intersection, return an empty set.
 
 <IMPL>
-<INCLUDE file="mach.sml" name="fun selectNamespacesByOpenNamespaces">
+<INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
 
 ==== Class Based Namespace Selection ====
 
@@ -260,7 +260,7 @@ and its tail, and so forth down the list. If all the classes in the list are sea
 matching namespaces are found, return the empty set.
 
 <IMPL>
-<INCLUDE file="mach.sml" name="fun selectNamespacesByClass">
+<INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">
 
 <p>**Helper functions**
 

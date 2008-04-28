@@ -10,7 +10,7 @@ REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
-SCOPE:                      The type system
+SCOPE:                      The dynamic type system
 </pre>
 <hr>
 
@@ -76,6 +76,8 @@ definition.
 <p> An //ObjectRefType// is used to extract a field of a record type
 or an array type.
 
+<p>ES4 supports generic function types,
+
 <FIXME>Explain the intuitive meaning of each type expression.
 
 
@@ -101,6 +103,7 @@ updating the fields of an object cannot change the allocated tpe of that object.
 <p>In general, if a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
 is a compatible-subtype of ''T''. There are some exceptions where ''T'' is a //like-type//.
 
+<p> 
 <IMPL>
 <INCLUDE file="type.sml" name="datatype BICOMPAT">
 <INCLUDE file="type.sml" name="datatype VARIANCE">

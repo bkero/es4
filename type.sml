@@ -686,11 +686,14 @@ fun groundMatchesGeneric (b:BICOMPAT)
 		      hasRest  = hasRest2,
 		      minArgs  = minArgs2}) 
         => 
-        (arrayPairWise (groundMatchesGeneric b Invariant) params1 params2) andalso
-        groundMatchesGeneric b v result1 result2 andalso
-        (optionWise (groundMatchesGeneric b Invariant) thisType1 thisType2) andalso
-        hasRest1 = hasRest2 andalso
-        minArgs1 = minArgs2
+        (optionWise (groundMatchesGeneric b Invariant) thisType1 thisType2) andalso     (* will drop option *)
+        minArgs1 >= minArgs2 andalso
+        (if not hasRest1 andalso not hasRest2
+         then length params1 = length params2
+         else hasRest1 andalso length params1 <= length params2) andalso
+        (arrayPairWise (groundMatchesGeneric b Invariant)  params1 (List.take(params2, length params1))) andalso
+        groundMatchesGeneric b v result1 result2 
+
 
       (* A-DYN1 *)
       | (_, _, _, Ast.SpecialType Ast.Any) => true

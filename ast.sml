@@ -228,7 +228,8 @@ datatype TYPE =
        | RecordType of  (IDENT_EXPR * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
-       | FunctionType of { thisType: TYPE option,
+       | FunctionType of { typeParams: IDENT list,
+                           thisType: TYPE,
                            params: TYPE list,
                            minArgs: int, 
                            hasRest: bool,
