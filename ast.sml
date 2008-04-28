@@ -218,14 +218,14 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENT * EXPR)
        | AssignStep of (EXPR * EXPR)
 
-(* SPEC
+(*
 
 datatype TYPE =
          NullType
        | AnyType
        | UndefinedType
        | IdentType  of IDENT_EXPR
-       | RecordType of  (IDENT_EXPR * TYPE) list
+       | RecordType of (IDENT_EXPR * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
        | FunctionType of { typeParams: IDENT list,
@@ -236,11 +236,15 @@ datatype TYPE =
                            result: TYPE
                          }
        | NullableType of (TYPE * bool)
-       | GenericType of (IDENT list * TYPE)
+       | LamType of (IDENT list * TYPE)
        | AppType of (TYPE * TYPE list)
        | ObjectRefType of (TYPE * IDENT_EXPR)
        | NominalType of NAME
 
+*)
+
+
+(*
 generic fn has all type
 
 Tapp on generic fn has 

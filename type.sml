@@ -650,7 +650,7 @@ fun groundMatchesGeneric (b:BICOMPAT)
                          (ty2:Ast.TYPE_EXPR)
 
     : bool = 
-    if b=Bicompat andalso
+    if b=Bicompat andalso 
        (case findSpecialConversion ty1 ty2 of 
               SOME _ => true
             | NONE => false)
@@ -756,8 +756,6 @@ fun groundMatchesGeneric (b:BICOMPAT)
         (nonce1 = nonce2)
       
       | _ => false
-
-    
 
 and findSpecialConversion (tyExpr1:Ast.TYPE_EXPR)
                           (tyExpr2:Ast.TYPE_EXPR) 

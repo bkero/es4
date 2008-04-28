@@ -56,15 +56,17 @@ below.
 <p>An //ArrayType// expression such as: ''[String]'' or ''[String,Number]''
 <p>A //UnionType// expression such as: ''(Number, String)''
 <p>A //FunctionType// expression such as: ''function (Number, String)
-: void''. A function type may include a type requirement for the
+: void''. A function type may include generic type parameters, as in
+''function.&lt;X>(X):X'' for the generic identity function.
+A function type may include a type requirement for the
 ''this'' binding, as in ''function(this:Vector):void''. A function
 type may also include default values for some arguments, denoted by
 ''function(Number, String=):void'', in which case the minimum number
 of required arguments at a call site is 1. Finally, a function type
 may also include a rest-args, as in ''function(Number, String,
-...x):void''.
+...):void''.
 <p> A //NullableType//, such as ''String?'' or ''String!''
-<p> A //GenericType// ...
+<p> A //LamType// ...
 <p>An //TypeApplication// expression such as: ''Vector.&lt;Number&gt;''
 <p>A //LikeType// expression such as: ''like {x: Number}''
 
