@@ -88,7 +88,7 @@ val warningsAreFailures = ref false
 val traceWarnings = ref false
 val doTrace = ref false
 val doTraceFrag = ref false
-val Any =  Ast.SpecialType Ast.Any
+val Any =  Ast.AnyType
 fun log ss = LogErr.log ("[verify] " :: ss)
 fun trace ss = if (!doTrace) then log ("trace: "::ss) else ()
 fun error ss = LogErr.verifyError ss
@@ -113,9 +113,9 @@ fun liftOption (f: 'a -> 'b) (x:'a option) (y:'b) : 'b =
 
 (****************************** standard types *************************)
 
-val undefinedType   = Ast.SpecialType Ast.Undefined
-val nullType        = Ast.SpecialType Ast.Null
-val anyType         = Ast.SpecialType Ast.Any
+val undefinedType   = Ast.UndefinedType
+val nullType        = Ast.NullType
+val anyType         = Ast.AnyType
                                            
 fun newEnv (prog:Fixture.PROGRAM) 
            (strict:bool) 
@@ -589,7 +589,7 @@ and verifyExpr2 (env:ENV)
                         checkargs args params;
                         result
                     end
-                  | Ast.SpecialType Ast.Any => anyType
+                  | Ast.AnyType => anyType
                                                
 		      (* 
 		       * FIXME: Actually have to handle instance types here, and hook into
@@ -632,7 +632,7 @@ and verifyExpr2 (env:ENV)
                 val t = verifySub base
             in
                 case t of
-                    Ast.SpecialType Ast.Any => anyType
+                    Ast.AnyType => anyType
                   | Ast.ObjectType fields =>
                     let in
                         case List.find

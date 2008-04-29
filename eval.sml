@@ -594,16 +594,16 @@ and valAllocState (regs:Mach.REGS)
      *)
     
     case ty of
-        Ast.SpecialType (Ast.Any) =>
+        Ast.AnyType =>
         Mach.ValProp (Mach.Undef)
         
-      | Ast.SpecialType (Ast.Null) =>
+      | Ast.NullType =>
         Mach.ValProp (Mach.Null)
         
-      | Ast.SpecialType (Ast.Undefined) =>
+      | Ast.UndefinedType =>
         Mach.ValProp (Mach.Undef)
         
-      | Ast.SpecialType (Ast.VoidType) =>
+      | Ast.VoidType =>
         error regs ["attempt to allocate void-type property"]
         
       | Ast.UnionType [] => 
@@ -619,8 +619,8 @@ and valAllocState (regs:Mach.REGS)
                 
 			fun firstSimpleType [] = firstType ts
 			  | firstSimpleType ((Ast.AnyType)::xs) = Mach.ValProp (Mach.Undef)
-			  | firstSimpleType ((Ast.SpecialType Ast.Null)::xs) = Mach.ValProp (Mach.Null)
-			  | firstSimpleType ((Ast.SpecialType Ast.Undefined)::xs) = Mach.ValProp (Mach.Undef)
+			  | firstSimpleType ((Ast.NullType)::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.UndefinedType)::xs) = Mach.ValProp (Mach.Undef)
 			  | firstSimpleType (x::xs) = firstSimpleType xs
 		in
 			firstSimpleType ts
@@ -2423,7 +2423,7 @@ and evalSuperCall (regs:Mach.REGS)
             
         fun extractInstanceType (Ast.InstanceType ity) = SOME ity
           | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
-                                                 Ast.SpecialType Ast.Null ]) = SOME ity
+                                                 Ast.NullType ]) = SOME ity
           | extractInstanceType t = (error regs ["unexpected supertype ",
                                                  "in super() expression:", 
                                                  LogErr.ty t]; 
@@ -3307,7 +3307,10 @@ and evalTypeExpr (regs:Mach.REGS)
                  (te:Ast.TYPE)
     : Mach.VAL =
     case te of
-        Ast.SpecialType st => Mach.Null (* FIXME *)
+        Ast.AnyType => Mach.Null (* FIXME *)
+      | Ast.VoidType => Mach.Null (* FIXME *)
+      | Ast.NullType => Mach.Null (* FIXME *)
+      | Ast.UndefinedType => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
       | Ast.ArrayType a => Mach.Null (* FIXME *)
       | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
@@ -3696,8 +3699,8 @@ and typeOfVal (regs:Mach.REGS)
     : Ast.TYPE =
     let
         val te = case v of
-                     Mach.Undef => Ast.SpecialType Ast.Undefined
-                   | Mach.Null => Ast.SpecialType Ast.Null
+                     Mach.Undef => Ast.UndefinedType
+                   | Mach.Null => Ast.NullType
                    | Mach.Object obj => 
                      let 
                          val tag = getObjTag obj
