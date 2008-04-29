@@ -45,8 +45,8 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[ast-query] " :: ss) else ()
 fun error ss = LogErr.astError ss
 
-fun findType (t:Ast.TYPE_EXPR)
-             (q:Ast.TYPE_EXPR -> ('a option))
+fun findType (t:Ast.TYPE)
+             (q:Ast.TYPE -> ('a option))
              (kind:string)
     : 'a =    
     case q t of
@@ -72,7 +72,7 @@ fun findType (t:Ast.TYPE_EXPR)
                          " type expression in ", LogErr.ty t])
 
 
-fun needInstanceType (t:Ast.TYPE_EXPR)
+fun needInstanceType (t:Ast.TYPE)
     : Ast.INSTANCE_TYPE =
     let 
         fun isInstanceType ty = 
@@ -83,7 +83,7 @@ fun needInstanceType (t:Ast.TYPE_EXPR)
         findType t isInstanceType "instance"
     end
 
-fun needFunctionType (t:Ast.TYPE_EXPR)
+fun needFunctionType (t:Ast.TYPE)
     : Ast.FUNC_TYPE =
     let 
         fun isFunctionType ty = 
@@ -98,7 +98,7 @@ val resultTyOfFuncTy = (#result) o needFunctionType
 val minArgsOfFuncTy = (#minArgs) o needFunctionType
 
 fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a) 
-                (funcTy:Ast.TYPE_EXPR)                 
+                (funcTy:Ast.TYPE)                 
     : 'a =
     q (needFunctionType funcTy)
 
@@ -106,8 +106,8 @@ val paramTysOfFuncTy = queryFuncTy (#params)
 val funcTyHasRest = queryFuncTy (#hasRest)
 
 
-fun singleParamTyOfFuncTy (ty:Ast.TYPE_EXPR) 
-    : Ast.TYPE_EXPR = 
+fun singleParamTyOfFuncTy (ty:Ast.TYPE) 
+    : Ast.TYPE = 
     let
         val funcTy = needFunctionType ty
     in 

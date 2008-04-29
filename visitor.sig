@@ -42,13 +42,13 @@ datatype NEXT = Stop of RESULT (* abort the traversal *)
 
 type 'a METHOD = 'a * RESULT -> NEXT
 
-type VISITOR = { visitExpr : Ast.EXPR METHOD,
-                 visitStmt : Ast.STMT METHOD,
+type VISITOR = { visitExpr : Ast.EXPRESSION METHOD,
+                 visitStmt : Ast.STATEMENT METHOD,
                  visitDefn : Ast.DEFN METHOD,
                  visitFunc : Ast.FUNC METHOD }
 
-val withVisitExpr : VISITOR * Ast.EXPR METHOD -> VISITOR
-val withVisitStmt : VISITOR * Ast.STMT METHOD -> VISITOR
+val withVisitExpr : VISITOR * Ast.EXPRESSION METHOD -> VISITOR
+val withVisitStmt : VISITOR * Ast.STATEMENT METHOD -> VISITOR
 val withVisitDefn : VISITOR * Ast.DEFN METHOD -> VISITOR
 val withVisitFunc : VISITOR * Ast.FUNC METHOD -> VISITOR
 
@@ -58,8 +58,8 @@ val stop : 'a METHOD
 val skip : 'a METHOD
 val cont : 'a METHOD
 
-val foldExpr : VISITOR * Ast.EXPR * RESULT -> RESULT
-val foldStmt : VISITOR * Ast.STMT * RESULT -> RESULT
+val foldExpr : VISITOR * Ast.EXPRESSION * RESULT -> RESULT
+val foldStmt : VISITOR * Ast.STATEMENT * RESULT -> RESULT
 val foldDefn : VISITOR * Ast.DEFN * RESULT -> RESULT
 val foldFunc : VISITOR * Ast.FUNC * RESULT -> RESULT
 

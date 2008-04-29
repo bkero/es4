@@ -39,23 +39,23 @@ structure Verify = struct
 
 
 type STD_TYPES = { 
-     AnyNumberType: Ast.TYPE_EXPR,
-     doubleType:    Ast.TYPE_EXPR,
-     decimalType:   Ast.TYPE_EXPR,
+     AnyNumberType: Ast.TYPE,
+     doubleType:    Ast.TYPE,
+     decimalType:   Ast.TYPE,
 
-     AnyStringType: Ast.TYPE_EXPR,
-     stringType:    Ast.TYPE_EXPR,
+     AnyStringType: Ast.TYPE,
+     stringType:    Ast.TYPE,
 
-     AnyBooleanType: Ast.TYPE_EXPR,
-     booleanType:   Ast.TYPE_EXPR,
+     AnyBooleanType: Ast.TYPE,
+     booleanType:   Ast.TYPE,
 
-     RegExpType:    Ast.TYPE_EXPR,
+     RegExpType:    Ast.TYPE,
 
-     NamespaceType: Ast.TYPE_EXPR,
-     TypeType:      Ast.TYPE_EXPR
+     NamespaceType: Ast.TYPE,
+     TypeType:      Ast.TYPE
 }
 
-type ENV = { returnType: Ast.TYPE_EXPR option,
+type ENV = { returnType: Ast.TYPE option,
              strict: bool,
              prog: Fixture.PROGRAM,
              ribs: Ast.RIBS,
@@ -151,8 +151,8 @@ fun newEnv (prog:Fixture.PROGRAM)
 
 (* src and dst are normalized *)
 fun checkMatch (env:ENV)
-               (src:Ast.TYPE_EXPR) (* assignment src *)
-		       (dst:Ast.TYPE_EXPR) (* assignment dst *)
+               (src:Ast.TYPE) (* assignment src *)
+		       (dst:Ast.TYPE) (* assignment dst *)
     : unit =
     let in
         trace ["checkMatch ", LogErr.ty src, " vs. ", LogErr.ty dst]; 
@@ -166,9 +166,9 @@ fun checkMatch (env:ENV)
     end
 
 (* t1 and t2 are normalized *)
-fun leastUpperBound (t1:Ast.TYPE_EXPR)
-                    (t2:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR =
+fun leastUpperBound (t1:Ast.TYPE)
+                    (t2:Ast.TYPE)
+    : Ast.TYPE =
     let
     in
         if      Type.groundIsCompatibleSubtype t1 t2 then t2
@@ -176,12 +176,12 @@ fun leastUpperBound (t1:Ast.TYPE_EXPR)
         else Ast.UnionType [t1, t2]
     end
 
-(******************* Utilities for resolving IDENT_EXPRs *********************)
+(******************* Utilities for resolving IDENTIFIER_EXPRESSIONs *********************)
 
 (* Resolves the given expr to a namespace, or to NONE *)
 
 fun resolveExprToNamespace (env:ENV)
-                           (expr:Ast.EXPR)
+                           (expr:Ast.EXPRESSION)
     : Ast.NAMESPACE option =
     case expr of
         Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
@@ -217,7 +217,7 @@ fun resolveExprToNamespace (env:ENV)
 
 fun typeOfFixture (env:ENV)
 			      (fixture:Ast.FIXTURE)
-    : Ast.TYPE_EXPR = 
+    : Ast.TYPE = 
     case fixture of 	
 	    (* 
 	     * FIXME: classtypes should be turned into instancetypes of 
@@ -230,16 +230,16 @@ fun typeOfFixture (env:ENV)
       | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
       | _ => anyType
 
-(* Resolves an IDENT_EXPR in the given RIBS, and returns the type of
- * that IDENT_EXPR, or NONE. The returned type has been verified.
+(* Resolves an IDENTIFIER_EXPRESSION in the given RIBS, and returns the type of
+ * that IDENTIFIER_EXPRESSION, or NONE. The returned type has been verified.
  *)
 
 (******************** Verification **************************************************)
 
 fun verifyIdentExpr (env:ENV)
                     (ribs:Ast.RIBS)
-                    (idexpr:Ast.IDENT_EXPR)
-    : Ast.TYPE_EXPR option =
+                    (idexpr:Ast.IDENTIFIER_EXPRESSION)
+    : Ast.TYPE option =
     let in
         case idexpr of
             Ast.QualifiedIdentifier { qual=expr, ident } => 
@@ -266,16 +266,16 @@ fun verifyIdentExpr (env:ENV)
           | _ => NONE (* verifier does not handle these kinds of references *)
     end
 
-(* Verification (aka normalization) converts a (non-closed) TYPE_EXPR into a 
- * (closed, aka grounded) TYPE_EXPR. 
+(* Verification (aka normalization) converts a (non-closed) TYPE into a 
+ * (closed, aka grounded) TYPE. 
  *)
 
 and verifyType (env:ENV)
-               (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR =
+               (ty:Ast.TYPE)
+    : Ast.TYPE =
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
-        val norm : Ast.TYPE_EXPR = 
+        val norm : Ast.TYPE = 
             (* FIXME: it is *super wrong* to just be using the root rib here. 
             Type.normalize [Fixture.getRootRib (#prog env)] ty *)
             Type.normalize (#ribs env) ty
@@ -295,7 +295,7 @@ and verifyType (env:ENV)
 and verifyFixtureName (env:ENV) 
                       (ribs:Ast.RIBS)
                       (fname:Ast.FIXTURE_NAME)
-    : Ast.TYPE_EXPR option =
+    : Ast.TYPE option =
     case ribs of
         [] => NONE
       | rib::ribs' =>
@@ -339,8 +339,8 @@ and verifyHead (env:ENV)
     end
 
 and verifyLvalue (env:ENV)
-                 (expr : Ast.EXPR) 
-    : Ast.TYPE_EXPR = 
+                 (expr : Ast.EXPRESSION) 
+    : Ast.TYPE = 
     let
     in
         case expr of
@@ -354,8 +354,8 @@ and verifyLvalue (env:ENV)
     end
 
 and verifyExpr (env:ENV)
-               (expr:Ast.EXPR)
-    : Ast.TYPE_EXPR =
+               (expr:Ast.EXPRESSION)
+    : Ast.TYPE =
     let val _ = trace [">>> Verifying expr "]
         val _ = if !doTrace then Pretty.ppExpr expr else ()
         val r = verifyExpr2 env expr
@@ -365,8 +365,8 @@ and verifyExpr (env:ENV)
     end
 
 and verifyExpr2 (env:ENV)
-               (expr:Ast.EXPR)
-    : Ast.TYPE_EXPR =
+               (expr:Ast.EXPRESSION)
+    : Ast.TYPE =
     let
         val { prog, 
               strict, 
@@ -385,10 +385,10 @@ and verifyExpr2 (env:ENV)
 
                 TypeType,
                 NamespaceType }, ... } = env
-        fun verifySub (e:Ast.EXPR) : Ast.TYPE_EXPR = verifyExpr env e
-        fun verifySubList (es:Ast.EXPR list) : Ast.TYPE_EXPR list = map (verifyExpr env) es
-        fun verifySubOption (eo:Ast.EXPR option) : Ast.TYPE_EXPR option = Option.map verifySub eo
-        fun binaryOpType (b:Ast.BINOP) t1 t2 : Ast.TYPE_EXPR =
+        fun verifySub (e:Ast.EXPRESSION) : Ast.TYPE = verifyExpr env e
+        fun verifySubList (es:Ast.EXPRESSION list) : Ast.TYPE list = map (verifyExpr env) es
+        fun verifySubOption (eo:Ast.EXPRESSION option) : Ast.TYPE option = Option.map verifySub eo
+        fun binaryOpType (b:Ast.BINOP) t1 t2 : Ast.TYPE =
             let
                 (* FIXME: these are way wrong. For the time being, just jam in star everywhere.
                  * Fix when we know how numbers work. 
@@ -431,9 +431,9 @@ and verifyExpr2 (env:ENV)
         case expr of
             Ast.TernaryExpr (e1, e2, e3) =>
             let
-                val t1:Ast.TYPE_EXPR = verifySub e1
-                val t2:Ast.TYPE_EXPR = verifySub e2
-                val t3:Ast.TYPE_EXPR = verifySub e3
+                val t1:Ast.TYPE = verifySub e1
+                val t2:Ast.TYPE = verifySub e2
+                val t3:Ast.TYPE = verifySub e3
             in
                 checkMatch env t1 booleanType;
                 leastUpperBound t2 t3
@@ -660,11 +660,11 @@ and verifyExpr2 (env:ENV)
 
      and INSTANCE_TYPE =
           {  name: NAME,
-             typeParams: IDENT list,      
-             typeArgs: TYPE_EXPR list,
+             typeParams: IDENTIFIER list,      
+             typeArgs: TYPE list,
              nonnullable: bool,           (* redundant, ignored in verify.sml *)
-             superTypes: TYPE_EXPR list,  (* redundant, ignored in verify.sml *)
-             ty: TYPE_EXPR,               (* redundant, ignored in verify.sml *)
+             superTypes: TYPE list,  (* redundant, ignored in verify.sml *)
+             ty: TYPE,               (* redundant, ignored in verify.sml *)
              dynamic: bool }              (* redundant, ignored in verify.sml *)
 
 
@@ -680,30 +680,30 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
 
 
      and FIELD_TYPE =
-           { name: IDENT,
-             ty: TYPE_EXPR }
+           { name: IDENTIFIER,
+             ty: TYPE }
 
 
-     and IDENT_EXPR =
+     and IDENTIFIER_EXPRESSION =
          Identifier of
-           { ident : IDENT,
+           { ident : IDENTIFIER,
              openNamespaces : NAMESPACE list list }
 (* CF: the above should be unified with
-        type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+        type MULTINAME = { nss: NAMESPACE list list, id: IDENTIFIER }
    Perhaps Identifier should be Multiname
 *)
        | QualifiedExpression of  (* type * *)
-           { qual : EXPR,
-             expr : EXPR }
-       | AttributeIdentifier of IDENT_EXPR
+           { qual : EXPRESSION,
+             expr : EXPRESSION }
+       | AttributeIdentifier of IDENTIFIER_EXPRESSION
        (* for bracket exprs: o[x] and @[x] *)
        | ExpressionIdentifier of
-         { expr: EXPR,
+         { expr: EXPRESSION,
            openNamespaces : NAMESPACE list list }
        | QualifiedIdentifier of
-           { qual : EXPR,
+           { qual : EXPRESSION,
              ident : Ustring.STRING }
-       | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
+       | UnresolvedPath of (IDENTIFIER list * IDENTIFIER_EXPRESSION) (* QualifiedIdentifier or ObjectRef *)
        | WildcardIdentifier            (* CF: not really an identifier, should be part of T *)
 
 *)
@@ -713,7 +713,7 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
                 trace [ "lexicalref ", if strict then "strict" else "non-strict"];
                 LogErr.setLoc loc;
                 case verifyIdentExpr env (#ribs env) ident of
-                    NONE => (warning ["unbound IDENT_EXPR ", LogErr.identExpr ident]; anyType)
+                    NONE => (warning ["unbound IDENTIFIER_EXPRESSION ", LogErr.identExpr ident]; anyType)
                   | SOME t => t
             end
                 
@@ -776,8 +776,8 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
 
 
 and verifyExprAndCheck (env:ENV)
-                       (expr:Ast.EXPR)
-                       (expectedType:Ast.TYPE_EXPR)
+                       (expr:Ast.EXPRESSION)
+                       (expectedType:Ast.TYPE)
     : unit =
     let 
         val ty = verifyExpr env expr
@@ -786,11 +786,11 @@ and verifyExprAndCheck (env:ENV)
     end
 
 (*
-    STMT
+    STATEMENT
 *)
 
 and verifyStmt (env:ENV)
-               (stmt:Ast.STMT)
+               (stmt:Ast.STATEMENT)
     : unit =
     let 
         fun verifySub s = verifyStmt env s
@@ -962,7 +962,7 @@ and verifyBlock (env:ENV)
 (* returns the normalized type of this function *)
 and verifyFunc (env:ENV)
                (func:Ast.FUNC)
-    : Ast.TYPE_EXPR =
+    : Ast.TYPE =
     let
         val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
                        native, generator, block, param, defaults, ty, loc } = func

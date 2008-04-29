@@ -42,8 +42,8 @@ datatype NEXT = Stop of RESULT (* abort the traversal *)
 
 type 'a METHOD = 'a * RESULT -> NEXT
 
-type VISITOR = { visitExpr : Ast.EXPR METHOD,
-                 visitStmt : Ast.STMT METHOD,
+type VISITOR = { visitExpr : Ast.EXPRESSION METHOD,
+                 visitStmt : Ast.STATEMENT METHOD,
                  visitDefn : Ast.DEFN METHOD,
                  visitFunc : Ast.FUNC METHOD }
 
@@ -67,7 +67,7 @@ fun withVisitFunc ({ visitExpr, visitStmt, visitDefn, ... } : VISITOR, visitFunc
 
 (* computing AST children *)
 
-type CHILDREN = Ast.EXPR list * Ast.STMT list * Ast.DEFN list * Ast.FUNC list
+type CHILDREN = Ast.EXPRESSION list * Ast.STATEMENT list * Ast.DEFN list * Ast.FUNC list
 
 fun initStepExprs is =
     (case is of
@@ -83,7 +83,6 @@ fun headExprs (Ast.Head (_, inits)) = initsExprs inits
 fun identExprs ie =
     (case ie of
          Ast.QualifiedExpression { qual, expr } => [qual, expr]
-       | Ast.AttributeIdentifier ie => identExprs ie
        | Ast.ExpressionIdentifier { expr, ... } => [expr]
        | Ast.QualifiedIdentifier { qual, ... } => [qual]
        | _ => [])
@@ -232,7 +231,7 @@ fun varDefnExprs (defn : Ast.VAR_DEFN) =
          { ns=SOME ns, bindings, ... } => ns::(bindingsExprs bindings)
        | { ns=NONE, bindings, ... } => bindingsExprs bindings)
 
-fun forEnumChildren (enum : Ast.FOR_ENUM_STMT) =
+fun forEnumChildren (enum : Ast.FOR_ENUM_STATEMENT) =
     (case enum of
          { defn=SOME defn, obj, rib=SOME fixtures, next, body, ... } =>
          let
@@ -256,7 +255,7 @@ fun forEnumChildren (enum : Ast.FOR_ENUM_STMT) =
        | { defn=NONE, obj, rib=NONE, next, body, ... } =>
          ([obj], [next, body], [], []))
 
-fun whileChildren (ws : Ast.WHILE_STMT) =
+fun whileChildren (ws : Ast.WHILE_STATEMENT) =
     (case ws of
          { cond, rib=SOME fixtures, body, ... } =>
          let
@@ -266,7 +265,7 @@ fun whileChildren (ws : Ast.WHILE_STMT) =
          end
        | { cond, rib=NONE, body, ... } => ([cond], [body], [], []))
 
-fun forChildren (fs : Ast.FOR_STMT) =
+fun forChildren (fs : Ast.FOR_STATEMENT) =
     (case fs of
          { rib=SOME fixtures, defn=SOME defn, init, cond, update, body, ... } =>
          let
@@ -290,7 +289,7 @@ fun forChildren (fs : Ast.FOR_STMT) =
        | { rib=NONE, defn=NONE, init, cond, update, body, ... } =>
          ([cond,update], body::init, [], []))
 
-fun exprChildren (expr : Ast.EXPR)
+fun exprChildren (expr : Ast.EXPRESSION)
     : CHILDREN =
     case expr of
         Ast.TernaryExpr (e1, e2, e3) => ([e1, e2, e3], [], [], [])
@@ -317,7 +316,7 @@ fun exprChildren (expr : Ast.EXPR)
       | Ast.Comprehension (e, head, NONE) => ([e], [], [], [])
       | _ => ([], [], [], [])
 
-fun stmtChildren (stmt : Ast.STMT)
+fun stmtChildren (stmt : Ast.STATEMENT)
     : CHILDREN =
     case stmt of
         Ast.ExprStmt e => ([e], [], [], [])

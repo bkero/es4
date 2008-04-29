@@ -424,10 +424,10 @@
         prototype function unshift(this:Vector.<*>, ...items)
             this.helper::unshift(items);
 
-        iterator function get(deep: boolean = false) : iterator::IteratorType.<double>
+        iterator function get(deep: boolean = false) : iterator::Iterator.<double>
             getKeys(deep);
 
-        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<double> {
+        iterator function getKeys(deep: boolean = false) : iterator::Iterator.<double> {
             let i = 0;
             let a = this;
             return { 
@@ -437,10 +437,10 @@
                             return i++;
                         throw iterator::StopIteration;
                     }
-            } : iterator::IteratorType.<double>;
+            } : iterator::Iterator.<double>;
         }
 
-        iterator function getValues(deep: boolean = false) : iterator::IteratorType.<T> {
+        iterator function getValues(deep: boolean = false) : iterator::Iterator.<T> {
             let i = 0;
             let a = this;
             return { 
@@ -450,10 +450,10 @@
                             return a[i++];
                         throw iterator::StopIteration;
                 }
-            } : iterator::IteratorType.<T>;
+            } : iterator::Iterator.<T>;
         }
 
-        iterator function getItems(deep: boolean = false) : iterator::IteratorType.<[double,T]> {
+        iterator function getItems(deep: boolean = false) : iterator::Iterator.<[double,T]> {
             let i = 0;
             let a = this;
             return { 
@@ -463,7 +463,7 @@
                         return [i,a[i++]];  // Yes, that's well-defined
                     throw iterator::StopIteration;
                 }
-            } : iterator::IteratorType.<[double,T]>;
+            } : iterator::Iterator.<[double,T]>;
         }
 
         informative function getLength()

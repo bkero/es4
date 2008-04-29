@@ -47,7 +47,8 @@ fun ppRep rep =
     let val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=80}
         val stream = PP.openStream dev
     in
-        (ppSmlDataRep stream rep;
+        (PP.flushStream stream;
+	 ppSmlDataRep stream rep;
          TextIO.print "\n";
          PP.flushStream stream)
         handle Fail s =>
@@ -60,15 +61,15 @@ val ppNamespace = ppRep o cvtNAMESPACE
 
 val ppFragment = ppRep o cvtFRAGMENT
 
-val ppExpr = ppRep o cvtEXPR
+val ppExpr = ppRep o cvtEXPRESSION
 
-val ppStmt = ppRep o cvtSTMT
+val ppStmt = ppRep o cvtSTATEMENT
 
 val ppDefinition = ppRep o cvtDEFN
 
 val ppVarDefn = ppRep o cvtBINDING
 
-val ppType = ppRep o cvtTYPE_EXPR
+val ppType = ppRep o cvtTYPE
 
 val ppBinop = ppRep o cvtBINOP
 

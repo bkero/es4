@@ -10,7 +10,7 @@ REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
 REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      NO
-SCOPE:                      The type system
+SCOPE:                      The dynamic type system
 </pre>
 <hr>
 
@@ -47,26 +47,36 @@ below.
 
 <p>A type may be expressed by any of the following kinds of expressions:
 
-<p>The keyword ''null''
-<p>The symbol ''*''
-<p>The contextually-reserved keyword ''undefined''
+<p>The type ''null'', populated only by the value ''null''.
+<p>The type ''undefined'', populated only by the value ''undefined''.
+<p>The //any// type, denoted ''*'',  that represents all
+possible ES4 values.
 <p>An //Identifier Expression// expression such as: ''String'' or
-''X''
-<p>A //RecordType// expression such as: ''{x: Number, y: Number}''
-<p>An //ArrayType// expression such as: ''[String]'' or ''[String,Number]''
-<p>A //UnionType// expression such as: ''(Number, String)''
+''X''.
+<p>A //RecordType// expression such as ''{x: Number, y: Number}'',
+which represents a record with two fields ''x'' and ''y'', both of type
+''Number''.
+<p>An //ArrayType// expression such as: ''[String]'' or
+''[String,Number]''.
+<FIXME>Have we resolved the tuple issue?
+<p>A //UnionType// expression such as ''(Number | String)'',
+which describes both ''Number'' and ''String'' values. 
 <p>A //FunctionType// expression such as: ''function (Number, String)
-: void''. A function type may include a type requirement for the
+: void''. A function type may include generic type parameters, as in
+''function.&lt;X>(X):X'' for the generic identity function.
+A function type may include a type requirement for the
 ''this'' binding, as in ''function(this:Vector):void''. A function
 type may also include default values for some arguments, denoted by
-''function(Number, String=):void'', in which case the minimum number
-of required arguments at a call site is 1. Finally, a function type
+''function(Number, String=):void'', in which case the number
+of arguments at a call site is either 1 or 2. Finally, a function type
 may also include a rest-args, as in ''function(Number, String,
-...x):void''.
-<p> A //NullableType//, such as ''String?'' or ''String!''
-<p> A //GenericType// ...
-<p>An //TypeApplication// expression such as: ''Vector.&lt;Number&gt;''
-<p>A //LikeType// expression such as: ''like {x: Number}''
+...):void''.
+<p> A //NullableType//, such as ''?String'', which abbreviates
+''(String | null)''.
+<p> A //NonNullableType//, such as ''String!'' (which does not include ''null'').
+<p>An //TypeApplication// expression such as:
+''Vector.&lt;Number&gt;'', 
+which instantiates the generic type ''Vector'' to hold values of type ''Number''.
 
 <p>Internally, the reference implementation also introduces the
 following kinds of types:
@@ -76,22 +86,40 @@ definition.
 <p> An //ObjectRefType// is used to extract a field of a record type
 or an array type.
 
+<p>ES4 supports generic function types,
+
 <FIXME>Explain the intuitive meaning of each type expression.
 
 
 <IMPL>
 <INCLUDE file="ast.sml" name="datatype TYPE">
 
-<p>A //reifiable type// is any type tha tis not "*", a union type, or a //like// type.
+<p>A //reifiable type// is any type that is not "*" or a union type.
 
-<p>In the context of a class definition such as ''class C.&lt;X>
- {...}'',
-we cannot declare a variable of type //C//. We refer to //C// as a
- //type constructor//, which is distinct from a regular type, in that it
-requires additional type parameters to become a normal type of the
-form ''C.<T>''.
+<p> A generic class definition ''class C.&lt;X> {...}''  introduces a
+//type constructor// ''C'', but ''C'' is not actually a proper type,
+in that it requires additional type parameters to become a normal type
+of the form ''C.&lt;T>''.
 
-== Type Compatibility and Subtyping ==
+== Subtyping ==
+
+The subtyping relation is a binary relation on types.  If S is a
+subtype of T, then a value of type S can generally be assigned to a
+property of type T. Two types
+are //equivalent// if they are both subtypes of each other.
+
+
+
+The types in a subtype relation may
+contain free type variables, which are assumed to denote the same but
+unknown type. (See the rule for generic functions below.)   The subtyping
+relation is defined by the following rules:
+
+<IMPL>
+<INCLUDE file="type.sml" name="datatype TYPE_COMPARISON">
+<INCLUDE file="type.sml" name="fun compareTypes">
+
+== Compatible-Subtyping ==
 
 <p>Every value in ES has an associated //allocated type//, which is a type that is
 associated with the value when the value is first allocated or created. An allocated
@@ -99,12 +127,13 @@ type is always a reifiable type. The allocated type of a value is invariant; for
 updating the fields of an object cannot change the allocated tpe of that object.
 
 <p>In general, if a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
-is a compatible-subtype of ''T''. There are some exceptions where ''T'' is a //like-type//.
+is a compatible-subtype of ''T''.  
 
+<p> 
 <IMPL>
-<INCLUDE file="type.sml" name="datatype BICOMPAT">
-<INCLUDE file="type.sml" name="datatype VARIANCE">
-<INCLUDE file="type.sml" name="fun groundMatchesGeneric">
+<INCLUDE file="type.sml" name="datatype TYPE_COMPARISON">
+<INCLUDE file="type.sml" name="fun compareTypes">
+<INCLUDE file="type.sml" name="fun compatibleSubtype">
 
 
 

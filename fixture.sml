@@ -88,7 +88,7 @@ fun replaceFixture (b:Ast.RIB)
     end
 
 
-type TYEQ = (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool)
+type TYEQ = (Ast.TYPE -> Ast.TYPE -> bool)
 
 
 fun mergeVirtuals (tyeq:TYEQ)
@@ -178,7 +178,7 @@ fun printRib (rib:Ast.RIB) =
  * ----------------------------------------------------------------------------- *)
                 
 type PROGRAM = { rootRib: Ast.RIB,
-                 packageNames: ((Ast.IDENT list) list) }
+                 packageNames: ((Ast.IDENTIFIER list) list) }
 
                
 fun mkProgram (topRib:Ast.RIB)
@@ -207,7 +207,7 @@ fun getRootRib (prog:PROGRAM)
 
 
 fun addPackageName (prog:PROGRAM)
-                   (packageName:Ast.IDENT list)
+                   (packageName:Ast.IDENTIFIER list)
     : PROGRAM = 
     let
         val { rootRib, ... } = prog
@@ -218,7 +218,7 @@ fun addPackageName (prog:PROGRAM)
 
 
 fun getPackageNames (prog:PROGRAM)
-    : Ast.IDENT list list = 
+    : Ast.IDENTIFIER list list = 
     (#packageNames prog)
 
 
@@ -226,7 +226,7 @@ fun getPackageNames (prog:PROGRAM)
  * Static variant of name-resolution algorithm: mirrors Mach.findName
  * ----------------------------------------------------------------------------- *)
 
-type IDENTIFIER = Ast.IDENT
+type IDENTIFIER = Ast.IDENTIFIER
 type NAMESPACE = Ast.NAMESPACE
 
 type CLASS = Ast.CLS
