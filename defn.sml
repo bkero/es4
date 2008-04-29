@@ -1625,9 +1625,6 @@ and defIdentExpr (env:ENV)
                              openNamespaces=openNamespaces,
                              rootRib=SOME (List.last (#outerRibs env))}
 
-          | Ast.AttributeIdentifier ai =>
-            Ast.AttributeIdentifier (defIdentExpr env ai)
-
           | Ast.QualifiedIdentifier { qual, ident } =>
             Ast.QualifiedIdentifier { qual = defExpr env qual,
                                       ident = ident }

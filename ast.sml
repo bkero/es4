@@ -42,11 +42,11 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 type IDENTIFIER = Ustring.STRING
 
 type NONCE = int
-type NAMESPACE_ID = NONCE
+type OPAQUE_NAMESPACE_IDENTIFIER = NONCE
 
 datatype NAMESPACE =
          TransparentNamespace of Ustring.STRING
-       | OpaqueNamespace of NAMESPACE_ID
+       | OpaqueNamespace of OPAQUE_NAMESPACE_IDENTIFIER
 
 type NAME = { ns: NAMESPACE, id: IDENTIFIER }
 
@@ -371,8 +371,8 @@ datatype EXPRESSION =
        | ArrayComprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
 
 datatype REFERENCE =
-         LexicalReference of IDENTIFIER_EXPRESSIONESSION
-       | ObjectReference of (EXPRESSION * IDENTIFIER_EXPRESSIONESSION)
+         LexicalReference of IDENTIFIER_EXPRESSION
+       | ObjectReference of (EXPRESSION * IDENTIFIER_EXPRESSION)
 
 
 *)
@@ -428,7 +428,7 @@ datatype REFERENCE =
 
 (* SPEC
 
-datatype IDENTIFIER_EXPRESSIONESSION =
+datatype IDENTIFIER_EXPRESSION =
          Identifier { 
              identifier: EXPRESSION,
              namespaces: NAMESPACE_REF list list }
@@ -452,7 +452,6 @@ datatype NAMESPACE_REF =
        | QualifiedExpression of  (* type * *)
            { qual : EXPRESSION,
              expr : EXPRESSION }
-       | AttributeIdentifier of IDENTIFIER_EXPRESSION
        (* for bracket exprs: o[x] and @[x] *)
        | ExpressionIdentifier of
          { expr: EXPRESSION,

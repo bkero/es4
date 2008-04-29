@@ -3993,8 +3993,6 @@ and evalIdentExpr (regs:Mach.REGS)
                              id = toUstring regs v }, NONE)
         end
 
-      | _ => LogErr.unimplError ["unimplemented identifier expression form"]
-
 
 (*
  * ES-262-3 11.2.1: Resolving member expressions to REFs.

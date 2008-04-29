@@ -83,7 +83,6 @@ fun headExprs (Ast.Head (_, inits)) = initsExprs inits
 fun identExprs ie =
     (case ie of
          Ast.QualifiedExpression { qual, expr } => [qual, expr]
-       | Ast.AttributeIdentifier ie => identExprs ie
        | Ast.ExpressionIdentifier { expr, ... } => [expr]
        | Ast.QualifiedIdentifier { qual, ... } => [qual]
        | _ => [])
