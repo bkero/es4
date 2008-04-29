@@ -148,23 +148,23 @@ datatype PRAGMA =
              typeParams: IDENTIFIER list,
              nonnullable: bool,
              dynamic: bool,
-             extends: TYPE_EXPRESSION option,
-             implements: TYPE_EXPRESSION list,
+             extends: TYPE option,
+             implements: TYPE list,
              classRib: RIB,
              instanceRib: RIB,
              instanceInits: HEAD,
              constructor: CTOR option,
-             classType: TYPE_EXPRESSION,  (* ObjectType *)
-             instanceType: TYPE_EXPRESSION }
+             classType: TYPE,  (* ObjectType *)
+             instanceType: TYPE }
 
      and IFACE =
          Iface of
            { name: NAME,
              typeParams: IDENTIFIER list,
              nonnullable: bool,
-             extends: TYPE_EXPRESSION list,
+             extends: TYPE list,
              instanceRib: RIB,
-             instanceType: TYPE_EXPRESSION }
+             instanceType: TYPE }
 
      and CTOR =
          Ctor of 
@@ -181,7 +181,7 @@ datatype PRAGMA =
            block: BLOCK option, (* NONE => abstract *)
            param: HEAD,         (* CF: not sure what this is ... *)
            defaults: EXPRESSION list,
-           ty: TYPE_EXPRESSION,
+           ty: TYPE,
            loc: LOC option }
          
      and DEFN =
@@ -197,17 +197,17 @@ datatype PRAGMA =
          FunctionSignature of 
          { typeParams: IDENTIFIER list,
            params: BINDINGS,
-           paramTypes: TYPE_EXPRESSION list,
+           paramTypes: TYPE list,
            defaults: EXPRESSION list,
            ctorInits: (BINDINGS * EXPRESSION list) option, (* settings + super args *)
-           returnType: TYPE_EXPRESSION,
-           thisType: TYPE_EXPRESSION option,
+           returnType: TYPE,
+           thisType: TYPE option,
            hasRest: bool }
 
      and BINDING =
          Binding of
            { ident: BINDING_IDENTIFIER,    (* FIXME: use tuple *)
-             ty: TYPE_EXPRESSION }
+             ty: TYPE }
 
      and BINDING_IDENTIFIER =
          TempIdent of int
@@ -251,23 +251,23 @@ Tapp on generic fn has
 
 *)
 
-     and TYPE_EXPRESSION =
+     and TYPE =
          SpecialType of SPECIAL_TY
-       | UnionType of TYPE_EXPRESSION list
-       | ArrayType of TYPE_EXPRESSION list
+       | UnionType of TYPE list
+       | ArrayType of TYPE list
        | TypeName of (IDENTIFIER_EXPRESSION * NONCE option)
-       | ElementTypeRef of (TYPE_EXPRESSION * int)
-       | FieldTypeRef of (TYPE_EXPRESSION * IDENTIFIER)
+       | ElementTypeRef of (TYPE * int)
+       | FieldTypeRef of (TYPE * IDENTIFIER)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | AppType of 
-         { base: TYPE_EXPRESSION,
-           args: TYPE_EXPRESSION list }
+         { base: TYPE,
+           args: TYPE list }
        | LamType of
          { params: IDENTIFIER list,
-           body: TYPE_EXPRESSION }
+           body: TYPE }
        | NullableType of 
-         { expr:TYPE_EXPRESSION,
+         { expr:TYPE,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
        | TypeVarFixtureRef of NONCE  
@@ -323,7 +323,7 @@ datatype STATEMENT =
              els: STATEMENT }
        | WithStmt of {
              obj: EXPRESSION,
-             ty: TYPE_EXPRESSION,
+             ty: TYPE,
              body: STATEMENT }
        | TryStmt of {
              block: BLOCK,
@@ -336,7 +336,7 @@ datatype STATEMENT =
              cases: CASE list }
        | SwitchTypeStmt of {
              cond: EXPRESSION,
-             ty: TYPE_EXPRESSION,
+             ty: TYPE,
              cases: CATCH_CLAUSE list }
        | DXNStmt of {
              expr: EXPRESSION }
@@ -349,20 +349,20 @@ datatype EXPRESSION =
        | LiteralDecimal of Decimal.DEC
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
-       | LiteralArray of (EXPRESSION * TYPE_EXPRESSIONESSION option)
-       | LiteralObject of (FIELD list * TYPE_EXPRESSIONESSION option)
+       | LiteralArray of (EXPRESSION * TYPEESSION option)
+       | LiteralObject of (FIELD list * TYPEESSION option)
        | LiteralFunction of FUNCTION
        | LiteralRegExp of Ustring.STRING
        | ConditionalExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
        | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
-       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE_EXPRESSIONRESSION)
+       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPERESSION)
        | UnaryExpr of (UNOP * EXPRESSION)
-       | TypeExpr of TYPE_EXPRESSIONESSION
+       | TypeExpr of TYPEESSION
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPRESSION option
        | SuperExpr of EXPRESSION option
        | CallExpr of (EXPRESSION * EXPRESSION list)
-       | ApplyTypeExpr of (EXPRESSION * TYPE_EXPRESSIONESSION list)
+       | ApplyTypeExpr of (EXPRESSION * TYPEESSION list)
        | LetExpr of (HEAD * EXPRESSION)
        | NewExpr of (EXPRESSION * EXPRESSION list)
        | GetExpr of REFERENCE
@@ -380,9 +380,9 @@ datatype REFERENCE =
      and EXPRESSION =
          TernaryExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
        | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
-       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE_EXPRESSION)
+       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE)
        | UnaryExpr of (UNOP * EXPRESSION)
-       | TypeExpr of TYPE_EXPRESSION
+       | TypeExpr of TYPE
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPRESSION option
        | SuperExpr of EXPRESSION option
@@ -391,7 +391,7 @@ datatype REFERENCE =
              actuals: EXPRESSION list }
        | ApplyTypeExpr of {
              expr: EXPRESSION,  (* apply expr to type list *)
-             actuals: TYPE_EXPRESSION list }
+             actuals: TYPE list }
 
        (* defs are rewritten into head by defn phase, and so defs are ignored in verifier and in eval *)
        | LetExpr of {
@@ -470,12 +470,12 @@ datatype NAMESPACE_REF =
        | LiteralString of Ustring.STRING
        | LiteralArray of
            { exprs: EXPRESSION,  (* FIXME: more specific type here *)
-             ty:TYPE_EXPRESSION option }
+             ty:TYPE option }
        | LiteralXML of EXPRESSION list
        | LiteralNamespace of NAMESPACE
        | LiteralObject of
            { expr : FIELD list,
-             ty: TYPE_EXPRESSION option }
+             ty: TYPE option }
        | LiteralFunction of FUNC
        | LiteralRegExp of
            { str: Ustring.STRING }
@@ -505,18 +505,18 @@ datatype FIXTURE =
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
        | TypeVarFixture of NONCE
-       | TypeFixture of TYPE_EXPRESSION
+       | TypeFixture of TYPE
        | MethodFixture of
            { func: FUNC,
-             ty: TYPE_EXPRESSION,
+             ty: TYPE,
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool }
        | ValFixture of
-           { ty: TYPE_EXPRESSION,
+           { ty: TYPE,
              readOnly: bool }
        | VirtualValFixture of
-         { ty: TYPE_EXPRESSION, 
+         { ty: TYPE, 
            getter: FUNC option,
            setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
 
@@ -547,10 +547,10 @@ withtype
      and INSTANCE_TYPE =
           {  name: NAME,
              typeParams: IDENTIFIER list,      
-             typeArgs: TYPE_EXPRESSION list,
+             typeArgs: TYPE list,
              nonnullable: bool,           (* redundant, ignored in verify.sml *)
-             superTypes: TYPE_EXPRESSION list,  (* redundant, ignored in verify.sml *)
-             ty: TYPE_EXPRESSION,               (* redundant, ignored in verify.sml *)
+             superTypes: TYPE list,  (* redundant, ignored in verify.sml *)
+             ty: TYPE,               (* redundant, ignored in verify.sml *)
              dynamic: bool }              (* redundant, ignored in verify.sml *)
 
      and FIELD =
@@ -560,12 +560,12 @@ withtype
 
      and FIELD_TYPE =
            { name: IDENTIFIER,
-             ty: TYPE_EXPRESSION }
+             ty: TYPE }
 
      and FUNC_TYPE =
-         { params: TYPE_EXPRESSION list,
-           result: TYPE_EXPRESSION,
-           thisType: TYPE_EXPRESSION option,
+         { params: TYPE list,
+           result: TYPE,
+           thisType: TYPE option,
            hasRest: bool,         (* if true, the last elem in params is array type *)
            minArgs: int }         (* necessary because some of params can have defaults *)
 
@@ -602,8 +602,8 @@ withtype
              dynamic: bool,
              final: bool,
              params: IDENTIFIER list,
-             extends: TYPE_EXPRESSION option, 
-             implements: TYPE_EXPRESSION list,
+             extends: TYPE option, 
+             implements: TYPE list,
              classDefns: DEFN list,
              instanceDefns: DEFN list,
              instanceStmts: STATEMENT list,
@@ -614,13 +614,13 @@ withtype
              ns: EXPRESSION option,
              nonnullable: bool,
              params: IDENTIFIER list,
-             extends: TYPE_EXPRESSION list,
+             extends: TYPE list,
              instanceDefns: DEFN list }
 
      and TYPE_DEFN =
            { ident: IDENTIFIER,
              ns: EXPRESSION option,
-             init: TYPE_EXPRESSION }
+             init: TYPE }
 
      and CLASS_BLOCK = 
          { ns: EXPRESSION option,
@@ -685,7 +685,7 @@ withtype
 
      and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
-           ty: TYPE_EXPRESSION,  (* CF: what is this for? *)
+           ty: TYPE,  (* CF: what is this for? *)
            rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
            inits: ((FIXTURE_NAME * EXPRESSION) list) option, (* INITS option, TODO: replace by INITS?? *)
            block:BLOCK }
@@ -695,7 +695,7 @@ withtype
              ident : IDENTIFIER }
 
 type VIRTUAL_VAL_FIXTURE =
-           { ty: TYPE_EXPRESSION, 
+           { ty: TYPE, 
              getter: FUNC option,
              setter: FUNC option }
 

@@ -123,7 +123,7 @@ withtype FIELD_PATTERN =
 
 type PATTERN_BINDING_PART =
      { kind:Ast.VAR_DEFN_TAG,
-       ty:Ast.TYPE_EXPRESSION,
+       ty:Ast.TYPE,
        prototype:bool,
        static:bool }
 
@@ -283,7 +283,7 @@ fun eat (ts: TOKENS, tk0: TOKEN)
 
 fun desugarPattern (loc:Ast.LOC option)
                    (pattern:PATTERN)
-                   (ty:Ast.TYPE_EXPRESSION)
+                   (ty:Ast.TYPE)
                    (expr:Ast.EXPRESSION option)
                    (nesting:int)
     : (Ast.BINDING list * Ast.INIT_STEP list) =
@@ -333,7 +333,7 @@ fun desugarPattern (loc:Ast.LOC option)
         *)
 
         fun desugarArrayPattern (element_ptrns: PATTERN list)
-                                (element_types: Ast.TYPE_EXPRESSION)
+                                (element_types: Ast.TYPE)
                                 (temp:Ast.EXPRESSION)
                                 (n:int)
             : (Ast.BINDING list * Ast.INIT_STEP list) =
@@ -368,7 +368,7 @@ fun desugarPattern (loc:Ast.LOC option)
         *)
 
         fun desugarObjectPattern (field_ptrns:FIELD_PATTERN list)
-                                 (field_types:Ast.TYPE_EXPRESSION)
+                                 (field_types:Ast.TYPE)
                                  (temp:Ast.EXPRESSION)
             : (Ast.BINDING list * Ast.INIT_STEP list) =
             let
@@ -391,7 +391,7 @@ fun desugarPattern (loc:Ast.LOC option)
         *)
 
         and desugarFieldPattern (field_pattern: FIELD_PATTERN)
-                                (field_types: Ast.TYPE_EXPRESSION)
+                                (field_types: Ast.TYPE)
                                 (temp: Ast.EXPRESSION)
             : (Ast.BINDING list * Ast.INIT_STEP list) =
             let
@@ -3037,7 +3037,7 @@ and destructuringElementFromExpr (e:Ast.EXPRESSION)
 *)
 
 and typedIdentifier (ts:TOKENS)
-    : TOKENS * (PATTERN * Ast.TYPE_EXPRESSION) =
+    : TOKENS * (PATTERN * Ast.TYPE) =
     let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))])
         val (ts1,nd1) = simplePattern (ts,AllowColon,NoIn,NoExpr)
     in case ts1 of
@@ -3067,7 +3067,7 @@ and typedIdentifier (ts:TOKENS)
 *)
 
 and typedPattern (ts:TOKENS, b:BETA)
-    : (TOKENS * (PATTERN * Ast.TYPE_EXPRESSION)) =
+    : (TOKENS * (PATTERN * Ast.TYPE)) =
     let val _ = trace([">> typedPattern with next=",tokenname(hd(ts))])
     in case ts of
         (LeftBrace, _) :: _ =>
@@ -3138,7 +3138,7 @@ and typedPattern (ts:TOKENS, b:BETA)
 *)
 
 and typeExpression (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> typeExpression with next=", tokenname (hd ts0)])
     in case ts0 of
 (*        (Like, _) :: _ =>
@@ -3158,7 +3158,7 @@ and typeExpression (ts0:TOKENS)
     end
 
 and nullableTypeExpression (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> nullableTypeExpression with next=", tokenname (hd ts0)])
         val (ts1, nd1) = basicTypeExpression ts0
     in case ts1 of
@@ -3174,7 +3174,7 @@ and nullableTypeExpression (ts0:TOKENS)
     end
 
 and basicTypeExpression (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> basicTypeExpression with next=", tokenname (hd ts0)])
     in case ts0 of
         (Mult, _) :: _ => (tl ts0, Ast.SpecialType Ast.Any)
@@ -3207,7 +3207,7 @@ and basicTypeExpression (ts0:TOKENS)
 *)
 
 and functionType (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> functionType with next=", tokenname (hd (ts0))])
     in case ts0 of
         (Function, _) :: _ =>
@@ -3221,7 +3221,7 @@ and functionType (ts0:TOKENS)
     end
 
 and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
-    : Ast.TYPE_EXPRESSION =
+    : Ast.TYPE =
     let
         val Ast.FunctionSignature {typeParams,
                                    params,
@@ -3263,7 +3263,7 @@ and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
 *)
 
 and unionType (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION)  =
+    : (TOKENS * Ast.TYPE)  =
     let val _ = trace ([">> unionType with next=", tokenname (hd (ts0))])
     in case ts0 of
         (LeftParen, _) :: (RightParen, _) :: _ =>  (* unit type *)
@@ -3280,7 +3280,7 @@ and unionType (ts0:TOKENS)
     end
 
 and typeUnionList (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION list) =
+    : (TOKENS * Ast.TYPE list) =
     let
         fun typeUnionList' (ts0) =
             let
@@ -3309,7 +3309,7 @@ and typeUnionList (ts0:TOKENS)
 *)
 
 and objectType (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> objectType with next=", tokenname (hd (ts0))])
     in case ts0 of
         (LeftBrace, _) :: ts1 =>
@@ -3387,7 +3387,7 @@ and fieldType (ts0:TOKENS)
 *)
 
 and arrayType (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> arrayType with next=", tokenname (hd (ts0))])
     in case ts0 of
         (LeftBracket, _) :: _ =>
@@ -3409,7 +3409,7 @@ and arrayType (ts0:TOKENS)
 *)
 
 and elementTypeList (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION list) =
+    : (TOKENS * Ast.TYPE list) =
     let val _ = trace ([">> elementTypeList with next=", tokenname (hd (ts0))])
     in case ts0 of
         (RightBracket, _) :: _ => (ts0, [])
@@ -3440,7 +3440,7 @@ and elementTypeList (ts0:TOKENS)
 *)
 
 and typeExpressionList (ts0:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION list) =
+    : (TOKENS * Ast.TYPE list) =
     let
         fun typeExpressionList' (ts0) =
             let
@@ -3744,7 +3744,7 @@ and withStatement (ts:TOKENS, w:OMEGA)
 *)
 
 and typedExpression (ts:TOKENS)
-    : (TOKENS * (Ast.EXPRESSION*Ast.TYPE_EXPRESSION)) =
+    : (TOKENS * (Ast.EXPRESSION*Ast.TYPE)) =
     let val _ = trace([">> parenListExpression with next=",tokenname(hd(ts))])
         val (ts1,nd1) = parenListExpression (ts)
     in case ts1 of
@@ -3989,7 +3989,7 @@ and typeCaseBinding (ts:TOKENS)
         TypeCaseElement TypeCaseElements'
 *)
 
-and isDefaultTypeCase (x:Ast.TYPE_EXPRESSION) 
+and isDefaultTypeCase (x:Ast.TYPE) 
     : bool =
     case x of
         Ast.SpecialType Ast.Any => true
@@ -4575,7 +4575,7 @@ and tryStatement (ts:TOKENS)
 
 and catchClauses (ts:TOKENS)
     : (TOKENS * {bindings:Ast.BINDINGS,
-                 ty:Ast.TYPE_EXPRESSION,
+                 ty:Ast.TYPE,
                  rib:Ast.RIB option,
                  inits:Ast.INITS option,
                  block:Ast.BLOCK} list) =
@@ -4597,7 +4597,7 @@ and catchClauses (ts:TOKENS)
 
 and catchClause (ts:TOKENS)
     : (TOKENS * {bindings:Ast.BINDINGS,
-                 ty:Ast.TYPE_EXPRESSION,
+                 ty:Ast.TYPE,
                  rib:Ast.RIB option,
                  inits:Ast.INITS option,
                  block:Ast.BLOCK}) =
@@ -6074,7 +6074,7 @@ and typeParameterList (ts:TOKENS)
 *)
 
 and nonemptyParameters (ts) (n) (initRequired)
-    : (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list) * bool) =
+    : (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE list) * bool) =
     let
     in case ts of
         (TripleDot, _) :: _ =>
@@ -6100,7 +6100,7 @@ and nonemptyParameters (ts) (n) (initRequired)
     end
 
 and nonemptyParametersType (ts)
-    : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list)) =
+    : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE list)) =
     let
     in case ts of
         (TripleDot, _) :: _ =>
@@ -6126,7 +6126,7 @@ and nonemptyParametersType (ts)
     end
 
 and parameters (ts)
-    : (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list) * bool) =
+    : (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE list) * bool) =
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))])
     in case ts of
         (RightParen, _) :: ts1 => (ts,(([],[]),[],[]),false)
@@ -6134,7 +6134,7 @@ and parameters (ts)
     end
 
 and parametersType (ts)
-    : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list))=
+    : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE list))=
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))])
     in case ts of
         (RightParen, _) :: ts1 => (ts,([],[]))
@@ -6148,7 +6148,7 @@ and parametersType (ts)
 *)
 
 and parameterInit (ts) (n) (initRequired)
-    : (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list)) =
+    : (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE list)) =
     let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))])
         val (ts1,(temp,nd1)) = parameter ts n
     in case (ts1,initRequired) of
@@ -6173,7 +6173,7 @@ and parameterInit (ts) (n) (initRequired)
     end
 
 and parameterInitType (ts)
-    : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list)) =
+    : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE list)) =
     let val _ = trace([">> parameterInitType with next=",tokenname(hd(ts))])
         val (ts1,nd1) = parameterType ts
     in case ts1 of
@@ -6203,7 +6203,7 @@ and parameterInitType (ts)
 *)
 
 and parameter (ts) (n)
-    : (TOKENS * (Ast.BINDING * {pattern:PATTERN, ty:Ast.TYPE_EXPRESSION})) =
+    : (TOKENS * (Ast.BINDING * {pattern:PATTERN, ty:Ast.TYPE})) =
     let val _ = trace([">> parameter with next=",tokenname(hd(ts))])
         val (ts1,nd1) = parameterKind (ts)
         val (ts2,(p,t)) = typedPattern (ts1,AllowIn)
@@ -6236,7 +6236,7 @@ and parameterKind (ts)
         ...  ParameterKind TypedPattern
 *)
 
-and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list)) =
+and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.TYPE list)) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
     in case ts of
         (TripleDot, _) :: _ =>
@@ -6255,7 +6255,7 @@ and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.
       | _ => error ["unknown token in restParameter"]
     end
 
-and restParameterType (ts) : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE_EXPRESSION list)) =
+and restParameterType (ts) : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE list)) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
     in case ts of
         (TripleDot, _) :: _ =>
@@ -6281,7 +6281,7 @@ and restParameterType (ts) : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE_EXPRESSIO
 *)
 
 and resultType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace([">> resultType with next=",tokenname(hd(ts))])
     in case ts of
         (Colon, _) :: (Void, _) :: ts1 => (ts1,Ast.SpecialType(Ast.VoidType))
@@ -6652,8 +6652,8 @@ and parameterisedClassName (ts:TOKENS)
 *)
 
 and classInheritance (ts:TOKENS)
-    : (TOKENS * {extends:Ast.TYPE_EXPRESSION option,
-                 implements:Ast.TYPE_EXPRESSION list}) =
+    : (TOKENS * {extends:Ast.TYPE option,
+                 implements:Ast.TYPE list}) =
     let val _ = trace([">> classInheritance with next=", tokenname(hd ts)])
     in case ts of
         (Extends, _) :: _ =>
@@ -6755,7 +6755,7 @@ and interfaceDefinition (ts:TOKENS, attrs:ATTRS)
     end
 
 and interfaceInheritance (ts:TOKENS)
-    : (TOKENS * {extends:Ast.TYPE_EXPRESSION list}) =
+    : (TOKENS * {extends:Ast.TYPE list}) =
     let val _ = trace([">> interfaceInheritance with next=", tokenname(hd ts)])
     in case ts of
         (Extends, _) :: _ =>
@@ -6867,7 +6867,7 @@ and typeDefinition (ts:TOKENS, attrs:ATTRS)
     end
 
 and typeInitialisation (ts:TOKENS)
-    : (TOKENS * Ast.TYPE_EXPRESSION) =
+    : (TOKENS * Ast.TYPE) =
     let val _ = trace([">> typeInitialisation with next=", tokenname(hd ts)])
     in case ts of
         (Assign, _) :: _ =>

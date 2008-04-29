@@ -181,8 +181,8 @@ fun dumpEnv (e:ENV) : unit =
 
 
 fun makeTy (e:ENV) 
-           (tyExpr:Ast.TYPE_EXPRESSION) 
-    : Ast.TYPE_EXPRESSION = 
+           (tyExpr:Ast.TYPE) 
+    : Ast.TYPE = 
     (* 
      * FIXME: controversial? This attempts to normalize each type term the first 
      * time we see it. We ignore type errors since it's not technically
@@ -583,7 +583,7 @@ and defInterface (env: ENV)
         val name = {id = ident, ns = resolveExprOptToNamespace env ns} 
 
         (* Resolve base interface's super interfaces and rib *)
-        val (superInterfaces:Ast.TYPE_EXPRESSION list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
+        val (superInterfaces:Ast.TYPE list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
 
         val prog = (#program env)
 
@@ -601,7 +601,7 @@ and defInterface (env: ENV)
         val instanceRib:Ast.RIB = inheritRib NONE inheritedRib instanceRib
 
         (* Make the instance type and interface fixture *)
-        val instanceType:Ast.TYPE_EXPRESSION = 
+        val instanceType:Ast.TYPE = 
             makeTy env (Ast.InstanceType 
                             { name=name,
                               nonnullable=nonnullable,
@@ -858,17 +858,17 @@ and resolveClassInheritance (env:ENV)
     let
         val _ = trace ["analyzing inheritance for ", fmtName name]
 
-        val (extendsTy:Ast.TYPE_EXPRESSION option, 
+        val (extendsTy:Ast.TYPE option, 
              instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
 
-        val (implementsTys:Ast.TYPE_EXPRESSION list, 
+        val (implementsTys:Ast.TYPE list, 
              instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
 
 
         val instanceType = 
             let
                 val it = AstQuery.needInstanceType instanceType
-                val superTypes:Ast.TYPE_EXPRESSION list = 
+                val superTypes:Ast.TYPE list = 
                     case extendsTy of 
                         NONE => implementsTys
                       | SOME ty => ty :: implementsTys
@@ -925,9 +925,9 @@ and multinameOf (n:Ast.NAME) =
 
 and resolveExtends (env:ENV)
                    (currInstanceRib:Ast.RIB)
-                   (extends:Ast.TYPE_EXPRESSION option)
+                   (extends:Ast.TYPE option)
                    (currName:Ast.NAME) 
-    : (Ast.TYPE_EXPRESSION option * Ast.RIB) =
+    : (Ast.TYPE option * Ast.RIB) =
     let
         val baseClassMultiname:Ast.MULTINAME option = 
             case extends of 
@@ -955,8 +955,8 @@ and resolveExtends (env:ENV)
 
 and resolveImplements (env: ENV)
                       (instanceRib: Ast.RIB)
-                      (implements: Ast.TYPE_EXPRESSION list)
-    : (Ast.TYPE_EXPRESSION list * Ast.RIB) =
+                      (implements: Ast.TYPE list)
+    : (Ast.TYPE list * Ast.RIB) =
     let
         val (superInterfaces, abstractRib) = resolveInterfaces env implements
         val _ = implementFixtures abstractRib instanceRib
@@ -985,13 +985,13 @@ and interfaceMethods (ifxtr:Ast.FIXTURE)
       |_ => LogErr.internalError ["interfaceMethods"]
 
 and interfaceExtends (ifxtr:Ast.FIXTURE)
-    : Ast.TYPE_EXPRESSION list =
+    : Ast.TYPE list =
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {extends,...}) => extends
       |_ => LogErr.internalError ["interfaceExtends"]
 
 and interfaceInstanceType (ifxtr:Ast.FIXTURE)
-    : Ast.TYPE_EXPRESSION =
+    : Ast.TYPE =
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {instanceType,...}) => instanceType
       |_ => LogErr.internalError ["interfaceInstanceType"]
@@ -1009,7 +1009,7 @@ and classPrivateNS (cfxtr:Ast.FIXTURE)
       |_ => LogErr.internalError ["privateNS"]
 
 and classInstanceType (cfxtr:Ast.FIXTURE)
-    : Ast.TYPE_EXPRESSION =
+    : Ast.TYPE =
     case cfxtr of
         Ast.ClassFixture (Ast.Cls {instanceType,...}) => instanceType
       |_ => LogErr.internalError ["classInstanceType"]
@@ -1025,7 +1025,7 @@ and classInstanceType (cfxtr:Ast.FIXTURE)
 *)
 
 (* FIXME: for the time being we're only going to handle inheriting from 
- * TYPE_EXPRESSIONs of a simple form: those which name a 0-parameter interface. 
+ * TYPEs of a simple form: those which name a 0-parameter interface. 
  * Generalize later. 
  *)
 and extractIdentExprFromTypeName (Ast.TypeName (ie, _)) : Ast.IDENTIFIER_EXPRESSION = ie
@@ -1033,8 +1033,8 @@ and extractIdentExprFromTypeName (Ast.TypeName (ie, _)) : Ast.IDENTIFIER_EXPRESS
     error ["can only presently handle inheriting from simple named interfaces"]
 
 and resolveInterfaces (env: ENV)
-                      (exprs: Ast.TYPE_EXPRESSION list)
-    : (Ast.TYPE_EXPRESSION list * Ast.RIB) =
+                      (exprs: Ast.TYPE list)
+    : (Ast.TYPE list * Ast.RIB) =
     case exprs of        
         [] => ([],[])
       | _ =>
@@ -1043,8 +1043,8 @@ and resolveInterfaces (env: ENV)
             val fixs = (map (resolve env) mnames)
             (* val _ = List.map (fn (n,f) => Fixture.printFixture (Ast.PropName n, f)) fixs *)
             val (_, ifaces) = ListPair.unzip fixs
-            val ifaceInstanceTypes:Ast.TYPE_EXPRESSION list = map interfaceInstanceType ifaces
-            val superIfaceTypes:Ast.TYPE_EXPRESSION list = List.concat (map interfaceExtends ifaces)
+            val ifaceInstanceTypes:Ast.TYPE list = map interfaceInstanceType ifaces
+            val superIfaceTypes:Ast.TYPE list = List.concat (map interfaceExtends ifaces)
             val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
         in
             (ifaceInstanceTypes @ superIfaceTypes, methodRib)
@@ -1201,7 +1201,7 @@ and defVar (env:ENV)
     case var of
         Ast.Binding { ident, ty } =>
         let
-            val ty':Ast.TYPE_EXPRESSION = defTypeExpr env ty
+            val ty':Ast.TYPE = defTypeExpr env ty
             val readOnly' = case kind of
                                  Ast.Const => true
                                | Ast.LetConst => true
@@ -1337,7 +1337,7 @@ and defSettings (env:ENV)
 
 and defFuncSig (env:ENV)
                (fsig:Ast.FUNC_SIG)
-    : (Ast.RIB * Ast.INITS * Ast.EXPRESSION list * Ast.RIB * Ast.INITS * Ast.EXPRESSION list * Ast.TYPE_EXPRESSION) =
+    : (Ast.RIB * Ast.INITS * Ast.EXPRESSION list * Ast.RIB * Ast.INITS * Ast.EXPRESSION list * Ast.TYPE) =
 
     case fsig of
         Ast.FunctionSignature { typeParams, params, paramTypes, defaults, ctorInits,
@@ -1354,7 +1354,7 @@ and defFuncSig (env:ENV)
             val typeEnv = extendEnvironment env typeParamFixtures 0
 ****)
 
-            val thisType:Ast.TYPE_EXPRESSION = 
+            val thisType:Ast.TYPE = 
                 case thisType of 
                     NONE => Ast.SpecialType Ast.Any
                   | SOME x => defTypeExpr env x
@@ -1792,7 +1792,7 @@ and defExprs (env:ENV)
     end
 
 (*
-    TYPE_EXPRESSION
+    TYPE
 
 *)
 
@@ -1816,8 +1816,8 @@ and defFuncTy (env:ENV)
 
 
 and defTypeExpr (env:ENV)
-                (typeExpr:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION =
+                (typeExpr:Ast.TYPE)
+    : Ast.TYPE =
     case typeExpr of
         Ast.FunctionType t =>
         Ast.FunctionType (defFuncTy env t)
@@ -1949,7 +1949,7 @@ and defStmt (env:ENV)
 
         fun reconstructCatch { bindings, rib, inits, block, ty } =
             let
-                val ty:Ast.TYPE_EXPRESSION = defTypeExpr env ty
+                val ty:Ast.TYPE = defTypeExpr env ty
                 val (r0,i0) = defBindings env Ast.Var Name.publicNS bindings
                 val env = extendEnvironment env r0 false
                 val (block:Ast.BLOCK, rib:Ast.RIB) = defBlock env block

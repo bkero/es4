@@ -88,7 +88,7 @@ fun replaceFixture (b:Ast.RIB)
     end
 
 
-type TYEQ = (Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION -> bool)
+type TYEQ = (Ast.TYPE -> Ast.TYPE -> bool)
 
 
 fun mergeVirtuals (tyeq:TYEQ)
