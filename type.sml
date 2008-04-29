@@ -153,7 +153,7 @@ val doTrace = ref false
 fun log ss = LogErr.log ("[type] " :: ss)  
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.typeError ss
-fun traceTy ss ty = if (!doTrace) then let in trace [ss, LogErr.ty ty]; Pretty.ppType ty; TextIO.print "\n" end else ()
+fun traceTy ss ty = if (!doTrace) then let in trace [ss, LogErr.ty ty]; TextIO.print "\n" end else ()
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
@@ -641,38 +641,31 @@ fun optionWise predicate (SOME a) (SOME b) = predicate a b
  * Generic matching algorithm
  * ----------------------------------------------------------------------------- *)
 
-datatype BICOMPAT = Bicompat | Compat
-datatype VARIANCE = Covariant | Invariant
+datatype TYPE_COMPARISON = SubType | EquivType
 
-fun groundMatchesGeneric (b:BICOMPAT)
-                         (v:VARIANCE)
-                         (ty1:Ast.TYPE)
-                         (ty2:Ast.TYPE)
-
+fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
+                 (v:TYPE_COMPARISON)
+                 (ty1:Ast.TYPE)
+                 (ty2:Ast.TYPE)
+    
     : bool = 
-    if b=Bicompat andalso 
-       (case findSpecialConversion ty1 ty2 of 
-              SOME _ => true
-            | NONE => false)
-    then
-        let in
-            trace ["findSpecialConversion ", LogErr.ty ty1, " vs. ", LogErr.ty ty2];
-            true
-        end
-    else
-    case (b, v, ty1, ty2) of 
+    (ty1 = ty2)
+    orelse
+    (extra ty1 ty2)
+    orelse
+    case (v, ty1, ty2) of 
 
       (* A-GENERIC *)
       (* FIXME: need to alpha-rename so have consistent parameters *)
-        (_, _, Ast.LamType lt1, Ast.LamType lt2) => 
-        groundMatchesGeneric b v (#body lt1) (#body lt2)
+        (_, Ast.LamType lt1, Ast.LamType lt2) => 
+        compareTypes extra v (#body lt1) (#body lt2)
 
       (* A-OBJ *)
-      | (_, _, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
-        fieldPairWiseSuperset (groundMatchesGeneric b Invariant) fields1 fields2
+      | (_, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
+        fieldPairWiseSuperset (compareTypes extra EquivType) fields1 fields2
         
       (* A-ARROW *)
-      | (_, _, 
+      | (_, 
          Ast.FunctionType
 		     {params   = params1,
 		      result   = result1,
@@ -686,73 +679,63 @@ fun groundMatchesGeneric (b:BICOMPAT)
 		      hasRest  = hasRest2,
 		      minArgs  = minArgs2}) 
         => 
-        (optionWise (groundMatchesGeneric b Invariant) thisType1 thisType2) andalso     (* will drop option *)
+        (optionWise (compareTypes extra EquivType) thisType1 thisType2) andalso     (* will drop option *)
         minArgs1 >= minArgs2 andalso
         (if not hasRest1 andalso not hasRest2
          then length params1 = length params2
          else hasRest1 andalso length params1 <= length params2) andalso
-        (arrayPairWise (groundMatchesGeneric b Invariant)  params1 (List.take(params2, length params1))) andalso
-        groundMatchesGeneric b v result1 result2 
-
-
-      (* A-DYN1 *)
-      | (_, _, _, Ast.SpecialType Ast.Any) => true
-
-      (* A-DYN2 *)
-      | (Bicompat, _, Ast.SpecialType Ast.Any, _) => true
+        (arrayPairWise (compareTypes extra EquivType)  params1 (List.take(params2, length params1))) andalso
+        compareTypes extra v result1 result2 
 
       (* A-INSTANCE -- generalized from A-INT *)
-      | (_, _, Ast.InstanceType it1, Ast.InstanceType it2) =>
+      | (_, Ast.InstanceType it1, Ast.InstanceType it2) =>
         (nameEq (#name it1) (#name it2) andalso
-         (arrayPairWise (groundMatchesGeneric b Invariant) (#typeArgs it1) (#typeArgs it2)))
+         (arrayPairWise (compareTypes extra EquivType) (#typeArgs it1) (#typeArgs it2)))
         orelse 
-        (List.exists (fn sup => groundMatchesGeneric b v sup ty2) 
+        (List.exists (fn sup => compareTypes extra v sup ty2) 
                      (#superTypes it1))
         
       (* Extra rules covering nullable, array and union types. *)
-
-      | (_, _, Ast.SpecialType x, Ast.SpecialType y) => 
-        x = y
         
-      | (_, _, Ast.NullableType nt1, Ast.NullableType nt2) =>
+      | (_, Ast.NullableType nt1, Ast.NullableType nt2) =>
         (#nullable nt1) = (#nullable nt2) andalso
-        groundMatchesGeneric b v (#expr nt1) (#expr nt2)
+        compareTypes extra v (#expr nt1) (#expr nt2)
         
-      | (_, _, Ast.ArrayType tys1, Ast.ArrayType tys2) => 
+      | (_, Ast.ArrayType tys1, Ast.ArrayType tys2) => 
         (* last entry repeats *)
         let fun check tys1 tys2 =
                 case (tys1,tys2) of
                     ([],[]) => true
                   | ([ty1],[ty2]) => 
-                    groundMatchesGeneric b Invariant ty1 ty2
+                    compareTypes extra EquivType ty1 ty2
                   | (ty1::tys1, ty2::tys2) => 
-                    groundMatchesGeneric b Invariant ty1 ty2
+                    compareTypes extra EquivType ty1 ty2
                     andalso check (if List.null tys1 then [ty1] else tys1)
                                   (if List.null tys2 then [ty2] else tys2)
         in
             check tys1 tys2
         end
 
-      | (_, _, Ast.UnionType tys1, _) => 
-        List.all (fn t => groundMatchesGeneric b v t ty2) tys1
+      | (_, Ast.UnionType tys1, _) => 
+        List.all (fn t => compareTypes extra v t ty2) tys1
 
-      | (_, _, _, Ast.UnionType tys2) => 
-        List.exists (groundMatchesGeneric b v ty1) tys2
+      | (_, _, Ast.UnionType tys2) => 
+        List.exists (compareTypes extra v ty1) tys2
 
       (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
 
-      | (_, _, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
+      | (_, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
 	    List.exists (nameEq name) [ Name.public_Array,
 					                Name.public_Object ]
         
-      | (_, _, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
+      | (_, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
 	    List.exists (nameEq name) [ Name.public_Object ]
         
-      | (_, _, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
+      | (_, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
 	    List.exists (nameEq name) [ Name.public_Function, 
 					                Name.public_Object ]
         
-      | (_, _, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
+      | (_, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
       
       | _ => false
@@ -812,14 +795,31 @@ and findSpecialConversion (tyExpr1:Ast.TYPE)
  * Compatible-subtyping:  <*
  * ----------------------------------------------------------------------------- *)
 
-val groundIsCompatibleSubtype = groundMatchesGeneric Compat Covariant
+fun groundIsCompatibleSubtype ty1 ty2 = 
+    let in
+        traceTy "groundIsCompatibleSubtype:ty1 " ty1;
+        traceTy "groundIsCompatibleSubtype:ty2 " ty2;
+        compareTypes
+            (fn ty1 => fn ty2 => ty2 = anyType)
+            SubType
+            ty1 ty2
+    end
+
 (* val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype  *)
 
 (* -----------------------------------------------------------------------------
  * Matching: ~<
  * ----------------------------------------------------------------------------- *)
 
-val groundMatches = groundMatchesGeneric Bicompat Covariant
+fun groundMatches ty1 ty2
+  = compareTypes 
+        (fn ty1 => fn ty2 =>
+                      ty1 = anyType orelse
+                      ty2 = anyType orelse
+                      findSpecialConversion ty1 ty2 <> NONE)
+        SubType
+        ty1 ty2
+
 fun matches (prog:Fixture.PROGRAM)
             (locals:Ast.RIBS)
             (t1:Ast.TYPE)
