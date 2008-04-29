@@ -235,7 +235,7 @@ datatype TYPE =
                            hasRest: bool,
                            result: TYPE
                          }
-       | NullableType of (TYPE * bool)
+       | NonNullableType of TYPE
        | LamType of (IDENTIFIER list * TYPE)
        | AppType of (TYPE * TYPE list)
        | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)

@@ -21,7 +21,7 @@ TEST CASE STATUS:           ?
 
 == Overview ==
 
-=== Binding forms and scopes ===
+=== Forms that introduce names ===
 
 <P> (Some of this may belong elsewhere in the spec but I felt it was
 necessary to gather it all here, for the moment.)
@@ -29,11 +29,14 @@ necessary to gather it all here, for the moment.)
 <P> //Names// are //bound// in //scopes// by //defining forms// and
 //binding forms//.
 
+
+==== Defined and bound names ====
+
 <P> The defining forms are //VariableDefinition//,
 //FunctionDefinition//, //ClassDefinition//, //InterfaceDefinition//,
-//TypeDefinition//, //NamespaceDefinition//.  Except in block scopes
-(see below) a defining form permits the name to be qualified by a
-namespace.  The current default namespace is used if no qualifier is
+//TypeDefinition//, and //NamespaceDefinition//.  Except in block
+scopes (see below) a defining form permits the name to be qualified by
+a namespace.  The current default namespace is used if no qualifier is
 present.
 
 <P> (The initial default namespace in any block scope is ''public'', and it is
@@ -47,61 +50,105 @@ namespace.)
 The binding forms do not permit names to be qualified by namespaces;
 all names bound by these forms are in the ''public'' namespace.
 
-<P> Names can be //created// in the global scope at run-time by means
-of assignment.  (Run-time creation of names is not possible in strict
-code.)  These names can have non-''public'' namespace qualifiers.
+<P> Names that are introduced by defining forms and binding forms are
+//fixtures//: they are guaranteed always to be present at run-time.
+
+
+==== Created and introduced names ====
+
+<P> Names can be //created// dynamically (at run-time) in the global
+scope by means of assignment and by the pre-defined global ''eval''
+function.  Names can also be created dynamically in the global scope
+and in any function scope by the ''eval'' operator evaluating a
+program text that contains a top-level ''var'' or ''function''
+definition,
+
+<P> Names can be created dynamically in class static and class
+instance scopes by creating a new property on the class object or the
+instance object.  (Dynamic name creation is only possible on instances
+of classes that are declared ''dynamic''.)
+
+<P> Dynamic creation of names is not possible in strict code.
+Top-level created names names can have non-''public'' namespace
+qualifiers.
+
+<P> Names that are created dynamically can be removed by means of the
+''delete'' operator.
 
 <P> Names are also //introduced// in scopes by the //WithStatement//.
 (The //WithStatement// is disallowed in strict code.)
 
+<P> Names that created dynamically are never fixtures.  Names that are
+introduced by a //WithStatement// are as a rule not fixtures.  Created
+and introduced names can as a rule appear and disappear at
+unpredictable times during program evaluation.
+
+
+==== Visibility ====
+
+<FIXME> More here.
+
 <P> Bound, created, and introduced names are visible in the entire
-scope of the binding.  However, scoping is static -- it is determined
-by the source text -- and bindings in inner scopes can //shadow//
-bindings in outer scopes.
+scope of the binding.  However, the scope of a binding is "static" (it
+is determined by the source text) and bindings in inner scopes can
+//shadow// bindings in outer scopes.
 
-<P> Names that are introduced by defining forms and binding forms are
-//fixtures//: they are guaranteed always to be present at run-time.
+<P> "use namespace" controls the shadowing, to an extent.  
 
-<P> The following are the scopes and the forms that introduce names in
-those scopes:
+<P> A shadowed identifier in a base class may sometimes be made
+visible in a subclass by means of a //SuperExpression//.
+
+
+=== Scopes ===
+
+<P> The following are the kinds of scopes and the forms that introduce
+names in those scopes:
 
 <UL>
-  <LI> The global scope is shared between multiple //Programs//.  It
-  contains pre-defined bindings (the language-defined libraries and
+  <LI> The //global scope// is shared between multiple //Programs//.
+  It contains pre-defined bindings (the language-defined libraries and
   any host-defined extensions) and is extended when definitions have
-  an effect on it.  A possibly unbounded sequence of //Programs//
-  operates upon the global scope in a linear order.  A definition
+  an effect on it.  A possibly unbounded sequence of //Programs// is
+  evaluted in the global scope in a linear order.  A definition
   introduced by a later //Program// is visible to every earlier
   //Program//.
 
   <P > The forms that introduce names into the global environment are
   //VariableDefinition//, //ClassDefinition//,
   //InterfaceDefinition//, //TypeDefinition//,
-  //NamespaceDefinition//, //FunctionDefinition//, and
-  //AssignmentStatement//.
+  //NamespaceDefinition//, //FunctionDefinition//,
+  //AssignmentStatement//, and //EvalExpression//.
 
 
-  <LI> The class static scope extends from the left curly brace that
-  starts the class body to the right curly brace that ends the class
-  body.  The class static scope is nested within the global scope.
+  <LI> The //file scope// is specific to one "file", that is to say,
+  one chunk of program text that matches the the //Program//
+  nonterminal and which is processed independently from other files.
+
+  <P > The only form that operates on the file scope is the //Pragma//.
+
+
+  <LI> The //class static scope// extends from the left curly brace
+  that starts the class body to the right curly brace that ends the
+  class body.  The class static scope is nested within the global
+  scope.
 
   <P > The forms that introduce names into the class static scope are
   the ''static'' annotated forms of //VariableDefinition//,
   //TypeDefinition//, //NamespaceDefinition//, and
-  //FunctionDefinition//.  The class static scope cannot be extended
-  at run-time or by definitions following the right brace of the class
-  body.
+  //FunctionDefinition//.  In addition, an //AssignmentExpression// can
+  introduce names into a class static scope dynamically.
 
-  <P > The outer scope of a function defined in the class static scope
-  is that class static scope.
+  <P > The surrounding scope of a function defined in the class static
+  scope is that class static scope.
 
 
-  <LI> The class instance scope is defined by multiple disjoint pieces
-  of text.  It extends from the left curly brace that starts the class
-  body to the right curly brace that ends the class body.  It also
-  incorporates the class instance scope of its direct superclass
-  (which incorporates the class instance scope of //its// direct
-  superclass, and so on).
+  <LI> The //class instance scope// is defined by multiple disjoint
+  pieces of text.  It extends from the left curly brace that starts
+  the class body to the right curly brace that ends the class body.
+  It also incorporates the class instance scope of its direct
+  superclass.  In addition, an //AssignmentExpression// can introduce
+  names into a class instance scope dynamically, provided that the
+  class has been declared ''dynamic''.
 
   <P > The class instance scope for a class definition is nested within
   the class static scope for that definition.
@@ -109,49 +156,64 @@ those scopes:
   <P > The forms that introduce names into the class instance scope are
   //VariableDefinition// and //FunctionDefinition//.
 
-  <P > The outer scope of a function defined in the class instance
-  scope is that instance scope; however, a function inherited from a
-  superclass is closed in the instance scope of the class from which
-  it is inherited.
+  <P > The surrounding scope of a function defined in the class
+  instance scope is that instance scope; however, the surrounding
+  scope of a function inherited from a superclass is the instance
+  scope of the class from which it is inherited.
 
 
-  <LI> The function scope extends from the left parenthesis of the
-  function parameter list through the right curly brace that ends the
-  function body (or the end of the expression, for an expression
-  closure).
+  <LI> The //function scope// covers the body of a function, either
+  from the opening left brace of the body to the closing right brace,
+  or the expression that makes up the function body in an expression
+  closure.
+
+  <P > (That is, types in the signature are resolved in the enclosing
+  scope.)
 
   <P > Since a static initializer block for a class is treated as an
   anonymous function, the function scope extends also from the left
   curly brace of the initializer block through the closing right curly
   brace.
 
-  <P > (Constructor scope?)
+  <P > The forms that introduce names into a function scope are the
+  function form itself -- the parameter names are bound in the
+  function scope -- as well as instances of //VariableDefinition// and
+  //FunctionDefinition// that occur in the body.
 
-  <P > The forms that introduce names into a function scope are
-  //VariableDefinition// and //FunctionDefinition//.
 
-
-  <LI> The block scope is introduced by the left curly brace of
+  <LI> The //block scope// is introduced by the left curly brace of
   certain source phrases (//Block//, //SwitchStatement//,
   //CatchClause//, //TypeCaseElement//, and //LetBlockStatement//) and
-  extends to the matching right curly brace. 
+  extends to the matching right curly brace.
+
+  <P > A block scope is also introduced by a binding //ForStatement//
+  and extends through the end of that statement's //SubStatement//.
+
+  <P > **Note:** Among these statements, only the //Block// and a
+  primitive form of //CatchClause// are fundamental, all the other
+  statements can be expressed in terms of these two.
 
   <P > The forms that introduce names into a block scope are
   //VariableDefinition// and //FunctionDefinition//.
   //LetBlockStatement//, //CatchClause//, and //TypeCaseElement//.
+  (However, these forms are not allowed as the direct
+  //SubStatements// of a binding //ForStatement//, and the only form
+  to introduce a binding into the block scope of a //ForStatement// is
+  the statement itself.)
 
 
-  <LI> The statement scope is introduced by a binding statement form
-  (a //WithStatement// or a binding //ForStatement//) and extends
-  through the end of the statement's substatement.
+  <LI> The //with scope// is introduced by a //WithStatement// and
+  extends through the end of the statement's //SubStatement//.
 
-  <P > There are no forms to introduce new names into statement scopes
-  apart from the binding statement forms themselves.
+  <P > New names can be introduced into a with scope dynamically by
+  means of //AssignmentExpression//: an assignment that creates a new
+  property on the object that the //WithStatement// operates upon
+  introduces the name of the property into the with scope.
 
 
-  <LI> The expression scope is introduced by the left parenthesis of a
-  //LetExpression//, the name of a named //FunctionExpression//, or
-  the left square bracket of an //ArrayComprehension//.  The scope
+  <LI> The //expression scope// is introduced by the left parenthesis
+  of a //LetExpression//, the name of a named //FunctionExpression//,
+  or the left square bracket of an //ArrayComprehension//.  The scope
   extends to the end of the //LetExpression//, the end of the
   //FunctionExpression//, or to the matching right square bracket of
   the array comprehension.
@@ -164,104 +226,87 @@ those scopes:
   
 </UL>
 
-<P> As a rule it is not legal to introduce the same name in the same
-scope more than once.  (Note in particular that top-level bindings in
-a function are bound in the same scope as the function's parameters
-and its ''arguments'' object.)
+<P> As a rule it is not legal to introduce a particular name in a
+particular scope more than once.  (Note that top-level bindings in a
+function are bound in the same scope as the function's parameters and
+its implicit ''arguments'' parameter.)
 
 <P> However, in "strict" code more than one ''var'' (or ''let'')
-binding can introduce the same name in the same global, function, or
-block scope, provided the two bindings have the same type annotation
-(or no annotation at all).  The binding keyword used to bind the name
-must be the same in all the binding forms that introduce the name.
-(Parameters and the ''arguments'' object are assumed to be bound by
-some system-internal binding form, not ''var'', and duplicate
+binding can introduce a particular name in a particular global,
+function, or block scope, provided the two bindings have the same type
+annotation (or no annotation at all).  The binding keyword used to
+bind the name must be the same in all the binding forms that introduce
+the name.  (Parameters and the ''arguments'' object are assumed to be
+bound by some system-internal binding form, not ''var'', and duplicate
 parameter names are not allowed.)
 
-<P> Additionally, in "standard" mode the following are also allowed
-(in order to be compatible with ES3):
+<P> Additionally, in "standard" mode the following are allowed (in
+order to preserve compatibility with the 3rd Edition):
 
 <UL>
 
   <LI> Parameter bindings and the ''arguments'' binding are assumed to
   be bound as if by ''var'', so duplicate parameter names are allowed,
   as are ''var'' bindings in a function body that bind names that are
-  also bound as parameters.
+  also bound as parameters.  Again, annotations must be the same in
+  all bindings of a particular name.
 
   <LI> Multiple ''var'' and ''function'' forms may bind the same name,
   provided the bindings are all unannotated.
   
 </UL>
 
-=== Note on shadowing ===
+=== Notes on derived forms ===
 
-<P> "use namespace" controls the shadowing, to an extent.  A shadowed
-identifier in a base class may sometimes be made visible in a subclass
-by means of a //SuperExpression//.
+<P> It's probably useful to note (somewhere) the following rewrites.
 
-=== Source-to-source transformations ===
+==== Let blocks ====
 
-<P> It's probably useful to note the following rewrites:
+<P> Note the double block here that serves to allow the same name on
+the lhs and rhs of the = sign, but with two different meanings.
+
 
 {{{
     let (a=b, c=d) {
         ...
     }
-}}}
 
-becomes
-
-{{{
-    {
+=>  {
         let T1 = b, T2 = d
         {
             let a = T1, b = T2
-            {
-                ...
-            }
+            ...
         }
     }
 }}}
 
-<P> While this:
+==== Binding for statements ====
 
 {{{
     for ( let i=j ; i < n ; i++ )
         ...
-}}}
 
-becomes this:
-
-{{{
-    let (T=j) {
+=>  let (T=j) {
         let i;
         for ( i=T ; i < n ; i++ )
             ...
     }
 }}}
 
-<P> And this:
+==== Named function expressions ====
 
 {{{
     var x = function f() { ... }
+
+=>  var x = let (f = function() { ...}) f
 }}}
 
-becomes this:
-
-{{{
-    var x = let (f = function() { ...}) f
-}}}
-
-<P> Finally, an array comprehension that binds names:
+==== Array comprehensions ====
 
 {{{
     [i*j+k for (i in ...) for (j in ...) let (k = ...)]
-}}}
 
-becomes:
-
-{{{
-    (function () {
+=>  (function () {
         let i, j, k;
         let T = []
         for (i in ...) {
@@ -279,6 +324,65 @@ clauses, this makes a difference if the array initializer expression
 captures them.  I suspect that's probably a bug, but it's how Brendan
 explained it.
 
+==== Type-discriminating catch handlers ====
+
+{{{
+    try { ... }
+    catch (n1:T1) { ...n1... }
+    catch (n2:T2) { ...n2... }
+    catch { ... }
+
+=>  try { ... }
+    catch (TMP) {
+        switch type (TMP) {
+        case (n1:T1) { ...n1... }
+        case (n2:T2) { ...n2... }
+        case (_:*) { ... }
+        }
+    }
+}}}
+
+==== Switch type ====
+
+{{{
+    switch type (x) {
+    case (e1:T1) { ...e1... }
+    case (e2:T2) { ...e2... }
+    }
+
+=>  let (TMP=x) {
+        if (x is T1) { ...e1... }
+        else if (x is T2) { ...e2... }
+    }
+}}}
+
+==== Switch with local bindings ====
+
+<P > A switch statement's dependent block is not a block statement but
+a grouping construct, so the introduction of a binding inside the
+switch statement can be modelled by lifting them into a generated,
+surrounding block scope:
+
+{{{
+    switch (x) {
+    ...
+    let i = v
+    function f() ...
+    ...
+    }
+
+=>  {
+        let i;
+        function f() ...
+
+        switch (x) {
+        ...
+        i = v
+        ...
+        }
+    }
+}}}
+
 
 == Forward definitions ==
 
@@ -289,7 +393,7 @@ would have to be introduced in the class body anyway it has no(?)
 utility.)
 
 {{{
-    ns [dynamic] [final] class Cls.&lt;T,...&gt;
+    ns class Cls.&lt;T,...&gt;
     ns interface Iface.&lt;T,...&gt;
     ns type T.&lt;T,...&gt;
 }}}
@@ -303,46 +407,69 @@ needs to work.  I haven't yet looked at the reference implementation.
 <UL>
   <LI> All names introduced in the scope are defined in the scope.
   Names that would replace existing forward-declared bindings are
-  ignored (provided that ...).  Names that would replace existing reserved
-  names cause errors to be signalled (obviously only the first such
-  name can be detected).
+  ignored.  Names that would replace existing reserved names cause
+  errors to be signalled.
 
   <LI> Namespace definitions are evaluated in an order such that there
   are no forward references during evaluation.  Circularities cause
   syntax errors.
 
-  <LI> Type definitions are evaluated in an order such that there are
-  no forward references during type expression evaluation.
-  Forward-declared types are initialized with placeholder type objects
-  at the outset.  If a type definition names a forward-declared type
-  name then the definition must match the particulars of the forward
-  declaration (type parameters).  If a forward declaration names an
-  existing forward declaration or an actual definition then the
-  forward declaration must match the particulars of the existing name.
+  <LI> Type definitions, interface definitions, and class definitions
+  are evaluated //in that order//, under the following rules.
 
-  <LI> Interface definitions are evaluated in an order such that there
-  are no forward references during interface definition.
-  Forward-declared interfaces are initialized with placeholder
-  interface objects.  If an interface definition names a forward
-  declared binding then there must be a match.  etc.
+  <UL>
+     <LI> Evaluation of the phrases in a group (types, interfaces,
+     classes) takes place in an order such that there are no forward
+     references during evaluation of the entity being evaluated.
 
-  <LI> Class definitions are evaluated in an order that etc.  Note
-  that this does not require the base classes to be available, nor
-  does it require types referenced from the class body to be
-  available, but everything that's not available must be present as a
-  forward definition.
+     <NOTE> Every name referenced in the type expression, interface
+     body, or class body must be available at least in the form of a
+     forward definition at this point.  Note that evaluating a class
+     definition does not cause any program code to be run.
+
+     <LI> Circularities in the inheritance hierarchy or among type
+     definitions cause syntax errors.
+
+     <LI> Forward-declared entities are initialized with placeholder 
+     objects at the outset.
+
+     <LI> If a definition names a forward-declared name then the 
+     definition must match the particulars of the forward declaration 
+     (correct kind of definition; correct number of type parameters).
+
+     <LI> If a forward declaration names an existing forward declaration 
+     or an existing actual definition then the forward declaration
+     must match the particulars of the existing definition.
+
+  </UL>
 
   <LI> Functions are installed in function bindings, in file
-  definition order.
+  definition order (per ES3)
 
-  <LI> Variables not also named by functions are given undefined
-  values (per ES3)
+  <LI> Variables not also naming functions are given undefined values
+  (per ES3)
 
   <LI> The code in the scope, if any, is run in file definition order.
-  This includes running static class initializers are run in file
-  definition order.  When the class initializers are run, all the
-  types referenced by static parts of the class must be fully
-  available: all forward references must be resolved.
+  This includes running static class initializers for
+  non-parameterized classes.
+
+  <P > When any statement with a type annotation is evaluated, all the
+  types referenced as annotations must be fully available.  (This
+  includes code in static initializers of a class.)
+
+  <NOTE> This means that it's not possible to use forward-declared
+  types for annotations except in function bodies and instance bodies.
+  It's not clear to me that alternatives make sense, except //maybe//
+  where (a) a forward-declared type annotates a variable without an
+  initializer or (b) a forward-declared type is used in a top-level
+  function signature.  How to implement that?  Don't know yet.  Maybe
+  the trick is that the type is "forced" to be ground when a value is
+  stored in the property or the function is being called or the
+  function's type is being checked, but this can really bite the
+  programmer if the implementation is smart and removes run-time type
+  checks -- errors may be signalled earlier on some implementations
+  than others, therefore programs behave differently on different
+  implementations.
 
   <LI> When the (dynamically) first instance of a class is created
   sometime later the instance template is initialized.  At that point,
@@ -355,65 +482,6 @@ needs to work.  I haven't yet looked at the reference implementation.
 multiple times, once for each first instantiation of the class.
 Instantiations must be hash-consed; ''Cls.&lt;double&gt;'' denotes the
 same class everywhere and the static initializer is only run once.
-
-
-== NamespaceDefinition ==
-
-<P> A //NamespaceDefinition// introduces an immutable, initialized
-binding for a (possibly qualified) name into the appropriate scope.
-
-<P> (To be replaced by the ASTs eventually.)
-
-<pre>
-    ns namespace N1
-    ns namespace N2 = N1
-    ns namespace N3 = "org.ecmascript.es4"
-</pre>
-
-<P> The value of the new binding is a ''Namespace'' object.
-
-<P> If the //NamespaceDefinition// has an initialization clause whose
-value is a //PrimaryName// then that name must resolve to a namespace
-value at compile time, and the value of the new binding is the same
-(in terms of ''==='') as the value of the initialization clause.
-
-<FIXME> For compile-time resolution of namespaces and types, see
-chapter 666.
-
-
-== TypeDefinition ==
-
-<P> A //TypeDefinition// introduces an immutable, initialized binding
-for a (possibly qualified) name into the appropriate scope.
-
-<pre>
-    ns type T = TypeExpression
-    ns type T.&lt;T1,...&gt; = TypeExpression
-</pre>
-
-<P> The //TypeExpression// is evaluated in the scope of the type
-definition.
-
-<P> The //TypeExpression// must be a compile-time resolvable type
-expression, possibly after substituting (?) the type parameters //T1//
-in //TypeExpression//.
-
-<FIXME> Substitution almost certainly not what we're looking for here.
-Presumably the chapter on types will have the right notions here.
-
-<P> The value of the new binding is an object implementing the
-''reflect::Type'' interface and one of its subinterfaces.  For
-example, a type object representing a uniont type implements the
-''reflect::UnionType'' interface.
-
-<P> If the //TypeExpression// is a //PrimaryName// then the value of
-the new binding is the same (in terms of ''==='') as the value of the
-//TypeExpression//.
-
-<FIXME> In fact, all types are normalized in some sense, so more types
-than that are equal and that fact needs to be reflected here.
-Presumably that also goes for resolved parameterzed types, but what
-about unresolved parameterized types?
 
 
 == VariableDefinition ==
@@ -435,19 +503,236 @@ been initialized then a **ReferenceError** is thrown.
 <P> A ''const'' bound variable can be written at most once.  A
 subsequent write causes a **ReferenceError** to be thrown.
 
-<FIXME> It is probably a language bug -- resulting from the old
-thinking about ''let'' scope as different from ''var'' scope -- that
-''let'' can't be used to introduce names in class static and class
-instance scopes, since the read barrier check might be valuable there.
-
 
 == FunctionDefinition ==
 
 <P> We have the ''function'' and ''const function'' forms.
 
 
-== ClassDefinition ==
+== NamespaceDefinition ==
+
+<P> A //NamespaceDefinition// introduces an immutable, initialized
+binding for a (possibly qualified) name into the global or class
+static scope.
+
+<P> (The below is to be replaced by the ASTs eventually.)
+
+<pre>
+    ns namespace N1
+    ns namespace N2 = N1
+    ns namespace N3 = "org.ecmascript.es4"
+</pre>
+
+<P> The value of the new binding is a ''Namespace'' object.
+
+<P> If the //NamespaceDefinition// has an initialization clause whose
+value is a //PrimaryName// then that name must resolve to a namespace
+value at compile time, and the value of the new binding is the same
+(in terms of ''==='') as the value of the initialization clause.
+
+<FIXME> For compile-time resolution of namespaces and types, see
+chapter 666.
+
+
+== TypeDefinition ==
+
+<P> A //TypeDefinition// introduces an immutable, initialized binding
+for a (possibly qualified) name into the global or class static scope.
+
+<pre>
+    ns type T = TypeExpression
+    ns type T.&lt;T1,...&gt; = TypeExpression
+</pre>
+
+<P> The //TypeExpression// is evaluated in the surrounding scope of
+the type definition extended by the type parameters T1 and so on.
+
+<FIXME> What does it mean to evaluate with and without parameters?
+What about forward definitions?
+
+<P> The //TypeExpression// must be a compile-time resolvable type
+expression, possibly after substituting (?) the type parameters //T1//
+in //TypeExpression//.
+
+<FIXME> Substitution certainly not what we're looking for here.
+Presumably the chapter on types will have the right notions here.
+
+<P> The value of the new binding is an object implementing the
+''reflect::Type'' interface and one of its subinterfaces.  For
+example, a type object representing a union type implements the
+''reflect::UnionType'' interface.
+
+<P> If the //TypeExpression// is a //PrimaryName// then the value of
+the new binding is the same (in terms of ''==='') as the value of the
+//TypeExpression//.
+
+<FIXME> In fact, all types are normalized in some sense, so more types
+than that are equal and that fact needs to be reflected here.
+Presumably that also goes for resolved parameterzed types, but what
+about unresolved parameterized types?
+
+
+== TypeDeclaration ==
+
+<P> A //TypeDeclaration// introduces an immutable, initialized
+binding for a (possibly) qualified name into the global scope.
+
+<P> The value of the new binding is an object that represents a
+placeholder value for a future //TypeDefinition//.
+
+<P> If there is already a binding for the name in the global scope,
+and that binding was introduced by a //TypeDefinition// that is
+compatible with this //TypeDeclaration//, then neither a new binding
+nor a new value are introduced.  In this case, the //TypeDefinition//
+has no effect at all.
+
+<pre>
+ns "type" T [.&lt;T1 "," ...&gt;] ";"
+</pre>
 
 
 == InterfaceDefinition ==
 
+<P> An //InterfaceDefinition// introduces an immutable, initialized
+binding for a (possibly qualified) name into the global scope.
+
+<P> The binding names a type and it can be used in type annotations
+and type expressions, where it matches instances of classes that
+implement the interface.
+
+<P> The value of the new binding is an //interface value//: an object
+implementing the ''reflect::Type'' interface as well as the
+''reflect::InterfaceType'' interface.
+
+<P> If there is already a binding for the name in the global scope,
+and that binding was introduced by an //InterfaceDeclaration// that is
+compatible with this //InterfaceDefinition//, then neither a new
+binding nor a new value are introduced but the //InterfaceDefinition//
+is used to complete the placeholder object introduced by the
+//InterfaceDefinition// and thereby turn it into an interface value.
+
+<P> Non-normative synopsis (will be replaced by ASTs eventually):
+
+<pre>
+ns "interface" I [.&lt;T1 "," ...&gt;] ["extends" I1 "," ...] {
+     FunctionDeclaration *
+}
+</pre>
+
+<P> If the definition of interface //I// has an ''extends'' clause
+then the clause must name one or more interfaces.  The interfaces
+//I1// and so on are the //superinterfaces// of //I//.  If there is no
+''extends'' clause then //I// has no superinterfaces.
+
+<P> If //I// appears (directly or indirectly) as one of its own
+superinterfaces then a **TypeError** is thrown.  
+
+<NOTE> For Ch 16: An implementation can detect this error at compile
+time and throw a **SyntaxError**.
+
+<P> //InterfaceDefinition// compatibility with //InterfaceDeclaration// ...
+
+<P> Type parameters ...
+
+<P> //FunctionDeclaration//  ...
+
+
+== InterfaceDeclaration ==
+
+<P> An //InterfaceDeclaration// introduces an immutable, initialized
+binding for a (possibly) qualified name into the global scope.
+
+<P> The value of the new binding is an object that represents a
+placeholder value for a future //InterfaceDefinition//.
+
+<P> If there is already a binding for the name in the global scope,
+and that binding was introduced by an //InterfaceDefinition// that is
+compatible with this //InterfaceDeclaration//, then neither a new
+binding nor a new value are introduced.  In this case, the
+//InterfaceDefinition// has no effect at all.
+
+<pre>
+ns "interface" I [.&lt;T1 "," ...&gt;] ";"
+</pre>
+
+
+== ClassDefinition ==
+
+<P> A //ClassDefinition// introduces an immutable, initialized binding
+for a (possibly qualified) name into the global scope.
+
+<P> The binding names a type and it can be used in type annotations
+and type expressions, where it matches instances of the class.
+
+<P> The value of the new binding is an object implementing the
+''reflect::Type'' interface as well as the ''reflect::ClassType''
+interface.
+
+<P> Non-normative synopsis (will be replaced by ASTs eventually):
+
+<pre>
+ns ["final"]["dynamic"] "class" C [.&lt;T1 "," ...&gt;] ["extends" B] ["implements" I1 "," ...] {
+   ( VariableDefinition |
+     FunctionDefinition |
+     "static" NamespaceDefinition |
+     "static" TypeDefinition |
+     StaticInitializer ) *
+}
+</pre>
+
+<P> If the definition of class //C// has an ''extends'' clause then
+that clause must name some other class //B//.  The class //B// is said
+to be the //superclass// of //C//.  If there is no ''extends'' clause
+then the superclass of //C// is the pre-defined class
+''public::Object''.  
+
+<P> If //B// does not name a class then a **SyntaxError** is thrown at
+definition time.
+
+<P> If //C// appears (directly or indirectly) as its own superclass
+then a **TypeError** is thrown.
+
+<NOTE> For Ch 16: An implementation can detect this error at compile
+time and throw a **SyntaxError**.
+
+<P> If the definition of class //C// has an ''implements'' clause then
+the clause must name one or more interfaces.  These are the
+//superinterfaces// of //C//.
+
+<P> If one of the names in the interface list does not reference an
+interface then a **SyntaxError** is thrown at definition time.
+
+<P> Constraints on inheritance: no duplicate names; method overrides.
+
+<P> Namespaces: private, protected.
+
+<P> If a class //C// is designated "final" then there can be no class
+that names //C// as its superclass.
+
+<P> If a class //C// is designated "dynamic" then new properties may
+be added to instances of the class at run-time.
+
+<P> Type parameters.
+
+<P> Constructor.
+
+<P> Prototype object, "__proto__" attribute.
+
+
+== ClassDeclaration ==
+
+<P> A //ClassDeclaration// introduces an immutable, initialized
+binding for a (possibly) qualified name into the global scope.
+
+<P> The value of the new binding is an object that represents a
+placeholder value for a future //ClassDefinition//.
+
+<P> If there is already a binding for the name in the global scope,
+and that binding was introduced by a //ClassDefinition// that is
+compatible with this //ClassDeclaration//, then neither a new binding
+nor a new value are introduced.  In this case, the //ClassDefinition//
+has no effect at all.
+
+<pre>
+ns "class" C [.&lt;T1 "," ...&gt;] ";"
+</pre>

@@ -47,7 +47,8 @@ fun ppRep rep =
     let val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=80}
         val stream = PP.openStream dev
     in
-        (ppSmlDataRep stream rep;
+        (PP.flushStream stream;
+	 ppSmlDataRep stream rep;
          TextIO.print "\n";
          PP.flushStream stream)
         handle Fail s =>
