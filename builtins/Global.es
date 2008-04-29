@@ -139,7 +139,7 @@
     iterator const function DEFAULT_GET(start: Object!, deep: boolean): iterator::Iterator // FIXME: .<string>
         new iterator::Enumerator(start,
                                  function (id: EnumerableId, obj: Object!): string
-                                     (id is Name) ? id.identifier : string(id),
+                                     (id is Name) ? id : string(id), // FIXME: id.identifier
                                  deep)
 
     iterator type Iterable = { // FIXME: .<T>

@@ -129,6 +129,8 @@ val intrinsic_decodeURIComponent = intrinsic Ustring.decodeURIComponent_
 val intrinsic_encodeURI = intrinsic Ustring.encodeURI_
 val intrinsic_encodeURIComponent = intrinsic Ustring.encodeURIComponent_
 
+val public_next = public Ustring.next_
+
 val public_NaN = public Ustring.NaN_
 val public_Infinity = public Ustring.Infinity_
 val public_undefined = public Ustring.undefined_

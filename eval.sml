@@ -1462,12 +1462,14 @@ and newFunctionFromClosure (regs:Mach.REGS)
                           regs
                           funClass funClassClosure [] tag
                     | _ => error regs ["function class lacks class magic"]
+        val Mach.Obj { props=newProtoProps, ... } = newProtoObj
 
 
     in
         Mach.setMagic obj (SOME (Mach.Function closure));
 	setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj Name.public_constructor (Mach.Object obj) false;
+        (* FIXME: Mach.setPropDontEnum newProtoProps Name.public_constructor true; ? *)
         Mach.Object obj
     end
 
@@ -1491,14 +1493,23 @@ and newNativeFunction (regs:Mach.REGS)
 	Mach.Object obj
     end
 
+and getIteratorNamespace (regs:Mach.REGS)
+    : Ast.NAMESPACE =
+    needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
+
 and getStopIteration (regs:Mach.REGS) =
+    getValue regs (#global regs) { id = Ustring.StopIteration_,
+                                   ns = getIteratorNamespace regs }
+
+and isStopIteration (regs:Mach.REGS)
+                    (v:Mach.VAL)
+    : bool =
     let
-        fun getIteratorNamespace ()
-            : Ast.NAMESPACE =
-            needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
-        val name = { id = Ustring.StopIteration_, ns = getIteratorNamespace () }
+        val stopIteration = needObj regs (getStopIteration regs)
     in
-        getValue regs (#global regs) name
+        case v of
+            Mach.Object obj => (getObjId obj) = (getObjId stopIteration)
+          | _ => false
     end
 
 and newGen (execBody:unit -> Mach.VAL)
@@ -5261,10 +5272,12 @@ and initClassPrototype (regs:Mach.REGS)
 		setPrototype regs obj (Mach.Object newPrototype);
 		if setConstructor
 		then 
-		    setValueOrVirtual regs newPrototype 
+		    (setValueOrVirtual regs newPrototype 
 				      Name.public_constructor 
 				      (Mach.Object obj) 
-				      false
+				      false;
+		     (* FIXME: Mach.setPropDontEnum props Name.public_constructor true; ? *)
+		     ())
 		else 
 		    ();
 		trace ["finished initialising class prototype"]
@@ -5590,7 +5603,6 @@ and evalSwitchTypeStmt (regs:Mach.REGS)
                                     TODO isEach
  *)
 
-(* FIXME: this goes away when we can just call iterator::GET *)
 and evalIterable (regs:Mach.REGS)
                  (obj:Ast.EXPRESSION)
     : Mach.OBJ =
@@ -5610,10 +5622,18 @@ and evalIterable (regs:Mach.REGS)
         finishWith v
     end
 
-(* FIXME: just call iterator::GET(iterable) *)
 and callIteratorGet (regs:Mach.REGS)
                     (iterable:Mach.OBJ)
     : Mach.OBJ =
+(*
+    let
+        val iteratorGET = { id = Ustring.GET_, ns = getIteratorNamespace regs }
+        val args = [Mach.Object iterable, newBoolean regs true]
+        val iterator = evalNamedMethodCall regs (#global regs) iteratorGET args
+    in
+        needObj regs iterator
+    end
+*)
     let
         val Mach.Obj { props, ... } = iterable
         val { bindings, ... } = !props
@@ -5638,10 +5658,15 @@ and callIteratorGet (regs:Mach.REGS)
         iterator
     end
 
-(* FIXME: just call iterator.next() *)
 and callIteratorNext (regs:Mach.REGS)
                      (iterator:Mach.OBJ)
     : Mach.VAL =
+(*
+    (evalNamedMethodCall regs iterator Name.public_next [])
+    handle e as ThrowException v => raise (if isStopIteration regs v
+                                           then StopIterationException
+                                           else e)
+*)
     let
         val lengthValue = getValue regs iterator Name.public_length
         val length      = toInt32 regs lengthValue
