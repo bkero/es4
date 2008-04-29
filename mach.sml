@@ -89,7 +89,7 @@ datatype VAL = Object of OBJ
 
      and VAL_TAG =
          ObjectTag of Ast.FIELD_TYPE list
-       | ArrayTag of Ast.TYPE_EXPR list
+       | ArrayTag of Ast.TYPE_EXPRESSION list
        | FunctionTag of Ast.FUNC_TYPE
        | ClassTag of Ast.INSTANCE_TYPE
        | NoTag (*
@@ -105,7 +105,7 @@ datatype VAL = Object of OBJ
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
           strCache: (OBJ StrMap.map) ref,
-          tyCache: (Ast.TYPE_EXPR IntMap.map) ref (* well, mostly objs *)
+          tyCache: (Ast.TYPE_EXPRESSION IntMap.map) ref (* well, mostly objs *)
          }
 
      and PROFILER =
@@ -160,7 +160,7 @@ datatype VAL = Object of OBJ
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
        | Function of FUN_CLOSURE
-       | Type of Ast.TYPE_EXPR
+       | Type of Ast.TYPE_EXPRESSION
        | NativeFunction of NATIVE_FUNCTION
        | Generator of GEN
 
@@ -281,16 +281,16 @@ withtype FUN_CLOSURE =
  * which phase of name lookup the name is found during.
  *)
 
-     and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
+     and TEMPS = (Ast.TYPE_EXPRESSION * TEMP_STATE) list ref
 
-     and PROP = { ty: Ast.TYPE_EXPR,
+     and PROP = { ty: Ast.TYPE_EXPRESSION,
                   state: PROP_STATE,
                   attrs: ATTRS }
 
      and PROP_BINDINGS = { max_seq: int,
 			               bindings: { seq: int,
 				                       prop: (* PROP *)
-				                                 { ty: Ast.TYPE_EXPR,   
+				                                 { ty: Ast.TYPE_EXPRESSION,   
 					                               state: PROP_STATE,
 					                               attrs: ATTRS } } NameMap.map } ref 
 			 
@@ -937,7 +937,7 @@ fun needFunction (v:VAL)
               error ["require function object"])
 
 fun needType (v:VAL)
-    : (Ast.TYPE_EXPR) =
+    : (Ast.TYPE_EXPRESSION) =
     case needMagic v of
         Type t => t
       | _ => (inspect v 1; 

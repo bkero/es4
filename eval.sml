@@ -56,8 +56,8 @@ fun error (regs:Mach.REGS)
 
 
 fun normalize (regs:Mach.REGS)
-              (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR = 
+              (ty:Ast.TYPE_EXPRESSION)
+    : Ast.TYPE_EXPRESSION = 
     let
         val { scope, prog, ... } = regs
         val ribs = Mach.getRibs scope
@@ -66,8 +66,8 @@ fun normalize (regs:Mach.REGS)
     end
 
 fun evalTy (regs:Mach.REGS)
-           (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR = normalize regs ty
+           (ty:Ast.TYPE_EXPRESSION)
+    : Ast.TYPE_EXPRESSION = normalize regs ty
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -575,7 +575,7 @@ and allocTemp (regs:Mach.REGS)
 
 
 and valAllocState (regs:Mach.REGS) 
-                  (ty:Ast.TYPE_EXPR)
+                  (ty:Ast.TYPE_EXPRESSION)
     : Mach.PROP_STATE =
     
     (* Every value fixture has a type, and every type has an
@@ -884,7 +884,7 @@ and getValue (regs:Mach.REGS)
 and newTypeOpFailure (regs:Mach.REGS)
                   (prefix:string)
                   (v:Mach.VAL)
-                  (tyExpr:Ast.TYPE_EXPR)
+                  (tyExpr:Ast.TYPE_EXPRESSION)
     : Mach.VAL =
     newTypeErr regs [prefix, ": val=", Mach.approx v,
                      " type=", LogErr.ty (typeOfVal regs v),
@@ -897,7 +897,7 @@ and newTypeOpFailure (regs:Mach.REGS)
     
 and checkAndConvert (regs:Mach.REGS)
                     (v:Mach.VAL)
-                    (ty:Ast.TYPE_EXPR)
+                    (ty:Ast.TYPE_EXPRESSION)
     : Mach.VAL =
     let
         val tyExpr = evalTy regs ty
@@ -906,7 +906,7 @@ and checkAndConvert (regs:Mach.REGS)
         then v
         else
             let
-                val (classType:Ast.TYPE_EXPR) =
+                val (classType:Ast.TYPE_EXPRESSION) =
                     case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
                         NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
@@ -2001,7 +2001,7 @@ and toUInt16 (regs:Mach.REGS)
 
 and typeCheck (regs:Mach.REGS)
               (v:Mach.VAL)
-              (tyExpr:Ast.TYPE_EXPR)
+              (tyExpr:Ast.TYPE_EXPRESSION)
     : Mach.VAL =
     if evalOperatorIs regs v tyExpr
     then v
@@ -2070,7 +2070,7 @@ fun evalExpression (env: ENV)
 *)
 
 and evalExpr (regs:Mach.REGS)
-             (expr:Ast.EXPR)
+             (expr:Ast.EXPRESSION)
     : Mach.VAL =
     case expr of
         Ast.LiteralExpr lit =>
@@ -2154,7 +2154,7 @@ fun evalGetExpr (env: ENV)
 *)
 
 and evalLexicalRefExpr (regs:Mach.REGS)
-                  (ident:Ast.IDENT_EXPR)
+                  (ident:Ast.IDENT_EXPRESSION)
                   (loc:Ast.LOC option) 
     : Mach.VAL =
     let
@@ -2168,8 +2168,8 @@ and evalLexicalRefExpr (regs:Mach.REGS)
 
 
 and evalObjectRefExpr (regs:Mach.REGS)
-                     (base:Ast.EXPR)
-                     (ident:Ast.IDENT_EXPR)
+                     (base:Ast.EXPRESSION)
+                     (ident:Ast.IDENT_EXPRESSION)
                      (loc:Ast.LOC option)
     : Mach.VAL =
     let
@@ -2241,7 +2241,7 @@ and arrayToList (regs:Mach.REGS)
     end
 
 and evalExprsAndSpliceSpreads (regs:Mach.REGS)
-                             (exprs:Ast.EXPR list)
+                             (exprs:Ast.EXPRESSION list)
     : (Mach.VAL list) = 
     let 
         (* 
@@ -2273,16 +2273,16 @@ and evalExprsAndSpliceSpreads (regs:Mach.REGS)
 (* SPEC
 
 fun evalCallExpr (env: ENV)
-                 (func: Ast.EXPR)
-                 (actuals: Ast.EXPR list)
+                 (func: Ast.EXPRESSION)
+                 (actuals: Ast.EXPRESSION list)
     : Mach.VALUE =
     (* FINISH ME *)
 
 *)
 
 and evalCallExpr (regs:Mach.REGS)
-                 (func:Ast.EXPR)
-                 (actuals:Ast.EXPR list)
+                 (func:Ast.EXPRESSION)
+                 (actuals:Ast.EXPRESSION list)
     : Mach.VAL = 
     let
         fun args _ = evalExprsAndSpliceSpreads regs actuals
@@ -2311,16 +2311,16 @@ and evalCallExpr (regs:Mach.REGS)
 (* SPEC
 
 fun evalNewExpr (env: ENV)
-                (func: Ast.EXPR)
-                (actuals: Ast.EXPR list)
+                (func: Ast.EXPRESSION)
+                (actuals: Ast.EXPRESSION list)
     : Mach.VALUE =
     (* FINISH ME *)
 
 *)
 
 and evalNewExpr (regs:Mach.REGS)
-                (obj:Ast.EXPR)
-                (actuals:Ast.EXPR list)
+                (obj:Ast.EXPRESSION)
+                (actuals:Ast.EXPRESSION list)
     : Mach.VAL = 
     let
         fun args _ = evalExprsAndSpliceSpreads regs actuals
@@ -2396,7 +2396,7 @@ and evalInitExpr (regs:Mach.REGS)
 
 and evalSuperCall (regs:Mach.REGS)
                   (base:Mach.OBJ)
-                  (ident:Ast.IDENT_EXPR)
+                  (ident:Ast.IDENT_EXPRESSION)
                   (args:Mach.VAL list)
     : Mach.VAL = 
     let 
@@ -2473,9 +2473,9 @@ and evalSuperCall (regs:Mach.REGS)
 
 
 and applyTypes (regs:Mach.REGS)
-               (base:Ast.TYPE_EXPR)
-               (args:Ast.TYPE_EXPR list)
-    : Ast.TYPE_EXPR = 
+               (base:Ast.TYPE_EXPRESSION)
+               (args:Ast.TYPE_EXPRESSION list)
+    : Ast.TYPE_EXPRESSION = 
     let
         val fullTy = 
             case args of 
@@ -2488,8 +2488,8 @@ and applyTypes (regs:Mach.REGS)
 
 and instanceType (regs:Mach.REGS)
                  (name:Ast.NAME)
-                 (args:Ast.TYPE_EXPR list)
-    : Ast.TYPE_EXPR = 
+                 (args:Ast.TYPE_EXPRESSION list)
+    : Ast.TYPE_EXPRESSION = 
     let
         val instanceTy = Type.instanceTy (#prog regs) name
     in
@@ -2519,7 +2519,7 @@ and traceScope (s:Mach.SCOPE)
 
 and bindTypes (regs:Mach.REGS)
               (typeParams:Ast.IDENT list)
-              (typeArgs:Ast.TYPE_EXPR list)
+              (typeArgs:Ast.TYPE_EXPRESSION list)
               (env:Mach.SCOPE)
     : Mach.SCOPE = 
     let 
@@ -2539,7 +2539,7 @@ and bindTypes (regs:Mach.REGS)
         env
     end
 
-(* Types of various kinds are have a dual representation: both as TYPE_EXPRs
+(* Types of various kinds are have a dual representation: both as TYPE_EXPRESSIONs
  * and as a magic within Mach.VAL, such as a CLS_CLOSURE.
  * Really would love to unify these two representations,
  * which might enable nice downstream simplifications. - cf
@@ -2547,7 +2547,7 @@ and bindTypes (regs:Mach.REGS)
 
 and applyTypesToClass (regs:Mach.REGS)
                       (classVal:Mach.VAL)
-                      (typeArgs:Ast.TYPE_EXPR list)
+                      (typeArgs:Ast.TYPE_EXPRESSION list)
     : Mach.VAL = 
     let
         val clsClosure = Mach.needClass classVal
@@ -2590,7 +2590,7 @@ and applyTypesToClass (regs:Mach.REGS)
 
 and applyTypesToInterface (regs:Mach.REGS)
                           (interfaceVal:Mach.VAL)
-                          (typeArgs:Ast.TYPE_EXPR list)
+                          (typeArgs:Ast.TYPE_EXPRESSION list)
     : Mach.VAL = 
     let
         val ifaceClosure = Mach.needInterface interfaceVal
@@ -2618,7 +2618,7 @@ and applyTypesToInterface (regs:Mach.REGS)
 
 and applyTypesToFunction (regs:Mach.REGS)
                          (functionVal:Mach.VAL)
-                         (typeArgs:Ast.TYPE_EXPR list)
+                         (typeArgs:Ast.TYPE_EXPRESSION list)
     : Mach.VAL = 
     let
         val funClosure = Mach.needFunction functionVal
@@ -2654,7 +2654,7 @@ and instanceTypeRepresentative (regs:Mach.REGS)
                                (ity:Ast.INSTANCE_TYPE)
                                (applier:Mach.REGS 
                                         -> Mach.VAL 
-                                        -> Ast.TYPE_EXPR list 
+                                        -> Ast.TYPE_EXPRESSION list 
                                         -> Mach.VAL)
     : Mach.OBJ = 
     let
@@ -2682,15 +2682,15 @@ and instanceInterface (regs:Mach.REGS)
 (* SPEC
 
 fun evalApplyTypeExpr (env: ENV)
-                      (expr: Ast.EXPR)
-                      (args: Ast.TYPE_EXPR list)
+                      (expr: Ast.EXPRESSION)
+                      (args: Ast.TYPE_EXPRESSION list)
     : Mach.VALUE =
 
 *)
 
 and evalApplyTypeExpr (regs:Mach.REGS)
-                      (expr:Ast.EXPR)
-                      (args:Ast.TYPE_EXPR list)
+                      (expr:Ast.EXPRESSION)
+                      (args:Ast.TYPE_EXPRESSION list)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
@@ -2712,7 +2712,7 @@ and evalApplyTypeExpr (regs:Mach.REGS)
 
 
 and evalYieldExpr (regs:Mach.REGS)
-                  (expr:Ast.EXPR option)
+                  (expr:Ast.EXPRESSION option)
     : Mach.VAL =
     let
         val { thisGen, ... } = regs
@@ -2737,15 +2737,15 @@ and evalYieldExpr (regs:Mach.REGS)
 
 fun evalArrayInitialiser (env: ENV)
                          (elements: Mach.VALUE list)
-                         (typeExpr: Ast.TYPE_EXPRESSION)
+                         (typeExpr: Ast.TYPE_EXPRESSIONESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
 *)
 
 and evalLiteralArrayExpr (regs:Mach.REGS)
-                         (exprs:Ast.EXPR list)
-                         (ty:Ast.TYPE_EXPR option)
+                         (exprs:Ast.EXPRESSION list)
+                         (ty:Ast.TYPE_EXPRESSION option)
     : Mach.VAL =
     let
         val vals = evalExprsAndSpliceSpreads regs exprs
@@ -2753,7 +2753,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                           NONE => [Ast.SpecialType Ast.Any]
                         | SOME (Ast.ArrayType tys) => tys
                         (* FIXME: hoist this to parsing or defn; don't use
-                         * a full TYPE_EXPR in LiteralArray. *)
+                         * a full TYPE_EXPRESSION in LiteralArray. *)
                         | SOME _ => error regs ["non-array type on array literal"]
         val tag = Mach.ArrayTag tyExprs
         val arrayClass = needObj regs (getValue regs (#global regs) Name.public_Array)
@@ -2792,14 +2792,14 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
 (*
 fun evalObjectInitialiser (env: ENV)
                           (fields: Ast.FIELD list)
-                          (typeExpr: Ast.TYPE_EXPRESSION)
+                          (typeExpr: Ast.TYPE_EXPRESSIONESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 *)
 
 and evalLiteralObjectExpr (regs:Mach.REGS)
                           (fields:Ast.FIELD list)
-                          (ty:Ast.TYPE_EXPR option)
+                          (ty:Ast.TYPE_EXPRESSION option)
     : Mach.VAL =
     let
         fun searchFieldTypes n [] = Ast.SpecialType Ast.Any
@@ -2811,7 +2811,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                           NONE => []
                         | SOME (Ast.ObjectType tys) => tys
                         (* FIXME: hoist this to parsing or defn; don't use
-                         * a full TYPE_EXPR in LiteralObject. *)
+                         * a full TYPE_EXPRESSION in LiteralObject. *)
                         | SOME _ => error regs ["non-object type on object literal"]
         val tag = Mach.ObjectTag tyExprs
         val objectClass = needObj regs (getValue regs (#global regs) Name.public_Object)
@@ -2936,7 +2936,7 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralRegExp re => evalLiteralRegExp regs (#str re)
 
 and evalListExpr (regs:Mach.REGS)
-                 (es:Ast.EXPR list)
+                 (es:Ast.EXPRESSION list)
     : Mach.VAL =
     case es of
         [] => Mach.Undef
@@ -2987,7 +2987,7 @@ and evalNewObj (regs:Mach.REGS)
 
 
 and evalCallMethodByExpr (regs:Mach.REGS)
-                         (func:Ast.EXPR)
+                         (func:Ast.EXPRESSION)
                          (args:Mach.VAL list)
     : Mach.VAL =
     let
@@ -3081,8 +3081,8 @@ and evalCallByObj (regs:Mach.REGS)
 
 fun evalSetExpr (env: ENV)
                 (assignOp: Ast.ASSIGNOP)
-                (leftSide: Ast.EXPR)
-                (rightSide: Ast.EXPR)
+                (leftSide: Ast.EXPRESSION)
+                (rightSide: Ast.EXPRESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
@@ -3090,8 +3090,8 @@ fun evalSetExpr (env: ENV)
 
 and evalSetExpr (regs:Mach.REGS)
                 (aop:Ast.ASSIGNOP)
-                (lhs:Ast.EXPR)
-                (rhs:Ast.EXPR)
+                (lhs:Ast.EXPRESSION)
+                (rhs:Ast.EXPRESSION)
     : Mach.VAL =
     let
         val _ = trace ["evalSetExpr"]
@@ -3160,7 +3160,7 @@ and numberOfSimilarType (regs:Mach.REGS)
 and evalCrement (regs:Mach.REGS)
                 (bop:Ast.BINOP)
                 (pre:bool)
-                (expr:Ast.EXPR)
+                (expr:Ast.EXPRESSION)
     : Mach.VAL = 
     let
         val (_, (obj, name)) = evalRefExpr regs expr false
@@ -3176,7 +3176,7 @@ and evalCrement (regs:Mach.REGS)
     end        
         
 and evalDeleteOp (regs: Mach.REGS)
-                 (expr: Ast.EXPR)
+                 (expr: Ast.EXPRESSION)
     : Mach.VAL =
     let
         val (_, (Mach.Obj {props, ...}, name)) = evalRefExpr regs expr true
@@ -3190,7 +3190,7 @@ and evalDeleteOp (regs: Mach.REGS)
 
 fun evalUnaryExpr (env: ENV)
                   (unaryOp: Ast.ASSIGNOP)
-                  (expr: Ast.EXPR)
+                  (expr: Ast.EXPRESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
@@ -3199,7 +3199,7 @@ fun evalUnaryExpr (env: ENV)
 
 and evalUnaryOp (regs:Mach.REGS)
                 (unop:Ast.UNOP)
-                (expr:Ast.EXPR)
+                (expr:Ast.EXPRESSION)
     : Mach.VAL =
     let
     in
@@ -3296,7 +3296,7 @@ and evalUnaryOp (regs:Mach.REGS)
 (* SPEC
 
 fun evalYieldExpr (env: ENV)
-                  (expr: Ast.EXPR)
+                  (expr: Ast.EXPRESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
@@ -3304,7 +3304,7 @@ fun evalYieldExpr (env: ENV)
 
 
 and evalTypeExpr (regs:Mach.REGS)
-                 (te:Ast.TYPE_EXPR)
+                 (te:Ast.TYPE_EXPRESSION)
     : Mach.VAL =
     case te of
         Ast.SpecialType st => Mach.Null (* FIXME *)
@@ -3667,14 +3667,14 @@ and doubleEquals (regs:Mach.REGS)
 
 
 and typeOfTag (tag:Mach.VAL_TAG)
-    : (Ast.TYPE_EXPR) =
+    : (Ast.TYPE_EXPRESSION) =
     case tag of
         (* 
          * FIXME: Class and Object should be pulling their 
          * ty from their magic closures, not their tags.
          * 
          * Possibly the tags should not carry types at all? Or 
-         * should carry TYs rather than TYPE_EXPR subforms?
+         * should carry TYs rather than TYPE_EXPRESSION subforms?
          *)
         Mach.ClassTag ity => Ast.InstanceType ity
       | Mach.ObjectTag tys => Ast.ObjectType tys
@@ -3693,7 +3693,7 @@ and typeOfTag (tag:Mach.VAL_TAG)
                                 
 and typeOfVal (regs:Mach.REGS)
               (v:Mach.VAL)
-    : Ast.TYPE_EXPR =
+    : Ast.TYPE_EXPRESSION =
     let
         val te = case v of
                      Mach.Undef => Ast.SpecialType Ast.Undefined
@@ -3710,8 +3710,8 @@ and typeOfVal (regs:Mach.REGS)
 
 
 and evalLogicalAnd (regs:Mach.REGS)
-                   (aexpr:Ast.EXPR)
-                   (bexpr:Ast.EXPR)
+                   (aexpr:Ast.EXPRESSION)
+                   (bexpr:Ast.EXPRESSION)
     : Mach.VAL = 
     let
         val a = evalExpr regs aexpr
@@ -3723,8 +3723,8 @@ and evalLogicalAnd (regs:Mach.REGS)
 
 
 and evalLogicalOr (regs:Mach.REGS)
-                  (aexpr:Ast.EXPR)
-                  (bexpr:Ast.EXPR)
+                  (aexpr:Ast.EXPRESSION)
+                  (bexpr:Ast.EXPRESSION)
     : Mach.VAL = 
     let
         val a = evalExpr regs aexpr
@@ -3738,7 +3738,7 @@ and evalLogicalOr (regs:Mach.REGS)
 
 and evalOperatorIs (regs:Mach.REGS)
                    (v:Mach.VAL)
-                   (te:Ast.TYPE_EXPR)
+                   (te:Ast.TYPE_EXPRESSION)
     : bool = 
     let
         val vt = typeOfVal regs v 
@@ -3771,8 +3771,8 @@ and evalOperatorIs (regs:Mach.REGS)
 
 fun evalBinaryTypeExpr (env: ENV)
                        (binaryTypeOp: Ast.BINTYPEOP)
-                       (expr: Ast.EXPR)
-                       (typeExpr: Ast.TYPE_EXPR)
+                       (expr: Ast.EXPRESSION)
+                       (typeExpr: Ast.TYPE_EXPRESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
@@ -3780,8 +3780,8 @@ fun evalBinaryTypeExpr (env: ENV)
 
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
-                     (expr:Ast.EXPR)
-                     (ty:Ast.TYPE_EXPR)
+                     (expr:Ast.EXPRESSION)
+                     (ty:Ast.TYPE_EXPRESSION)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
@@ -3834,8 +3834,8 @@ and objHasInstance (regs:Mach.REGS)
 
 
 and evalInstanceOf (regs:Mach.REGS)
-                   (aexpr:Ast.EXPR)
-                   (bexpr:Ast.EXPR)
+                   (aexpr:Ast.EXPRESSION)
+                   (bexpr:Ast.EXPRESSION)
     : Mach.VAL = 
     let
         val a = evalExpr regs aexpr
@@ -3852,8 +3852,8 @@ and evalInstanceOf (regs:Mach.REGS)
 
 
 and evalOperatorIn (regs:Mach.REGS)
-                   (aexpr:Ast.EXPR)
-                   (bexpr:Ast.EXPR)
+                   (aexpr:Ast.EXPRESSION)
+                   (bexpr:Ast.EXPRESSION)
     : Mach.VAL = 
     let
         val a = evalExpr regs aexpr
@@ -3868,8 +3868,8 @@ and evalOperatorIn (regs:Mach.REGS)
 
 
 and evalOperatorComma (regs:Mach.REGS)
-                      (aexpr:Ast.EXPR)
-                      (bexpr:Ast.EXPR)
+                      (aexpr:Ast.EXPRESSION)
+                      (bexpr:Ast.EXPRESSION)
     : Mach.VAL = 
     (evalExpr regs aexpr;
      evalExpr regs bexpr)
@@ -3879,8 +3879,8 @@ and evalOperatorComma (regs:Mach.REGS)
 
 fun evalBinaryExpr (env: ENV)
                    (binaryOp: Ast.ASSIGNOP)
-                   (leftExpr: Ast.EXPR)
-                   (rightExpr: Ast.EXPR)
+                   (leftExpr: Ast.EXPRESSION)
+                   (rightExpr: Ast.EXPRESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
@@ -3889,8 +3889,8 @@ fun evalBinaryExpr (env: ENV)
 
 and evalBinaryOp (regs:Mach.REGS)
                  (bop:Ast.BINOP)
-                 (aexpr:Ast.EXPR)
-                 (bexpr:Ast.EXPR)
+                 (aexpr:Ast.EXPRESSION)
+                 (bexpr:Ast.EXPRESSION)
     : Mach.VAL =
     case bop of
         Ast.LogicalAnd => evalLogicalAnd regs aexpr bexpr
@@ -3905,9 +3905,9 @@ and evalBinaryOp (regs:Mach.REGS)
 (* SPEC
 
 fun evalConditionalExpr (env: ENV)
-                        (condExpr: Ast.EXPR)
-                        (thenExpr: Ast.EXPR)
-                        (elseExpr: Ast.EXPR)
+                        (condExpr: Ast.EXPRESSION)
+                        (thenExpr: Ast.EXPRESSION)
+                        (elseExpr: Ast.EXPRESSION)
     : Mach.VALUE =
     (* FINISH ME *)
 
@@ -3916,9 +3916,9 @@ fun evalConditionalExpr (env: ENV)
 
 
 and evalCondExpr (regs:Mach.REGS)
-                 (cond:Ast.EXPR)
-                 (thn:Ast.EXPR)
-                 (els:Ast.EXPR)
+                 (cond:Ast.EXPRESSION)
+                 (thn:Ast.EXPRESSION)
+                 (els:Ast.EXPRESSION)
     : Mach.VAL =
     let
         val v = evalExpr regs cond
@@ -3931,7 +3931,7 @@ and evalCondExpr (regs:Mach.REGS)
 
 
 and evalExprToNamespace (regs:Mach.REGS)
-                        (expr:Ast.EXPR)
+                        (expr:Ast.EXPRESSION)
     : Ast.NAMESPACE =
     (*
      * If we have a namespace property we can evaluate to an Ast.Namespace
@@ -3957,7 +3957,7 @@ and evalExprToNamespace (regs:Mach.REGS)
 
 
 and evalIdentExpr (regs:Mach.REGS)
-                  (r:Ast.IDENT_EXPR)
+                  (r:Ast.IDENT_EXPRESSION)
     : NAME_OR_MULTINAME =
     case r of
         Ast.Identifier { ident, openNamespaces, rootRib } =>
@@ -4003,7 +4003,7 @@ and evalIdentExpr (regs:Mach.REGS)
 (*
 
 fun evalLexicalRef (env: ENV)
-                   (identifier: Ast.IDENTIFIER_EXPRESSION)
+                   (identifier: Ast.IDENTIFIER_EXPRESSIONESSION)
                    (errIfNotFound: bool)
     : (OBJECT * NAME) =
     let
@@ -4015,7 +4015,7 @@ fun evalLexicalRef (env: ENV)
       | (SOME r, _) => r
     end
 
-fun getDefaultName (identifier: Ast.IDENTIFIER_EXPRESSION)
+fun getDefaultName (identifier: Ast.IDENTIFIER_EXPRESSIONESSION)
     : NAME =
     case identifier of
         QualifiedIdentifier {namespace, identifier} =>
@@ -4026,7 +4026,7 @@ fun getDefaultName (identifier: Ast.IDENTIFIER_EXPRESSION)
 
 
 and evalLexicalRef (regs:Mach.REGS)
-                   (expr:Ast.EXPR)
+                   (expr:Ast.EXPRESSION)
                    (errIfNotFound:bool)
     : REF =
     let
@@ -4060,7 +4060,7 @@ and evalLexicalRef (regs:Mach.REGS)
 
 fun evalObjectRef (env: ENV)
                   (baseExpr: EXPRESSION)
-                  (identifier: IDENTIFIER_EXPRESSION)
+                  (identifier: IDENTIFIER_EXPRESSIONESSION)
    : (OBJECT, NAME) =
    let
        val baseObject = evalExpr (env, baseExpr)
@@ -4074,7 +4074,7 @@ fun evalObjectRef (env: ENV)
 *)
 
 and evalObjectRef (regs:Mach.REGS)
-                  (expr:Ast.EXPR)
+                  (expr:Ast.EXPRESSION)
                   (errIfNotFound:bool)
     : (Mach.OBJ option * REF) =
     let
@@ -4138,7 +4138,7 @@ fun evalReference (env: ENV)
 *)
 
 and evalRefExpr (regs:Mach.REGS)
-                (expr:Ast.EXPR)
+                (expr:Ast.EXPRESSION)
                 (errIfNotFound:bool)
     : (Mach.OBJ option * REF) =
     let
@@ -4153,7 +4153,7 @@ and evalRefExpr (regs:Mach.REGS)
 
 fun evalLetExpr (env: ENV)
                 (head: Ast.HEAD)
-                (body: Ast.EXPR)
+                (body: Ast.EXPRESSION)
     : Mach.VAL =
     let
         val letRegs = evalHead env head
@@ -4165,7 +4165,7 @@ fun evalLetExpr (env: ENV)
 
 and evalLetExpr (regs:Mach.REGS)
                 (head:Ast.HEAD)
-                (body:Ast.EXPR)
+                (body:Ast.EXPRESSION)
     : Mach.VAL =
     let
         val letRegs = evalHead regs head
@@ -4221,7 +4221,7 @@ and labelMatch (stmtLabels:Ast.IDENT list)
 
 
 and evalStmts (regs:Mach.REGS)
-              (stmts:Ast.STMT list)
+              (stmts:Ast.STATEMENT list)
     : Mach.VAL =
     case stmts of
         [s] => evalStmt regs s
@@ -4279,7 +4279,7 @@ fun evalStatement (env: Mach.ENV)
 *)
 
 and evalStmt (regs:Mach.REGS)
-             (stmt:Ast.STMT)
+             (stmt:Ast.STATEMENT)
     : Mach.VAL =
     case stmt of
         Ast.EmptyStmt => Mach.Undef
@@ -4803,7 +4803,7 @@ and constructStandardWithTag (regs:Mach.REGS)
 
 and parseFunctionFromArgs (regs:Mach.REGS)
                           (args:Mach.VAL list)
-    : (Ustring.STRING * Ast.EXPR) =
+    : (Ustring.STRING * Ast.EXPRESSION) =
     let
         (*
          * We synthesize a full function expression here, then feed it back into the parser.
@@ -5416,9 +5416,9 @@ fun evalIfStatement (env: ENV)
 *)
 
 and evalIfStmt (regs:Mach.REGS)
-               (cnd:Ast.EXPR)
-               (thn:Ast.STMT)
-               (els:Ast.STMT)
+               (cnd:Ast.EXPRESSION)
+               (thn:Ast.STATEMENT)
+               (els:Ast.STATEMENT)
     : Mach.VAL =
     let
         val v = evalExpr regs cnd
@@ -5433,7 +5433,7 @@ and evalIfStmt (regs:Mach.REGS)
 
 fun evalLabeledStatement (env: ENV)
                          (label: Ast.IDENT)
-                         (stmt: Ast.STMT)
+                         (stmt: Ast.STATEMENT)
     : Mach.VALUE =
     evalStmt env stmt
     handle BreakException exnLabel =>
@@ -5445,7 +5445,7 @@ fun evalLabeledStatement (env: ENV)
 
 and evalLabelStmt (regs:Mach.REGS)
                   (lab:Ast.IDENT)
-                  (s:Ast.STMT)
+                  (s:Ast.STATEMENT)
     : Mach.VAL =
     evalStmt regs s
     handle BreakException exnLabel =>
@@ -5455,7 +5455,7 @@ and evalLabelStmt (regs:Mach.REGS)
 
 
 and evalWhileStmt (regs:Mach.REGS)
-                  (whileStmt:Ast.WHILE_STMT)
+                  (whileStmt:Ast.WHILE_STATEMENT)
     : Mach.VAL =
     case whileStmt of
         { cond, body, rib, labels } =>
@@ -5484,7 +5484,7 @@ and evalWhileStmt (regs:Mach.REGS)
 
 
 and evalDoWhileStmt (regs:Mach.REGS)
-                    (whileStmt:Ast.WHILE_STMT)
+                    (whileStmt:Ast.WHILE_STATEMENT)
     : Mach.VAL =
     case whileStmt of
         { cond, body, rib, labels } =>
@@ -5515,9 +5515,9 @@ and evalDoWhileStmt (regs:Mach.REGS)
 
 
 and evalWithStmt (regs:Mach.REGS)
-                 (expr:Ast.EXPR)
-                 (ty:Ast.TYPE_EXPR)
-                 (body:Ast.STMT)
+                 (expr:Ast.EXPRESSION)
+                 (ty:Ast.TYPE_EXPRESSION)
+                 (body:Ast.STATEMENT)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
@@ -5531,7 +5531,7 @@ and evalWithStmt (regs:Mach.REGS)
     end
 
 and evalSwitchStmt (regs:Mach.REGS)
-                   (cond:Ast.EXPR)
+                   (cond:Ast.EXPRESSION)
                    (cases:Ast.CASE list)
                    (labels:Ast.IDENT list)
     : Mach.VAL =
@@ -5571,8 +5571,8 @@ and evalSwitchStmt (regs:Mach.REGS)
 
 
 and evalSwitchTypeStmt (regs:Mach.REGS)
-                       (cond:Ast.EXPR)
-                       (ty:Ast.TYPE_EXPR)
+                       (cond:Ast.EXPRESSION)
+                       (ty:Ast.TYPE_EXPRESSION)
                        (cases:Ast.CATCH_CLAUSE list)
     : Mach.VAL =
     let
@@ -5584,13 +5584,13 @@ and evalSwitchTypeStmt (regs:Mach.REGS)
     end
 
 (*
- FOR_STMT
+ FOR_STATEMENT
      structural subtype test in evalIterable
                                     TODO isEach
  *)
 
 and evalIterable (regs:Mach.REGS)
-                 (obj:Ast.EXPR)
+                 (obj:Ast.EXPRESSION)
     : Mach.OBJ =
     let
         val v = evalExpr regs obj
@@ -5659,7 +5659,7 @@ and callIteratorNext (regs:Mach.REGS)
     end
 
 and evalForInStmt (regs:Mach.REGS)
-                  (forInStmt:Ast.FOR_ENUM_STMT)
+                  (forInStmt:Ast.FOR_ENUM_STATEMENT)
     : Mach.VAL =
     case forInStmt of
         { isEach, defn, obj, rib, next, labels, body, ... } =>
@@ -5743,7 +5743,7 @@ and evalForInStmt (regs:Mach.REGS)
         end
 
 and evalForStmt (regs:Mach.REGS)
-                (forStmt:Ast.FOR_STMT)
+                (forStmt:Ast.FOR_STATEMENT)
     : Mach.VAL =
     case forStmt of
         { rib, init, cond, update, labels, body, ... } =>
@@ -5791,13 +5791,13 @@ and evalForStmt (regs:Mach.REGS)
 
 
 and evalReturnStmt (regs:Mach.REGS)
-                   (e:Ast.EXPR)
+                   (e:Ast.EXPRESSION)
     : Mach.VAL =
     raise (ReturnException (evalExpr regs e))
 
 
 and evalThrowStmt (regs:Mach.REGS)
-                  (e:Ast.EXPR)
+                  (e:Ast.EXPRESSION)
     : Mach.VAL =
     raise (ThrowException (evalExpr regs e))
 
