@@ -62,7 +62,7 @@ fun mkTypeVarFixture _ =
     (typeVarCounter := (!typeVarCounter) + 1;
      Ast.TypeVarFixture (!typeVarCounter))
 
-fun mkParamRib (idents:Ast.IDENT list)
+fun mkParamRib (idents:Ast.IDENTIFIER list)
   : Ast.RIB = 
     map (fn id => (Ast.PropName (Name.public id), (mkTypeVarFixture()))) idents
 
@@ -92,7 +92,7 @@ datatype LABEL_KIND =
         | StatementLabel
 
 
-type LABEL = (Ast.IDENT * LABEL_KIND)
+type LABEL = (Ast.IDENTIFIER * LABEL_KIND)
 
 
 (* 
@@ -212,8 +212,8 @@ fun isInstanceInit (s:Ast.STATEMENT)
     a multiname. see if a particular scope has a fixture with one of a list of
     multinames
 
-    multiname = { nss : NAMESPACE list list, id: IDENT }
-    name = { ns: NAMESPACE, id: IDENT }
+    multiname = { nss : NAMESPACE list list, id: IDENTIFIER }
+    name = { ns: NAMESPACE, id: IDENTIFIER }
 *)
 
 fun resolve (env:ENV)
@@ -498,14 +498,14 @@ fun multinameFromName (n:Ast.NAME) =
     { nss = [[(#ns n)]], id = (#id n) }
 
 (*
-    Resolve an IDENT_EXPRESSION to a multiname
+    Resolve an IDENTIFIER_EXPRESSION to a multiname
 
     A qualified name with a literal namespace qualifier (including package qualified)
                             gets resolved to a multiname with a single namespace
  *)
     
 fun identExprToMultiname (env:ENV) 
-                         (ie:Ast.IDENT_EXPRESSION)
+                         (ie:Ast.IDENTIFIER_EXPRESSION)
     : Ast.MULTINAME =
     let
         val ie' = defIdentExpr env ie
@@ -1028,7 +1028,7 @@ and classInstanceType (cfxtr:Ast.FIXTURE)
  * TYPEs of a simple form: those which name a 0-parameter interface. 
  * Generalize later. 
  *)
-and extractIdentExprFromTypeName (Ast.TypeName (ie, _)) : Ast.IDENT_EXPRESSION = ie
+and extractIdentExprFromTypeName (Ast.TypeName (ie, _)) : Ast.IDENTIFIER_EXPRESSION = ie
   | extractIdentExprFromTypeName _ = 
     error ["can only presently handle inheriting from simple named interfaces"]
 
@@ -1216,12 +1216,12 @@ and defVar (env:ENV)
     (BINDING list * INIT_STEP list) -> (RIB * INITS)
 
      and INIT_STEP =   (* used to encode init of bindings *)
-         InitStep of (BINDING_IDENT * EXPRESSION)
+         InitStep of (BINDING_IDENTIFIER * EXPRESSION)
        | AssignStep of (EXPRESSION * EXPRESSION)
 
-     and BINDING_IDENT =
+     and BINDING_IDENTIFIER =
          TempIdent of int
-       | PropIdent of IDENT
+       | PropIdent of IDENTIFIER
 
     -->
 
@@ -1232,7 +1232,7 @@ and defVar (env:ENV)
 
 *)
 
-and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BINDING_IDENT) (tempOffset:int)
+and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BINDING_IDENTIFIER) (tempOffset:int)
     : Ast.FIXTURE_NAME =
     case ident of
         Ast.TempIdent n =>  Ast.TempName (n+tempOffset)
@@ -1610,12 +1610,12 @@ and defPragmas (env:ENV)
     end
 
 (*
-    IDENT_EXPRESSION
+    IDENTIFIER_EXPRESSION
 *)
 
 and defIdentExpr (env:ENV)
-                 (ie:Ast.IDENT_EXPRESSION)
-    : Ast.IDENT_EXPRESSION =
+                 (ie:Ast.IDENTIFIER_EXPRESSION)
+    : Ast.IDENTIFIER_EXPRESSION =
     let
         val openNamespaces = (#openNamespaces env)
     in
@@ -1869,7 +1869,7 @@ and defFieldType (env:ENV)
 *)
 
 and defStmt (env:ENV)
-            (labelIds:Ast.IDENT list)
+            (labelIds:Ast.IDENTIFIER list)
             (stmt:Ast.STATEMENT)
     : (Ast.STATEMENT * Ast.RIB) =
     let
@@ -1990,7 +1990,7 @@ and defStmt (env:ENV)
             end
             
         fun reconstructClassBlock {ns, privateNS, protectedNS, 
-								   ident:Ast.IDENT, block, name:Ast.NAME option } =
+								   ident:Ast.IDENTIFIER, block, name:Ast.NAME option } =
             let
                 val _ = trace2 ("reconstructing class block for ", ident)
                 val Ast.Block { pragmas, defns, head, body, loc } = block
@@ -2038,7 +2038,7 @@ and defStmt (env:ENV)
                  else false
             end
 
-        fun checkBreakLabel (id:Ast.IDENT option) =
+        fun checkBreakLabel (id:Ast.IDENTIFIER option) =
             (*
                 A break with an empty label shall only occur in an iteration
                 statement or switch statement. A break with a non-empty label
@@ -2051,7 +2051,7 @@ and defStmt (env:ENV)
             then ()
             else LogErr.defnError ["invalid break label"]
 
-        fun checkContinueLabel (id:Ast.IDENT option) =
+        fun checkContinueLabel (id:Ast.IDENTIFIER option) =
             (*
                 A continue statement with an empty label shall only occur in
                 an iteration statement. A continue statement with a non-empty

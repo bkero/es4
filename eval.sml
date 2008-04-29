@@ -70,8 +70,8 @@ fun evalTy (regs:Mach.REGS)
     : Ast.TYPE = normalize regs ty
 
 (* Exceptions for object-language control transfer. *)
-exception ContinueException of (Ast.IDENT option)
-exception BreakException of (Ast.IDENT option)
+exception ContinueException of (Ast.IDENTIFIER option)
+exception BreakException of (Ast.IDENTIFIER option)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 exception StopIterationException
@@ -223,7 +223,7 @@ fun withProg (r:Mach.REGS)
     
     
 fun getObjId (obj:Mach.OBJ)
-    : Mach.OBJ_IDENT =
+    : Mach.OBJ_IDENTIFIER =
     let
         val Mach.Obj { ident, ... } = obj
     in
@@ -233,7 +233,7 @@ fun getObjId (obj:Mach.OBJ)
 
 fun slotObjId (regs:Mach.REGS) 
               (slotFunc:Mach.REGS -> (Mach.OBJ option) ref) 
-    : Mach.OBJ_IDENT =
+    : Mach.OBJ_IDENTIFIER =
     let
         val slot = slotFunc regs
         val slotVal = !slot
@@ -254,7 +254,7 @@ fun getScopeObj (scope:Mach.SCOPE)
 
 
 fun getScopeId (scope:Mach.SCOPE)
-    : Mach.OBJ_IDENT = 
+    : Mach.OBJ_IDENTIFIER = 
     let 
         val scopeObj = getScopeObj scope
     in 
@@ -673,7 +673,7 @@ and valAllocState (regs:Mach.REGS)
 
 
 and allocSpecial (regs:Mach.REGS)
-                 (id:Mach.OBJ_IDENT)
+                 (id:Mach.OBJ_IDENTIFIER)
     : Mach.VAL option =
     let
         fun findSpecial [] = NONE
@@ -2154,7 +2154,7 @@ fun evalGetExpr (env: ENV)
 *)
 
 and evalLexicalRefExpr (regs:Mach.REGS)
-                  (ident:Ast.IDENT_EXPRESSION)
+                  (ident:Ast.IDENTIFIER_EXPRESSION)
                   (loc:Ast.LOC option) 
     : Mach.VAL =
     let
@@ -2169,7 +2169,7 @@ and evalLexicalRefExpr (regs:Mach.REGS)
 
 and evalObjectRefExpr (regs:Mach.REGS)
                      (base:Ast.EXPRESSION)
-                     (ident:Ast.IDENT_EXPRESSION)
+                     (ident:Ast.IDENTIFIER_EXPRESSION)
                      (loc:Ast.LOC option)
     : Mach.VAL =
     let
@@ -2396,7 +2396,7 @@ and evalInitExpr (regs:Mach.REGS)
 
 and evalSuperCall (regs:Mach.REGS)
                   (base:Mach.OBJ)
-                  (ident:Ast.IDENT_EXPRESSION)
+                  (ident:Ast.IDENTIFIER_EXPRESSION)
                   (args:Mach.VAL list)
     : Mach.VAL = 
     let 
@@ -2518,7 +2518,7 @@ and traceScope (s:Mach.SCOPE)
         ()
 
 and bindTypes (regs:Mach.REGS)
-              (typeParams:Ast.IDENT list)
+              (typeParams:Ast.IDENTIFIER list)
               (typeArgs:Ast.TYPE list)
               (env:Mach.SCOPE)
     : Mach.SCOPE = 
@@ -3957,7 +3957,7 @@ and evalExprToNamespace (regs:Mach.REGS)
 
 
 and evalIdentExpr (regs:Mach.REGS)
-                  (r:Ast.IDENT_EXPRESSION)
+                  (r:Ast.IDENTIFIER_EXPRESSION)
     : NAME_OR_MULTINAME =
     case r of
         Ast.Identifier { ident, openNamespaces, rootRib } =>
@@ -4207,8 +4207,8 @@ and resolveName (regs:Mach.REGS)
     end
 
 
-and labelMatch (stmtLabels:Ast.IDENT list)
-               (exnLabel:Ast.IDENT option)
+and labelMatch (stmtLabels:Ast.IDENTIFIER list)
+               (exnLabel:Ast.IDENTIFIER option)
     : bool =
     let
 	val lab = case exnLabel of 
@@ -5043,7 +5043,7 @@ and specialStringConstructor (regs:Mach.REGS)
     
 
 and constructSpecial (regs:Mach.REGS)
-                     (id:Mach.OBJ_IDENT)
+                     (id:Mach.OBJ_IDENTIFIER)
                      (classObj:Mach.OBJ)
                      (classClosure:Mach.CLS_CLOSURE)
                      (args:Mach.VAL list) :
@@ -5173,7 +5173,7 @@ and getPrototype (regs:Mach.REGS)
     
 	
 and getSpecialPrototype (regs:Mach.REGS)
-                        (id:Mach.OBJ_IDENT)
+                        (id:Mach.OBJ_IDENTIFIER)
     : (Mach.VAL * bool) option =
     if not (Mach.isBooting regs)
     then NONE
@@ -5432,7 +5432,7 @@ and evalIfStmt (regs:Mach.REGS)
 (* SPEC
 
 fun evalLabeledStatement (env: ENV)
-                         (label: Ast.IDENT)
+                         (label: Ast.IDENTIFIER)
                          (stmt: Ast.STATEMENT)
     : Mach.VALUE =
     evalStmt env stmt
@@ -5444,7 +5444,7 @@ fun evalLabeledStatement (env: ENV)
 *)
 
 and evalLabelStmt (regs:Mach.REGS)
-                  (lab:Ast.IDENT)
+                  (lab:Ast.IDENTIFIER)
                   (s:Ast.STATEMENT)
     : Mach.VAL =
     evalStmt regs s
@@ -5533,7 +5533,7 @@ and evalWithStmt (regs:Mach.REGS)
 and evalSwitchStmt (regs:Mach.REGS)
                    (cond:Ast.EXPRESSION)
                    (cases:Ast.CASE list)
-                   (labels:Ast.IDENT list)
+                   (labels:Ast.IDENTIFIER list)
     : Mach.VAL =
     let
         fun tryCases (v:Mach.VAL) [] = Mach.Undef
@@ -5803,7 +5803,7 @@ and evalThrowStmt (regs:Mach.REGS)
 
 
 and evalBreakStmt (regs:Mach.REGS)
-                  (lbl:Ast.IDENT option)
+                  (lbl:Ast.IDENTIFIER option)
     : Mach.VAL =
     (trace ["raising BreakException ",
             case lbl of NONE => "empty" 
@@ -5812,7 +5812,7 @@ and evalBreakStmt (regs:Mach.REGS)
 
     
 and evalContinueStmt (regs:Mach.REGS)
-                     (lbl:Ast.IDENT option)
+                     (lbl:Ast.IDENTIFIER option)
     : Mach.VAL =
     raise (ContinueException lbl)
 

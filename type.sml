@@ -128,7 +128,7 @@ EXPRESSION =
          { base: TYPE,
            args: TYPE list }
        | LamType of                         // 
-         { params: IDENT list,
+         { params: IDENTIFIER list,
            body: TYPE }
 
 
@@ -390,7 +390,7 @@ fun checkProperType (ty:Ast.TYPE) : unit =
 
 fun normalizeNames (useCache:bool)
                    (env:Ast.RIBS)
-                   (ids:Ast.IDENT list)
+                   (ids:Ast.IDENTIFIER list)
                    (ty:Ast.TYPE)                    
   : Ast.TYPE = 
     let
@@ -487,19 +487,19 @@ fun normalizeNames (useCache:bool)
           | _ => doResolve ()        
     end
 (* ----------------------------------------------------------------------------- *)
-(* uniqueIdent maps an IDENT to a unique variant of that IDENT that has not been used before.
+(* uniqueIdent maps an IDENTIFIER to a unique variant of that IDENTIFIER that has not been used before.
  * This unique-ification is used for alpha-renaming with capture-free substitution.
  *)
 
 val uniqueIdentPostfix = ref 0
 
-fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
+fun uniqueIdent (id:Ast.IDENTIFIER) : Ast.IDENTIFIER =
     let in
         uniqueIdentPostfix := !uniqueIdentPostfix +1;
         Ustring.stringAppend id (Ustring.fromInt (!uniqueIdentPostfix))
     end
 
-fun makeTypeName (id:Ast.IDENT) : Ast.TYPE = 
+fun makeTypeName (id:Ast.IDENTIFIER) : Ast.TYPE = 
     Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[], rootRib=NONE }, NONE)
 
 
@@ -507,7 +507,7 @@ fun makeTypeName (id:Ast.IDENT) : Ast.TYPE =
  * All are normalized, so no TypeNames in args or ty, just TypeVarFixtureRefs.
  *)
 
-fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE list) (ty:Ast.TYPE) : Ast.TYPE =
+fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : Ast.TYPE =
     case ty of
         Ast.LamType { params, body } =>
         let val uniqParams    = map uniqueIdent  params
@@ -606,10 +606,10 @@ fun normalize (ribs:Ast.RIB list)
  * Matching helpers
  * ----------------------------------------------------------------------------- *)
 
-fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) = 
+fun isNamedField (name:Ast.IDENTIFIER) (field:Ast.FIELD_TYPE) = 
     Ustring.stringEquals name (#name field) 
     
-fun extractFieldType (name:Ast.IDENT) 
+fun extractFieldType (name:Ast.IDENTIFIER) 
                      (fields:Ast.FIELD_TYPE list)
     : (Ast.TYPE * Ast.FIELD_TYPE list) option = 
     case List.partition (isNamedField name) fields of

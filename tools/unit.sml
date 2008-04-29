@@ -358,7 +358,6 @@ fun consumeTraceOption (opt:string) : bool =
     case opt of
         "-Tlex" => (Lexer.doTrace := true; false)
       | "-Tparse" => (Parser.doTrace := true; false)
-(*      | "-Tname" => (Multiname.doTrace := true; false)  *)
       | "-Tdefn" => (Defn.doTrace := true; false)
       | "-Teval" => (Eval.doTrace := true; false)
       | "-Tmach" => (Mach.doTrace := true; false)

@@ -51,7 +51,7 @@ signature FIXTURE = sig
 
     val getRootRib : PROGRAM -> Ast.RIB
     val extendRootRib : PROGRAM -> Ast.RIB -> TYEQ -> PROGRAM
-    val addPackageName : PROGRAM -> Ast.IDENT list -> PROGRAM
-    val getPackageNames : PROGRAM -> Ast.IDENT list list
+    val addPackageName : PROGRAM -> Ast.IDENTIFIER list -> PROGRAM
+    val getPackageNames : PROGRAM -> Ast.IDENTIFIER list list
 
 end
