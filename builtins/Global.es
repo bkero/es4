@@ -75,19 +75,20 @@
     iterator class Enumerator { // FIXME: .<T>
         type ResultFun = function(EnumerableId, Object!) : *; // FIXME: T
 
-        function Enumerator(v, f: ResultFun, e: boolean = false) {
+        function Enumerator(v, f: ResultFun, e: boolean = false)
+            : result_fun = f, enumerate = e
+        {
             initial_obj = (v is Object) ? v : null;
             current_obj = initial_obj;
-            current_ids = magic::getEnumerableIds(initial_obj); // FIXME: need magic::getEnumerableIds
-            result_fun = f;
-            enumerate = e;
+            current_ids = magic::getEnumerableIds(initial_obj);
         }
 
+        // FIXME: why no ResultFun, boolean args?
         meta static function invoke(v) : iterator::Iterator
-            new Enumerator(v);
+            new iterator::Enumerator(v);
 
         function get(e : boolean = false) : iterator::Iterator // FIXME: in iterator namespace
-            (e == enumerate) ? this : new Enumerator(initial_obj, result_fun, e); // FIXME: .<T>
+            (e == enumerate) ? this : new iterator::Enumerator(initial_obj, result_fun, e); // FIXME: .<T>
 
         public function next() : * { // FIXME: T
             if (current_obj === null)
@@ -131,17 +132,15 @@
     }
 
     iterator const function GET(start: Object!, deep: boolean): iterator::Iterator
-        (start is iterator::Iterable)
-        ? start.iterator::get(deep)
+        (start is iterator::Iterable) // FIXME: like
+        ? start.get(deep) // FIXME: in iterator namespace
         : iterator::DEFAULT_GET(start, deep)
 
-    iterator const function DEFAULT_GET(start: Object!, deep: boolean): iterator::Iterator { // FIXME: .<string>
-        var e = new iterator::Enumerator(start,
-                                         function (id: string, obj: Object!): string
-                                             (id is Name) ? id.identifier : string(id),
-                                         deep);
-        return e;
-    }
+    iterator const function DEFAULT_GET(start: Object!, deep: boolean): iterator::Iterator // FIXME: .<string>
+        new iterator::Enumerator(start,
+                                 function (id: EnumerableId, obj: Object!): string
+                                     (id is Name) ? id.identifier : string(id),
+                                 deep)
 
     iterator type Iterable = { // FIXME: .<T>
         get: function (boolean=) : iterator::Iterator // FIXME: .<T>, in iterator namespace

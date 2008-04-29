@@ -5587,6 +5587,7 @@ and evalSwitchTypeStmt (regs:Mach.REGS)
                                     TODO isEach
  *)
 
+(* FIXME: this goes away when we can just call iterator::GET *)
 and evalIterable (regs:Mach.REGS)
                  (obj:Ast.EXPRESSION)
     : Mach.OBJ =
@@ -5606,6 +5607,7 @@ and evalIterable (regs:Mach.REGS)
         finishWith v
     end
 
+(* FIXME: just call iterator::GET(iterable) *)
 and callIteratorGet (regs:Mach.REGS)
                     (iterable:Mach.OBJ)
     : Mach.OBJ =
@@ -5633,6 +5635,7 @@ and callIteratorGet (regs:Mach.REGS)
         iterator
     end
 
+(* FIXME: just call iterator.next() *)
 and callIteratorNext (regs:Mach.REGS)
                      (iterator:Mach.OBJ)
     : Mach.VAL =

@@ -36,3 +36,6 @@
 
  - no nested signatures (e.g., signatures declared inside of structures)
 
+ - no polymorphic recursion! this has bitten us a couple times
+
+ - no recursive modules

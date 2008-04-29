@@ -341,7 +341,31 @@ fun getEnumerableIds (regs:Mach.REGS)
     let
         val v = rawNth vals 0
     in
-        error ["not yet implemented"]
+        case v of
+            Mach.Undef => Eval.newArray regs []
+          | Mach.Null => Eval.newArray regs []
+          | Mach.Object (Mach.Obj { props, ... }) =>
+            let
+                val { bindings, ... } = !props
+                val bindingList = NameMap.listItemsi bindings
+                fun select (name, { seq, prop }) = 
+                    case prop of 
+                        { state = Mach.ValProp _,
+                          attrs = { dontEnum = false, dontDelete, readOnly, isFixed },
+                          ty } => SOME (name, seq)
+                      | _ => NONE
+                val filteredList = List.mapPartial select bindingList
+                val bindingArray = Array.fromList filteredList
+                fun sort ((_, seq1), (_, seq2)) = Int.compare (seq2,seq1)
+                val _ = ArrayQSort.sort sort bindingArray
+                fun project ((name:Ast.NAME, _), (curr:Mach.VAL list)) =
+                    (* FIXME: what about numeric? string? *)
+                    (Eval.newName regs name) :: curr
+                val vals = Array.foldl project [] bindingArray
+                (*val iterator = Eval.needObj regs (Eval.newArray regs vals)*)
+            in
+                Eval.newArray regs vals
+            end
     end
 
 
