@@ -80,7 +80,7 @@ datatype VAL = Object of OBJ
              | Undef
 
      and OBJ =
-         Obj of { ident: OBJ_IDENT,
+         Obj of { ident: OBJ_IDENTIFIER,
                   tag: VAL_TAG,
                   props: PROP_BINDINGS,
                   rib: Ast.RIB ref,
@@ -273,7 +273,7 @@ withtype FUN_CLOSURE =
                   -> VAL list -> VAL),
            length: int }
 
-     and OBJ_IDENT =
+     and OBJ_IDENTIFIER =
          int
 
 (* Important to model "fixedness" separately from
@@ -473,7 +473,7 @@ fun findProp (b:PROP_BINDINGS)
 
 fun matchProps (fixedProps:bool)
                (b:PROP_BINDINGS)
-               (searchId:Ast.IDENT)
+               (searchId:Ast.IDENTIFIER)
                (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
     let
@@ -1275,7 +1275,7 @@ fun getNativeFunction (name:Ast.NAME)
 
 (* begin names experiment *)
 
-type IDENTIFIER = Ast.IDENT
+type IDENTIFIER = Ast.IDENTIFIER
 type NAMESPACE = Ast.NAMESPACE
 type NAME = Ast.NAME
 

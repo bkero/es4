@@ -47,7 +47,7 @@ fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
 fun resolve (mname:Ast.MULTINAME)
 		    (curr:'a)
-            (matchNamespaces:('a -> Ast.IDENT -> (Ast.NAMESPACE list) -> Ast.NAME list))
+            (matchNamespaces:('a -> Ast.IDENTIFIER -> (Ast.NAMESPACE list) -> Ast.NAME list))
 		    (getParent:('a -> ('a option)))
     : ('a * Ast.NAME) option =
     let
@@ -89,7 +89,7 @@ fun resolve (mname:Ast.MULTINAME)
 
 
 fun matchFixtures  (rib:Ast.RIB)
-                   (searchId:Ast.IDENT)
+                   (searchId:Ast.IDENTIFIER)
                    (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
     let

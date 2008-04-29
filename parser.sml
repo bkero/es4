@@ -115,10 +115,10 @@ datatype PATTERN =
          ObjectPattern of FIELD_PATTERN list
        | ArrayPattern of PATTERN list
        | SimplePattern of Ast.EXPRESSION
-       | IdentifierPattern of Ast.IDENT
+       | IdentifierPattern of Ast.IDENTIFIER
 
 withtype FIELD_PATTERN =
-         { ident: Ast.IDENT_EXPRESSION,
+         { ident: Ast.IDENTIFIER_EXPRESSION,
            pattern : PATTERN }
 
 type PATTERN_BINDING_PART =
@@ -127,8 +127,8 @@ type PATTERN_BINDING_PART =
        prototype:bool,
        static:bool }
 
-val currentClassName : Ast.IDENT ref = ref Ustring.empty
-(* val currentPackageName : Ast.IDENT ref = ref Ustring.empty *)
+val currentClassName : Ast.IDENTIFIER ref = ref Ustring.empty
+(* val currentPackageName : Ast.IDENTIFIER ref = ref Ustring.empty *)
 
 fun newline (ts : TOKENS) =
     let
@@ -288,7 +288,7 @@ fun desugarPattern (loc:Ast.LOC option)
                    (nesting:int)
     : (Ast.BINDING list * Ast.INIT_STEP list) =
     let
-        fun desugarIdentifierPattern (id:Ast.IDENT)
+        fun desugarIdentifierPattern (id:Ast.IDENTIFIER)
             : (Ast.BINDING list * Ast.INIT_STEP list) =
 
             (*
@@ -530,7 +530,7 @@ and qualifier (ts0: TOKENS) =
 *)
 
 and qualifiedNameIdentifier (ts0: TOKENS, nd0: Ast.EXPRESSION)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     let val _ = trace([">> qualifiedNameIdentifier with next=",tokenname(hd(ts0))])
     in case ts0 of
         (StringLiteral s, _) :: ts1 => (ts1,Ast.QualifiedIdentifier {qual=nd0,ident=s})
@@ -563,7 +563,7 @@ and qualifiedNameIdentifier (ts0: TOKENS, nd0: Ast.EXPRESSION)
 *)
 
 and simpleQualifiedName (ts0: TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     let 
         val _ = trace ([">> simpleQualifiedName with next=", tokenname (hd (ts0))])
         val (ts1, nd1) = identifier(ts0)
@@ -578,7 +578,7 @@ and simpleQualifiedName (ts0: TOKENS)
     end
 
 and expressionQualifiedName (ts0: TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     let
         val (ts1, nd1) = parenListExpression (ts0)
     in case ts1 of
@@ -599,7 +599,7 @@ and expressionQualifiedName (ts0: TOKENS)
 *)
 
 and propertyName (ts0: TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     let val _ = trace([">> propertyName with next=",tokenname (hd (ts0))])
     in case ts0 of
         (LeftParen, _) :: _ => expressionQualifiedName (ts0)
@@ -617,7 +617,7 @@ and propertyName (ts0: TOKENS)
 *)
 
 and qualifiedName (ts0: TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     let val _ = trace ([">> qualifiedName with next=", tokenname (hd (ts0))])
     in case ts0 of
         (At, _) :: _ => error ["reserved syntax in qualifiedName"]
@@ -631,7 +631,7 @@ and qualifiedName (ts0: TOKENS)
 *)
 
 and primaryName (ts0: TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     propertyName (ts0)
 
 (*
@@ -641,7 +641,7 @@ and primaryName (ts0: TOKENS)
 *)
 
 and path (ts0: TOKENS)
-    : (TOKENS * Ast.IDENT list) =
+    : (TOKENS * Ast.IDENTIFIER list) =
     let val _ = trace ([">> path with next=", tokenname (hd ts0)])
         val (ts1,nd1) = identifier ts0
     in case ts1 of
@@ -968,7 +968,7 @@ and fieldKind (ts:TOKENS)
     end
 
 and fieldName (ts:TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION) =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))])
     in case ts of
         (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[], rootRib=NONE})
@@ -5844,7 +5844,7 @@ and operatorName [] = error ["missing token in operatorName"]
         TypeParameters  (  this  :  TypeIdentifier  ,  Parameters  )  ResultType
 *)
 
-and needType (nd:Ast.IDENT_EXPRESSION,nullable:bool option) =
+and needType (nd:Ast.IDENTIFIER_EXPRESSION,nullable:bool option) =
     case nd of
         Ast.Identifier {ident,...} =>
                 if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
@@ -6599,7 +6599,7 @@ and classDefinition (ts:TOKENS, attrs:ATTRS)
     end
 
 and className (ts:TOKENS)
-    : (TOKENS * {ident:Ast.IDENT,
+    : (TOKENS * {ident:Ast.IDENTIFIER,
                  params:(Ustring.STRING list),
                  nonnullable:bool }) =
     let val _ = trace([">> className with next=", tokenname(hd ts)])
@@ -6618,7 +6618,7 @@ and className (ts:TOKENS)
     end
 
 and parameterisedClassName (ts:TOKENS)
-    : (TOKENS * {ident:Ast.IDENT,
+    : (TOKENS * {ident:Ast.IDENTIFIER,
                  params:(Ustring.STRING list) }) =
     let val _ = trace([">> parameterisedClassName with next=", tokenname(hd ts)])
         val (ts1,nd1) = identifier ts
@@ -6682,7 +6682,7 @@ and classInheritance (ts:TOKENS)
     end
 
 and typeIdentifierList (ts:TOKENS)
-    : (TOKENS * Ast.IDENT_EXPRESSION list) =
+    : (TOKENS * Ast.IDENTIFIER_EXPRESSION list) =
     let val _ = trace([">> typeIdentifierList with next=", tokenname(hd ts)])
         fun typeIdentifierList' (ts) =
             let

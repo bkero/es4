@@ -39,7 +39,7 @@ type SOURCE_POS = { line: int, col: int }
 
 type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
-type IDENT = Ustring.STRING
+type IDENTIFIER = Ustring.STRING
 
 type NONCE = int
 type NAMESPACE_ID = NONCE
@@ -48,9 +48,9 @@ datatype NAMESPACE =
          TransparentNamespace of Ustring.STRING
        | OpaqueNamespace of NAMESPACE_ID
 
-type NAME = { ns: NAMESPACE, id: IDENT }
+type NAME = { ns: NAMESPACE, id: IDENTIFIER }
 
-type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+type MULTINAME = { nss: NAMESPACE list list, id: IDENTIFIER }
 
 datatype BINTYPEOP =
          Cast
@@ -145,7 +145,7 @@ datatype PRAGMA =
              privateNS: NAMESPACE,
              protectedNS: NAMESPACE,
              parentProtectedNSs: NAMESPACE list,
-             typeParams: IDENT list,
+             typeParams: IDENTIFIER list,
              nonnullable: bool,
              dynamic: bool,
              extends: TYPE_EXPRESSION option,
@@ -160,7 +160,7 @@ datatype PRAGMA =
      and IFACE =
          Iface of
            { name: NAME,
-             typeParams: IDENT list,
+             typeParams: IDENTIFIER list,
              nonnullable: bool,
              extends: TYPE_EXPRESSION list,
              instanceRib: RIB,
@@ -195,7 +195,7 @@ datatype PRAGMA =
 
      and FUNC_SIG =                             (* redundant, not used in verify *)
          FunctionSignature of 
-         { typeParams: IDENT list,
+         { typeParams: IDENTIFIER list,
            params: BINDINGS,
            paramTypes: TYPE_EXPRESSION list,
            defaults: EXPRESSION list,
@@ -206,16 +206,16 @@ datatype PRAGMA =
 
      and BINDING =
          Binding of
-           { ident: BINDING_IDENT,    (* FIXME: use tuple *)
+           { ident: BINDING_IDENTIFIER,    (* FIXME: use tuple *)
              ty: TYPE_EXPRESSION }
 
-     and BINDING_IDENT =
+     and BINDING_IDENTIFIER =
          TempIdent of int
        | ParamIdent of int
-       | PropIdent of IDENT
+       | PropIdent of IDENTIFIER
 
      and INIT_STEP =   (* used to encode init of bindings *)
-         InitStep of (BINDING_IDENT * EXPRESSION)
+         InitStep of (BINDING_IDENTIFIER * EXPRESSION)
        | AssignStep of (EXPRESSION * EXPRESSION)
 
 (*
@@ -224,11 +224,11 @@ datatype TYPE =
          NullType
        | AnyType
        | UndefinedType
-       | IdentType  of IDENT_EXPRESSION
-       | RecordType of (IDENT_EXPRESSION * TYPE) list
+       | IdentType  of IDENTIFIER_EXPRESSION
+       | RecordType of (IDENTIFIER_EXPRESSION * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
-       | FunctionType of { typeParams: IDENT list,
+       | FunctionType of { typeParams: IDENTIFIER list,
                            thisType: TYPE,
                            params: TYPE list,
                            minArgs: int, 
@@ -236,9 +236,9 @@ datatype TYPE =
                            result: TYPE
                          }
        | NullableType of (TYPE * bool)
-       | LamType of (IDENT list * TYPE)
+       | LamType of (IDENTIFIER list * TYPE)
        | AppType of (TYPE * TYPE list)
-       | ObjectRefType of (TYPE * IDENT_EXPRESSION)
+       | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
        | NominalType of NAME
 
 *)
@@ -255,16 +255,16 @@ Tapp on generic fn has
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPRESSION list
        | ArrayType of TYPE_EXPRESSION list
-       | TypeName of (IDENT_EXPRESSION * NONCE option)
+       | TypeName of (IDENTIFIER_EXPRESSION * NONCE option)
        | ElementTypeRef of (TYPE_EXPRESSION * int)
-       | FieldTypeRef of (TYPE_EXPRESSION * IDENT)
+       | FieldTypeRef of (TYPE_EXPRESSION * IDENTIFIER)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | AppType of 
          { base: TYPE_EXPRESSION,
            args: TYPE_EXPRESSION list }
        | LamType of
-         { params: IDENT list,
+         { params: IDENTIFIER list,
            body: TYPE_EXPRESSION }
        | NullableType of 
          { expr:TYPE_EXPRESSION,
@@ -281,10 +281,10 @@ datatype STATEMENT =
        | ForInStmt of FOR_ENUM_STATEMENT
        | ThrowStmt of EXPRESSION
        | ReturnStmt of EXPRESSION
-       | BreakStmt of IDENT option
-       | ContinueStmt of IDENT option
+       | BreakStmt of IDENTIFIER option
+       | ContinueStmt of IDENTIFIER option
        | BlockStmt of BLOCK
-       | LabeledStmt of (IDENT * STATEMENT)
+       | LabeledStmt of (IDENTIFIER * STATEMENT)
        | WhileStmt of WHILE_STATEMENT
        | DoWhileStmt of WHILE_STATEMENT
        | IfStmt of (EXPRESSION * STATEMENT * STATEMENT)
@@ -309,10 +309,10 @@ datatype STATEMENT =
        | ForInStmt of FOR_ENUM_STATEMENT
        | ThrowStmt of EXPRESSION
        | ReturnStmt of EXPRESSION
-       | BreakStmt of IDENT option
-       | ContinueStmt of IDENT option
+       | BreakStmt of IDENTIFIER option
+       | ContinueStmt of IDENTIFIER option
        | BlockStmt of BLOCK
-       | LabeledStmt of (IDENT * STATEMENT)
+       | LabeledStmt of (IDENTIFIER * STATEMENT)
        | LetStmt of BLOCK
        | WhileStmt of WHILE_STATEMENT
        | DoWhileStmt of WHILE_STATEMENT
@@ -332,7 +332,7 @@ datatype STATEMENT =
 
        | SwitchStmt of {         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
              cond: EXPRESSION,
-             labels: IDENT list,
+             labels: IDENTIFIER list,
              cases: CASE list }
        | SwitchTypeStmt of {
              cond: EXPRESSION,
@@ -403,10 +403,10 @@ datatype REFERENCE =
              actuals: EXPRESSION list }
        | ObjectRef of {
              base: EXPRESSION,
-             ident: IDENT_EXPRESSION,
+             ident: IDENTIFIER_EXPRESSION,
              loc: LOC option }
        | LexicalRef of {
-             ident: IDENT_EXPRESSION,
+             ident: IDENTIFIER_EXPRESSION,
              loc: LOC option }
        | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
        | ListExpr of EXPRESSION list
@@ -440,19 +440,19 @@ datatype NAMESPACE_REF =
          NamespaceRef of REFERENCE (* resolves to a namespace fixture *)
 
 *)
-     and IDENT_EXPRESSION =
+     and IDENTIFIER_EXPRESSION =
          Identifier of
-           { ident : IDENT,
+           { ident : IDENTIFIER,
              openNamespaces : NAMESPACE list list,
              rootRib: RIB option  }
 (* CF: the above should be unified with
-        type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+        type MULTINAME = { nss: NAMESPACE list list, id: IDENTIFIER }
    Perhaps Identifier should be Multiname
 *)
        | QualifiedExpression of  (* type * *)
            { qual : EXPRESSION,
              expr : EXPRESSION }
-       | AttributeIdentifier of IDENT_EXPRESSION
+       | AttributeIdentifier of IDENTIFIER_EXPRESSION
        (* for bracket exprs: o[x] and @[x] *)
        | ExpressionIdentifier of
          { expr: EXPRESSION,
@@ -546,7 +546,7 @@ withtype
 *)
      and INSTANCE_TYPE =
           {  name: NAME,
-             typeParams: IDENT list,      
+             typeParams: IDENTIFIER list,      
              typeArgs: TYPE_EXPRESSION list,
              nonnullable: bool,           (* redundant, ignored in verify.sml *)
              superTypes: TYPE_EXPRESSION list,  (* redundant, ignored in verify.sml *)
@@ -555,11 +555,11 @@ withtype
 
      and FIELD =
            { kind: VAR_DEFN_TAG,
-             name: IDENT_EXPRESSION,
+             name: IDENTIFIER_EXPRESSION,
              init: EXPRESSION }
 
      and FIELD_TYPE =
-           { name: IDENT,
+           { name: IDENTIFIER,
              ty: TYPE_EXPRESSION }
 
      and FUNC_TYPE =
@@ -589,7 +589,7 @@ withtype
            }
 
      and NAMESPACE_DEFN =
-           { ident: IDENT,
+           { ident: IDENTIFIER,
              ns: EXPRESSION option,
              init: EXPRESSION option }
 
@@ -597,11 +597,11 @@ withtype
            { ns: EXPRESSION option,
              privateNS: NAMESPACE,
              protectedNS: NAMESPACE,
-             ident: IDENT,             
+             ident: IDENTIFIER,             
              nonnullable: bool,
              dynamic: bool,
              final: bool,
-             params: IDENT list,
+             params: IDENTIFIER list,
              extends: TYPE_EXPRESSION option, 
              implements: TYPE_EXPRESSION list,
              classDefns: DEFN list,
@@ -610,15 +610,15 @@ withtype
              ctorDefn: CTOR option }
 
      and INTERFACE_DEFN =
-           { ident: IDENT,
+           { ident: IDENTIFIER,
              ns: EXPRESSION option,
              nonnullable: bool,
-             params: IDENT list,
+             params: IDENTIFIER list,
              extends: TYPE_EXPRESSION list,
              instanceDefns: DEFN list }
 
      and TYPE_DEFN =
-           { ident: IDENT,
+           { ident: IDENTIFIER,
              ns: EXPRESSION option,
              init: TYPE_EXPRESSION }
 
@@ -626,7 +626,7 @@ withtype
          { ns: EXPRESSION option,
            protectedNS: NAMESPACE,
            privateNS: NAMESPACE,
-           ident: IDENT,
+           ident: IDENTIFIER,
            name: NAME option,
            block: BLOCK }
 
@@ -647,7 +647,7 @@ withtype
              obj: EXPRESSION,
              rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
              next: STATEMENT,
-             labels: IDENT list,
+             labels: IDENTIFIER list,
              body: STATEMENT }
 
      and FOR_STATEMENT =
@@ -662,14 +662,14 @@ withtype
              init: STATEMENT list,
              cond: EXPRESSION,
              update: EXPRESSION,
-             labels: IDENT list,
+             labels: IDENTIFIER list,
              body: STATEMENT }
 
      and WHILE_STATEMENT =
            { cond: EXPRESSION,
              rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
              body: STATEMENT,
-             labels: IDENT list }
+             labels: IDENTIFIER list }
 
      and DIRECTIVES =
            { pragmas: PRAGMA list,
@@ -692,7 +692,7 @@ withtype
 
      and FUNC_NAME =
            { kind : FUNC_NAME_KIND,
-             ident : IDENT }
+             ident : IDENTIFIER }
 
 type VIRTUAL_VAL_FIXTURE =
            { ty: TYPE_EXPRESSION, 

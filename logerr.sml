@@ -135,7 +135,7 @@ fun multiname (mn:Ast.MULTINAME) =
 	else "[...]::" ^ (Ustring.toAscii (#id mn))
     end
 
-fun identExpr (ide:Ast.IDENT_EXPRESSION) =
+fun identExpr (ide:Ast.IDENTIFIER_EXPRESSION) =
    let
         fun nsExprToString e =
             case e of
@@ -152,7 +152,7 @@ fun identExpr (ide:Ast.IDENT_EXPRESSION) =
 	   ^ "::" 
 	   ^ (Ustring.toAscii ident) 
 	   ^ ")"
-      | _ => "other-IDENT_EXPRESSION"
+      | _ => "other-IDENTIFIER_EXPRESSION"
    end
 
 

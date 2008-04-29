@@ -176,7 +176,7 @@ fun leastUpperBound (t1:Ast.TYPE_EXPRESSION)
         else Ast.UnionType [t1, t2]
     end
 
-(******************* Utilities for resolving IDENT_EXPRESSIONs *********************)
+(******************* Utilities for resolving IDENTIFIER_EXPRESSIONs *********************)
 
 (* Resolves the given expr to a namespace, or to NONE *)
 
@@ -230,15 +230,15 @@ fun typeOfFixture (env:ENV)
       | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
       | _ => anyType
 
-(* Resolves an IDENT_EXPRESSION in the given RIBS, and returns the type of
- * that IDENT_EXPRESSION, or NONE. The returned type has been verified.
+(* Resolves an IDENTIFIER_EXPRESSION in the given RIBS, and returns the type of
+ * that IDENTIFIER_EXPRESSION, or NONE. The returned type has been verified.
  *)
 
 (******************** Verification **************************************************)
 
 fun verifyIdentExpr (env:ENV)
                     (ribs:Ast.RIBS)
-                    (idexpr:Ast.IDENT_EXPRESSION)
+                    (idexpr:Ast.IDENTIFIER_EXPRESSION)
     : Ast.TYPE_EXPRESSION option =
     let in
         case idexpr of
@@ -660,7 +660,7 @@ and verifyExpr2 (env:ENV)
 
      and INSTANCE_TYPE =
           {  name: NAME,
-             typeParams: IDENT list,      
+             typeParams: IDENTIFIER list,      
              typeArgs: TYPE_EXPRESSION list,
              nonnullable: bool,           (* redundant, ignored in verify.sml *)
              superTypes: TYPE_EXPRESSION list,  (* redundant, ignored in verify.sml *)
@@ -680,22 +680,22 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
 
 
      and FIELD_TYPE =
-           { name: IDENT,
+           { name: IDENTIFIER,
              ty: TYPE_EXPRESSION }
 
 
-     and IDENT_EXPRESSION =
+     and IDENTIFIER_EXPRESSION =
          Identifier of
-           { ident : IDENT,
+           { ident : IDENTIFIER,
              openNamespaces : NAMESPACE list list }
 (* CF: the above should be unified with
-        type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
+        type MULTINAME = { nss: NAMESPACE list list, id: IDENTIFIER }
    Perhaps Identifier should be Multiname
 *)
        | QualifiedExpression of  (* type * *)
            { qual : EXPRESSION,
              expr : EXPRESSION }
-       | AttributeIdentifier of IDENT_EXPRESSION
+       | AttributeIdentifier of IDENTIFIER_EXPRESSION
        (* for bracket exprs: o[x] and @[x] *)
        | ExpressionIdentifier of
          { expr: EXPRESSION,
@@ -703,7 +703,7 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
        | QualifiedIdentifier of
            { qual : EXPRESSION,
              ident : Ustring.STRING }
-       | UnresolvedPath of (IDENT list * IDENT_EXPRESSION) (* QualifiedIdentifier or ObjectRef *)
+       | UnresolvedPath of (IDENTIFIER list * IDENTIFIER_EXPRESSION) (* QualifiedIdentifier or ObjectRef *)
        | WildcardIdentifier            (* CF: not really an identifier, should be part of T *)
 
 *)
@@ -713,7 +713,7 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
                 trace [ "lexicalref ", if strict then "strict" else "non-strict"];
                 LogErr.setLoc loc;
                 case verifyIdentExpr env (#ribs env) ident of
-                    NONE => (warning ["unbound IDENT_EXPRESSION ", LogErr.identExpr ident]; anyType)
+                    NONE => (warning ["unbound IDENTIFIER_EXPRESSION ", LogErr.identExpr ident]; anyType)
                   | SOME t => t
             end
                 

@@ -49,14 +49,14 @@ val helperNS = newOpaqueNS ()
 val UnicodeNS = newOpaqueNS ()
 val RegExpInternalsNS = newOpaqueNS ()
 
-fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
-fun ES4 (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ES4NS }
-fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
-fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
-fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
-fun helper (id:Ast.IDENT) : Ast.NAME = { id = id, ns = helperNS }
-fun ECMAScript4_Internal (id:Ast.IDENT) : Ast.NAME = { id = id, ns = ECMAScript4_InternalNS }
-fun informative (id:Ast.IDENT) : Ast.NAME = { id = id, ns = informativeNS }
+fun public (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = publicNS }
+fun ES4 (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = ES4NS }
+fun meta (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = metaNS }
+fun magic (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = magicNS }
+fun intrinsic (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = intrinsicNS }
+fun helper (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = helperNS }
+fun ECMAScript4_Internal (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = ECMAScript4_InternalNS }
+fun informative (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = informativeNS }
 
 (*
  * To reference a name as a type expression, you need
