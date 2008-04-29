@@ -261,7 +261,7 @@ Tapp on generic fn has
        | AnyType
        | UndefinedType
        | VoidType
-        | UnionType of TYPE list
+       | UnionType of TYPE list
        | ArrayType of TYPE list
        | TypeName of (IDENTIFIER_EXPRESSION * NONCE option)
        | ElementTypeRef of (TYPE * int)
@@ -573,7 +573,7 @@ withtype
          { params: TYPE list,
            result: TYPE,
            thisType: TYPE option,
-           hasRest: bool,         (* if true, the last elem in params is array type *)
+           hasRest: bool,      
            minArgs: int }         (* necessary because some of params can have defaults *)
 
      and FUNC_DEFN =

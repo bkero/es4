@@ -83,7 +83,7 @@ fun throwExn (v:Mach.VAL)
     raise (ThrowException v)
 
 infix 4 <*;
-fun tsub <* tsup = Type.groundIsCompatibleSubtype tsub tsup
+fun tsub <* tsup = Type.compatibleSubtype tsub tsup
 
 infix 4 ~<;
 fun ta ~< tb = Type.groundMatches ta tb

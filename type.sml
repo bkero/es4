@@ -904,20 +904,20 @@ and subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
  * Compatible-subtyping:  <*
  * ----------------------------------------------------------------------------- *)
 
-fun groundIsCompatibleSubtype ty1 ty2 = 
+fun compatibleSubtype ty1 ty2 = 
     let in
-        traceTy "groundIsCompatibleSubtype:ty1 " ty1;
-        traceTy "groundIsCompatibleSubtype:ty2 " ty2;
+        traceTy "compatibleSubtype:ty1 " ty1;
+        traceTy "compatibleSubtype:ty2 " ty2;
         subType
             (fn ty1 => fn ty2 => ty2 = anyType)
             ty1 ty2
     end
 
 (*
-fun groundIsCompatibleSubtype ty1 ty2 = 
+fun compatibleSubtype ty1 ty2 = 
     let in
-        traceTy "groundIsCompatibleSubtype:ty1 " ty1;
-        traceTy "groundIsCompatibleSubtype:ty2 " ty2;
+        traceTy "compatibleSubtype:ty1 " ty1;
+        traceTy "compatibleSubtype:ty2 " ty2;
         compareTypes
             (fn ty1 => fn ty2 => ty2 = anyType)
             SubType
@@ -925,7 +925,7 @@ fun groundIsCompatibleSubtype ty1 ty2 =
     end
 *)
 
-(* val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype  *)
+(* val isCompatibleSubtype = normalizingPredicate compatibleSubtype  *)
 
 (* -----------------------------------------------------------------------------
  * Matching: ~<

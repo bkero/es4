@@ -116,8 +116,9 @@ unknown type. (See the rule for generic functions below.)   The subtyping
 relation is defined by the following rules:
 
 <IMPL>
-<INCLUDE file="type.sml" name="datatype TYPE_COMPARISON">
-<INCLUDE file="type.sml" name="fun compareTypes">
+<INCLUDE file="type.sml" name="fun equivType">
+
+<INCLUDE file="type.sml" name="and subType">
 
 == Compatible-Subtyping ==
 
@@ -131,18 +132,9 @@ is a compatible-subtype of ''T''.
 
 <p> 
 <IMPL>
-<INCLUDE file="type.sml" name="datatype TYPE_COMPARISON">
-<INCLUDE file="type.sml" name="fun compareTypes">
 <INCLUDE file="type.sml" name="fun compatibleSubtype">
 
-
-
-=== Subtyping ===
-
 <FIXME>Add prose from Cormac's //Type System// whitepaper.
 
-=== Compatible Subtyping ===
-
-<FIXME>Add prose from Cormac's //Type System// whitepaper.
 
 

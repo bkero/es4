@@ -171,8 +171,8 @@ fun leastUpperBound (t1:Ast.TYPE)
     : Ast.TYPE =
     let
     in
-        if      Type.groundIsCompatibleSubtype t1 t2 then t2
-        else if Type.groundIsCompatibleSubtype t2 t1 then t1
+        if      Type.compatibleSubtype t1 t2 then t2
+        else if Type.compatibleSubtype t2 t1 then t1
         else Ast.UnionType [t1, t2]
     end
 
