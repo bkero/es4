@@ -409,7 +409,7 @@ fun desugarPattern (loc:Ast.LOC option)
                         end
                   | (_,_) =>
                         let
-                            val t = Ast.SpecialType Ast.Any
+                            val t = Ast.AnyType
                             val e = SOME (Ast.ObjectRef {base=temp, ident=ident, loc=loc})
                         in
                             desugarPattern loc p t e (nesting+1)
@@ -2616,7 +2616,7 @@ and assignmentExpression (ts:TOKENS, a:ALPHA, b:BETA)
 
                 val p = patternFromExpr nd1
                 val (ts2,nd2) = assignmentExpression(tl ts1,a,b)
-                val (binds,inits) = desugarPattern (locOf ts) p (Ast.SpecialType Ast.Any) (SOME nd2) 0  
+                val (binds,inits) = desugarPattern (locOf ts) p (Ast.AnyType) (SOME nd2) 0  
                                                                          (* type is meaningless *)
                 val (inits,assigns) = List.partition isInitStep inits    (* separate init steps and assign steps *)
                 val sets = map makeSetExpr assigns
@@ -3051,7 +3051,7 @@ and typedIdentifier (ts:TOKENS)
             let
             in
                 (trace(["<< typedIdentifier with next=",tokenname(hd(ts1))]);
-                (ts1,(nd1,Ast.SpecialType Ast.Any)))
+                (ts1,(nd1,Ast.AnyType)))
             end
 
     end
@@ -3081,7 +3081,7 @@ and typedPattern (ts:TOKENS, b:BETA)
                         (ts2,(nd1,nd2))
                     end
               | _ =>
-                    (ts1,(nd1,Ast.SpecialType Ast.Any))  (* FIXME: this could be {*:*} to be more specific *)
+                    (ts1,(nd1,Ast.AnyType))  (* FIXME: this could be {*:*} to be more specific *)
             end
       | (LeftBracket, _) :: _ =>
             let
@@ -3108,7 +3108,7 @@ and typedPattern (ts:TOKENS, b:BETA)
                     end
               | _ =>
                     (trace(["<< typedPattern with next=",tokenname(hd ts1)]);
-                    (ts1,(nd1,Ast.SpecialType Ast.Any)))
+                    (ts1,(nd1,Ast.AnyType)))
             end
     end
 
@@ -3177,9 +3177,9 @@ and basicTypeExpression (ts0:TOKENS)
     : (TOKENS * Ast.TYPE) =
     let val _ = trace ([">> basicTypeExpression with next=", tokenname (hd ts0)])
     in case ts0 of
-        (Mult, _) :: _ => (tl ts0, Ast.SpecialType Ast.Any)
-      | (Null, _) :: _ => (tl ts0, Ast.SpecialType Ast.Null)
-      | (Undefined, _) :: _ => (tl ts0, Ast.SpecialType Ast.Undefined)
+        (Mult, _) :: _ => (tl ts0, Ast.AnyType)
+      | (Null, _) :: _ => (tl ts0, Ast.NullType)
+      | (Undefined, _) :: _ => (tl ts0, Ast.UndefinedType)
       | (Function, _) :: _ => functionType ts0
       | (LeftParen, _) :: _ => unionType ts0
       | (LeftBrace, _) :: _ => objectType ts0
@@ -3198,7 +3198,7 @@ and basicTypeExpression (ts0:TOKENS)
                       | _ => error ["unknown final token of AppType type expression"]
                     end
               | _ => (ts1, needType (nd1, NONE))
-            end
+            end 
     end
 
 (*
@@ -3417,7 +3417,7 @@ and elementTypeList (ts0:TOKENS)
             let
                 val (ts1, nd1) = elementTypeList (tl ts0)
             in
-                (ts1, Ast.SpecialType (Ast.Any) :: nd1)
+                (ts1, Ast.AnyType :: nd1)
             end
       | _ =>
             let
@@ -3754,7 +3754,7 @@ and typedExpression (ts:TOKENS)
             in
                 (ts2,(nd1,nd2))
             end
-      | _ => (ts1,(nd1,Ast.SpecialType Ast.Any))
+      | _ => (ts1,(nd1,Ast.AnyType))
     end
 
 
@@ -3992,7 +3992,7 @@ and typeCaseBinding (ts:TOKENS)
 and isDefaultTypeCase (x:Ast.TYPE) 
     : bool =
     case x of
-        Ast.SpecialType Ast.Any => true
+        Ast.AnyType => true
       | _ => false
 
 and typeCaseElements (ts:TOKENS)
@@ -4049,7 +4049,7 @@ and typeCaseElement (ts:TOKENS, has_default:bool)
            in
                trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
                (ts1,{bindings=([],[]),
-                     ty=(Ast.SpecialType Ast.Any),
+                     ty=(Ast.AnyType),
                      block=nd1,
                      rib=NONE,
                      inits=NONE})
@@ -4255,14 +4255,14 @@ and forStatement (ts:TOKENS, w:OMEGA)
 
                         val p = patternFromListExpr init
                         val (binds,inits) = desugarPattern (locOf ts) p
-                                                           (Ast.SpecialType Ast.Any)
+                                                           (Ast.AnyType)
                                                            (SOME (Ast.GetParam 0)) 0
                                                                           (* type is meaningless *)
                         val (inits,assigns) = List.partition isInitStep inits
                                                          (* separate init steps and assign steps *)
                         val sets = map makeSetExpr assigns
                         val paramBind = Ast.Binding {ident=Ast.ParamIdent 0,
-                                                     ty=Ast.SpecialType Ast.Any}
+                                                     ty=Ast.AnyType}
                     in
                         Ast.LetExpr {defs=(paramBind::binds,inits),
                                      body=Ast.ListExpr sets,
@@ -4390,7 +4390,7 @@ and forInBinding (ts:TOKENS)
       | _ =>
             let
                 val (ts1,nd1) = pattern (ts,AllowColon,NoIn,AllowExpr)
-                val (b,i) = desugarPattern (locOf ts) nd1 (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
+                val (b,i) = desugarPattern (locOf ts) nd1 (Ast.AnyType) (SOME (Ast.GetTemp 0)) 0
             in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,(b,i))
@@ -5705,7 +5705,8 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
         fun hasNonStar (ts) : bool =
             case ts of
                 [] => false
-              | Ast.SpecialType AstAny :: _ => hasNonStar (tl ts)
+    (* was          | Ast.SpecialType AstAny :: _ => hasNonStar (tl ts) *)
+              | Ast.AnyType :: _ => hasNonStar (tl ts) 
               | _ => true
 
         val hasNonStarAnno = true (* (not (Type.isGroundType ty)) *)
@@ -5853,7 +5854,7 @@ and needType (nd:Ast.IDENTIFIER_EXPRESSION,nullable:bool option) =
 (* Don't convert to Ast.Any so we can distinguish from un-anno'd defs
    for handling compatibility cases, such as writable functions
         Ast.WildcardIdentifier =>
-                Ast.SpecialType Ast.Any
+                Ast.AnyType
 *)
       | _ => Ast.TypeName (nd, SOME (nextAstNonce()))
 
@@ -5864,7 +5865,7 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
                 val (ts2,nd2) = typeExpression (tl (tl (tl ts1)))
-                val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
+                val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.AnyType}
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
@@ -6243,13 +6244,13 @@ and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.
             let
             in case tl ts of
                 (RightParen, _) :: _ =>
-                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.SpecialType Ast.Any}],[]),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
+                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.AnyType}],[]),[],[Ast.ArrayType [Ast.AnyType]]))
               | _ =>
                     let
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
                         val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
                     in
-                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=Ast.ListExpr [],ty=NONE})],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
+                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=Ast.ListExpr [],ty=NONE})],[Ast.ArrayType [Ast.AnyType]]))
                     end
             end
       | _ => error ["unknown token in restParameter"]
@@ -6284,7 +6285,7 @@ and resultType (ts:TOKENS)
     : (TOKENS * Ast.TYPE) =
     let val _ = trace([">> resultType with next=",tokenname(hd(ts))])
     in case ts of
-        (Colon, _) :: (Void, _) :: ts1 => (ts1,Ast.SpecialType(Ast.VoidType))
+        (Colon, _) :: (Void, _) :: ts1 => (ts1, Ast.VoidType)
       | (Colon, _) :: _ =>
             let
                 val (ts1,nd1) = typeExpression (tl ts)
@@ -6292,7 +6293,7 @@ and resultType (ts:TOKENS)
                 trace ["<< resultType with next=",tokenname(hd ts1)];
                 (ts1, nd1)
             end
-      | ts1 => (ts1,Ast.SpecialType(Ast.Any))
+      | ts1 => (ts1, Ast.AnyType)
     end
 
 (*
@@ -6320,7 +6321,7 @@ and constructorSignature (ts:TOKENS)
                                       params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
-                                      returnType=(Ast.SpecialType Ast.VoidType),
+                                      returnType=(Ast.VoidType),
                                       ctorInits=SOME nd3,
                                       thisType=NONE,
                                       hasRest=hasRest })
@@ -6334,7 +6335,7 @@ and constructorSignature (ts:TOKENS)
                                       params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
-                                      returnType=(Ast.SpecialType Ast.VoidType),
+                                      returnType=(Ast.VoidType),
                                       ctorInits=SOME (([],[]),[]),
                                       thisType=NONE,
                                       hasRest=hasRest })
@@ -6429,7 +6430,7 @@ and initialiser (ts:TOKENS)
                     val (ts2,nd2) = variableInitialisation (ts1,NoIn)
                 in
                     trace(["<< initialiser with next=", tokenname(hd ts2)]);
-                    (ts2, desugarPattern (locOf ts) nd1 (Ast.SpecialType Ast.Any) (SOME nd2) 0) (* type meaningless *)
+                    (ts2, desugarPattern (locOf ts) nd1 (Ast.AnyType) (SOME nd2) 0) (* type meaningless *)
                 end
           | _ => (error(["constructor initialiser without assignment"]); error ["unknown token in initialiser"])
     end

@@ -119,12 +119,6 @@ datatype VAR_DEFN_TAG =
        | LetVar
        | LetConst
 
-datatype SPECIAL_TY =
-         Any
-       | Null
-       | Undefined
-       | VoidType
-
 datatype PRAGMA =
          UseNamespace of EXPRESSION
        | UseDefaultNamespace of EXPRESSION
@@ -224,6 +218,7 @@ datatype TYPE =
          NullType
        | AnyType
        | UndefinedType
+       | VoidType
        | IdentType  of IDENTIFIER_EXPRESSION
        | RecordType of (IDENTIFIER_EXPRESSION * TYPE) list
        | ArrayType  of TYPE list
@@ -241,6 +236,13 @@ datatype TYPE =
        | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
        | NominalType of NAME
 
+
+
+datatype SPECIAL_TY =
+         Any
+       | Null
+       | Undefined
+       | VoidType
 *)
 
 
@@ -252,8 +254,14 @@ Tapp on generic fn has
 *)
 
      and TYPE =
+(*
          SpecialType of SPECIAL_TY
-       | UnionType of TYPE list
+*)
+         NullType
+       | AnyType
+       | UndefinedType
+       | VoidType
+        | UnionType of TYPE list
        | ArrayType of TYPE list
        | TypeName of (IDENTIFIER_EXPRESSION * NONCE option)
        | ElementTypeRef of (TYPE * int)

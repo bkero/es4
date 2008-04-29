@@ -158,9 +158,9 @@ fun traceTy ss ty = if (!doTrace) then let in trace [ss, LogErr.ty ty]; TextIO.p
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
 
-val undefinedType   = Ast.SpecialType Ast.Undefined
-val nullType        = Ast.SpecialType Ast.Null
-val anyType         = Ast.SpecialType Ast.Any
+val undefinedType   = Ast.UndefinedType
+val nullType        = Ast.NullType
+val anyType         = Ast.AnyType
 
 fun assert b s = if b then () else (raise Fail s)
 
@@ -215,7 +215,10 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
               (ty:Ast.TYPE)
     : Ast.TYPE =
     case ty of 
-        Ast.SpecialType _ => ty
+        Ast.AnyType => ty
+      | Ast.NullType => ty
+      | Ast.VoidType => ty
+      | Ast.UndefinedType => ty
       | Ast.TypeName _ => ty
       | Ast.AppType { base, args } => 
         Ast.AppType { base = f base,
@@ -267,7 +270,7 @@ fun normalizeRefs (ty:Ast.TYPE)
                     else 
                         if length arr > 0
                         then List.last arr
-                        else Ast.SpecialType Ast.Any
+                        else Ast.AnyType
         in
             normalizeRefs t
         end
@@ -290,17 +293,17 @@ fun normalizeRefs (ty:Ast.TYPE)
 fun normalizeNullsInner (ty:Ast.TYPE)
     : Ast.TYPE =
     let
-        val nullTy = Ast.SpecialType Ast.Null
+        val nullTy = Ast.NullType
         fun containsNull ty = 
             case ty of 
-                Ast.SpecialType Ast.Null => true
+                Ast.NullType => true
               | Ast.NullableType { expr, nullable } => nullable
               | Ast.UnionType tys => List.exists containsNull tys
               | _ => false
 
         fun stripNulls ty = 
             case ty of 
-                Ast.SpecialType Ast.Null => NONE
+               Ast.NullType => NONE
               | Ast.NullableType { expr, nullable } => stripNulls expr 
               | Ast.UnionType tys => 
                 (case List.mapPartial stripNulls tys of
@@ -351,7 +354,7 @@ fun normalizeUnions (ty:Ast.TYPE)
 fun normalizeArrays (ty:Ast.TYPE)
     : Ast.TYPE =
     case ty of 
-        Ast.ArrayType [] => Ast.ArrayType [Ast.SpecialType Ast.Any]
+        Ast.ArrayType [] => Ast.ArrayType [Ast.AnyType]
       | x => mapTyExpr normalizeArrays x
 
 
@@ -419,12 +422,12 @@ fun normalizeNames (useCache:bool)
               | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, nonnullable, ... })) => 
                 if nonnullable
                 then instanceType
-                else Ast.UnionType [ instanceType, Ast.SpecialType Ast.Null ]
+                else Ast.UnionType [ instanceType, Ast.NullType]
 
               | (_, _, Ast.InterfaceFixture (Ast.Iface { instanceType, nonnullable, ... })) => 
                 if nonnullable
                 then instanceType
-                else Ast.UnionType [ instanceType, Ast.SpecialType Ast.Null ]
+                else Ast.UnionType [ instanceType, Ast.NullType ]
                          
               | (_, n, _) => error ["name ", LogErr.name  n, 
                                     " in type expression ", LogErr.ty ty, 
@@ -645,7 +648,7 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
                           (tyExpr2:Ast.TYPE) 
     : Ast.TYPE option = 
     let
-        fun extract (Ast.UnionType [Ast.InstanceType t, Ast.SpecialType Ast.Null]) = SOME t
+        fun extract (Ast.UnionType [Ast.InstanceType t, Ast.NullType]) = SOME t
           | extract (Ast.UnionType [Ast.InstanceType t]) = SOME t
           | extract (Ast.InstanceType t) = SOME t
           | extract _ = NONE

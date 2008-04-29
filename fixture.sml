@@ -97,12 +97,12 @@ fun mergeVirtuals (tyeq:TYEQ)
                   (vold:Ast.VIRTUAL_VAL_FIXTURE) =
     let
         val ty = case ((#ty vold), (#ty vnew)) of
-                     (Ast.SpecialType Ast.Any, tnew) => tnew
-                   | (told, Ast.SpecialType Ast.Any) => told
+                     (Ast.AnyType, tnew) => tnew
+                   | (told, Ast.AnyType) => told
                    | (t1, t2) => if tyeq t1 t2
                                  then t1
                                  else error ["mismatched get/set types on fixture ",
-                                             LogErr.fname fName]
+                                              LogErr.fname fName]
         fun either a b =
             case (a,b) of
                 (SOME x, NONE) => SOME x

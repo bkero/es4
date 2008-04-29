@@ -608,7 +608,7 @@ and defInterface (env: ENV)
                               typeParams=params,
                               typeArgs=[],
                               superTypes=groundSuperInterfaceExprs,
-                              ty=Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
+                              ty=Ast.AnyType,  (* FIXME needs synthetic record type *)
                               dynamic=false}) (* interfaces are never dynamic *)
                         
         val iface:Ast.IFACE = 
@@ -668,7 +668,7 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
     let
         fun isVoid ty = 
             case ty of 
-                Ast.SpecialType Ast.VoidType => true
+                Ast.VoidType => true
               | _ => false
                      
         val isCompatible = case (fb,fd) of
@@ -1122,7 +1122,7 @@ and analyzeClassBody (env:ENV)
                               typeParams = params,
                               typeArgs = [],
                               superTypes = [], (* set in resolveClassInheritence *)
-                              ty = Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
+                              ty = Ast.AnyType,  (* FIXME needs synthetic record type *)
                               dynamic = dynamic})
     in
         Ast.Cls { name=name,
@@ -1356,7 +1356,7 @@ and defFuncSig (env:ENV)
 
             val thisType:Ast.TYPE = 
                 case thisType of 
-                    NONE => Ast.SpecialType Ast.Any
+                    NONE => Ast.AnyType
                   | SOME x => defTypeExpr env x
 
             fun isTempFixture (n:Ast.FIXTURE_NAME, _) : bool =
@@ -1505,7 +1505,7 @@ and defFuncDefn (env:ENV)
                             if (#kind f) = Ast.Var                            
                             then  
                                 (* e3 style writeable function *)
-                                (makeTy env (Ast.SpecialType Ast.Any), false)  
+                                (makeTy env (Ast.AnyType), false)  
                             else 
                                 (* read only, method *)
                                 (ty, true)                        

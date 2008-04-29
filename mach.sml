@@ -500,7 +500,7 @@ fun getProp (b:PROP_BINDINGS)
          * with value undefined. Any property not found
          * errors would have been caught by evalRefExpr
          *)
-        {ty=Ast.SpecialType Ast.Undefined,
+        {ty=Ast.UndefinedType  ,
          state=ValProp Undef,
          attrs={dontDelete=false,  (* unused attrs *)
                 dontEnum=false,

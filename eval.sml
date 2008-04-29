@@ -539,7 +539,7 @@ and allocTemp (regs:Mach.REGS)
                    | _ => error regs ["allocating non-value temporary"]
         val tmps = !temps
         val tlen = List.length tmps
-        val emptyTmp = (Ast.SpecialType Ast.Any, Mach.UninitTemp)
+        val emptyTmp = (Ast.AnyType, Mach.UninitTemp)
     in
         if t = tlen
         then 
@@ -618,7 +618,7 @@ and valAllocState (regs:Mach.REGS)
 			       | other => other)
                 
 			fun firstSimpleType [] = firstType ts
-			  | firstSimpleType ((Ast.SpecialType Ast.Any)::xs) = Mach.ValProp (Mach.Undef)
+			  | firstSimpleType ((Ast.AnyType)::xs) = Mach.ValProp (Mach.Undef)
 			  | firstSimpleType ((Ast.SpecialType Ast.Null)::xs) = Mach.ValProp (Mach.Null)
 			  | firstSimpleType ((Ast.SpecialType Ast.Undefined)::xs) = Mach.ValProp (Mach.Undef)
 			  | firstSimpleType (x::xs) = firstSimpleType xs
@@ -1026,7 +1026,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                 fun newProp _ =
                     let
                         val prop = { state = Mach.ValProp v,
-                                     ty = Ast.SpecialType Ast.Any,
+                                     ty = Ast.AnyType,
                                      attrs = { dontDelete = false,
                                                dontEnum = false,
                                                readOnly = false,
@@ -2750,7 +2750,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
     let
         val vals = evalExprsAndSpliceSpreads regs exprs
         val tyExprs = case Option.map (evalTy regs) ty of
-                          NONE => [Ast.SpecialType Ast.Any]
+                          NONE => [Ast.AnyType]
                         | SOME (Ast.ArrayType tys) => tys
                         (* FIXME: hoist this to parsing or defn; don't use
                          * a full TYPE in LiteralArray. *)
@@ -2772,7 +2772,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                          then List.nth (tyExprs, n)
                          else (if (length tyExprs) > 0
                                then List.last tyExprs
-                               else Ast.SpecialType Ast.Any)
+                               else Ast.AnyType)
                 val prop = { ty = ty,
                              state = Mach.ValProp v,
                              attrs = { dontDelete = false,
@@ -2802,7 +2802,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                           (ty:Ast.TYPE option)
     : Mach.VAL =
     let
-        fun searchFieldTypes n [] = Ast.SpecialType Ast.Any
+        fun searchFieldTypes n [] = Ast.AnyType
           | searchFieldTypes n ({name,ty}::ts) =
             if n = name
             then ty
@@ -3688,7 +3688,7 @@ and typeOfTag (tag:Mach.VAL_TAG)
          *
          * error regs ["typeOfVal on NoTag object"])
          *)
-        Ast.SpecialType Ast.Any
+        Ast.AnyType
 
                                 
 and typeOfVal (regs:Mach.REGS)
@@ -5139,7 +5139,7 @@ and setPrototype (regs:Mach.REGS)
     let
 	val Mach.Obj { props, ... } = obj
 	val n = Name.public_prototype
-	val prop = { ty = Ast.SpecialType Ast.Any,
+	val prop = { ty = Ast.AnyType,
                      state = Mach.ValProp proto,
 		     attrs = { dontDelete = true,
 			       dontEnum = true,

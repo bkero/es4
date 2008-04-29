@@ -179,10 +179,10 @@ fun ty t =
             join ", " (map Ustring.toAscii fields)
     in
         case t of
-            Ast.SpecialType Ast.Any => "*"
-          | Ast.SpecialType Ast.Null => "null"
-          | Ast.SpecialType Ast.Undefined => "undefined"
-          | Ast.SpecialType Ast.VoidType => "<VoidType>"
+            Ast.AnyType => "*"
+          | Ast.NullType => "null"
+          | Ast.UndefinedType => "undefined"
+          |  Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
           | Ast.TypeName (idexpr, _) => identExpr idexpr
