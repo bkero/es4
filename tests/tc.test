@@ -19,10 +19,10 @@ false
 "string"
 
 %% [structurally typed array literal] verify, pass
-[0] : [int]
+[0] : [Number]
 
 %% [structurally typed array literal] verify, pass
-[0, true, "blue"] : [int, boolean, string]
+[0, true, "blue"] : [Number, boolean, string]
 
 %% [nominally typed array literal] verify, pass
 [1, 2, "foo"] : Array
@@ -47,10 +47,10 @@ false
 //{}
 
 //%% [structurally typed object literal] verify, pass
-//{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean }
+//{ x: 0, y: true, z: "blue" } : { x: Number, y: Boolean }
 
 //%% [structurally typed object literal] verify, pass
-//{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String }
+//{ x: 0, y: true, z: "blue" } : { x: Number, y: Boolean, z: String }
 
 %% [let1] verify, pass
 let (x=1) x
@@ -71,43 +71,43 @@ this
 (function f(){})
 
 %% [fn1] verify, pass
-   (function f(x:int):int { return 1 });
+   (function f(x:Number):Number { return 1 });
 
 %% [fn2] verify, pass
-(function f(x:int):int { return 1 }) (4);
+(function f(x:Number):Number { return 1 }) (4);
 
 %% [fn3] verify, pass
-(function f(x:int,y):int { return 1 }) (4,5);
+(function f(x:Number,y):Number { return 1 }) (4,5);
 
 %% [fn3a] verify, fail
-(function f(x:int,y):int { return 1 }) (4);
+(function f(x:Number,y):Number { return 1 }) (4);
 
 %% [fn3b] verify, fail
-(function f(x:int,y):int { return 1 }) ();
+(function f(x:Number,y):Number { return 1 }) ();
 
 %% [fn3c] verify, fail
-(function f(x:int,y):int { return 1 }) (4,5,6);
+(function f(x:Number,y):Number { return 1 }) (4,5,6);
 
 %% [fn4] verify, pass
 let (f=function f() {}) f(3);
 
 %% [fn6] verify, pass
-(type function(int):int);
+(type function(Number):Number);
 
 %% [fn5] verify, pass
-let (f:function(int):int=function f(x:int):int {return x}) f(3);
+let (f:function(Number):Number=function f(x:Number):Number {return x}) f(3);
 
 %% [fn7] verify, pass
-(function f(...x):int { return 1 }) (4);
+(function f(...x):Number { return 1 }) (4);
 
 %% [fn7a] verify, pass
-(function f(...x):int { return 1 }) (4,true,7);
+(function f(...x):Number { return 1 }) (4,true,7);
 
 %% [fn7b] verify, pass
-(function f(y,...x):int { return 1 }) (4);
+(function f(y,...x):Number { return 1 }) (4);
 
 %% [fn7c] verify, fail
-(function f(y,z,...x):int { return 1 }) (4);
+(function f(y,z,...x):Number { return 1 }) (4);
 
 %% [fn8] verify, pass
 function f.<X>(x:X):X { return x};
@@ -128,55 +128,55 @@ let (f=1) f(3)
 function f(x) { return x; }
  
 %% [fn51] verify, pass
-let (f:* =function f(x:int):int {return x}) f(3);
+let (f:* =function f(x:Number):Number {return x}) f(3);
  
 %% [fn52] verify, pass
-let (f:  function(int):int   =function f(x:int):int {return x}) f(3);
+let (f:  function(Number):Number   =function f(x:Number):Number {return x}) f(3);
 
 %% [fn53] verify, pass
-let (f:function(*):* =function f(x:int):int {return x}) f(3);
+let (f:function(*):* =function f(x:Number):Number {return x}) f(3);
 
 %% [fn54] verify, pass
-let (f:function(int):int=function f(x:int):int {return x}) f(3);
+let (f:function(Number):Number=function f(x:Number):Number {return x}) f(3);
 
 %% [fn55a] verify, pass
-let (f:function(int)=function f(x:int):int {return x}) f(3);
+let (f:function(Number)=function f(x:Number):Number {return x}) f(3);
 
 %% [fn55b] verify, pass
-let (f:function(*)=function f(x:int):int {return x}) f(3);
+let (f:function(*)=function f(x:Number):Number {return x}) f(3);
 
 %% [fn55c] verify, fail
-let (f:function()=function f(x:int):int {return x}) f(3);
+let (f:function()=function f(x:Number):Number {return x}) f(3);
 
 %% [fn55d] verify, pass
-let (f:function(int)=function f(x:int):int {return x}) f(3);
+let (f:function(Number)=function f(x:Number):Number {return x}) f(3);
 
 %% [fn56] verify, pass
-let (f:function(int):int=function f(x) {return x}) f(3);
+let (f:function(Number):Number=function f(x) {return x}) f(3);
 
 %% [badtype] verify, fail
-var x:int;
+var x:Number;
 x="string";
 
 %% [fns1] verify, pass
-var f : function(int):int;
-f = function(g:int):int { return g; };
+var f : function(Number):Number;
+f = function(g:Number):Number { return g; };
 
 %% [fns2] verify, pass
-var f : function(int):*;
-f = function(g:int):int { return g; };
+var f : function(Number):*;
+f = function(g:Number):Number { return g; };
 
 %% [fns3] verify, pass
-var f : function(*):int;
-f = function(g:int):int { return g; };
+var f : function(*):Number;
+f = function(g:Number):Number { return g; };
 
 %% [fns4] verify, pass
 var f : function(*):*;
-f = function(g:int):int { return g; };
+f = function(g:Number):Number { return g; };
 
 %% [fns5] verify, pass
-var f : function(int):int;
-f = function(g:int):* { return g; };
+var f : function(Number):Number;
+f = function(g:Number):* { return g; };
 
 
 
@@ -195,7 +195,7 @@ let (x:{}={y:1})
     x.y;
 
 %% [objref5] verify, pass
-let (x:{y:int}={y:1}) x.y;
+let (x:{y:Number}={y:1}) x.y;
 
 %% [objref6] verify, pass
 let (x:{y:*}={y:1}) x.y;
@@ -204,18 +204,18 @@ let (x:{y:*}={y:1}) x.y;
 
 
 %% [generic1] verify, pass
-var f : function.<X>(int):int;
+var f : function.<X>(Number):Number;
 
-%% [generic2a] verify, pass
+%% [generic2a-fail] verify, pass
 class C.<T> {}
 
-%% [generic2b] verify, pass
+%% [generic2b-fail] verify, pass
 class C.<T> {
       function get() : C.<T> {
       }
 }
 
-%% [generic2c] verify, pass
+%% [generic2c-fail] verify, pass
 class C.<T> {
       function get() : C.<T> {
          return new C.<T>();
@@ -225,10 +225,10 @@ class C.<T> {
 %% [catch1] verify, pass
 try {} catch(e) {}
 
-%% [Number.NaN] verify, pass
+%% [Number.NaN-fail] verify, pass
 Number.NaN
 
-%% [Number.POSITIVE_INFINITY] verify, pass
+%% [Number.POSITIVE_INFINITY-fail] verify, pass
 Number.POSITIVE_INFINITY
 
 

@@ -60,9 +60,9 @@ val ppNamespace = ppRep o cvtNAMESPACE
 
 val ppFragment = ppRep o cvtFRAGMENT
 
-val ppExpr = ppRep o cvtEXPR
+val ppExpr = ppRep o cvtEXPRESSION
 
-val ppStmt = ppRep o cvtSTMT
+val ppStmt = ppRep o cvtSTATEMENT
 
 val ppDefinition = ppRep o cvtDEFN
 
