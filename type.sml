@@ -641,6 +641,58 @@ fun optionWise predicate (SOME a) (SOME b) = predicate a b
  * Generic matching algorithm
  * ----------------------------------------------------------------------------- *)
 
+fun findSpecialConversion (tyExpr1:Ast.TYPE)
+                          (tyExpr2:Ast.TYPE) 
+    : Ast.TYPE option = 
+    let
+        fun extract (Ast.UnionType [Ast.InstanceType t, Ast.SpecialType Ast.Null]) = SOME t
+          | extract (Ast.UnionType [Ast.InstanceType t]) = SOME t
+          | extract (Ast.InstanceType t) = SOME t
+          | extract _ = NONE
+        val srcInstance = extract tyExpr1
+        val dstInstance = extract tyExpr2
+        fun isNumericType n = 
+            List.exists (nameEq n) [ Name.ES4_double, 
+                                          Name.ES4_decimal,
+                                          Name.public_Number ]
+        fun isStringType n = 
+            List.exists (nameEq n) [ Name.ES4_string,
+                                          Name.public_String ]
+
+        fun isBooleanType n = 
+            List.exists (nameEq n) [ Name.ES4_boolean,
+                                          Name.public_Boolean ]
+    in
+        case (srcInstance, dstInstance) of
+            ((SOME src), (SOME dst)) => 
+            let
+                val {name=srcName, ...} = src
+                val {name=dstName, ...} = dst
+            in
+                if 
+                    (isBooleanType dstName)
+                    orelse
+                    (isNumericType srcName andalso isNumericType dstName)
+                    orelse
+                    (isStringType srcName andalso isStringType dstName)
+                then SOME (Ast.InstanceType dst)
+                else NONE
+            end
+
+          | (_, (SOME dst)) => 
+            let
+                val {name=dstName, ...} = dst
+            in
+                if 
+                    (isBooleanType dstName)
+                then SOME (Ast.InstanceType dst)
+                else NONE
+            end
+
+          | _ => NONE
+    end
+
+(*
 datatype TYPE_COMPARISON = SubType | EquivType
 
 fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
@@ -655,13 +707,8 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
     orelse
     case (v, ty1, ty2) of 
 
-      (* A-GENERIC *)
-      (* FIXME: need to alpha-rename so have consistent parameters *)
-        (_, Ast.LamType lt1, Ast.LamType lt2) => 
-        compareTypes extra v (#body lt1) (#body lt2)
-
       (* A-OBJ *)
-      | (_, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
+        (_, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
         fieldPairWiseSuperset (compareTypes extra EquivType) fields1 fields2
         
       (* A-ARROW *)
@@ -737,59 +784,118 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
         
       | (_, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
+
+      (* A-GENERIC *)
+      (* FIXME: need to alpha-rename so have consistent parameters *)
+      | (_, Ast.LamType lt1, Ast.LamType lt2) => 
+        compareTypes extra v (#body lt1) (#body lt2)
       
       | _ => false
 
-and findSpecialConversion (tyExpr1:Ast.TYPE)
-                          (tyExpr2:Ast.TYPE) 
-    : Ast.TYPE option = 
-    let
-        fun extract (Ast.UnionType [Ast.InstanceType t, Ast.SpecialType Ast.Null]) = SOME t
-          | extract (Ast.UnionType [Ast.InstanceType t]) = SOME t
-          | extract (Ast.InstanceType t) = SOME t
-          | extract _ = NONE
-        val srcInstance = extract tyExpr1
-        val dstInstance = extract tyExpr2
-        fun isNumericType n = 
-            List.exists (nameEq n) [ Name.ES4_double, 
-                                          Name.ES4_decimal,
-                                          Name.public_Number ]
-        fun isStringType n = 
-            List.exists (nameEq n) [ Name.ES4_string,
-                                          Name.public_String ]
+*)
 
-        fun isBooleanType n = 
-            List.exists (nameEq n) [ Name.ES4_boolean,
-                                          Name.public_Boolean ]
-    in
-        case (srcInstance, dstInstance) of
-            ((SOME src), (SOME dst)) => 
-            let
-                val {name=srcName, ...} = src
-                val {name=dstName, ...} = dst
-            in
-                if 
-                    (isBooleanType dstName)
-                    orelse
-                    (isNumericType srcName andalso isNumericType dstName)
-                    orelse
-                    (isStringType srcName andalso isStringType dstName)
-                then SOME (Ast.InstanceType dst)
-                else NONE
-            end
+fun equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
+              (ty1 : Ast.TYPE)
+              (ty2 : Ast.TYPE)
+    : bool = 
+    (subType extra ty1 ty2)
+    andalso
+    (subType extra ty2 ty1)
 
-          | (_, (SOME dst)) => 
-            let
-                val {name=dstName, ...} = dst
-            in
-                if 
-                    (isBooleanType dstName)
-                then SOME (Ast.InstanceType dst)
-                else NONE
-            end
+and subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
+            (ty1 : Ast.TYPE)
+            (ty2 : Ast.TYPE)
+    : bool = 
+    (ty1 = ty2)
+    orelse
+    (extra ty1 ty2)
+    orelse
+    case (ty1, ty2) of 
 
-          | _ => NONE
-    end
+      (* A-OBJ *)
+        (Ast.ObjectType fields1, Ast.ObjectType fields2) => 
+        fieldPairWiseSuperset (equivType extra) fields1 fields2
+        
+      (* A-ARROW *)
+      | (Ast.FunctionType
+		     {params   = params1,
+		      result   = result1,
+		      thisType = thisType1,
+		      hasRest  = hasRest1,
+	          minArgs  = minArgs1},
+	     Ast.FunctionType
+		     {params   = params2,
+		      result   = result2,
+		      thisType = thisType2,
+		      hasRest  = hasRest2,
+		      minArgs  = minArgs2}) 
+        => 
+        (optionWise (equivType extra) thisType1 thisType2) andalso     (* will drop option *)
+        minArgs1 >= minArgs2 andalso
+        (if not hasRest1 andalso not hasRest2
+         then length params1 = length params2
+         else hasRest1 andalso length params1 <= length params2) andalso
+        (arrayPairWise (equivType extra)  params1 (List.take(params2, length params1))) andalso
+        subType extra result1 result2 
+
+      (* A-INSTANCE -- generalized from A-INT *)
+      | (Ast.InstanceType it1, Ast.InstanceType it2) =>
+        (nameEq (#name it1) (#name it2) andalso
+         (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
+        orelse 
+        (List.exists (fn sup => subType extra sup ty2) 
+                     (#superTypes it1))
+        
+      (* Extra rules covering nullable, array and union types. *)
+        
+      | (Ast.NullableType nt1, Ast.NullableType nt2) =>
+        (#nullable nt1) = (#nullable nt2) andalso
+        subType extra (#expr nt1) (#expr nt2)
+        
+      | (Ast.ArrayType tys1, Ast.ArrayType tys2) => 
+        (* last entry repeats *)
+        let fun check tys1 tys2 =
+                case (tys1,tys2) of
+                    ([],[]) => true
+                  | ([ty1],[ty2]) => 
+                    equivType extra ty1 ty2
+                  | (ty1::tys1, ty2::tys2) => 
+                    equivType extra ty1 ty2
+                    andalso check (if List.null tys1 then [ty1] else tys1)
+                                  (if List.null tys2 then [ty2] else tys2)
+        in
+            check tys1 tys2
+        end
+
+      | (Ast.UnionType tys1, _) => 
+        List.all (fn t => subType extra t ty2) tys1
+
+      | (_, Ast.UnionType tys2) => 
+        List.exists (subType extra ty1) tys2
+
+      (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
+
+      | (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
+	    List.exists (nameEq name) [ Name.public_Array,
+					                Name.public_Object ]
+        
+      | (Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
+	    List.exists (nameEq name) [ Name.public_Object ]
+        
+      | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
+	    List.exists (nameEq name) [ Name.public_Function, 
+					                Name.public_Object ]
+        
+      | (Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
+        (nonce1 = nonce2)
+
+      (* A-GENERIC *)
+      (* FIXME: need to alpha-rename so have consistent parameters *)
+      | (Ast.LamType lt1, Ast.LamType lt2) => 
+        subType extra (#body lt1) (#body lt2)
+      
+      | _ => false
+
 
 (* -----------------------------------------------------------------------------
  * Compatible-subtyping:  <*
@@ -799,11 +905,22 @@ fun groundIsCompatibleSubtype ty1 ty2 =
     let in
         traceTy "groundIsCompatibleSubtype:ty1 " ty1;
         traceTy "groundIsCompatibleSubtype:ty2 " ty2;
+        subType
+            (fn ty1 => fn ty2 => ty2 = anyType)
+            ty1 ty2
+    end
+
+(*
+fun groundIsCompatibleSubtype ty1 ty2 = 
+    let in
+        traceTy "groundIsCompatibleSubtype:ty1 " ty1;
+        traceTy "groundIsCompatibleSubtype:ty2 " ty2;
         compareTypes
             (fn ty1 => fn ty2 => ty2 = anyType)
             SubType
             ty1 ty2
     end
+*)
 
 (* val isCompatibleSubtype = normalizingPredicate groundIsCompatibleSubtype  *)
 
@@ -812,6 +929,15 @@ fun groundIsCompatibleSubtype ty1 ty2 =
  * ----------------------------------------------------------------------------- *)
 
 fun groundMatches ty1 ty2
+  = subType 
+        (fn ty1 => fn ty2 =>
+                      ty1 = anyType orelse
+                      ty2 = anyType orelse
+                      findSpecialConversion ty1 ty2 <> NONE)
+        ty1 ty2
+
+(*
+fun groundMatches ty1 ty2
   = compareTypes 
         (fn ty1 => fn ty2 =>
                       ty1 = anyType orelse
@@ -819,6 +945,7 @@ fun groundMatches ty1 ty2
                       findSpecialConversion ty1 ty2 <> NONE)
         SubType
         ty1 ty2
+*)
 
 fun matches (prog:Fixture.PROGRAM)
             (locals:Ast.RIBS)
