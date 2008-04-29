@@ -68,7 +68,7 @@ val ppDefinition = ppRep o cvtDEFN
 
 val ppVarDefn = ppRep o cvtBINDING
 
-val ppType = ppRep o cvtTYPE_EXPRESSION
+val ppType = ppRep o cvtTYPE
 
 val ppBinop = ppRep o cvtBINOP
 

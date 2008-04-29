@@ -71,8 +71,8 @@
  *
  * ----------------------------------------------------------------------------- 
  *
- * Normalization converts a TYPE_EXPRESSION (in the context of given RIBS) 
- * into a normalized TYPE_EXPRESSION.
+ * Normalization converts a TYPE (in the context of given RIBS) 
+ * into a normalized TYPE.
  * It is an error if a type cannot be normalized; 
  * that may be a static or dynamic error,
  * since normalization runs both at verify-time and eval-time.
@@ -120,16 +120,16 @@ EXPRESSION =
              actuals: EXPRESSION list }
        | ApplyTypeExpr of {                  // ONLY generic fn instantiation
              expr: EXPRESSION,  (* apply expr to type list *)
-             actuals: TYPE_EXPRESSION list }
+             actuals: TYPE list }
 
-     and TYPE_EXPRESSION =
+     and TYPE =
        | FunctionType of FUNC_TYPE
        | AppType of                         // apply type constructor
-         { base: TYPE_EXPRESSION,
-           args: TYPE_EXPRESSION list }
+         { base: TYPE,
+           args: TYPE list }
        | LamType of                         // 
          { params: IDENT list,
-           body: TYPE_EXPRESSION }
+           body: TYPE }
 
 
 AppType
@@ -179,8 +179,8 @@ fun fmtType t = if !doTrace
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
 (* BEGIN SPEED HACK *)
-val cacheLoad : (((int -> Ast.TYPE_EXPRESSION option) option) ref) = ref NONE
-val cacheSave : (((int -> Ast.TYPE_EXPRESSION -> unit) option) ref) = ref NONE
+val cacheLoad : (((int -> Ast.TYPE option) option) ref) = ref NONE
+val cacheSave : (((int -> Ast.TYPE -> unit) option) ref) = ref NONE
 (* END SPEED HACK *)
 
 
@@ -188,7 +188,7 @@ val cacheSave : (((int -> Ast.TYPE_EXPRESSION -> unit) option) ref) = ref NONE
  * Normalization
  * ----------------------------------------------------------------------------- *)
 
-fun mapFuncTy (f:(Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION))
+fun mapFuncTy (f:(Ast.TYPE -> Ast.TYPE))
               (fty:Ast.FUNC_TYPE)
     : Ast.FUNC_TYPE = 
     let
@@ -201,7 +201,7 @@ fun mapFuncTy (f:(Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION))
           minArgs = minArgs }    
     end
 
-fun mapObjTy (f:(Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION))
+fun mapObjTy (f:(Ast.TYPE -> Ast.TYPE))
              (fields:Ast.FIELD_TYPE list)
     : Ast.FIELD_TYPE list =
     let
@@ -211,9 +211,9 @@ fun mapObjTy (f:(Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION))
     end
         
 (* Generic mapping helper. *)
-fun mapTyExpr (f:(Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION)) 
-              (ty:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION =
+fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE)) 
+              (ty:Ast.TYPE)
+    : Ast.TYPE =
     case ty of 
         Ast.SpecialType _ => ty
       | Ast.TypeName _ => ty
@@ -249,7 +249,7 @@ fun mapTyExpr (f:(Ast.TYPE_EXPRESSION -> Ast.TYPE_EXPRESSION))
 (*      | _ => (error ["Unknown type ", LogErr.ty ty]; anyType)
 *)
 
-fun foreachTyExpr (f:Ast.TYPE_EXPRESSION -> unit) (ty:Ast.TYPE_EXPRESSION) : unit =
+fun foreachTyExpr (f:Ast.TYPE -> unit) (ty:Ast.TYPE) : unit =
     let in
         mapTyExpr (fn t => let in f t; t end) ty;
         ()
@@ -257,8 +257,8 @@ fun foreachTyExpr (f:Ast.TYPE_EXPRESSION -> unit) (ty:Ast.TYPE_EXPRESSION) : uni
 
 (* ----------------------------------------------------------------------------- *)
 
-fun normalizeRefs (ty:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION =
+fun normalizeRefs (ty:Ast.TYPE)
+    : Ast.TYPE =
     case ty of 
         Ast.ElementTypeRef (Ast.ArrayType arr, idx) => 
         let
@@ -287,8 +287,8 @@ fun normalizeRefs (ty:Ast.TYPE_EXPRESSION)
                                    
 (* ----------------------------------------------------------------------------- *)
 
-fun normalizeNullsInner (ty:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION =
+fun normalizeNullsInner (ty:Ast.TYPE)
+    : Ast.TYPE =
     let
         val nullTy = Ast.SpecialType Ast.Null
         fun containsNull ty = 
@@ -320,8 +320,8 @@ fun normalizeNullsInner (ty:Ast.TYPE_EXPRESSION)
               | NONE => Ast.UnionType []
     end
 
-fun normalizeNulls (ty:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION = 
+fun normalizeNulls (ty:Ast.TYPE)
+    : Ast.TYPE = 
     mapTyExpr normalizeNulls (normalizeNullsInner ty)
 
 
@@ -333,8 +333,8 @@ fun normalizeNulls (ty:Ast.TYPE_EXPRESSION)
  * function.<Y>(Y):Y 
  *)
                                    
-fun normalizeUnions (ty:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION =
+fun normalizeUnions (ty:Ast.TYPE)
+    : Ast.TYPE =
     let
         fun unUnion (Ast.UnionType tys) = tys
           | unUnion t = [t]
@@ -348,8 +348,8 @@ fun normalizeUnions (ty:Ast.TYPE_EXPRESSION)
     end
 
 
-fun normalizeArrays (ty:Ast.TYPE_EXPRESSION)
-    : Ast.TYPE_EXPRESSION =
+fun normalizeArrays (ty:Ast.TYPE)
+    : Ast.TYPE =
     case ty of 
         Ast.ArrayType [] => Ast.ArrayType [Ast.SpecialType Ast.Any]
       | x => mapTyExpr normalizeArrays x
@@ -361,7 +361,7 @@ fun normalizeArrays (ty:Ast.TYPE_EXPRESSION)
  * Assumes no beta redexes.
  *)
 
-fun checkProperType (ty:Ast.TYPE_EXPRESSION) : unit = 
+fun checkProperType (ty:Ast.TYPE) : unit = 
     let fun check ty2 = 
             case ty2 of
 (* a LamType could be a generic function type, which is a type
@@ -391,8 +391,8 @@ fun checkProperType (ty:Ast.TYPE_EXPRESSION) : unit =
 fun normalizeNames (useCache:bool)
                    (env:Ast.RIBS)
                    (ids:Ast.IDENT list)
-                   (ty:Ast.TYPE_EXPRESSION)                    
-  : Ast.TYPE_EXPRESSION = 
+                   (ty:Ast.TYPE)                    
+  : Ast.TYPE = 
     let
         fun getFixture (mname : Ast.MULTINAME) 
                        (rootRib : Ast.RIB option) 
@@ -406,7 +406,7 @@ fun normalizeNames (useCache:bool)
                      
         fun getType (mname : Ast.MULTINAME) 
                     (rootRib : Ast.RIB option) 
-            : Ast.TYPE_EXPRESSION = 
+            : Ast.TYPE = 
             case getFixture mname rootRib of 
                 (env', _,  Ast.TypeFixture ty') => 
                 (* Pulling ty out of env', need to normalize first, in the right environment *)
@@ -499,7 +499,7 @@ fun uniqueIdent (id:Ast.IDENT) : Ast.IDENT =
         Ustring.stringAppend id (Ustring.fromInt (!uniqueIdentPostfix))
     end
 
-fun makeTypeName (id:Ast.IDENT) : Ast.TYPE_EXPRESSION = 
+fun makeTypeName (id:Ast.IDENT) : Ast.TYPE = 
     Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[], rootRib=NONE }, NONE)
 
 
@@ -507,7 +507,7 @@ fun makeTypeName (id:Ast.IDENT) : Ast.TYPE_EXPRESSION =
  * All are normalized, so no TypeNames in args or ty, just TypeVarFixtureRefs.
  *)
 
-fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPRESSION list) (ty:Ast.TYPE_EXPRESSION) : Ast.TYPE_EXPRESSION =
+fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE list) (ty:Ast.TYPE) : Ast.TYPE =
     case ty of
         Ast.LamType { params, body } =>
         let val uniqParams    = map uniqueIdent  params
@@ -536,7 +536,7 @@ fun substTypes (ids:Ast.IDENT list) (args:Ast.TYPE_EXPRESSION list) (ty:Ast.TYPE
 (* Perform beta-reduction of all AppTypes applied to a LamType.
  *)
 
-fun normalizeLambdas (ty:Ast.TYPE_EXPRESSION) : Ast.TYPE_EXPRESSION = 
+fun normalizeLambdas (ty:Ast.TYPE) : Ast.TYPE = 
     (* first, normalizeLambdas in subterms *)
     let val ty = mapTyExpr normalizeLambdas ty
     in
@@ -572,8 +572,8 @@ fun normalizeLambdas (ty:Ast.TYPE_EXPRESSION) : Ast.TYPE_EXPRESSION =
 (* ----------------------------------------------------------------------------- *)
 
 fun normalize (ribs:Ast.RIB list)
-              (ty:Ast.TYPE_EXPRESSION)               
-    : Ast.TYPE_EXPRESSION =
+              (ty:Ast.TYPE)               
+    : Ast.TYPE =
     let
         val _ = traceTy "normalize1: " ty
         val ty = normalizeNames true ribs [] ty     (* inline TypeFixtures and TypeVarFixture nonces *)
@@ -611,7 +611,7 @@ fun isNamedField (name:Ast.IDENT) (field:Ast.FIELD_TYPE) =
     
 fun extractFieldType (name:Ast.IDENT) 
                      (fields:Ast.FIELD_TYPE list)
-    : (Ast.TYPE_EXPRESSION * Ast.FIELD_TYPE list) option = 
+    : (Ast.TYPE * Ast.FIELD_TYPE list) option = 
     case List.partition (isNamedField name) fields of
         ([field], rest) => SOME ((#ty field), rest)
       | _ => NONE
@@ -646,8 +646,8 @@ datatype VARIANCE = Covariant | Invariant
 
 fun groundMatchesGeneric (b:BICOMPAT)
                          (v:VARIANCE)
-                         (ty1:Ast.TYPE_EXPRESSION)
-                         (ty2:Ast.TYPE_EXPRESSION)
+                         (ty1:Ast.TYPE)
+                         (ty2:Ast.TYPE)
 
     : bool = 
     if b=Bicompat andalso 
@@ -757,9 +757,9 @@ fun groundMatchesGeneric (b:BICOMPAT)
       
       | _ => false
 
-and findSpecialConversion (tyExpr1:Ast.TYPE_EXPRESSION)
-                          (tyExpr2:Ast.TYPE_EXPRESSION) 
-    : Ast.TYPE_EXPRESSION option = 
+and findSpecialConversion (tyExpr1:Ast.TYPE)
+                          (tyExpr2:Ast.TYPE) 
+    : Ast.TYPE option = 
     let
         fun extract (Ast.UnionType [Ast.InstanceType t, Ast.SpecialType Ast.Null]) = SOME t
           | extract (Ast.UnionType [Ast.InstanceType t]) = SOME t
@@ -822,8 +822,8 @@ val groundIsCompatibleSubtype = groundMatchesGeneric Compat Covariant
 val groundMatches = groundMatchesGeneric Bicompat Covariant
 fun matches (prog:Fixture.PROGRAM)
             (locals:Ast.RIBS)
-            (t1:Ast.TYPE_EXPRESSION)
-            (t2:Ast.TYPE_EXPRESSION)
+            (t1:Ast.TYPE)
+            (t2:Ast.TYPE)
   =
   let
       (* FIXME: it is *super wrong* to just be using the root rib here. *)
@@ -840,15 +840,15 @@ fun matches (prog:Fixture.PROGRAM)
 
 fun instanceTy (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
-    : Ast.TYPE_EXPRESSION =
+    : Ast.TYPE =
     case Fixture.getFixture (Fixture.getRootRib prog) (Ast.PropName n) of
         (Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
       | (Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
 fun groundType (prog:Fixture.PROGRAM)
-               (ty:Ast.TYPE_EXPRESSION) 
-    : Ast.TYPE_EXPRESSION = 
+               (ty:Ast.TYPE) 
+    : Ast.TYPE = 
     let
         (* FIXME: it is *super wrong* to just be using the root rib here. *)
         val norm = normalize [Fixture.getRootRib prog] ty
@@ -856,14 +856,14 @@ fun groundType (prog:Fixture.PROGRAM)
         norm
     end    
 
-fun isGroundType (ty:Ast.TYPE_EXPRESSION) : bool = true
+fun isGroundType (ty:Ast.TYPE) : bool = true
 
-fun groundExpr (ty:Ast.TYPE_EXPRESSION)  (* or "groundType" *)
-    : Ast.TYPE_EXPRESSION = ty (* FIXME: remove *)
+fun groundExpr (ty:Ast.TYPE)  (* or "groundType" *)
+    : Ast.TYPE = ty (* FIXME: remove *)
 
 fun getNamedGroundType (prog:Fixture.PROGRAM)
                        (name:Ast.NAME)
-   : Ast.TYPE_EXPRESSION = 
+   : Ast.TYPE = 
     groundType prog (Name.typename name)
 
 
