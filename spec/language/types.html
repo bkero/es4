@@ -19,6 +19,7 @@ SCOPE:                      The dynamic type system
 <FIXME> References to nominal types, INSTANCE_TYPE, typedefs, etc
 <FIXME> LamType moved into typedef fixture
 <FIXME> Generic type application
+<FIXME> Cross-check with normative grammer on terminology, etc
 
 <p>ECMAScript includes a gradual type system that supports a range of typing disciplines, including
 dynamically-typed code (as in ES3), statically-typed code (much like in Java or C#), and various
@@ -108,6 +109,13 @@ additional parameters are permitted, as in:
     function(String, ...) : void
 }}}
 
+<p> A //nullable type//, such as ''?String'', which abbreviates
+''(String | null)''. (Nullable types are desugared by the parser, and
+so do not appear in the AST below.)
+
+<p> A //non-null type// of the form ''T!'', which is identical to the
+type ''T'' except that it does not include the value ''null''.
+
 <p>A reference to a named type, such as: ''String'' or
 ''X''.
 
@@ -123,12 +131,6 @@ introduces a binding for ''Vector'', but ''Vector'' is not actually a
 type, in that it requires additional type parameters to become a
 normal type, as in ''C.&lt;Number>''.
 
-<p> A //nullable type//, such as ''?String'', which abbreviates
-''(String | null)''. (Nullable types are desugared by the parser, and
-so do not appear in the AST below.)
-
-<p> A //non-null type// of the form ''T!'', which is identical to the
-type ''T'' except that it does not include the value ''null''.
 
 <p>
 
@@ -183,7 +185,7 @@ capture-free replacement of all free occurrences of each type variable
 
 <p>References to nominal types
 
-<p>NonNullType
+<p>ObjectRefType
 
 <p>Finally, type normalization finally converts the resulting type
 into a canonical or representative element of its equivalence class.
@@ -313,6 +315,38 @@ type. Thus, for example, within the scope of any binding for a type
 variable ''X'', we have that the type ''X'' is a subtype of type ''X''
 (via reflexivity).
 
+=== Subtyping Non-Null Types ===
+
+<p>A non-null type ''S!'' is a subtype of type ''T''
+if ''S'' is a subtype of the union type ''(T | null)''.
+
+<p>A type ''S'' is a subtype of a non-null type ''T!''
+if ''S'' is a subtype of ''T''
+and the type ''null'' is //not// a subtype of ''S''.
+
+<p>The type ''null'' is always a subtype of a nominal type ''C'',
+except when''C'' is declared as a non-null type, as in
+
+{{{
+    class C! ...
+}}}
+or
+{{{
+    interface I! ...
+}}}
+
+<p>Similarly, the type ''null'' is always a subtype of a nominal type
+application ''C.&lt;S1, .., Sn>'',
+except when''C'' is declared as a non-null type, as in
+
+{{{
+    class C.&lt;X1, .., Xn>! ...
+}}}
+or
+{{{
+    interface I.&lt;X1, .., Xn>! ...
+}}}
+
 === Subtyping Nominal Types ===
 
 <p>
@@ -334,7 +368,7 @@ Given an interface definition
 
 we have that the type ''K'' is a subtype of ''Ij'' for j in 1..m.
 
-<p>These rules generalize to generic classes and interfaces via
+<p>These rules generalize to applications of generic classes and interfaces via
 appropriate renaming of bound variables. For example, given a generic
 class definition
 
@@ -348,8 +382,14 @@ we have that ''C.&lt;S1, .., Sn>'' is a subtype of
     D.&lt;T1[x1:=S1,..,xn:=Sn], .., Tm[x1:=S1,..,xn:=Sn]>
 }}}
 
+<p>For applications of generic nominal types, we also have that
+''C.&lt;T1, .., Tn'' is a subtype of
+''C.&lt;S1, .., Sn'' if each type ''Ti'' is equivalent to the
+corresponding type ''Si''.
 
-<FIXME> AppType, ObjectRefType, NonNullableType, IdentType vs NominalType
+<NOTE>The subtype relation only relates normalized types, and so does
+not deal with the type constructors ''IdentType'', or
+''ObjectRefType'',  which are removed during type normalization.
 
 == Implementation of the Subtype Relation ==
 
@@ -374,6 +414,9 @@ The function ''equivType'' below checks type equivalence in a
 straightforward manner by checking subtyping in both directions, but
 more efficient implementations are of course possible. Like
 ''subType'', ''equivType'' also takes an ''extra'' parameter.
+
+<NOTE>The following implementation is straightforward, but its
+worst-case time complexity is exponential in the height of a type.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and equivType">

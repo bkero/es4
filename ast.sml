@@ -236,6 +236,8 @@ datatype TYPE =
        | NominalType of NAME
        | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
 
+| TypeVarFixtureRef ???
+
 (* last two cases removed during normalization *)
 
  | LamType of (IDENTIFIER list * TYPE)
@@ -243,25 +245,23 @@ datatype TYPE =
 
      and TYPE =
          NullType
-       | AnyType
        | UndefinedType
+       | AnyType
        | VoidType
+       | ObjectType of FIELD_TYPE list     (* TODO: rename *)
        | UnionType of TYPE list
        | ArrayType of TYPE list
+       | FunctionType of FUNC_TYPE
        | TypeName of (IDENTIFIER_EXPRESSION * NONCE option)
        | ElementTypeRef of (TYPE * int)
        | FieldTypeRef of (TYPE * IDENTIFIER)
-       | FunctionType of FUNC_TYPE
-       | ObjectType of FIELD_TYPE list
-       | AppType of 
-         { base: TYPE,
-           args: TYPE list }
+       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
 (*
        | LamType of
          { params: IDENTIFIER list,
            body: TYPE }
 *)
-       | NullableType of 
+       | NullableType of           (* TODO: NonNullType *)
          { expr:TYPE,
            nullable:bool }
        | InstanceType of INSTANCE_TYPE
