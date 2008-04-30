@@ -256,9 +256,11 @@ datatype TYPE =
        | AppType of 
          { base: TYPE,
            args: TYPE list }
+(*
        | LamType of
          { params: IDENTIFIER list,
            body: TYPE }
+*)
        | NullableType of 
          { expr:TYPE,
            nullable:bool }
@@ -497,7 +499,7 @@ datatype FIXTURE =
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
        | TypeVarFixture of NONCE
-       | TypeFixture of TYPE
+       | TypeFixture of (IDENTIFIER list * TYPE)
        | MethodFixture of
            { func: FUNC,
              ty: TYPE,
@@ -555,11 +557,13 @@ withtype
              ty: TYPE }
 
      and FUNC_TYPE =
-         { params: TYPE list,
-           result: TYPE,
+         { typeParams : IDENTIFIER list,
            thisType: TYPE,
+           params: TYPE list,
+           minArgs: int,         (* necessary because some of params can have defaults *)
            hasRest: bool,      
-           minArgs: int }         (* necessary because some of params can have defaults *)
+           result: TYPE
+         }
 
      and FUNC_DEFN =
            { kind : VAR_DEFN_TAG,
@@ -612,6 +616,7 @@ withtype
      and TYPE_DEFN =
            { ident: IDENTIFIER,
              ns: EXPRESSION option,
+             typeParams : IDENTIFIER list,
              init: TYPE }
 
      and CLASS_BLOCK = 

@@ -192,9 +192,10 @@ fun mapFuncTy (f:(Ast.TYPE -> Ast.TYPE))
               (fty:Ast.FUNC_TYPE)
     : Ast.FUNC_TYPE = 
     let
-        val { params, result, thisType, hasRest, minArgs } = fty
+        val { typeParams, params, result, thisType, hasRest, minArgs } = fty
     in
-        { params = map f params,
+        { typeParams = typeParams,
+          params = map f params,
           result = f result,
           thisType = f thisType,
           hasRest = hasRest,
@@ -223,9 +224,11 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
       | Ast.AppType { base, args } => 
         Ast.AppType { base = f base,
                       args = map f args}
+(*
       | Ast.LamType { params, body } => 
         Ast.LamType { params = params, 
                       body = f body }
+*)
       | Ast.NullableType { expr, nullable } => 
         Ast.NullableType { expr = f expr,
                            nullable = nullable }
@@ -411,10 +414,15 @@ fun normalizeNames (useCache:bool)
                     (rootRib : Ast.RIB option) 
             : Ast.TYPE = 
             case getFixture mname rootRib of 
-                (env', _,  Ast.TypeFixture ty') => 
-                (* Pulling ty out of env', need to normalize first, in the right environment *)
-                normalizeNames useCache env' [] ty'
-
+                (env', _,  Ast.TypeFixture (ids,ty')) => 
+                let in
+                    if ids = []
+                    then ()
+                    else error ["References to generic typedefs not supported yet!"];
+                    (* Pulling ty out of env', need to normalize first, in the right environment *)
+                    normalizeNames useCache env' [] ty'
+                end
+                
               | (env', n, Ast.TypeVarFixture nonce) =>
                 Ast.TypeVarFixtureRef nonce
 
@@ -468,9 +476,11 @@ fun normalizeNames (useCache:bool)
                 getType { id = ident, nss = [[ getNamespaceForExpr qual ]] } NONE
                 
               | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
+(*
               | Ast.LamType { params, body } => 
                 Ast.LamType { params = params, 
                               body = normalizeNames false env (ids@params) body }
+*)
               | t => mapTyExpr (normalizeNames useCache env ids) t
     in
         (* BEGIN SPEED HACK *)
@@ -512,6 +522,7 @@ fun makeTypeName (id:Ast.IDENTIFIER) : Ast.TYPE =
 
 fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : Ast.TYPE =
     case ty of
+(*
         Ast.LamType { params, body } =>
         let val uniqParams    = map uniqueIdent  params
             val refUniqParams = map makeTypeName uniqParams
@@ -520,7 +531,8 @@ fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : As
         in
             Ast.LamType { params=uniqParams, body=body'' }
         end
-      | Ast.TypeName (Ast.Identifier { ident=id', ... }, _) =>
+*)
+        Ast.TypeName (Ast.Identifier { ident=id', ... }, _) =>
         let fun lookup ids args =
                 case (ids, args) of
                     ([],[]) => ty
@@ -544,6 +556,7 @@ fun normalizeLambdas (ty:Ast.TYPE) : Ast.TYPE =
     let val ty = mapTyExpr normalizeLambdas ty
     in
         case ty of
+(*
             Ast.AppType { base=(Ast.LamType {params, body}), args } =>
             (* a beta-redex *)
             let val _ =
@@ -557,9 +570,9 @@ fun normalizeLambdas (ty:Ast.TYPE) : Ast.TYPE =
                  *)
                 normalizeLambdas ty
             end
-
+*)
             (* cf: fix the rep for typeArgs so substitution will work *)
-          | Ast.InstanceType { name, typeParams, typeArgs, 
+            Ast.InstanceType { name, typeParams, typeArgs, 
                                nonnullable, superTypes, ty, dynamic } =>
             Ast.InstanceType { name=name, 
                                typeParams=typeParams,
@@ -813,18 +826,21 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         
       (* A-ARROW *)
       | (Ast.FunctionType
-		     {params   = params1,
+		     {typeParams = typeParams1,
+              params   = params1,
 		      result   = result1,
 		      thisType = thisType1,
 		      hasRest  = hasRest1,
 	          minArgs  = minArgs1},
 	     Ast.FunctionType
-		     {params   = params2,
+		     {typeParams = typeParams2,
+              params   = params2,
 		      result   = result2,
 		      thisType = thisType2,
 		      hasRest  = hasRest2,
 		      minArgs  = minArgs2}) 
         => 
+        (* FIXME: handle typeParams *)
         (equivType extra thisType1 thisType2) andalso     (* will drop option *)
         minArgs1 >= minArgs2 andalso
         (if not hasRest1 andalso not hasRest2
@@ -883,12 +899,12 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         
       | (Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
-
+(*
       (* A-GENERIC *)
       (* FIXME: need to alpha-rename so have consistent parameters *)
       | (Ast.LamType lt1, Ast.LamType lt2) => 
         subType extra (#body lt1) (#body lt2)
-      
+*)      
       | _ => false
 
 

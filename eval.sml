@@ -400,9 +400,9 @@ fun allocRib (regs:Mach.REGS)
                         else Mach.addProp props pn p
                 in
                     case f of
-                        Ast.TypeFixture ty =>
+                        Ast.TypeFixture (typeParams, ty) =>
                             allocProp "type"
-                                      { ty = normalize regs ty,
+                                      { ty = normalize regs ty,   (* FIXME: handle typeParams *)
                                         state = Mach.TypeProp,
                                         attrs = attrs0 }
                             
@@ -668,9 +668,10 @@ and valAllocState (regs:Mach.REGS)
         else
             Mach.UninitProp
             
+(*
       | Ast.LamType _ => 
         Mach.UninitProp
-
+*)
 
 and allocSpecial (regs:Mach.REGS)
                  (id:Mach.OBJ_IDENTIFIER)
@@ -938,7 +939,7 @@ and isDynamic (regs:Mach.REGS)
           | typeIsDynamic (Ast.ArrayType _) = true
           | typeIsDynamic (Ast.FunctionType _) = true
           | typeIsDynamic (Ast.ObjectType _) = true
-          | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body
+      (*    | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body *)
           | typeIsDynamic (Ast.NullableType {expr, nullable}) = typeIsDynamic expr
           | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
           | typeIsDynamic _ = false
@@ -1422,8 +1423,9 @@ and newFunctionFromClosure (regs:Mach.REGS)
         val Ast.Func { ty, ... } = func
         fun findFuncType e = 
             case e of 
-                Ast.LamType { params, body } =>  findFuncType body 
-              | Ast.FunctionType fty => fty
+              (*  Ast.LamType { params, body } =>  findFuncType body 
+              | *)
+                Ast.FunctionType fty => fty
               | _ => error regs ["unexpected primary type in function: ", LogErr.ty e]
 
         val fty = findFuncType ty
@@ -2543,7 +2545,7 @@ and bindTypes (regs:Mach.REGS)
                        " type args to scope #", Int.toString (getObjId scopeObj)]
         val env = extendScope env scopeObj Mach.TypeArgScope
         val paramFixtureNames = map (fn id => Ast.PropName (Name.public id)) typeParams
-        val argFixtures = map Ast.TypeFixture typeArgs
+        val argFixtures = map (fn t => Ast.TypeFixture ([], t)) typeArgs
         val typeRib = ListPair.zip (paramFixtureNames, argFixtures)
         val _ = allocObjRib regs scopeObj NONE typeRib
     in
