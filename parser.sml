@@ -3231,6 +3231,7 @@ and functionTypeFromSignature (fsig:Ast.FUNC_SIG)
                                    hasRest,
                                    defaults,...} = fsig
         val (b,i) = params
+        val thisType = case thisType of SOME x => x | NONE => Ast.AnyType
         val typeExpr = Ast.FunctionType {params=paramTypes,
                                          result=returnType,
                                          thisType=thisType,

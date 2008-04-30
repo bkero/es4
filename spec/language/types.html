@@ -141,16 +141,54 @@ or an array type.
 <IMPL>
 <INCLUDE file="ast.sml" name="datatype TYPE">
 
+<FIXME>The above datatype is commented out in the RI, and so may not
+yet be consistent with the following code.
 
 
 <p>A //reifiable type// is any type that is not "*" or a union type.
 
 
-== Subtyping Relation ==
+== Type Normalization ==
 
-<p>The subtyping relation is a binary relation on types.  If a type ''S'' is a
-subtype of type ''T'', then a value of type ''S'' generally behaves as if it had
-type ''T''.
+<p>When each type is encountered in the program source code at
+compile-time, it is first //normalized//.
+
+<p>In the scope of a type abbreviation such as
+
+{{{
+    type X = T;
+}}}
+
+type normalization replaces all references to the type variable ''X''
+with the corresponding type ''T''.
+
+<p>Similarly, in the content of a parameterized type abbreviation
+
+{{{
+    type X.&lt;Y1, .., Yn> = T;
+}}}
+
+type normalization replaces all occurrences of ''X.&lt; S1, .., Sn>''
+with ''T[Y1:=S1, .., Yn:=Sn]''.
+
+<NOTE> We use the notation '' T[Y1:=S1,..,Yn:=Sn] '' to denote the
+capture-free replacement of all free occurrences of each type variable
+''Yi'' within the type ''T'' by the corresponding type ''Si''.
+
+<p>References to nominal types
+
+<p>NonNullType
+
+<p>Finally, type normalization finally converts the resulting type
+into a canonical or representative element of its equivalence class.
+The notion of type equivalence is defined below.
+This //canonicalization// process is necessary to efficiently support generics.
+
+== The Subtyping Relation ==
+
+<p>The subtyping relation is a binary relation on normalized types.
+If a type ''S'' is a subtype of type ''T'', then a value of type ''S''
+generally behaves as if it had type ''T''.
 
 <p>The subtyping
 relation is defined by the  collection of subtype rules described in
@@ -304,9 +342,6 @@ we have that ''C.&lt;S1, .., Sn>'' is a subtype of
     D.&lt;T1[x1:=S1,..,xn:=Sn], .., Tm[x1:=S1,..,xn:=Sn]>
 }}}
 
-<NOTE> We use the notation '' T[x1:=S1,..,xn:=Sn] '' to denote the
-capture-free replacement of all free occurrences of each type variable
-''xi'' within the type ''T'' by the corresponding type ''Si''.
 
 <FIXME> AppType, ObjectRefType, NonNullableType, IdentType vs NominalType
 

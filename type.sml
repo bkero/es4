@@ -196,7 +196,7 @@ fun mapFuncTy (f:(Ast.TYPE -> Ast.TYPE))
     in
         { params = map f params,
           result = f result,
-          thisType = Option.map f thisType,
+          thisType = f thisType,
           hasRest = hasRest,
           minArgs = minArgs }    
     end
@@ -825,7 +825,7 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
 		      hasRest  = hasRest2,
 		      minArgs  = minArgs2}) 
         => 
-        (optionWise (equivType extra) thisType1 thisType2) andalso     (* will drop option *)
+        (equivType extra thisType1 thisType2) andalso     (* will drop option *)
         minArgs1 >= minArgs2 andalso
         (if not hasRest1 andalso not hasRest2
          then length params1 = length params2

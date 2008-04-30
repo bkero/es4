@@ -557,7 +557,7 @@ withtype
      and FUNC_TYPE =
          { params: TYPE list,
            result: TYPE,
-           thisType: TYPE option,
+           thisType: TYPE,
            hasRest: bool,      
            minArgs: int }         (* necessary because some of params can have defaults *)
 

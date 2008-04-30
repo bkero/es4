@@ -1799,9 +1799,7 @@ and defFuncTy (env:ENV)
         let
             val {params,result,thisType,hasRest,minArgs} = ty
             val params' = map (defTypeExpr env) params
-            val thisType' = case thisType of 
-                                SOME ty => SOME (defTypeExpr env ty) 
-                              | _ => NONE
+            val thisType' = defTypeExpr env thisType
             val result' = defTypeExpr env result
         in
             {params=params',
