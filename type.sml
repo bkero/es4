@@ -797,15 +797,7 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
 
 *)
 
-fun equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
-              (ty1 : Ast.TYPE)
-              (ty2 : Ast.TYPE)
-    : bool = 
-    (subType extra ty1 ty2)
-    andalso
-    (subType extra ty2 ty1)
-
-and subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
+fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
             (ty1 : Ast.TYPE)
             (ty2 : Ast.TYPE)
     : bool = 
@@ -898,6 +890,15 @@ and subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         subType extra (#body lt1) (#body lt2)
       
       | _ => false
+
+
+and equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
+              (ty1 : Ast.TYPE)
+              (ty2 : Ast.TYPE)
+    : bool = 
+    (subType extra ty1 ty2)
+    andalso
+    (subType extra ty2 ty1)
 
 
 (* -----------------------------------------------------------------------------
