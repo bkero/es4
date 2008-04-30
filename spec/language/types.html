@@ -174,6 +174,34 @@ equivalent to ''Ti'' for all i in 1..m.
 covariant in the result type.
 
 <p>
+This rule generalizes to default arguments and rest arguments as
+follows, where the number of default arguments in each function type
+may be zero, and where ''[...]'' indicates an optional rest argument.
+A function type
+{{{
+    function(S1, .., Sn, S_{n+1}=, .., Sm=, [...]) : U
+}}}
+is a subtype of
+{{{
+    function(T1, .., Tp, T_{p+1}=, .., Tq=, [...]) : R
+}}}
+
+if ''U'' is a subtype of ''R'' and n <LEQ> p and ''Si'' is equivalent
+to ''Ti'' for all i in 1..min(q,m).
+
+If neither function type has a rest argument, then we require that  q <LEQ> m.
+
+If only the first function type has a rest argument, then no
+additional conditions are needed.
+
+If the second function type has a rest argument, then we require that
+the first function type has a rest argument as well, and ''Si'' must
+be equivalent to ''*'' for all i in q+1..m.
+
+
+but the first
+function type d
+<p>
 This rule generalizes to default arguments as follows:
 {{{
     function(S1, .., Sn, S_{n+1}=, .., Sm=) : U
