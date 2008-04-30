@@ -216,10 +216,9 @@ datatype PRAGMA =
 
 datatype TYPE =
          NullType
-       | AnyType
        | UndefinedType
+       | AnyType
        | VoidType
-       | IdentType  of IDENTIFIER_EXPRESSION
        | RecordType of (IDENTIFIER_EXPRESSION * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
@@ -230,33 +229,19 @@ datatype TYPE =
                            hasRest: bool,
                            result: TYPE
                          }
-       | NonNullableType of TYPE
-       | LamType of (IDENTIFIER list * TYPE)
+       | IdentType of IDENTIFIER_EXPRESSION
        | AppType of (TYPE * TYPE list)
-       | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
+       | NonNullType of TYPE
+
        | NominalType of NAME
+       | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
 
+(* last two cases removed during normalization *)
 
-
-datatype SPECIAL_TY =
-         Any
-       | Null
-       | Undefined
-       | VoidType
-*)
-
-
-(*
-generic fn has all type
-
-Tapp on generic fn has 
-
+ | LamType of (IDENTIFIER list * TYPE)
 *)
 
      and TYPE =
-(*
-         SpecialType of SPECIAL_TY
-*)
          NullType
        | AnyType
        | UndefinedType
