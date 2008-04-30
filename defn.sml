@@ -885,9 +885,11 @@ and resolveClassInheritance (env:ENV)
             in
                 case typeParams of 
                     [] => te
+(*FIXME
                   | params => Ast.LamType { params = params, 
                                             body = te }
-            end
+  *)
+          end
                 
     in
         Ast.Cls {name=name,
@@ -1426,9 +1428,10 @@ and defFunc (env:ENV)
         val Ast.Func {name, fsig, block, ty, native, generator, loc, ...} = func
         fun findFuncType env e = 
             case e of 
-                Ast.LamType { params, body } => 
+           (*     Ast.LamType { params, body } => 
                 findFuncType (extendEnvironment env (mkParamRib params) true) body 
-              | Ast.FunctionType fty => (env, fty)
+            *)
+                Ast.FunctionType fty => (env, fty)
               | _ => error ["unexpected primary type in function: ", LogErr.ty e]
 
         val newT = defTypeExpr env ty
@@ -1797,12 +1800,13 @@ and defFuncTy (env:ENV)
               (ty:Ast.FUNC_TYPE)
     : Ast.FUNC_TYPE =
         let
-            val {params,result,thisType,hasRest,minArgs} = ty
+            val {typeParams,params,result,thisType,hasRest,minArgs} = ty
             val params' = map (defTypeExpr env) params
             val thisType' = defTypeExpr env thisType
             val result' = defTypeExpr env result
         in
-            {params=params',
+            {typeParams=typeParams,
+             params=params',
              result=result',
              thisType=thisType',
              hasRest=hasRest,
@@ -1837,10 +1841,11 @@ and defTypeExpr (env:ENV)
       | Ast.AppType { base, args } => 
         Ast.AppType { base = defTypeExpr env base,
                       args = map (defTypeExpr env) args }
+(*
       | Ast.LamType { params, body } => 
         Ast.LamType { params = params,
                       body = defTypeExpr env body }
-
+*)
       (* FIXME *)
       | t => t
 
@@ -2269,16 +2274,17 @@ and defType (env:ENV)
             (td:Ast.TYPE_DEFN)
     : Ast.RIB =
     let
-        val { ident, ns, init } = td
+        val { ident, ns, typeParams, init } = td
         val ns = case ns of
                      NONE => (#defaultNamespace env)
                    | SOME e => resolveExprToNamespace env e
         val n = { id=ident, ns=ns }
     in
         [(Ast.PropName n,
-          Ast.TypeFixture (defTypeExpr env init))]
+          Ast.TypeFixture (typeParams, defTypeExpr env init))]
     end
 
+(*FIXME ##*)
 
 (*
     DEFN

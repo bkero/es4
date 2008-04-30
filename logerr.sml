@@ -155,6 +155,8 @@ fun identExpr (ide:Ast.IDENTIFIER_EXPRESSION) =
       | _ => "other-IDENTIFIER_EXPRESSION"
    end
 
+fun identList fields =
+    join ", " (map Ustring.toAscii fields)
 
 fun ty t =
     let
@@ -175,8 +177,7 @@ fun ty t =
 	    (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
         fun fieldList fields =
             join ", " (map fieldToString fields)
-        fun identList fields =
-            join ", " (map Ustring.toAscii fields)
+        
     in
         case t of
             Ast.AnyType => "*"
@@ -208,8 +209,9 @@ fun ty t =
           | Ast.InstanceType { name=n, ... } => 
 	    name n
 	  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"     
-	  | Ast.LamType { params, body } => 
+(*	  | Ast.LamType { params, body } => 
 	    "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
+*)
     end
 
 exception LexError of string

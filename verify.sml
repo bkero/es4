@@ -571,7 +571,7 @@ and verifyExpr2 (env:ENV)
                 val args = verifySubList actuals
             in
                 case t of
-                    Ast.FunctionType { params, result, thisType, hasRest, minArgs } =>
+                    Ast.FunctionType { typeParams=[], params, result, thisType, hasRest, minArgs } =>
                     
                     let fun checkargs args params =
                             case (args,params,hasRest) of
@@ -1012,7 +1012,7 @@ and verifyFixture (env:ENV)
 
       (* FIXME: verify interfaces *)
 
-      | Ast.TypeFixture ty => (verifyType env ty; ())
+      | Ast.TypeFixture (typeParams,ty) => (verifyType env ty; ())   (* FIXME: extend env with typeParams *)
       | Ast.ValFixture { ty, readOnly } => (verifyType env ty; ())
       | Ast.MethodFixture { func, ty, ... } =>
         let
