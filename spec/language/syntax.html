@@ -262,14 +262,128 @@ is a constant expression that computes a ''NAMESPACE'' value.
 <p>An ''IDENTIFIER_EXPRESSION'' computes a ''NAME'' and is occur as part of one of several 
 reference expressions.
 
-===== Derived Syntax =====
+=== Derived Syntax ===
 
-<p>There are several derived forms that don't appear in the abstract syntax of a fully 
-parsed program.
+<p>The surface syntax of ES programs contains some convienence features that can be translated into
+other, more primitive, features of the language. Two such translations are variable hoisting and 
+pattern desugaring.
 
-<p>A ''PATTERN'' is desugared into a list of atomic assignments or bindings. A ''PACKAGE'' 
-is desugared into more primitive ''NAMESPACE'' constructs.
+=== Variable Hoisting ===
 
+<p>Variable definitions that occur in a local block are moved to the top of the immediate outer 
+variable scope. This is either the global scope or a function scope. All other definition are moved
+to the top of their containing block scope.
+
+=== Pattern Desugaring ===
+
+<p>A destructuring pattern may occur on the left side of an assignment expression or
+in any of the name binding contexts. Destructuring patterns are rewritten as a list
+of assignments or bindings.
+
+<FIXME>The following notes need to be translated into a more presentable description of
+the pattern desugaring semantics.
+
+{{{
+        Notation
+
+        []             list
+        (fl,el)        head
+        fl             fixture list
+        el             expr list
+        il             init list
+        sl             stmt list
+        it             init target = VAR, LET (default=LET)
+        ie             init expr
+        se             set expr
+
+        initexpr       init it (fl,el) il
+        letexpr        let (fl,el) el
+        block          (fl,el) sl
+      
+
+        Binding Patterns
+
+        var x = y      ([x]) ... () {init VAR () [x=y]}
+        var [x] = y    ([x]) ... () {init VAR ([t0],[init t0=y]) [x=t0[0]])
+
+        let (x=y) ...  ([x],[init (x=y)]) ...
+        let x=y        ([x],[]) {init () x=y}
+
+        Assignment Patterns
+
+        x = y          [],  set x=y
+        [x] = y        [],  let ([t0],[init t0=y]) [set x=t0[0]]
+
+        Block Structure
+
+        { }            () {}
+        {stmt}         () {stmt}
+        {let x}        ([x],[x=undef]) {}       is undef the right val?
+        {var x = y; let z = y}
+                       ([x],[]) ... ([z],[]) {init VAR () x=y; init LET () z=y}
+
+
+        assignment, create a let for each aggregate, a temp for
+        each level of nesting
+
+        x = y              set x=y
+        [x] = y            let (t0=y) set x=t0[0]
+        [[x]] = y          let (t0=y) let (t1=t0[0]) set x=t1[0]
+        [[x],[x]] = y      let (t0=y) let (t1=t0[0]) set x=t1[0]
+                                    , let (t1=t0[1]) set x=t1[0]
+        
+        initialization, create an init rather than a set for the
+        leaf nodes
+
+        var x = v            let (t0=v) init () [x=t0]
+        var [x] = v          let (t0=v) init () [x=t0[0]]
+        var [x,[y,z]] = v    let (t0=v) init () [x=t0[0]]
+                                      , let (t1=t0[1]) init () [y=t1[0], z=t1[1]]
+        var [x,[y,[z]]] = v  let (t0=v) init () [x=t0[0]]
+                                      , let (t1=t0[1]) init () [y=t1[0]
+                                                     , let (t2=t1[0]) init () [z=t2[0]]
+
+        for initialization, we need to know the namespace and the target 
+        so we make INITS to go into the InitExpr inside the LetExpr
+
+        let x = y          init x=y
+
+        flattening.
+
+        var [x,[y,z]] = v  let (t0=v) init () [x=t0[0]]
+                                    , let (t1=t0[1]) init () [y=t1[0], z=t1[0]]
+
+                           t0=v
+                           x=t0[0]
+                           t1=t0[1]
+                           y=t1[0]
+                           z=t1[1]
+        head = {[t0,x,t1,y,z],
+
+        flattening doesn't work because it mixes named and temporary
+        fixtures
+
+        lets and params have the same problem. both allow destructuring
+        patterns that can expand into a nested expression.
+
+        let ([x,[y,z]]=v) ...
+
+        top heads only have named fixtures. sub heads only have temporaries.
+        temporaries are always immediately initialized. a head is a list of
+        fixtures and a list of expressions. the expressions get evaluated
+        in the scope outside the head.
+
+        settings is a sub head. it has temporary fixtures and init exprs that
+        target instance variables
+
+        */
+}}}
+
+===== Semantics =====
+
+<INCLUDE file="parser.sml" name="fun desugarPattern">
+
+<!--
 === Identifier Expresssions ===
 
 <p>Identifier expressions have various surfaces representations including:
@@ -664,106 +778,6 @@ in the scope chain.
 <IMPL>
 <INCLUDE file="grammar.rul" name="rul LikedPattern">
 
-==== Desugaring Patterns ====
-
-{{{
-        Notation
-
-        []             list
-        (fl,el)        head
-        fl             fixture list
-        el             expr list
-        il             init list
-        sl             stmt list
-        it             init target = VAR, LET (default=LET)
-        ie             init expr
-        se             set expr
-
-        initexpr       init it (fl,el) il
-        letexpr        let (fl,el) el
-        block          (fl,el) sl
-      
-
-        Binding Patterns
-
-        var x = y      ([x]) ... () {init VAR () [x=y]}
-        var [x] = y    ([x]) ... () {init VAR ([t0],[init t0=y]) [x=t0[0]])
-
-        let (x=y) ...  ([x],[init (x=y)]) ...
-        let x=y        ([x],[]) {init () x=y}
-
-        Assignment Patterns
-
-        x = y          [],  set x=y
-        [x] = y        [],  let ([t0],[init t0=y]) [set x=t0[0]]
-
-        Block Structure
-
-        { }            () {}
-        {stmt}         () {stmt}
-        {let x}        ([x],[x=undef]) {}       is undef the right val?
-        {var x = y; let z = y}
-                       ([x],[]) ... ([z],[]) {init VAR () x=y; init LET () z=y}
-
-
-        assignment, create a let for each aggregate, a temp for
-        each level of nesting
-
-        x = y              set x=y
-        [x] = y            let (t0=y) set x=t0[0]
-        [[x]] = y          let (t0=y) let (t1=t0[0]) set x=t1[0]
-        [[x],[x]] = y      let (t0=y) let (t1=t0[0]) set x=t1[0]
-                                    , let (t1=t0[1]) set x=t1[0]
-        
-        initialization, create an init rather than a set for the
-        leaf nodes
-
-        var x = v            let (t0=v) init () [x=t0]
-        var [x] = v          let (t0=v) init () [x=t0[0]]
-        var [x,[y,z]] = v    let (t0=v) init () [x=t0[0]]
-                                      , let (t1=t0[1]) init () [y=t1[0], z=t1[1]]
-        var [x,[y,[z]]] = v  let (t0=v) init () [x=t0[0]]
-                                      , let (t1=t0[1]) init () [y=t1[0]
-                                                     , let (t2=t1[0]) init () [z=t2[0]]
-
-        for initialization, we need to know the namespace and the target 
-        so we make INITS to go into the InitExpr inside the LetExpr
-
-        let x = y          init x=y
-
-        flattening.
-
-        var [x,[y,z]] = v  let (t0=v) init () [x=t0[0]]
-                                    , let (t1=t0[1]) init () [y=t1[0], z=t1[0]]
-
-                           t0=v
-                           x=t0[0]
-                           t1=t0[1]
-                           y=t1[0]
-                           z=t1[1]
-        head = {[t0,x,t1,y,z],
-
-        flattening doesn't work because it mixes named and temporary
-        fixtures
-
-        lets and params have the same problem. both allow destructuring
-        patterns that can expand into a nested expression.
-
-        let ([x,[y,z]]=v) ...
-
-        top heads only have named fixtures. sub heads only have temporaries.
-        temporaries are always immediately initialized. a head is a list of
-        fixtures and a list of expressions. the expressions get evaluated
-        in the scope outside the head.
-
-        settings is a sub head. it has temporary fixtures and init exprs that
-        target instance variables
-
-        */
-}}}
-
-<INCLUDE file="parser.sml" name="fun desugarPattern">
-
 === Type Expressions ===
 
 <IMPL>
@@ -1100,3 +1114,4 @@ two namespaces, and several 'use' pragmas.
 <INCLUDE file="grammar.rul" name="rul Program">
 
 
+-->
