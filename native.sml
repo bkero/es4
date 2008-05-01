@@ -76,25 +76,15 @@ fun nthAsObjAndCls (vals:Mach.VAL list)
     : (Mach.OBJ * Mach.CLS_CLOSURE) =
     let
         val obj = nthAsObj vals n
-        val Mach.Obj { magic, ... } = obj
+        val c = Mach.needClass (Mach.Object obj)
     in
-        case !magic of
-            SOME (Mach.Class c) => (obj, c)
-          | _ => error ["Wanted class, got other"]
+        (obj, c)
     end
-
 
 fun nthAsUstr (vals:Mach.VAL list)
              (n:int)
     : Ustring.STRING =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.String s) => s
-          | _ => error ["Wanted string, got other"]
-    end
-
+    Mach.needString (rawNth vals n)
 
 fun nthAsName (regs:Mach.REGS)
               (vals:Mach.VAL list)
@@ -110,13 +100,7 @@ fun nthAsName (regs:Mach.REGS)
 fun nthAsFn (vals:Mach.VAL list)
             (n:int)
     : Mach.FUN_CLOSURE =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.Function f) => f
-          | _ => error ["Wanted function, got other"]
-    end
+    Mach.needFunction (rawNth vals n)
 
 
 fun nthAsInt (regs:Mach.REGS)
@@ -136,25 +120,13 @@ fun nthAsUInt (regs:Mach.REGS)
 fun nthAsDouble (vals:Mach.VAL list)
                 (n:int)
     : Real64.real =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.Double d) => d
-          | _ => error ["Wanted double, got other"]
-    end
+    Mach.needDouble (rawNth vals n)
 
 
 fun nthAsBool (vals:Mach.VAL list)
               (n:int)
     : bool =
-    let
-        val Mach.Obj { magic, ... } = nthAsObj vals n
-    in
-        case !magic of
-            SOME (Mach.Boolean b) => b
-          | _ => error ["Wanted Boolean, got other"]
-    end
+    Mach.needBoolean (rawNth vals n)
 
 
 fun propQuery (regs:Mach.REGS)
@@ -196,22 +168,19 @@ fun getClassName (regs:Mach.REGS)
                  (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
+        val Mach.Obj { tag, ... } = nthAsObj vals 0
         (* FIXME: is this right? *)
-        val ustr = case !magic of
-                      SOME (Mach.Function _) => Ustring.Function_
-                    | SOME (Mach.NativeFunction _) => Ustring.Function_
-                    | SOME (Mach.String _) => Ustring.String_
-                    | SOME (Mach.Decimal _) => Ustring.Number_
-                    | SOME (Mach.Double _) => Ustring.Number_
-                    | SOME (Mach.Boolean _) => Ustring.Boolean_
-                    | _ =>
-                      (case tag of
-                           Mach.ObjectTag _ => Ustring.Object_
-                         | Mach.ArrayTag _ => Ustring.Array_
-                         | Mach.FunctionTag _ => Ustring.Function_
-                         | Mach.ClassTag ity => (#id (#name ity))
-                         | Mach.NoTag => Ustring.Object_)
+        val ustr = case tag of
+                      SOME (Mach.MagicTag (Mach.Function _)) => Ustring.Function_
+                    | SOME (Mach.MagicTag (Mach.NativeFunction _)) => Ustring.Function_
+                    | SOME (Mach.MagicTag (Mach.String _)) => Ustring.String_
+                    | SOME (Mach.MagicTag (Mach.Decimal _)) => Ustring.Number_
+                    | SOME (Mach.MagicTag (Mach.Double _)) => Ustring.Number_
+                    | SOME (Mach.MagicTag (Mach.Boolean _)) => Ustring.Boolean_
+                    | SOME (Mach.ObjectTag _) => Ustring.Object_
+                    | SOME (Mach.ArrayTag _) => Ustring.Array_
+                    | SOME (Mach.InstanceTag ity) => (#id (#name ity))
+                    | NONE => Ustring.Object_
     in
         Eval.newString regs ustr
     end
@@ -227,34 +196,9 @@ fun getClassOfObject (regs:Mach.REGS)
                      (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
-        val globalScope = Eval.getGlobalScope regs
+        val Mach.Obj { tag, ... } = nthAsObj vals 0
     in
-(*  This is wrong, because eg "Number" is classified as "Double" because it
- *  stores a double value magically.
-        case !magic of
-            SOME (Mach.Function _) => Eval.findVal globalScope Name.public_Function
-          | SOME (Mach.NativeFunction _) => Eval.findVal globalScope Name.public_Function
-          | SOME (Mach.String _) => Eval.findVal globalScope Name.intrinsic_string
-          | SOME (Mach.Decimal _) => Eval.findVal globalScope Name.intrinsic_decimal
-          | SOME (Mach.Int _) => Eval.findVal globalScope Name.intrinsic_int
-          | SOME (Mach.UInt _) => Eval.findVal globalScope Name.intrinsic_uint
-          | SOME (Mach.Double _) => Eval.findVal globalScope Name.intrinsic_double
-          | SOME (Mach.Boolean _) => Eval.findVal globalScope Name.intrinsic_boolean
-          | _ =>
-            (case tag of
-                 Mach.ObjectTag _ => Eval.findVal globalScope Name.public_Object
-               | Mach.ArrayTag _ => Eval.findVal globalScope Name.public_Array
-               | Mach.FunctionTag _ => Eval.findVal globalScope Name.public_Function
-               | Mach.ClassTag name => Eval.findVal globalScope name
-               | Mach.NoTag => Eval.findVal globalScope Name.public_Object)
-*)
-        case tag of
-            Mach.ObjectTag _ => Eval.findVal regs globalScope Name.public_Object
-          | Mach.ArrayTag _ => Eval.findVal regs globalScope Name.public_Array
-          | Mach.FunctionTag _ => Eval.findVal regs globalScope Name.public_Function
-          | Mach.ClassTag ity => Mach.Object (Eval.instanceClass regs ity)
-          | Mach.NoTag => Eval.findVal regs globalScope Name.public_Object
+        Eval.getValue regs (#global regs) (Mach.nominalBaseOfTag tag)
     end
 
 
@@ -479,20 +423,6 @@ fun defaultValue (regs:Mach.REGS)
         Eval.defaultValue regs obj hint
     end
 
-fun convertAndBindMagic (vals:Mach.VAL list)
-                        (cvt:(Mach.VAL -> 'a))
-                        (mag:('a -> Mach.MAGIC))
-    : Mach.VAL =
-    let
-        val ob = nthAsObj vals 0
-        val v = rawNth vals 1
-        val p = cvt v
-        val m = mag p
-    in
-        Mach.setMagic ob (SOME m);
-        Mach.Undef
-    end
-
 
 (*
  * Given a function object, a this object, and an array of argument
@@ -516,13 +446,13 @@ fun fnLength (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val Mach.Obj { tag, ... } = nthAsObj vals 0
         val len = 
-            case !magic of
-                SOME (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
+            case tag of
+                SOME (Mach.MagicTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...})))
                 => AstQuery.minArgsOfFuncTy ty
-              | SOME (Mach.NativeFunction {length, ...}) => length
-                    | _ => error ["wrong kind of magic to fnLength"]
+              | SOME (Mach.MagicTag (Mach.NativeFunction {length, ...})) => length
+              | _ => error ["wrong kind of object to fnLength"]
     in
         Eval.newDouble regs (Real64.fromInt len)
     end
@@ -531,35 +461,35 @@ fun genSend (regs:Mach.REGS)
             (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val Mach.Obj { tag, ... } = nthAsObj vals 0
         val arg = rawNth vals 1
     in
-        case !magic of
-            SOME (Mach.Generator gen) => Eval.sendToGen regs gen arg
-          | _ => error ["wrong kind of magic to genSend"]
+        case tag of
+            SOME (Mach.MagicTag (Mach.Generator gen)) => Eval.sendToGen regs gen arg
+          | _ => error ["wrong kind of object to genSend"]
     end
 
 fun genThrow (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val Mach.Obj { tag, ... } = nthAsObj vals 0
         val arg = rawNth vals 1
     in
-        case !magic of
-            SOME (Mach.Generator gen) => Eval.throwToGen regs gen arg
-          | _ => error ["wrong kind of magic to genSend"]
+        case tag of
+            SOME (Mach.MagicTag (Mach.Generator gen)) => Eval.throwToGen regs gen arg
+          | _ => error ["wrong kind of object to genSend"]
     end
 
 fun genClose (regs:Mach.REGS)
              (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val Mach.Obj { tag, ... } = nthAsObj vals 0
     in
-        case !magic of
-            SOME (Mach.Generator gen) => Eval.closeGen regs gen
-          | _ => error ["wrong kind of magic to genSend"];
+        case tag of
+            SOME (Mach.MagicTag (Mach.Generator gen)) => Eval.closeGen regs gen
+          | _ => error ["wrong kind of object to genSend"];
         Mach.Undef
     end
 
@@ -1052,20 +982,12 @@ fun typename (regs:Mach.REGS)
     case hd vals of
         Mach.Null => Eval.newString regs Ustring.null_
       | Mach.Undef => Eval.newString regs Ustring.undefined_
-      | Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             NONE => Eval.newString regs Ustring.object_
-           | SOME (Mach.Double _) => Eval.newString regs Ustring.double_
-           | SOME (Mach.Decimal _) => Eval.newString regs Ustring.decimal_
-           | SOME (Mach.String _) => Eval.newString regs Ustring.string_
-           | SOME (Mach.Boolean _) => Eval.newString regs Ustring.bool_
-           | SOME (Mach.Namespace _) => Eval.newString regs Ustring.namespace_
-           | SOME (Mach.Class _) => Eval.newString regs Ustring.class_
-           | SOME (Mach.Interface _) => Eval.newString regs Ustring.interface_
-           | SOME (Mach.Function _) => Eval.newString regs Ustring.function_
-           | SOME (Mach.Type _) => Eval.newString regs Ustring.type_
-           | SOME (Mach.NativeFunction _) => Eval.newString regs Ustring.native_function_
-           | SOME (Mach.Generator _) => Eval.newString regs Ustring.generator_)
+      | Mach.Object (Mach.Obj {tag, ...}) =>
+        let 
+            val name = Mach.nominalBaseOfTag tag
+        in
+            Eval.newString regs (#id name)
+        end
 
 fun dumpFunc (regs:Mach.REGS)
              (vals:Mach.VAL list)

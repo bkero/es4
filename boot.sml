@@ -77,7 +77,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
       val closure = Eval.newClsClosure (#scope regs) cls
-      val obj = Mach.newObj (Mach.ClassTag cty) Mach.Null (SOME (Mach.Class closure))
+      val obj = Mach.newObject (SOME (Mach.MagicTag (Mach.Class closure))) Mach.Null 
 
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
@@ -338,9 +338,8 @@ fun boot (baseDir:string) : Mach.REGS =
         val glob = 
             let
                 val (_, objIty) = lookupRoot prog Name.public_Object
-                val objTag = Mach.ClassTag objIty
             in
-                Mach.newObj objTag Mach.Null NONE
+                Mach.newObject (SOME (Mach.InstanceTag objIty)) Mach.Null
             end
 
         val _ = Mach.setRib glob (Fixture.getRootRib prog)
