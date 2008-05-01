@@ -187,7 +187,7 @@ fun ty t =
 			^ ") : " 
 			^ (ty result) 
 			
-          | Ast.ObjectType fields => 
+          | Ast.RecordType fields => 
 			"{" ^ fieldList fields ^ "}"
           | Ast.AppType {base, args} => 
 			(ty base) ^ ".<" ^ (typeList args) ^ ">"

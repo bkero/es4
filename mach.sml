@@ -81,22 +81,16 @@ datatype VAL = Object of OBJ
 
      and OBJ =
          Obj of { ident: OBJ_IDENTIFIER,
-                  tag: VAL_TAG,
+                  tag: VAL_TAG option,
                   props: PROP_BINDINGS,
                   rib: Ast.RIB ref,
-                  proto: VAL ref,
-                  magic: (MAGIC option) ref }
+                  proto: VAL ref }
 
      and VAL_TAG =
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE list
-       | FunctionTag of Ast.FUNC_TYPE
-       | ClassTag of Ast.INSTANCE_TYPE
-       | NoTag (*
-                * NoTag objects are made for scopes and
-                * temporaries passed as arguments during
-                * builtin construction.
-                *)
+       | InstanceTag of Ast.INSTANCE_TYPE
+       | MagicTag of MAGIC
 
      and OBJ_CACHE = 
          ObjCache of 
@@ -118,6 +112,7 @@ datatype VAL = Object of OBJ
      and SPECIAL_OBJS = 
          SpecialObjs of 
          { 
+          typeInterface : (OBJ option) ref,
           classClass : (OBJ option) ref,
           interfaceClass : (OBJ option) ref,
           namespaceClass : (OBJ option) ref,
@@ -301,115 +296,43 @@ fun isObject (v:VAL) : bool =
       | _ => false
 
 
-fun isDouble (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Double _) => true
-           | _ => false)
-      | _ => false
+fun isDouble (Object (Obj {tag = SOME (MagicTag (Double _)), ...})) = true
+  | isDouble _ = false
 
+fun isDecimal (Object (Obj {tag = SOME (MagicTag (Decimal _)), ...})) = true
+  | isDecimal _ = false
 
-fun isDecimal (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Decimal _) => true
-           | _ => false)
-      | _ => false
+fun isString (Object (Obj {tag = SOME (MagicTag (String _)), ...})) = true
+  | isString _ = false
 
+fun isBoolean (Object (Obj {tag = SOME (MagicTag (Boolean _)), ...})) = true
+  | isBoolean _ = false
 
-fun isString (v:VAL)
-    : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (String _) => true
-           | _ => false)
-      | _ => false
+fun isNamespace (Object (Obj {tag = SOME (MagicTag (Namespace _)), ...})) = true
+  | isNamespace _ = false
 
+fun isClass (Object (Obj {tag = SOME (MagicTag (Class _)), ...})) = true
+  | isClass _ = false
 
-fun isBoolean (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Boolean _) => true
-           | _ => false)
-      | _ => false
+fun isInterface (Object (Obj {tag = SOME (MagicTag (Interface _)), ...})) = true
+  | isInterface _ = false
 
+fun isFunction (Object (Obj {tag = SOME (MagicTag (Function _)), ...})) = true
+  | isFunction _ = false
+                   
+fun isType (Object (Obj {tag = SOME (MagicTag (Type _)), ...})) = true
+  | isType _ = false
 
-fun isNamespace (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Namespace _) => true
-           | _ => false)
-      | _ => false
+fun isNativeFunction (Object (Obj {tag = SOME (MagicTag (NativeFunction _)), ...})) = true
+  | isNativeFunction _ = false
+                         
+fun isNumeric ob = isDouble ob orelse isDecimal ob
+                                      
+fun isNull Null = true
+  | isNull _ = false
 
-
-fun isClass (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Class _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isInterface (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Interface _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isFunction (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Function _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isType (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Type _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isNativeFunction (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (NativeFunction _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isNumeric (v:VAL) : bool =
-    case v of
-        Object (Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Double _) => true
-           | SOME (Decimal _) => true
-           | _ => false)
-      | _ => false
-
-fun isNull (v:VAL) : bool =
-    case v of
-        Null => true
-      | _ => false
-
-fun isUndef (v:VAL) : bool =
-    case v of
-        Undef => true
-      | _ => false
+fun isUndef Undef = true
+  | isUndef _ = false
 
 (*
  * The "machine type" of a value here is an ES3-ism. It exists only for
@@ -515,13 +438,8 @@ fun hasProp (b:PROP_BINDINGS)
         NONE => false
       | SOME _ => true
 
-
-fun hasMagic (ob:OBJ) =
-    case ob of
-        Obj { magic, ... } =>
-        case !magic of
-            SOME _ => true
-          | NONE => false
+fun hasMagic (Obj { tag = SOME (MagicTag _), ... }) = true
+  | hasMagic _ = false
 
 fun setRib (obj:OBJ)
            (r:Ast.RIB)
@@ -580,20 +498,18 @@ fun nextIdent _ =
                    handle Overflow => error ["overflowed maximum object ID"]);
      !currIdent)
 
-fun newObj (t:VAL_TAG)
-           (p:VAL)
-           (m:MAGIC option)
+fun newObject (t:VAL_TAG option)
+              (p:VAL)
     : OBJ =
     Obj { ident = nextIdent (),
           tag = t,
           props = newPropBindings (),
           proto = ref p,
-          rib = ref [],
-          magic = ref m }
+          rib = ref [] }
 
-fun newObjNoTag _
+fun newObjectNoTag _
     : OBJ =
-    newObj NoTag Null NONE
+    newObject NONE Null
 
 fun getProto (ob:OBJ)
     : VAL =
@@ -784,30 +700,25 @@ fun inspect (v:VAL)
                 (" : " ^ (typ ty0))
               | Type t => (" = " ^ (typ t))
               | _ => ""
-                
-        fun tag (Obj ob) =
-            case (#tag ob) of
-                (* FIXME: elaborate printing of structural tags. *)
-                ObjectTag _ => "<Obj>"
-              | ArrayTag _ => "<Arr>"
-              | FunctionTag t => "<Fn " ^ (typ (Ast.FunctionType t)) ^ ">"
-              | ClassTag t => "<Class " ^ (typ (Ast.InstanceType t)) ^ ">"
-              | NoTag => "<NoTag>"
 
         (* FIXME: elaborate printing of type expressions. *)
         fun mag m = case m of
                         String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
                       | m => Ustring.toAscii (magicToUstring m) ^ (magType m)
+                
+        fun tag (Obj ob) =
+            case (#tag ob) of
+                (* FIXME: elaborate printing of structural tags. *)
+                SOME (ObjectTag _) => "<Obj>"
+              | SOME (ArrayTag _) => "<Arr>"
+              | SOME (InstanceTag t) => "<Class " ^ (typ (Ast.InstanceType t)) ^ ">"
+              | SOME (MagicTag m) => "<Magic " ^ (mag m) ^ ">"
+              | NONE => "<No-Tag>"
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"
 
-          | printVal indent 0 (Object (Obj ob)) =
-            (TextIO.print (case !(#magic ob) of
-                               NONE => tag (Obj ob)
-                             | SOME m => mag m);
-             TextIO.print "\n")
-
+          | printVal indent 0 (Object obj) = TextIO.print ((tag obj) ^ "\n")
           | printVal indent n (Object obj) =
             let
                 fun subVal i v = printVal (i+1) (n-1) v
@@ -833,13 +744,10 @@ fun inspect (v:VAL)
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
-                val Obj { magic, props, proto, ... } = obj
+                val Obj { props, proto, ... } = obj
 		val { bindings, ... } = !props
             in
                 TextIO.print "Obj {\n";
-                (case !magic of
-                     SOME m => (p indent ["  magic = ", (mag m)]; nl())
-                   | NONE => ());
                 p indent ["    tag = ", (tag obj)]; nl();
                 p indent ["  ident = ", (id obj)]; nl();
                 p indent ["  proto = "]; subVal indent (!proto);
@@ -853,33 +761,7 @@ fun inspect (v:VAL)
 
 
 fun magStr (SOME mag) = Ustring.toAscii (magicToUstring mag)
-  | magStr NONE = "<none>"
-                  
-fun setMagic (ob:OBJ) (m:MAGIC option)
-    : OBJ =
-    let
-         val Obj {magic, ident, ...} = ob                      
-    in
-        trace ["changing magic on obj #", Int.toString ident, 
-               " from ", magStr (!magic), " to ", magStr m];
-        magic := m;        
-        ob
-    end
-
-
-fun newObject (t:VAL_TAG)
-              (p:VAL)
-              (m:MAGIC option)
-    : VAL =
-    let
-        val obj = newObj t p m
-        val Obj { magic, ident, ... } = obj
-    in
-        trace ["setting initial magic on obj #", Int.toString ident, 
-               " to ", magStr (!magic)];
-        Object (obj)
-    end
-    
+  | magStr NONE = "<none>"    
 
 (*
  * To get from any object to its CLS, you work out the
@@ -888,60 +770,67 @@ fun newObject (t:VAL_TAG)
  * magic value pointing to the CLS.
  *)
 
-fun nominalBaseOfTag (t:VAL_TAG)
+fun nominalBaseOfTag (to:VAL_TAG option)
     : Ast.NAME =
-    case t of
-        ObjectTag _ => Name.public_Object
-      | ArrayTag _ => Name.public_Array
-      | FunctionTag _ => Name.public_Function
-      | ClassTag ity => (#name ity)
-      | NoTag => error ["searching for nominal base of no-tag object"]
+    case to of
+        NONE => Name.public_Object
+      | SOME t => 
+        case t of 
+            ObjectTag _ => Name.public_Object
+          | ArrayTag _ => Name.public_Array
+          | InstanceTag ity => (#name ity)
+          | MagicTag (Boolean _) => Name.ES4_boolean
+          | MagicTag (Double _) => Name.ES4_double
+          | MagicTag (Decimal _) => Name.ES4_decimal
+          | MagicTag (String _) => Name.ES4_string
+          | MagicTag (Namespace _) => Name.ES4_Namespace
+          | MagicTag (Class _) => Name.intrinsic_Class
+          | MagicTag (Interface _) => Name.intrinsic_Interface
+          | MagicTag (Function _) => Name.public_Function
+          | MagicTag (Type _) => Name.intrinsic_Type
+          | MagicTag (NativeFunction _) => Name.public_Function
+          | MagicTag (Generator _) => Name.helper_GeneratorImpl
 
-fun getObjMagic (ob:OBJ)
-    : (MAGIC option) =
-    case ob of
-        Obj ob' => !(#magic ob')
+fun getObjMagic (Obj { tag = SOME (MagicTag m), ... }) = SOME m
+  | getObjMagic _ = NONE
 
-fun getMagic (v:VAL)
-    : (MAGIC option) =
-    case v of
-        Object (Obj ob) => !(#magic ob)
-      | _ => NONE
+fun getMagic (Object (Obj { tag = SOME (MagicTag m), ... })) = SOME m
+  | getMagic _ = NONE
 
-fun needMagic (v:VAL)
-    : (MAGIC) =
-    case v of
-        Object (Obj ob) => valOf (!(#magic ob))
-      | _ => (inspect v 1; 
-              error ["require object with magic"])
+fun needMagic (Object (Obj { tag = SOME (MagicTag m), ... })) = m
+  | needMagic _ = error ["require object with magic"]
 
-fun needClass (v:VAL)
-    : (CLS_CLOSURE) =
-    case needMagic v of
-        Class cls => cls
-      | _ => (inspect v 1; 
-              error ["require class object"])
+fun needClass (Object (Obj {tag = SOME (MagicTag (Class c)), ...})) = c
+  | needClass _ = error ["require class object"]
 
-fun needInterface (v:VAL)
-    : (IFACE_CLOSURE) =
-    case needMagic v of
-        Interface iface => iface
-      | _ => (inspect v 1; 
-              error ["require interface object"])
+fun needInterface (Object (Obj {tag = SOME (MagicTag (Interface i)), ...})) = i
+  | needInterface _ = error ["require interface object"]
 
-fun needFunction (v:VAL)
-    : (FUN_CLOSURE) =
-    case needMagic v of
-        Function f => f
-      | _ => (inspect v 1; 
-              error ["require function object"])
+fun needFunction (Object (Obj {tag = SOME (MagicTag (Function f)), ...})) = f
+  | needFunction _ = error ["require function object]"]
 
-fun needType (v:VAL)
-    : (Ast.TYPE) =
-    case needMagic v of
-        Type t => t
-      | _ => (inspect v 1; 
-              error ["require type object"])
+fun needNamespace (Object (Obj {tag = SOME (MagicTag (Namespace n)), ...})) = n
+  | needNamespace _ = error ["require namespace object"]
+
+fun needNamespaceOrNull Null = Name.publicNS
+  | needNamespaceOrNull (Object (Obj {tag = SOME (MagicTag (Namespace n)), ...})) = n
+  | needNamespaceOrNull _ = error ["require namespace object"]
+
+fun needType (Object (Obj {tag = SOME (MagicTag (Type t)), ...})) = t
+  | needType _ = error ["require type object"]
+
+fun needDouble (Object (Obj {tag = SOME (MagicTag (Double d)), ...})) = d
+  | needDouble _ = error ["require double object"]
+
+fun needDecimal (Object (Obj {tag = SOME (MagicTag (Decimal d)), ...})) = d
+  | needDecimal _ = error ["require decimal object"]
+
+fun needBoolean (Object (Obj {tag = SOME (MagicTag (Boolean b)), ...})) = b
+  | needBoolean _ = error ["require boolean object"]
+
+fun needString (Object (Obj {tag = SOME (MagicTag (String s)), ...})) = s
+  | needString _ = error ["require string object"]
+
 
 
 (* Call stack and debugging stuff *)
@@ -1117,6 +1006,7 @@ fun getSpecials (regs:REGS) =
         ss
     end
 
+fun getTypeInterfaceSlot (regs:REGS) = (#typeInterface (getSpecials regs))
 fun getClassClassSlot (regs:REGS) = (#classClass (getSpecials regs))
 fun getInterfaceClassSlot (regs:REGS) = (#interfaceClass (getSpecials regs))
 fun getNamespaceClassSlot (regs:REGS) = (#namespaceClass (getSpecials regs))
@@ -1210,7 +1100,8 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
                        strCache = ref StrMap.empty,
                        tyCache = ref IntMap.empty }
         val specials = SpecialObjs 
-                       { classClass = ref NONE,
+                       { typeInterface = ref NONE,
+                         classClass = ref NONE,
                          interfaceClass = ref NONE,
                          namespaceClass = ref NONE,
                          objectClass = ref NONE,
