@@ -64,10 +64,14 @@ fun informative (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = informativeNS }
  *)
 
 fun typename (n:Ast.NAME) =
-    Ast.TypeName (Ast.QualifiedIdentifier
-					  { ident = (#id n),
-						qual = Ast.LiteralExpr
-								   (Ast.LiteralNamespace (#ns n)) }, NONE)
+    Ast.TypeName (Ast.QualifiedName
+					  { identifier = (#id n),
+						namespace = Ast.Namespace (#ns n) }, NONE)
+
+
+fun nameExprOf (n:Ast.NAME) =
+    Ast.QualifiedName { namespace = Ast.Namespace (#ns n), 
+                        identifier = (#id n) }
 
 
 (* 

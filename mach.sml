@@ -1372,7 +1372,7 @@ fun inheritedClassesOf (object: OBJECT)
 
 fun getObjId (Obj { ident, ...}) = ident
 
-fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, rootRib: Ast.RIB option)
+fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, globalNames: Ast.NAME_SET)
     : (OBJECT * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
@@ -1402,13 +1402,10 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                           | _ => 
                             if (getObjId object) = (getObjId globalObj) 
                             then 
-                                (case rootRib of 
-                                     NONE => raise (LogErr.NameError "ambiguous reference")
-                                   | SOME rr => 
-                                     (case Fixture.selectNamespacesByRootRib (identifier, matches''', rr) of
-                                          namespace :: [] => SOME (object, {ns=namespace,id=identifier})
-                                        | [] => raise (LogErr.NameError "internal error")
-                                        | _ => raise (LogErr.NameError "ambiguous reference")))
+                                case Fixture.selectNamespacesByGlobalNames (identifier, matches''', globalNames) of
+                                    namespace :: [] => SOME (object, {ns=namespace,id=identifier})
+                                  | [] => raise (LogErr.NameError "internal error")
+                                  | _ => raise (LogErr.NameError "ambiguous reference")
                             else
                                 raise (LogErr.NameError "ambiguous reference")
                     end

@@ -205,35 +205,6 @@ fun isInstanceInit (s:Ast.STATEMENT)
          | _ => false
     end
 
-(*
-    resolve a multiname to a name and then get the corresponding fixture
-
-    for each nested context in the environment, look for a fixture that matches
-    a multiname. see if a particular scope has a fixture with one of a list of
-    multinames
-
-    multiname = { nss : NAMESPACE list list, id: IDENTIFIER }
-    name = { ns: NAMESPACE, id: IDENTIFIER }
-*)
-
-fun resolve (env:ENV)
-            (mname:Ast.MULTINAME)
-    : (Ast.NAME * Ast.FIXTURE) =
-    case Fixture.findName ((getFullRibs env), (#id mname), (#nss mname), (SOME (List.last (#outerRibs env)))) of 
-        SOME (rib::ribs, name) => (name, Fixture.getFixture rib (Ast.PropName name))
-      | _ => LogErr.defnError ["multiname did not resolve ", LogErr.multiname mname]
-
-fun getNamespace (env:ENV)
-				 (name:Ast.NAME)
-	: Ast.NAMESPACE = 
-	let 
-		val { ns, id } = name
-		val mname = { nss = [[ns]], id = id }
-	in
-		case resolve env mname of 
-			(_, Ast.NamespaceFixture ns) => ns
-		  | _ => error ["missing namespace: ", LogErr.name name]
-	end
 	
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -249,39 +220,62 @@ fun addNamespace (ns:Ast.NAMESPACE)
     then (trace ["skipping namespace ",fmtNs ns]; opennss)   
     else (trace ["adding namespace ", fmtNs ns]; ns :: opennss)
 
-fun defNamespace (env:ENV)
-                 (ns:Ast.NAMESPACE)
-    : Ast.NAMESPACE = ns
 
-fun resolveExprToNamespace (env:ENV)
-                           (expr:Ast.EXPRESSION)
-    : Ast.NAMESPACE =
-    case expr of
-        Ast.LiteralExpr (Ast.LiteralNamespace ns) =>
-        let
-        in
-            defNamespace env ns
-        end
-      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } =>
-        let
-            val _ = LogErr.setLoc loc
-            val mname = {nss = (#openNamespaces env), id = ident}
-        in
-            case resolve env mname of
-                (_, Ast.NamespaceFixture ns) => ns
-              | _ => LogErr.defnError ["namespace expression did not resolve ",
-                                       "to namespace fixture"]
-        end
-      | _ => LogErr.defnError ["unexpected expression type ",
-                               "in namespace context"]
+(*
+    NAME_EXPRESSION and NAMESPACE_EXPRESSION
+ *)
 
-and resolveExprOptToNamespace (env: ENV)
-                              (ns:Ast.EXPRESSION option)
+fun defNamespaceExpr (env:ENV)
+                     (nse:Ast.NAMESPACE_EXPRESSION)
+    : Ast.NAMESPACE_EXPRESSION = 
+    case nse of 
+        Ast.Namespace ns => Ast.Namespace ns
+      | Ast.NamespaceName ne => Ast.NamespaceName (defNameExpr env ne)
+                                
+and defNameExpr (env:ENV)
+                (ne:Ast.NAME_EXPRESSION)
+    : Ast.NAME_EXPRESSION =
+    let
+        val openNamespaces = (#openNamespaces env)
+        (* FIXME: this is a kludge; in the future the goal is to do a first pass
+         * and *collect* all the global names defined in a compilation unit, then 
+         * run the definer with that collected set. For now we just work with the 
+         * rootRib "up to this point in the file", which serves to disambiguate
+         * the same *most* of the time. Sometimes it's a bit too constrictive. 
+         * Spec it with the set of all names declared, of course.
+         *)
+        fun getName ((Ast.PropName pn),_) = SOME pn
+          | getName _ = NONE
+        val globalNames = List.mapPartial getName (List.last (#outerRibs env))
+    in
+        case ne of
+            Ast.UnqualifiedName { identifier, ... } =>
+            Ast.UnqualifiedName { identifier=identifier,
+                                  openNamespaces=openNamespaces,
+                                  globalNames=globalNames }
+            
+          | Ast.QualifiedName { namespace, identifier } =>
+            Ast.QualifiedName { namespace = defNamespaceExpr env namespace,
+                                identifier = identifier }
+    end
+    
+fun resolve (env:ENV)
+            (nameExpr:Ast.NAME_EXPRESSION)
+    : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) =
+    Fixture.resolveNameExpr (getFullRibs env) (defNameExpr env nameExpr)
+
+fun resolveNsExprToNamespace (env:ENV)
+                             (nse:Ast.NAMESPACE_EXPRESSION) 
+    : Ast.NAMESPACE = 
+    Fixture.resolveNamespaceExpr (getFullRibs env) (defNamespaceExpr env nse)
+
+fun resolveNsExprOptToNamespace (env: ENV)
+                                (nso:Ast.NAMESPACE_EXPRESSION option)
     : Ast.NAMESPACE =
-    case ns of
+    case nso of
         NONE => (#defaultNamespace env)
-      | SOME n => resolveExprToNamespace env n
-
+      | SOME nse => resolveNsExprToNamespace env nse
+                    
 (*
     Create a new context initialised with the provided rib and
     inherited environment
@@ -493,38 +487,6 @@ fun addLabels (env:ENV) (labels:LABEL list)
     : ENV =
     List.foldl addLabel env labels 
 
-
-fun multinameFromName (n:Ast.NAME) =
-    { nss = [[(#ns n)]], id = (#id n) }
-
-(*
-    Resolve an IDENTIFIER_EXPRESSION to a multiname
-
-    A qualified name with a literal namespace qualifier (including package qualified)
-                            gets resolved to a multiname with a single namespace
- *)
-    
-fun identExprToMultiname (env:ENV) 
-                         (ie:Ast.IDENTIFIER_EXPRESSION)
-    : Ast.MULTINAME =
-    let
-        val ie' = defIdentExpr env ie
-    in 
-        case ie' of
-            Ast.Identifier {ident, ...} =>
-            let
-            in
-                {nss = (#openNamespaces env), id = ident}
-            end
-          | Ast.QualifiedIdentifier {ident, qual,...} =>
-            let
-                val ns = resolveExprToNamespace env qual
-            in
-                {nss = [[ns]], id = ident}
-            end
-          | _ => LogErr.defnError ["unhandled form of identifier expression in defIdentExpr"]
-    end
-
 (*
     CLASS_DEFN
 
@@ -580,7 +542,7 @@ and defInterface (env: ENV)
         val { ident, ns, nonnullable, params, extends, instanceDefns } = idef
 
         (* Make the interface name *)
-        val name = {id = ident, ns = resolveExprOptToNamespace env ns} 
+        val name = {id = ident, ns = resolveNsExprOptToNamespace env ns} 
 
         (* Resolve base interface's super interfaces and rib *)
         val (superInterfaces:Ast.TYPE list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
@@ -922,8 +884,6 @@ and resolveClassInheritance (env:ENV)
 
 *)
 
-and multinameOf (n:Ast.NAME) =
-    { nss = [[(#ns n)]], id = (#id n) }
 
 and resolveExtends (env:ENV)
                    (currInstanceRib:Ast.RIB)
@@ -931,20 +891,19 @@ and resolveExtends (env:ENV)
                    (currName:Ast.NAME) 
     : (Ast.TYPE option * Ast.RIB) =
     let
-        val baseClassMultiname:Ast.MULTINAME option = 
+        val baseClassNameExpr:Ast.NAME_EXPRESSION option = 
             case extends of 
                 NONE => if currName = Name.public_Object
                         then NONE
-                        else SOME (multinameOf Name.public_Object)
-              | SOME te => SOME (identExprToMultiname env (extractIdentExprFromTypeName te))
-
-            
+                        else SOME (Name.nameExprOf Name.public_Object)
+              | SOME te => SOME (extractNameExprFromTypeName te)
     in
-        case baseClassMultiname of
+        case baseClassNameExpr of
             NONE => (NONE, currInstanceRib)
           | SOME bcm => 
             let
-                val (baseClassName:Ast.NAME, 
+                val (_, 
+                     baseClassName:Ast.NAME, 
                      baseClassFixture:Ast.FIXTURE) = 
                     resolve env bcm
             in
@@ -1030,21 +989,20 @@ and classInstanceType (cfxtr:Ast.FIXTURE)
  * TYPEs of a simple form: those which name a 0-parameter interface. 
  * Generalize later. 
  *)
-and extractIdentExprFromTypeName (Ast.TypeName (ie, _)) : Ast.IDENTIFIER_EXPRESSION = ie
-  | extractIdentExprFromTypeName _ = 
+and extractNameExprFromTypeName (Ast.TypeName (ne, _)) : Ast.NAME_EXPRESSION = ne
+  | extractNameExprFromTypeName _ = 
     error ["can only presently handle inheriting from simple named interfaces"]
 
 and resolveInterfaces (env: ENV)
-                      (exprs: Ast.TYPE list)
+                      (types: Ast.TYPE list)
     : (Ast.TYPE list * Ast.RIB) =
-    case exprs of        
+    case types of        
         [] => ([],[])
       | _ =>
         let
-            val mnames:Ast.MULTINAME list = map ((identExprToMultiname env) o extractIdentExprFromTypeName) exprs
-            val fixs = (map (resolve env) mnames)
-            (* val _ = List.map (fn (n,f) => Fixture.printFixture (Ast.PropName n, f)) fixs *)
-            val (_, ifaces) = ListPair.unzip fixs
+            val nameExprs:Ast.NAME_EXPRESSION list = map extractNameExprFromTypeName types
+            fun resolveToFix ne = let val (_, _, fix) = resolve env ne in fix end
+            val ifaces = map resolveToFix nameExprs
             val ifaceInstanceTypes:Ast.TYPE list = map interfaceInstanceType ifaces
             val superIfaceTypes:Ast.TYPE list = List.concat (map interfaceExtends ifaces)
             val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
@@ -1074,7 +1032,7 @@ and analyzeClassBody (env:ENV)
          * and an instance block, and then define both blocks.
          *)
 
-        val ns = resolveExprOptToNamespace env ns
+        val ns = resolveNsExprOptToNamespace env ns
         val name = {id=ident, ns=ns}
         val _ = trace ["defining class ", fmtName name]
         val (staticEnv, localNamespaceRib) = enterClass env privateNS protectedNS []
@@ -1234,7 +1192,10 @@ and defVar (env:ENV)
 
 *)
 
-and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BINDING_IDENTIFIER) (tempOffset:int)
+and fixtureNameFromPropIdent (env:ENV) 
+                             (ns:Ast.NAMESPACE option) 
+                             (ident:Ast.BINDING_IDENTIFIER) 
+                             (tempOffset:int)
     : Ast.FIXTURE_NAME =
     case ident of
         Ast.TempIdent n =>  Ast.TempName (n+tempOffset)
@@ -1242,14 +1203,14 @@ and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BIND
       | Ast.PropIdent id =>
         let
         in case ns of
-            SOME ns => Ast.PropName {ns=ns,id=id}
-          | _ =>
-                let
-                    val mname = identExprToMultiname env (Ast.Identifier {ident=id,openNamespaces=[],rootRib=NONE})
-                    val ({ns,id},f) = resolve env mname
-                in
-                    Ast.PropName {ns=ns,id=id}
-                end
+               SOME ns => Ast.PropName {ns=ns,id=id}
+             | _ =>
+               let
+                   val nameExpr = defNameExpr env (Ast.UnqualifiedName {identifier=id, openNamespaces=[], globalNames=[]})
+                   val (_, {ns,id}, _) = resolve env nameExpr
+               in
+                   Ast.PropName {ns=ns,id=id}
+               end
         end
 
 and defInitStep (env:ENV)
@@ -1268,10 +1229,10 @@ and defInitStep (env:ENV)
             end
       | Ast.AssignStep (left,right) => (* resolve lhs to fixture name, and rhs to expr *)
             let
-                val ie = case left of Ast.LexicalRef {ident,...} => ident
-                                    | _ => error ["invalid lhs in InitStep"]
-                val mname = identExprToMultiname env ie
-                val ({ns,id},f) = resolve env mname
+                (* FIXME: there is something wrong about AssignStep. Should be a NAME_EXPR LHS? Revisit. *)
+                val name = case left of Ast.LexicalReference {name,...} => name
+                                      | _ => error ["invalid lhs in InitStep"]
+                val (_, {ns,id}, _) = resolve env name
             in
                 (Ast.PropName {ns=ns,id=id}, defExpr env right)
             end
@@ -1485,7 +1446,7 @@ and defFuncDefn (env:ENV)
     case (#func f) of
         Ast.Func { name, fsig, block, ty, native, ... } =>
         let
-            val qualNs = resolveExprOptToNamespace env (#ns f)
+            val qualNs = resolveNsExprOptToNamespace env (#ns f)
             val newName = Ast.PropName { id = (#ident name), ns = qualNs }
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
@@ -1585,24 +1546,22 @@ and defPragmas (env:ENV)
 
         fun defPragma x =
             case x of
-                Ast.UseNamespace ns =>
+                Ast.UseNamespace nse =>
                     let
                         val env = modifiedEnv()
-                        val ns = defExpr env ns
-                        val namespace = resolveExprToNamespace env ns
+                        val ns = resolveNsExprToNamespace env nse
                     in
-                        opennss := addNamespace namespace (!opennss);
-                        Ast.UseNamespace ns
+                        opennss := addNamespace ns (!opennss);
+                        Ast.UseNamespace (Ast.Namespace ns)
                     end
-              | Ast.UseDefaultNamespace ns =>
+              | Ast.UseDefaultNamespace nse =>
                     let
                         val env = modifiedEnv()
-                        val ns = defExpr env ns
-                        val namespace = resolveExprToNamespace env ns
-                        val _ = trace ["use default namespace ", fmtNs namespace]
+                        val ns = resolveNsExprToNamespace env nse
+                        val _ = trace ["use default namespace ", fmtNs ns]
                     in
-                        defaultNamespace := namespace;
-                        Ast.UseDefaultNamespace ns
+                        defaultNamespace := ns;
+                        Ast.UseDefaultNamespace (Ast.Namespace ns)
                     end
 
               | p => p
@@ -1612,35 +1571,6 @@ and defPragmas (env:ENV)
         (newPragmas, modifiedEnv (), !rib)
     end
 
-(*
-    IDENTIFIER_EXPRESSION
-*)
-
-and defIdentExpr (env:ENV)
-                 (ie:Ast.IDENTIFIER_EXPRESSION)
-    : Ast.IDENTIFIER_EXPRESSION =
-    let
-        val openNamespaces = (#openNamespaces env)
-    in
-        case ie of
-            Ast.Identifier { ident, ... } =>
-            Ast.Identifier { ident=ident,
-                             openNamespaces=openNamespaces,
-                             rootRib=SOME (List.last (#outerRibs env))}
-
-          | Ast.QualifiedIdentifier { qual, ident } =>
-            Ast.QualifiedIdentifier { qual = defExpr env qual,
-                                      ident = ident }
-
-          | Ast.QualifiedExpression { qual, expr } =>
-            Ast.QualifiedExpression { qual = defExpr env qual,
-                                      expr = defExpr env expr }
-          | Ast.ExpressionIdentifier { expr, ...} =>
-            Ast.ExpressionIdentifier { expr = (defExpr env expr),
-                                       openNamespaces = openNamespaces }          
-
-
-    end
 
 and defLiteral (env:ENV)
                (lit:Ast.LITERAL)
@@ -1667,14 +1597,14 @@ and defLiteral (env:ENV)
           | Ast.LiteralObject {expr, ty} =>
             Ast.LiteralObject {expr = List.map (fn { kind, name, init } =>
                                                    { kind = kind,
-                                                     name = defIdentExpr env name,
+                                                     name = defNameExpr env name,
                                                      init = defExpr env init }) expr,
                                ty = case ty of
                                         NONE => NONE
                                       | SOME t => SOME (defTypeExpr env t) }
 
           | Ast.LiteralNamespace ns =>
-            Ast.LiteralNamespace (defNamespace env ns)
+            Ast.LiteralNamespace ns
 
           | _ => lit   (* FIXME: other cases to handle here *)
     end
@@ -1750,17 +1680,23 @@ and defExpr (env:ENV)
             Ast.NewExpr { obj = sub obj,
                           actuals = map sub actuals }
 
-          | Ast.ObjectRef { base, ident, loc } =>
+          | Ast.ObjectNameReference { object, name, loc } =>
             (LogErr.setLoc loc;
-             Ast.ObjectRef { base = sub base,
-                             ident = defIdentExpr env ident,
-                             loc = loc })
+             Ast.ObjectNameReference { object = sub object,
+                                       name = defNameExpr env name,
+                                       loc = loc })
 
-          | Ast.LexicalRef { ident, loc } =>
+          | Ast.ObjectIndexReference { object, index, loc } => 
             (LogErr.setLoc loc;
-             Ast.LexicalRef { ident = defIdentExpr env ident,
-                              loc = loc})
+             Ast.ObjectIndexReference { object = sub object,
+                                        index = sub index,
+                                        loc = loc })
 
+          | Ast.LexicalReference { name, loc } =>
+            (LogErr.setLoc loc;
+             Ast.LexicalReference { name = defNameExpr env name,
+                                    loc = loc})
+            
           | Ast.SetExpr (a, le, re) =>
             Ast.SetExpr (a, (sub le), (sub re))
 
@@ -1821,7 +1757,7 @@ and defTypeExpr (env:ENV)
         Ast.FunctionType t =>
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName (n,nonce) =>
-        Ast.TypeName ((defIdentExpr env n), nonce)
+        Ast.TypeName ((defNameExpr env n), nonce)
       | Ast.UnionType tys =>
         Ast.UnionType (map (defTypeExpr env) tys)
       | Ast.ArrayType tys =>
@@ -1983,10 +1919,11 @@ and defStmt (env:ENV)
 
         fun findClass (n:Ast.NAME) =
             let
-                val (n,f) = resolve env (multinameFromName n)
-            in case f of
-                   Ast.ClassFixture cd => cd
-                 | _ => LogErr.defnError ["reference to non-class fixture"]
+                val (_,_,f) = resolve env (Name.nameExprOf n)
+            in 
+                case f of
+                    Ast.ClassFixture cd => cd
+                  | _ => LogErr.defnError ["reference to non-class fixture"]
             end
             
         fun reconstructClassBlock {ns, privateNS, protectedNS, 
@@ -2005,7 +1942,7 @@ and defStmt (env:ENV)
 				val (env, _) =
 					enterClass env privateNS protectedNS []
 
-                val namespace = resolveExprOptToNamespace env ns
+                val namespace = resolveNsExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
 
@@ -2076,7 +2013,7 @@ and defStmt (env:ENV)
 
           | Ast.InitStmt {ns, temps, inits, prototype, static, kind} =>
             let
-                val ns0 = resolveExprOptToNamespace env ns
+                val ns0 = resolveNsExprOptToNamespace env ns
 
                 val target = case (kind, prototype, static) of
                                  (_,true,_) => Ast.Prototype
@@ -2241,8 +2178,7 @@ and defStmts (env) (stmts:Ast.STATEMENT list)
 
     Translate a namespace definition into a namespace fixture. Namespaces
     are not hoisted. The initialiser is resolved at this time and so must
-    be either a literal string or a reference to a previously defined
-    namespace.
+    be a namespace expression, if it exists. 
 *)
 
 and defNamespaceDefn (env:ENV)
@@ -2252,21 +2188,16 @@ and defNamespaceDefn (env:ENV)
         { ident, ns, init } =>
         let
             val _ = trace [">> defNamespaceDefn"]
-            val qualNs = resolveExprOptToNamespace env ns
-            val newNs = case init of
-                            (* FIXME: a nonce perhaps? *)
-                            NONE => Name.newOpaqueNS ()
-                          | SOME (Ast.LiteralExpr (Ast.LiteralString s)) =>
-                            Ast.TransparentNamespace s
-                          | SOME (Ast.LexicalRef lref) =>
-                            resolveExprToNamespace env (Ast.LexicalRef lref)
-                          | _ => LogErr.evalError ["illegal form of namespace initializer"]
+            val qualNs = resolveNsExprOptToNamespace env ns
+            val initNs = case init of
+                             NONE => Name.newOpaqueNS ()
+                           | SOME nse => resolveNsExprToNamespace env nse
             val fixtureName = Ast.PropName { ns = qualNs, id = ident }
             val newNd = { ident = ident,
-                          ns = ns,
-                          init = init }
+                          ns = SOME (Ast.Namespace qualNs),
+                          init = SOME (Ast.Namespace initNs) }
         in
-            ([(fixtureName, Ast.NamespaceFixture newNs)], newNd)
+            ([(fixtureName, Ast.NamespaceFixture initNs)], newNd)
         end
 
 
@@ -2275,9 +2206,7 @@ and defType (env:ENV)
     : Ast.RIB =
     let
         val { ident, ns, typeParams, init } = td
-        val ns = case ns of
-                     NONE => (#defaultNamespace env)
-                   | SOME e => resolveExprToNamespace env e
+        val ns = resolveNsExprOptToNamespace env ns
         val n = { id=ident, ns=ns }
     in
         [(Ast.PropName n,
@@ -2301,7 +2230,7 @@ and defDefn (env:ENV)
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
                 val _ = trace ["defVar"]
-                val ns = resolveExprOptToNamespace env ns
+                val ns = resolveNsExprOptToNamespace env ns
                 val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
               (* hoisted fxtrs *)

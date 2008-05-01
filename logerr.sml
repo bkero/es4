@@ -123,58 +123,45 @@ fun ribs (rs:Ast.RIBS) =
     "[ribs: \n    " ^ (join ",\n    " (map rib rs)) ^ "\n]"
 
 
-fun multiname (mn:Ast.MULTINAME) =
-    let
-	fun fmtNss (nss:Ast.NAMESPACE list) = 
-	    "(" ^ (join ", " (map namespace nss)) ^ ")"
-	fun fmtNsss (nsss:Ast.NAMESPACE list list) = 
-	    "{" ^ (join ", " (map fmtNss nsss)) ^ "}"
-    in
-	if !doNamespaces
-	then (fmtNsss (#nss mn)) ^ "::" ^ (Ustring.toAscii (#id mn))
-	else "[...]::" ^ (Ustring.toAscii (#id mn))
-    end
 
-fun identExpr (ide:Ast.IDENTIFIER_EXPRESSION) =
+fun nsExpr (nse:Ast.NAMESPACE_EXPRESSION) = 
+	case nse of 
+		Ast.Namespace ns => namespace ns
+	  | Ast.NamespaceName ne => nameExpr ne
+
+and nameExpr (ne:Ast.NAME_EXPRESSION) =
    let
-        fun nsExprToString e =
-            case e of
-                Ast.LiteralExpr (Ast.LiteralNamespace ns) => namespace ns
-              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
-              | _ => (error ["unexpected expression in type namespace context"]; "")
+	   fun unqualName (onss:Ast.OPEN_NAMESPACES)
+					  (identifier:Ast.IDENTIFIER) =
+		   let
+			   fun fmtNss (nss:Ast.NAMESPACE_SET) = 
+				   "(" ^ (join ", " (map namespace nss)) ^ ")"
+			   fun fmtNsss (onss:Ast.OPEN_NAMESPACES) = 
+				   "{" ^ (join ", " (map fmtNss onss)) ^ "}"
+		   in
+			   if !doNamespaces
+			   then (fmtNsss onss) ^ "::" ^ (Ustring.toAscii identifier)
+			   else "[...]::" ^ (Ustring.toAscii identifier)
+		   end		   
    in 
-       case ide of
-	   Ast.Identifier { ident, openNamespaces, ... } =>
-	   multiname {nss=openNamespaces, id=ident}
-	 | Ast.QualifiedIdentifier { qual, ident } => 
-	   "(" 
-	   ^ (nsExprToString qual) 
-	   ^ "::" 
-	   ^ (Ustring.toAscii ident) 
-	   ^ ")"
-      | _ => "other-IDENTIFIER_EXPRESSION"
+       case ne of
+		   Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
+		   unqualName openNamespaces identifier
+		 | Ast.QualifiedName { namespace, identifier } => 
+		   ((nsExpr namespace) ^ "::" ^ (Ustring.toAscii identifier))
    end
-
+   
 fun identList fields =
     join ", " (map Ustring.toAscii fields)
 
 fun ty t =
     let
-        fun nsExprToString e =
-            case e of
-                Ast.LiteralExpr (Ast.LiteralNamespace ns) => namespace ns
-              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
-              | _ => (error ["unexpected expression in type namespace context"]; "")
-        fun nssToString nss =
-            join ", " (map namespace nss)
-        fun nsssToString nsss =
-            join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
         fun typeList tys =
             join ", " (map ty tys)
         fun typeOrList tys =
             join "|" (map ty tys)
         fun fieldToString {name, ty=fieldType} = 
-	    (Ustring.toAscii name) ^ ": " ^ (ty fieldType)
+			(nameExpr name) ^ ": " ^ (ty fieldType)
         fun fieldList fields =
             join ", " (map fieldToString fields)
         
@@ -183,34 +170,34 @@ fun ty t =
             Ast.AnyType => "*"
           | Ast.NullType => "null"
           | Ast.UndefinedType => "undefined"
-          |  Ast.VoidType => "<VoidType>"
+          | Ast.VoidType => "<VoidType>"
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (idexpr, _) => identExpr idexpr
-	  | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
+          | Ast.TypeName (name, _) => nameExpr name
+		  | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
           | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
           | Ast.FunctionType {params, result, hasRest, ...} => 
-	    "function (" 
-	    ^ (typeList params) 
-	    ^ (if hasRest 
-	       then (if List.length params = 0 
-		     then "..." 
-		     else ", ...") 
-	       else "")
-	    ^ ") : " 
-	    ^ (ty result) 
-
+			"function (" 
+			^ (typeList params) 
+			^ (if hasRest 
+			   then (if List.length params = 0 
+					 then "..." 
+					 else ", ...") 
+			   else "")
+			^ ") : " 
+			^ (ty result) 
+			
           | Ast.ObjectType fields => 
-	    "{" ^ fieldList fields ^ "}"
+			"{" ^ fieldList fields ^ "}"
           | Ast.AppType {base, args} => 
-	    (ty base) ^ ".<" ^ (typeList args) ^ ">"
+			(ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NullableType { expr, nullable } => 
-	    (ty expr) ^ (if nullable then "?" else "!")
+			(ty expr) ^ (if nullable then "?" else "!")
           | Ast.InstanceType { name=n, ... } => 
-	    name n
-	  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"     
+			name n
+		  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"     
 (*	  | Ast.LamType { params, body } => 
-	    "lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
+			"lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
 *)
     end
 
