@@ -506,7 +506,8 @@ and verifyExpr2 (env:ENV)
 
                   | Ast.LiteralNull        => nullType
                   | Ast.LiteralUndefined   => undefinedType
-                  | Ast.LiteralDouble _    => doubleType
+                  | Ast.LiteralDouble _    => 
+                    (trace ["doubleType=", LogErr.ty doubleType]; doubleType)
                   | Ast.LiteralDecimal _   => decimalType
                   | Ast.LiteralBoolean _   => booleanType
                   | Ast.LiteralString _    => stringType
@@ -539,7 +540,7 @@ and verifyExpr2 (env:ENV)
                         checkargs args params;
                         result
                     end
-                  | Ast.AnyType => anyType
+                  | Ast.AnyType => (warning ["ill-typed call to type ", LogErr.ty t]; anyType)
                                                
 		      (* 
 		       * FIXME: Actually have to handle instance types here, and hook into

@@ -82,10 +82,10 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | Bool true => str "true"
       | Bool false => str "false"
       | Int i => str (Int.toString i)
-      | Real64 r => str ("(Real64.fromString \"" ^ (Real64.toString r) ^ "\"")
-      | UInt32 r => str ("(Word32.fromString \"" ^ (LargeInt.toString (Word32.toLargeInt r)) ^ "\"")
-      | Int32 r => str ("(Int32.fromString \"" ^ (Int32.toString r) ^ "\"")
-      | Dec r => str ("(Decimal.fromString \"" ^ (Decimal.toString r) ^ "\"")
+      | Real64 r => str ("(Real64.fromString \"" ^ (Real64.toString r) ^ "\")")
+      | UInt32 r => str ("(Word32.fromString \"" ^ (LargeInt.toString (Word32.toLargeInt r)) ^ "\")")
+      | Int32 r => str ("(Int32.fromString \"" ^ (Int32.toString r) ^ "\")")
+      | Dec r => str ("(Decimal.fromString \"" ^ (Decimal.toString r) ^ "\")")
       | DecRm r => str ("Decimal." ^ (Decimal.rmToString r))
       | UniStr us => (str "\""; str (Ustring.toAscii us); str "\"")
     end

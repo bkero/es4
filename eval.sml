@@ -617,11 +617,11 @@ and valAllocState (regs:Mach.REGS)
         
       | Ast.AppType {base, ...} =>
         valAllocState regs base
-        
-      | Ast.NullableType { expr, nullable=true } =>
+(*        
+      | Ast.NonNullType { expr, nullable=true } =>
         Mach.ValProp (Mach.Null)
-        
-      | Ast.NullableType { expr, nullable=false } =>
+ *)       
+      | Ast.NonNullType expr =>
         valAllocState regs expr
         
       | Ast.TypeName ident =>
@@ -922,7 +922,7 @@ and isDynamic (regs:Mach.REGS)
           | typeIsDynamic (Ast.FunctionType _) = true
           | typeIsDynamic (Ast.ObjectType _) = true
       (*    | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body *)
-          | typeIsDynamic (Ast.NullableType {expr, nullable}) = typeIsDynamic expr
+          | typeIsDynamic (Ast.NonNullType t) = typeIsDynamic t
           | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
           | typeIsDynamic _ = false
     in
@@ -3266,7 +3266,7 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalReference { name=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.ObjectType ot => Mach.Null (* FIXME *)
-      | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
+      | Ast.NonNullType _ => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
       | _ => Mach.Null (* FIXME *)
 

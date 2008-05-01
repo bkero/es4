@@ -324,27 +324,15 @@ if ''S'' is a subtype of the union type ''(T | null)''.
 if ''S'' is a subtype of ''T''
 and the type ''null'' is //not// a subtype of ''S''.
 
-<p>The type ''null'' is always a subtype of a nominal type ''C'',
-except when''C'' is declared as a non-null type, as in
+<p>The type ''null'' is always a subtype of a nominal type ''C'' (or
+''C.&lt;T1, .., Tn>'')
+except when''C'' is declared as a non-null type, as in any of:
 
 {{{
     class C! ...
-}}}
-or
-{{{
-    interface I! ...
-}}}
-
-<p>Similarly, the type ''null'' is always a subtype of a nominal type
-application ''C.&lt;S1, .., Sn>'',
-except when''C'' is declared as a non-null type, as in
-
-{{{
     class C.&lt;X1, .., Xn>! ...
-}}}
-or
-{{{
-    interface I.&lt;X1, .., Xn>! ...
+    interface C! ...
+    interface C.&lt;X1, .., Xn>! ...
 }}}
 
 === Subtyping Nominal Types ===
@@ -383,8 +371,8 @@ we have that ''C.&lt;S1, .., Sn>'' is a subtype of
 }}}
 
 <p>For applications of generic nominal types, we also have that
-''C.&lt;T1, .., Tn'' is a subtype of
-''C.&lt;S1, .., Sn'' if each type ''Ti'' is equivalent to the
+''C.&lt;T1, .., Tn>'' is a subtype of
+''C.&lt;S1, .., Sn>'' if each type ''Ti'' is equivalent to the
 corresponding type ''Si''.
 
 <NOTE>The subtype relation only relates normalized types, and so does
