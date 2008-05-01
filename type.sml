@@ -229,8 +229,8 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
 *)
       | Ast.NonNullType t => 
         Ast.NonNullType (f t)
-      | Ast.ObjectType fields => 
-        Ast.ObjectType (mapObjTy f fields)
+      | Ast.RecordType fields => 
+        Ast.RecordType (mapObjTy f fields)
       | Ast.UnionType tys =>
         Ast.UnionType (map f tys)
       | Ast.ArrayType tys => 
@@ -296,7 +296,7 @@ fun normalizeRefs (env:Ast.RIBS)
             normalizeRefs env t
         end
       | Ast.ElementTypeRef (t, _) => error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
-      | Ast.FieldTypeRef (Ast.ObjectType fields, nameExpr) => 
+      | Ast.FieldTypeRef (Ast.RecordType fields, nameExpr) => 
         let                    
             val fname = nameExprToFieldName env nameExpr
             fun f [] = error ["FieldTypeRef on unknown field: ", LogErr.name fname]
@@ -307,7 +307,7 @@ fun normalizeRefs (env:Ast.RIBS)
         in
             normalizeRefs env t
         end
-      | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
+      | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-RecordType: ", LogErr.ty t]
       | x => mapTyExpr (normalizeRefs env) x
                                    
 (* ----------------------------------------------------------------------------- *)
@@ -724,23 +724,23 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
     case (v, ty1, ty2) of 
 
       (* A-OBJ *)
-        (_, Ast.ObjectType fields1, Ast.ObjectType fields2) => 
+        (_, Ast.RecordType fields1, Ast.RecordType fields2) => 
         fieldPairWiseSuperset (compareTypes extra EquivType) fields1 fields2
         
       (* A-ARROW *)
       | (_, 
          Ast.FunctionType
-		     {params   = params1,
-		      result   = result1,
-		      thisType = thisType1,
-		      hasRest  = hasRest1,
-	          minArgs  = minArgs1},
-	     Ast.FunctionType
-		     {params   = params2,
-		      result   = result2,
-		      thisType = thisType2,
-		      hasRest  = hasRest2,
-		      minArgs  = minArgs2}) 
+                     {params   = params1,
+                      result   = result1,
+                      thisType = thisType1,
+                      hasRest  = hasRest1,
+                  minArgs  = minArgs1},
+             Ast.FunctionType
+                     {params   = params2,
+                      result   = result2,
+                      thisType = thisType2,
+                      hasRest  = hasRest2,
+                      minArgs  = minArgs2}) 
         => 
         (optionWise (compareTypes extra EquivType) thisType1 thisType2) andalso     (* will drop option *)
         minArgs1 >= minArgs2 andalso
@@ -788,15 +788,15 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
       (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
 
       | (_, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-	    List.exists (nameEq name) [ Name.public_Array,
-					                Name.public_Object ]
+            List.exists (nameEq name) [ Name.public_Array,
+                                                        Name.public_Object ]
         
-      | (_, Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
-	    List.exists (nameEq name) [ Name.public_Object ]
+      | (_, Ast.RecordType _, Ast.InstanceType { name, ... }) => 
+            List.exists (nameEq name) [ Name.public_Object ]
         
       | (_, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-	    List.exists (nameEq name) [ Name.public_Function, 
-					                Name.public_Object ]
+            List.exists (nameEq name) [ Name.public_Function, 
+                                                        Name.public_Object ]
         
       | (_, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
@@ -812,58 +812,18 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
 
 fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) (ty1 : Ast.TYPE) (ty2 : Ast.TYPE)
     : bool = 
-    (ty1 = ty2) orelse (* reflexivity *)
+    (ty1 = ty2) (* reflexivity *) orelse
     (extra ty1 ty2) orelse
     case (ty1, ty2) of 
 
-      (* A-OBJ *)
-        (Ast.ObjectType fields1, Ast.ObjectType fields2) => 
+      (* record types *)
+
+        (Ast.RecordType fields1, Ast.RecordType fields2) => 
         fieldPairWiseSuperset (equivType extra) fields1 fields2
         
-      (* A-ARROW *)
-      | (Ast.FunctionType
-		     {typeParams = typeParams1,
-              params   = params1,
-		      result   = result1,
-		      thisType = thisType1,
-		      hasRest  = hasRest1,
-	          minArgs  = minArgs1},
-	     Ast.FunctionType
-		     {typeParams = typeParams2,
-              params   = params2,
-		      result   = result2,
-		      thisType = thisType2,
-		      hasRest  = hasRest2,
-		      minArgs  = minArgs2}) 
-        => 
-        (* FIXME: handle typeParams *)
-        (equivType extra thisType1 thisType2) andalso    
-        minArgs1 >= minArgs2 andalso
-        (if not hasRest1 andalso not hasRest2
-         then length params1 = length params2
-         else hasRest1 andalso length params1 <= length params2) andalso
-        (arrayPairWise (equivType extra)  params1 (List.take(params2, length params1))) andalso
-        subType extra result1 result2 
+      (* array types *)        
 
-      (* A-INSTANCE -- generalized from A-INT *)
-      | (Ast.InstanceType it1, Ast.InstanceType it2) =>
-        (nameEq (#name it1) (#name it2) andalso
-         (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
-        orelse 
-        (List.exists (fn sup => subType extra sup ty2) 
-                     (#superTypes it1))
-        
-      (* Extra rules covering nullable, array and union types. *)
-        
-      | (Ast.NonNullType t1, t2) =>
-        subType extra t1 (Ast.UnionType [t2, Ast.NullType])
-
-      | (t1, Ast.NonNullType t2) =>
-        subType extra t1 t2 andalso
-        not (subType extra Ast.NullType t1)
-                
-      | (Ast.ArrayType tys1, Ast.ArrayType tys2) => 
-        (* last entry repeats *)
+      | (Ast.ArrayType tys1, Ast.ArrayType tys2) =>   (* last entry repeats *)
         let fun check tys1 tys2 =
                 case (tys1,tys2) of
                     ([],[]) => true
@@ -878,33 +838,88 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) (ty1 : Ast.TYPE) (ty2 : Ast.T
             check tys1 tys2
         end
 
-      | (Ast.UnionType tys1, _) => 
+      (* union types *)
+
+      | (Ast.UnionType tys1, ty2) => 
         List.all (fn t => subType extra t ty2) tys1
 
-      | (_, Ast.UnionType tys2) => 
+      | (ty1, Ast.UnionType tys2) => 
         List.exists (subType extra ty1) tys2
 
-      (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
+      (* function types *)
+
+      | (Ast.FunctionType
+             {typeParams = typeParams1,
+              params   = params1,
+              result   = result1,
+              thisType = thisType1,
+              hasRest  = hasRest1,
+              minArgs  = minArgs1},
+         Ast.FunctionType 
+             {typeParams = typeParams2,
+              params   = params2,
+              result   = result2,
+              thisType = thisType2,
+              hasRest  = hasRest2,
+              minArgs  = minArgs2}) 
+        => 
+        (* FIXME: handle typeParams *)
+        let val min = Int.min( length params1, length params2 ) 
+        in
+            subType extra result1 result2 
+              andalso
+            equivType extra thisType1 thisType2
+              andalso    
+            minArgs1 <= minArgs2 
+              andalso
+            arrayPairWise (equivType extra)  (List.take(params1, min)) 
+                                             (List.take(params2, min))
+              andalso
+            (case (hasRest1, hasRest2) of
+                 (false, false) => length params2 <= length params1
+               | (false, true ) => false
+               | (true,  false) => true
+               | (true,  true ) =>
+                     List.all (fn t => equivType extra t Ast.AnyType)
+                              (List.drop(params1,min)))
+        end
+
+      (* non-null types *)
+
+      | (Ast.NonNullType t1, t2) =>
+        subType extra t1 (Ast.UnionType [t2, Ast.NullType])
+
+      | (t1, Ast.NonNullType t2) =>
+        subType extra t1 t2 andalso
+        not (subType extra Ast.NullType t1)
+   
+      (* nominal types *)
+
+      | (Ast.InstanceType it1, Ast.InstanceType it2) =>
+        (nameEq (#name it1) (#name it2) andalso
+         (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
+        orelse 
+        (List.exists (fn sup => subType extra sup ty2) 
+                     (#superTypes it1))
+
+      (* relating structural and nominal types *)
 
       | (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-	    List.exists (nameEq name) [ Name.public_Array,
-					                Name.public_Object ]
+            List.exists (nameEq name) [ Name.public_Array,
+                                                        Name.public_Object ]
         
-      | (Ast.ObjectType _, Ast.InstanceType { name, ... }) => 
-	    List.exists (nameEq name) [ Name.public_Object ]
+      | (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
+            List.exists (nameEq name) [ Name.public_Object ]
         
       | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-	    List.exists (nameEq name) [ Name.public_Function, 
-					                Name.public_Object ]
+            List.exists (nameEq name) [ Name.public_Function, 
+                                                        Name.public_Object ]
         
+      (* ? *)
+
       | (Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
-(*
-      (* A-GENERIC *)
-      (* FIXME: need to alpha-rename so have consistent parameters *)
-      | (Ast.LamType lt1, Ast.LamType lt2) => 
-        subType extra (#body lt1) (#body lt2)
-*)      
+
       | _ => false
 
 

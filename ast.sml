@@ -164,7 +164,7 @@ datatype PRAGMA =
              instanceRib: RIB,
              instanceInits: HEAD,
              constructor: CTOR option,
-             classType: TYPE,  (* ObjectType *)
+             classType: TYPE,  (* RecordType *)
              instanceType: TYPE }
 
      and IFACE =
@@ -262,7 +262,7 @@ datatype TYPE =
        | UndefinedType
        | AnyType
        | VoidType
-       | ObjectType of FIELD_TYPE list     (* TODO: rename *)
+       | RecordType of FIELD_TYPE list     (* TODO: rename *)
        | UnionType of TYPE list
        | ArrayType of TYPE list
        | FunctionType of FUNC_TYPE
@@ -276,7 +276,7 @@ datatype TYPE =
            body: TYPE }
 *)
 
-(*       | NonNullType of           (* TODO: NonNullType *)
+(*       | NonNullType of           
          { expr:TYPE,
            nullable:bool }
 *)

@@ -267,18 +267,18 @@ equivalent to ''Ti'' for all i in 1..m.
 <NOTE> Function subtyping is invariant in the argument position, and
 covariant in the result type.
 
-<p> This rule generalizes to default arguments and rest arguments
-according to the following rule, where the number of default arguments
-(indicated via the ''='' symbol)
-in each function type may be zero, and where ''[...]'' indicates an
-optional rest argument.  A function type
+<p> This rule generalizes to ''this'' arguments, default arguments,
+and rest arguments according to the following rule, where the number
+of default arguments (indicated via the ''='' symbol) in each function
+type may be zero, and where ''[...]'' indicates an optional rest
+argument.  A function type
 
 {{{
-    function(S1, .., Sn, S_{n+1}=, .., Sm=, [...]) : U
+    function(this:S1, S2, .., Sn, S_{n+1}=, .., Sm=, [...]) : U
 }}}
 is a subtype of
 {{{
-    function(T1, .., Tp, T_{p+1}=, .., Tq=, [...]) : R
+    function(this:T1, T2, .., Tp, T_{p+1}=, .., Tq=, [...]) : R
 }}}
 
 if ''U'' is a subtype of ''R'' and n <LEQ> p and ''Si'' is equivalent
@@ -393,6 +393,17 @@ corresponding type ''Si'' for i in 1..n.
 <NOTE>The subtype relation only relates normalized types, and so does
 not deal with the type constructors ''IdentType'', or
 ''ObjectRefType'',  which are removed during type normalization.
+
+=== Relating Structural and Nominal Types ===
+
+<p> A record type ''{N1:S1, .., Nn:Sn}''  is a subtype of the nominal
+type ''public::Object''.
+
+<p> An array type ''[S1, .., Sn]''  is a subtype of the nominal
+types ''public::Array'' and ''public::Object''.
+
+<p> Any function type  is a subtype of the nominal
+types ''public::Function'' and ''public::Object''.
 
 == Implementation of the Subtype Relation ==
 

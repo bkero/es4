@@ -1098,7 +1098,7 @@ and analyzeClassBody (env:ENV)
                   instanceRib = instanceRib,
                   instanceInits = instanceInits,
                   constructor = ctor,
-                  classType = makeTy env (Ast.ObjectType []),
+                  classType = makeTy env (Ast.RecordType []),
                   instanceType = instanceType }
     end
 
@@ -1762,8 +1762,8 @@ and defTypeExpr (env:ENV)
         Ast.UnionType (map (defTypeExpr env) tys)
       | Ast.ArrayType tys =>
         Ast.ArrayType (map (defTypeExpr env) tys)
-      | Ast.ObjectType tys =>
-        Ast.ObjectType (map (defFieldType env) tys)
+      | Ast.RecordType tys =>
+        Ast.RecordType (map (defFieldType env) tys)
       | Ast.NonNullType t =>
         Ast.NonNullType (defTypeExpr env t)
       | Ast.ElementTypeRef (ty, n) =>

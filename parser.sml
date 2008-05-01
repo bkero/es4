@@ -2918,7 +2918,7 @@ and typedIdentifier (ts:TOKENS)
         SimplePattern(a,b,g)
         SimplePattern(a,b,g)  :  TypeExpression
         ObjectPattern
-        ObjectPattern  :  ObjectType
+        ObjectPattern  :  RecordType
         ArrayPattern
         ArrayPattern  :  ArrayType
 *)
@@ -3160,7 +3160,7 @@ and typeUnionList (ts0:TOKENS)
     end
 
 (*
-    ObjectType
+    RecordType
         {  FieldTypeList  }
 *)
 
@@ -3174,7 +3174,7 @@ and objectType (ts0:TOKENS)
             in case ts2 of
                 (RightBrace, _) :: ts3 =>
                     (trace (["<< objectType with next=", tokenname (hd (ts3))]);
-                    (ts3, Ast.ObjectType nd2))
+                    (ts3, Ast.RecordType nd2))
               | _ => error ["unknown token in objectType"]
             end
       | _ => error ["unknown token in objectType"]

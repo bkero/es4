@@ -612,7 +612,7 @@ and valAllocState (regs:Mach.REGS)
       | Ast.FunctionType _ =>
         Mach.UninitProp
         
-      | Ast.ObjectType _ =>
+      | Ast.RecordType _ =>
         Mach.ValProp (Mach.Null)
         
       | Ast.AppType {base, ...} =>
@@ -920,7 +920,7 @@ and isDynamic (regs:Mach.REGS)
         fun typeIsDynamic (Ast.UnionType tys) = List.exists typeIsDynamic tys
           | typeIsDynamic (Ast.ArrayType _) = true
           | typeIsDynamic (Ast.FunctionType _) = true
-          | typeIsDynamic (Ast.ObjectType _) = true
+          | typeIsDynamic (Ast.RecordType _) = true
       (*    | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body *)
           | typeIsDynamic (Ast.NonNullType t) = typeIsDynamic t
           | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
@@ -2765,7 +2765,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
         val (newTag, newClassVal, tyExprs) = 
             case Option.map (evalTy regs) ty of 
                 NONE => ((Mach.ObjectTag []), getObjClassVal(), [])
-              | SOME (Ast.ObjectType fields) => 
+              | SOME (Ast.RecordType fields) => 
                 (Mach.ObjectTag fields, getObjClassVal(), fields)
               | SOME (Ast.InstanceType ity) => 
                 (Mach.InstanceTag ity,
@@ -3264,7 +3264,7 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.ArrayType a => Mach.Null (* FIXME *)
       | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalReference { name=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
-      | Ast.ObjectType ot => Mach.Null (* FIXME *)
+      | Ast.RecordType ot => Mach.Null (* FIXME *)
       | Ast.NonNullType _ => Mach.Null (* FIXME *)
       | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
       | _ => Mach.Null (* FIXME *)
@@ -3645,7 +3645,7 @@ and typeOfTag (regs:Mach.REGS)
     in
         case tag of
             SOME (Mach.InstanceTag ity) => Ast.InstanceType ity
-          | SOME (Mach.ObjectTag tys) => Ast.ObjectType tys
+          | SOME (Mach.ObjectTag tys) => Ast.RecordType tys
           | SOME (Mach.ArrayTag tys) => Ast.ArrayType tys
           | SOME (Mach.MagicTag (Mach.Boolean _)) => magicInstanceType Mach.getBooleanClassSlot
           | SOME (Mach.MagicTag (Mach.Double _)) => magicInstanceType Mach.getDoubleClassSlot
@@ -3722,7 +3722,7 @@ and evalOperatorIs (regs:Mach.REGS)
     : bool = 
     let
         val vt = typeOfVal regs v 
-        fun isLike (Mach.Object obj) (Ast.ObjectType fields) = List.all (objHasLikeField obj) fields
+        fun isLike (Mach.Object obj) (Ast.RecordType fields) = List.all (objHasLikeField obj) fields
           | isLike v lte = (typeOfVal regs v) <* lte
         and objHasLikeField obj {name, ty} = 
             let

@@ -589,7 +589,7 @@ and verifyExpr2 (env:ENV)
             in
                 case t of
                     Ast.AnyType => anyType
-                  | Ast.ObjectType fields =>
+                  | Ast.RecordType fields =>
                     let in
                         case List.find
                                  (fn {name, ty} => refName = (Type.nameExprToFieldName (#ribs env) name))

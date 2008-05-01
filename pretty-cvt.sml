@@ -203,7 +203,7 @@ structure PrettyCvt = struct
      | cvtTYPE (UndefinedType) = PrettyRep.Ctor ("UndefinedType", NONE)
      | cvtTYPE (AnyType) = PrettyRep.Ctor ("AnyType", NONE)
      | cvtTYPE (VoidType) = PrettyRep.Ctor ("VoidType", NONE)
-     | cvtTYPE (ObjectType ls410) = PrettyRep.Ctor ("ObjectType", SOME (PrettyRep.List (List.map (fn x409 => 
+     | cvtTYPE (RecordType ls410) = PrettyRep.Ctor ("RecordType", SOME (PrettyRep.List (List.map (fn x409 => 
                                                                                                         cvtFIELD_TYPE x409
                                                                                                  ) ls410)))
      | cvtTYPE (UnionType ls417) = PrettyRep.Ctor ("UnionType", SOME (PrettyRep.List (List.map (fn x416 => 
