@@ -1764,10 +1764,8 @@ and defTypeExpr (env:ENV)
         Ast.ArrayType (map (defTypeExpr env) tys)
       | Ast.ObjectType tys =>
         Ast.ObjectType (map (defFieldType env) tys)
-      | Ast.NullableType { expr, nullable } =>
-        Ast.NullableType { expr = defTypeExpr env expr,
-                           nullable = nullable }
-
+      | Ast.NonNullType t =>
+        Ast.NonNullType (defTypeExpr env t)
       | Ast.ElementTypeRef (ty, n) =>
         Ast.ElementTypeRef (defTypeExpr env ty, n)
 

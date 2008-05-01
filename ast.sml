@@ -244,9 +244,8 @@ datatype TYPE =
                            hasRest: bool,
                            result: TYPE
                          }
-       | NonNullableType of TYPE
-       | AppType of (TYPE * TYPE list)
        | NonNullType of TYPE
+       | AppType of (TYPE * TYPE list)
 
        | NominalType of NAME
        | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
@@ -276,9 +275,12 @@ datatype TYPE =
          { params: IDENTIFIER list,
            body: TYPE }
 *)
-       | NullableType of           (* TODO: NonNullType *)
+
+(*       | NonNullType of           (* TODO: NonNullType *)
          { expr:TYPE,
            nullable:bool }
+*)
+       | NonNullType of TYPE
        | InstanceType of INSTANCE_TYPE
        | TypeVarFixtureRef of NONCE  
 

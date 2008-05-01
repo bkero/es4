@@ -153,7 +153,9 @@ val doTrace = ref false
 fun log ss = LogErr.log ("[type] " :: ss)  
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.typeError ss
-fun traceTy ss ty = if (!doTrace) then let in trace [ss, LogErr.ty ty]; TextIO.print "\n" end else ()
+fun traceTy ss ty = if (!doTrace) 
+                    then let in trace [ss, LogErr.ty ty]; TextIO.print "\n" end
+                    else ()
 
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
@@ -225,9 +227,8 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
         Ast.LamType { params = params, 
                       body = f body }
 *)
-      | Ast.NullableType { expr, nullable } => 
-        Ast.NullableType { expr = f expr,
-                           nullable = nullable }
+      | Ast.NonNullType t => 
+        Ast.NonNullType (f t)
       | Ast.ObjectType fields => 
         Ast.ObjectType (mapObjTy f fields)
       | Ast.UnionType tys =>
@@ -318,14 +319,14 @@ fun normalizeNullsInner (ty:Ast.TYPE)
         fun containsNull ty = 
             case ty of 
                 Ast.NullType => true
-              | Ast.NullableType { expr, nullable } => nullable
+              | Ast.NonNullType _ => false
               | Ast.UnionType tys => List.exists containsNull tys
               | _ => false
 
         fun stripNulls ty = 
             case ty of 
                Ast.NullType => NONE
-              | Ast.NullableType { expr, nullable } => stripNulls expr 
+              | Ast.NonNullType t => stripNulls t 
               | Ast.UnionType tys => 
                 (case List.mapPartial stripNulls tys of
                      [] => NONE
@@ -759,7 +760,7 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
         
       (* Extra rules covering nullable, array and union types. *)
         
-      | (_, Ast.NullableType nt1, Ast.NullableType nt2) =>
+      | (_, Ast.NonNullType nt1, Ast.NonNullType nt2) =>
         (#nullable nt1) = (#nullable nt2) andalso
         compareTypes extra v (#expr nt1) (#expr nt2)
         
@@ -858,10 +859,13 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         
       (* Extra rules covering nullable, array and union types. *)
         
-      | (Ast.NullableType nt1, Ast.NullableType nt2) =>
-        (#nullable nt1) = (#nullable nt2) andalso
-        subType extra (#expr nt1) (#expr nt2)
-        
+      | (Ast.NonNullType t1, t2) =>
+        subType extra t1 (Ast.UnionType [t2, Ast.NullType])
+
+      | (t1, Ast.NonNullType t2) =>
+        subType extra t1 t2 andalso
+        not (subType extra Ast.NullType t1)
+                
       | (Ast.ArrayType tys1, Ast.ArrayType tys2) => 
         (* last entry repeats *)
         let fun check tys1 tys2 =
@@ -926,7 +930,8 @@ fun compatibleSubtype ty1 ty2 =
         traceTy "compatibleSubtype:ty1 " ty1;
         traceTy "compatibleSubtype:ty2 " ty2;
         subType
-            (fn ty1 => fn ty2 => ty2 = anyType)
+            (fn ty1 => fn ty2 => ty2 = anyType )   
+            (* cannot use findSpecialConversion here, or Boolean(1) != true *)
             ty1 ty2
     end
 

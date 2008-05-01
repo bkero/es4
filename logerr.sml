@@ -191,8 +191,7 @@ fun ty t =
 			"{" ^ fieldList fields ^ "}"
           | Ast.AppType {base, args} => 
 			(ty base) ^ ".<" ^ (typeList args) ^ ">"
-          | Ast.NullableType { expr, nullable } => 
-			(ty expr) ^ (if nullable then "?" else "!")
+          | Ast.NonNullType t => (ty t) ^ "!"
           | Ast.InstanceType { name=n, ... } => 
 			name n
 		  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"     
