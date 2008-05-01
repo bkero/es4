@@ -810,14 +810,10 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
 
 *)
 
-fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
-            (ty1 : Ast.TYPE)
-            (ty2 : Ast.TYPE)
+fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) (ty1 : Ast.TYPE) (ty2 : Ast.TYPE)
     : bool = 
-    (ty1 = ty2)
-    orelse
-    (extra ty1 ty2)
-    orelse
+    (ty1 = ty2) orelse (* reflexivity *)
+    (extra ty1 ty2) orelse
     case (ty1, ty2) of 
 
       (* A-OBJ *)
@@ -841,7 +837,7 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
 		      minArgs  = minArgs2}) 
         => 
         (* FIXME: handle typeParams *)
-        (equivType extra thisType1 thisType2) andalso     (* will drop option *)
+        (equivType extra thisType1 thisType2) andalso    
         minArgs1 >= minArgs2 andalso
         (if not hasRest1 andalso not hasRest2
          then length params1 = length params2
