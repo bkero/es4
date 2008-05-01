@@ -200,29 +200,29 @@ structure PrettyCvt = struct
      | cvtINIT_STEP (AssignStep(x400, x401)) = PrettyRep.Ctor ("AssignStep", 
           SOME (PrettyRep.Tuple [cvtEXPRESSION x400, cvtEXPRESSION x401]))
    and cvtTYPE (NullType) = PrettyRep.Ctor ("NullType", NONE)
-     | cvtTYPE (AnyType) = PrettyRep.Ctor ("AnyType", NONE)
      | cvtTYPE (UndefinedType) = PrettyRep.Ctor ("UndefinedType", NONE)
+     | cvtTYPE (AnyType) = PrettyRep.Ctor ("AnyType", NONE)
      | cvtTYPE (VoidType) = PrettyRep.Ctor ("VoidType", NONE)
-     | cvtTYPE (UnionType ls410) = PrettyRep.Ctor ("UnionType", SOME (PrettyRep.List (List.map (fn x409 => 
-                                                                                                      cvtTYPE x409
-                                                                                               ) ls410)))
-     | cvtTYPE (ArrayType ls417) = PrettyRep.Ctor ("ArrayType", SOME (PrettyRep.List (List.map (fn x416 => 
+     | cvtTYPE (ObjectType ls410) = PrettyRep.Ctor ("ObjectType", SOME (PrettyRep.List (List.map (fn x409 => 
+                                                                                                        cvtFIELD_TYPE x409
+                                                                                                 ) ls410)))
+     | cvtTYPE (UnionType ls417) = PrettyRep.Ctor ("UnionType", SOME (PrettyRep.List (List.map (fn x416 => 
                                                                                                       cvtTYPE x416
                                                                                                ) ls417)))
-     | cvtTYPE (TypeName(x423, opt425)) = PrettyRep.Ctor ("TypeName", SOME (PrettyRep.Tuple [cvtNAME_EXPRESSION x423, 
+     | cvtTYPE (ArrayType ls424) = PrettyRep.Ctor ("ArrayType", SOME (PrettyRep.List (List.map (fn x423 => 
+                                                                                                      cvtTYPE x423
+                                                                                               ) ls424)))
+     | cvtTYPE (FunctionType x430) = PrettyRep.Ctor ("FunctionType", SOME (cvtFUNC_TYPE x430))
+     | cvtTYPE (TypeName(x433, opt435)) = PrettyRep.Ctor ("TypeName", SOME (PrettyRep.Tuple [cvtNAME_EXPRESSION x433, 
           
-       (case opt425 of
+       (case opt435 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x424 => PrettyRep.Ctor ("SOME", SOME (cvtNONCE x424))
+       | SOME x434 => PrettyRep.Ctor ("SOME", SOME (cvtNONCE x434))
        )]))
-     | cvtTYPE (ElementTypeRef(x432, n433)) = PrettyRep.Ctor ("ElementTypeRef", 
-          SOME (PrettyRep.Tuple [cvtTYPE x432, PrettyRep.Int n433]))
-     | cvtTYPE (FieldTypeRef(x437, x438)) = PrettyRep.Ctor ("FieldTypeRef", 
-          SOME (PrettyRep.Tuple [cvtTYPE x437, cvtNAME_EXPRESSION x438]))
-     | cvtTYPE (FunctionType x442) = PrettyRep.Ctor ("FunctionType", SOME (cvtFUNC_TYPE x442))
-     | cvtTYPE (ObjectType ls446) = PrettyRep.Ctor ("ObjectType", SOME (PrettyRep.List (List.map (fn x445 => 
-                                                                                                        cvtFIELD_TYPE x445
-                                                                                                 ) ls446)))
+     | cvtTYPE (ElementTypeRef(x442, n443)) = PrettyRep.Ctor ("ElementTypeRef", 
+          SOME (PrettyRep.Tuple [cvtTYPE x442, PrettyRep.Int n443]))
+     | cvtTYPE (FieldTypeRef(x447, x448)) = PrettyRep.Ctor ("FieldTypeRef", 
+          SOME (PrettyRep.Tuple [cvtTYPE x447, cvtNAME_EXPRESSION x448]))
      | cvtTYPE (AppType{base=x452, args=ls454}) = PrettyRep.Ctor ("AppType", 
           SOME (PrettyRep.Rec [("base", cvtTYPE x452), ("args", PrettyRep.List (List.map (fn x453 => 
                                                                                                 cvtTYPE x453
