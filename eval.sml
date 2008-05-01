@@ -1452,7 +1452,6 @@ and newFunctionFromClosure (regs:Mach.REGS)
         Mach.setMagic obj (SOME (Mach.Function closure));
 	setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj Name.public_constructor (Mach.Object obj) false;
-        (* FIXME: Mach.setPropDontEnum newProtoProps Name.public_constructor true; ? *)
         Mach.Object obj
     end
 
@@ -5128,7 +5127,7 @@ and setPrototype (regs:Mach.REGS)
 	val prop = { ty = Ast.AnyType,
                      state = Mach.ValProp proto,
 		     attrs = { dontDelete = true,
-			       dontEnum = true,
+			       dontEnum = true, (* FIXME: is this wrong? (DAH) *)
 			       readOnly = true,
 			       isFixed = true } }
     in
@@ -5237,6 +5236,7 @@ and initClassPrototype (regs:Mach.REGS)
 			SOME (p,b) => (needObj regs p, b)
 		      | NONE => (newObj regs, true)
 		val newPrototype = Mach.setProto newPrototype baseProtoVal
+        val Mach.Obj { props=newProtoProps, ... } = newPrototype
 	    in
 		trace ["initializing proto on (obj #", Int.toString ident, 
 		       "): ", fmtName name, ".prototype = ", 
@@ -5248,8 +5248,7 @@ and initClassPrototype (regs:Mach.REGS)
 				      Name.public_constructor 
 				      (Mach.Object obj) 
 				      false;
-		     (* FIXME: Mach.setPropDontEnum props Name.public_constructor true; ? *)
-		     ())
+		     Mach.setPropDontEnum newProtoProps Name.public_constructor true)
 		else 
 		    ();
 		trace ["finished initialising class prototype"]
