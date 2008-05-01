@@ -5128,7 +5128,7 @@ and setPrototype (regs:Mach.REGS)
                      state = Mach.ValProp proto,
 		     attrs = { dontDelete = true,
 			       dontEnum = true, (* FIXME: is this wrong? (DAH) *)
-			       readOnly = true,
+			       readOnly = false,
 			       isFixed = true } }
     in
 	if Mach.hasProp props n
