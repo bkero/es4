@@ -2975,10 +2975,10 @@ and typedPattern (ts:TOKENS, b:BETA)
 
 (*
     TypeExpression
-        NullableTypeExpression
-        like  NullableTypeExpression
+        NonNullTypeExpression
+        like  NonNullTypeExpression
 
-    NullableTypeExpression
+    NonNullTypeExpression
         BasicTypeExpression
         BasicTypeExpression  ?
         BasicTypeExpression  !
@@ -3021,10 +3021,10 @@ and nullableTypeExpression (ts0:TOKENS)
     in case ts1 of
         (Not, _) :: _ =>
             (trace (["<< nullableTypeExpression with next=", tokenname (hd ts0)]);
-            (tl ts1, Ast.NullableType {expr = nd1, nullable = false}))
+            (tl ts1, Ast.NonNullType nd1))
       | (QuestionMark, _) :: _ =>
             (trace (["<< nullableTypeExpression with next=", tokenname (hd ts0)]);
-            (tl ts1, Ast.NullableType {expr = nd1, nullable = true}))
+            (tl ts1, Ast.UnionType [nd1, Ast.NullType]))
       | _ =>
             (trace (["<< nullableTypeExpression with next=", tokenname (hd ts0)]);
             (ts1, nd1))
@@ -3593,7 +3593,7 @@ and withStatement (ts:TOKENS, w:OMEGA)
 (*
     TypedExpression
         ParenListExpression
-        ParenListExpression  :  NullableTypeExpression
+        ParenListExpression  :  NonNullTypeExpression
 *)
 
 and typedExpression (ts:TOKENS)
