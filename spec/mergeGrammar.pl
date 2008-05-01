@@ -51,7 +51,7 @@ use Spreadsheet::ParseExcel; # for parsing grammar.xls file
 my $grammarFile = 'grammar.xls'; # expects script to run in root of spec directory
 our ($sourceHTML, $outputFile, %grammar, @grammarList);  # globals
 my $spaceBeforeGrammarBlock = '<br/><br/>';
-my $printGrammarTextFile = 1; # change to 1 if you want to print grammar.txt file
+my $printGrammarTextFile = 0; # change to 1 if you want to print grammar.txt file
 
 # === Read in command line arguments
 if ($ARGV[0] ne "") {
