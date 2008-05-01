@@ -18,63 +18,586 @@ A value expression has the concrete syntax of //ThisExpression//, //LetExpressio
 and the abstract form of //LiteralExpr//, //ListExpr//, //LexicalRef//, //ObjectRef//,
 //LetExpr//, //TerneryExpr//, ....
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="ast.sml" name="datatype EXPRESSION">
 
 === Null Literal ===
+<P>The value of the null literal ''null'' is the sole value of the Null type, namely **null**.
 
 === Double Literals ===
+<P>A ''DoubleLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalDoubleLiteral">
 
 === Decimal Literals ===
+<P>A ''DecimalLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalDecimalLiteral">
 
 === Boolean Literals ===
+<P>A ''BooleanLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalBooleanLiteral">
 
 === String Literals ===
+<P>A ''StringLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalStringLiteral">
 
 === Object Initialisers ===
+<P>An object initialiser is an expression that describes the creation of an Object, 
+written in a form resembling a literal.  In its general form an array initializer comprises an
+optional initialiser attribute (''const'' or ''var''), followed by a brace-delimited
+comma-separated list of fields, followed by an optional type annotation.
 
-===== Semantics =====
+<!-- ><pre class="code grammar_start"><em>ObjectInitialiser<sup>noColon</sup></em></pre>
+<pre class="code grammar_end"><em>FieldName</em></pre>	-->
+
+<P>A brace-delimited field list comprises a list of zero or more fields separated by commas
+and enclosed in curly braces. The last field in the list may be followed by a comma.
+
+<P>Initialiser attributes, which are optional, may either precede the entire 
+brace-delimited field list or precede individual fields within the field list. 
+If a brace-delimited field list is prefixed by ''const'' then ''const'' is
+implied for each of the fields in the structure.  Every field must be of the form
+''FieldName:AssignmentExpression'', and none of the fields may have
+''const'' or ''var'' attributes.
+If a brace-delimited field list is prefixed by ''var'' then ''var'' is implied
+for each of the fields in the structure.  A field must be either a
+''FieldName:AssignmentExpression'' field, a getter, or a setter, and none of the fields
+may have ''const'' or ''var'' attributes.
+
+<P> If a ''FieldName'' has a qualifier then the qualifier must name a
+binding created by a ''namespace'' directive and the qualifier cannot
+be the name of a reserved namespace (e.g. ''meta'', ''intrinsic'',
+''reflect'').
+
+<P> Field names may be repeated only if:
+<ul> 
+  <li>the initializer as a whole
+looks like an object initializer as defined in E262-3 (1999), i.e., all
+fields are of the ''FieldName:AssignmentExpression'' form,
+there is no ''const'' or ''var'' qualifier on the initializer as a
+whole, and there is no type annotation on the initializer; or</li>
+  <li>the field name is used in matching getter and setter fields.</li>
+</ul>
+
+<P> The ''get'' and ''set'' keywords can be used before a field name
+to create getters and setters. A field name that appears in both a getter and a setter
+can be used to create a read-write property. A field name that appears only in a getter,
+i.e. without a corresponding setter, can be used to create a read-only property.
+In the absence of a corresponding setter, the implementation shall generate a setter method that receives a 
+value and discards it silently. A field name that appears only in a setter can be used 
+to create a write-only property. In the absence of a corresponding getter, the
+implementation shall generate a getter that throws a **ReferenceError**.
+
+<P> The ''FunctionExpressionBody'' of a getter, ''meta::get'', ''meta::has'',
+and ''meta::invoke'' may be a block or an expression.  The
+''FunctionExpressionBody'' of a setter, ''meta::set'', and ''meta::delete'' must
+be a block. 
+
+<P> The "Type" that annotates the initializer must be a class type or
+a record type. In both cases, the type must have a constructor that accepts zero arguments.
+
+<P>If a class type annotates an initialiser, an implementation shall create
+an instance of that class type as if the ''new'' operator were called. The field list
+may contain only fields of the form ''FieldName:AssignmentExpression''. If the initialiser
+contains any ''FieldName:AssignmentExpression'' fields, values resulting from the
+evaluation of ''AssignmentExpression'' are assigned to the corresponding ''FieldName''.
+For example, given:
+
+{{{
+   class Point { var x, y }
+}}}
+
+then
+
+{{{
+   { x: 10, y: 20 } : Point
+}}}
+
+shall be implemented as:
+
+{{{
+   (let (TMP = new Point)
+     (TMP.x = 10,
+      TMP.y = 20,
+      TMP))
+}}}
+
+<P> Suppose T is a structural record type:
+
+{{{
+    type T = { x: int, y: double }
+}}}
+
+<P> Then the ''new'' operator can be used as follows:
+
+{{{
+    new T(10, 2.5)
+}}}
+
+<P> The meaning of this is precisely:
+
+{{{
+    { x: 10, y: 2.5 } : T
+}}}
+
+<P> There must be as many arguments to ''new'' as there are fields in
+''T''.  The initializers are matched with fields by the order in which
+they appear.
+
+
+==== Semantics ====
+
+The abstract representation of an object initialiser includes a list of fields and an optional type expression.
+<pre>
+datatype EXPRESSION =
+        LiteralObject of (FIELD list * TYPE_EXPRESSION option)
+      | ...
+</pre>
+
+<INCLUDE file="ast.sml" name="and FIELD">
+
+This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
+
 <INCLUDE file="eval.sml" name="fun evalObjectInitialiser">
 
-=== Array Initialisers ===
+===== Types and fixtures =====
 
-===== Semantics =====
+<P> If a property name in the record type that annotates the literal
+matches a field name in the literal then the field is a fixture (as
+opposed to a dynamic property) and the type of the fixture is the type
+of the property given in the record type.  The following makes ''x'' a
+fixture and gives it the type ''int'':
+
+{{{
+    { x: 10 } : { x: int }
+}}}
+
+<P> The type of the value must be of the type of the field, or must be
+convertible to the type of the field.
+
+<P> If a literal field is annotated by ''const'' or ''var'' and the
+field is also named in the record type that annotates the literal then
+the type of the property is the type given in the record type, not the
+type implied by the initial value of the property (see below).
+
+<P> If a property name in the record type matches a field name that is
+a getter and/or a setter then:
+
+<UL>
+
+<LI> either the getter has no return type annotation (in which case
+the type from the record type will be applied to the getter) or the
+return type must be equal to the type present for the property in the
+record type;
+
+<LI> either the setter has no parameter type annotation (in which case
+the type from the record type will be applied to the parameter) or the
+parameter type must be equal to the type present for the property in
+the record type; and
+
+<LI> following resolution of the previous two points, the return type of the 
+(generated) getter, the parameter type of the (generated) setter, and the
+type in the record type must all be equal.
+
+</UL>
+
+<P> Fields may be present in the field list that are not present in
+the type, but not vice versa.  I.e., the following is legal:
+
+{{{
+    x = { x: 10, y: 20, z: 30 } : { x: int, y: int }
+}}}
+
+<P> A field that does not have a matching explicit type annotation in
+the record type is dynamic, which is to say it is deletable.  Note in
+particular that this applies to getters and setters.  A getter/setter
+pair can be deleted only as a unit.
+
+<P> If a field name that has a getter/setter pair is not mentioned in
+the record type for the object initializer then the getter's return
+type must be equal to the setter's parameter type.
+
+
+===== Namespaces =====
+
+<P> Fields are in the public namespace if they don't have an explicit
+qualifier.
+
+<NOTE> The ''use default namespace'' pragma does not apply to object
+initializers.
+
+
+===== Enumerability =====
+
+<P> As outlined elsewhere [9], fixture properties are never
+enumerable.  Dynamic fields are enumerable if they are in the public
+namespace and their ''enumerable'' attribute is set.
+
+<P> All dynamic fields created by an object initializer have their
+''enumerable'' attribute set (though the attribute setting is only
+relevant if the fields are public).
+
+
+===== const =====
+
+<P> The ''const'' attribute introduces a fixture.  The meaning of
+
+{{{
+    { const x: E }
+}}}
+
+is the same as the meaning of
+
+{{{
+    { x: E } : { x: * }
+}}}
+
+with the additional constraint that the ''writable'' attribute on
+''x'' is disabled (''x'' is ReadOnly in ES3 terms).
+
+
+===== var =====
+
+<P> The ''var'' attribute introduces a fixture.  The meaning of
+
+{{{
+    { var x: E }
+}}}
+
+is the same as the meaning of
+
+{{{
+    { x: E } : { x: * }
+}}}
+
+<NOTE> Object initializers using the ''var'' attribute can always
+be rewritten as type-annotated initializers.
+
+
+===== Getters and setters =====
+
+<P> A getter (''get Name() <LDOTS>'') must not take any arguments.
+
+<P> A getter must not be declared to return ''void''.
+
+<P> A setter (''set Name() <LDOTS>'') may be declared as returning
+''void'' but must not be declared as returning any other type.
+
+<P> If the program reads a property from an object and that property
+was named by a getter, then the getter method is invoked and the 
+value returned by the getter method is returned to the program.
+
+<P> If the program writes a property to an object and that property
+was named by a setter, then the setter method is invoked with the
+value being written as its only argument.  The value returned by the
+setter method, if any, is discarded.
+
+<P> Inside the getter and setter methods the value of ''this'' refers
+to the object on which the property access was performed.
+
+<NOTE> That is the same rule as for normal method invocation.
+
+<P> If a getter or setter is prefixed by ''var'' then the
+getter/setter pair is a fixture.  If the initializer has both a getter
+and a setter for the same field then both or neither must be annotated
+''var''.
+
+
+===== Catch-all methods =====
+
+<P> Catch-all methods (''meta::get'', ''meta::set'', ''meta::has'',
+''meta::delete'', and ''meta::invoke'') are the values of read-only
+fixture properties on the object that is created by the object
+initializer expression.
+
+<NOTE> The full catch-all protocol is described elsewhere.  Here is a
+summary.
+
+<P class="note"> Some catch-all methods are invoked when an object
+property is accessed by a primitive protocol and the property is not a
+fixture of the object.  In ES3 terms, ''meta::get'' is invoked by
+[[Get]]; ''meta::set'' is invoked by [[Put]]; ''meta::has'' is invoked
+by [[HasProperty]]; and ''meta::delete'' is invoked by [[Delete]].
+These four catch-all methods receive the name of the property being
+accessed as the first argument (currently encoded as a Name, a string,
+or a nonnegative integer value below 2<SUP>32</SUP>-1).
+
+<P class="note"> The catch-all methods handling properties are always
+invoked, even if a property being sought is defined as a dynamic
+property on the object.
+
+<P class="note"> The catch-all method ''meta::invoke'' is invoked when
+the object is called as a function.
+
+<P class="note"> A catch-all method operates on the own object (the
+value of ''this'') and can either terminate normally by returning or
+else signal to its caller -- by throwing a distinguished exception --
+that default behavior should be invoked on the object.
+
+<P> A catch-all field is syntactically distinguished by the use of the
+identifier ''meta'' in a namespace position.  At the time the object
+initializer is evaluated the name ''meta'' must reference a namespace
+binding, that namespace binding must come from an scope object that is
+not introduced by ''with'', and the value of the namespace binding
+must be the ''meta'' namespace defined in the global object.
+
+<NOTE> The previous paragraph attempts to express the notion that the
+binding for ''meta'' is invariant so that we can rely on its meaning
+as syntax.  There is more to be said on that matter; the above
+language will be adjusted as some of these details are worked out.
+See also OPEN ISSUES.
+
+<P> Catch-all methods can have type annotations in their parameter and
+return positions.
+
+<P> Catch-all properties can appear in the record type that annotates
+the initializer.  Any types for catch-all properties in the record
+type must be equal to the declared types of the catch-all methods in
+the initializer itself.
+
+<P> Even if not mentioned in the record type that annotates the
+initializer, catch-all properties have field types derived from the
+annotations on the catch-all methods.
+
+
+===== meta::prototype =====
+
+<P> The special field name ''meta::prototype'' allows a value to be
+specified for the internal [[Prototype]] object of the newly
+constructed object.
+
+<P> The value for ''meta::prototype'' must not be undefined or null.
+
+<P> As for catch-all methods, this field is syntactically
+distinguished by the use of the ''meta'' namespace.  At the time the
+object initializer is evaluated the name ''meta'' must reference the
+immutable binding for the ''meta'' namespace in the global object.
+
+<P> The syntax ''meta::prototype'' exists for initializing the
+[[Prototype]] object only; it is not available for reading the
+[[Prototype]] value from the object in any context.
+
+
+=== Array Initialisers ===
+<P>An array initialiser is an expression that describes the creation 
+of an Array object, written in the form of a literal. In its general 
+form an array initializer comprises an
+optional initialiser attribute (''const'' or ''var''), followed by a
+bracket-delimited comma-separated list of optional expressions with
+the last expression optionally followed by a triple-period token and a
+final expression, followed by an optional type annotation.
+
+<!-- <pre class="code grammar_start"><em>ArrayInitialiser<sup>noColon</sup></em></pre>
+<pre class="code grammar_end"><em>SpreadExpression</em></pre>	
+<pre class="code grammar"><em>InitialiserAttribute</em></pre> -->
+
+<P>The presence of an initialiser attribute, either ''var'' or ''const'',
+signifies that each of the array properties created during initialisation
+shall be a fixture. Moreover, if the initialiser attribute is ''const'',
+each of the created array properties shall be read-only fixtures.
+
+<P>Array elements may be elided at the beginning, middle or end of 
+the element list. Whenever a comma in the element list is not preceded 
+by an ''AssignmentExpression'' (i.e., a comma at the beginning or after 
+another comma), the missing array element contributes to the length 
+of the Array and increases the index of subsequent elements.
+If an initialiser attribute or type annotation is present,
+elided array elements shall be uninitialised fixtures on the object.
+Otherwise, elided array elements are not defined. [//Example//:
+''var [0,,2]'' creates an array that has an uninitialised
+fixture at index ''1'', whereas ''[0,,2]'' creates an array that 
+has a missing property at index 1. Testing for the existence
+of the element at index ''1'' returns ''true'' for an 
+uninitialised fixture, but ''false'' for a missing property.
+//end example//]
+
+<P>A ''SpreadExpression'', which is a triple-period token followed by an 
+''AssignmentExpression'', may appear only as the final element in
+an ''ArrayElementList''. 
+
+<P>The "Type" that annotates the initializer must be a structural
+array type (''ArrayType'') or a nominal class type (''TypeReference''). 
+The nominal class type constructor must accept zero arguments.
+
+<P>The general form of an ''ArrayType'' annotation is 
+''[T0,''<LDOTS>'',Tk,...Tr]'' where //T0// through //Tk// 
+(the //fixed// types) and //Tr// (the //rest// type) 
+are all optional. The initializer must provide, or
+elide, a value for each of //T0// through //Tk//, and may provide
+additional values only if //Tr// is present.
+
+<P>If a structural array type is assigned to a type expression,
+that type expression may be used in conjunction with the ''new''
+operator to initialise an array. In this case, the ''new'' operator
+accepts one or two arguments. The first argument determines the
+length of the array. The second argument, if present, is the
+initial value of all properties with an index between ''0'' and
+''length - 1'', inclusive.
+
+<P> [//Example://
+Suppose T is a structural array type:
+
+{{{
+   type T = [...double]
+}}}
+
+<P> Then the ''new'' operator can be used as follows:
+
+{{{
+   new T( 10 )
+   new T( 5, 1.0 )
+}}}
+
+<P> The meaning of the above two phrases is exactly:
+
+{{{
+   [,,,,,,,,,,] : T
+   [1.0, 1.0, 1.0, 1.0, 1.0] : T
+}}}
+//end example//]
+
+<P> If the annotating type is a nominal class type (''TypeReference''),
+the ''const'' and ''var'' keywords must not be present. If a ''TypeReference''
+is used, the array initialiser evaluates to a new instance of the
+class type where successive initialiser values have been assigned to
+numbered properties of the new object and the length of the
+initializer has been assigned to the ''length'' property of the new
+object.
+[//Example://
+
+{{{
+    [1,,3,,] : Vector.&lt;double&gt;
+}}}
+
+is syntactic sugar for
+
+{{{
+    (let (TMP = new Vector.&lt;double&gt;)
+      (TMP[0] = 1,
+       TMP[2] = 3,
+       TMP.length = 4,
+       TMP))
+}}}
+
+for a fresh variable TMP.
+//end example//]
+
+==== Semantics ====
+The abstract representation of an array initialiser includes a list of expressions and an optional type expression.
+<pre>
+datatype EXPRESSION =
+        LiteralArray of (EXPRESSION * TYPE_EXPRESSION option)
+      | ...
+</pre>
+
+This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 <INCLUDE file="eval.sml" name="fun evalArrayInitialiser">
+
+The ''SpreadExpression'' allows for the
+inclusion of an arbitrary number of elements in the array initialiser.
+An implementation shall evaluate the ''AssignmentExpression'' and
+determine whether the object that results from the evaluation
+meets the following criteria:
+
+<UL>
+
+<LI>a ''length'' property exists and contains a value;
+
+<LI>any properties that have names that are valid array indexes
+can be queried for their presence, and if present, can be read.
+A property name that is a valid array index is an integer from
+''0'' to one less than the value of the ''length'' property,
+inclusive.
+
+</UL>
+
+If both criteria are met, the properties with names that are
+valid array indexes are included in the newly initialised array
+object subject to the following rules:
+
+<UL>
+
+<LI>The properties are added to the new array object beginning
+with the index occupied by the ''SpreadExpression'' in the
+array initialiser. The properties of a ''SpreadExpression''
+are placed after all other ''ArrayElements'' in the 
+''ArrayElementList''.
+
+<LI>If a ''length'' property is given that is not within the 
+valid range of array indexes, namely 0 to Math.pow(2,32), the
+value shall be converted to a valid index with ToUInt32().
+
+<LI>Any properties that are pushed out of the valid range of
+index numbers because of the offset due to ''ArrayElements''
+that precede the ''SpreadExpression'' shall not be
+included in the newly created array object. 
+
+</UL>
 
 === Regular Expression Initialisers ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalRegExpInitialiser">
 
 === This Expressions ===
+
+The **this** keyword evaluates to the **this** value of the execution context.
+
+<!-- <pre class="code grammar"><em>ThisExpression</em></pre> -->
 
 This expressions can be modified by an optional keyword: ''generator'' or ''function''. 
 The modifier indicates whether the expression refers to the current this object, 
 generator or function.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalThisExpression">
 
 === Let Expressions ===
 
-===== Semantics =====
+<P>A let expression comprises the **let** keyword, followed by a list of
+variable bindings, followed by an expression that uses the variable bindings.
+
+<!-- <pre class="code grammar_start"><em>LetExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar_end"><em>NonemptyLetBindingList</em></pre>
+<pre class="code grammar"><em>CommaExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+
+<P>The list of variable bindings, //LetBindingList//, is a list of zero or
+more //VariableBindings// that is evaluated in order from left to right.
+The variables bound as part of the ''LetBindingList'' have as their scope the ''CommaExpression'', but not the ''LetBindingList''. The value of the entire
+''LetExpression'' is determined by the evaluation of the ''CommaExpression'',
+using any applicable variable bindings from the ''LetBindingList''. 
+
+==== Semantics ====
+<P>The abstract representation of let expression includes a list of bindings
+and an expression.
+<pre>
+datatype EXPRESSION =
+      LetExpr of (HEAD * EXPRESSION)   
+    | ...
+
+   and HEAD =
+       Head of RIB * INITS
+
+withtype
+
+       BINDINGS = (BINDING list * INIT_STEP list)
+   and RIB = (FIXTURE_NAME * FIXTURE) list
+   and INITS = (FIXTURE_NAME * EXPRESSION) list
+</pre>
+
+<P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 <INCLUDE file="eval.sml" name="fun evalLetExpr">
 
 === Get Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalGetExpr">
 <INCLUDE file="eval.sml" name="fun evalReference">
 <INCLUDE file="eval.sml" name="fun evalObjectRef">
@@ -83,17 +606,17 @@ generator or function.
 
 === Object References ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalObjectRef">
 
 === Call Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalCallExpr">
 
 === New Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalNewExpr">
 
 === Type Expressions ===
@@ -102,27 +625,27 @@ generator or function.
 
 === Apply Type Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalApplyTypeExpr">
 
 === Unary Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalUnaryExpr">
 
 === Binary Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalBinaryExpr">
 
 === Binary Type Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalBinaryTypeExpr">
 
 === Yield Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalYieldExpr">
 
 === Conditional Expressions ===
@@ -132,7 +655,7 @@ or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//.
  It is evaluated by the function //evalCondExpr// as 
 invoked by the function //evalExpr//.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalConditionalExpr">
 
 === Set Expressions ===
@@ -155,19 +678,19 @@ right side and the binary operation specified. In the case of the simple assignm
 operation, the value of the left side property is replaced with the value on the 
 right side.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalSetExpr">
 
 === Initialisation Expressions ===
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalInitExpr">
 
 == Type Expressions ==
 
 <p>A type expression evaluates to a normalized type value.
 
-===== Semantics =====
+==== Semantics ====
 <INCLUDE file="ast.sml" name="datatype TYPE">
 
 === Any Type Expressions ===
