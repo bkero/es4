@@ -98,13 +98,12 @@ fun mathOp (v:Mach.VAL)
                                    NONE => default
                                  | SOME f => f v
     in
-        case v of
-            Mach.Object (Mach.Obj ob) =>
-            (case !(#magic ob) of
-                 SOME (Mach.Decimal d) => fnOrDefault decimalFn d
-               | SOME (Mach.Double d) => fnOrDefault doubleFn d
-               | _ => default)
-          | _ => default
+        if Mach.isDecimal v
+        then fnOrDefault decimalFn (Mach.needDecimal v)
+        else 
+            if Mach.isDouble v
+            then fnOrDefault doubleFn (Mach.needDouble v)
+            else default
     end
 
 (*
@@ -685,19 +684,21 @@ and allocSpecial (regs:Mach.REGS)
 and asArrayIndex (v:Mach.VAL)
     : Word32.word =
     case v of
-        Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Mach.Double d) => if Mach.isIntegral d 
-                                        andalso 0.0 <= d 
-                                        andalso d < 4294967295.0
-                                     then
-                                         doubleToWord d
-                                     else
-                                         0wxFFFFFFFF
-           | SOME (Mach.Decimal d) => 0wxFFFFFFFF (* FIXME *)
+        Mach.Object (Mach.Obj { tag, ... }) =>
+        (case tag of
+             SOME (Mach.MagicTag (Mach.Double d)) => 
+             if Mach.isIntegral d 
+                andalso 0.0 <= d 
+                andalso d < 4294967295.0
+             then
+                 doubleToWord d
+             else
+                 0wxFFFFFFFF
+           | SOME (Mach.MagicTag (Mach.Decimal d)) => 
+             0wxFFFFFFFF (* FIXME *)
            | _ => 0wxFFFFFFFF)
       | _ => 0wxFFFFFFFF
-
+             
 
 and hasOwnValue (obj:Mach.OBJ)
                 (n:Ast.NAME)
@@ -904,7 +905,7 @@ and checkAndConvert (regs:Mach.REGS)
 
 
 and getObjTag (obj:Mach.OBJ)
-    : Mach.VAL_TAG = 
+    : Mach.VAL_TAG option = 
     let
         val Mach.Obj { tag, ... } = obj
     in
@@ -1153,27 +1154,6 @@ and newRefErr (regs:Mach.REGS)
     : Mach.VAL =
     newExn regs Name.public_ReferenceError args
 
-and needNamespace (regs:Mach.REGS)
-                  (v:Mach.VAL)
-    : Ast.NAMESPACE =
-    case v of
-        Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Mach.Namespace n) => n
-           | _ => throwExn (newTypeErr regs ["need namespace"]))
-      | _ => throwExn (newTypeErr regs ["need namespace"])
-
-and needNamespaceOrNull (regs:Mach.REGS)
-                        (v:Mach.VAL)
-    : Ast.NAMESPACE =
-    case v of
-        Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Mach.Namespace n) => n
-           | _ => throwExn (newTypeErr regs ["need namespace"]))
-      | Mach.Null => Name.publicNS
-      | _ => throwExn (newTypeErr regs ["need namespace"])
-
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
     : Ast.NAME =
@@ -1185,7 +1165,7 @@ and needNameOrString (regs:Mach.REGS)
                 val nsval = getValue regs obj Name.public_qualifier
                 val idval = getValue regs obj Name.public_identifier
             in
-                { id = (toUstring regs idval), ns = (needNamespaceOrNull regs nsval) }
+                { id = (toUstring regs idval), ns = (Mach.needNamespaceOrNull nsval) }
             end
         else
             Name.public (toUstring regs v)
@@ -1249,9 +1229,13 @@ and newBuiltin (regs:Mach.REGS)
                (n:Ast.NAME) 
                (m:Mach.MAGIC option)
     : Mach.VAL =
-    instantiateGlobalClass 
-        regs n 
-        [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
+    let
+        val args = case m of 
+                     NONE => []
+                   | SOME m' => [Mach.Object (Mach.newObject (SOME (Mach.MagicTag m')) Mach.Null)]
+    in
+        instantiateGlobalClass regs n args
+    end
 
 (* SPEC
 
@@ -1400,22 +1384,11 @@ and newFunClosure (e:Mach.SCOPE)
 and newFunctionFromClosure (regs:Mach.REGS)
                            (closure:Mach.FUN_CLOSURE) =
     let
-        val { func, ... } = closure
-        val Ast.Func { ty, ... } = func
-        fun findFuncType e = 
-            case e of 
-              (*  Ast.LamType { params, body } =>  findFuncType body 
-              | *)
-                Ast.FunctionType fty => fty
-              | _ => error regs ["unexpected primary type in function: ", LogErr.ty e]
-
-        val fty = findFuncType ty
-        val tag = Mach.FunctionTag fty
-
         val _ = traceConstruct ["finding Function.prototype"]
-        val funClassVal = getValue regs (#global regs) Name.public_Function
-        val funClass = needObj regs funClassVal 
-        val funClassClosure = Mach.needClass funClassVal
+        val funClass = case !(Mach.getFunctionClassSlot regs) of 
+                           NONE => error regs ["missing class for public::Function"]
+                         | SOME c => c
+        val funClassClosure = Mach.needClass (Mach.Object funClass)
         val funProto = getPrototype regs funClass
         val _ = traceConstruct ["building new prototype chained to ",
                                 "Function.prototype"]
@@ -1438,19 +1411,12 @@ and newFunctionFromClosure (regs:Mach.REGS)
         val _ = traceConstruct ["built new prototype chained to ",
                                 "Object.prototype"]
 
-        val Mach.Obj { magic, ... } = funClass
-        val obj = case (!magic) of
-                      SOME (Mach.Class funClassClosure) =>
-                      constructStandardWithTag 
-                          regs
-                          funClass funClassClosure [] tag
-                    | _ => error regs ["function class lacks class magic"]
+        val tag = Mach.MagicTag (Mach.Function closure)
+
+        val obj = constructStandardWithTag regs funClass funClassClosure [] tag
         val Mach.Obj { props=newProtoProps, ... } = newProtoObj
-
-
     in
-        Mach.setMagic obj (SOME (Mach.Function closure));
-	setPrototype regs obj newProto;
+	    setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj Name.public_constructor (Mach.Object obj) false;
         (* FIXME: Mach.setPropDontEnum newProtoProps Name.public_constructor true; ? *)
         Mach.Object obj
@@ -1467,18 +1433,19 @@ and newFunctionFromFunc (regs:Mach.REGS)
 and newNativeFunction (regs:Mach.REGS)
                       (f:Mach.NATIVE_FUNCTION) =
     let 
-	val obj = needObj regs (instantiateGlobalClass 
-				    regs 
-				    Name.public_Function 
-				    [newString regs Ustring.empty])
+        val class = case !(Mach.getFunctionClassSlot regs) of
+                        NONE => error regs ["cannot find public::Function"]
+                      | SOME ob => ob
+        val classClosure = Mach.needClass (Mach.Object class)
+        val tag = Mach.MagicTag (Mach.NativeFunction f)
+        val obj = constructStandardWithTag regs class classClosure [] tag
     in
-	Mach.setMagic obj (SOME (Mach.NativeFunction f));
-	Mach.Object obj
+	    Mach.Object obj
     end
-
+    
 and getIteratorNamespace (regs:Mach.REGS)
     : Ast.NAMESPACE =
-    needNamespace regs (getValue regs (#global regs) Name.ES4_iterator_)
+    Mach.needNamespace (getValue regs (#global regs) Name.ES4_iterator_)
 
 and getStopIteration (regs:Mach.REGS) =
     getValue regs (#global regs) { id = Ustring.StopIteration_,
@@ -1515,20 +1482,16 @@ and newGenerator (regs:Mach.REGS)
                  (execBody:Mach.OBJ -> Mach.VAL)
     : Mach.VAL =
     let
-        fun getGeneratorClass ()
-            : Mach.OBJ =
-            case getValue regs (#global regs) Name.helper_GeneratorImpl of
-                Mach.Object cls => cls
-              | _ => error regs ["helper::GeneratorImpl is not an object"]
-        fun newGeneratorObj (cls:Mach.OBJ)
-            : Mach.OBJ =
-            case evalNewObj regs cls [] of
-                Mach.Object obj => obj
-              | _ => error regs ["evalNewObj did not produce an object"]
-        val obj = newGeneratorObj (getGeneratorClass ())
-        val gen = newGen (fn () => execBody obj)
+        val class = case !(Mach.getGeneratorClassSlot regs) of 
+                        NONE => error regs ["cannot find helper::GeneratorImpl"]
+                      | SOME ob => ob
+        val classClosure = Mach.needClass (Mach.Object class)
+        val objRef = ref (Mach.newObjectNoTag ())
+        val gen = newGen (fn () => execBody (!objRef))
+        val tag = Mach.MagicTag (Mach.Generator gen)
+        val obj = constructStandardWithTag regs class classClosure [] tag
     in
-        Mach.setMagic obj (SOME (Mach.Generator gen));
+        objRef := obj;
         Mach.Object obj
     end
 
@@ -1619,15 +1582,9 @@ and toUstring (regs:Mach.REGS)
     case v of
         Mach.Undef => Ustring.undefined_
       | Mach.Null => Ustring.null_
-      | Mach.Object obj =>
-        let
-            val Mach.Obj ob = obj
-        in
-            case !(#magic ob) of
-                SOME magic => Mach.magicToUstring magic
-              | NONE => toUstring regs (toPrimitiveWithStringHint regs v)
-        end
-
+      | Mach.Object (Mach.Obj { tag = SOME (Mach.MagicTag mag), ... }) =>
+        Mach.magicToUstring mag
+      | _ => toUstring regs (toPrimitiveWithStringHint regs v)
 
 (*
  * ES-262-3 9.2: The ToBoolean operation
@@ -1637,16 +1594,19 @@ and toBoolean (v:Mach.VAL) : bool =
     case v of
         Mach.Undef => false
       | Mach.Null => false
-      | Mach.Object (Mach.Obj ob) =>
-        (case !(#magic ob) of
-             SOME (Mach.Boolean b) => b
-           | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
-                                          orelse
-                                          Real64.isNan x)
-           | SOME (Mach.Decimal x) => not ((x = Decimal.zero)
-                                           orelse
-                                           (Decimal.isNaN x))
-           | SOME (Mach.String s) => not (Ustring.stringLength s = 0)
+      | Mach.Object (Mach.Obj { tag, ... }) =>
+        (case tag of
+             SOME (Mach.MagicTag (Mach.Boolean b)) => b
+           | SOME (Mach.MagicTag (Mach.Double x)) => 
+             not (Real64.==(x,(Real64.fromInt 0))
+                  orelse
+                  Real64.isNan x)
+           | SOME (Mach.MagicTag (Mach.Decimal x)) => 
+             not ((x = Decimal.zero)
+                  orelse
+                  (Decimal.isNaN x))
+           | SOME (Mach.MagicTag (Mach.String s)) => 
+             not (Ustring.stringLength s = 0)
            | _ => true)
 
 
@@ -1724,17 +1684,17 @@ and toNumeric (regs:Mach.REGS)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
-          | Mach.Object (Mach.Obj ob) =>
-            (case !(#magic ob) of
-                 SOME (Mach.Double _) => v
-               | SOME (Mach.Decimal _) => v
-               | SOME (Mach.Boolean false) => zero ()
-               | SOME (Mach.Boolean true) => one ()
+          | Mach.Object (Mach.Obj { tag, ... }) =>
+            (case tag of
+                 SOME (Mach.MagicTag (Mach.Double _)) => v
+               | SOME (Mach.MagicTag (Mach.Decimal _)) => v
+               | SOME (Mach.MagicTag (Mach.Boolean false)) => zero ()
+               | SOME (Mach.MagicTag (Mach.Boolean true)) => one ()
                (*
                 * FIXME: This is not the correct definition of ToNumber applied to string.
                 * See ES-262-3 9.3.1. We need to talk it over.
                 *)
-               | SOME (Mach.String us) =>
+               | SOME (Mach.MagicTag (Mach.String us)) =>
                  let val s = Ustring.toAscii us
                  in
                      case Real64.fromString s of
@@ -1759,20 +1719,20 @@ and toDecimal (v:Mach.VAL)
         case v of
             Mach.Undef => Decimal.NaN
           | Mach.Null => Decimal.zero
-          | Mach.Object (Mach.Obj ob) =>
-            (case !(#magic ob) of
-                 SOME (Mach.Double d) =>
+          | Mach.Object (Mach.Obj { tag, ... }) =>
+            (case tag of
+                 SOME (Mach.MagicTag (Mach.Double d)) =>
                  (* NB: Lossy. *)
                  (case fromStr (Real64.toString d) of
                       SOME d' => d'
                     | NONE => Decimal.NaN)
-               | SOME (Mach.Decimal d) => d
-               | SOME (Mach.Boolean false) => Decimal.zero
-               | SOME (Mach.Boolean true) => Decimal.one
+               | SOME (Mach.MagicTag (Mach.Decimal d)) => d
+               | SOME (Mach.MagicTag (Mach.Boolean false)) => Decimal.zero
+               | SOME (Mach.MagicTag (Mach.Boolean true)) => Decimal.one
                (*
                 * FIXME: This is not the correct definition either. See toNumeric.
                 *)
-               | SOME (Mach.String us) =>
+               | SOME (Mach.MagicTag (Mach.String us)) =>
                  let val s = Ustring.toAscii us
                  in
                      case fromStr s of
@@ -1796,20 +1756,20 @@ and toDouble (v:Mach.VAL)
         case v of
             Mach.Undef => NaN ()
           | Mach.Null => zero ()
-          | Mach.Object (Mach.Obj ob) =>
-            (case !(#magic ob) of
-                 SOME (Mach.Double d) => d
-               | SOME (Mach.Decimal d) =>
+          | Mach.Object (Mach.Obj {tag, ...}) =>
+            (case tag of
+                 SOME (Mach.MagicTag (Mach.Double d)) => d
+               | SOME (Mach.MagicTag (Mach.Decimal d)) =>
                  (* NB: Lossy. *)
                  (case Real64.fromString (Decimal.toString d) of
                       SOME d' => d'
                     | NONE => NaN ())
-               | SOME (Mach.Boolean false) => zero ()
-               | SOME (Mach.Boolean true) => one ()
+               | SOME (Mach.MagicTag (Mach.Boolean false)) => zero ()
+               | SOME (Mach.MagicTag (Mach.Boolean true)) => one ()
                (*
                 * FIXME: This is not the correct definition either. See toNumeric.
                 *)
-               | SOME (Mach.String us) =>
+               | SOME (Mach.MagicTag (Mach.String us)) =>
                  let val s = Ustring.toAscii us
                  in
                      case Real64.fromString s  of
@@ -2399,7 +2359,7 @@ and evalSuperCall (regs:Mach.REGS)
     let                                         
         val Mach.Obj { tag, ... } = object
         val thisType = case tag of 
-                           Mach.ClassTag thisType => thisType
+                           SOME (Mach.InstanceTag thisType) => thisType
                          | _ => error regs ["missing class-type tag during super call"]
                                 
         (* 
@@ -2516,7 +2476,7 @@ and bindTypes (regs:Mach.REGS)
             if not (length typeArgs = length typeParams)
             then error regs ["argument length mismatch when binding type args in env"]
             else ()
-        val (scopeObj:Mach.OBJ) = Mach.newObjNoTag ()
+        val (scopeObj:Mach.OBJ) = Mach.newObjectNoTag ()
         val _ = trace ["binding ", Int.toString (length typeArgs), 
                        " type args to scope #", Int.toString (getObjId scopeObj)]
         val env = extendScope env scopeObj Mach.TypeArgScope
@@ -2707,9 +2667,9 @@ and evalYieldExpr (regs:Mach.REGS)
         val { thisGen, ... } = regs
     in
         case thisGen of
-            SOME (Mach.Obj { magic, ... }) =>
-            (case !magic of
-                 SOME (Mach.Generator gen) =>
+            SOME (Mach.Obj { tag, ... }) =>
+            (case tag of
+                 SOME (Mach.MagicTag (Mach.Generator gen)) =>
                  let
                      val v = case expr of
                                  NONE => Mach.Undef
@@ -2738,19 +2698,23 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
     : Mach.VAL =
     let
         val vals = evalExprsAndSpliceSpreads regs exprs
-        val tyExprs = case Option.map (evalTy regs) ty of
-                          NONE => [Ast.AnyType]
-                        | SOME (Ast.ArrayType tys) => tys
-                        (* FIXME: hoist this to parsing or defn; don't use
-                         * a full TYPE in LiteralArray. *)
-                        | SOME _ => error regs ["non-array type on array literal"]
-        val tag = Mach.ArrayTag tyExprs
-        val arrayClass = needObj regs (getValue regs (#global regs) Name.public_Array)
-        val Mach.Obj { magic, ... } = arrayClass
-        val obj = case (!magic) of
-                      SOME (Mach.Class arrayClassClosure) =>
-                      constructStandardWithTag regs arrayClass arrayClassClosure [] tag
-                    | _ => error regs ["Error in constructing array literal"]
+        val (newTag, newClassVal, tyExprs) = 
+            case Option.map (evalTy regs) ty of 
+                NONE => 
+                ((Mach.ArrayTag [Ast.AnyType]), 
+                 getValue regs (#global regs) Name.public_Array, [])
+              | SOME (Ast.ArrayType tys) => 
+                (Mach.ArrayTag tys,
+                 getValue regs (#global regs) Name.public_Array, tys)
+              | SOME (Ast.InstanceType ity) => 
+                (Mach.InstanceTag ity,
+                 getValue regs (#global regs) (#name ity), [])
+              | SOME ty => throwExn (newTypeErr regs ["initialising unsupported type from literal array: ", 
+                                                      LogErr.ty ty])
+
+        val newClassClosure = Mach.needClass newClassVal
+        val newClassObj = needObj regs newClassVal
+        val obj = constructStandardWithTag regs newClassObj newClassClosure [] newTag
         val (Mach.Obj {props, ...}) = obj
         fun putVal n [] = n
           | putVal n (v::vs) =
@@ -2796,39 +2760,43 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
             if n = (evalNameExpr regs name)
             then ty
             else searchFieldTypes n ts
-        val tyExprs = case Option.map (evalTy regs) ty of
-                          NONE => []
-                        | SOME (Ast.ObjectType tys) => tys
-                        (* FIXME: hoist this to parsing or defn; don't use
-                         * a full TYPE in LiteralObject. *)
-                        | SOME _ => error regs ["non-object type on object literal"]
-        val tag = Mach.ObjectTag tyExprs
-        val objectClass = needObj regs (getValue regs (#global regs) Name.public_Object)
-        val Mach.Obj { magic, ... } = objectClass
-        val obj = case (!magic) of
-                      SOME (Mach.Class objectClassClosure) =>
-                      constructStandardWithTag regs objectClass objectClassClosure [] tag
-                    | _ => error regs ["Error in constructing array literal"]
+        fun getObjClassVal _ = case !(Mach.getObjectClassSlot regs) of
+                                   NONE => error regs ["missing class public::Object"]
+                                 | SOME ob => Mach.Object ob
+        val (newTag, newClassVal, tyExprs) = 
+            case Option.map (evalTy regs) ty of 
+                NONE => ((Mach.ObjectTag []), getObjClassVal(), [])
+              | SOME (Ast.ObjectType fields) => 
+                (Mach.ObjectTag fields, getObjClassVal(), fields)
+              | SOME (Ast.InstanceType ity) => 
+                (Mach.InstanceTag ity,
+                 getValue regs (#global regs) (#name ity), 
+                 [])
+              | SOME ty => throwExn (newTypeErr regs ["initialising unsupported type from literal object: ", 
+                                                      LogErr.ty ty])
+        val newClassClosure = Mach.needClass newClassVal
+        val newClassObj = needObj regs newClassVal
+        val obj = constructStandardWithTag regs newClassObj newClassClosure [] newTag
         val (Mach.Obj {props, ...}) = obj
-
+                                      
         fun getPropState (v:Mach.VAL) : Mach.PROP_STATE =
             case v of
-                Mach.Object (Mach.Obj ob) =>
-                (case !(#magic ob) of
-                    SOME (Mach.Function closure) => 
-                        let 
-                            val Ast.Func { name, ... } = (#func closure)
-                            val kind = (#kind name)
-                        in
-                            if kind = Ast.Get
-                            then Mach.VirtualValProp { getter = SOME closure,
-                                                       setter = NONE }
-                            else if kind = Ast.Set
-                            then Mach.VirtualValProp { getter = NONE,
-                                                       setter = SOME closure }
-                            else Mach.ValProp v
-                        end
-                   | _ => Mach.ValProp v)
+                Mach.Object (Mach.Obj {tag, ...}) =>
+                (case tag of
+                    SOME (Mach.MagicTag (Mach.Function closure)) => 
+                    let 
+                        val Ast.Func { name, ... } = (#func closure)
+                        val kind = (#kind name)
+                    in
+                        if kind = Ast.Get
+                        then Mach.VirtualValProp { getter = SOME closure,
+                                                   setter = NONE }
+                        else if kind = Ast.Set
+                        then Mach.VirtualValProp { getter = NONE,
+                                                   setter = SOME closure }
+                        else Mach.ValProp v
+                    end
+                  | _ => Mach.ValProp v)
               | _ => Mach.ValProp v
 
         fun mergePropState (existingProp:Mach.PROP option) 
@@ -2966,10 +2934,10 @@ and evalNewObj (regs:Mach.REGS)
                (args:Mach.VAL list)
     : Mach.VAL =
     case obj of
-        Mach.Obj { magic, ... } =>
-        case (!magic) of
-            SOME (Mach.Class c) => constructClassInstance regs obj c args
-          | SOME (Mach.Function f) => constructObjectViaFunction regs obj f args
+        Mach.Obj { tag, ... } =>
+        case tag of
+            SOME (Mach.MagicTag (Mach.Class c)) => constructClassInstance regs obj c args
+          | SOME (Mach.MagicTag (Mach.Function f)) => constructObjectViaFunction regs obj f args
           | _ => throwExn (newTypeErr regs ["operator 'new' applied to unknown object"])
 
 
@@ -3049,12 +3017,12 @@ and evalCallByObj (regs:Mach.REGS)
                   (args:Mach.VAL list)
     : Mach.VAL =
     case fobj of
-        Mach.Obj { magic, ... } =>
-        case !magic of
-            SOME (Mach.NativeFunction { func, ... }) =>
+        Mach.Obj { tag, ... } =>
+        case tag of
+            SOME (Mach.MagicTag (Mach.NativeFunction { func, ... })) =>
             (trace ["evalCallByObj: entering native function"];
              func regs args)
-          | SOME (Mach.Function f) =>
+          | SOME (Mach.MagicTag (Mach.Function f)) =>
             (trace ["evalCallByObj: entering standard function"];
              invokeFuncClosure regs f (SOME fobj) args)
           | _ =>
@@ -3481,8 +3449,8 @@ and performBinop (regs:Mach.REGS)
                             then newBoolean regs (toBoolean va = toBoolean vb)
                             else 
                                 if Mach.isNamespace va andalso Mach.isNamespace vb
-                                then newBoolean regs (Fixture.compareNamespaces  ((needNamespace regs va),
-                                                                                  (needNamespace regs vb)))                                               
+                                then newBoolean regs (Fixture.compareNamespaces  ((Mach.needNamespace va),
+                                                                                  (Mach.needNamespace vb)))                                               
                                 else newBoolean regs ((getObjId (needObj regs va)) = (getObjId (needObj regs vb)))
             else
                 newBoolean regs false
@@ -3657,29 +3625,51 @@ and doubleEquals (regs:Mach.REGS)
     end
 
 
-and typeOfTag (tag:Mach.VAL_TAG)
+and typeOfTag (regs:Mach.REGS)
+              (tag:Mach.VAL_TAG option)
     : (Ast.TYPE) =
-    case tag of
-        (* 
-         * FIXME: Class and Object should be pulling their 
-         * ty from their magic closures, not their tags.
-         * 
-         * Possibly the tags should not carry types at all? Or 
-         * should carry TYs rather than TYPE subforms?
-         *)
-        Mach.ClassTag ity => Ast.InstanceType ity
-      | Mach.ObjectTag tys => Ast.ObjectType tys
-      | Mach.ArrayTag tys => Ast.ArrayType tys
-      | Mach.FunctionTag fty => Ast.FunctionType fty
-      | Mach.NoTag =>
-        (* FIXME: this would be a hard error if we didn't use NoTag values
-         * as temporaries. Currently we do, so there are contexts where we
-         * want them to have a type in order to pass a runtime type test.
-         * this is of dubious value to me. -graydon.
-         *
-         * error regs ["typeOfVal on NoTag object"])
-         *)
-        Ast.AnyType
+    let
+        fun magicInstanceType getter = 
+            let
+                val cell = getter regs 
+            in
+                case !cell of 
+                    SOME (Mach.Obj { tag = SOME (Mach.MagicTag 
+                                                     (Mach.Class 
+                                                          {cls=Ast.Cls { instanceType, 
+                                                                         ... }, 
+                                                           ...})), 
+                                     ...}) => 
+                    instanceType
+                  | _ => error regs ["error fetching magic instance type"]
+            end
+    in
+        case tag of
+            SOME (Mach.InstanceTag ity) => Ast.InstanceType ity
+          | SOME (Mach.ObjectTag tys) => Ast.ObjectType tys
+          | SOME (Mach.ArrayTag tys) => Ast.ArrayType tys
+          | SOME (Mach.MagicTag (Mach.Boolean _)) => magicInstanceType Mach.getBooleanClassSlot
+          | SOME (Mach.MagicTag (Mach.Double _)) => magicInstanceType Mach.getDoubleClassSlot
+          | SOME (Mach.MagicTag (Mach.Decimal _)) => magicInstanceType Mach.getDecimalClassSlot
+          | SOME (Mach.MagicTag (Mach.String _)) => magicInstanceType Mach.getStringClassSlot
+          | SOME (Mach.MagicTag (Mach.Namespace _)) => magicInstanceType Mach.getNamespaceClassSlot
+          | SOME (Mach.MagicTag (Mach.Class _)) => magicInstanceType Mach.getClassClassSlot
+          | SOME (Mach.MagicTag (Mach.Interface _)) => magicInstanceType Mach.getInterfaceClassSlot
+          | SOME (Mach.MagicTag (Mach.Type _)) => magicInstanceType Mach.getTypeInterfaceSlot
+          | SOME (Mach.MagicTag (Mach.NativeFunction _)) => magicInstanceType Mach.getFunctionClassSlot
+          | SOME (Mach.MagicTag (Mach.Generator _)) => magicInstanceType Mach.getGeneratorClassSlot
+          | SOME (Mach.MagicTag (Mach.Function {func=Ast.Func { ty, ...}, ...})) => ty
+            
+          | NONE =>
+            (* FIXME: this would be a hard error if we didn't use NoTag values
+             * as temporaries. Currently we do, so there are contexts where we
+             * want them to have a type in order to pass a runtime type test.
+             * this is of dubious value to me. -graydon.
+             *
+             * error regs ["typeOfVal on NoTag object"])
+             *)
+            Ast.AnyType
+    end
 
                                 
 and typeOfVal (regs:Mach.REGS)
@@ -3693,7 +3683,7 @@ and typeOfVal (regs:Mach.REGS)
                      let 
                          val tag = getObjTag obj
                      in
-                         typeOfTag tag
+                         typeOfTag regs tag
                      end
     in
         evalTy regs te
@@ -4186,7 +4176,7 @@ and evalNamespaceExpr (regs:Mach.REGS)
         Ast.Namespace ns => ns
       | Ast.NamespaceName ne => 
         case resolveOnScopeChain regs (#scope regs) ne of
-            SOME (obj, name) => needNamespace regs (getValue regs obj name)
+            SOME (obj, name) => Mach.needNamespace (getValue regs obj name)
           | NONE => throwExn (newTypeErr regs ["namespace expression did not resolve to namespace: ", 
                                                LogErr.nameExpr ne])
                     
@@ -4290,14 +4280,6 @@ and evalStmt (regs:Mach.REGS)
       | Ast.ForInStmt w => evalForInStmt regs w
       | _ => error regs ["Shouldn't happen: failed to match in Eval.evalStmt."]
 
-and findVal (regs:Mach.REGS)
-            (scope:Mach.SCOPE)
-            (name:Ast.NAME)
-    : Mach.VAL =
-    case resolveOnScopeChain regs scope (Name.nameExprOf name) of
-        NONE => error regs ["unable to find value: ", LogErr.name name ]
-      | SOME (obj, n) => getValue regs obj n
-
 
 and checkAllPropertiesInitialized (regs:Mach.REGS)
                                   (obj:Mach.OBJ)
@@ -4352,7 +4334,7 @@ and invokeFuncClosure (regs:Mach.REGS)
 
             val _ = Mach.push regs strname args
 
-            val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
+            val (varObj:Mach.OBJ) = Mach.newObjectNoTag ()
             val (varRegs:Mach.REGS) = extendScopeReg regs varObj Mach.ActivationScope
             val (varScope:Mach.SCOPE) = (#scope varRegs)
             val (Mach.Obj {props, ...}) = varObj
@@ -4714,7 +4696,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                 let
                     val _ = Mach.push classRegs ("ctor " ^ (Ustring.toAscii (#id name))) args
                     val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
-                    val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
+                    val (varObj:Mach.OBJ) = Mach.newObjectNoTag ()
                     val (varRegs:Mach.REGS) = extendScopeReg classRegs
                                                              varObj
                                                              Mach.ActivationScope
@@ -4757,7 +4739,7 @@ and constructStandard (regs:Mach.REGS)
         val {cls = Ast.Cls { instanceType, ...}, env, ...} = classClosure
         val classRegs = withScope regs env
         val ty = AstQuery.needInstanceType (evalTy classRegs instanceType)
-        val (tag:Mach.VAL_TAG) = Mach.ClassTag ty
+        val (tag:Mach.VAL_TAG) = Mach.InstanceTag ty
     in
         constructStandardWithTag classRegs classObj classClosure args tag
     end
@@ -4771,7 +4753,7 @@ and constructStandardWithTag (regs:Mach.REGS)
     let
         val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
         val (proto:Mach.VAL) = getPrototype regs classObj
-        val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
+        val (instanceObj:Mach.OBJ) = Mach.newObject (SOME tag) proto
         (* FIXME: might have 'this' binding wrong in class scope here. *)
         val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
         val classRegs = withThis (withScope regs classScope) instanceObj
@@ -4875,13 +4857,14 @@ and specialMagicCopyingConstructor (regs:Mach.REGS)
 				   (args:Mach.VAL list)
     : Mach.OBJ =
     let
-	val magic = 
-	    case args of 
-		[] => error regs ["called special magic-copying constructor with no args"]
-	      | v :: _ => Mach.needMagic v
-        val obj = constructStandard regs classObj classClosure []
+	    val magic = 
+	        case args of 
+		        [] => error regs ["called special magic-copying constructor with no args"]
+	          | v :: _ => Mach.needMagic v
+        val tag = (Mach.MagicTag magic)
+        val obj = constructStandardWithTag regs classObj classClosure [] tag
     in
-	Mach.setMagic obj (SOME magic)
+        obj
     end
 
 and specialObjectConstructor (regs:Mach.REGS)
@@ -4896,22 +4879,16 @@ and specialObjectConstructor (regs:Mach.REGS)
             [] => instantiate ()
           | (Mach.Null :: _) => instantiate ()
           | (Mach.Undef :: _) => instantiate ()
-          | (Mach.Object obj :: _) =>
-            case Mach.getObjMagic obj of
-                NONE => obj
-              | SOME m =>
-                let
-                    (*
-                     * FIXME: This part is dubioius. ES-262-3 says to call ToObject
-                     * on non-Object primitives. We do not do so here: rather, ToObject
-                     * implements its lower half (primitive values) by calling into *here*,
-                     * so here is where we do any cloning and magic-copying.
-                     *)
-                    val nobj = instantiate ()
-                in
-                    Mach.setMagic nobj (Mach.getObjMagic obj);
-                    nobj
-                end
+          | (Mach.Object (Mach.Obj { tag, ...}) :: _) =>
+            case tag of 
+                (*
+                 * FIXME: This part is dubioius. ES-262-3 says to call ToObject
+                 * on non-Object primitives. We do not do so here: rather, ToObject
+                 * implements its lower half (primitive values) by calling into *here*,
+                 * so here is where we do any cloning and magic-copying.
+                 *)
+                SOME (Mach.MagicTag mt) => constructStandardWithTag regs classObj classClosure args (Mach.MagicTag mt)
+              | _ => instantiate()
     end
 
 
@@ -4921,23 +4898,23 @@ and specialBooleanConstructor (regs:Mach.REGS)
                               (args:Mach.VAL list)
     : Mach.OBJ =
     let
-	val b = case args of 
-		    [] => false
-		  | v :: _ => toBoolean v
-	val cell = 
-	    if b 
+	    val b = case args of 
+		            [] => false
+		          | v :: _ => toBoolean v
+	    val cell = 
+	        if b 
             then Mach.getBooleanTrueSlot regs 
             else Mach.getBooleanFalseSlot regs
     in
-	case !cell of 
-	    SOME obj => obj
-	  | NONE => 
+	    case !cell of 
+	        SOME obj => obj
+	      | NONE => 
             let 
-		val obj = constructStandard regs classObj classClosure []
+                val tag = Mach.MagicTag (Mach.Boolean b)
+		        val obj = constructStandardWithTag regs classObj classClosure [] tag
             in 
-		Mach.setMagic obj (SOME (Mach.Boolean b));
-		cell := SOME obj;
-		obj
+		        cell := SOME obj;
+		        obj
             end
     end
 
@@ -4953,37 +4930,37 @@ and specialDoubleConstructor (regs:Mach.REGS)
 		  | v :: _ => toDouble v
 	fun build _ = 
 	    let
-		val obj = constructStandard regs classObj classClosure []
+            val tag = Mach.MagicTag (Mach.Double n)
+		    val obj = constructStandardWithTag regs classObj classClosure [] tag
 	    in
-		Mach.setMagic obj (SOME (Mach.Double n));
-		obj
+		    obj
 	    end
     in
 	if Real64.isNan n 
 	then 
 	    let
-		val dn = Mach.getDoubleNaNSlot regs
+		    val dn = Mach.getDoubleNaNSlot regs
 	    in
-		case !dn of
-		    NONE => 
-		    let 
-			val obj = build ()
-		    in
-			dn := SOME obj;
-			obj
-		    end
-		  | SOME obj => obj
+		    case !dn of
+		        NONE => 
+		        let 
+			        val obj = build ()
+		        in
+			        dn := SOME obj;
+			        obj
+		        end
+		      | SOME obj => obj
 	    end
 	else 
 	    case Mach.findInDoubleCache regs n of
-		SOME obj => obj
+		    SOME obj => obj
 	      | NONE => 
-		let 
-		    val obj = build ()
-		in 
-		    Mach.updateDoubleCache regs (n, obj);
-		    obj
-		end
+		    let 
+		        val obj = build ()
+		    in 
+		        Mach.updateDoubleCache regs (n, obj);
+		        obj
+		    end
     end
 
 
@@ -4993,13 +4970,13 @@ and specialDecimalConstructor (regs:Mach.REGS)
                               (args:Mach.VAL list)
     : Mach.OBJ =
     let
-	val n = case args of 
-		    [] => toDecimal (newDouble regs 0.0)
-		  | v :: _ => toDecimal v
-	val obj = constructStandard regs classObj classClosure []
+	    val n = case args of 
+		            [] => toDecimal (newDouble regs 0.0)
+		          | v :: _ => toDecimal v
+        val tag = Mach.MagicTag (Mach.Decimal n)
+	    val obj = constructStandardWithTag regs classObj classClosure [] tag
     in
-	Mach.setMagic obj (SOME (Mach.Decimal n));
-	obj
+	    obj
     end
     
 
@@ -5017,11 +4994,11 @@ and specialStringConstructor (regs:Mach.REGS)
 	    SOME obj => obj
 	  | NONE => 
 	    let 
-		val obj = constructStandard regs classObj classClosure []
+            val tag = Mach.MagicTag (Mach.String s)
+		    val obj = constructStandardWithTag regs classObj classClosure [] tag
 	    in 
-		Mach.setMagic obj (SOME (Mach.String s));
-		Mach.updateStrCache regs (s, obj);
-		obj
+		    Mach.updateStrCache regs (s, obj);
+		    obj
 	    end
     end
     
@@ -5074,49 +5051,50 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
     then ()
     else
         let
-            val Mach.Obj { ident, magic, ... } = obj
+            val Mach.Obj { ident, tag, ... } = obj
 	in
-	    case (!magic) of 
-		NONE => ()
-	      | SOME (Mach.Class { cls = Ast.Cls { name, ... }, ... }) =>
-		let
-		    val bindings = [
-			(Name.intrinsic_Class, Mach.getClassClassSlot),
-			(Name.intrinsic_Interface, Mach.getInterfaceClassSlot),
-			(Name.ES4_Namespace, Mach.getNamespaceClassSlot),
-			
-			(Name.public_Object, Mach.getObjectClassSlot),
-			(Name.public_Array, Mach.getArrayClassSlot),
-			(Name.public_Function, Mach.getFunctionClassSlot),
-			
-			(Name.public_String, Mach.getStringWrapperClassSlot),
-			(Name.ES4_string, Mach.getStringClassSlot),
-			
-			(Name.public_Number, Mach.getNumberClassSlot),
-			(Name.ES4_double, Mach.getDoubleClassSlot),
-			(Name.ES4_decimal, Mach.getDecimalClassSlot),
-			
-			(Name.ES4_boolean, Mach.getBooleanClassSlot),
-			(Name.public_Boolean, Mach.getBooleanWrapperClassSlot),
-
-            (Name.helper_GeneratorImpl, Mach.getGeneratorClassSlot)
-		    ]
-		    fun f (n,id) = Mach.nameEq name n
-		in
-		    case List.find f bindings of
-			NONE => ()
-		      | SOME (_,func) => 
-			let
-                (*val _ = TextIO.print ("binding special identity for class " ^ LogErr.name name ^ "\n")*)
-			    val _ = trace ["binding special identity for class ", fmtName name]
-			    val cell = func regs
-			in
-			    cell := SOME obj
-			end
-		end
-	      | _ => ()
-	end
-
+	        case tag of 
+		        NONE => ()
+	          | SOME (Mach.MagicTag (Mach.Class { cls = Ast.Cls { name, ... }, ... })) =>
+		        let
+		            val bindings = [
+			            (Name.intrinsic_Type, Mach.getTypeInterfaceSlot),
+			            (Name.intrinsic_Class, Mach.getClassClassSlot),
+			            (Name.intrinsic_Interface, Mach.getInterfaceClassSlot),
+			            (Name.ES4_Namespace, Mach.getNamespaceClassSlot),
+			            
+			            (Name.public_Object, Mach.getObjectClassSlot),
+			            (Name.public_Array, Mach.getArrayClassSlot),
+			            (Name.public_Function, Mach.getFunctionClassSlot),
+			            
+			            (Name.public_String, Mach.getStringWrapperClassSlot),
+			            (Name.ES4_string, Mach.getStringClassSlot),
+			            
+			            (Name.public_Number, Mach.getNumberClassSlot),
+			            (Name.ES4_double, Mach.getDoubleClassSlot),
+			            (Name.ES4_decimal, Mach.getDecimalClassSlot),
+			            
+			            (Name.ES4_boolean, Mach.getBooleanClassSlot),
+			            (Name.public_Boolean, Mach.getBooleanWrapperClassSlot),
+                        
+                        (Name.helper_GeneratorImpl, Mach.getGeneratorClassSlot)
+		            ]
+		            fun f (n,id) = Mach.nameEq name n
+		        in
+		            case List.find f bindings of
+			            NONE => ()
+		              | SOME (_,func) => 
+			            let
+                            (*val _ = TextIO.print ("binding special identity for class " ^ LogErr.name name ^ "\n")*)
+			                val _ = trace ["binding special identity for class ", fmtName name]
+			                val cell = func regs
+			            in
+			                cell := SOME obj
+			            end
+		        end
+	          | _ => ()
+	    end
+        
 
 and setPrototype (regs:Mach.REGS)
 		 (obj:Mach.OBJ)
@@ -5216,43 +5194,43 @@ and initClassPrototype (regs:Mach.REGS)
                        (obj:Mach.OBJ)
     : unit =
     let
-	val Mach.Obj { ident, props, magic, ... } = obj
+	val Mach.Obj { ident, props, tag, ... } = obj
     in
-	case !magic of 
-	    SOME (Mach.Class {cls=Ast.Cls {name, extends,...},...}) => 
+	case tag of 
+	    SOME (Mach.MagicTag (Mach.Class {cls=Ast.Cls {name, extends,...},...})) => 
 	    let
-		val baseProtoVal =
-		    case extends of
-			NONE => Mach.Null
-		      | SOME baseClassTy =>
-			let
-			    val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
-			    val ob = instanceClass regs ty
-			in 
-			    getPrototype regs ob
-			end
-		val _ = trace ["initializing prototype"]
-		val (newPrototype, setConstructor) = 
-		    case getSpecialPrototype regs ident of
-			SOME (p,b) => (needObj regs p, b)
-		      | NONE => (newObj regs, true)
-		val newPrototype = Mach.setProto newPrototype baseProtoVal
+		    val baseProtoVal =
+		        case extends of
+			        NONE => Mach.Null
+		          | SOME baseClassTy =>
+			        let
+			            val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
+			            val ob = instanceClass regs ty
+			        in 
+			            getPrototype regs ob
+			        end
+		    val _ = trace ["initializing prototype"]
+		    val (newPrototype, setConstructor) = 
+		        case getSpecialPrototype regs ident of
+			        SOME (p,b) => (needObj regs p, b)
+		          | NONE => (newObj regs, true)
+		    val newPrototype = Mach.setProto newPrototype baseProtoVal
 	    in
-		trace ["initializing proto on (obj #", Int.toString ident, 
-		       "): ", fmtName name, ".prototype = ", 
-		       "(obj #", Int.toString (getObjId newPrototype), ")"];
-		setPrototype regs obj (Mach.Object newPrototype);
-		if setConstructor
-		then 
-		    (setValueOrVirtual regs newPrototype 
-				      Name.public_constructor 
-				      (Mach.Object obj) 
-				      false;
-		     (* FIXME: Mach.setPropDontEnum props Name.public_constructor true; ? *)
-		     ())
-		else 
-		    ();
-		trace ["finished initialising class prototype"]
+		    trace ["initializing proto on (obj #", Int.toString ident, 
+		           "): ", fmtName name, ".prototype = ", 
+		           "(obj #", Int.toString (getObjId newPrototype), ")"];
+		    setPrototype regs obj (Mach.Object newPrototype);
+		    if setConstructor
+		    then 
+		        (setValueOrVirtual regs newPrototype 
+				                   Name.public_constructor 
+				                   (Mach.Object obj) 
+				                   false;
+		         (* FIXME: Mach.setPropDontEnum props Name.public_constructor true; ? *)
+		         ())
+		    else 
+		        ();
+		    trace ["finished initialising class prototype"]
 	    end
 	  | _ => ()
     end
@@ -5268,8 +5246,8 @@ and constructClassInstance (regs:Mach.REGS)
         val _ = Mach.push regs ("new " ^ (Ustring.toAscii (#id name))) args
 	val obj = 
 	    case constructSpecial regs ident classObj classClosure args of
-		SOME ob => ob
-              | NONE => constructStandard regs classObj classClosure args			
+		    SOME ob => ob
+          | NONE => constructStandard regs classObj classClosure args			
     in
         bindAnySpecialIdentity regs obj;
         initClassPrototype regs obj;
@@ -5325,7 +5303,7 @@ and evalHead (regs:Mach.REGS)
     : Mach.REGS =
     let
         val (Ast.Head (rib,inits)) = head
-        val obj = Mach.newObjNoTag ()
+        val obj = Mach.newObjectNoTag ()
         val newRegs = extendScopeReg regs obj Mach.BlockScope
         val {scope,...} = newRegs
         val _ = traceConstruct ["built temp scope #",
@@ -5372,9 +5350,9 @@ and evalClassBlock (regs:Mach.REGS)
         val {scope, ...} = regs
 
         val _ = trace ["evaluating class stmt for ", fmtName (valOf name)]
-        val classVal = findVal regs scope (valOf name)
+        val classVal = getValue regs (#global regs) (valOf name)
         val classObj = needObj regs classVal
-
+                       
         (* FIXME: might have 'this' binding wrong in class scope *)
         val _ = trace ["extending scope for class block of ", fmtName (valOf name)]
         val classRegs = extendScopeReg regs classObj Mach.InstanceScope
