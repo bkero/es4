@@ -236,11 +236,11 @@ initializers.
 
 ===== Enumerability =====
 
-<P> As outlined elsewhere [9], fixture properties are never
+<P> Fixture properties are never
 enumerable.  Dynamic fields are enumerable if they are in the public
 namespace and their ''enumerable'' attribute is set.
 
-<P> All dynamic fields created by an object initializer have their
+<P> All dynamic fields created by an object initialiser have their
 ''enumerable'' attribute set (though the attribute setting is only
 relevant if the fields are public).
 
@@ -531,7 +531,7 @@ are placed after all other ''ArrayElements'' in the
 ''ArrayElementList''.
 
 <LI>If a ''length'' property is given that is not within the 
-valid range of array indexes, namely 0 to Math.pow(2,32), the
+valid range, namely 0 to 2<sup>32</sup>, the
 value shall be converted to a valid index with ToUInt32().
 
 <LI>Any properties that are pushed out of the valid range of

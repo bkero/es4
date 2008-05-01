@@ -1,82 +1,89 @@
 #====================================================================
-# Name: ExportES4Wiki.pl
+# Name: mergeGrammar.pl
 #
-# Purpose: Grabs Wiki HTML and creates MS-Word compatible HTML file
+# Purpose: Merges HTML file with ES4 Grammar
 #
 # Author: Francis Cheng
-# Date: October 2006
+# Date: April 2008 (based on Oct 2006 exportES4Wiki.pl script)
+#
+# Usage: mergeGrammar [HTML_input_file] [Output_file]
+#
+# Output File: The output file is identical to the input file, except that
+# any <pre> tags with a 'class' attribute set to 'code grammar', 'code grammar_start',
+# or 'code grammar_end' are replaced with the corresponding sections of the grammar
+# as excerpted from the grammar.xls file in monotone. Only <pre> tags that are 
+# within HTML comment tags are processed. This script is designed
+# to be run before the stitch.py script.
+# 
+# IMPORTANT NOTES: 
+# 1. The initial <pre> tag must be on the same line as the opening
+#    HTML comment tag <!-- and the last <pre> tag must be on the same line
+#    as the closing HTML comment tag --> For example:
+#    <!-- <pre class="code grammar_start"><em>ArrayInitialiser<sup>noColon</sup></em></pre>
+#    <pre class="code grammar_end"><em>SpreadExpression</em></pre>	-->
+# 2. Two <br/> tags are prepended to the grammar listing in the output file to every
+#    HTML comment block that contains a grammar <pre> tag. You can change the
+#    number of <br/> tags with the $spaceBeforeGrammarBlock variable in the
+#    CONFIGURATION SECTION.
+#
+# Other Output: In addition to the merged output file, the PrintGrammarToFile()
+# subroutine prints the entire Grammar to a text file. This allows you
+# to see how each production is represented in HTML. This HTML markup version
+# is the version you must use inside the <pre> tags in the HTML_input_file.
+# Change $printGrammarTextFile to 1 in the CONFIGURATION SECTION if you want
+# to print this file.
 #
 # Script notes: This script runs on Perl 5.8 (ActiveState installation)
 # and requires the following modules (which can be installed using 
 # Perl Package Manager):
-# -> ppm install WWW::Mechanize
-# -> ppm install http://theoryx5.uwinnipeg.ca/ppms/Net_SSLeay.pm.ppd
-# -> ppm install http://theoryx5.uwinnipeg.ca/ppms/IO-Socket-SSL.ppd
-# -> ppm install http://theoryx5.uwinnipeg.ca/ppms/Crypt-SSLeay.ppd
 # -> ppm install spreadsheet-parseexcel
 # -> ppm install OLE::Storage_Lite
 # -> ppm install IO::Scalar
 #
-# If you have problems with the DLLs needed by the SSL modules, download
-# and install the latest openSSL installer (for Windows):
-# http://www.openssl.org/related/binaries.html
+# This script should be run from its location in the es4 monotone file structure
 
 use strict;
 use warnings;
-#use WWW::Mechanize;  # for scraping wiki html
-#use HTTP::Cookies;
-#use HTML::Form;      # for LoginToWiki()
 use Spreadsheet::ParseExcel; # for parsing grammar.xls file
 
 
 # === CONFIGURATION SECTION ====
-my $grammarFile = '../doc/grammar.xls'; # expects script to run in root of spec directory
-my $smlSourceDir = '';  # command line arg ($ARGV[0])
-my @smlFiles = ("ast.sml", "defn.sml", "verify.sml", "eval.sml");
-my @funcList = ();
-my $outputFile = 'merged.html';
-our ($sourceHTML, %grammar, @grammarList, %smlHash);  # globals
+my $grammarFile = 'grammar.xls'; # expects script to run in root of spec directory
+our ($sourceHTML, $outputFile, %grammar, @grammarList);  # globals
+my $spaceBeforeGrammarBlock = '<br/><br/>';
+my $printGrammarTextFile = 1; # change to 1 if you want to print grammar.txt file
 
 # === Read in command line arguments
 if ($ARGV[0] ne "") {
-  $smlSourceDir = $ARGV[0];
+  $sourceHTML = $ARGV[0];
 }
 else {
-  print "ERROR: You must specify the sml source directory path.\n";
+  print "ERROR: You must specify the source HTML source directory path.\n";
   exit(0);
 }
 
 if ($ARGV[1] ne "") {
-  $sourceHTML = $ARGV[1];
+  $outputFile = $ARGV[1];
+}
+# === construct $outputFile string based on input file
+elsif ($sourceHTML =~ /\/(\w+)\.html?/) {
+  $outputFile = $1 . '_merged.html';
 }
 else {
-  print "ERROR: You must specify the source HTML directory path.\n";
-  exit(0);
-}
-
-# === construct $outputFile string based on input file
-if ($sourceHTML =~ /\/(\w+)\.html?/) {
-  $outputFile = $1 . '_merged.html';
+  $outputFile = $sourceHTML . '_merged.html';
 }
 
 
 # === Call subroutines
 
-ParseGrammar($smlSourceDir, $grammarFile);
+ParseGrammar($grammarFile);
 
-PrintGrammarToFile();
+if ($printGrammarTextFile) {
+	PrintGrammarToFile();
+}
 
-CreateSMLHash();
+Merge($spaceBeforeGrammarBlock);
 
-PrintSMLHash();
-
-Merge();
-
-#LoginToWiki();
-
-#GetWikiText();
-
-#ParseWikiText();
 
 
 # =========== SUBROUTINES ==============
@@ -109,14 +116,13 @@ Merge();
 #
 # ================
 sub ParseGrammar {
-   my ($grammarPath, $grammarFileName) = @_;
-   my $grammarXLS = $grammarPath . '/doc/' . $grammarFileName;
+   my ($grammarXLS) = @_;
    my $myBook = Spreadsheet::ParseExcel::Workbook->Parse($grammarXLS);
    my $ES4Worksheet = $myBook->Worksheet('ES4');
    my $maxRow = $ES4Worksheet->{MaxRow};
    my @lexemes = ();  # array to hold list of lexemes
 
-   my $iCol = 7;  # initial value of $iCol is 7 (column H in the spreadsheet)
+   my $iCol = 8;  # initial value of $iCol is 7 (column I in the spreadsheet)
    %grammar = (); # hash to hold contents of grammar (must be global)
    my @noAbstractSyntax = ();  # track entries without Abstract Syntax
    my @missingAbstractSyntax = (); # entries with missing Abstract Syntax
@@ -150,6 +156,9 @@ sub ParseGrammar {
          while ($ES4Worksheet->{Cells}[$iRow+1+$num][$iCol+1] &&
                 $ES4Worksheet->{Cells}[$iRow+1+$num][$iCol+1]->Value) {
            my $rhsContent = AddFormattingTags($ES4Worksheet->{Cells}[$iRow+1+$num][$iCol+1]);
+		   # instances of ... in the .xls file show up as an ampersand
+		   # so we need to convert lone instances of ampersand to ...
+		   $rhsContent =~ s/<strong>&\s?<\/strong>/<strong>...<\/strong>/;
            push(@rhs, $rhsContent);
            $num++;
          }
@@ -461,122 +470,31 @@ sub ModifyTerminalTags {
 }
 
 
-# ===============
-# Subroutine CreateSMLHash
-# Purpose: Create hash with SML function names as keys and
-#          function bodies as values.
-# ===============
-sub CreateSMLHash { 
-  # iterate through each source file in the @smlFiles array
-  foreach my $srcFile (@smlFiles) {
-    my $srcPath = $smlSourceDir . '/' . $srcFile; 
-    print $srcPath . "\n";
-    my $funcName = '';
-    my $codeBuffer = '';
-    my $commentFlag = 0;
-    open (SRC_FILE, "$srcPath");
-    while (<SRC_FILE>) {
-	  # first 'normalize' source from ast.sml, which indents 
-	  # recursive type defs
-	  if ($srcPath =~ /ast.sml/ && /^\s*(and.*)/) {
-		$_ = $1;
-      }
-      # Do not change the order of these if and elsif statements
-      # unless you know what you are doing. The tail statements
-      # assume that comments are not an option
-      if (/^(fun|and|type|datatype) (\w+)/) {
-        if ($funcName eq '') {
-          $funcName = $2;
-          $codeBuffer = $_;
-        }
-        else { # create previous hash entry then reset values
-          $smlHash{$funcName} = $codeBuffer;
-          push (@funcList, $funcName);
-          # reset values
-          $funcName = $2;
-          $codeBuffer = $_; # start new codeBuffer
-        }
-      }
-      elsif (/^\s*\(\*/) {  # start of comment begins line
-        if ($_ =! /\*\)/) { # if end of comment not found, set comment flag
-          $commentFlag = 1;
-        }
-      }
-      elsif (/\*\)/ && $commentFlag == 1) { # end of multi-line comment
-        $commentFlag = 0;
-      }
-      elsif ( (/^\w+/) && ($commentFlag == 0) ) { # start of new expression
-        if ($funcName ne '') {
-          $smlHash{$funcName} = $codeBuffer;
-          push (@funcList, $funcName);
-          $funcName = '';
-          $codeBuffer = '';
-        }
-      }
-      else {
-        if ($commentFlag == 0) {
-          $codeBuffer .= $_;
-        }
-      }
 
-    } # end while SRC_FILE loop
-
-    close SRC_FILE;
-  } # end foreach loop
-
-} # end sub CreateSMLHash
-
-
-sub PrintSMLHash {
-
-  open (HASH_FILE, ">smlhash.txt");
-  foreach my $func (@funcList) {
-    print HASH_FILE "$func => $smlHash{$func}\n";
-  }
-  close HASH_FILE;
-}
 
 # ===============
 # Subroutine Merge
-# Purpose: Merge SML code & grammar into HTML files
+# Purpose: Merge grammar into HTML files
 # ================
 sub Merge {
+  my ($spaceBefore) = @_;
   my $mergeBuffer = '';
   my $grammarRangeStart = '';
+  my $firstGrammarProduction = 0;
 
   open (BFILE, $sourceHTML);
   while(<BFILE>) {
-    # merge SML
-    if ( $_ =~ /<pre class="code insert_ml">/ ) {
-       my $text = $_; 
-       my @funcNames = ();
-
-       # parse string and place tag contents into array
-       while ( length($text) ) {
-         if ( $text =~ /<pre class="code insert_ml">(.*?)<\/pre>/) {
-           push (@funcNames, $1);
-           $text = $'; # reset $text to everything after the pre tag
-         }
-         else {
-           $text = '';
-         }
-       }
-
-       # Add sml code for each element of the array
-       foreach my $item (@funcNames) { 
-         if (defined $smlHash{$item}) {
-           my $code = $smlHash{$item};
-           $code =~ s/ /&nbsp;/g;
-           $code =~ s/\n/<br\/>/g;
-           $mergeBuffer .= '<span style="font-family:Arial, Helvetica, sans-serif"><strong>Implementation</strong></span><br/>';
-           $mergeBuffer .= "<code>$code</code>";
-         }
-       }
-    }
+	#################################
     # merge single grammar production
-    elsif ( $_ =~ /<pre class="code grammar">/ ) {
+    #################################
+    if ( $_ =~ /<pre class="code grammar">/ ) {
       my $text = $_;
       my @lhsContents = ();
+
+      # check for start of HTML comment, signifies first grammar prod
+      if ($text =~ /<!--/) {
+	    $firstGrammarProduction = 1;
+	  }
       
       # parse string and place tag contents into array
       while ( length($text) ) {
@@ -602,19 +520,27 @@ sub Merge {
 
         my $grammar = GenerateGrammar($item);
         if ($grammar ne '') {
-	      $mergeBuffer .= '<span style="font-family:Arial, Helvetica, sans-serif"><strong>Syntax</strong><br/>';
-          $mergeBuffer .= $grammar;
-          $mergeBuffer .= '</span>';
+	      if ($firstGrammarProduction) {
+		    $mergeBuffer .= $spaceBefore;
+		    $firstGrammarProduction = 0;
+		  }
+          $mergeBuffer .= '<span>' . $grammar . '</span>';
         }
       }
 
     }
+    ##############################################################
     # merge range of grammar productions
     # grammar_start and grammar_end tags must be on separate lines
+    ##############################################################
     elsif ( $_ =~ /<pre class="code grammar_start">/ ) {
       if ( $_ =~ /<pre class="code grammar_start">(.*?)<\/pre>/) {
         $grammarRangeStart = $1;
       }
+      # check if this is first grammar prod, which needs space before
+      if ($_ =~ /<!--/) {
+	    $firstGrammarProduction = 1;
+	  }
     }
     elsif ( $_ =~ /<pre class="code grammar_end">/ ) {
       my $text = $_;
@@ -640,8 +566,13 @@ sub Merge {
           }
         }
       }
-	  	
-	  $mergeBuffer .= '<span style="font-family:Arial, Helvetica, sans-serif"><strong>Syntax</strong><br/>';
+
+      # check if this is start of syntax section
+      if ($firstGrammarProduction) {
+	    $mergeBuffer .= $spaceBefore;
+	    $firstGrammarProduction = 0;
+	  }
+
       
       # Add grammar for each element of the array
       foreach my $item (@lhsContents) {
@@ -656,13 +587,14 @@ sub Merge {
 
         my $grammar = GenerateGrammar($item);
         if ($grammar ne '') {
-          $mergeBuffer .= $grammar;
+          $mergeBuffer .= '<span>' . $grammar;
         }    
       }
       $mergeBuffer .= '</span>';
-
     }
+    ####################################
     # print out complete grammar summary
+    ####################################
     elsif ( $_ =~ /<pre class="code grammarSummary">/ ) {
 
       # Add grammar for each element of the array
@@ -685,11 +617,15 @@ sub Merge {
       }
 
     }
-     
+    ##########################
+    # Leave original unchanged
+    ########################## 
     else {
 	  $mergeBuffer .= $_;
     } 
   }
+
+  close BFILE;
 
   # === Write buffer to file ===
   open (DFILE, ">$outputFile");
@@ -699,276 +635,6 @@ sub Merge {
 }
 
 
-# ===============
-# Subroutine ParseWikiText
-# Purpose: Read text in from file and parse
-# ================
-sub ParseWikiText {
-  my $endBuffer = "<html>\n";
-  my $tableBuffer = '';     # buffer for table text
-  my $inParagraph = 0;      # flag when inside paragraph
-  my $inOList = 0;          # flag when inside <ol></ol>
-  my $inUList = 0;          # flag when inside <ul></ul>
-  my $inTable = 0;          # flag when inside table
-  my $inGrammar = 0;        # flag when inside grammar production table
-  my $inPreTag = 0;         # flag when inside pre tag
-  my $chapterTitle = '';
-  open (BFILE, "startBuffer.txt");
-    while(<BFILE>) {
-     if ( $_ =~ /<title>spec:chapter_\d+_(.+) \[ES4 Wiki\]<\/title>/) {
-       $chapterTitle = $1;
-       $chapterTitle =~ s/_/ /g;
-       $chapterTitle =~ s/^(.)/\u$1/;      # Upper case first letter
-       $endBuffer .= "<h1>" . $chapterTitle . "</h1>\n";
-     }
-     elsif ( $_ =~ /<h1>(.+)<\/h1>/) {
-       if ($1 ne $chapterTitle) {
-         $endBuffer .= "<h2>" . $1 . "</h2>\n";
-       }
-     }
-     elsif ( $_ =~ /<h2>(.+)<\/h2>/) {
-       $endBuffer .= "<h3>" . $1 . "</h3>\n";
-     }
-     elsif ( $_ =~ /<h3>(.+)<\/h3>/) {
-       $endBuffer .= "<h4>" . $1 . "</h4>\n";
-     }
-     elsif ( $_ =~ /<h4>(.+)<\/h4>/) {
-       $endBuffer .= "<h5>" . $1 . "</h5>\n";
-     }
-     elsif ( $_ =~ /<p>/) {
-       $endBuffer .= $_;
-       $inParagraph = 1;
-     }
-     elsif ( $inParagraph ) {
-       # check for grammar production, $inParagraph must be exactly 1
-       if ( ($inParagraph == 1)
-                &&  ( ($_ =~ /<em>.+<\/em>.+&rarr;/)
-                   || ($_ =~ /<strong>.+<\/strong>.+&rarr;/)  ) ){
-         $inGrammar = 1;
-       }
-       elsif ($inGrammar) {
-         if ($inParagraph == 2) {
-           $_ =~ s/^(.*)/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$1/;
-         }
-         else {
-           $_ =~ s/(<code>\|.*<\/code>)/&nbsp;&nbsp;&nbsp;$1/;
-         }
-       }
-       
-       # increment $inParagraph for line nums or reset if closing tag found
-       if ( $_ =~ /<\/p>/) {
-         $inParagraph = 0;
-         $inGrammar = 0;
-       }
-       else {
-         $inParagraph++;
-       }
-       
-       # convert curly quotes and write to buffer
-       my $line = CurlyToHTMLCurly($_);
-       $endBuffer .= $line;
-     }
-     elsif ( $_ =~ /<ul>/) {
-       $endBuffer .= $_;
-       $inUList++;           # increment to handle nested lists
-     }
-     elsif ( $inUList ) {
-       if ( $_ =~ /<\/ul>/) {
-         $inUList--;
-       }
-       my $line = CurlyToHTMLCurly($_);
-       $endBuffer .= $line;
-     }
-     elsif ( $_ =~ /<ol>/) {
-       $endBuffer .= $_;
-       $inOList++;           # increment to handle nested lists
-     }
-     elsif ( $inOList ) {
-       if ( $_ =~ /<\/ol>/) {
-         $inOList--;
-       }
-       my $line = CurlyToHTMLCurly($_);
-       $endBuffer .= $line;
-     }
-     elsif ( $_ =~ /<table/) {
-       $tableBuffer .= $_;              # place current line in table buffer
-       $inTable = 1;                    # set $inTable flag
-     }
-     elsif ( $inTable ) {
-       # check for end of table, clean up if found
-       if ( $_ =~ /<\/table/) {
-         # add table border
-         $tableBuffer =~ s/<table/<table border="1" cellspacing="0" cellpadding="3"/;
-         $tableBuffer .= $_;
-         $endBuffer .= $tableBuffer;    # write table to general buffer
-         $tableBuffer = '';             # reset tableBuffer
-         $inTable = 0;                  # reset table flag
-        }
-       # if not end of table, write line to table buffer
-       else {
-         my $line = CurlyToHTMLCurly($_);
-         $tableBuffer .= $line;
-       }
-     }
-     # merge grammar
-     elsif ( $_ =~ /<pre class="code grammar">/ ) {
-       my $text = $_;
-       my @lhsContents = ();
-       
-       # parse string and place tag contents into array
-       while ( length($text) ) {
-         if ( $text =~ /<pre class="code grammar">(.*?)<\/pre>/) {
-           push (@lhsContents, $1);
-           $text = $'; # reset $text to everything after the pre tag
-         }
-         else {
-           $text = '';
-         }
-       }
-       
-       # Add grammar for each element of the array
-       foreach my $item (@lhsContents) {
-         $item = '<em>' . $item . '</em>';
-         $item =~ s/&lt;/</g;
-         $item =~ s/&gt;/>/g;
-         $item =~ s/&#945;/&alpha;/g;   # Greek small letter alpha
-         $item =~ s/&#946;/&beta;/g;    # Greek small letter beta
-         $item =~ s/&#969;/&omega;/g;   # Greek small letter omega
-
-         my $grammar = GenerateGrammar($item);
-         if ($grammar ne '') {
-           $endBuffer .= $grammar;
-         }
-       }
-
-     }
-     # print out complete grammar summary
-     elsif ( $_ =~ /<pre class="code grammarSummary">/ ) {
-
-       # Add grammar for each element of the array
-       foreach my $prod (@grammarList) {
-         if (defined $grammar{$prod}[0]) {
-           $endBuffer .= GenerateGrammar($prod);
-         }
-         else { # If first element of hash array undef, this is a header
-           if ($prod =~ /SURFACE SYNTAX/) {
-             $endBuffer .= "<h2>LEXICAL STRUCTURE</h2>\n";
-           }
-           elsif ($prod =~ /EXPRESSIONS/) {
-             $endBuffer .= "<h2>SYNTACTIC STRUCTURE</h2>\n<h3>EXPRESSIONS</h3>\n";
-           }
-           else {
-             $prod =~ s/h1>/h3>/g;
-             $endBuffer .= $prod;
-           }
-         }
-       }
-
-     }
-     # print out section of grammar
-     elsif ( $_ =~ /<pre class="code grammarSection">/ ) {
-       # ascertain which section (should be tag contents)
-       if ($_ =~ /<pre class="code grammarSection">(.*?)<\/pre>/ ) {
-         my $section = $1;
-         my $inSectionFlag = 0; # currently processing selected section
-         # iterate through grammar list
-         foreach my $prod (@grammarList) {
-           # If first element of hash array undef, this is a header
-           if (!defined $grammar{$prod}[0]) {
-             if ($prod =~ /$section/i) {
-                $inSectionFlag = 1;
-             }
-             else {
-                $inSectionFlag = 0;
-             }
-           }
-           elsif ($inSectionFlag) {
-             $endBuffer .= GenerateGrammar($prod);
-           }
-         }
-       }
-     }
-     # merge smlnj code
-     elsif ( $_ =~ /<pre class="code insert_ml">/ ) {
-       my $text = $_;
-       my @funcNames = ();
-
-       # parse string and place tag contents into array
-       while ( length($text) ) {
-         if ( $text =~ /<pre class="code insert_ml">(.*?)<\/pre>/) {
-           push (@funcNames, $1);
-           $text = $'; # reset $text to everything after the pre tag
-         }
-         else {
-           $text = '';
-         }
-       }
-
-       # Add sml code for each element of the array
-       foreach my $item (@funcNames) {
-         if (defined $smlHash{$item}) {
-           my $code = $smlHash{$item};
-           $code =~ s/ /&nbsp;/g;
-           $code =~ s/\n/<br\/>/g;
-           $endBuffer .= "<code>$code</code>";
-         }
-       }
-
-     }
-     elsif ( $_ =~ /<pre/) {
-       my $line = CurlyToStraight($_);
-       $endBuffer .= $line;
-       if ($_ !~ /<\/pre/) {    # set $inPreTag if line has no closing </pre>
-         $inPreTag = 1;
-       }
-     }
-     elsif ( $inPreTag ) {
-       if ( $_ =~ /<\/pre/) {
-         $inPreTag = 0;
-       }
-       my $line = CurlyToStraight($_);
-       $endBuffer .= $line;
-     }
-     elsif ( $_ =~ /^<br \/>/ ) {
-       $endBuffer .= $_;
-     }
- }
-  $endBuffer .= '</html>';
-  close BFILE;
-  
-  # === Write buffer to file ===
-  open (DFILE, ">wikiExport.doc");
-  print DFILE $endBuffer;
-  close DFILE;
-}
-
-# ===============
-# Subroutine CurlyToStraight
-# Purpose: Convert "curly" quotes to straight quotes inside <pre /> tags
-# ================
-
-sub CurlyToStraight {
-  my ($line) = @_;
-  $line =~ s/\x{e2}\x{80}\x{99}/\'/g;
-  $line =~ s/\x{e2}\x{80}\x{98}/\'/g;
-  $line =~ s/\x{e2}\x{80}\x{9c}/\"/g;
-  $line =~ s/\x{e2}\x{80}\x{9d}/\"/g;
-  return $line;
-}
-
-# ===============
-# Subroutine CurlyToHTMLCurly
-# Purpose: Convert "curly" quotes to HTML curly quotes
-# ================
-
-sub CurlyToHTMLCurly {
-  my ($line) = @_;
-  $line =~ s/\x{e2}\x{80}\x{99}/&#8217;/g;
-  $line =~ s/\x{e2}\x{80}\x{98}/&#8216;/g;
-  $line =~ s/\x{e2}\x{80}\x{9c}/&#8220;/g;
-  $line =~ s/\x{e2}\x{80}\x{9d}/&#8221;/g;
-  return $line;
-}
 
 # ===============
 # Subroutine GenerateGrammar
