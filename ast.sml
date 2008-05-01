@@ -234,7 +234,7 @@ datatype TYPE =
          NullType
        | UndefinedType
        | AnyType
-       | RecordType of (IDENTIFIER_EXPRESSION * TYPE) list
+       | RecordType of (NAME_EXPRESSION * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
        | FunctionType of { typeParams: IDENTIFIER list,
@@ -248,7 +248,8 @@ datatype TYPE =
        | AppType of (TYPE * TYPE list)
 
        | NominalType of NAME
-       | ObjectRefType of (TYPE * IDENTIFIER_EXPRESSION)
+       | TypeNameRefType of (TYPE * NAME_EXPRESSION)
+       | TypeIndexRefType of (TYPE * int)
 
 | TypeVarFixtureRef ???
 
@@ -361,20 +362,20 @@ datatype EXPRESSION =
        | LiteralDecimal of Decimal.DEC
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
-       | LiteralArray of (EXPRESSION * TYPEESSION option)
-       | LiteralObject of (FIELD list * TYPEESSION option)
+       | LiteralArray of (EXPRESSION * TYPE option)
+       | LiteralObject of (FIELD list * TYPE option)
        | LiteralFunction of FUNCTION
        | LiteralRegExp of Ustring.STRING
        | ConditionalExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
        | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
        | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPERESSION)
        | UnaryExpr of (UNOP * EXPRESSION)
-       | TypeExpr of TYPEESSION
+       | TypeExpr of TYPE
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPRESSION option
        | SuperExpr of EXPRESSION option
        | CallExpr of (EXPRESSION * EXPRESSION list)
-       | ApplyTypeExpr of (EXPRESSION * TYPEESSION list)
+       | ApplyTypeExpr of (EXPRESSION * TYPE list)
        | LetExpr of (HEAD * EXPRESSION)
        | NewExpr of (EXPRESSION * EXPRESSION list)
        | GetExpr of REFERENCE

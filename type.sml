@@ -113,37 +113,6 @@
 
 need to inline, to beta-reduce, to eval refs, etc
 
-
-EXPRESSION = 
-       | CallExpr of {
-             func: EXPRESSION,
-             actuals: EXPRESSION list }
-       | ApplyTypeExpr of {                  // ONLY generic fn instantiation
-             expr: EXPRESSION,  (* apply expr to type list *)
-             actuals: TYPE list }
-
-     and TYPE =
-       | FunctionType of FUNC_TYPE
-       | AppType of                         // apply type constructor
-         { base: TYPE,
-           args: TYPE list }
-       | LamType of                         // 
-         { params: IDENTIFIER list,
-           body: TYPE }
-
-
-AppType
-                                           { base = TypeName
-                                                      Identifier
-                                                        { ident = "C",
-                                                          openNamespaces = []},
-                                             args = [TypeName
-                                                       Identifier
-                                                         { ident = "int",
-                                                           openNamespaces = []}]}}],
-
-
-
  *)
 
 
@@ -810,7 +779,9 @@ fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
 
 *)
 
-fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) (ty1 : Ast.TYPE) (ty2 : Ast.TYPE)
+fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
+            (ty1 : Ast.TYPE)
+            (ty2 : Ast.TYPE)
     : bool = 
     (ty1 = ty2) (* reflexivity *) orelse
     (extra ty1 ty2) orelse
@@ -927,24 +898,21 @@ and equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
               (ty1 : Ast.TYPE)
               (ty2 : Ast.TYPE)
     : bool = 
-    (subType extra ty1 ty2)
+      (subType extra ty1 ty2)
     andalso
-    (subType extra ty2 ty1)
+      (subType extra ty2 ty1)
 
 
 (* -----------------------------------------------------------------------------
  * Compatible-subtyping:  <*
  * ----------------------------------------------------------------------------- *)
 
-fun compatibleSubtype ty1 ty2 = 
-    let in
-        traceTy "compatibleSubtype:ty1 " ty1;
-        traceTy "compatibleSubtype:ty2 " ty2;
-        subType
-            (fn ty1 => fn ty2 => ty2 = anyType )   
-            (* cannot use findSpecialConversion here, or Boolean(1) != true *)
-            ty1 ty2
-    end
+(* cannot use findSpecialConversion here, or Boolean(1) != true *)
+
+fun compatibleSubtype (ty1 : Ast.TYPE) (ty2 : Ast.TYPE) : bool = 
+    subType
+        (fn ty1 => fn ty2 => ty2 = anyType)   
+        ty1 ty2
 
 (*
 fun compatibleSubtype ty1 ty2 = 

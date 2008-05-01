@@ -152,11 +152,18 @@ following types:
 <p> A //NominalType// is a reference to a class or interface
 definition.
 
-<p> An //ObjectRefType// is used to extract a field of a record type
-or an array type.
+<p> To support destructuring assignment, the reference implementation
+internally uses the following two additional type forms:
 
-<FIXME>Explain the intuitive meaning of each type expression.
+<p> A //type name reference// has the form ''T.n'', where ''T'' is a type
+and ''n'' is a name. The type ''T'' should resolve to a record type
+with a field named ''n'' of some type ''S'', and ''T.n'' denotes that
+type ''S''.
 
+<p> A //type index reference// has the form ''T[i]'', where ''T'' is a
+type and ''i'' is an integer. The type ''T'' should resolve to an
+array type whose entry at index ''i'' is some type ''S'', and ''T[i]''
+denotes that type ''S''.
 
 <IMPL>
 <INCLUDE file="ast.sml" name="datatype TYPE">
@@ -164,8 +171,6 @@ or an array type.
 <FIXME>The above datatype is commented out in the RI, and so may not
 yet be consistent with the following code.
 
-
-<p>A //reifiable type// is any type that is not "*" or a union type.
 
 
 == Type Normalization ==
@@ -429,27 +434,57 @@ straightforward manner by checking subtyping in both directions, but
 more efficient implementations are of course possible. Like
 ''subType'', ''equivType'' also takes an ''extra'' parameter.
 
-<NOTE>The following implementation is straightforward, but its
-worst-case time complexity is exponential in the height of a type.
+<NOTE>The following implementation is straightforward and sufficies
+for a specification, but its worst-case time complexity is exponential
+in the height of a type, and so this naive approach would be
+inadequate in an implementation.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and equivType">
 
+== Compatible Types ==
+
+<p>The compatibility relation is a binary relation on types. Two types ''S''
+and ''T'' are compatible if ''T'' can be obtained from ''S'' by replacing certain
+portions of ''S'' by the any type ''*''. Thus, for example, the record
+type ''{x : int}'' is
+compatible with both ''{x : *}'' and with ''*'', but the type ''{x : *}'' is not
+compatible with ''{x : int}''.
+
+This compatibility relation is reflexive and transitive, but not
+symmetric.
+
 == Compatible-Subtyping ==
+
+<p>The compatible-subtype relation is a binary relation on types.  A
+type ''S'' is a compatible-subtype of a type ''T'' if there exists
+some type ''U'' such that ''S'' is a subtype of ''U'' and ''U''
+compatible with ''T''.
+
+<p>For example, the record type ''{x : int, y : bool}'' is a
+compatible-subtype of the types ''{x : *, y : *}'', ''{x : int}'',
+''{x : *}'', and ''*''.
+
+<p>The compatible-subtyping relation is reflexive and transitive, but not symmetric.
+
+<p>The compatible-subtyping relation is implemented by calling the
+previously-defined ''subType'' predicate and passing in an ''extra''
+parameter that reasons about compatibility, in that every type is
+compatible with ''*''.
+<IMPL>
+<INCLUDE file="type.sml" name="fun compatibleSubtype">
+
+
+== Type Invariants at Run Time ==
+
+<p>A //reifiable type// is any type that is not "''*''" or a union type.
 
 <p>Every value in ES has an associated //allocated type//, which is a type that is
 associated with the value when the value is first allocated or created. An allocated
 type is always a reifiable type. The allocated type of a value is invariant; for example,
 updating the fields of an object cannot change the allocated tpe of that object.
 
-<p>In general, if a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
-is a compatible-subtype of ''T''.  
-
-<p> 
-<IMPL>
-<INCLUDE file="type.sml" name="fun compatibleSubtype">
-
-<FIXME>Add prose from Cormac's //Type System// whitepaper.
-
+<p>If a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
+is a //compatible-subtype// of ''T''.  
 
 
