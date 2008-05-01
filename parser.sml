@@ -510,31 +510,65 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
  stream -- we wire them in ourselves during AST synthesis and definition
  -- so for the sake of *parsing* the grammar looks like this:
 
-    NameExpression
-        NameExpression :: Identifier
+    NameExpression''        
+        NameExpression'' :: Identifier
         Identifier
+
+    NameExpression'
+        StringLiteral :: NameExpression''
+        NameExpression
+
+    NameExpression
+        StringLiteral   (if in label context)
+        DoubleLiteral   (if in label context)
+        NameExpression'
+
+  (with an additional wrinkle associated with some label contexts that permit decimal
+   and string-literal plain identifiers -- w/o qualification -- as 
 
  *)
 
-and nameExpression' (prefix:Ast.NAME_EXPRESSION option) (ts0: TOKENS)
+and nameExpression'' (qual:Ast.NAMESPACE_EXPRESSION option) 
+                     (ts0: TOKENS)
     : (TOKENS * Ast.NAME_EXPRESSION) = 
     let
-        val (ts1, nd1) = identifier ts0 
-        val ne = case prefix of 
+        val (ts1, nd1) = identifier ts0
+        val ne = case qual of 
                      NONE => Ast.UnqualifiedName { identifier = nd1, 
                                                    openNamespaces = [],
                                                    globalNames = [] }
-                   | SOME ne => Ast.QualifiedName { namespace = Ast.NamespaceName ne,
+                   | SOME ns => Ast.QualifiedName { namespace = ns,
                                                     identifier = nd1 }
     in
         case ts1 of 
-            (DoubleColon, _) :: _ => nameExpression' (SOME ne) (tl ts1)
+            (DoubleColon, _) :: _ => 
+            nameExpression'' (SOME (Ast.NamespaceName ne)) (tl ts1)
           | _ => (ts1, ne)
     end
 
-and nameExpression (ts0: TOKENS) 
-    : (TOKENS * Ast.NAME_EXPRESSION) = 
-    nameExpression' NONE ts0
+and nameExpression' (ts0: TOKENS) 
+    : (TOKENS * Ast.NAME_EXPRESSION) =
+        case ts0 of 
+            (StringLiteral s, _) :: (DoubleColon, _) :: ts => 
+            nameExpression'' (SOME (Ast.Namespace (Ast.TransparentNamespace s))) ts
+          | _ => nameExpression'' NONE ts0
+                 
+
+and nameExpression (ts0: TOKENS)
+                   (literalsAsIdents:bool)
+    : (TOKENS * Ast.NAME_EXPRESSION) =
+      if literalsAsIdents
+      then           
+          case ts0 of 
+              (StringLiteral s, _) :: ts => 
+              (ts, Ast.QualifiedName { identifier = s, 
+                                       namespace = Ast.Namespace Name.publicNS })
+            | (DoubleLiteral d, _) :: ts => 
+              (ts, Ast.QualifiedName { identifier = Mach.NumberToString d,
+                                       namespace = Ast.Namespace Name.publicNS })
+            | _ => nameExpression' ts0
+      else
+          nameExpression' ts0
 
 (*
     ParenExpression
@@ -760,7 +794,7 @@ and literalField (ts:TOKENS)
         fun getterSetter () =
             let
                 val (ts1,nd1) = fieldKind ts
-                val (ts2,nd2) = nameExpression ts1
+                val (ts2,nd2) = nameExpression ts1 false
             in case ts2 of
                 (Colon, _) :: _ =>
                     let
@@ -776,7 +810,7 @@ and literalField (ts:TOKENS)
       | (Set, _) :: (Colon,_) :: _ => getterSetter ()
       | (Get, funcStartLoc) :: _ =>
             let
-                val (ts1,nd1) = nameExpression (tl ts)
+                val (ts1,nd1) = nameExpression (tl ts) false
                 val (ts2,{fsig,block}) = functionCommon (ts1)
                 val Ast.Block {loc=blockLoc, ...} = block
             in
@@ -796,7 +830,7 @@ and literalField (ts:TOKENS)
             end
       | (Set, funcStartLoc) :: _ =>
             let
-                val (ts1,nd1) = nameExpression (tl ts)
+                val (ts1,nd1) = nameExpression (tl ts) false
                 val (ts2,{fsig,block}) = functionCommon (ts1)
                 val Ast.Block {loc=blockLoc, ...} = block
             in
@@ -818,15 +852,7 @@ and literalField (ts:TOKENS)
       | _ =>
         let
             val (ts1,nd1) = fieldKind ts
-            val (ts2,nd2) = case ts1 of 
-                                (StringLiteral s, _) :: _ => 
-                                (tl ts1, Ast.QualifiedName { identifier = s, 
-                                                             namespace = Ast.Namespace Name.publicNS })
-                              | (DoubleLiteral n, _) :: _ => 
-                                (tl ts1, Ast.QualifiedName { identifier = (Mach.NumberToString n),
-                                                             namespace = Ast.Namespace Name.publicNS })
-                                                             
-                              | _ => nameExpression ts1
+            val (ts2,nd2) = nameExpression ts1 true
         in case ts2 of
                (Colon, _) :: _ =>
                let
@@ -1202,7 +1228,7 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
             end
       | _ =>
             let
-                val (ts1,nd1) = nameExpression ts0
+                val (ts1,nd1) = nameExpression ts0 false
             in
                 (ts1,Ast.LexicalReference {name=nd1, loc=locOf ts0})
             end
@@ -1413,7 +1439,7 @@ and propertyOperator (ts0: TOKENS, nd0: Ast.EXPRESSION)
                end 
            else
                let
-                   val (ts1,nd1) = nameExpression (tl ts0)
+                   val (ts1,nd1) = nameExpression (tl ts0) false
                in
                    (ts1, Ast.ObjectNameReference {object=nd0, name=nd1, loc=locOf ts0})
                end
@@ -2726,7 +2752,7 @@ and destructuringFieldListFromExpr (e:Ast.FIELD list)
 and destructuringField (ts:TOKENS, g:GAMMA)
     : (TOKENS * FIELD_PATTERN) =
     let
-        val (ts1,nd1) = nameExpression ts
+        val (ts1,nd1) = nameExpression ts true
     in case ts1 of
         (Colon, _) :: _ =>
             let
@@ -3017,7 +3043,7 @@ and basicTypeExpression (ts0:TOKENS)
       | (LeftBracket, _) :: _ => arrayType ts0
       | _ =>
             let
-                val (ts1, nd1) = nameExpression ts0
+                val (ts1, nd1) = nameExpression ts0 false
             in case ts1 of
                 (LeftDotAngle, _) :: _ => 
                     let
@@ -3197,7 +3223,7 @@ and fieldTypeList (ts0:TOKENS)
 and fieldType (ts0:TOKENS)
     : (TOKENS * Ast.FIELD_TYPE) =
     let val _ = trace ([">> fieldType with next=", tokenname (hd (ts0))])
-        val (ts1, nd1) = nameExpression ts0
+        val (ts1, nd1) = nameExpression ts0 true
     in case ts1 of
         (Colon, _) :: _ =>
             let
@@ -4896,7 +4922,7 @@ and attribute (ts:TOKENS, attrs:ATTRS, GlobalScope)
       | (Prototype, _) :: _ => error(["invalid attribute in global context"])
       | _ =>
             let
-                val (ts1,nd1) = nameExpression (ts)
+                val (ts1,nd1) = nameExpression (ts) false
             in
                 (tl ts,{
                         ns = SOME (Ast.NamespaceName nd1),
@@ -4982,7 +5008,7 @@ and attribute (ts:TOKENS, attrs:ATTRS, GlobalScope)
             (error(["invalid attribute in class context"]);error ["unknown token in attribute"])
       | _ =>
             let
-                val (ts1,nd1) = nameExpression (ts)
+                val (ts1,nd1) = nameExpression (ts) false
             in
                 (tl ts,{
                         ns = SOME (Ast.NamespaceName nd1),
@@ -5740,7 +5766,7 @@ and functionSignatureType (ts) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = nameExpression (tl (tl (tl ts1)))
+                val (ts2,nd2) = nameExpression (tl (tl (tl ts1))) false
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
@@ -6495,7 +6521,7 @@ and typeIdentifierList (ts:TOKENS)
             in case ts of
                 (Comma, _) :: _ =>
                     let
-                        val (ts1,nd1) = nameExpression (tl ts)
+                        val (ts1,nd1) = nameExpression (tl ts) false
                         val (ts2,nd2) = typeIdentifierList' (ts1)
                     in
                         (ts2,nd1::nd2)
@@ -6506,7 +6532,7 @@ and typeIdentifierList (ts:TOKENS)
                         (ts,[])
                     end
             end
-        val (ts1,nd1) = nameExpression (ts)
+        val (ts1,nd1) = nameExpression (ts) false
         val (ts2,nd2) = typeIdentifierList' (ts1)
     in
         trace(["<< typeIdentifierList with next=", tokenname(hd ts2)]);
@@ -6619,7 +6645,7 @@ and namespaceExpression (ts:TOKENS)
         (StringLiteral s, _) :: _ => (tl ts, Ast.Namespace (Ast.TransparentNamespace s))
       | _ => 
         let
-            val (ts1, nd1) = nameExpression ts
+            val (ts1, nd1) = nameExpression ts false
         in
             (ts1, Ast.NamespaceName nd1)
         end
