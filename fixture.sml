@@ -250,11 +250,15 @@ fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
     (* INFORMATIVE *)
     List.filter (fn n1 => List.exists (fn n2 => compareNamespaces (n1, n2)) ns2) ns1
 
-fun selectNamespacesByRootRib (identifier: IDENTIFIER,
-                               namespaces: NAMESPACE_SET,
-                               rootRib: Ast.RIB)
+fun selectNamespacesByGlobalNames (identifier: IDENTIFIER,
+                                   namespaces: NAMESPACE_SET,
+                                   globalNames: Ast.NAME_SET)
     : NAMESPACE_SET = 
-    List.filter (fn ns => hasFixture rootRib (Ast.PropName {id=identifier, ns=ns})) namespaces
+    let
+        fun hasName ns = List.exists (fn gn => gn = {id=identifier, ns=ns }) globalNames
+    in
+        List.filter hasName namespaces
+    end
 
 fun selectNamespacesByOpenNamespaces ([], _) = []
  |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
@@ -318,7 +322,7 @@ fun selectNamespacesByClass ([], namespaces, _) = namespaces
           | _ => matches
     end
 
-fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, rootRib: Ast.RIB option)
+fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, globalNames: Ast.NAME_SET)
     : (Ast.RIBS * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
@@ -326,13 +330,13 @@ fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMES
     in
         case matches of
             NONE => NONE
-          | SOME (ribs, namespace :: []) => SOME (ribs, {ns=namespace, id=identifier})
-          | SOME (ribs, namespaces') =>
+          | SOME (rib, namespace :: []) => SOME (rib, {ns=namespace, id=identifier})
+          | SOME (rib, namespaces') =>
             let
                 val matches' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces')
             in
                 case matches' of
-                    namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
+                    namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
                   | [] => NONE
                   | _ =>
                     let
@@ -341,26 +345,54 @@ fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMES
                         val matches'' = selectNamespacesByClass (classList, namespaces, identifier)
                     in 
                         case matches'' of
-                            namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
+                            namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
                           | [] => raise (LogErr.NameError "internal error")
                           | _ => 
                             if length ribs = 1
                             then 
-                                (case rootRib of 
-                                     NONE => raise (LogErr.NameError "ambiguous reference")
-                                   | SOME rr => 
-                                     (case selectNamespacesByRootRib (identifier, matches'', rr) of
-                                          namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
-                                        | [] => raise (LogErr.NameError "internal error")
-                                        | _ => raise (LogErr.NameError "ambiguous reference")))
+                                case selectNamespacesByGlobalNames (identifier, matches'', globalNames) of
+                                    namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
+                                  | [] => raise (LogErr.NameError "internal error")
+                                  | _ => raise (LogErr.NameError "ambiguous reference")
                             else
                                 raise (LogErr.NameError "ambiguous reference")
                     end
             end
     end
 
+fun resolveNamespaceExpr (ribs:Ast.RIBS)
+                         (nse:Ast.NAMESPACE_EXPRESSION)
+    : Ast.NAMESPACE = 
+    case nse of 
+        Ast.Namespace ns => ns
+      | Ast.NamespaceName ne => 
+        (case resolveNameExpr ribs ne of
+             (_, _, Ast.NamespaceFixture ns) => ns
+           | _ => error ["namespace expression resolved to non-namespace fixture: ", LogErr.nsExpr nse])
+        
 
-
+and resolveNameExpr (ribs:Ast.RIBS) 
+                    (ne:Ast.NAME_EXPRESSION) 
+    : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
+    case ne of
+        Ast.QualifiedName { namespace, identifier } => 
+        let
+            val ns = resolveNamespaceExpr ribs namespace
+            val name = { ns = ns, id = identifier }
+            fun search (r::rs) = if hasFixture r (Ast.PropName name)
+                                 then (r::rs)
+                                 else search rs
+              | search [] = []
+        in
+            case search ribs of 
+                [] => error ["qualified name not present in ribs: ", LogErr.name name]
+              | (rib::ribs) => ((rib::ribs), name, (getFixture rib (Ast.PropName name)))
+        end
+      | Ast.UnqualifiedName { identifier, openNamespaces, globalNames } => 
+        case findName (ribs, identifier, openNamespaces, globalNames) of
+            NONE => error ["unable to resolve unqualified name expression: ", LogErr.nameExpr ne]
+          | SOME ((rib::ribs), name) => (rib::ribs, name, (getFixture rib (Ast.PropName name)))
+          | SOME ([], _) => error ["name expression resolved to reference in empty rib: ", LogErr.nameExpr ne]
 
 
 end

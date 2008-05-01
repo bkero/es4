@@ -178,40 +178,6 @@ fun leastUpperBound (t1:Ast.TYPE)
 
 (******************* Utilities for resolving IDENTIFIER_EXPRESSIONs *********************)
 
-(* Resolves the given expr to a namespace, or to NONE *)
-
-fun resolveExprToNamespace (env:ENV)
-                           (expr:Ast.EXPRESSION)
-    : Ast.NAMESPACE option =
-    case expr of
-        Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
-        SOME ns
-      | Ast.LexicalRef {ident= Ast.QualifiedIdentifier { qual=expr, ident }, loc } =>
-        let
-        in
-            LogErr.setLoc loc;
-            case resolveExprToNamespace env expr of
-                NONE => NONE
-              | SOME ns => 
-                resolveExprToNamespace env  
-                                       (Ast.LexicalRef {ident=(Ast.Identifier { openNamespaces=[[ns]], 
-                                                                                ident=ident, 
-                                                                                rootRib=NONE }), 
-                                                        loc=loc })
-        end
-      | Ast.LexicalRef {ident = Ast.Identifier { openNamespaces, ident, rootRib }, loc} =>
-        let
-         in
-            LogErr.setLoc loc;
-            case Fixture.findName ((#ribs env), ident, openNamespaces, rootRib) of 
-                NONE => NONE (* no occurrence in ribs *)
-              | SOME (ribs, name) =>
-                case Fixture.getFixture (List.hd ribs) (Ast.PropName name) of
-                    Ast.NamespaceFixture ns => SOME ns
-                  | _ => NONE
-        end
-      | _ => NONE
-
 (* Returns the type of the given fixture. The result is not yet normalized,
  * and so only makes sense in the environment the fixture was defined in. *)
 
@@ -236,34 +202,16 @@ fun typeOfFixture (env:ENV)
 
 (******************** Verification **************************************************)
 
-fun verifyIdentExpr (env:ENV)
-                    (ribs:Ast.RIBS)
-                    (idexpr:Ast.IDENTIFIER_EXPRESSION)
-    : Ast.TYPE option =
-    let in
-        case idexpr of
-            Ast.QualifiedIdentifier { qual=expr, ident } => 
-            let in
-                case resolveExprToNamespace env expr of
-                    SOME ns =>
-                    verifyIdentExpr env ribs
-                                    (Ast.Identifier { openNamespaces = [[ns]], ident = ident, rootRib=NONE})
-                  | NONE => NONE
-            end
-          | Ast.Identifier { openNamespaces, ident, rootRib } =>
-            let 
-            in
-                case Fixture.findName (ribs, ident, openNamespaces, rootRib) of 
-                    NONE => NONE (* no occurrence in ribs *)
-                  | SOME (ribs, name) =>
-                    let val fixture = Fixture.getFixture (List.hd ribs) (Ast.PropName name)
-                        val ty = typeOfFixture env fixture
-                        val ty = verifyType (withRibs env ribs) ty
-                    in
-                        SOME ty
-                    end
-            end
-          | _ => NONE (* verifier does not handle these kinds of references *)
+fun verifyNameExpr (env:ENV)
+                   (ribs:Ast.RIBS)
+                   (nameExpr:Ast.NAME_EXPRESSION)
+    : Ast.TYPE =
+    let
+        val (_, _, fix) = Fixture.resolveNameExpr ribs nameExpr
+        val ty = typeOfFixture env fix
+        val ty = verifyType (withRibs env ribs) ty
+    in
+        ty
     end
 
 (* Verification (aka normalization) converts a (non-closed) TYPE into a 
@@ -345,9 +293,11 @@ and verifyLvalue (env:ENV)
     in
         case expr of
             (* FIXME: check for final fields *)
-            Ast.ObjectRef { base, ident, loc } => 
+            Ast.ObjectNameReference _ => 
             verifyExpr env expr
-          | Ast.LexicalRef { ident, loc } => 
+          | Ast.ObjectIndexReference _ => 
+            verifyExpr env expr
+          | Ast.LexicalReference _ => 
             verifyExpr env expr
           | _ =>
             (warning ["Not an lvalue"]; anyType)
@@ -626,32 +576,33 @@ and verifyExpr2 (env:ENV)
                 anyType
             end
 
-          | Ast.ObjectRef { base, ident=idexpr, loc } =>
+          | Ast.ObjectIndexReference { object, index, loc } =>
+            (verifySub object; 
+             verifySub index)
+
+          | Ast.ObjectNameReference { object, name, loc } =>
             let
                 val _ = LogErr.setLoc loc
-                val t = verifySub base
+                val t = verifySub object
+                val refName = Type.nameExprToFieldName (#ribs env) name
             in
                 case t of
                     Ast.AnyType => anyType
                   | Ast.ObjectType fields =>
                     let in
                         case List.find
-                                 (fn {name, ty} => 
-                                     case idexpr of
-                                         (* FIXME: ignoring namespaces here *)
-                                         Ast.Identifier { ident, ... } => ident=name
-                                       | _ => false)
+                                 (fn {name, ty} => refName = (Type.nameExprToFieldName (#ribs env) name))
                                  fields
                          of
-                         SOME {name, ty} => ty
-                       | NONE => (warning ["Unknown field name ", LogErr.identExpr idexpr,
-                                           " in object type ", LogErr.ty t];
-                                  anyType)
+                            SOME {name, ty} => ty
+                          | NONE => (warning ["Unknown field name ", LogErr.name refName,
+                                              " in object type ", LogErr.ty t];
+                                     anyType)
                     end
 (*
                   | Ast.InstanceType 
 *)
-                  | _ => (warning ["ObjectRef on non-object type: ", LogErr.ty t]; 
+                  | _ => (warning ["ObjectNameReference on non-object type: ", LogErr.ty t]; 
                           anyType)
             end
 
@@ -708,13 +659,13 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
 
 *)
 
-          | Ast.LexicalRef { ident, loc } =>
+          | Ast.LexicalReference { name, loc } =>
             let in
                 trace [ "lexicalref ", if strict then "strict" else "non-strict"];
                 LogErr.setLoc loc;
-                case verifyIdentExpr env (#ribs env) ident of
-                    NONE => (warning ["unbound IDENTIFIER_EXPRESSION ", LogErr.identExpr ident]; anyType)
-                  | SOME t => t
+                if strict 
+                then Ast.AnyType (* FIXME: verifyNameExpr env (#ribs env) name *)
+                else Ast.AnyType (* try/catch, or reformulate the lookup to have a fail-soft mode. *)
             end
                 
           | Ast.SetExpr (a, le, re) =>

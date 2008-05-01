@@ -50,7 +50,11 @@ datatype NAMESPACE =
 
 type NAME = { ns: NAMESPACE, id: IDENTIFIER }
 
-type MULTINAME = { nss: NAMESPACE list list, id: IDENTIFIER }
+type NAMESPACE_SET = NAMESPACE list
+
+type OPEN_NAMESPACES = NAMESPACE_SET list
+
+type NAME_SET = NAME list
 
 datatype BINTYPEOP =
          Cast
@@ -120,11 +124,23 @@ datatype VAR_DEFN_TAG =
        | LetConst
 
 datatype PRAGMA =
-         UseNamespace of EXPRESSION
-       | UseDefaultNamespace of EXPRESSION
+         UseNamespace of NAMESPACE_EXPRESSION
+       | UseDefaultNamespace of NAMESPACE_EXPRESSION
        | UseStrict
        | UseStandard
 
+     and NAME_EXPRESSION = 
+         QualifiedName of { namespace: NAMESPACE_EXPRESSION,
+							identifier: IDENTIFIER }
+       | UnqualifiedName of { identifier: IDENTIFIER, 
+                              openNamespaces: OPEN_NAMESPACES, 
+                              globalNames: NAME_SET }
+
+     and NAMESPACE_EXPRESSION =
+         Namespace of NAMESPACE
+       | NamespaceName of NAME_EXPRESSION
+
+                            
      and FUNC_NAME_KIND =
          Ordinary
        | Operator
@@ -218,7 +234,6 @@ datatype TYPE =
          NullType
        | UndefinedType
        | AnyType
-       | VoidType
        | RecordType of (IDENTIFIER_EXPRESSION * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
@@ -229,7 +244,7 @@ datatype TYPE =
                            hasRest: bool,
                            result: TYPE
                          }
-       | IdentType of IDENTIFIER_EXPRESSION
+       | NonNullableType of TYPE
        | AppType of (TYPE * TYPE list)
        | NonNullType of TYPE
 
@@ -243,14 +258,14 @@ datatype TYPE =
 
      and TYPE =
          NullType
-       | AnyType
+       | AnyType 
        | UndefinedType
        | VoidType
        | UnionType of TYPE list
        | ArrayType of TYPE list
-       | TypeName of (IDENTIFIER_EXPRESSION * NONCE option)
+       | TypeName of (NAME_EXPRESSION * NONCE option)
        | ElementTypeRef of (TYPE * int)
-       | FieldTypeRef of (TYPE * IDENTIFIER)
+       | FieldTypeRef of (TYPE * NAME_EXPRESSION)
        | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | AppType of 
@@ -295,7 +310,7 @@ datatype STATEMENT =
        | ExprStmt of EXPRESSION
        | InitStmt of {
              kind: VAR_DEFN_TAG,
-             ns: EXPRESSION option,
+             ns: NAMESPACE_EXPRESSION option,
              prototype: bool,
              static: bool,
              temps: BINDINGS,
@@ -365,10 +380,6 @@ datatype EXPRESSION =
        | InitExpr of (INIT_TARGET * HEAD * INIT list)   (* HEAD is for temporaries *)
        | ArrayComprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
 
-datatype REFERENCE =
-         LexicalReference of IDENTIFIER_EXPRESSION
-       | ObjectReference of (EXPRESSION * IDENTIFIER_EXPRESSION)
-
 
 *)
 
@@ -381,28 +392,21 @@ datatype REFERENCE =
        | ThisExpr of THIS_KIND option
        | YieldExpr of EXPRESSION option
        | SuperExpr of EXPRESSION option
-       | CallExpr of {
-             func: EXPRESSION,
-             actuals: EXPRESSION list }
-       | ApplyTypeExpr of {
-             expr: EXPRESSION,  (* apply expr to type list *)
-             actuals: TYPE list }
+       | CallExpr of 
+         { func: EXPRESSION,
+           actuals: EXPRESSION list }
+       | ApplyTypeExpr of 
+         { expr: EXPRESSION,  (* apply expr to type list *)
+           actuals: TYPE list }
 
        (* defs are rewritten into head by defn phase, and so defs are ignored in verifier and in eval *)
-       | LetExpr of {
-             defs: BINDINGS,  
-             body: EXPRESSION,
-             head: HEAD option }
-       | NewExpr of {
-             obj: EXPRESSION,
-             actuals: EXPRESSION list }
-       | ObjectRef of {
-             base: EXPRESSION,
-             ident: IDENTIFIER_EXPRESSION,
-             loc: LOC option }
-       | LexicalRef of {
-             ident: IDENTIFIER_EXPRESSION,
-             loc: LOC option }
+       | LetExpr of 
+         { defs: BINDINGS,  
+           body: EXPRESSION,
+           head: HEAD option }
+       | NewExpr of 
+         { obj: EXPRESSION,
+           actuals: EXPRESSION list }
        | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
        | ListExpr of EXPRESSION list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
@@ -410,6 +414,14 @@ datatype REFERENCE =
        | GetParam of int
        | Comprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
        | LiteralExpr of LITERAL
+       | LexicalReference of { name: NAME_EXPRESSION,
+                               loc: LOC option }
+       | ObjectNameReference of { object: EXPRESSION,
+								  name: NAME_EXPRESSION,
+                                  loc: LOC option }
+	   | ObjectIndexReference of { object: EXPRESSION,
+								   index: EXPRESSION,
+                                   loc: LOC option }
 
      and INIT_TARGET = Hoisted
                      | Local
@@ -420,40 +432,6 @@ datatype REFERENCE =
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
-
-(* SPEC
-
-datatype IDENTIFIER_EXPRESSION =
-         Identifier { 
-             identifier: EXPRESSION,
-             namespaces: NAMESPACE_REF list list }
-       | QualifiedIdentifier { 
-             identifier: EXPRESSION,
-             namespace: NAMESPACE_REF }
-
-datatype NAMESPACE_REF =
-         NamespaceRef of REFERENCE (* resolves to a namespace fixture *)
-
-*)
-     and IDENTIFIER_EXPRESSION =
-         Identifier of
-           { ident : IDENTIFIER,
-             openNamespaces : NAMESPACE list list,
-             rootRib: RIB option  }
-(* CF: the above should be unified with
-        type MULTINAME = { nss: NAMESPACE list list, id: IDENTIFIER }
-   Perhaps Identifier should be Multiname
-*)
-       | QualifiedExpression of  (* type * *)
-           { qual : EXPRESSION,
-             expr : EXPRESSION }
-       (* for bracket exprs: o[x] and @[x] *)
-       | ExpressionIdentifier of
-         { expr: EXPRESSION,
-           openNamespaces : NAMESPACE list list }
-       | QualifiedIdentifier of
-           { qual : EXPRESSION,
-             ident : Ustring.STRING }
 
      and LITERAL =
          LiteralNull
@@ -549,25 +527,25 @@ withtype
 
      and FIELD =
            { kind: VAR_DEFN_TAG,
-             name: IDENTIFIER_EXPRESSION,
+             name: NAME_EXPRESSION,
              init: EXPRESSION }
 
      and FIELD_TYPE =
-           { name: IDENTIFIER,
+           { name: NAME_EXPRESSION,
              ty: TYPE }
 
      and FUNC_TYPE =
          { typeParams : IDENTIFIER list,
            thisType: TYPE,
            params: TYPE list,
+           hasRest: bool,         (* if true, the last elem in params is array type *)
            minArgs: int,         (* necessary because some of params can have defaults *)
-           hasRest: bool,      
            result: TYPE
          }
 
      and FUNC_DEFN =
            { kind : VAR_DEFN_TAG,
-             ns:  EXPRESSION option,
+             ns:  NAMESPACE_EXPRESSION option,
              final: bool,
              override: bool,
              prototype: bool,
@@ -578,7 +556,7 @@ withtype
 
      and VAR_DEFN =
            { kind : VAR_DEFN_TAG,
-             ns : EXPRESSION option,
+             ns : NAMESPACE_EXPRESSION option,
              static : bool,
              prototype : bool,
              bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
@@ -586,11 +564,11 @@ withtype
 
      and NAMESPACE_DEFN =
            { ident: IDENTIFIER,
-             ns: EXPRESSION option,
-             init: EXPRESSION option }
+             ns: NAMESPACE_EXPRESSION option,
+             init: NAMESPACE_EXPRESSION option }
 
      and CLASS_DEFN =
-           { ns: EXPRESSION option,
+           { ns: NAMESPACE_EXPRESSION option,
              privateNS: NAMESPACE,
              protectedNS: NAMESPACE,
              ident: IDENTIFIER,             
@@ -607,7 +585,7 @@ withtype
 
      and INTERFACE_DEFN =
            { ident: IDENTIFIER,
-             ns: EXPRESSION option,
+             ns: NAMESPACE_EXPRESSION option,
              nonnullable: bool,
              params: IDENTIFIER list,
              extends: TYPE list,
@@ -615,12 +593,12 @@ withtype
 
      and TYPE_DEFN =
            { ident: IDENTIFIER,
-             ns: EXPRESSION option,
+             ns: NAMESPACE_EXPRESSION option,
              typeParams : IDENTIFIER list,
              init: TYPE }
 
      and CLASS_BLOCK = 
-         { ns: EXPRESSION option,
+         { ns: NAMESPACE_EXPRESSION option,
            protectedNS: NAMESPACE,
            privateNS: NAMESPACE,
            ident: IDENTIFIER,
@@ -636,7 +614,7 @@ withtype
            { isEach: bool,
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
-                     ns : EXPRESSION option,
+                     ns : NAMESPACE_EXPRESSION option,
                      static : bool,
                      prototype : bool,
                      bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
@@ -651,7 +629,7 @@ withtype
            { rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)  (* CF: list option seems redundant *)
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
-                     ns : EXPRESSION option,
+                     ns : NAMESPACE_EXPRESSION option,
                      static : bool,
                      prototype : bool,
                      bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)

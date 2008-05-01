@@ -80,14 +80,9 @@ fun initsExprs (inits : Ast.INITS) = map (#2) inits
 
 fun headExprs (Ast.Head (_, inits)) = initsExprs inits
 
-fun identExprs ie =
-    (case ie of
-         Ast.QualifiedExpression { qual, expr } => [qual, expr]
-       | Ast.ExpressionIdentifier { expr, ... } => [expr]
-       | Ast.QualifiedIdentifier { qual, ... } => [qual]
-       | _ => [])
+fun nameExpr ne = []
 
-fun fieldExprs ({ name, init, ... } : Ast.FIELD) = init::(identExprs name)
+fun fieldExprs ({ name, init, ... } : Ast.FIELD) = init::(nameExpr name)
 
 fun blockChildren (Ast.Block directives) =
     (case directives of
@@ -228,7 +223,7 @@ and casesChildren (cases : Ast.CASE list) =
 
 fun varDefnExprs (defn : Ast.VAR_DEFN) =
     (case defn of
-         { ns=SOME ns, bindings, ... } => ns::(bindingsExprs bindings)
+         { ns=SOME ns, bindings, ... } => (bindingsExprs bindings)
        | { ns=NONE, bindings, ... } => bindingsExprs bindings)
 
 fun forEnumChildren (enum : Ast.FOR_ENUM_STATEMENT) =
@@ -307,8 +302,9 @@ fun exprChildren (expr : Ast.EXPRESSION)
       | Ast.LetExpr { defs, body, head=SOME head } => (body::(bindingsExprs defs) @ (headExprs head), [], [], [])
       | Ast.LetExpr { defs, body, head=NONE } => (body::(bindingsExprs defs), [], [], [])
       | Ast.NewExpr { obj, actuals } => (obj::actuals, [], [], [])
-      | Ast.ObjectRef { base, ident, ... } => (base::(identExprs ident), [], [], [])
-      | Ast.LexicalRef { ident, ... } => (identExprs ident, [], [], [])
+      | Ast.ObjectNameReference { object, name, ... } => (object::(nameExpr name), [], [], [])
+      | Ast.ObjectIndexReference { object, index, ... } => ([object, index], [], [], [])
+      | Ast.LexicalReference { name, ... } => (nameExpr name, [], [], [])
       | Ast.SetExpr (_, e1, e2) => ([e1, e2], [], [], [])
       | Ast.ListExpr es => (es, [], [], [])
       | Ast.InitExpr (_, head, inits) => ((headExprs head) @ (initsExprs inits), [], [], [])
@@ -320,17 +316,9 @@ fun stmtChildren (stmt : Ast.STATEMENT)
     : CHILDREN =
     case stmt of
         Ast.ExprStmt e => ([e], [], [], [])
-      | Ast.InitStmt { ns=SOME e, temps, inits, ... } =>
-        (e::(bindingsExprs temps) @ (List.concat (map initStepExprs inits)), [], [], [])
-      | Ast.InitStmt { ns=NONE, temps, inits, ... } =>
+      | Ast.InitStmt { temps, inits, ... } =>
         ((bindingsExprs temps) @ (List.concat (map initStepExprs inits)), [], [], [])
-      | Ast.ClassBlock { ns=SOME e, block, ... } =>
-        let
-            val (es, ss, ds, _) = blockChildren block
-        in
-            (e::es, ss, ds, [])
-        end
-      | Ast.ClassBlock { ns=NONE, block, ... } => blockChildren block
+      | Ast.ClassBlock { block, ... } => blockChildren block
       | Ast.ForInStmt enum => forEnumChildren enum
       | Ast.ThrowStmt e => ([e], [], [], [])
       | Ast.ReturnStmt e => ([e], [], [], [])
@@ -375,65 +363,27 @@ fun stmtChildren (stmt : Ast.STATEMENT)
 fun defnChildren (defn : Ast.DEFN)
     : CHILDREN =
     (case defn of
-         Ast.ClassDefn { ns, ctorDefn=SOME ctor, classDefns, instanceDefns, instanceStmts, ... } =>
+         Ast.ClassDefn { ctorDefn=SOME ctor, classDefns, instanceDefns, instanceStmts, ... } =>
          let
              val (es, fs) = ctorChildren ctor
-             val es' = case ns of
-                           NONE => []
-                         | SOME ns => [ns]
-         in
-             (es@es', instanceStmts, classDefns@instanceDefns, [])
-         end
-       | Ast.ClassDefn { ns, ctorDefn=NONE, classDefns, instanceDefns, instanceStmts, ... } =>
-         let
-             val es = case ns of
-                          NONE => []
-                        | SOME ns => [ns]
          in
              (es, instanceStmts, classDefns@instanceDefns, [])
          end
+       | Ast.ClassDefn { ctorDefn=NONE, classDefns, instanceDefns, instanceStmts, ... } =>
+         ([], instanceStmts, classDefns@instanceDefns, [])
        | Ast.VariableDefn defn => (varDefnExprs defn, [], [], [])
-       | Ast.FunctionDefn { ns, func, ... } =>
-         let
-             val es = case ns of
-                          NONE => []
-                        | SOME ns => [ns]
-         in
-             (es, [], [], [func])
-         end
+       | Ast.FunctionDefn { func, ... } =>
+         ([], [], [], [func])
        | Ast.ConstructorDefn ctor =>
          let
              val (es, fs) = ctorChildren ctor
          in
              (es, [], [], fs)
          end
-       | Ast.InterfaceDefn { ns, instanceDefns, ... } =>
-         let
-             val es = case ns of
-                          NONE => []
-                        | SOME ns => [ns]
-         in
-             (es, [], instanceDefns, [])
-         end
-       | Ast.NamespaceDefn { ns, init, ... } =>
-         let
-             val es = case ns of
-                          NONE => []
-                        | SOME ns => [ns]
-             val es' = case init of
-                           NONE => []
-                         | SOME init => [init]
-         in
-             (es@es', [], [], [])
-         end
-       | Ast.TypeDefn { ns, ... } =>
-         let
-             val es = case ns of
-                          NONE => []
-                        | SOME ns => [ns]
-         in
-             (es, [], [], [])
-         end)
+       | Ast.InterfaceDefn { instanceDefns, ... } =>
+         ([], [], instanceDefns, [])
+       | _ =>
+         ([], [], [], []))
 
 fun funcChildren (func : Ast.FUNC)
     : CHILDREN =

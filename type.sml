@@ -168,10 +168,6 @@ fun fmtName n = if !doTrace
                 then LogErr.name n  
                 else ""
 
-fun fmtMname n = if !doTrace
-                 then LogErr.multiname n
-                 else ""
-
 fun fmtType t = if !doTrace
                  then LogErr.ty t
                  else ""
@@ -261,9 +257,30 @@ fun foreachTyExpr (f:Ast.TYPE -> unit) (ty:Ast.TYPE) : unit =
         ()
     end
 
+(* FIXME: this is dubious: unlike many other contexts, when it comes to fields we 
+ * consider an unqualified name to be in public::, not in default-declaration-namespace.
+ * Possibly fix/change this. It's subtle.
+ *)
+fun nameExprToFieldName (env:Ast.RIBS) (Ast.QualifiedName {namespace, identifier}) = 
+    { ns = Fixture.resolveNamespaceExpr env namespace, id = identifier }
+  | nameExprToFieldName (env:Ast.RIBS) (Ast.UnqualifiedName { identifier, ... }) =
+    { ns = Name.publicNS, id = identifier }
+        
+
 (* ----------------------------------------------------------------------------- *)
 
-fun normalizeRefs (ty:Ast.TYPE)
+(* 
+ * FIXME: Cormac: sorry, I've made this ref-evaluation thing depend on
+ * envs like normalizeNames does, because it has to look up namespace
+ * qualifiers on field labels.
+ * 
+ * Unfortunately I have left it in a broken state of not handling
+ * shadowing under lambda binding forms yet. Either re-order it to run
+ * after the normalizeLambdas pass, or add in the same
+ * shadowing-handling stuff you do in normalizeNames. Up to you. -Graydon
+ *)
+fun normalizeRefs (env:Ast.RIBS) 
+                  (ty:Ast.TYPE)
     : Ast.TYPE =
     case ty of 
         Ast.ElementTypeRef (Ast.ArrayType arr, idx) => 
@@ -275,21 +292,22 @@ fun normalizeRefs (ty:Ast.TYPE)
                         then List.last arr
                         else Ast.AnyType
         in
-            normalizeRefs t
+            normalizeRefs env t
         end
       | Ast.ElementTypeRef (t, _) => error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
-      | Ast.FieldTypeRef (Ast.ObjectType fields, ident) => 
-        let                            
-            fun f [] = error ["FieldTypeRef on unknown field: ", Ustring.toAscii ident]
-              | f ({name,ty}::fields) = if name = ident 
+      | Ast.FieldTypeRef (Ast.ObjectType fields, nameExpr) => 
+        let                    
+            val fname = nameExprToFieldName env nameExpr
+            fun f [] = error ["FieldTypeRef on unknown field: ", LogErr.name fname]
+              | f ({name,ty}::fields) = if (nameExprToFieldName env name) = fname 
                                         then ty
                                         else f fields
             val t = f fields
         in
-            normalizeRefs t
+            normalizeRefs env t
         end
       | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-ObjectType: ", LogErr.ty t]
-      | x => mapTyExpr normalizeRefs x
+      | x => mapTyExpr (normalizeRefs env) x
                                    
 (* ----------------------------------------------------------------------------- *)
 
@@ -400,20 +418,9 @@ fun normalizeNames (useCache:bool)
                    (ty:Ast.TYPE)                    
   : Ast.TYPE = 
     let
-        fun getFixture (mname : Ast.MULTINAME) 
-                       (rootRib : Ast.RIB option) 
-            : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
-            case Fixture.findName (env, (#id mname), (#nss mname), rootRib) of 
-                SOME (rib::ribs, name) => 
-                (rib::ribs, name, Fixture.getFixture rib (Ast.PropName name))
-              | _ => error ["failed to resolve multiname ", LogErr.multiname mname, 
-                            " in type expression ", LogErr.ty ty,
-                            " in ribs ", LogErr.ribs env]
-                     
-        fun getType (mname : Ast.MULTINAME) 
-                    (rootRib : Ast.RIB option) 
+        fun getType (nameExpr : Ast.NAME_EXPRESSION) 
             : Ast.TYPE = 
-            case getFixture mname rootRib of 
+            case Fixture.resolveNameExpr env nameExpr of 
                 (env', _,  Ast.TypeFixture (ids,ty')) => 
                 let in
                     if ids = []
@@ -441,41 +448,17 @@ fun normalizeNames (useCache:bool)
                                     " in type expression ", LogErr.ty ty, 
                                     " is not a type"]
 
-        fun getNamespace (mname : Ast.MULTINAME) 
-                         (rootRib : Ast.RIB option) 
-            : Ast.NAMESPACE = 
-            case getFixture mname rootRib of 
-                (_, _, Ast.NamespaceFixture ns) => ns
-              | (_, n, _) => error ["name ", LogErr.name  n, 
-                                 " in qualifier of type expression ", LogErr.ty ty, 
-                                 " is not a namespace"]
-
-        fun getNamespaceForExpr (expr : Ast.EXPRESSION) : Ast.NAMESPACE = 
-            case expr of
-                Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
-                                                             
-              | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces, rootRib}, loc  } =>
-                (LogErr.setLoc loc;
-                 getNamespace {id = ident, nss = openNamespaces} rootRib)
-                
-              | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
-                (LogErr.setLoc loc; 
-                 getNamespace { id = ident, nss = [[ getNamespaceForExpr qual ]] } NONE)
-                
-              | _ => error ["dynamic qualifier in namespace of type expression ", LogErr.ty ty]
-
         fun doResolve _ =         
             case ty of 
-                Ast.TypeName (Ast.Identifier { ident, openNamespaces, rootRib }, _) => 
-                if List.exists (fn i => i=ident) ids
-                then ty (* local binding, don't replace *)
-                else getType { id = ident, nss = openNamespaces } rootRib
-                     
-              | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }, _) =>
-                (* FIXME: sure this is not a reference to a type var? *)
-                getType { id = ident, nss = [[ getNamespaceForExpr qual ]] } NONE
+                Ast.TypeName (nameExpr, _) => 
+                (case nameExpr of 
+                     Ast.UnqualifiedName { identifier, ... } => 
+                     if List.exists (fn i => i=identifier) ids
+                     then ty (* local binding, don't replace *)
+                     else getType nameExpr
+                   (* FIXME: sure this is not a reference to a type var? *)
+                   | _ => getType nameExpr)
                 
-              | Ast.TypeName _ => error ["dynamic name in type expression ", LogErr.ty ty]
 (*
               | Ast.LamType { params, body } => 
                 Ast.LamType { params = params, 
@@ -513,11 +496,16 @@ fun uniqueIdent (id:Ast.IDENTIFIER) : Ast.IDENTIFIER =
     end
 
 fun makeTypeName (id:Ast.IDENTIFIER) : Ast.TYPE = 
-    Ast.TypeName (Ast.Identifier {ident=id, openNamespaces=[], rootRib=NONE }, NONE)
+    Ast.TypeName (Ast.UnqualifiedName {identifier=id, openNamespaces=[], globalNames=[] }, NONE)
 
 
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
  * All are normalized, so no TypeNames in args or ty, just TypeVarFixtureRefs.
+ *)
+
+(* 
+ * FIXME: Cormac, I am pretty sure the use of unqualified names here
+ * is not quite right; please discuss details with me sometime -Graydon
  *)
 
 fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : Ast.TYPE =
@@ -531,8 +519,8 @@ fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : As
         in
             Ast.LamType { params=uniqParams, body=body'' }
         end
-*)
-        Ast.TypeName (Ast.Identifier { ident=id', ... }, _) =>
+        *)
+        Ast.TypeName (Ast.UnqualifiedName { identifier=id', ... }, _) =>
         let fun lookup ids args =
                 case (ids, args) of
                     ([],[]) => ty
@@ -595,7 +583,7 @@ fun normalize (ribs:Ast.RIB list)
         val ty = normalizeNames true ribs [] ty     (* inline TypeFixtures and TypeVarFixture nonces *)
 
         val _ = traceTy "normalize2: " ty
-        val ty = normalizeRefs ty
+        val ty = normalizeRefs ribs ty
 
         val _ = traceTy "normalize3: " ty
         val ty = normalizeLambdas ty
@@ -622,8 +610,19 @@ fun normalize (ribs:Ast.RIB list)
  * Matching helpers
  * ----------------------------------------------------------------------------- *)
 
+(* 
+ * FIXME: Cormac, as far as I know -- presently! -- we now permit namespace-qualified
+ * fields, thus *all* the field-pairwise stuff becomes sensitive to environment, and 
+ * needs to have a static env propagated into it. I'll confirm this unfortunate situation
+ * before we fix this fully, but for now assume all the reasoning about plain identifiers
+ * here is incorrect. Sadly. Remove this comment when we know better. -Graydon
+ *)
+
+fun getIdent (Ast.QualifiedName { identifier, ... }) = identifier
+  | getIdent (Ast.UnqualifiedName { identifier, ... }) = identifier 
+
 fun isNamedField (name:Ast.IDENTIFIER) (field:Ast.FIELD_TYPE) = 
-    Ustring.stringEquals name (#name field) 
+    Ustring.stringEquals name (getIdent (#name field))
     
 fun extractFieldType (name:Ast.IDENTIFIER) 
                      (fields:Ast.FIELD_TYPE list)
@@ -631,21 +630,21 @@ fun extractFieldType (name:Ast.IDENTIFIER)
     case List.partition (isNamedField name) fields of
         ([field], rest) => SOME ((#ty field), rest)
       | _ => NONE
-
+             
 fun arrayPairWise predicate xs ys = 
     ((length xs) = (length ys)) andalso
     ListPair.all (fn (t1,t2) => predicate t1 t2) (xs, ys)
     
 fun fieldPairWise predicate [] [] = true
   | fieldPairWise predicate ({ name, ty }::ts1) ts2 =
-    (case extractFieldType name ts2 of
+    (case extractFieldType (getIdent name) ts2 of
          NONE => false
        | SOME (ty2, rest) => predicate ty ty2 andalso fieldPairWise predicate ts1 rest)                             
   | fieldPairWise _ _ _ = false
 
 fun fieldPairWiseSuperset predicate _ [] = true
   | fieldPairWiseSuperset predicate ts1 ({ name, ty }::ts2) =
-    (case extractFieldType name ts1 of
+    (case extractFieldType (getIdent name) ts1 of
          NONE => false
        | SOME (ty1, rest) => predicate ty1 ty andalso fieldPairWise predicate rest ts2)
 
@@ -874,6 +873,7 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
                     equivType extra ty1 ty2
                     andalso check (if List.null tys1 then [ty1] else tys1)
                                   (if List.null tys2 then [ty2] else tys2)
+                  | (_, _) => error ["mismatched array-type lengths"]
         in
             check tys1 tys2
         end

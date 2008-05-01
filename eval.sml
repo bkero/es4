@@ -41,7 +41,7 @@ val doTrace = ref false
 val doTraceConstruct = ref false
 
 fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
-fun fmtMultiname n = if (!doTrace orelse !doTraceConstruct) then LogErr.multiname n else ""
+fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -320,26 +320,7 @@ fun promoteToCommon (regs:Mach.REGS)
         case if numLE a b then (a,b) else (b,a) of 
             (DoubleNum, DecimalNum) => DecimalNum
           | _ => error regs ["unexpected number combination in promoteToCommon"]
-                 
-(*
- * Ident exprs evaluate to either either explicitly qualified names or implicitly qualified
- * mutinames. We differentiate these cases with a discriminated union.
- *)
 
-datatype NAME_OR_MULTINAME =
-         Name of Ast.NAME
-       | Multiname of (Ast.MULTINAME * Ast.RIB option)
-
-fun fmtNomn (nomn:NAME_OR_MULTINAME) =
-    case nomn of
-        Name name => fmtName name
-      | Multiname (mname, _) => fmtMultiname mname
-
-fun nomnToStr (nomn:NAME_OR_MULTINAME) =
-    case nomn of
-        Name name => LogErr.name name
-      | Multiname (mname, _) => LogErr.multiname mname
-    
 (* Fundamental object methods *)
 
 fun allocRib (regs:Mach.REGS)
@@ -2092,11 +2073,14 @@ and evalExpr (regs:Mach.REGS)
       | Ast.ListExpr es =>
         evalListExpr regs es
 
-      | Ast.LexicalRef { ident, loc } =>
-        evalLexicalRefExpr regs ident loc
+      | Ast.LexicalReference { name, loc } =>
+        evalLexicalReference regs expr
 	
-      | Ast.ObjectRef { base, ident, loc } =>
-        evalObjectRefExpr regs base ident loc
+      | Ast.ObjectNameReference { object, name, loc } =>
+        evalObjectNameReference regs expr
+
+      | Ast.ObjectIndexReference { object, index, loc } =>
+        evalObjectIndexReference regs expr
 
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr regs (valOf head) body
@@ -2166,30 +2150,30 @@ fun evalGetExpr (env: ENV)
 
 *)
 
-and evalLexicalRefExpr (regs:Mach.REGS)
-                  (ident:Ast.IDENTIFIER_EXPRESSION)
-                  (loc:Ast.LOC option) 
+and evalLexicalReference (regs:Mach.REGS)
+                         (expr:Ast.EXPRESSION)
     : Mach.VAL =
     let
-        val _ = LogErr.setLoc loc;
-        val expr = Ast.LexicalRef { ident = ident, loc = loc }
-        val (obj, name) = evalLexicalRef regs expr true
-        val _ = LogErr.setLoc loc;
+        val (obj, name) = resolveLexicalReference regs expr true
     in
         getValue regs obj name
     end
 
 
-and evalObjectRefExpr (regs:Mach.REGS)
-                     (base:Ast.EXPRESSION)
-                     (ident:Ast.IDENTIFIER_EXPRESSION)
-                     (loc:Ast.LOC option)
+and evalObjectNameReference (regs:Mach.REGS)
+                            (expr:Ast.EXPRESSION)
     : Mach.VAL =
     let
-        val _ = LogErr.setLoc loc
-        val expr = Ast.ObjectRef { base = base, ident = ident, loc = loc }
-        val (_, (obj, name)) = evalObjectRef regs expr false
-        val _ = LogErr.setLoc loc
+        val (this, (obj, name)) = resolveObjectNameReference regs expr false
+    in
+        getValue regs obj name
+    end
+
+and evalObjectIndexReference (regs:Mach.REGS)
+                             (expr:Ast.EXPRESSION)
+    : Mach.VAL =
+    let
+        val (this, (obj, name)) = resolveObjectIndexReference regs expr false
     in
         getValue regs obj name
     end
@@ -2301,15 +2285,15 @@ and evalCallExpr (regs:Mach.REGS)
         fun args _ = evalExprsAndSpliceSpreads regs actuals
     in
         case func of
-            Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
+            Ast.LexicalReference _ => evalCallMethodByExpr regs func (args ())
                                 
-	      | Ast.ObjectRef { base = Ast.SuperExpr NONE, ident, loc } => 
-		    evalSuperCall regs (#this regs) ident (args ())
-
-	      | Ast.ObjectRef { base = Ast.SuperExpr (SOME b), ident, loc } => 
-		    evalSuperCall regs (needObj regs (evalExpr regs b)) ident (args ())
+	      | Ast.ObjectNameReference { object = Ast.SuperExpr NONE, name, loc } => 
+		    evalSuperCall regs (#this regs) name (args ())
             
-          | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
+	      | Ast.ObjectNameReference { object = Ast.SuperExpr (SOME b), name, loc } => 
+		    evalSuperCall regs (needObj regs (evalExpr regs b)) name (args ())
+            
+          | Ast.ObjectNameReference _ => evalCallMethodByExpr regs func (args ())
                                
           | _ =>
             let
@@ -2408,21 +2392,16 @@ and evalInitExpr (regs:Mach.REGS)
 
 
 and evalSuperCall (regs:Mach.REGS)
-                  (base:Mach.OBJ)
-                  (ident:Ast.IDENTIFIER_EXPRESSION)
+                  (object:Mach.OBJ)
+                  (nameExpr:Ast.NAME_EXPRESSION)
                   (args:Mach.VAL list)
     : Mach.VAL = 
-    let 
-        val nomn = evalIdentExpr regs ident
-        val mname = case nomn of 
-                        Multiname (mn, _) => mn
-                      | Name {ns,id} => {nss=[[ns]], id=id}
-                                        
-        val Mach.Obj { tag, ... } = base
+    let                                         
+        val Mach.Obj { tag, ... } = object
         val thisType = case tag of 
                            Mach.ClassTag thisType => thisType
                          | _ => error regs ["missing class-type tag during super call"]
-            
+                                
         (* 
          *
          * For this to work properly, the supertype list has to be
@@ -2441,12 +2420,12 @@ and evalSuperCall (regs:Mach.REGS)
                                                  "in super() expression:", 
                                                  LogErr.ty t]; 
                                      NONE)
-
+                                    
         fun getClassObjOf ity = 
             if Mach.isClass (getValue regs (#global regs) (#name ity))
             then SOME (instanceClass regs ity)
             else NONE
-
+                 
         fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
 
         val superClassObjs = List.mapPartial 
@@ -2460,15 +2439,12 @@ and evalSuperCall (regs:Mach.REGS)
                              o (Mach.Object))
                             superClassObjs
                             
-        val rno = Fixture.findName (superRibs, (#id mname), (#nss mname), NONE)
-        val (n, superClassInstanceRib, func) = 
-            case rno of 
-                SOME ((rib::ribs),name) => 
-                (case Fixture.getFixture rib (Ast.PropName name) of
-                     Ast.MethodFixture { func, ... } => 
-                     ((length superClassObjs) - (length (rib::ribs)), rib, func)
-                   | _ => error regs ["non-method fixture in super expression"])
-              | _ => error regs ["unable to resolve method in super expression"]
+        val (n, superClassInstanceRib, func) =
+            case Fixture.resolveNameExpr superRibs nameExpr of 
+                ((rib::ribs), _, Ast.MethodFixture { func, ... }) => 
+                ((length superClassObjs) - (length (rib::ribs)), rib, func)
+              | _ => error regs ["non-method fixture in super expression"]
+          
 
         val superClassObj = List.nth (superClassObjs,n)
         val superClassEnv = (#env (Mach.needClass (Mach.Object superClassObj)))
@@ -2817,7 +2793,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
     let
         fun searchFieldTypes n [] = Ast.AnyType
           | searchFieldTypes n ({name,ty}::ts) =
-            if n = name
+            if n = (evalNameExpr regs name)
             then ty
             else searchFieldTypes n ts
         val tyExprs = case Option.map (evalTy regs) ty of
@@ -2881,11 +2857,9 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                                 Ast.Const => true
                               | Ast.LetConst => true
                               | _ => false
-                val n = case evalIdentExpr regs name of
-                            Name n => n
-                          | Multiname (n, _) => Name.public (#id n)
+                val (n:Ast.NAME) = evalNameExpr regs name
                 val v = evalExpr regs init
-                val ty = searchFieldTypes (#id n) tyExprs
+                val ty = searchFieldTypes n tyExprs
                 val attrs = { dontDelete = const,
                               dontEnum = false,
                               readOnly = const,
@@ -3010,7 +2984,7 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          * wrapper object.
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
-        val (thisObjOpt, r) = evalRefExpr regs func true
+        val (thisObjOpt, r) = resolveRefExpr regs func true
         val thisObj = case thisObjOpt of 
                           NONE => (#this regs)
                         | SOME obj => obj
@@ -3023,12 +2997,12 @@ and evalCallMethodByExpr (regs:Mach.REGS)
 
 
 and evalNamedMethodCall (regs:Mach.REGS)
-			(obj:Mach.OBJ)
-			(name:Ast.NAME)
-			(args:Mach.VAL list)
+			            (obj:Mach.OBJ)
+			            (name:Ast.NAME)
+			            (args:Mach.VAL list)
     : Mach.VAL = 
     let
-	val refOpt = resolveName regs [obj] (Name name)
+	val refOpt = resolveName regs [obj] (Name.nameExprOf name)
     in
 	case refOpt of 
 	    NONE => error regs ["unable to resolve method: ", LogErr.name name]
@@ -3108,7 +3082,7 @@ and evalSetExpr (regs:Mach.REGS)
     : Mach.VAL =
     let
         val _ = trace ["evalSetExpr"]
-        val (thisOpt, (obj, name)) = evalRefExpr regs lhs false
+        val (thisOpt, (obj, name)) = resolveRefExpr regs lhs false
         val v =
             let
                 fun modifyWith bop =
@@ -3176,7 +3150,7 @@ and evalCrement (regs:Mach.REGS)
                 (expr:Ast.EXPRESSION)
     : Mach.VAL = 
     let
-        val (_, (obj, name)) = evalRefExpr regs expr false
+        val (_, (obj, name)) = resolveRefExpr regs expr false
         val v = getValue regs obj name
         val v' = toNumeric regs v
         val i = numberOfSimilarType regs v' 1.0
@@ -3192,7 +3166,7 @@ and evalDeleteOp (regs: Mach.REGS)
                  (expr: Ast.EXPRESSION)
     : Mach.VAL =
     let
-        val (_, (Mach.Obj {props, ...}, name)) = evalRefExpr regs expr true
+        val (_, (Mach.Obj {props, ...}, name)) = resolveRefExpr regs expr true
     in
         if (#dontDelete (#attrs (Mach.getProp props name)))
         then newBoolean regs false
@@ -3219,7 +3193,7 @@ and evalUnaryOp (regs:Mach.REGS)
         case unop of
             Ast.Delete =>
             let
-                val (_, (Mach.Obj {props, ...}, name)) = evalRefExpr regs expr false
+                val (_, (Mach.Obj {props, ...}, name)) = resolveRefExpr regs expr false
             in
                 if (Mach.hasProp props name)
                 then if (#dontDelete (#attrs (Mach.getProp props name)))
@@ -3293,15 +3267,10 @@ and evalUnaryOp (regs:Mach.REGS)
             in
                 newString regs
                     (case expr of
-                         Ast.LexicalRef { ident, loc } =>
-                         let
-                             val _ = LogErr.setLoc loc
-                             val nomn = evalIdentExpr regs ident
-                         in
-                             case resolveOnScopeChain regs (#scope regs) nomn of
-                                 NONE => Ustring.undefined_
-                               | SOME (obj, name) => typeNameOfVal (getValue regs obj name)
-                         end
+                         Ast.LexicalReference { name, loc } =>
+                         (case resolveOnScopeChain regs (#scope regs) name of
+                              NONE => Ustring.undefined_
+                            | SOME (obj, name) => typeNameOfVal (getValue regs obj name))
                        | _ => typeNameOfVal (evalExpr regs expr))
             end
     end
@@ -3326,7 +3295,7 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.UndefinedType => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
       | Ast.ArrayType a => Mach.Null (* FIXME *)
-      | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
+      | Ast.TypeName (tn, _) => evalExpr regs (Ast.LexicalReference { name=tn, loc=NONE })
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.ObjectType ot => Mach.Null (* FIXME *)
       | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
@@ -3486,6 +3455,8 @@ and performBinop (regs:Mach.REGS)
             
         (*
          * ES-262-3 11.9.6 Strict Equality Comparison Algorithm
+         *
+         *  (with extension to cover namespaces)
          *)
 
         fun tripleEquals _ =
@@ -3508,7 +3479,11 @@ and performBinop (regs:Mach.REGS)
                         else
                             if Mach.isBoolean va
                             then newBoolean regs (toBoolean va = toBoolean vb)
-                            else newBoolean regs ((getObjId (needObj regs va)) = (getObjId (needObj regs vb)))
+                            else 
+                                if Mach.isNamespace va andalso Mach.isNamespace vb
+                                then newBoolean regs (Fixture.compareNamespaces  ((needNamespace regs va),
+                                                                                  (needNamespace regs vb)))                                               
+                                else newBoolean regs ((getObjId (needObj regs va)) = (getObjId (needObj regs vb)))
             else
                 newBoolean regs false
 
@@ -3762,7 +3737,7 @@ and evalOperatorIs (regs:Mach.REGS)
           | isLike v lte = (typeOfVal regs v) <* lte
         and objHasLikeField obj {name, ty} = 
             let
-                val name = Name.public name
+                val name = evalNameExpr regs name 
             in
                 if hasOwnValue obj name
                 then 
@@ -3946,68 +3921,6 @@ and evalCondExpr (regs:Mach.REGS)
     end
 
 
-and evalExprToNamespace (regs:Mach.REGS)
-                        (expr:Ast.EXPRESSION)
-    : Ast.NAMESPACE =
-    (*
-     * If we have a namespace property we can evaluate to an Ast.Namespace
-     * directly without manufacturing a temporary Namespace wrapper object.
-     *)
-    let
-        fun evalRefNamespace _ =
-            let
-                val _ = trace ["evaluating ref to namespace"];
-                val (_, (obj, name)) = evalRefExpr regs expr true
-                val Mach.Obj { props, ... } = obj
-            in
-                case (#state (Mach.getProp props name)) of
-                    Mach.NamespaceProp ns => ns
-                  | _ => needNamespace regs (getValue regs obj name)
-            end
-    in
-        case expr of
-            Ast.LexicalRef _ => evalRefNamespace ()
-          | Ast.ObjectRef _ => evalRefNamespace ()
-          | _ => needNamespace regs (evalExpr regs expr)
-    end
-
-
-and evalIdentExpr (regs:Mach.REGS)
-                  (r:Ast.IDENTIFIER_EXPRESSION)
-    : NAME_OR_MULTINAME =
-    case r of
-        Ast.Identifier { ident, openNamespaces, rootRib } =>
-        Multiname ({ nss=openNamespaces, id=ident }, rootRib)
-
-      | Ast.QualifiedIdentifier { qual, ident } =>
-        Name { ns = (evalExprToNamespace regs qual), id = ident }
-
-      | Ast.QualifiedExpression { qual, expr } =>
-        Name { ns = (evalExprToNamespace regs qual),
-               id = toUstring regs (evalExpr regs expr) }
-
-      | Ast.ExpressionIdentifier { expr, openNamespaces } =>
-        let
-            val v = evalExpr regs expr
-        in
-            case v of
-                Mach.Object obj =>
-                if (typeOfVal regs v) <* (instanceType regs Name.ES4_Name [])
-                then
-                    let
-                        val nsval = getValue regs obj Name.public_qualifier
-                        val idval = getValue regs obj Name.public_identifier
-                    in
-                        Name { ns = needNamespaceOrNull regs nsval,
-                               id = toUstring regs idval }
-                    end
-                else
-                    Multiname ({ nss = openNamespaces,
-                                 id = toUstring regs v }, NONE)
-              | _ =>
-                Multiname ({ nss = openNamespaces,
-                             id = toUstring regs v }, NONE)
-        end
 
 
 (*
@@ -4038,35 +3951,35 @@ fun getDefaultName (identifier: Ast.IDENTIFIER_EXPRESSIONESSION)
         (Mach.publicNamespace, identifier)
 *)
 
-
-and evalLexicalRef (regs:Mach.REGS)
-                   (expr:Ast.EXPRESSION)
-                   (errIfNotFound:bool)
+        
+and resolveLexicalReference (regs:Mach.REGS)
+                            (expr:Ast.EXPRESSION)
+                            (errIfNotFound:bool)
     : REF =
     let
-        fun defaultRef obj nomn =
-            case nomn of
-                Multiname (mname, rootRib) => (obj, Name.public (#id mname))
-              | Name name => (obj, name)
+        fun defaultRef obj nameExpr =
+            case nameExpr of 
+                Ast.UnqualifiedName { identifier, ... } => 
+                (obj, Name.public identifier)
+              | Ast.QualifiedName { namespace, identifier } => 
+                (obj, { id=identifier, 
+                        ns=evalNamespaceExpr regs namespace })                
     in
         case expr of
-            Ast.LexicalRef { ident, loc } =>
+            Ast.LexicalReference { name, loc } =>
             let
                 val _ = LogErr.setLoc loc
-                val nomn = evalIdentExpr regs ident
-                val _ = LogErr.setLoc loc
-                val refOpt = resolveOnScopeChain regs (#scope regs) nomn
+                val refOpt = resolveOnScopeChain regs (#scope regs) name
                 val _ = LogErr.setLoc loc
                 val r = case refOpt of
                             SOME r => r
                           | NONE => if errIfNotFound
                                     then throwExn (newRefErr regs ["unresolved lexical reference ",
-                                                                   nomnToStr nomn])
-                                    else defaultRef (#global regs) nomn
+                                                                   LogErr.nameExpr name])
+                                    else defaultRef (#global regs) name
             in
                 r
             end
-
           | _ => error regs ["need lexical reference expression"]
     end
 
@@ -4087,42 +4000,37 @@ fun evalObjectRef (env: ENV)
  
 *)
 
-and evalObjectRef (regs:Mach.REGS)
-                  (expr:Ast.EXPRESSION)
-                  (errIfNotFound:bool)
+and resolveObjectNameReference (regs:Mach.REGS)
+                               (expr:Ast.EXPRESSION)
+                               (errIfNotFound:bool)
     : (Mach.OBJ option * REF) =
     let
-        fun defaultRef obj nomn =
-            case nomn of
-                Multiname (mname, _) => (obj, Name.public (#id mname))
-              | Name name => (obj, name)
+        fun defaultRef obj nameExpr =
+            case nameExpr of
+                Ast.UnqualifiedName { identifier, ... } => 
+                (obj, Name.public identifier)
+              | Ast.QualifiedName { namespace, identifier } => 
+                (obj, { id=identifier, 
+                        ns=evalNamespaceExpr regs namespace })
     in
         case expr of
-            Ast.ObjectRef { base, ident, loc } =>
+            Ast.ObjectNameReference { object, name, loc } =>
             let
                 val _ = LogErr.setLoc loc
-                val v = evalExpr regs base
+                val v = evalExpr regs object
                 val _ = LogErr.setLoc loc
-                val nomn = evalIdentExpr regs ident
-                val _ = LogErr.setLoc loc
-                val ob = let
-                    fun extractFrom v = 
-                        case v of
-                            Mach.Object ob => ob
-                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
-                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
-                in
-                    extractFrom v
-                end
-                val _ = LogErr.setLoc loc
-                val refOpt = resolveName regs [ob] nomn
+                val ob = case v of
+                             Mach.Object ob => ob
+                           | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                           | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+                val refOpt = resolveName regs [ob] name
                 val _ = LogErr.setLoc loc
                 val r = case refOpt of
                             SOME ro => ro
                           | NONE => if errIfNotFound
                                     then throwExn (newRefErr regs ["unresolved object reference ",
-                                                                   nomnToStr nomn])
-                                    else defaultRef ob nomn
+                                                                   LogErr.nameExpr name])
+                                    else defaultRef ob name
                 val _ = LogErr.setLoc loc
                 val (holder, n) = r
                 val _ = trace ["resolved object ref to ", fmtName n,
@@ -4131,8 +4039,48 @@ and evalObjectRef (regs:Mach.REGS)
             in
                 (SOME ob, r)
             end
+            
+          | _ => error regs ["need object name reference expression"]
+    end
 
-          | _ => error regs ["need object reference expression"]
+and resolveObjectIndexReference (regs:Mach.REGS)
+                                (expr:Ast.EXPRESSION)
+                                (errIfNotFound:bool)
+    : (Mach.OBJ option * REF) =
+    let
+        fun defaultRef obj ident = (obj, Name.public ident)
+    in
+        case expr of
+            Ast.ObjectIndexReference { object, index, loc } =>
+            let
+                val _ = LogErr.setLoc loc
+                val v = evalExpr regs object
+                val _ = LogErr.setLoc loc
+                val idx = evalExpr regs index
+                val ident = toUstring regs idx
+                val name = Ast.QualifiedName { identifier=ident, namespace=Ast.Namespace Name.publicNS }
+                val ob = case v of
+                             Mach.Object ob => ob
+                           | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                           | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+                val refOpt = resolveName regs [ob] name
+                val _ = LogErr.setLoc loc
+                val r = case refOpt of
+                            SOME ro => ro
+                          | NONE => if errIfNotFound
+                                    then throwExn (newRefErr regs ["unresolved object reference ",
+                                                                   LogErr.nameExpr name])
+                                    else defaultRef ob ident
+                val _ = LogErr.setLoc loc
+                val (holder, n) = r
+                val _ = trace ["resolved object ref to ", fmtName n,
+                               " on object #", Int.toString (getObjId holder),
+                               " with this=#", Int.toString (getObjId ob)]
+            in
+                (SOME ob, r)
+            end
+            
+          | _ => error regs ["need object index reference expression"]
     end
 
 (* SPEC
@@ -4151,15 +4099,16 @@ fun evalReference (env: ENV)
 
 *)
 
-and evalRefExpr (regs:Mach.REGS)
-                (expr:Ast.EXPRESSION)
-                (errIfNotFound:bool)
+and resolveRefExpr (regs:Mach.REGS)
+                   (expr:Ast.EXPRESSION)
+                   (errIfNotFound:bool)
     : (Mach.OBJ option * REF) =
     let
     in
         case expr of
-            Ast.LexicalRef _ => (NONE, evalLexicalRef regs expr errIfNotFound)
-          | Ast.ObjectRef _ => evalObjectRef regs expr errIfNotFound
+            Ast.LexicalReference _ => (NONE, resolveLexicalReference regs expr errIfNotFound)
+          | Ast.ObjectNameReference _ => resolveObjectNameReference regs expr errIfNotFound
+          | Ast.ObjectIndexReference _ => resolveObjectIndexReference regs expr errIfNotFound
           | _ => error regs ["need lexical or object-reference expression"]
     end
 
@@ -4190,7 +4139,7 @@ and evalLetExpr (regs:Mach.REGS)
 
 and resolveOnScopeChain (regs:Mach.REGS)
                         (scope:Mach.SCOPE)
-                        (nomn:NAME_OR_MULTINAME)
+                        (nameExpr:Ast.NAME_EXPRESSION)
     : REF option =
 
     let
@@ -4199,7 +4148,7 @@ and resolveOnScopeChain (regs:Mach.REGS)
 
         val objs = extractScopeChain scope
     in
-        resolveName regs objs nomn
+        resolveName regs objs nameExpr
     end
         
 
@@ -4208,18 +4157,39 @@ and resolveOnScopeChain (regs:Mach.REGS)
  * matches name (or multiname). Returns a REF to the exact object found.
  *)
 and resolveName (regs:Mach.REGS)
-                (objs:Mach.OBJ list)
-                (nomn:NAME_OR_MULTINAME)
+                (objects:Mach.OBJ list)
+                (nameExpr:Ast.NAME_EXPRESSION)
     : REF option =
     let
-        val (id, nss, rootRib) = 
-            case nomn of
-                Name {id,ns} => (id, [[ns]], NONE)
-              | Multiname ({id,nss},rootRib) => (id, nss, rootRib)
+        val (identifier, openNamespaces, globalNames) = 
+            case nameExpr of
+                Ast.QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]], [])
+              | Ast.UnqualifiedName { identifier, openNamespaces, globalNames } => (identifier, openNamespaces, globalNames)
     in
-        Mach.findName ((#global regs), objs, id, nss, rootRib)
+        Mach.findName ((#global regs), objects, identifier, openNamespaces, globalNames)
     end
 
+(* FIXME: evalNameExpr is mostly for field names; the handling of field names is presently a little confused. *)
+and evalNameExpr (regs:Mach.REGS)
+                 (nameExpr:Ast.NAME_EXPRESSION)
+    : Ast.NAME = 
+    case nameExpr of 
+        Ast.QualifiedName { identifier, namespace } => 
+        { id = identifier, ns = evalNamespaceExpr regs namespace }
+      | Ast.UnqualifiedName { identifier, ... } => 
+        Name.public identifier
+
+and evalNamespaceExpr (regs:Mach.REGS)
+                      (nsExpr:Ast.NAMESPACE_EXPRESSION)
+    : Ast.NAMESPACE = 
+    case nsExpr of 
+        Ast.Namespace ns => ns
+      | Ast.NamespaceName ne => 
+        case resolveOnScopeChain regs (#scope regs) ne of
+            SOME (obj, name) => needNamespace regs (getValue regs obj name)
+          | NONE => throwExn (newTypeErr regs ["namespace expression did not resolve to namespace: ", 
+                                               LogErr.nameExpr ne])
+                    
 
 and labelMatch (stmtLabels:Ast.IDENTIFIER list)
                (exnLabel:Ast.IDENTIFIER option)
@@ -4324,7 +4294,7 @@ and findVal (regs:Mach.REGS)
             (scope:Mach.SCOPE)
             (name:Ast.NAME)
     : Mach.VAL =
-    case resolveOnScopeChain regs scope (Name name) of
+    case resolveOnScopeChain regs scope (Name.nameExprOf name) of
         NONE => error regs ["unable to find value: ", LogErr.name name ]
       | SOME (obj, n) => getValue regs obj n
 
