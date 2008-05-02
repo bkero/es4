@@ -1418,6 +1418,7 @@ and newFunctionFromClosure (regs:Mach.REGS)
     in
 	    setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj Name.public_constructor (Mach.Object obj) false;
+        Mach.setPropDontEnum newProtoProps Name.public_constructor true;
         Mach.Object obj
     end
 
@@ -5106,7 +5107,7 @@ and setPrototype (regs:Mach.REGS)
                      state = Mach.ValProp proto,
 		     attrs = { dontDelete = true,
 			       dontEnum = true, (* FIXME: is this wrong? (DAH) *)
-			       readOnly = true,
+			       readOnly = false,
 			       isFixed = true } }
     in
 	if Mach.hasProp props n
@@ -5226,7 +5227,7 @@ and initClassPrototype (regs:Mach.REGS)
 				                   Name.public_constructor 
 				                   (Mach.Object obj) 
 				                   false;
-		     Mach.setPropDontEnum newProtoProps Name.public_constructor true)
+		        Mach.setPropDontEnum newProtoProps Name.public_constructor true)
 		    else 
 		        ();
 		    trace ["finished initialising class prototype"]
@@ -5574,7 +5575,6 @@ and evalIterable (regs:Mach.REGS)
 and callIteratorGet (regs:Mach.REGS)
                     (iterable:Mach.OBJ)
     : Mach.OBJ =
-(*
     let
         val iteratorGET = { id = Ustring.GET_, ns = getIteratorNamespace regs }
         val args = [Mach.Object iterable, newBoolean regs true]
@@ -5582,7 +5582,7 @@ and callIteratorGet (regs:Mach.REGS)
     in
         needObj regs iterator
     end
-*)
+(*
     let
         val Mach.Obj { props, ... } = iterable
         val { bindings, ... } = !props
@@ -5606,16 +5606,16 @@ and callIteratorGet (regs:Mach.REGS)
         Mach.inspect (Mach.Object iterator);
         iterator
     end
+*)
 
 and callIteratorNext (regs:Mach.REGS)
                      (iterator:Mach.OBJ)
     : Mach.VAL =
-(*
     (evalNamedMethodCall regs iterator Name.public_next [])
     handle e as ThrowException v => raise (if isStopIteration regs v
                                            then StopIterationException
                                            else e)
-*)
+(*
     let
         val lengthValue = getValue regs iterator Name.public_length
         val length      = toInt32 regs lengthValue
@@ -5635,6 +5635,7 @@ and callIteratorNext (regs:Mach.REGS)
         else
             raise StopIterationException
     end
+*)
 
 and evalForInStmt (regs:Mach.REGS)
                   (forInStmt:Ast.FOR_ENUM_STATEMENT)

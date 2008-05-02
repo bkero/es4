@@ -96,7 +96,7 @@
 
         loop:
             while (true) {
-                if (current_index === current_ids.length) {
+                while (current_index === current_ids.length) {
                     if (!enumerate)
                         throw iterator::StopIteration;
 
