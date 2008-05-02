@@ -169,20 +169,8 @@ fun getClassName (regs:Mach.REGS)
     : Mach.VAL =
     let
         val Mach.Obj { tag, ... } = nthAsObj vals 0
-        (* FIXME: is this right? *)
-        val ustr = case tag of
-                      SOME (Mach.MagicTag (Mach.Function _)) => Ustring.Function_
-                    | SOME (Mach.MagicTag (Mach.NativeFunction _)) => Ustring.Function_
-                    | SOME (Mach.MagicTag (Mach.String _)) => Ustring.String_
-                    | SOME (Mach.MagicTag (Mach.Decimal _)) => Ustring.Number_
-                    | SOME (Mach.MagicTag (Mach.Double _)) => Ustring.Number_
-                    | SOME (Mach.MagicTag (Mach.Boolean _)) => Ustring.Boolean_
-                    | SOME (Mach.ObjectTag _) => Ustring.Object_
-                    | SOME (Mach.ArrayTag _) => Ustring.Array_
-                    | SOME (Mach.InstanceTag ity) => (#id (#name ity))
-                    | NONE => Ustring.Object_
     in
-        Eval.newString regs ustr
+        Eval.newString regs (#id (Mach.nominalBaseOfTag tag))
     end
 
 
@@ -449,9 +437,9 @@ fun fnLength (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
         val len = 
             case tag of
-                SOME (Mach.MagicTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...})))
+                Mach.MagicTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
                 => AstQuery.minArgsOfFuncTy ty
-              | SOME (Mach.MagicTag (Mach.NativeFunction {length, ...})) => length
+              | Mach.MagicTag (Mach.NativeFunction {length, ...}) => length
               | _ => error ["wrong kind of object to fnLength"]
     in
         Eval.newDouble regs (Real64.fromInt len)
@@ -465,7 +453,7 @@ fun genSend (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            SOME (Mach.MagicTag (Mach.Generator gen)) => Eval.sendToGen regs gen arg
+            Mach.MagicTag (Mach.Generator gen) => Eval.sendToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -477,7 +465,7 @@ fun genThrow (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            SOME (Mach.MagicTag (Mach.Generator gen)) => Eval.throwToGen regs gen arg
+            Mach.MagicTag (Mach.Generator gen) => Eval.throwToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -488,7 +476,7 @@ fun genClose (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
     in
         case tag of
-            SOME (Mach.MagicTag (Mach.Generator gen)) => Eval.closeGen regs gen
+            Mach.MagicTag (Mach.Generator gen) => Eval.closeGen regs gen
           | _ => error ["wrong kind of object to genSend"];
         Mach.Undef
     end

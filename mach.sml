@@ -81,7 +81,7 @@ datatype VAL = Object of OBJ
 
      and OBJ =
          Obj of { ident: OBJ_IDENTIFIER,
-                  tag: TAG option,
+                  tag: TAG,
                   props: PROP_BINDINGS,
                   rib: Ast.RIB ref,
                   proto: VAL ref }
@@ -91,6 +91,7 @@ datatype VAL = Object of OBJ
        | ArrayTag of Ast.TYPE list
        | InstanceTag of Ast.INSTANCE_TYPE
        | MagicTag of MAGIC
+       | NoTag
 
      and OBJ_CACHE = 
          ObjCache of 
@@ -296,34 +297,34 @@ fun isObject (v:VAL) : bool =
       | _ => false
 
 
-fun isDouble (Object (Obj {tag = SOME (MagicTag (Double _)), ...})) = true
+fun isDouble (Object (Obj {tag = MagicTag (Double _), ...})) = true
   | isDouble _ = false
 
-fun isDecimal (Object (Obj {tag = SOME (MagicTag (Decimal _)), ...})) = true
+fun isDecimal (Object (Obj {tag = MagicTag (Decimal _), ...})) = true
   | isDecimal _ = false
 
-fun isString (Object (Obj {tag = SOME (MagicTag (String _)), ...})) = true
+fun isString (Object (Obj {tag = MagicTag (String _), ...})) = true
   | isString _ = false
 
-fun isBoolean (Object (Obj {tag = SOME (MagicTag (Boolean _)), ...})) = true
+fun isBoolean (Object (Obj {tag = MagicTag (Boolean _), ...})) = true
   | isBoolean _ = false
 
-fun isNamespace (Object (Obj {tag = SOME (MagicTag (Namespace _)), ...})) = true
+fun isNamespace (Object (Obj {tag = MagicTag (Namespace _), ...})) = true
   | isNamespace _ = false
 
-fun isClass (Object (Obj {tag = SOME (MagicTag (Class _)), ...})) = true
+fun isClass (Object (Obj {tag = MagicTag (Class _), ...})) = true
   | isClass _ = false
 
-fun isInterface (Object (Obj {tag = SOME (MagicTag (Interface _)), ...})) = true
+fun isInterface (Object (Obj {tag = MagicTag (Interface _), ...})) = true
   | isInterface _ = false
 
-fun isFunction (Object (Obj {tag = SOME (MagicTag (Function _)), ...})) = true
+fun isFunction (Object (Obj {tag = MagicTag (Function _), ...})) = true
   | isFunction _ = false
                    
-fun isType (Object (Obj {tag = SOME (MagicTag (Type _)), ...})) = true
+fun isType (Object (Obj {tag = MagicTag (Type _), ...})) = true
   | isType _ = false
 
-fun isNativeFunction (Object (Obj {tag = SOME (MagicTag (NativeFunction _)), ...})) = true
+fun isNativeFunction (Object (Obj {tag = MagicTag (NativeFunction _), ...})) = true
   | isNativeFunction _ = false
                          
 fun isNumeric ob = isDouble ob orelse isDecimal ob
@@ -438,7 +439,7 @@ fun hasProp (b:PROP_BINDINGS)
         NONE => false
       | SOME _ => true
 
-fun hasMagic (Obj { tag = SOME (MagicTag _), ... }) = true
+fun hasMagic (Obj { tag = MagicTag _, ... }) = true
   | hasMagic _ = false
 
 fun setRib (obj:OBJ)
@@ -498,7 +499,7 @@ fun nextIdent _ =
                    handle Overflow => error ["overflowed maximum object ID"]);
      !currIdent)
 
-fun newObject (t:TAG option)
+fun newObject (t:TAG)
               (p:VAL)
     : OBJ =
     Obj { ident = nextIdent (),
@@ -509,7 +510,7 @@ fun newObject (t:TAG option)
 
 fun newObjectNoTag _
     : OBJ =
-    newObject NONE Null
+    newObject NoTag Null
 
 fun getProto (ob:OBJ)
     : VAL =
@@ -709,11 +710,11 @@ fun inspect (v:VAL)
         fun tag (Obj ob) =
             case (#tag ob) of
                 (* FIXME: elaborate printing of structural tags. *)
-                SOME (ObjectTag _) => "<Obj>"
-              | SOME (ArrayTag _) => "<Arr>"
-              | SOME (InstanceTag t) => "<Class " ^ (typ (Ast.InstanceType t)) ^ ">"
-              | SOME (MagicTag m) => "<Magic " ^ (mag m) ^ ">"
-              | NONE => "<No-Tag>"
+                ObjectTag _ => "<Object>"
+              | ArrayTag _ => "<Arrray>"
+              | InstanceTag t => "<Instance " ^ (typ (Ast.InstanceType t)) ^ ">"
+              | MagicTag m => "<Magic " ^ (mag m) ^ ">"
+              | NoTag => "<NoTag>"
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"
@@ -760,9 +761,6 @@ fun inspect (v:VAL)
     end
 
 
-fun magStr (SOME mag) = Ustring.toAscii (magicToUstring mag)
-  | magStr NONE = "<none>"    
-
 (*
  * To get from any object to its CLS, you work out the
  * "nominal base" of the object's tag. You can then find
@@ -770,65 +768,64 @@ fun magStr (SOME mag) = Ustring.toAscii (magicToUstring mag)
  * magic value pointing to the CLS.
  *)
 
-fun nominalBaseOfTag (to:TAG option)
+fun nominalBaseOfTag (to:TAG)
     : Ast.NAME =
     case to of
-        NONE => Name.public_Object
-      | SOME t => 
-        case t of 
-            ObjectTag _ => Name.public_Object
-          | ArrayTag _ => Name.public_Array
-          | InstanceTag ity => (#name ity)
-          | MagicTag (Boolean _) => Name.ES4_boolean
-          | MagicTag (Double _) => Name.ES4_double
-          | MagicTag (Decimal _) => Name.ES4_decimal
-          | MagicTag (String _) => Name.ES4_string
-          | MagicTag (Namespace _) => Name.ES4_Namespace
-          | MagicTag (Class _) => Name.intrinsic_Class
-          | MagicTag (Interface _) => Name.intrinsic_Interface
-          | MagicTag (Function _) => Name.public_Function
-          | MagicTag (Type _) => Name.intrinsic_Type
-          | MagicTag (NativeFunction _) => Name.public_Function
-          | MagicTag (Generator _) => Name.helper_GeneratorImpl
-
-fun getObjMagic (Obj { tag = SOME (MagicTag m), ... }) = SOME m
+        ObjectTag _ => Name.public_Object
+      | ArrayTag _ => Name.public_Array
+      | InstanceTag ity => (#name ity)
+      | MagicTag (Boolean _) => Name.ES4_boolean
+      | MagicTag (Double _) => Name.ES4_double
+      | MagicTag (Decimal _) => Name.ES4_decimal
+      | MagicTag (String _) => Name.ES4_string
+      | MagicTag (Namespace _) => Name.ES4_Namespace
+      | MagicTag (Class _) => Name.intrinsic_Class
+      | MagicTag (Interface _) => Name.intrinsic_Interface
+      | MagicTag (Function _) => Name.public_Function
+      | MagicTag (Type _) => Name.intrinsic_Type
+      | MagicTag (NativeFunction _) => Name.public_Function
+      | MagicTag (Generator _) => Name.helper_GeneratorImpl
+      | NoTag => error ["nominalBaseOfTag on NoTag"]
+        
+                                  
+fun getObjMagic (Obj { tag = MagicTag m, ... }) = SOME m
   | getObjMagic _ = NONE
 
-fun getMagic (Object (Obj { tag = SOME (MagicTag m), ... })) = SOME m
+fun getMagic (Object (Obj { tag = MagicTag m, ... })) = SOME m
   | getMagic _ = NONE
 
-fun needMagic (Object (Obj { tag = SOME (MagicTag m), ... })) = m
+fun needMagic (Object (Obj { tag = MagicTag m, ... })) = m
   | needMagic _ = error ["require object with magic"]
 
-fun needClass (Object (Obj {tag = SOME (MagicTag (Class c)), ...})) = c
+fun needClass (Object (Obj {tag = MagicTag (Class c), ...})) = c
   | needClass _ = error ["require class object"]
 
-fun needInterface (Object (Obj {tag = SOME (MagicTag (Interface i)), ...})) = i
+fun needInterface (Object (Obj {tag = MagicTag (Interface i), ...})) = i
   | needInterface _ = error ["require interface object"]
 
-fun needFunction (Object (Obj {tag = SOME (MagicTag (Function f)), ...})) = f
+fun needFunction (Object (Obj {tag = MagicTag (Function f), ...})) = f
   | needFunction _ = error ["require function object]"]
 
-fun needNamespace (Object (Obj {tag = SOME (MagicTag (Namespace n)), ...})) = n
+fun needNamespace (Object (Obj {tag = MagicTag (Namespace n), ...})) = n
   | needNamespace _ = error ["require namespace object"]
 
 fun needNamespaceOrNull Null = Name.publicNS
-  | needNamespaceOrNull (Object (Obj {tag = SOME (MagicTag (Namespace n)), ...})) = n
+  | needNamespaceOrNull (Object (Obj {tag = MagicTag (Namespace n), ...})) = n
   | needNamespaceOrNull _ = error ["require namespace object"]
 
-fun needType (Object (Obj {tag = SOME (MagicTag (Type t)), ...})) = t
+fun needType (Object (Obj {tag = MagicTag (Type t), ...})) = t
   | needType _ = error ["require type object"]
 
-fun needDouble (Object (Obj {tag = SOME (MagicTag (Double d)), ...})) = d
+fun needDouble (Object (Obj {tag = MagicTag (Double d), ...})) = d
   | needDouble _ = error ["require double object"]
 
-fun needDecimal (Object (Obj {tag = SOME (MagicTag (Decimal d)), ...})) = d
+fun needDecimal (Object (Obj {tag = MagicTag (Decimal d), ...})) = d
   | needDecimal _ = error ["require decimal object"]
 
-fun needBoolean (Object (Obj {tag = SOME (MagicTag (Boolean b)), ...})) = b
+fun needBoolean (Object (Obj {tag = MagicTag (Boolean b), ...})) = b
   | needBoolean _ = error ["require boolean object"]
 
-fun needString (Object (Obj {tag = SOME (MagicTag (String s)), ...})) = s
+fun needString (Object (Obj {tag = MagicTag (String s), ...})) = s
   | needString _ = error ["require string object"]
 
 

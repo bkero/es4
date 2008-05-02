@@ -686,7 +686,7 @@ and asArrayIndex (v:Mach.VAL)
     case v of
         Mach.Object (Mach.Obj { tag, ... }) =>
         (case tag of
-             SOME (Mach.MagicTag (Mach.Double d)) => 
+             Mach.MagicTag (Mach.Double d) => 
              if Mach.isIntegral d 
                 andalso 0.0 <= d 
                 andalso d < 4294967295.0
@@ -694,7 +694,7 @@ and asArrayIndex (v:Mach.VAL)
                  doubleToWord d
              else
                  0wxFFFFFFFF
-           | SOME (Mach.MagicTag (Mach.Decimal d)) => 
+           | Mach.MagicTag (Mach.Decimal d) => 
              0wxFFFFFFFF (* FIXME *)
            | _ => 0wxFFFFFFFF)
       | _ => 0wxFFFFFFFF
@@ -905,7 +905,7 @@ and checkAndConvert (regs:Mach.REGS)
 
 
 and getObjTag (obj:Mach.OBJ)
-    : Mach.TAG option = 
+    : Mach.TAG = 
     let
         val Mach.Obj { tag, ... } = obj
     in
@@ -1232,7 +1232,7 @@ and newBuiltin (regs:Mach.REGS)
     let
         val args = case m of 
                      NONE => []
-                   | SOME m' => [Mach.Object (Mach.newObject (SOME (Mach.MagicTag m')) Mach.Null)]
+                   | SOME m' => [Mach.Object (Mach.newObject (Mach.MagicTag m') Mach.Null)]
     in
         instantiateGlobalClass regs n args
     end
@@ -1581,7 +1581,7 @@ and toUstring (regs:Mach.REGS)
     case v of
         Mach.Undef => Ustring.undefined_
       | Mach.Null => Ustring.null_
-      | Mach.Object (Mach.Obj { tag = SOME (Mach.MagicTag mag), ... }) =>
+      | Mach.Object (Mach.Obj { tag = (Mach.MagicTag mag), ... }) =>
         Mach.magicToUstring mag
       | _ => toUstring regs (toPrimitiveWithStringHint regs v)
 
@@ -1595,16 +1595,16 @@ and toBoolean (v:Mach.VAL) : bool =
       | Mach.Null => false
       | Mach.Object (Mach.Obj { tag, ... }) =>
         (case tag of
-             SOME (Mach.MagicTag (Mach.Boolean b)) => b
-           | SOME (Mach.MagicTag (Mach.Double x)) => 
+             Mach.MagicTag (Mach.Boolean b) => b
+           | Mach.MagicTag (Mach.Double x) => 
              not (Real64.==(x,(Real64.fromInt 0))
                   orelse
                   Real64.isNan x)
-           | SOME (Mach.MagicTag (Mach.Decimal x)) => 
+           | Mach.MagicTag (Mach.Decimal x) => 
              not ((x = Decimal.zero)
                   orelse
                   (Decimal.isNaN x))
-           | SOME (Mach.MagicTag (Mach.String s)) => 
+           | Mach.MagicTag (Mach.String s) => 
              not (Ustring.stringLength s = 0)
            | _ => true)
 
@@ -1685,15 +1685,15 @@ and toNumeric (regs:Mach.REGS)
           | Mach.Null => zero ()
           | Mach.Object (Mach.Obj { tag, ... }) =>
             (case tag of
-                 SOME (Mach.MagicTag (Mach.Double _)) => v
-               | SOME (Mach.MagicTag (Mach.Decimal _)) => v
-               | SOME (Mach.MagicTag (Mach.Boolean false)) => zero ()
-               | SOME (Mach.MagicTag (Mach.Boolean true)) => one ()
+                 Mach.MagicTag (Mach.Double _) => v
+               | Mach.MagicTag (Mach.Decimal _) => v
+               | Mach.MagicTag (Mach.Boolean false) => zero ()
+               | Mach.MagicTag (Mach.Boolean true) => one ()
                (*
                 * FIXME: This is not the correct definition of ToNumber applied to string.
                 * See ES-262-3 9.3.1. We need to talk it over.
                 *)
-               | SOME (Mach.MagicTag (Mach.String us)) =>
+               | Mach.MagicTag (Mach.String us) =>
                  let val s = Ustring.toAscii us
                  in
                      case Real64.fromString s of
@@ -1720,19 +1720,20 @@ and toDecimal (v:Mach.VAL)
           | Mach.Null => Decimal.zero
           | Mach.Object (Mach.Obj { tag, ... }) =>
             (case tag of
-                 SOME (Mach.MagicTag (Mach.Double d)) =>
+                 Mach.MagicTag (Mach.Double d) =>
                  (* NB: Lossy. *)
                  (case fromStr (Real64.toString d) of
                       SOME d' => d'
                     | NONE => Decimal.NaN)
-               | SOME (Mach.MagicTag (Mach.Decimal d)) => d
-               | SOME (Mach.MagicTag (Mach.Boolean false)) => Decimal.zero
-               | SOME (Mach.MagicTag (Mach.Boolean true)) => Decimal.one
+               | Mach.MagicTag (Mach.Decimal d) => d
+               | Mach.MagicTag (Mach.Boolean false) => Decimal.zero
+               | Mach.MagicTag (Mach.Boolean true) => Decimal.one
                (*
                 * FIXME: This is not the correct definition either. See toNumeric.
                 *)
-               | SOME (Mach.MagicTag (Mach.String us)) =>
-                 let val s = Ustring.toAscii us
+               | Mach.MagicTag (Mach.String us) =>
+                 let 
+                     val s = Ustring.toAscii us
                  in
                      case fromStr s of
                          SOME s' => s'
@@ -1757,19 +1758,20 @@ and toDouble (v:Mach.VAL)
           | Mach.Null => zero ()
           | Mach.Object (Mach.Obj {tag, ...}) =>
             (case tag of
-                 SOME (Mach.MagicTag (Mach.Double d)) => d
-               | SOME (Mach.MagicTag (Mach.Decimal d)) =>
+                 Mach.MagicTag (Mach.Double d) => d
+               | Mach.MagicTag (Mach.Decimal d) =>
                  (* NB: Lossy. *)
                  (case Real64.fromString (Decimal.toString d) of
                       SOME d' => d'
                     | NONE => NaN ())
-               | SOME (Mach.MagicTag (Mach.Boolean false)) => zero ()
-               | SOME (Mach.MagicTag (Mach.Boolean true)) => one ()
+               | Mach.MagicTag (Mach.Boolean false) => zero ()
+               | Mach.MagicTag (Mach.Boolean true) => one ()
                (*
                 * FIXME: This is not the correct definition either. See toNumeric.
                 *)
-               | SOME (Mach.MagicTag (Mach.String us)) =>
-                 let val s = Ustring.toAscii us
+               | Mach.MagicTag (Mach.String us) =>
+                 let 
+                     val s = Ustring.toAscii us
                  in
                      case Real64.fromString s  of
                          SOME s' => s'
@@ -2358,8 +2360,8 @@ and evalSuperCall (regs:Mach.REGS)
     let                                         
         val Mach.Obj { tag, ... } = object
         val thisType = case tag of 
-                           SOME (Mach.InstanceTag thisType) => thisType
-                         | _ => error regs ["missing class-type tag during super call"]
+                           Mach.InstanceTag thisType => thisType
+                         | _ => error regs ["missing InstanceType tag during super call"]
                                 
         (* 
          *
@@ -2668,7 +2670,7 @@ and evalYieldExpr (regs:Mach.REGS)
         case thisGen of
             SOME (Mach.Obj { tag, ... }) =>
             (case tag of
-                 SOME (Mach.MagicTag (Mach.Generator gen)) =>
+                 Mach.MagicTag (Mach.Generator gen) =>
                  let
                      val v = case expr of
                                  NONE => Mach.Undef
@@ -2676,7 +2678,7 @@ and evalYieldExpr (regs:Mach.REGS)
                  in
                      yieldFromGen regs gen v
                  end
-               | _ => error regs ["this generator is not a generator"])
+               | _ => error regs ["missing Generator tag on object in yield"])
           (* this should never happen *)
           | NONE => error regs ["yield expression in a non-generator function context"]
     end
@@ -2782,7 +2784,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
             case v of
                 Mach.Object (Mach.Obj {tag, ...}) =>
                 (case tag of
-                    SOME (Mach.MagicTag (Mach.Function closure)) => 
+                    Mach.MagicTag (Mach.Function closure) => 
                     let 
                         val Ast.Func { name, ... } = (#func closure)
                         val kind = (#kind name)
@@ -2935,9 +2937,9 @@ and evalNewObj (regs:Mach.REGS)
     case obj of
         Mach.Obj { tag, ... } =>
         case tag of
-            SOME (Mach.MagicTag (Mach.Class c)) => constructClassInstance regs obj c args
-          | SOME (Mach.MagicTag (Mach.Function f)) => constructObjectViaFunction regs obj f args
-          | _ => throwExn (newTypeErr regs ["operator 'new' applied to unknown object"])
+            Mach.MagicTag (Mach.Class c) => constructClassInstance regs obj c args
+          | Mach.MagicTag (Mach.Function f) => constructObjectViaFunction regs obj f args
+          | _ => throwExn (newTypeErr regs ["operator 'new' applied to unexpected object type"])
 
 
 and evalCallMethodByExpr (regs:Mach.REGS)
@@ -3018,10 +3020,10 @@ and evalCallByObj (regs:Mach.REGS)
     case fobj of
         Mach.Obj { tag, ... } =>
         case tag of
-            SOME (Mach.MagicTag (Mach.NativeFunction { func, ... })) =>
+            Mach.MagicTag (Mach.NativeFunction { func, ... }) =>
             (trace ["evalCallByObj: entering native function"];
              func regs args)
-          | SOME (Mach.MagicTag (Mach.Function f)) =>
+          | Mach.MagicTag (Mach.Function f) =>
             (trace ["evalCallByObj: entering standard function"];
              invokeFuncClosure regs f (SOME fobj) args)
           | _ =>
@@ -3625,7 +3627,7 @@ and doubleEquals (regs:Mach.REGS)
 
 
 and typeOfTag (regs:Mach.REGS)
-              (tag:Mach.TAG option)
+              (tag:Mach.TAG)
     : (Ast.TYPE) =
     let
         fun magicInstanceType getter = 
@@ -3633,33 +3635,33 @@ and typeOfTag (regs:Mach.REGS)
                 val cell = getter regs 
             in
                 case !cell of 
-                    SOME (Mach.Obj { tag = SOME (Mach.MagicTag 
-                                                     (Mach.Class 
-                                                          {cls=Ast.Cls { instanceType, 
-                                                                         ... }, 
-                                                           ...})), 
+                    SOME (Mach.Obj { tag = Mach.MagicTag 
+                                               (Mach.Class 
+                                                    {cls=Ast.Cls { instanceType, 
+                                                                   ... }, 
+                                                     ...}), 
                                      ...}) => 
                     instanceType
                   | _ => error regs ["error fetching magic instance type"]
             end
     in
         case tag of
-            SOME (Mach.InstanceTag ity) => Ast.InstanceType ity
-          | SOME (Mach.ObjectTag tys) => Ast.RecordType tys
-          | SOME (Mach.ArrayTag tys) => Ast.ArrayType tys
-          | SOME (Mach.MagicTag (Mach.Boolean _)) => magicInstanceType Mach.getBooleanClassSlot
-          | SOME (Mach.MagicTag (Mach.Double _)) => magicInstanceType Mach.getDoubleClassSlot
-          | SOME (Mach.MagicTag (Mach.Decimal _)) => magicInstanceType Mach.getDecimalClassSlot
-          | SOME (Mach.MagicTag (Mach.String _)) => magicInstanceType Mach.getStringClassSlot
-          | SOME (Mach.MagicTag (Mach.Namespace _)) => magicInstanceType Mach.getNamespaceClassSlot
-          | SOME (Mach.MagicTag (Mach.Class _)) => magicInstanceType Mach.getClassClassSlot
-          | SOME (Mach.MagicTag (Mach.Interface _)) => magicInstanceType Mach.getInterfaceClassSlot
-          | SOME (Mach.MagicTag (Mach.Type _)) => magicInstanceType Mach.getTypeInterfaceSlot
-          | SOME (Mach.MagicTag (Mach.NativeFunction _)) => magicInstanceType Mach.getFunctionClassSlot
-          | SOME (Mach.MagicTag (Mach.Generator _)) => magicInstanceType Mach.getGeneratorClassSlot
-          | SOME (Mach.MagicTag (Mach.Function {func=Ast.Func { ty, ...}, ...})) => ty
+            Mach.InstanceTag ity => Ast.InstanceType ity
+          | Mach.ObjectTag tys => Ast.RecordType tys
+          | Mach.ArrayTag tys => Ast.ArrayType tys
+          | Mach.MagicTag (Mach.Boolean _) => magicInstanceType Mach.getBooleanClassSlot
+          | Mach.MagicTag (Mach.Double _) => magicInstanceType Mach.getDoubleClassSlot
+          | Mach.MagicTag (Mach.Decimal _) => magicInstanceType Mach.getDecimalClassSlot
+          | Mach.MagicTag (Mach.String _) => magicInstanceType Mach.getStringClassSlot
+          | Mach.MagicTag (Mach.Namespace _) => magicInstanceType Mach.getNamespaceClassSlot
+          | Mach.MagicTag (Mach.Class _) => magicInstanceType Mach.getClassClassSlot
+          | Mach.MagicTag (Mach.Interface _) => magicInstanceType Mach.getInterfaceClassSlot
+          | Mach.MagicTag (Mach.Type _) => magicInstanceType Mach.getTypeInterfaceSlot
+          | Mach.MagicTag (Mach.NativeFunction _) => magicInstanceType Mach.getFunctionClassSlot
+          | Mach.MagicTag (Mach.Generator _) => magicInstanceType Mach.getGeneratorClassSlot
+          | Mach.MagicTag (Mach.Function {func=Ast.Func { ty, ...}, ...}) => ty
             
-          | NONE =>
+          | Mach.NoTag =>
             (* FIXME: this would be a hard error if we didn't use NoTag values
              * as temporaries. Currently we do, so there are contexts where we
              * want them to have a type in order to pass a runtime type test.
@@ -4752,7 +4754,7 @@ and constructStandardWithTag (regs:Mach.REGS)
     let
         val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
         val (proto:Mach.VAL) = getPrototype regs classObj
-        val (instanceObj:Mach.OBJ) = Mach.newObject (SOME tag) proto
+        val (instanceObj:Mach.OBJ) = Mach.newObject tag proto
         (* FIXME: might have 'this' binding wrong in class scope here. *)
         val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
         val classRegs = withThis (withScope regs classScope) instanceObj
@@ -4886,7 +4888,7 @@ and specialObjectConstructor (regs:Mach.REGS)
                  * implements its lower half (primitive values) by calling into *here*,
                  * so here is where we do any cloning and magic-copying.
                  *)
-                SOME (Mach.MagicTag mt) => constructStandardWithTag regs classObj classClosure args (Mach.MagicTag mt)
+                Mach.MagicTag mt => constructStandardWithTag regs classObj classClosure args (Mach.MagicTag mt)
               | _ => instantiate()
     end
 
@@ -5053,8 +5055,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
             val Mach.Obj { ident, tag, ... } = obj
 	in
 	        case tag of 
-		        NONE => ()
-	          | SOME (Mach.MagicTag (Mach.Class { cls = Ast.Cls { name, ... }, ... })) =>
+	            Mach.MagicTag (Mach.Class { cls = Ast.Cls { name, ... }, ... }) =>
 		        let
 		            val bindings = [
 			            (Name.intrinsic_Type, Mach.getTypeInterfaceSlot),
@@ -5196,7 +5197,7 @@ and initClassPrototype (regs:Mach.REGS)
 	val Mach.Obj { ident, props, tag, ... } = obj
     in
 	case tag of 
-	    SOME (Mach.MagicTag (Mach.Class {cls=Ast.Cls {name, extends,...},...})) => 
+	    Mach.MagicTag (Mach.Class {cls=Ast.Cls {name, extends,...},...}) => 
 	    let
 		    val baseProtoVal =
 		        case extends of
