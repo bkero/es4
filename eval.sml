@@ -582,10 +582,10 @@ and valAllocState (regs:Mach.REGS)
         
       | Ast.UndefinedType =>
         Mach.ValProp (Mach.Undef)
-        
+       (* 
       | Ast.VoidType =>
         error regs ["attempt to allocate void-type property"]
-        
+        *)
       | Ast.UnionType [] => 
 		Mach.UninitProp
         
@@ -3257,7 +3257,7 @@ and evalTypeExpr (regs:Mach.REGS)
     : Mach.VAL =
     case te of
         Ast.AnyType => Mach.Null (* FIXME *)
-      | Ast.VoidType => Mach.Null (* FIXME *)
+     (*  | Ast.VoidType => Mach.Null (* FIXME *) *)
       | Ast.NullType => Mach.Null (* FIXME *)
       | Ast.UndefinedType => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)

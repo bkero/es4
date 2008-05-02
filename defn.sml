@@ -627,12 +627,12 @@ and defInterface (env: ENV)
 
 and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
     : bool =
-    let
+    let (*
         fun isVoid ty = 
             case ty of 
                 Ast.VoidType => true
               | _ => false
-                     
+          *)           
         val isCompatible = case (fb,fd) of
                 (Ast.MethodFixture
                      {ty=Ast.FunctionType {params=pb, 
@@ -663,9 +663,12 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
                         val _ = trace ["length db ",Int.toString (length db),
                                        " length dd ",Int.toString (length dd),"\n"]
                     in
+                        true
+                        (*
                         ((isVoid rtb) andalso (isVoid rtd))
                         orelse
                         ((not (isVoid rtb)) andalso (not (isVoid rtd)))
+                         *)
                     (* FIXME: check compatibility of return types? *)
                     end
                     
@@ -1739,7 +1742,7 @@ and defFuncTy (env:ENV)
             val {typeParams,params,result,thisType,hasRest,minArgs} = ty
             val params' = map (defTypeExpr env) params
             val thisType' = defTypeExpr env thisType
-            val result' = defTypeExpr env result
+            val result' = Option.map (defTypeExpr env) result
         in
             {typeParams=typeParams,
              params=params',
