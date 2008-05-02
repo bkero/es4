@@ -15,7 +15,20 @@ SCOPE:                      The structure and behavior of objects, including the
 </pre>
 <hr>
 
-<p>A value is one of three fundamental types: ''Undefined'', ''Null'', and ''Object''.
+<p>The execution of a program, described in section ..., entails among its effects
+the calculation and manipulation of values.
+
+<p>A //value// is either ''Undefined'', ''Null'', or an
+''Object''. Every value has an associated type, which is fixed for the
+lifetime of the value.
+
+<NOTE>In the 3rd edition of the language, nine individual //types//
+were defined. Six of these types are described differently in the 4th
+edition: the three types formerly called primitive (Number, String,
+Boolean) are now represented as ''Object'' values, and the three types
+formerly reserved for intermediate results of expressions (Reference,
+List and Completion) are described through separate specification
+mechanisms, rather than as part of the set of possible values.
 
 <IMPL>
 <pre>
@@ -27,9 +40,8 @@ datatype VALUE =
 
 == Undefined == 
 
-<p>The ''Undefined'' type has exactly one value called **undefined**.
-Any variable of type ''*'' that has not been assigned a value has 
-the value **undefined**.
+<p>There is exactly one ''Undefined'' value, called **undefined**.
+Any property of type ''*'' is initialized with the value **undefined**.
 
 <NOTE>As with earlier editions of the language, ''undefined'' is not a
 reserved word and so might be shadowed by a user defined property with
@@ -37,30 +49,32 @@ the same name identifier.
 
 == Null ==
 
-<p>The ''Null'' type has exactly one value called **null**. Any 
-variable with type ''Object'' that has not been assigned a value 
-has the value **null**.
+<p>There is exactly one ''Null'' value, called **null**. Any property
+with a type including the ''Null'' type is initialized to the value
+**null**.
 
-<NOTE>While ''null'' and ''undefined'' have similar meanings, they have 
-different conventions of use. **null** is often used to mean a missing ''Object''
-value, while ''Undefined'' is used to mean a missing or undefined property.
-These meanings are generally not enforced by the language semantics.
+<NOTE>While **null** and **undefined** have similar meanings, they
+have different conventions of use. The **null** value is intended to
+indicate a missing ''Object'' value, while the **undefined** value is
+intended to indicate a missing property on an existing ''Object''
+value. These indeded uses are conventions, and are not enforced by the
+language semantics.
 
 == Objects ==
 
-<p>The ''Object'' type includes all values except **null** and **undefined**.
+<p>All values except **null** and **undefined** are ''Object'' values.
 
-<p>An object value contains a list of property bindings, object identifier, 
-value tag, a prototype reference, and an optional reference to internal data.
+<p>An object value consists of a mutable set of property bindings, an
+immutable object identifier, an immutable tag, and a mutable prototype
+value.
 
 <IMPL>
 <pre>
 datatype OBJECT =
-         Obj of { ident: OBJ_IDENT
-                , tag: VAL_TAG
-                , props: PROP_BINDING list
-                , proto: VAL ref
-                , magic: (MAGIC option) ref }
+         Obj of { ident: OBJ_IDENT,
+                  tag: TAG option,
+                  props: PROP_BINDING list,
+                  proto: VAL ref }
 </pre>
 
 <p>The object identifier uniquely identifies each object value.
@@ -70,21 +84,16 @@ datatype OBJECT =
 type OBJECT_ID = <LDOTS>
 </pre>
 
-<p>The object value tag represents the allocated type of an
-object.
+<p>The object tag represents the allocated type of an object.
 
 <IMPL>
 <pre>
 datatype VALUE_TAG = 
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE_EXPR list
-       | FunctionTag of Ast.FUNC_TYPE
-       | ClassTag of Ast.INSTANCE_TYPE
-       | NoTag (*
-                * NoTag objects are made for scopes and
-                * temporaries passed as arguments during
-                * builtin construction.
-                *)
+       | InstanceTag of Ast.INSTANCE_TYPE
+       | MagicTag of MAGIC
+       | NoTag
 </pre>
 
 <p>Property bindings that maps names to properties.

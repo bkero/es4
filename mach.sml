@@ -81,12 +81,12 @@ datatype VAL = Object of OBJ
 
      and OBJ =
          Obj of { ident: OBJ_IDENTIFIER,
-                  tag: VAL_TAG option,
+                  tag: TAG option,
                   props: PROP_BINDINGS,
                   rib: Ast.RIB ref,
                   proto: VAL ref }
 
-     and VAL_TAG =
+     and TAG =
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE list
        | InstanceTag of Ast.INSTANCE_TYPE
@@ -498,7 +498,7 @@ fun nextIdent _ =
                    handle Overflow => error ["overflowed maximum object ID"]);
      !currIdent)
 
-fun newObject (t:VAL_TAG option)
+fun newObject (t:TAG option)
               (p:VAL)
     : OBJ =
     Obj { ident = nextIdent (),
@@ -770,7 +770,7 @@ fun magStr (SOME mag) = Ustring.toAscii (magicToUstring mag)
  * magic value pointing to the CLS.
  *)
 
-fun nominalBaseOfTag (to:VAL_TAG option)
+fun nominalBaseOfTag (to:TAG option)
     : Ast.NAME =
     case to of
         NONE => Name.public_Object

@@ -905,7 +905,7 @@ and checkAndConvert (regs:Mach.REGS)
 
 
 and getObjTag (obj:Mach.OBJ)
-    : Mach.VAL_TAG option = 
+    : Mach.TAG option = 
     let
         val Mach.Obj { tag, ... } = obj
     in
@@ -3625,7 +3625,7 @@ and doubleEquals (regs:Mach.REGS)
 
 
 and typeOfTag (regs:Mach.REGS)
-              (tag:Mach.VAL_TAG option)
+              (tag:Mach.TAG option)
     : (Ast.TYPE) =
     let
         fun magicInstanceType getter = 
@@ -4738,7 +4738,7 @@ and constructStandard (regs:Mach.REGS)
         val {cls = Ast.Cls { instanceType, ...}, env, ...} = classClosure
         val classRegs = withScope regs env
         val ty = AstQuery.needInstanceType (evalTy classRegs instanceType)
-        val (tag:Mach.VAL_TAG) = Mach.InstanceTag ty
+        val (tag:Mach.TAG) = Mach.InstanceTag ty
     in
         constructStandardWithTag classRegs classObj classClosure args tag
     end
@@ -4747,7 +4747,7 @@ and constructStandardWithTag (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
                              (args:Mach.VAL list)
-                             (tag:Mach.VAL_TAG)
+                             (tag:Mach.TAG)
     : Mach.OBJ =
     let
         val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
