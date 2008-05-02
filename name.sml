@@ -39,7 +39,7 @@ fun newOpaqueNS _ =
      (Ast.OpaqueNamespace (!opaqueNsCounter)))
 	
 val ES4NS = newOpaqueNS ()
-val publicNS = newOpaqueNS ()
+val publicNS = Ast.TransparentNamespace Ustring.empty
 val metaNS = newOpaqueNS ()
 val magicNS = newOpaqueNS ()
 val intrinsicNS = newOpaqueNS ()
