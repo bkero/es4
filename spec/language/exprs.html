@@ -557,6 +557,17 @@ The modifier indicates whether the expression refers to the current this object,
 generator or function.
 
 ==== Semantics ====
+<P>The abstract representation of a this expression includes an optional modifier.
+<pre>
+datatype EXPRESSION =
+        ThisExpr of THIS_KIND option
+      | ...
+</pre>
+
+<INCLUDE file="ast.sml" name="and THIS_KIND">
+
+<P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
+
 <INCLUDE file="eval.sml" name="fun evalThisExpression">
 
 === Let Expressions ===
@@ -610,13 +621,39 @@ withtype
 <INCLUDE file="eval.sml" name="fun evalObjectRef">
 
 === Call Expressions ===
+<P>A call expression can be used to invoke a function.
+
+<!-- <pre class="code grammar"><em>CallExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+
 
 ==== Semantics ====
+<P>The abstract representation of a call expression includes an expression on which to invoke the call and a list of arguments.
+<pre>
+datatype EXPRESSION =
+        CallExpr of (EXPRESSION * EXPRESSION list)
+      | ...
+</pre>
+
+<P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
+
 <INCLUDE file="eval.sml" name="fun evalCallExpr">
 
 === New Expressions ===
 
+<P>A new expression creates an instance of the specified type.
+
+<!-- <pre class="code grammar"><em>NewExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+
 ==== Semantics ====
+<P>The abstract representation of a new expression includes an expression on which to apply the ''new'' operator and a list of arguments.
+<pre>
+datatype EXPRESSION =
+        NewExpr of (EXPRESSION * EXPRESSION list)
+      | ...
+</pre>
+
+<P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
+
 <INCLUDE file="eval.sml" name="fun evalNewExpr">
 
 === Type Expressions ===
