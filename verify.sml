@@ -522,7 +522,7 @@ and verifyExpr2 (env:ENV)
                 val args = verifySubList actuals
             in
                 case t of
-                    Ast.FunctionType { typeParams=[], params, result, thisType, hasRest, minArgs } =>
+                    Ast.FunctionType { typeParams=[], params, result=SOME result, thisType, hasRest, minArgs } =>
                     
                     let fun checkargs args params =
                             case (args,params,hasRest) of

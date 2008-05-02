@@ -6113,18 +6113,18 @@ and restParameterType (ts) : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE list)) =
 *)
 
 and resultType (ts:TOKENS)
-    : (TOKENS * Ast.TYPE) =
+    : (TOKENS * Ast.TYPE option) =
     let val _ = trace([">> resultType with next=",tokenname(hd(ts))])
     in case ts of
-        (Colon, _) :: (Void, _) :: ts1 => (ts1,Ast.VoidType)
+        (Colon, _) :: (Void, _) :: ts1 => (ts1,NONE)
       | (Colon, _) :: _ =>
             let
                 val (ts1,nd1) = typeExpression (tl ts)
             in
                 trace ["<< resultType with next=",tokenname(hd ts1)];
-                (ts1, nd1)
+                (ts1, SOME nd1)
             end
-      | ts1 => (ts1,Ast.AnyType)
+      | ts1 => (ts1, SOME Ast.AnyType)
     end
 
 (*
@@ -6152,7 +6152,7 @@ and constructorSignature (ts:TOKENS)
                                       params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
-                                      returnType=Ast.VoidType,
+                                      returnType=NONE,
                                       ctorInits=SOME nd3,
                                       thisType=NONE,
                                       hasRest=hasRest })
@@ -6166,7 +6166,7 @@ and constructorSignature (ts:TOKENS)
                                       params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
-                                      returnType=Ast.VoidType,
+                                      returnType=NONE,
                                       ctorInits=SOME (([],[]),[]),
                                       thisType=NONE,
                                       hasRest=hasRest })

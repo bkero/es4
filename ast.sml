@@ -210,7 +210,7 @@ datatype PRAGMA =
            paramTypes: TYPE list,
            defaults: EXPRESSION list,
            ctorInits: (BINDINGS * EXPRESSION list) option, (* settings + super args *)
-           returnType: TYPE,
+           returnType: TYPE option,       (* NONE => void *)
            thisType: TYPE option,
            hasRest: bool }
 
@@ -262,7 +262,7 @@ datatype TYPE =
          NullType
        | UndefinedType
        | AnyType
-       | VoidType
+     (*  | VoidType *)
        | RecordType of FIELD_TYPE list     (* TODO: rename *)
        | UnionType of TYPE list
        | ArrayType of TYPE list
@@ -542,8 +542,8 @@ withtype
            thisType: TYPE,
            params: TYPE list,
            hasRest: bool,         (* if true, the last elem in params is array type *)
-           minArgs: int,         (* necessary because some of params can have defaults *)
-           result: TYPE
+           minArgs: int,          (* necessary because some of params can have defaults *)
+           result: TYPE option    (* NONE => void *)
          }
 
      and FUNC_DEFN =
