@@ -75,16 +75,17 @@ type IDENTIFIER = Ustring.STRING
 
 type NAMESPACE = Ast.NAMESPACE
 
-datatype VAL = Object of OBJ
-             | Null
-             | Undef
+datatype VALUE = Object of OBJ
+               | Null
+               | Undef
 
      and OBJ =
          Obj of { ident: OBJ_IDENTIFIER,
                   tag: TAG,
-                  props: PROP_BINDINGS,
-                  rib: Ast.RIB ref,
-                  proto: VAL ref }
+                  props: PROPERTY_BINDINGS,                  
+                  proto: VALUE ref
+                , rib: Ast.RIB ref     (* INFORMATIVE *)
+                }
 
      and TAG =
          ObjectTag of Ast.FIELD_TYPE list
@@ -140,7 +141,7 @@ datatype VAL = Object of OBJ
          }
 
      and FRAME = 
-         Frame of { name: string, args: VAL list }
+         Frame of { name: string, args: VALUE list }
 
 (*
  * Magic is visible only to the interpreter;
@@ -157,7 +158,7 @@ datatype VAL = Object of OBJ
        | Interface of IFACE_CLOSURE
        | Function of FUN_CLOSURE
        | Type of Ast.TYPE
-       | NativeFunction of NATIVE_FUNCTION
+       | NativeFunction of NATIVE_FUNCTION  (* INFORMATIVE *)
        | Generator of GEN
 
      and SCOPE =
@@ -175,12 +176,12 @@ datatype VAL = Object of OBJ
        | TypeArgScope
 
      and TEMP_STATE = UninitTemp
-                    | ValTemp of VAL
+                    | ValTemp of VALUE
 
-     and PROP_STATE = TypeVarProp
+     and PROPERTY_STATE = TypeVarProp
                     | TypeProp
                     | UninitProp
-                    | ValProp of VAL
+                    | ValProp of VALUE
 
                     (* One might imagine that namespaces, methods and
                      * the 'arguments' object in a function can all be stored
@@ -199,7 +200,7 @@ datatype VAL = Object of OBJ
                      *)
                     | NamespaceProp of Ast.NAMESPACE
                     | MethodProp of FUN_CLOSURE
-                    | ValListProp of VAL list
+                    | ValListProp of VALUE list
 
                     | NativeFunctionProp of NATIVE_FUNCTION
                     | VirtualValProp of
@@ -226,9 +227,9 @@ datatype VAL = Object of OBJ
                    | RunningGen
                    | ClosedGen
 
-     and GEN_SIGNAL = YieldSig of VAL
-                    | SendSig of VAL
-                    | ThrowSig of VAL
+     and GEN_SIGNAL = YieldSig of VALUE
+                    | SendSig of VALUE
+                    | ThrowSig of VALUE
                     | StopSig
                     | CloseSig
 
@@ -254,11 +255,11 @@ withtype FUN_CLOSURE =
           thisFun: OBJ option,
           thisGen: OBJ option,
           global: OBJ,
-          prog: Fixture.PROGRAM,          
-          aux: AUX
+          prog: Fixture.PROGRAM          
+          , aux: AUX                      (* INFORMATIVE *)
          }
 
-     and NATIVE_FUNCTION =
+     and NATIVE_FUNCTION =                
          { func: ({ scope: SCOPE, 
                     this: OBJ, 
                     thisFun: OBJ option,
@@ -266,12 +267,12 @@ withtype FUN_CLOSURE =
                     global: OBJ, 
                     prog: Fixture.PROGRAM, 
                     aux: AUX } (* REGS *)
-                  -> VAL list -> VAL),
+                  -> VALUE list -> VALUE),
            length: int }
 
-     and OBJ_IDENTIFIER =
+     and OBJ_IDENTIFIER = (* LDOTS *)
          int
-
+         
 (* Important to model "fixedness" separately from
  * "dontDelete-ness" because fixedness affects
  * which phase of name lookup the name is found during.
@@ -279,19 +280,20 @@ withtype FUN_CLOSURE =
 
      and TEMPS = (Ast.TYPE * TEMP_STATE) list ref
 
-     and PROP = { ty: Ast.TYPE,
-                  state: PROP_STATE,
-                  attrs: ATTRS }
+     and PROPERTY = { ty: Ast.TYPE,
+                      state: PROPERTY_STATE,
+                      attrs: ATTRS }
 
-     and PROP_BINDINGS = { max_seq: int,
-			               bindings: { seq: int,
-				                       prop: (* PROP *)
-				                                 { ty: Ast.TYPE,   
-					                               state: PROP_STATE,
-					                               attrs: ATTRS } } NameMap.map } ref 
+     and PROPERTY_BINDINGS = (* LDOTS *)
+         { max_seq: int,
+		   bindings: { seq: int,
+				       prop: (* PROPERTY *)
+				       { ty: Ast.TYPE,   
+					     state: PROPERTY_STATE,
+					     attrs: ATTRS } } NameMap.map } ref 
 			 
 			 
-fun isObject (v:VAL) : bool =
+fun isObject (v:VALUE) : bool =
     case v of
         Object _ => true
       | _ => false
@@ -345,7 +347,7 @@ fun isUndef Undef = true
 
 datatype MACHTY = TYNULL | TYUNDEF | TYNUMBER | TYSTRING | TYBOOLEAN | TYOBJECT
 
-fun es3Type (v:VAL) : MACHTY =
+fun es3Type (v:VALUE) : MACHTY =
     if isNull v then TYNULL
     else if isUndef v then TYUNDEF
     else if isNumeric v then TYNUMBER
@@ -353,17 +355,17 @@ fun es3Type (v:VAL) : MACHTY =
     else if isBoolean v then TYBOOLEAN
     else TYOBJECT
 
-fun isSameType (va:VAL) (vb:VAL) : bool =
+fun isSameType (va:VALUE) (vb:VALUE) : bool =
     es3Type va = es3Type vb
 
 (* Binding operations. *)
 
-fun newPropBindings _ : PROP_BINDINGS =
+fun newPropBindings _ : PROPERTY_BINDINGS =
     ref { max_seq = 0, bindings = NameMap.empty }
 
-fun addProp (b:PROP_BINDINGS)
+fun addProp (b:PROPERTY_BINDINGS)
             (n:Ast.NAME)
-            (x:PROP)
+            (x:PROPERTY)
     : unit =
     let
 	val { max_seq, bindings } = !b	
@@ -374,7 +376,7 @@ fun addProp (b:PROP_BINDINGS)
 	b := { max_seq = s, bindings = bindings }
     end
 
-fun delProp (b:PROP_BINDINGS)
+fun delProp (b:PROPERTY_BINDINGS)
             (n:Ast.NAME)
     : unit =
     let
@@ -384,9 +386,9 @@ fun delProp (b:PROP_BINDINGS)
 	b := { max_seq = max_seq, bindings = bindings }
     end
 
-fun findProp (b:PROP_BINDINGS)
+fun findProp (b:PROPERTY_BINDINGS)
              (n:Ast.NAME)
-    : PROP option =
+    : PROPERTY option =
     let
 	val { bindings, ... } = !b
     in
@@ -396,7 +398,7 @@ fun findProp (b:PROP_BINDINGS)
     end
 
 fun matchProps (fixedProps:bool)
-               (b:PROP_BINDINGS)
+               (b:PROPERTY_BINDINGS)
                (searchId:Ast.IDENTIFIER)
                (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
@@ -413,9 +415,9 @@ fun matchProps (fixedProps:bool)
         List.mapPartial tryNS nss
     end
 
-fun getProp (b:PROP_BINDINGS)
+fun getProp (b:PROPERTY_BINDINGS)
             (n:Ast.NAME)
-    : PROP =
+    : PROPERTY =
     case findProp b n of
         SOME p => p
       | NONE =>
@@ -432,7 +434,7 @@ fun getProp (b:PROP_BINDINGS)
                 isFixed=false}}
 
 
-fun hasProp (b:PROP_BINDINGS)
+fun hasProp (b:PROPERTY_BINDINGS)
             (n:Ast.NAME)
     : bool =
     case findProp b n of
@@ -471,7 +473,7 @@ fun getRibs (scope:SCOPE)
       end
 
 
-fun setPropDontEnum (props:PROP_BINDINGS)
+fun setPropDontEnum (props:PROPERTY_BINDINGS)
                     (n:Ast.NAME)
                     (dontEnum:bool)
     : unit =
@@ -500,7 +502,7 @@ fun nextIdent _ =
      !currIdent)
 
 fun newObject (t:TAG)
-              (p:VAL)
+              (p:VALUE)
     : OBJ =
     Obj { ident = nextIdent (),
           tag = t,
@@ -513,14 +515,14 @@ fun newObjectNoTag _
     newObject NoTag Null
 
 fun getProto (ob:OBJ)
-    : VAL =
+    : VALUE =
     let
          val Obj {proto, ...} = ob
     in
         !proto
     end
 
-fun setProto (ob:OBJ) (p:VAL)
+fun setProto (ob:OBJ) (p:VALUE)
     : OBJ =
     let
          val Obj {proto, ...} = ob
@@ -531,7 +533,7 @@ fun setProto (ob:OBJ) (p:VAL)
 
 fun getTemp (temps:TEMPS)
             (n:int)
-    : VAL =
+    : VALUE =
     let        
         val _ = trace ["getTemp ",Int.toString n]                
     in
@@ -545,7 +547,7 @@ fun getTemp (temps:TEMPS)
 
 fun defTemp (temps:TEMPS)
             (n:int)
-            (v:VAL)
+            (v:VALUE)
     : unit =
     let
         val _ = trace ["defTemp ",Int.toString n]
@@ -663,7 +665,7 @@ and NumberToString (r:Real64.real)
                     end
 
 
-fun inspect (v:VAL)
+fun inspect (v:VALUE)
             (d:Int32.int)
     : unit =
     let
@@ -833,7 +835,7 @@ fun needString (Object (Obj {tag = MagicTag (String s), ...})) = s
 (* Call stack and debugging stuff *)
 
 (* An approximation of an invocation argument list, for debugging. *)
-fun approx (arg:VAL)
+fun approx (arg:VALUE)
     : string =
     case arg of
         Null => "null"
@@ -891,7 +893,7 @@ fun resetStack (regs:REGS) : unit =
 
 fun push (regs:REGS) 
          (name:string) 
-         (args:VAL list) 
+         (args:VALUE list) 
     : unit =
     let 
         val { aux = 

@@ -72,13 +72,13 @@ fun evalTy (regs:Mach.REGS)
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENTIFIER option)
 exception BreakException of (Ast.IDENTIFIER option)
-exception ThrowException of Mach.VAL
-exception ReturnException of Mach.VAL
+exception ThrowException of Mach.VALUE
+exception ReturnException of Mach.VALUE
 exception StopIterationException
 
 exception InternalError
 
-fun throwExn (v:Mach.VAL)
+fun throwExn (v:Mach.VALUE)
     : 'a =
     raise (ThrowException v)
 
@@ -88,7 +88,7 @@ fun tsub <* tsup = Type.compatibleSubtype tsub tsup
 infix 4 ~<;
 fun ta ~< tb = Type.groundMatches ta tb
 
-fun mathOp (v:Mach.VAL)
+fun mathOp (v:Mach.VALUE)
            (decimalFn:(Decimal.DEC -> 'a) option)
            (doubleFn:(Real64.real -> 'a) option)
            (default:'a)
@@ -291,7 +291,7 @@ fun getGlobalScope (regs:Mach.REGS)
 
 
 (*
- * A small number of functions do not fully evaluate to Mach.VAL
+ * A small number of functions do not fully evaluate to Mach.VALUE
  * values, but instead to REFs; these are temporary artifacts of
  * evaluation, not first-class values in the language.
  *)
@@ -556,7 +556,7 @@ and allocTemp (regs:Mach.REGS)
 
 and valAllocState (regs:Mach.REGS) 
                   (ty:Ast.TYPE)
-    : Mach.PROP_STATE =
+    : Mach.PROPERTY_STATE =
     
     (* Every value fixture has a type, and every type has an
      * associated "allocated state". Note that
@@ -655,7 +655,7 @@ and valAllocState (regs:Mach.REGS)
 
 and allocSpecial (regs:Mach.REGS)
                  (id:Mach.OBJ_IDENTIFIER)
-    : Mach.VAL option =
+    : Mach.VALUE option =
     let
         fun findSpecial [] = NONE
           | findSpecial ((q,f)::rest) = 
@@ -681,7 +681,7 @@ and allocSpecial (regs:Mach.REGS)
     end
 
 
-and asArrayIndex (v:Mach.VAL)
+and asArrayIndex (v:Mach.VALUE)
     : Word32.word =
     case v of
         Mach.Object (Mach.Obj { tag, ... }) =>
@@ -754,13 +754,13 @@ and getValueOrVirtual (regs:Mach.REGS)
                       (obj:Mach.OBJ)
                       (name:Ast.NAME)
                       (doVirtual:bool)
-                      (propNotFound:(Mach.OBJ -> Mach.VAL))
-    : Mach.VAL =
+                      (propNotFound:(Mach.OBJ -> Mach.VALUE))
+    : Mach.VALUE =
     let
         val _ = trace ["getting property ", fmtName name, 
                        " on obj #", Int.toString (getObjId obj)]
         val Mach.Obj { props, ... } = obj
-        fun upgraded (currProp:Mach.PROP) newVal =
+        fun upgraded (currProp:Mach.PROPERTY) newVal =
             let
                 val { ty, attrs, ... } = currProp
                 val newProp = { state = Mach.ValProp newVal,
@@ -840,10 +840,10 @@ and getValueOrVirtual (regs:Mach.REGS)
 and getValue (regs:Mach.REGS)
              (obj:Mach.OBJ)
              (name:Ast.NAME)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         fun propNotFound (curr:Mach.OBJ)
-            : Mach.VAL =
+            : Mach.VALUE =
             let
                 val Mach.Obj { proto, ... } = curr
             in
@@ -866,9 +866,9 @@ and getValue (regs:Mach.REGS)
 
 and newTypeOpFailure (regs:Mach.REGS)
                   (prefix:string)
-                  (v:Mach.VAL)
+                  (v:Mach.VALUE)
                   (tyExpr:Ast.TYPE)
-    : Mach.VAL =
+    : Mach.VALUE =
     newTypeErr regs [prefix, ": val=", Mach.approx v,
                      " type=", LogErr.ty (typeOfVal regs v),
                      " wanted=", LogErr.ty tyExpr]
@@ -879,9 +879,9 @@ and newTypeOpFailure (regs:Mach.REGS)
 *)
     
 and checkAndConvert (regs:Mach.REGS)
-                    (v:Mach.VAL)
+                    (v:Mach.VALUE)
                     (ty:Ast.TYPE)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val tyExpr = evalTy regs ty
     in                         
@@ -933,7 +933,7 @@ and isDynamic (regs:Mach.REGS)
 and badPropAccess (regs:Mach.REGS)
                   (accessKind:string)
                   (propName:Ast.NAME)
-                  (existingPropState:Mach.PROP_STATE)
+                  (existingPropState:Mach.PROPERTY_STATE)
     : unit =
     let
         val existingPropKind = 
@@ -957,7 +957,7 @@ and badPropAccess (regs:Mach.REGS)
 and setValueOrVirtual (regs:Mach.REGS)
                       (obj:Mach.OBJ)
                       (name:Ast.NAME)
-                      (v:Mach.VAL)
+                      (v:Mach.VALUE)
                       (doVirtual:bool)
     : unit =
     let
@@ -1047,7 +1047,7 @@ and setValueOrVirtual (regs:Mach.REGS)
 and setValue (regs:Mach.REGS)
              (base:Mach.OBJ)
              (name:Ast.NAME)
-             (v:Mach.VAL)
+             (v:Mach.VALUE)
     : unit =
     setValueOrVirtual regs base name v true
 
@@ -1059,7 +1059,7 @@ and setValue (regs:Mach.REGS)
 and defValue (regs:Mach.REGS)
              (base:Mach.OBJ)
              (name:Ast.NAME)
-             (v:Mach.VAL)
+             (v:Mach.VALUE)
     : unit =
     case base of
         Mach.Obj { props, ... } =>
@@ -1121,11 +1121,11 @@ and defValue (regs:Mach.REGS)
 
 and instantiateGlobalClass (regs:Mach.REGS)
                            (n:Ast.NAME)
-                           (args:Mach.VAL list)
-    : Mach.VAL =
+                           (args:Mach.VALUE list)
+    : Mach.VALUE =
     let
         val _ = traceConstruct ["instantiating global class ", fmtName n];
-        val (cls:Mach.VAL) = getValue regs (#global regs) n
+        val (cls:Mach.VALUE) = getValue regs (#global regs) n
     in
         case cls of
             Mach.Object ob => evalNewObj regs ob args
@@ -1136,7 +1136,7 @@ and instantiateGlobalClass (regs:Mach.REGS)
 and newExn (regs:Mach.REGS)
            (name:Ast.NAME)
            (args:string list)
-    : Mach.VAL =
+    : Mach.VALUE =
     if Mach.isBooting regs
     then error regs ["trapped ThrowException during boot: ", 
                      LogErr.name name, "(", String.concat args, ")"]
@@ -1146,16 +1146,16 @@ and newExn (regs:Mach.REGS)
 
 and newTypeErr (regs:Mach.REGS)
                (args:string list)
-    : Mach.VAL =
+    : Mach.VALUE =
     newExn regs Name.public_TypeError args
 
 and newRefErr (regs:Mach.REGS)
               (args:string list)
-    : Mach.VAL =
+    : Mach.VALUE =
     newExn regs Name.public_ReferenceError args
 
 and needNameOrString (regs:Mach.REGS)
-                     (v:Mach.VAL)
+                     (v:Mach.VALUE)
     : Ast.NAME =
     case v of
         Mach.Object obj => 
@@ -1172,7 +1172,7 @@ and needNameOrString (regs:Mach.REGS)
       | _ => Name.public (toUstring regs v)
 
 and needObj (regs:Mach.REGS)
-            (v:Mach.VAL)
+            (v:Mach.VALUE)
     : Mach.OBJ =
     case v of
         Mach.Object ob => ob
@@ -1188,8 +1188,8 @@ and newObj (regs:Mach.REGS) =
                  regs Name.public_Object [])
     
 and newArray (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
+             (vals:Mach.VALUE list)
+    : Mach.VALUE =
     (*
      * NB: Do not reorganize this to call the public Array constructor with the val list
      * directly: that constructor is a bit silly. It interprets a single-argument list as
@@ -1212,7 +1212,7 @@ and newArray (regs:Mach.REGS)
 
 fun evalRegExpInitialiser (env: ENV)
                           (string: Ustring.STRING)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -1220,7 +1220,7 @@ fun evalRegExpInitialiser (env: ENV)
 and newRegExp (regs:Mach.REGS)
               (pattern:Ustring.STRING)
               (flags:Ustring.STRING)
-    : Mach.VAL =
+    : Mach.VALUE =
     instantiateGlobalClass 
         regs Name.public_RegExp 
         [newString regs pattern, newString regs flags]
@@ -1228,7 +1228,7 @@ and newRegExp (regs:Mach.REGS)
 and newBuiltin (regs:Mach.REGS)
                (n:Ast.NAME) 
                (m:Mach.MAGIC option)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val args = case m of 
                      NONE => []
@@ -1241,28 +1241,28 @@ and newBuiltin (regs:Mach.REGS)
 
 fun evalDecimalLiteral (env: ENV)
                        (decimal: Decimal.DEC)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
 
 and newDecimal (regs:Mach.REGS) 
                (n:Decimal.DEC)
-    : Mach.VAL =
+    : Mach.VALUE =
     newBuiltin regs Name.ES4_decimal (SOME (Mach.Decimal n))
 
 (* SPEC
 
 fun evalDoubleLiteral (env: ENV)
                       (double: Real64.real)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
 
 and newDouble (regs:Mach.REGS) 
               (n:Real64.real)
-    : Mach.VAL =
+    : Mach.VALUE =
     if Real64.isNan n
     then newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
     else
@@ -1272,14 +1272,14 @@ and newDouble (regs:Mach.REGS)
 
 and newStringWrapper (regs:Mach.REGS)
                     (s:Ustring.STRING)
-    : Mach.VAL =
+    : Mach.VALUE =
     newBuiltin regs Name.public_String (SOME (Mach.String s))
 
 (* SPEC
 
 fun evalStringLiteral (env: ENV)
                      (s: Ustring.STRING)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -1287,28 +1287,28 @@ fun evalStringLiteral (env: ENV)
 
 and newString (regs:Mach.REGS)
               (s:Ustring.STRING)
-    : Mach.VAL =
+    : Mach.VALUE =
     case Mach.findInStrCache regs s of
         SOME obj => Mach.Object obj
       | NONE => newBuiltin regs Name.ES4_string (SOME (Mach.String s))
 
 and newBooleanWrapper (regs:Mach.REGS)
                       (b:bool)
-    : Mach.VAL =
+    : Mach.VALUE =
     newBuiltin regs Name.public_Boolean (SOME (Mach.Boolean b))
 
 (* SPEC
 
 fun evalBooleanLiteral (env: ENV)
                        (b: bool)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
 
 and newBoolean (regs:Mach.REGS)
                (b:bool)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val cell = 
             if b 
@@ -1324,14 +1324,14 @@ and newBoolean (regs:Mach.REGS)
 
 and newNamespace (regs:Mach.REGS)
                  (n:Ast.NAMESPACE)
-    : Mach.VAL =
+    : Mach.VALUE =
     case Mach.findInNsCache regs n of
         SOME obj => Mach.Object obj
       | NONE => newBuiltin regs Name.ES4_Namespace (SOME (Mach.Namespace n))
 
 and newName (regs:Mach.REGS)
             (n:Ast.NAME)
-    : Mach.VAL =
+    : Mach.VALUE =
     case Mach.findInNmCache regs n of
         SOME obj => Mach.Object obj
       | NONE => 
@@ -1353,7 +1353,7 @@ and newClsClosure (env:Mach.SCOPE)
 and newClass (regs:Mach.REGS)
              (e:Mach.SCOPE)
              (cls:Ast.CLS)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val closure = newClsClosure e cls
     in
@@ -1368,7 +1368,7 @@ and newIfaceClosure (env:Mach.SCOPE)
 and newInterface (regs:Mach.REGS)
                  (e:Mach.SCOPE)
                  (iface:Ast.IFACE)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val closure = newIfaceClosure e iface
     in
@@ -1426,7 +1426,7 @@ and newFunctionFromClosure (regs:Mach.REGS)
 and newFunctionFromFunc (regs:Mach.REGS)
                         (scope:Mach.SCOPE)
                         (f:Ast.FUNC)
-    : Mach.VAL =
+    : Mach.VALUE =
     newFunctionFromClosure regs (newFunClosure scope f NONE)
 
 
@@ -1452,7 +1452,7 @@ and getStopIteration (regs:Mach.REGS) =
                                    ns = getIteratorNamespace regs }
 
 and isStopIteration (regs:Mach.REGS)
-                    (v:Mach.VAL)
+                    (v:Mach.VALUE)
     : bool =
     let
         val stopIteration = needObj regs (getStopIteration regs)
@@ -1462,7 +1462,7 @@ and isStopIteration (regs:Mach.REGS)
           | _ => false
     end
 
-and newGen (execBody:unit -> Mach.VAL)
+and newGen (execBody:unit -> Mach.VALUE)
     : Mach.GEN =
     let
         (* temporary state, reassigned below *)
@@ -1479,8 +1479,8 @@ and newGen (execBody:unit -> Mach.VAL)
     end
 
 and newGenerator (regs:Mach.REGS)
-                 (execBody:Mach.OBJ -> Mach.VAL)
-    : Mach.VAL =
+                 (execBody:Mach.OBJ -> Mach.VALUE)
+    : Mach.VALUE =
     let
         val class = case !(Mach.getGeneratorClassSlot regs) of 
                         NONE => error regs ["cannot find helper::GeneratorImpl"]
@@ -1497,8 +1497,8 @@ and newGenerator (regs:Mach.REGS)
 
 and yieldFromGen (regs:Mach.REGS)
                  (Mach.Gen state)
-                 (v : Mach.VAL)
-    : Mach.VAL =
+                 (v : Mach.VALUE)
+    : Mach.VALUE =
     case !state of
         Mach.RunningGen => (case Control.shift (fn k => (state := Mach.DormantGen k;
                                                          Mach.YieldSig v)) of
@@ -1510,8 +1510,8 @@ and yieldFromGen (regs:Mach.REGS)
 
 and sendToGen (regs:Mach.REGS)
               (Mach.Gen state)
-              (v : Mach.VAL)
-    : Mach.VAL =
+              (v : Mach.VALUE)
+    : Mach.VALUE =
     case !state of
         Mach.RunningGen => error regs ["already running"]
       | Mach.ClosedGen => raise StopIterationException
@@ -1543,8 +1543,8 @@ and sendToGen (regs:Mach.REGS)
 
 and throwToGen (regs:Mach.REGS)
                (Mach.Gen state)
-               (v : Mach.VAL)
-    : Mach.VAL =
+               (v : Mach.VALUE)
+    : Mach.VALUE =
     case !state of
         Mach.RunningGen => error regs ["already running"]
       | Mach.ClosedGen => raise (ThrowException v)
@@ -1577,7 +1577,7 @@ and closeGen (regs:Mach.REGS)
  *)
 
 and toUstring (regs:Mach.REGS)
-              (v:Mach.VAL)
+              (v:Mach.VALUE)
     : Ustring.STRING =
     case v of
         Mach.Undef => Ustring.undefined_
@@ -1590,7 +1590,7 @@ and toUstring (regs:Mach.REGS)
  * ES-262-3 9.2: The ToBoolean operation
  *)
 
-and toBoolean (v:Mach.VAL) : bool =
+and toBoolean (v:Mach.VALUE) : bool =
     case v of
         Mach.Undef => false
       | Mach.Null => false
@@ -1617,7 +1617,7 @@ and toBoolean (v:Mach.VAL) : bool =
 and defaultValue (regs:Mach.REGS)
                  (obj:Mach.OBJ)
                  (preferredType:Ustring.STRING)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val (na, nb) = if preferredType = Ustring.String_
                        then (Name.public_toString, Name.public_valueOf)
@@ -1634,7 +1634,7 @@ and defaultValue (regs:Mach.REGS)
         else throwExn (newTypeErr regs ["defaultValue"])
     end
 
-and isPrimitive (v:Mach.VAL)
+and isPrimitive (v:Mach.VALUE)
     : bool =
     Mach.isNull v orelse
     Mach.isUndef v orelse
@@ -1647,26 +1647,26 @@ and isPrimitive (v:Mach.VAL)
  *)
 
 and toPrimitive (regs:Mach.REGS)
-                (v:Mach.VAL) 
+                (v:Mach.VALUE) 
                 (hint:Ustring.STRING)
-    : Mach.VAL =
+    : Mach.VALUE =
     if isPrimitive v
     then v
     else defaultValue regs (needObj regs v) hint
 
 and toPrimitiveWithStringHint (regs:Mach.REGS)
-                              (v:Mach.VAL)
-    : Mach.VAL =
+                              (v:Mach.VALUE)
+    : Mach.VALUE =
     toPrimitive regs v Ustring.String_
 
 and toPrimitiveWithNumberHint (regs:Mach.REGS)
-                              (v:Mach.VAL)
-    : Mach.VAL =
+                              (v:Mach.VALUE)
+    : Mach.VALUE =
     toPrimitive regs v Ustring.Number_
 
 and toPrimitiveWithNoHint (regs:Mach.REGS)
-                          (v:Mach.VAL)
-    : Mach.VAL =
+                          (v:Mach.VALUE)
+    : Mach.VALUE =
     toPrimitive regs v Ustring.empty
 
 (*
@@ -1674,8 +1674,8 @@ and toPrimitiveWithNoHint (regs:Mach.REGS)
  *)
 
 and toNumeric (regs:Mach.REGS)
-              (v:Mach.VAL)
-    : Mach.VAL =
+              (v:Mach.VALUE)
+    : Mach.VALUE =
     let
         fun NaN _ = newDouble regs (Real64.posInf / Real64.posInf)
         fun zero _ = newDouble regs (Real64.fromInt 0)
@@ -1709,7 +1709,7 @@ and toNumeric (regs:Mach.REGS)
     end
 
 
-and toDecimal (v:Mach.VAL)
+and toDecimal (v:Mach.VALUE)
     : Decimal.DEC =
     let 
         val fromStr = Decimal.fromString 
@@ -1747,7 +1747,7 @@ and toDecimal (v:Mach.VAL)
     end
 
 
-and toDouble (v:Mach.VAL)
+and toDouble (v:Mach.VALUE)
     : Real64.real =
     let
         fun NaN _ = (Real64.posInf / Real64.posInf)
@@ -1785,7 +1785,7 @@ and toDouble (v:Mach.VAL)
     end
 
 
-and isPositiveZero (v:Mach.VAL)
+and isPositiveZero (v:Mach.VALUE)
     : bool =
     let
         fun doubleIsPosZero x =
@@ -1799,7 +1799,7 @@ and isPositiveZero (v:Mach.VAL)
     end
 
 
-and isNegativeZero (v:Mach.VAL)
+and isNegativeZero (v:Mach.VALUE)
     : bool =
     let
         fun doubleIsNegZero x =
@@ -1813,7 +1813,7 @@ and isNegativeZero (v:Mach.VAL)
     end
 
 
-and isPositiveInf (v:Mach.VAL)
+and isPositiveInf (v:Mach.VALUE)
     : bool =
     let
         fun doubleIsPosInf x =
@@ -1827,7 +1827,7 @@ and isPositiveInf (v:Mach.VAL)
     end
 
 
-and isNegativeInf (v:Mach.VAL)
+and isNegativeInf (v:Mach.VALUE)
     : bool =
     let
         fun doubleIsNegInf x =
@@ -1841,7 +1841,7 @@ and isNegativeInf (v:Mach.VAL)
     end
 
 
-and isNaN (v:Mach.VAL)
+and isNaN (v:Mach.VALUE)
     : bool =
     mathOp v
            (SOME Decimal.isNaN)
@@ -1849,7 +1849,7 @@ and isNaN (v:Mach.VAL)
            false
 
 
-and sign (v:Mach.VAL)
+and sign (v:Mach.VALUE)
     : int =
     let
         (*
@@ -1873,7 +1873,7 @@ and sign (v:Mach.VAL)
     end
 
 
-and floor (v:Mach.VAL)
+and floor (v:Mach.VALUE)
     : LargeInt.int =
     mathOp v
            (SOME Decimal.floorInt)
@@ -1881,7 +1881,7 @@ and floor (v:Mach.VAL)
            (LargeInt.fromInt 0)
 
 
-and signFloorAbs (v:Mach.VAL)
+and signFloorAbs (v:Mach.VALUE)
     : LargeInt.int =
     let
         val sign = Int.toLarge (sign v)
@@ -1894,7 +1894,7 @@ and signFloorAbs (v:Mach.VAL)
 (* ES-262-3 9.5 ToInt32 *)
 
 and toInt32 (regs:Mach.REGS)
-            (v:Mach.VAL)
+            (v:Mach.VALUE)
     : Real64.real =
     let
         val v' = toNumeric regs v
@@ -1919,7 +1919,7 @@ and toInt32 (regs:Mach.REGS)
 
 and toUIntNN (regs:Mach.REGS)
              (nn:int)
-             (v:Mach.VAL)
+             (v:Mach.VALUE)
     : Real64.real =
     let
         val v' = toNumeric regs v
@@ -1942,7 +1942,7 @@ and toUIntNN (regs:Mach.REGS)
 (* ES-262-3 9.6 ToUInt32 *)
 
 and toUInt32 (regs:Mach.REGS)
-             (v:Mach.VAL)
+             (v:Mach.VALUE)
     : Real64.real =
     toUIntNN regs 32 v
 
@@ -1950,15 +1950,15 @@ and toUInt32 (regs:Mach.REGS)
 (* ES-262-3 9.6 ToUInt16 *)
 
 and toUInt16 (regs:Mach.REGS)
-             (v:Mach.VAL)
+             (v:Mach.VALUE)
     : Real64.real =
     toUIntNN regs 16 v
 
 
 and typeCheck (regs:Mach.REGS)
-              (v:Mach.VAL)
+              (v:Mach.VALUE)
               (tyExpr:Ast.TYPE)
-    : Mach.VAL =
+    : Mach.VALUE =
     if evalOperatorIs regs v tyExpr
     then v
     else error regs ["typecheck failed, val=", Mach.approx v,
@@ -1969,7 +1969,7 @@ and typeCheck (regs:Mach.REGS)
 
 fun evalExpression (env: ENV)
                    (expr: Ast.EXPRESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     case expr of
         Ast.LiteralNull => 
             Mach.Null
@@ -2027,7 +2027,7 @@ fun evalExpression (env: ENV)
 
 and evalExpr (regs:Mach.REGS)
              (expr:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     case expr of
         Ast.LiteralExpr lit =>
         evalLiteralExpr regs lit
@@ -2103,7 +2103,7 @@ and evalExpr (regs:Mach.REGS)
 
 fun evalGetExpr (env: ENV)
                 (ref: Ast.REFERENCE)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     let
         val (_, (obj, name)) = evalReference env ident true
     in
@@ -2114,7 +2114,7 @@ fun evalGetExpr (env: ENV)
 
 and evalLexicalReference (regs:Mach.REGS)
                          (expr:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val (obj, name) = resolveLexicalReference regs expr true
     in
@@ -2124,7 +2124,7 @@ and evalLexicalReference (regs:Mach.REGS)
 
 and evalObjectNameReference (regs:Mach.REGS)
                             (expr:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val (this, (obj, name)) = resolveObjectNameReference regs expr false
     in
@@ -2133,7 +2133,7 @@ and evalObjectNameReference (regs:Mach.REGS)
 
 and evalObjectIndexReference (regs:Mach.REGS)
                              (expr:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val (this, (obj, name)) = resolveObjectIndexReference regs expr false
     in
@@ -2144,7 +2144,7 @@ and evalObjectIndexReference (regs:Mach.REGS)
 
 fun evalThisExpression (env: ENV)
                        (kind: Ast.THIS_KIND option)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     let
         val { this, thisFunction, thisGenerator, ... } = env
     in
@@ -2158,7 +2158,7 @@ fun evalThisExpression (env: ENV)
 
 and evalThisExpr (regs:Mach.REGS)
                  (kind:Ast.THIS_KIND option)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val { this, thisFun, thisGen, ... } = regs
     in
@@ -2178,7 +2178,7 @@ and evalThisExpr (regs:Mach.REGS)
 
 and arrayToList (regs:Mach.REGS)
                 (arr:Mach.OBJ)
-    : Mach.VAL list =
+    : Mach.VALUE list =
     let
         val len = doubleToInt
                       (toUInt32 regs
@@ -2201,7 +2201,7 @@ and arrayToList (regs:Mach.REGS)
 
 and evalExprsAndSpliceSpreads (regs:Mach.REGS)
                              (exprs:Ast.EXPRESSION list)
-    : (Mach.VAL list) = 
+    : (Mach.VALUE list) = 
     let 
         (* 
          * A Spread expression is only allowed in certain syntactic
@@ -2234,7 +2234,7 @@ and evalExprsAndSpliceSpreads (regs:Mach.REGS)
 fun evalCallExpr (env: ENV)
                  (func: Ast.EXPRESSION)
                  (actuals: Ast.EXPRESSION list)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -2242,7 +2242,7 @@ fun evalCallExpr (env: ENV)
 and evalCallExpr (regs:Mach.REGS)
                  (func:Ast.EXPRESSION)
                  (actuals:Ast.EXPRESSION list)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         fun args _ = evalExprsAndSpliceSpreads regs actuals
     in
@@ -2272,7 +2272,7 @@ and evalCallExpr (regs:Mach.REGS)
 fun evalNewExpr (env: ENV)
                 (func: Ast.EXPRESSION)
                 (actuals: Ast.EXPRESSION list)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -2280,7 +2280,7 @@ fun evalNewExpr (env: ENV)
 and evalNewExpr (regs:Mach.REGS)
                 (obj:Ast.EXPRESSION)
                 (actuals:Ast.EXPRESSION list)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         fun args _ = evalExprsAndSpliceSpreads regs actuals
         val rhs = evalExpr regs obj
@@ -2293,7 +2293,7 @@ and evalNewExpr (regs:Mach.REGS)
 
 and evalGetTemp (regs:Mach.REGS)
                 (n:int)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val { scope, ... } = regs
         val scopeId = getScopeId scope
@@ -2309,7 +2309,7 @@ fun evalInitExpr (env: ENV)
                  (target: Ast.INIT_TARGET)
                  (head: Ast.HEAD)
                  (inits: Ast.INITS)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -2319,7 +2319,7 @@ and evalInitExpr (regs:Mach.REGS)
                  (target:Ast.INIT_TARGET) 
                  (tempHead:Ast.HEAD)
                  (inits:Ast.INITS) 
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         (* 
          * We are aiming to initialize properties on 'target'.
@@ -2356,8 +2356,8 @@ and evalInitExpr (regs:Mach.REGS)
 and evalSuperCall (regs:Mach.REGS)
                   (object:Mach.OBJ)
                   (nameExpr:Ast.NAME_EXPRESSION)
-                  (args:Mach.VAL list)
-    : Mach.VAL = 
+                  (args:Mach.VALUE list)
+    : Mach.VALUE = 
     let                                         
         val Mach.Obj { tag, ... } = object
         val thisType = case tag of 
@@ -2491,15 +2491,15 @@ and bindTypes (regs:Mach.REGS)
     end
 
 (* Types of various kinds are have a dual representation: both as TYPEs
- * and as a magic within Mach.VAL, such as a CLS_CLOSURE.
+ * and as a magic within Mach.VALUE, such as a CLS_CLOSURE.
  * Really would love to unify these two representations,
  * which might enable nice downstream simplifications. - cf
  *)
 
 and applyTypesToClass (regs:Mach.REGS)
-                      (classVal:Mach.VAL)
+                      (classVal:Mach.VALUE)
                       (typeArgs:Ast.TYPE list)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val clsClosure = Mach.needClass classVal
         val { cls, env } = clsClosure
@@ -2540,9 +2540,9 @@ and applyTypesToClass (regs:Mach.REGS)
 
 
 and applyTypesToInterface (regs:Mach.REGS)
-                          (interfaceVal:Mach.VAL)
+                          (interfaceVal:Mach.VALUE)
                           (typeArgs:Ast.TYPE list)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val ifaceClosure = Mach.needInterface interfaceVal
         val { iface, env } = ifaceClosure
@@ -2568,9 +2568,9 @@ and applyTypesToInterface (regs:Mach.REGS)
 
 
 and applyTypesToFunction (regs:Mach.REGS)
-                         (functionVal:Mach.VAL)
+                         (functionVal:Mach.VALUE)
                          (typeArgs:Ast.TYPE list)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val funClosure = Mach.needFunction functionVal
         val { func, this, env } = funClosure
@@ -2604,9 +2604,9 @@ and applyTypesToFunction (regs:Mach.REGS)
 and instanceTypeRepresentative (regs:Mach.REGS)
                                (ity:Ast.INSTANCE_TYPE)
                                (applier:Mach.REGS 
-                                        -> Mach.VAL 
+                                        -> Mach.VALUE 
                                         -> Ast.TYPE list 
-                                        -> Mach.VAL)
+                                        -> Mach.VALUE)
     : Mach.OBJ = 
     let
         val { name, typeArgs, ... } = ity
@@ -2635,14 +2635,14 @@ and instanceInterface (regs:Mach.REGS)
 fun evalApplyTypeExpr (env: ENV)
                       (expr: Ast.EXPRESSION)
                       (args: Ast.TYPE list)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
 
 *)
 
 and evalApplyTypeExpr (regs:Mach.REGS)
                       (expr:Ast.EXPRESSION)
                       (args:Ast.TYPE list)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val v = evalExpr regs expr
     in
@@ -2664,7 +2664,7 @@ and evalApplyTypeExpr (regs:Mach.REGS)
 
 and evalYieldExpr (regs:Mach.REGS)
                   (expr:Ast.EXPRESSION option)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val { thisGen, ... } = regs
     in
@@ -2687,9 +2687,9 @@ and evalYieldExpr (regs:Mach.REGS)
 (* SPEC
 
 fun evalArrayInitialiser (env: ENV)
-                         (elements: Mach.VALUE list)
+                         (elements: Mach.VALUEUE list)
                          (typeExpr: Ast.TYPEESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -2697,7 +2697,7 @@ fun evalArrayInitialiser (env: ENV)
 and evalLiteralArrayExpr (regs:Mach.REGS)
                          (exprs:Ast.EXPRESSION list)
                          (ty:Ast.TYPE option)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val vals = evalExprsAndSpliceSpreads regs exprs
         val (newTag, newClassVal, tyExprs) = 
@@ -2748,14 +2748,14 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
 fun evalObjectInitialiser (env: ENV)
                           (fields: Ast.FIELD list)
                           (typeExpr: Ast.TYPEESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 *)
 
 and evalLiteralObjectExpr (regs:Mach.REGS)
                           (fields:Ast.FIELD list)
                           (ty:Ast.TYPE option)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         fun searchFieldTypes n [] = Ast.AnyType
           | searchFieldTypes n ({name,ty}::ts) =
@@ -2781,7 +2781,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
         val obj = constructStandardWithTag regs newClassObj newClassClosure [] newTag
         val (Mach.Obj {props, ...}) = obj
                                       
-        fun getPropState (v:Mach.VAL) : Mach.PROP_STATE =
+        fun getPropState (v:Mach.VALUE) : Mach.PROPERTY_STATE =
             case v of
                 Mach.Object (Mach.Obj {tag, ...}) =>
                 (case tag of
@@ -2801,9 +2801,9 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                   | _ => Mach.ValProp v)
               | _ => Mach.ValProp v
 
-        fun mergePropState (existingProp:Mach.PROP option) 
-                           (newState:Mach.PROP_STATE) 
-            : Mach.PROP_STATE =
+        fun mergePropState (existingProp:Mach.PROPERTY option) 
+                           (newState:Mach.PROPERTY_STATE) 
+            : Mach.PROPERTY_STATE =
             let
                 fun merge existing new =
                     case new of
@@ -2858,7 +2858,7 @@ fun evalRegExpInitialiser (env: ENV)
 
 and evalLiteralRegExp (regs:Mach.REGS)
                       (re:Ustring.STRING)
-    : Mach.VAL =
+    : Mach.VALUE =
     let fun findSplit 0 = 0
           | findSplit n =
             if Ustring.charCodeAt re n = Char.ord #"/" then
@@ -2876,7 +2876,7 @@ and evalLiteralRegExp (regs:Mach.REGS)
 
 and evalLiteralExpr (regs:Mach.REGS)
                     (lit:Ast.LITERAL)
-    : Mach.VAL =
+    : Mach.VALUE =
     case lit of
         Ast.LiteralNull => Mach.Null
       | Ast.LiteralUndefined => Mach.Undef
@@ -2894,7 +2894,7 @@ and evalLiteralExpr (regs:Mach.REGS)
 
 and evalListExpr (regs:Mach.REGS)
                  (es:Ast.EXPRESSION list)
-    : Mach.VAL =
+    : Mach.VALUE =
     case es of
         [] => Mach.Undef
       | [e] => evalExpr regs e
@@ -2908,8 +2908,8 @@ and evalListExpr (regs:Mach.REGS)
 and constructObjectViaFunction (regs:Mach.REGS)
                                (ctorObj:Mach.OBJ)
                                (ctor:Mach.FUN_CLOSURE)
-                               (args:Mach.VAL list)
-    : Mach.VAL =
+                               (args:Mach.VALUE list)
+    : Mach.VALUE =
     let
 	    val ctorProto = getPrototype regs ctorObj
 	    val originalObjectProto = case !(Mach.getObjectClassSlot regs) of 
@@ -2933,8 +2933,8 @@ and constructObjectViaFunction (regs:Mach.REGS)
 
 and evalNewObj (regs:Mach.REGS)
                (obj:Mach.OBJ)
-               (args:Mach.VAL list)
-    : Mach.VAL =
+               (args:Mach.VALUE list)
+    : Mach.VALUE =
     case obj of
         Mach.Obj { tag, ... } =>
         case tag of
@@ -2945,8 +2945,8 @@ and evalNewObj (regs:Mach.REGS)
 
 and evalCallMethodByExpr (regs:Mach.REGS)
                          (func:Ast.EXPRESSION)
-                         (args:Mach.VAL list)
-    : Mach.VAL =
+                         (args:Mach.VALUE list)
+    : Mach.VALUE =
     let
         (*
          * If we have a method or native function *property*, we can just
@@ -2969,8 +2969,8 @@ and evalCallMethodByExpr (regs:Mach.REGS)
 and evalNamedMethodCall (regs:Mach.REGS)
 			            (obj:Mach.OBJ)
 			            (name:Ast.NAME)
-			            (args:Mach.VAL list)
-    : Mach.VAL = 
+			            (args:Mach.VALUE list)
+    : Mach.VALUE = 
     let
 	val refOpt = resolveName regs [obj] (Name.nameExprOf name)
     in
@@ -2987,9 +2987,9 @@ and evalNamedMethodCall (regs:Mach.REGS)
  *)
 and evalCallByRef (regs:Mach.REGS)
                   (r:REF)
-                  (args:Mach.VAL list)
+                  (args:Mach.VALUE list)
                   (useThisFun:bool)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val (obj, name) = r
         val _ = trace [">>> evalCallByRef ", fmtName name]
@@ -3016,8 +3016,8 @@ and evalCallByRef (regs:Mach.REGS)
 
 and evalCallByObj (regs:Mach.REGS)
                   (fobj:Mach.OBJ)
-                  (args:Mach.VAL list)
-    : Mach.VAL =
+                  (args:Mach.VALUE list)
+    : Mach.VALUE =
     case fobj of
         Mach.Obj { tag, ... } =>
         case tag of
@@ -3040,7 +3040,7 @@ fun evalSetExpr (env: ENV)
                 (assignOp: Ast.ASSIGNOP)
                 (leftSide: Ast.EXPRESSION)
                 (rightSide: Ast.EXPRESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -3049,7 +3049,7 @@ and evalSetExpr (regs:Mach.REGS)
                 (aop:Ast.ASSIGNOP)
                 (lhs:Ast.EXPRESSION)
                 (rhs:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val _ = trace ["evalSetExpr"]
         val (thisOpt, (obj, name)) = resolveRefExpr regs lhs false
@@ -3103,9 +3103,9 @@ and evalSetExpr (regs:Mach.REGS)
 
 
 and numberOfSimilarType (regs:Mach.REGS)
-                        (v:Mach.VAL)
+                        (v:Mach.VALUE)
                         (d:Real64.real)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val nt = numTypeOf regs v
     in
@@ -3118,7 +3118,7 @@ and evalCrement (regs:Mach.REGS)
                 (bop:Ast.BINOP)
                 (pre:bool)
                 (expr:Ast.EXPRESSION)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val (_, (obj, name)) = resolveRefExpr regs expr false
         val v = getValue regs obj name
@@ -3134,7 +3134,7 @@ and evalCrement (regs:Mach.REGS)
         
 and evalDeleteOp (regs: Mach.REGS)
                  (expr: Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val (_, (Mach.Obj {props, ...}, name)) = resolveRefExpr regs expr true
     in
@@ -3148,7 +3148,7 @@ and evalDeleteOp (regs: Mach.REGS)
 fun evalUnaryExpr (env: ENV)
                   (unaryOp: Ast.ASSIGNOP)
                   (expr: Ast.EXPRESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -3157,7 +3157,7 @@ fun evalUnaryExpr (env: ENV)
 and evalUnaryOp (regs:Mach.REGS)
                 (unop:Ast.UNOP)
                 (expr:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
     in
         case unop of
@@ -3212,7 +3212,7 @@ and evalUnaryOp (regs:Mach.REGS)
              * ES-262-3 1.4.3 backward-compatibility operation.
              *)
             let
-                fun typeNameOfVal (v:Mach.VAL) =
+                fun typeNameOfVal (v:Mach.VALUE) =
                     case v of
                         Mach.Null => Ustring.object_
                       | Mach.Undef => Ustring.undefined_
@@ -3249,7 +3249,7 @@ and evalUnaryOp (regs:Mach.REGS)
 
 fun evalYieldExpr (env: ENV)
                   (expr: Ast.EXPRESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -3257,7 +3257,7 @@ fun evalYieldExpr (env: ENV)
 
 and evalTypeExpr (regs:Mach.REGS)
                  (te:Ast.TYPE)
-    : Mach.VAL =
+    : Mach.VALUE =
     case te of
         Ast.AnyType => Mach.Null (* FIXME *)
      (*  | Ast.VoidType => Mach.Null (* FIXME *) *)
@@ -3286,7 +3286,7 @@ and doubleToInt (d:Real64.real)
 
 
 and numTypeOf (regs:Mach.REGS) 
-              (v:Mach.VAL) 
+              (v:Mach.VALUE) 
     : NUMBER_TYPE = 
     let
         val ty = typeOfVal regs v 
@@ -3307,9 +3307,9 @@ and numTypeOf (regs:Mach.REGS)
 
 and performDecimalBinop (regs:Mach.REGS)
                         (bop:Ast.BINOP)
-                        (va:Mach.VAL)
-                        (vb:Mach.VAL)
-    : Mach.VAL = 
+                        (va:Mach.VALUE)
+                        (vb:Mach.VALUE)
+    : Mach.VALUE = 
     let
         val precision = Decimal.defaultPrecision 
         val mode = Decimal.defaultRoundingMode
@@ -3337,9 +3337,9 @@ and realRem (x,y) =
 
 and performNumericBinop (regs:Mach.REGS)
                         (bop:Ast.BINOP)
-                        (va:Mach.VAL)
-                        (vb:Mach.VAL)
-    : Mach.VAL = 
+                        (va:Mach.VALUE)
+                        (vb:Mach.VALUE)
+    : Mach.VALUE = 
     let
         val va' = toNumeric regs va
         val vb' = toNumeric regs vb
@@ -3368,9 +3368,9 @@ and performNumericBinop (regs:Mach.REGS)
 
 and performBinop (regs:Mach.REGS)
                  (bop:Ast.BINOP)
-                 (va:Mach.VAL)
-                 (vb:Mach.VAL)
-    : Mach.VAL =
+                 (va:Mach.VALUE)
+                 (vb:Mach.VALUE)
+    : Mach.VALUE =
 
     let
         val precision = Decimal.defaultPrecision
@@ -3617,8 +3617,8 @@ and performBinop (regs:Mach.REGS)
 
 
 and doubleEquals (regs:Mach.REGS)
-                 (a:Mach.VAL)
-                 (b:Mach.VAL)
+                 (a:Mach.VALUE)
+                 (b:Mach.VALUE)
     : bool =
     let
         val b = performBinop regs Ast.Equals a b
@@ -3675,7 +3675,7 @@ and typeOfTag (regs:Mach.REGS)
 
                                 
 and typeOfVal (regs:Mach.REGS)
-              (v:Mach.VAL)
+              (v:Mach.VALUE)
     : Ast.TYPE =
     let
         val te = case v of
@@ -3695,7 +3695,7 @@ and typeOfVal (regs:Mach.REGS)
 and evalLogicalAnd (regs:Mach.REGS)
                    (aexpr:Ast.EXPRESSION)
                    (bexpr:Ast.EXPRESSION)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val a = evalExpr regs aexpr
     in
@@ -3708,7 +3708,7 @@ and evalLogicalAnd (regs:Mach.REGS)
 and evalLogicalOr (regs:Mach.REGS)
                   (aexpr:Ast.EXPRESSION)
                   (bexpr:Ast.EXPRESSION)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val a = evalExpr regs aexpr
     in
@@ -3720,7 +3720,7 @@ and evalLogicalOr (regs:Mach.REGS)
 
 
 and evalOperatorIs (regs:Mach.REGS)
-                   (v:Mach.VAL)
+                   (v:Mach.VALUE)
                    (te:Ast.TYPE)
     : bool = 
     let
@@ -3756,7 +3756,7 @@ fun evalBinaryTypeExpr (env: ENV)
                        (binaryTypeOp: Ast.BINTYPEOP)
                        (expr: Ast.EXPRESSION)
                        (typeExpr: Ast.TYPE)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -3765,7 +3765,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
                      (expr:Ast.EXPRESSION)
                      (ty:Ast.TYPE)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val v = evalExpr regs expr
     in
@@ -3780,7 +3780,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
 
 and hasInstance (regs:Mach.REGS)
                 (obj:Mach.OBJ)
-                (v:Mach.VAL)
+                (v:Mach.VALUE)
     : bool = 
     let
         val proto = getPrototype regs obj
@@ -3807,8 +3807,8 @@ and hasInstance (regs:Mach.REGS)
 
 and objHasInstance (regs:Mach.REGS)
                    (ob:Mach.OBJ)
-                   (a:Mach.VAL)                   
-    : Mach.VAL = 
+                   (a:Mach.VALUE)                   
+    : Mach.VALUE = 
     let
         val h = hasInstance regs ob a
     in
@@ -3819,7 +3819,7 @@ and objHasInstance (regs:Mach.REGS)
 and evalInstanceOf (regs:Mach.REGS)
                    (aexpr:Ast.EXPRESSION)
                    (bexpr:Ast.EXPRESSION)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val a = evalExpr regs aexpr
         val b = evalExpr regs bexpr
@@ -3837,7 +3837,7 @@ and evalInstanceOf (regs:Mach.REGS)
 and evalOperatorIn (regs:Mach.REGS)
                    (aexpr:Ast.EXPRESSION)
                    (bexpr:Ast.EXPRESSION)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
         val a = evalExpr regs aexpr
         val b = evalExpr regs bexpr
@@ -3853,7 +3853,7 @@ and evalOperatorIn (regs:Mach.REGS)
 and evalOperatorComma (regs:Mach.REGS)
                       (aexpr:Ast.EXPRESSION)
                       (bexpr:Ast.EXPRESSION)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     (evalExpr regs aexpr;
      evalExpr regs bexpr)
 
@@ -3864,7 +3864,7 @@ fun evalBinaryExpr (env: ENV)
                    (binaryOp: Ast.ASSIGNOP)
                    (leftExpr: Ast.EXPRESSION)
                    (rightExpr: Ast.EXPRESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -3874,7 +3874,7 @@ and evalBinaryOp (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (aexpr:Ast.EXPRESSION)
                  (bexpr:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     case bop of
         Ast.LogicalAnd => evalLogicalAnd regs aexpr bexpr
       | Ast.LogicalOr => evalLogicalOr regs aexpr bexpr
@@ -3891,7 +3891,7 @@ fun evalConditionalExpr (env: ENV)
                         (condExpr: Ast.EXPRESSION)
                         (thenExpr: Ast.EXPRESSION)
                         (elseExpr: Ast.EXPRESSION)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     (* FINISH ME *)
 
 *)
@@ -3902,7 +3902,7 @@ and evalCondExpr (regs:Mach.REGS)
                  (cond:Ast.EXPRESSION)
                  (thn:Ast.EXPRESSION)
                  (els:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val v = evalExpr regs cond
         val b = toBoolean v
@@ -4109,7 +4109,7 @@ and resolveRefExpr (regs:Mach.REGS)
 fun evalLetExpr (env: ENV)
                 (head: Ast.HEAD)
                 (body: Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val letRegs = evalHead env head
     in
@@ -4121,7 +4121,7 @@ fun evalLetExpr (env: ENV)
 and evalLetExpr (regs:Mach.REGS)
                 (head:Ast.HEAD)
                 (body:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val letRegs = evalHead regs head
     in
@@ -4198,7 +4198,7 @@ and labelMatch (stmtLabels:Ast.IDENTIFIER list)
 
 and evalStmts (regs:Mach.REGS)
               (stmts:Ast.STATEMENT list)
-    : Mach.VAL =
+    : Mach.VALUE =
     case stmts of
         [s] => evalStmt regs s
       | (s::ss) => (evalStmt regs s;
@@ -4210,7 +4210,7 @@ and evalStmts (regs:Mach.REGS)
 
 fun evalStatement (env: Mach.ENV)
                   (stmt: Ast.STATEMENT)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     case stmt of
         Ast.EmptyStmt => 
             Mach.Undef
@@ -4256,7 +4256,7 @@ fun evalStatement (env: Mach.ENV)
 
 and evalStmt (regs:Mach.REGS)
              (stmt:Ast.STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     case stmt of
         Ast.EmptyStmt => Mach.Undef
       | Ast.ExprStmt e => evalExpr regs e
@@ -4306,8 +4306,8 @@ and checkAllPropertiesInitialized (regs:Mach.REGS)
 and invokeFuncClosure (regs:Mach.REGS)
                       (closure:Mach.FUN_CLOSURE)
                       (thisFun:Mach.OBJ option)
-                      (args:Mach.VAL list)
-    : Mach.VAL =
+                      (args:Mach.VALUE list)
+    : Mach.VALUE =
     let
         val { func, this, env } = closure
         val _ = trace ["entering func closure in scope #", 
@@ -4377,9 +4377,9 @@ and invokeFuncClosure (regs:Mach.REGS)
     end
 
 and catch (regs:Mach.REGS)
-          (e:Mach.VAL)
+          (e:Mach.VALUE)
           (clauses:Ast.CATCH_CLAUSE list)
-    : Mach.VAL option =
+    : Mach.VALUE option =
     case clauses of
         [] => NONE
       | {ty, rib, inits, block, ...}::cs =>
@@ -4406,10 +4406,10 @@ and evalTryStmt (regs:Mach.REGS)
                 (block:Ast.BLOCK)
                 (catches:Ast.CATCH_CLAUSE list)
                 (finally:Ast.BLOCK option)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
-        fun finishWith (v:Mach.VAL)
-            : Mach.VAL =
+        fun finishWith (v:Mach.VALUE)
+            : Mach.VALUE =
             case finally of
                 NONE => v
               (*
@@ -4440,7 +4440,7 @@ and evalTryStmt (regs:Mach.REGS)
 and bindArgs (regs:Mach.REGS)
              (argScope:Mach.SCOPE)
              (func:Ast.FUNC)
-             (args:Mach.VAL list)
+             (args:Mach.VALUE list)
     : unit =
     let
         val Mach.Scope { object = Mach.Obj { props, ... }, ... } = argScope
@@ -4479,12 +4479,12 @@ and bindArgs (regs:Mach.REGS)
 
         val argTemps = getScopeTemps argScope
         fun bindArg _ [] = ()
-          | bindArg (n:int) ((arg:Mach.VAL)::args) =
+          | bindArg (n:int) ((arg:Mach.VALUE)::args) =
             (trace ["defining temp ", Int.toString n];
              Mach.defTemp argTemps n arg;
              bindArg (n+1) args)
 
-        fun bind (finalArgs:Mach.VAL list) =
+        fun bind (finalArgs:Mach.VALUE list) =
             (*
              * FIXME: this is a random guess at the appropriate form
              * of 'arguments'.
@@ -4647,7 +4647,7 @@ and evalScopeInits (regs:Mach.REGS)
 and initializeAndConstruct (classRegs:Mach.REGS)
                            (classClosure:Mach.CLS_CLOSURE)
                            (classObj:Mach.OBJ)
-                           (args:Mach.VAL list)
+                           (args:Mach.VALUE list)
                            (instanceObj:Mach.OBJ)
     : unit =
     let
@@ -4669,7 +4669,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
                           instanceInits,
                           constructor,
                           ... } = cls
-            fun initializeAndConstructSuper (superArgs:Mach.VAL list) =
+            fun initializeAndConstructSuper (superArgs:Mach.VALUE list) =
                 case extends of
                     NONE =>
                     (traceConstruct ["checking all properties initialized at root class ", fmtName name];
@@ -4735,7 +4735,7 @@ and initializeAndConstruct (classRegs:Mach.REGS)
 and constructStandard (regs:Mach.REGS)
                       (classObj:Mach.OBJ)
                       (classClosure:Mach.CLS_CLOSURE)
-                      (args:Mach.VAL list)
+                      (args:Mach.VALUE list)
     : Mach.OBJ =
     let
         val {cls = Ast.Cls { instanceType, ...}, env, ...} = classClosure
@@ -4749,12 +4749,12 @@ and constructStandard (regs:Mach.REGS)
 and constructStandardWithTag (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
-                             (args:Mach.VAL list)
+                             (args:Mach.VALUE list)
                              (tag:Mach.TAG)
     : Mach.OBJ =
     let
         val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
-        val (proto:Mach.VAL) = getPrototype regs classObj
+        val (proto:Mach.VALUE) = getPrototype regs classObj
         val (instanceObj:Mach.OBJ) = Mach.newObject tag proto
         (* FIXME: might have 'this' binding wrong in class scope here. *)
         val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
@@ -4770,7 +4770,7 @@ and constructStandardWithTag (regs:Mach.REGS)
     end
 
 and parseFunctionFromArgs (regs:Mach.REGS)
-                          (args:Mach.VAL list)
+                          (args:Mach.VALUE list)
     : (Ustring.STRING * Ast.EXPRESSION) =
     let
         (*
@@ -4806,7 +4806,7 @@ and parseFunctionFromArgs (regs:Mach.REGS)
 and specialFunctionConstructor (regs:Mach.REGS)
                                (classObj:Mach.OBJ)
                                (classClosure:Mach.CLS_CLOSURE)
-                               (args:Mach.VAL list)
+                               (args:Mach.VALUE list)
     : Mach.OBJ =
     let
         val (source, funcExpr) = parseFunctionFromArgs regs args
@@ -4826,7 +4826,7 @@ and specialFunctionConstructor (regs:Mach.REGS)
 and specialArrayConstructor (regs:Mach.REGS)
                             (classObj:Mach.OBJ)
                             (classClosure:Mach.CLS_CLOSURE)
-                            (args:Mach.VAL list) :
+                            (args:Mach.VALUE list) :
     Mach.OBJ =
     let
         val instanceObj = constructStandard regs classObj classClosure args
@@ -4856,7 +4856,7 @@ and specialArrayConstructor (regs:Mach.REGS)
 and specialMagicCopyingConstructor (regs:Mach.REGS)
 				   (classObj:Mach.OBJ)
 				   (classClosure:Mach.CLS_CLOSURE)
-				   (args:Mach.VAL list)
+				   (args:Mach.VALUE list)
     : Mach.OBJ =
     let
 	    val magic = 
@@ -4872,7 +4872,7 @@ and specialMagicCopyingConstructor (regs:Mach.REGS)
 and specialObjectConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
-                             (args:Mach.VAL list)
+                             (args:Mach.VALUE list)
     : Mach.OBJ =
     let
         fun instantiate _ = constructStandard regs classObj classClosure args
@@ -4897,7 +4897,7 @@ and specialObjectConstructor (regs:Mach.REGS)
 and specialBooleanConstructor (regs:Mach.REGS)
                               (classObj:Mach.OBJ)
                               (classClosure:Mach.CLS_CLOSURE)
-                              (args:Mach.VAL list)
+                              (args:Mach.VALUE list)
     : Mach.OBJ =
     let
 	    val b = case args of 
@@ -4924,7 +4924,7 @@ and specialBooleanConstructor (regs:Mach.REGS)
 and specialDoubleConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
-                             (args:Mach.VAL list)
+                             (args:Mach.VALUE list)
     : Mach.OBJ =
     let
 	val n = case args of 
@@ -4969,7 +4969,7 @@ and specialDoubleConstructor (regs:Mach.REGS)
 and specialDecimalConstructor (regs:Mach.REGS)
                               (classObj:Mach.OBJ)
                               (classClosure:Mach.CLS_CLOSURE)
-                              (args:Mach.VAL list)
+                              (args:Mach.VALUE list)
     : Mach.OBJ =
     let
 	    val n = case args of 
@@ -4985,7 +4985,7 @@ and specialDecimalConstructor (regs:Mach.REGS)
 and specialStringConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
                              (classClosure:Mach.CLS_CLOSURE)
-                             (args:Mach.VAL list)
+                             (args:Mach.VALUE list)
     : Mach.OBJ =
     let 
 	val s = case args of 
@@ -5009,7 +5009,7 @@ and constructSpecial (regs:Mach.REGS)
                      (id:Mach.OBJ_IDENTIFIER)
                      (classObj:Mach.OBJ)
                      (classClosure:Mach.CLS_CLOSURE)
-                     (args:Mach.VAL list) :
+                     (args:Mach.VALUE list) :
     Mach.OBJ option =
     let
 	val { cls = Ast.Cls { name, ... }, ... } = classClosure
@@ -5099,7 +5099,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
 
 and setPrototype (regs:Mach.REGS)
 		 (obj:Mach.OBJ)
-		 (proto:Mach.VAL)
+		 (proto:Mach.VALUE)
     : unit = 
     let
 	val Mach.Obj { props, ... } = obj
@@ -5120,7 +5120,7 @@ and setPrototype (regs:Mach.REGS)
 
 and getPrototype (regs:Mach.REGS)
 		 (obj:Mach.OBJ)
-    : Mach.VAL = 
+    : Mach.VALUE = 
     let
 	val Mach.Obj { props, ... } = obj
     in
@@ -5137,13 +5137,13 @@ and getPrototype (regs:Mach.REGS)
 	
 and getSpecialPrototype (regs:Mach.REGS)
                         (id:Mach.OBJ_IDENTIFIER)
-    : (Mach.VAL * bool) option =
+    : (Mach.VALUE * bool) option =
     if not (Mach.isBooting regs)
     then NONE
     else 
         let
             fun getExistingProto (q:Mach.REGS -> (Mach.OBJ option) ref)
-                : (Mach.VAL * bool) option =
+                : (Mach.VALUE * bool) option =
                 let
 		    val _ = trace ["fetching existing proto"]
                     val objOptRef = q regs 
@@ -5239,8 +5239,8 @@ and initClassPrototype (regs:Mach.REGS)
 and constructClassInstance (regs:Mach.REGS)
                            (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE)
-                           (args:Mach.VAL list)
-    : Mach.VAL =
+                           (args:Mach.VALUE list)
+    : Mach.VALUE =
     let
         val Mach.Obj { ident, ... } = classObj
         val {cls = Ast.Cls { name, ...}, ...} = classClosure
@@ -5267,7 +5267,7 @@ and constructClassInstance (regs:Mach.REGS)
 and get (regs:Mach.REGS)
         (obj:Mach.OBJ)
         (n:Ast.NAME)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         fun tryObj ob =
             if hasOwnValue ob n
@@ -5322,7 +5322,7 @@ and evalHead (regs:Mach.REGS)
 
 and evalBlock (regs:Mach.REGS)
               (block:Ast.BLOCK)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val Ast.Block {pragmas, head, body, loc, ...} = block
         val blockRegs = evalPragmas regs pragmas 
@@ -5338,7 +5338,7 @@ and evalBlock (regs:Mach.REGS)
 
 and evalClassBlock (regs:Mach.REGS)
                    (classBlock:Ast.CLASS_BLOCK)
-    : Mach.VAL =
+    : Mach.VALUE =
 
     (* 
      * The property that holds the class object was allocated when the
@@ -5368,7 +5368,7 @@ fun evalIfStatement (env: ENV)
                     (conditionExpr: Ast.EXPRESSION)
                     (thenStmt: Ast.STATEMENT)
                     (elseStmt: Ast.STATEMENT)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     let
         val conditionValue = evalExpr regs conditionExpr
         val booleanConditionValue = toBoolean conditionValue
@@ -5384,7 +5384,7 @@ and evalIfStmt (regs:Mach.REGS)
                (cnd:Ast.EXPRESSION)
                (thn:Ast.STATEMENT)
                (els:Ast.STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val v = evalExpr regs cnd
         val b = toBoolean v
@@ -5399,7 +5399,7 @@ and evalIfStmt (regs:Mach.REGS)
 fun evalLabeledStatement (env: ENV)
                          (label: Ast.IDENTIFIER)
                          (stmt: Ast.STATEMENT)
-    : Mach.VALUE =
+    : Mach.VALUEUE =
     evalStmt env stmt
     handle BreakException exnLabel =>
            if labelMatch [label] exnLabel
@@ -5411,7 +5411,7 @@ fun evalLabeledStatement (env: ENV)
 and evalLabelStmt (regs:Mach.REGS)
                   (lab:Ast.IDENTIFIER)
                   (s:Ast.STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     evalStmt regs s
     handle BreakException exnLabel =>
            if labelMatch [lab] exnLabel
@@ -5421,7 +5421,7 @@ and evalLabelStmt (regs:Mach.REGS)
 
 and evalWhileStmt (regs:Mach.REGS)
                   (whileStmt:Ast.WHILE_STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     case whileStmt of
         { cond, body, rib, labels } =>
         let
@@ -5450,7 +5450,7 @@ and evalWhileStmt (regs:Mach.REGS)
 
 and evalDoWhileStmt (regs:Mach.REGS)
                     (whileStmt:Ast.WHILE_STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     case whileStmt of
         { cond, body, rib, labels } =>
         let
@@ -5483,7 +5483,7 @@ and evalWithStmt (regs:Mach.REGS)
                  (expr:Ast.EXPRESSION)
                  (ty:Ast.TYPE)
                  (body:Ast.STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val v = evalExpr regs expr
         val obj = needObj regs v
@@ -5499,10 +5499,10 @@ and evalSwitchStmt (regs:Mach.REGS)
                    (cond:Ast.EXPRESSION)
                    (cases:Ast.CASE list)
                    (labels:Ast.IDENTIFIER list)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
-        fun tryCases (v:Mach.VAL) [] = Mach.Undef
-          | tryCases (v:Mach.VAL) ({label, inits, body}::cs) =
+        fun tryCases (v:Mach.VALUE) [] = Mach.Undef
+          | tryCases (v:Mach.VALUE) ({label, inits, body}::cs) =
             if (case label of
                     NONE => true
                   | SOME e => doubleEquals regs v (evalExpr regs e))
@@ -5539,7 +5539,7 @@ and evalSwitchTypeStmt (regs:Mach.REGS)
                        (cond:Ast.EXPRESSION)
                        (ty:Ast.TYPE)
                        (cases:Ast.CATCH_CLAUSE list)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val v = evalExpr regs cond
     in
@@ -5598,7 +5598,7 @@ and callIteratorGet (regs:Mach.REGS)
         val bindingArray = Array.fromList filteredList
         fun sort ((_, seq1), (_, seq2)) = Int.compare (seq2,seq1)
         val _ = ArrayQSort.sort sort bindingArray
-        fun project ((name:Ast.NAME, _), (curr:Mach.VAL list)) =
+        fun project ((name:Ast.NAME, _), (curr:Mach.VALUE list)) =
             (newName regs name) :: curr
         val vals = Array.foldl project [] bindingArray
         val iterator = needObj regs (newArray regs vals)
@@ -5611,7 +5611,7 @@ and callIteratorGet (regs:Mach.REGS)
 
 and callIteratorNext (regs:Mach.REGS)
                      (iterator:Mach.OBJ)
-    : Mach.VAL =
+    : Mach.VALUE =
     (evalNamedMethodCall regs iterator Name.public_next [])
     handle e as ThrowException v => raise (if isStopIteration regs v
                                            then StopIterationException
@@ -5640,7 +5640,7 @@ and callIteratorNext (regs:Mach.REGS)
 
 and evalForInStmt (regs:Mach.REGS)
                   (forInStmt:Ast.FOR_ENUM_STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     case forInStmt of
         { isEach, defn, obj, rib, next, labels, body, ... } =>
         let
@@ -5679,7 +5679,7 @@ and evalForInStmt (regs:Mach.REGS)
             val tempRegs = evalHead forInRegs nextHead
             val temps = getScopeTemps (#scope tempRegs)
 
-            fun loop (accum:Mach.VAL option) =
+            fun loop (accum:Mach.VALUE option) =
                 let
                     val v = (SOME (callIteratorNext forInRegs iterator)
                              handle StopIterationException =>
@@ -5724,13 +5724,13 @@ and evalForInStmt (regs:Mach.REGS)
 
 and evalForStmt (regs:Mach.REGS)
                 (forStmt:Ast.FOR_STATEMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     case forStmt of
         { rib, init, cond, update, labels, body, ... } =>
         let
             val forRegs = evalHead regs (Ast.Head (valOf rib, []))
 
-            fun loop (accum:Mach.VAL option) =
+            fun loop (accum:Mach.VALUE option) =
                 let
                     val b = case cond of
                                 Ast.ListExpr [] => true
@@ -5772,19 +5772,19 @@ and evalForStmt (regs:Mach.REGS)
 
 and evalReturnStmt (regs:Mach.REGS)
                    (e:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     raise (ReturnException (evalExpr regs e))
 
 
 and evalThrowStmt (regs:Mach.REGS)
                   (e:Ast.EXPRESSION)
-    : Mach.VAL =
+    : Mach.VALUE =
     raise (ThrowException (evalExpr regs e))
 
 
 and evalBreakStmt (regs:Mach.REGS)
                   (lbl:Ast.IDENTIFIER option)
-    : Mach.VAL =
+    : Mach.VALUE =
     (trace ["raising BreakException ",
             case lbl of NONE => "empty" 
                       | SOME id => Ustring.toAscii id];
@@ -5793,13 +5793,13 @@ and evalBreakStmt (regs:Mach.REGS)
     
 and evalContinueStmt (regs:Mach.REGS)
                      (lbl:Ast.IDENTIFIER option)
-    : Mach.VAL =
+    : Mach.VALUE =
     raise (ContinueException lbl)
 
 
 and evalAnonFragment (regs:Mach.REGS)
                      (block:Ast.BLOCK)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         fun findHoistingScopeObj scope = 
             case scope of 
@@ -5831,7 +5831,7 @@ and evalAnonFragment (regs:Mach.REGS)
 
 and evalFragment (regs:Mach.REGS)
                  (frag:Ast.FRAGMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         fun lastVal [] = Mach.Undef
           | lastVal x = List.last x
@@ -5882,7 +5882,7 @@ and evalFragment (regs:Mach.REGS)
 
 and evalTopFragment (regs:Mach.REGS)
                     (frag:Ast.FRAGMENT)
-    : Mach.VAL =
+    : Mach.VALUE =
     let
         val _ = LogErr.setLoc NONE
         val res = evalFragment regs frag

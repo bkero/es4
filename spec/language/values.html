@@ -15,109 +15,82 @@ SCOPE:                      The structure and behavior of objects, including the
 </pre>
 <hr>
 
-<p>The execution of a program, described in section ..., entails among its effects
-the calculation and manipulation of values.
+<p>The execution of a program, described in section ..., entails among its effects the calculation
+and manipulation of values.
 
-<p>A //value// is either ''Undefined'', ''Null'', or an
-''Object''. Every value has an associated type, which is fixed for the
-lifetime of the value.
+<p>An //ES4 value// is either ''Undefined'', ''Null'', or an ''Object''. Every value has an associated
+ES4 type, which is fixed for the lifetime of the value.
 
-<NOTE>In the 3rd edition of the language, nine individual //types//
-were defined. Six of these types are described differently in the 4th
-edition: the three types formerly called primitive (Number, String,
-Boolean) are now represented as ''Object'' values, and the three types
-formerly reserved for intermediate results of expressions (Reference,
-List and Completion) are described through separate specification
-mechanisms, rather than as part of the set of possible values.
+<NOTE>In the 3rd edition of the language, nine individual //types// were defined. Six of these types
+are described differently in the 4th edition: the three types formerly called primitive (Number,
+String, Boolean) are now represented as ''Object'' values, and the three types formerly reserved for
+intermediate results of expressions (Reference, List and Completion) are described through separate
+specification mechanisms, rather than as part of the set of possible values.
 
 <IMPL>
-<pre>
-datatype VALUE = 
-         Undefined
-       | Null
-       | Object of OBJECT
-</pre>
+<INCLUDE file="mach.sml" name="datatype VALUE">
 
 == Undefined == 
 
-<p>There is exactly one ''Undefined'' value, called **undefined**.
-Any property of type ''*'' is initialized with the value **undefined**.
+<p>There is exactly one ''Undefined'' value, called **undefined**.  Any property of type ''*'' is
+initialized with the value **undefined**.
 
-<NOTE>As with earlier editions of the language, ''undefined'' is not a
-reserved word and so might be shadowed by a user defined property with
-the same name identifier.
+<NOTE>As with earlier editions of the language, ''undefined'' is not a reserved word and so might be
+shadowed by a user defined property with the same name identifier.
 
 == Null ==
 
-<p>There is exactly one ''Null'' value, called **null**. Any property
-with a type including the ''Null'' type is initialized to the value
-**null**.
+<p>There is exactly one ''Null'' value, called **null**. Any property with a type including the
+''Null'' type is initialized to the value **null**.
 
-<NOTE>While **null** and **undefined** have similar meanings, they
-have different conventions of use. The **null** value is intended to
-indicate a missing ''Object'' value, while the **undefined** value is
-intended to indicate a missing property on an existing ''Object''
-value. These indeded uses are conventions, and are not enforced by the
-language semantics.
+<NOTE>While **null** and **undefined** have similar meanings, they have different conventions of
+use. The **null** value is intended to indicate a missing ''Object'' value, while the **undefined**
+value is intended to indicate a missing property on an existing ''Object'' value. These indeded uses
+are conventions, and are not enforced by the language semantics.
 
 == Objects ==
 
 <p>All values except **null** and **undefined** are ''Object'' values.
 
-<p>An object value consists of a mutable set of property bindings, an
-immutable object identifier, an immutable tag, and a mutable prototype
-value.
+<p>An object value consists of a mutable set of property bindings, an immutable object identifier,
+an immutable tag, and a mutable prototype value.
 
 <IMPL>
-<pre>
-datatype OBJECT =
-         Obj of { ident: OBJ_IDENT,
-                  tag: TAG option,
-                  props: PROP_BINDING list,
-                  proto: VAL ref }
-</pre>
+<INCLUDE file="mach.sml" name="and OBJ">
 
-<p>The object identifier uniquely identifies each object value.
+<p>The //identifier// of an object uniquely identifies the object. The SML type of an object
+identifier is unspecified, and its value cannot be directly observed by ES4 code. Equality of
+objects is partially defined in terms of equality of the objects' identifiers, so all identifiers
+must be comparable with one another for equality.
 
 <IMPL>
-<pre>
-type OBJECT_ID = <LDOTS>
-</pre>
+<INCLUDE file="mach.sml" name="and OBJ_IDENTIFIER">
 
-<p>The object tag represents the allocated type of an object.
-
-<IMPL>
-<pre>
-datatype VALUE_TAG = 
-         ObjectTag of Ast.FIELD_TYPE list
-       | ArrayTag of Ast.TYPE_EXPR list
-       | InstanceTag of Ast.INSTANCE_TYPE
-       | MagicTag of MAGIC
-       | NoTag
-</pre>
-
-<p>Property bindings that maps names to properties.
+<p>The //tag// of an object encodes both the object's ES4 type, and any underlying semantic (SML)
+value associated with the object.
 
 <IMPL>
-<pre>
-type PROPERTY_BINDING = (NAME * PROPERTY)
-</pre>
+<INCLUDE file="mach.sml" name="and TAG">
 
-<p>A property contains a type, a set of attributes and a value.
+<p>Each object contains zero or more //property bindings//. A property binding is logically a pair
+that associates a name and property. The property bindings of an object are arranged in a mutable,
+partial associative one-to-one map from names to properties, such that the map associates at most
+one property with any name. Property bindings may be added, removed, or replaced within a property
+binding map. The SML type of a property binding map is unspecified.
 
 <IMPL>
-<pre>
-type PROPERTY = { ty: Ast.TYPE
-                , attrs: ATTRIBUTESS
-                , state: PROPERTY_STATE }
-</pre>
+<INCLUDE file="mach.sml" name="and PROPERTY_BINDINGS">
 
-<pre>
-type ATTRIBUTES = { Removable: bool
-                  , Enumerable: bool
-                  , Writable: bool
-                  , Fixed: bool }
-</pre>
+<p>A //property// consists of a type, a set of attributes and a value.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="and PROPERTY">
+
+<p>The //attributes// of a property describe various parameters that govern the rules of access and 
+
+
+<IMPL>
+<INCLUDE file="mach.sml" name="type ATTRS">
 
 <p>A property value is represented by one of various property
 state values.

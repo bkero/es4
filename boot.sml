@@ -188,7 +188,7 @@ fun verifyFiles prog fs =
 
 fun evalFiles (regs:Mach.REGS)
               (fs:(string * Ast.FRAGMENT) list)
-    : Mach.VAL list =
+    : Mach.VALUE list =
     let
         fun eval (file, frag) =
             (trace ["evaluating boot file ", file];
@@ -198,7 +198,7 @@ fun evalFiles (regs:Mach.REGS)
     end
 
 
-fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
+fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
     let
 	val ps = case (#state p) of
 		     Mach.TypeVarProp => "[typeVar]"

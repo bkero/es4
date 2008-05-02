@@ -13,13 +13,6 @@ REVIEWED AGAINST CODE:      YES, code is basis of RI
 SCOPE:                      The structure and resolution of names
 </pre>
 
-<NOTE>Some people have expressed concern over the readability of the SML code used in this specification. 
-This problem will be solved in a subsequent revision by a combination of re-writing and automated 
-"lowering" of the notation. The early drafts of the core language spec are concerned primarily with 
-capturing the precise semantics of ECMAScript, and testibility. We trust that early reviewers will 
-be patient enough and read carefully enough to understand the meaning we are trying to express here. 
-That said, if anything is unclear, in the code or the prose, please feel free to say so.
-
 <hr>
 
 <p>A property name consists of an identifier and a namespace qualifier.
@@ -95,10 +88,8 @@ qualified references -- as the qualified name ''__ES4__::public''.
 always qualified by the public namespace.
 
 <IMPL>
-<pre>
-val ES4NS = newOpaqueNS ()
-val publicNS = newOpaqueNS ()
-</pre>
+<INCLUDE file="name.sml" name="val ES4NS">
+<INCLUDE file="name.sml" name="val publicNS">
 
 
 == Reference Expressions ==
@@ -109,8 +100,8 @@ describes a name that is computed from either an //unqualified identifier// or a
 (''IDENTIFIER_EXPRESSION'') of a reference is resolved to a property name and base object.
 
 <IMPL>
-<INCLUDE file="ast.sml" name="datatype IDENTIFIER_EXPRESSION">
-<INCLUDE file="ast.sml" name="datatype NAMESPACE_REF">
+<INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
+<INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
 === Unqualified Identifiers ===
 

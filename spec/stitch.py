@@ -240,8 +240,14 @@ def extractSML(fn, name):
     starting2 = re.compile("^( *)" + str(isContextual))
     blanks = 0
     prev = ""
+    ldots = re.compile("\(\* *LDOTS *\*\)")
     inContext = False
     for line in f:
+
+        # Skip informative lines
+        if re.search("INFORMATIVE", line):
+            continue
+
         line = adHocFixFunctionType(line)
 	if outside:
 	    if isContextual and not inContext:
@@ -251,14 +257,36 @@ def extractSML(fn, name):
 		continue
 	    m = starting.search(line)
 	    if m:
-		ending = re.compile("^" + m.group(1) + r"[^\s]")
+
+                # format comments indicating elision and stop there
+                if ldots.search(line):
+                    line = line.rstrip()
+                    line = ldots.sub("&#x0085;", line)
+                    res = [line]
+                    outside = False
+                    break
+
+                if re.search("^datatype", name):
+                    ending = re.compile("^" + m.group(1) + r"([^\s]|     and)")
+                elif re.search("^type", name):
+                    ending = re.compile("^" + m.group(1) + r"([^\s]| and)")
+                else:
+                    ending = re.compile("^" + m.group(1) + r"[^\s]")
+
 		openbrace = re.compile(m.group(1) + r"\{")
 		closebrace = re.compile(m.group(1) + r"\}")
 		res = [line.rstrip()]
 		outside = False
 		continue
 	else:
-	    line = unComment(line.rstrip())
+	    line = line.rstrip()
+
+            # format comments indicating elision and stop there
+            if ldots.search(line):
+                line = ldots.sub("&#x0085;", line)
+                res = res + [line]
+                break
+
 	    if ending.search(line):
 		# Special case for common pattern: open brace indented like the name
 		if openbrace.search(line):
