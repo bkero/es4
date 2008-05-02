@@ -281,12 +281,6 @@ def extractSML(fn, name):
 	else:
 	    line = line.rstrip()
 
-            # format comments indicating elision and stop there
-            if ldots.search(line):
-                line = ldots.sub("&#x0085;", line)
-                res = res + [line]
-                break
-
 	    if ending.search(line):
 		# Special case for common pattern: open brace indented like the name
 		if openbrace.search(line):
@@ -296,6 +290,13 @@ def extractSML(fn, name):
 		    res = res + [line]
 		    break
 		break
+            else:
+                # format comments indicating elision and stop there
+                if ldots.search(line):
+                    line = ldots.sub("&#x0085;", line)
+                    res = res + [line]
+                    break
+
 	    if line == "":
 		# Count blank lines, but not if the previous line ended with {
 		if not(len(prev) > 0 and prev[len(prev)-1] == "{"):

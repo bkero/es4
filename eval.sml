@@ -341,7 +341,7 @@ fun allocRib (regs:Mach.REGS)
         val attrs0 = { dontDelete = true,
                        dontEnum = true,
                        readOnly = true,
-                       isFixed = true }
+                       fixed = true }
         fun allocFixture (n, f) =
             case n of
                 Ast.TempName t => allocTemp regs f t temps
@@ -399,7 +399,7 @@ fun allocRib (regs:Mach.REGS)
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = readOnly,
-                                                  isFixed = true } }
+                                                  fixed = true } }
                         end
                         
                       | Ast.ValFixture { ty, readOnly, ... } =>
@@ -414,7 +414,7 @@ fun allocRib (regs:Mach.REGS)
                                         attrs = { dontDelete = true,
                                                   dontEnum = true, 
                                                   readOnly = readOnly,
-                                                  isFixed = true } }
+                                                  fixed = true } }
                         end
 
                       | Ast.VirtualValFixture { ty, getter, setter, ... } =>
@@ -433,7 +433,7 @@ fun allocRib (regs:Mach.REGS)
                                         attrs = { dontDelete = true,
                                                   dontEnum = true, 
                                                   readOnly = true,
-                                                  isFixed = true } }
+                                                  fixed = true } }
                         end
                         
                       | Ast.ClassFixture cls =>
@@ -1013,7 +1013,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                                      attrs = { dontDelete = false,
                                                dontEnum = false,
                                                readOnly = false,
-                                               isFixed = false } }
+                                               fixed = false } }
                     in
                         if isDynamic regs obj
                         then Mach.addProp props name prop
@@ -2733,7 +2733,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                              attrs = { dontDelete = false,
                                        dontEnum = false,
                                        readOnly = false,
-                                       isFixed = false } }
+                                       fixed = false } }
             in
                 Mach.addProp props name prop;
                 putVal (n+1) vs
@@ -2833,7 +2833,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 val attrs = { dontDelete = const,
                               dontEnum = false,
                               readOnly = const,
-                              isFixed = false }
+                              fixed = false }
                 val state = getPropState v
                 val existingProp = Mach.findProp props n
                 val prop = { ty = ty,
@@ -4495,7 +4495,7 @@ and bindArgs (regs:Mach.REGS)
                                                  attrs = { dontDelete = true,
                                                            dontEnum = true,
                                                            readOnly = false,
-                                                           isFixed = true } };
+                                                           fixed = true } };
              bindArg 0 finalArgs)
 
     (*
@@ -5109,7 +5109,7 @@ and setPrototype (regs:Mach.REGS)
 		     attrs = { dontDelete = true,
 			       dontEnum = true, (* FIXME: is this wrong? (DAH) *)
 			       readOnly = false,
-			       isFixed = true } }
+			       fixed = true } }
     in
 	if Mach.hasProp props n
 	then Mach.delProp props n
@@ -5591,7 +5591,7 @@ and callIteratorGet (regs:Mach.REGS)
         fun select (name, { seq, prop }) = 
             case prop of 
                 { state = Mach.ValProp _,
-                  attrs = { dontEnum = false, dontDelete, readOnly, isFixed },
+                  attrs = { dontEnum = false, dontDelete, readOnly, fixed },
                   ty } => SOME (name, seq)
               | _ => NONE
         val filteredList = List.mapPartial select bindingList

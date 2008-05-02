@@ -18,45 +18,120 @@ SCOPE:                      The structure and behavior of objects, including the
 <p>The execution of a program, described in section ..., entails among its effects the calculation
 and manipulation of values.
 
-<p>An //ES4 value// is either ''Undefined'', ''Null'', or an ''Object''. Every value has an associated
-ES4 type, which is fixed for the lifetime of the value.
+<p>An //ES4 value// is either undefined, null, or an object. Every ES4 value has an associated ES4
+type, called the value's //allocated type//, which is fixed when the value is allocated in memory,
+and cannot change over the lifetime of the value. 
 
 <NOTE>In the 3rd edition of the language, nine individual //types// were defined. Six of these types
-are described differently in the 4th edition: the three types formerly called primitive (Number,
-String, Boolean) are now represented as ''Object'' values, and the three types formerly reserved for
-intermediate results of expressions (Reference, List and Completion) are described through separate
-specification mechanisms, rather than as part of the set of possible values.
+are described differently in the 4th edition: the 3 types formerly called primitive (Number, String,
+Boolean) are now represented as object values, and the 3 types formerly reserved for intermediate
+results of expressions (Reference, List and Completion) are described through separate specification
+mechanisms, rather than as part of the set of possible values.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="datatype VALUE">
 
 == Undefined == 
 
-<p>There is exactly one ''Undefined'' value, called **undefined**.  Any property of type ''*'' is
-initialized with the value **undefined**.
+<p>There is exactly one undefined value, denoted by ''Undef'' in SML and bound to the top-level
+name ''public::undefined'' in ES4. 
 
-<NOTE>As with earlier editions of the language, ''undefined'' is not a reserved word and so might be
-shadowed by a user defined property with the same name identifier.
+<p>The allocated type of the undefined value is called the undefined type. The undefined value is
+the only value with the undefined type as its allocated type. The undefined type is denoted by
+''UndefinedType'' in SML and denoted in ES4 type-expression contexts by the identifier
+''undefined''.
+
+<NOTE>As with earlier editions of the language, ''undefined'' is not a reserved word outside of
+type-expression contexts, and so might be shadowed by a user defined property with the same name.
 
 == Null ==
 
-<p>There is exactly one ''Null'' value, called **null**. Any property with a type including the
-''Null'' type is initialized to the value **null**.
+<p>There is exactly one null value, denoted by ''Null'' in SML and by the null literal ''null'' in 
+ES4. 
 
-<NOTE>While **null** and **undefined** have similar meanings, they have different conventions of
-use. The **null** value is intended to indicate a missing ''Object'' value, while the **undefined**
-value is intended to indicate a missing property on an existing ''Object'' value. These indeded uses
-are conventions, and are not enforced by the language semantics.
+<p>The allocated type of the null value is called the null type. The null value is the only value 
+with the null type as its allocated type. The null type is denoted by ''NullType'' in SML and 
+denoted in ES4 type-expression contexts by the null literal ''null''.
+
+<NOTE>While the null and undefined values have similar meanings, they have different conventions of
+use. The null value is intended to indicate a missing object value, while the undefined value is
+intended to indicate a missing property on an existing object value. These indeded uses are
+conventions, and are not enforced by the language semantics.
 
 == Objects ==
 
-<p>All values except **null** and **undefined** are ''Object'' values.
+<p>All values except the null and undefined values are object values.
 
-<p>An object value consists of a mutable set of property bindings, an immutable object identifier,
-an immutable tag, and a mutable prototype value.
+<p>An object value consists of a mutable property binding map, an immutable object identifier, an
+immutable tag, and a mutable prototype value.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and OBJ">
+
+=== Property Bindings === 
+
+<p>Each object contains zero or more //property bindings//. A property binding is logically a pair
+that associates a name and property. The property bindings of an object are arranged in a mutable,
+partial associative one-to-one map from names to properties, such that the map associates at most
+one property with any name. This map is called the object's //property binding map//. Property
+bindings may be added, removed, or replaced within a property binding map. The SML type of a
+property binding map is unspecified.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="and PROPERTY_BINDINGS">
+
+==== Properties ====
+
+<p>A //property// consists of a type, a state, and a set of attributes. The type of a property is
+also called the property's //storage type//, to differentiate it from the allocated type of any
+value that the property may contain.
+
+<NOTE>In earlier editions of the language, some characteristics of an object were modeled as
+//internal properties// with distinct names such as ''[[Class]]'' or ''[[Value]]''. These
+characteristics of objects are described differently in the 4th edition, using a combination of
+supporting SML and ES4 standard library functionality.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="and PROPERTY">
+
+==== Property States ====
+
+<p>The //state// of a property encodes either a value associated with the property, or else one of a
+small number of intermediate non-value conditions that a property can assume during execution. 
+
+<p>When a property is created, it is //allocated// in a state that derives from its type.
+
+<p>A property with storage type ''*'' is allocated in the value state, with the undefined value.
+
+<p>A property with a storage type that has the null type as a subtype is allocated in the value
+state, with the null value.
+
+<p>Any other property is allocated in the uninitialized state, and must be initialized during the
+initialization phase of object construction, before the object's first constructor begins execution.
+
+<p>For a property to be in value state, the allocated type of a value held in a property must be a
+compatible subtype of the storage type of the property.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="and PROPERTY_STATE">
+
+==== Property Attributes ==== 
+
+<p>The //attributes// of a property describe various parameters that govern the behavior of property
+lookup, enumeration, modification and deletion. There are four attributes that may be set on a
+property.
+
+<IMPL>
+<INCLUDE file="mach.sml" name="type ATTRS">
+
+=== Object Prototype === 
+
+<p>The //prototype// of an object is a means of dynamically delegating behavior from one object to
+another. In various conditions, the language defines the execution of an unsuccessful property
+access on an object in terms of subsequent property accesses on the object's prototype.
+
+
+=== Object Identifier ===
 
 <p>The //identifier// of an object uniquely identifies the object. The SML type of an object
 identifier is unspecified, and its value cannot be directly observed by ES4 code. Equality of
@@ -66,55 +141,22 @@ must be comparable with one another for equality.
 <IMPL>
 <INCLUDE file="mach.sml" name="and OBJ_IDENTIFIER">
 
+=== Object Tag === 
+
 <p>The //tag// of an object encodes both the object's ES4 type, and any underlying semantic (SML)
 value associated with the object.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and TAG">
 
-<p>Each object contains zero or more //property bindings//. A property binding is logically a pair
-that associates a name and property. The property bindings of an object are arranged in a mutable,
-partial associative one-to-one map from names to properties, such that the map associates at most
-one property with any name. Property bindings may be added, removed, or replaced within a property
-binding map. The SML type of a property binding map is unspecified.
-
-<IMPL>
-<INCLUDE file="mach.sml" name="and PROPERTY_BINDINGS">
-
-<p>A //property// consists of a type, a set of attributes and a value.
-
-<IMPL>
-<INCLUDE file="mach.sml" name="and PROPERTY">
-
-<p>The //attributes// of a property describe various parameters that govern the rules of access and 
-
-
-<IMPL>
-<INCLUDE file="mach.sml" name="type ATTRS">
-
-<p>A property value is represented by one of various property
-state values.
-
-<IMPL>
-<pre>
-datatype PROPERTY_STATE = ValueState of VALUE
-</pre>
-
-== Primitive Values ==
+=== Magic Tag ===
 
 <p>There are primitive object values whose state cannot be readily expressed
 in the generic structure defined for objects. We define the internal ("magic") state
 of these primitive values here.
 
 <IMPL>
-<pre>
-datatype MAGIC =
-         Boolean of bool
-       | String of Ustring.STRING
-       | Double of Real64.real
-       | Namespace of Ast.NAMESPACE
-       | Function of FUN_CLOSURE
-</pre>
+<INCLUDE file="mach.sml" name="and MAGIC">
 
 === Boolean Values ===
 

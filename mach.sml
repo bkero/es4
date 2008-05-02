@@ -65,25 +65,31 @@ structure IntMap = SplayMapFn (IntKey);
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
 val cachesz = 4096
+
+(* 
+ * FIXME: these are supposed to be Removable, Enumerable, Writable and Fixed. 
+ * Unfortunately it means we have to go invert the sense of the first three
+ * all through the code. Yay.
+ *)
                                        
 type ATTRS = { dontDelete: bool,
                dontEnum: bool,
                readOnly: bool,
-               isFixed: bool }     
+               fixed: bool }     
 
 type IDENTIFIER = Ustring.STRING
 
 type NAMESPACE = Ast.NAMESPACE
 
-datatype VALUE = Object of OBJ
+datatype VALUE = Undef
                | Null
-               | Undef
+               | Object of OBJ
 
      and OBJ =
-         Obj of { ident: OBJ_IDENTIFIER,
-                  tag: TAG,
-                  props: PROPERTY_BINDINGS,                  
-                  proto: VALUE ref
+         Obj of { props: PROPERTY_BINDINGS,                  
+                  proto: VALUE ref,
+                  ident: OBJ_IDENTIFIER,
+                  tag: TAG
                 , rib: Ast.RIB ref     (* INFORMATIVE *)
                 }
 
@@ -178,34 +184,37 @@ datatype VALUE = Object of OBJ
      and TEMP_STATE = UninitTemp
                     | ValTemp of VALUE
 
+
+
+     (* 
+      * One might imagine that namespaces, methods and the 'arguments'
+      * object in a function can all be stored as instances of the
+      * classes Namespace, Function and Array, respectively. This
+      * works in some contexts, but leads to feedback loops when
+      * constructing the classes Function, Namespace and Array
+      * themselves. So instead of eagerly instantiating such values,
+      * we allocate them as the following 3 "lazy" property states. If
+      * anyone performs a "get" on these property states, a Namespace,
+      * Function or Array object (respectively) is constructed. We
+      * then ensure that the Namespace, Function and Array
+      * constructors, settings and initializers (in the builtins) do
+      * *not* cause any "get" operations on properties in these
+      * states.
+      *
+      * FIXME: The 'arguments' object can't be an array.
+      *)
+
      and PROPERTY_STATE = TypeVarProp
-                    | TypeProp
-                    | UninitProp
-                    | ValProp of VALUE
-
-                    (* One might imagine that namespaces, methods and
-                     * the 'arguments' object in a function can all be stored
-                     * as instances of the classes Namespace, Function and
-                     * Array, respectively. This works in some contexts, but leads
-                     * to feedback loops when constructing the classes Function,
-                     * Namespace and Array themselves. So instead of eagerly instantiating
-                     * such values, we allocate them as the following 3 "lazy"
-                     * property states. If anyone performs a "get" on these property
-                     * states, a Namespace, Function or Array object (respectively) is
-                     * constructed. We then ensure that the Namespace, Function and Array
-                     * constructors, settings and initializers (in the builtins)
-                     * do *not* cause any "get" operations on properties in these states.
-                     *
-                     * FIXME: The 'arguments' object can't be an array.
-                     *)
-                    | NamespaceProp of Ast.NAMESPACE
-                    | MethodProp of FUN_CLOSURE
-                    | ValListProp of VALUE list
-
-                    | NativeFunctionProp of NATIVE_FUNCTION
-                    | VirtualValProp of
-                      { getter: FUN_CLOSURE option,
-                        setter: FUN_CLOSURE option }
+                        | TypeProp
+                        | UninitProp
+                        | ValProp of VALUE
+                        | NamespaceProp of Ast.NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
+                        | MethodProp of FUN_CLOSURE       (* INFORMATIVE *)
+                        | ValListProp of VALUE list       (* INFORMATIVE *)
+                        | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
+                        | VirtualValProp of
+                          { getter: FUN_CLOSURE option,
+                            setter: FUN_CLOSURE option }
 
      and AUX = 
          Aux of 
@@ -431,7 +440,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          attrs={dontDelete=false,  (* unused attrs *)
                 dontEnum=false,
                 readOnly=false,
-                isFixed=false}}
+                fixed=false}}
 
 
 fun hasProp (b:PROPERTY_BINDINGS)
@@ -486,7 +495,7 @@ fun setPropDontEnum (props:PROPERTY_BINDINGS)
                             attrs = { dontDelete = (#dontDelete attrs),
                                       dontEnum = dontEnum,
                                       readOnly = (#readOnly attrs),
-                                      isFixed = (#isFixed attrs) } }
+                                      fixed = (#fixed attrs) } }
         in
             delProp props n;
             addProp props n newProp
@@ -675,18 +684,18 @@ fun inspect (v:VALUE)
 
         fun nl _ = TextIO.print "\n";
 
-        fun att {dontDelete,dontEnum,readOnly,isFixed} =
+        fun att {dontDelete,dontEnum,readOnly,fixed} =
             if not dontDelete
                andalso not dontEnum
                andalso not readOnly
-               andalso not isFixed
+               andalso not fixed
             then ""
             else
                 (" ("
                  ^ (if dontDelete then "DD," else "")
                  ^ (if dontEnum then "DE," else "")
                  ^ (if readOnly then "RO," else "")
-                 ^ (if isFixed then "FX" else "")
+                 ^ (if fixed then "FX" else "")
                  ^ ") ")
 
         fun id (Obj ob) = Int.toString (#ident ob)
@@ -1200,9 +1209,9 @@ fun getBindingNamespaces (object: OBJECT,
             in
                 case findProp props name of 
                     NONE => NONE
-                  | SOME {attrs={isFixed, ...}, ...} => 
+                  | SOME {attrs={fixed, ...}, ...} => 
                     if fixedOnly
-                    then if isFixed
+                    then if fixed
                          then SOME ns
                          else NONE
                     else SOME ns

@@ -101,7 +101,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                              attrs = { dontDelete = true,
                                        dontEnum = true,
                                        readOnly = true,
-                                       isFixed = true } }
+                                       fixed = true } }
       val _ = Eval.bindAnySpecialIdentity regs obj
   in
       (cls, closure, obj)
