@@ -4418,6 +4418,17 @@ and catch (regs:Mach.REGS)
         else
             catch regs e cs
 
+(* SPEC
+
+fun evalTryStmt (env: ENV)
+                (block: Ast.BLOCK)
+                (catches: Ast.CATCH_CLAUSE list)
+                (finally: Ast.BLOCK option)
+    : Mach.VAL =
+    (* FINISH ME *)
+
+*)
+
 and evalTryStmt (regs:Mach.REGS)
                 (block:Ast.BLOCK)
                 (catches:Ast.CATCH_CLAUSE list)
