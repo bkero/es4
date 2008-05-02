@@ -163,7 +163,7 @@ fun mapFuncTy (f:(Ast.TYPE -> Ast.TYPE))
     in
         { typeParams = typeParams,
           params = map f params,
-          result = f result,
+          result = Option.map f result,
           thisType = f thisType,
           hasRest = hasRest,
           minArgs = minArgs }    
@@ -185,7 +185,7 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
     case ty of 
         Ast.AnyType => ty
       | Ast.NullType => ty
-      | Ast.VoidType => ty
+    (*  | Ast.VoidType => ty *)
       | Ast.UndefinedType => ty
       | Ast.TypeName _ => ty
       | Ast.AppType { base, args } => 
@@ -837,7 +837,9 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         (* FIXME: handle typeParams *)
         let val min = Int.min( length params1, length params2 ) 
         in
-            subType extra result1 result2 
+            (case (result1, result2) of
+                 (SOME t1, SOME t2) => subType extra t1 t2
+               | (NONE,    NONE)    => true)
               andalso
             equivType extra thisType1 thisType2
               andalso    
@@ -877,14 +879,14 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
 
       | (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
             List.exists (nameEq name) [ Name.public_Array,
-                                                        Name.public_Object ]
+                                        Name.public_Object ]
         
       | (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
             List.exists (nameEq name) [ Name.public_Object ]
         
       | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
             List.exists (nameEq name) [ Name.public_Function, 
-                                                        Name.public_Object ]
+                                        Name.public_Object ]
         
       (* ? *)
 

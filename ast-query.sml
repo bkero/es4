@@ -94,7 +94,12 @@ fun needFunctionType (t:Ast.TYPE)
         findType t isFunctionType "function"
     end
     
-val resultTyOfFuncTy = (#result) o needFunctionType
+fun resultTyOfFuncTy t = 
+    case (#result (needFunctionType t)) of
+        SOME t => t
+    (* void case should never occur, I think *)
+                  
+
 val minArgsOfFuncTy = (#minArgs) o needFunctionType
 
 fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a) 

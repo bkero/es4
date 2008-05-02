@@ -170,7 +170,7 @@ fun ty t =
             Ast.AnyType => "*"
           | Ast.NullType => "null"
           | Ast.UndefinedType => "undefined"
-          | Ast.VoidType => "<VoidType>"
+        (*  | Ast.VoidType => "<VoidType>" *)
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
           | Ast.TypeName (name, _) => nameExpr name
@@ -185,7 +185,9 @@ fun ty t =
 					 else ", ...") 
 			   else "")
 			^ ") : " 
-			^ (ty result) 
+			^ (case result of
+			       NONE => "void"
+			     | SOME t => ty t)
 			
           | Ast.RecordType fields => 
 			"{" ^ fieldList fields ^ "}"
