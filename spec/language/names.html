@@ -3,7 +3,7 @@
 <hr>
 <pre>
 FILE:                       spec/language/names.html
-DRAFT STATUS:               DRAFT 4 - UNREVIEWED - 2008-04-24
+DRAFT STATUS:               DRAFT 5 - UNREVIEWED - 2008-05-02
 AUTHORS:                    Jeff, Graydon
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
@@ -34,10 +34,9 @@ type IDENTIFIER = Ustring.STRING
 
 == Namespaces ==
 
-<p>A namespace is an immutable object that serves as a distinct tag
-with which programmers can organize and manage groups of
-identifiers. In this sense, a namespace is a kind of name //parameter//
-that can be used to control the meaning of a name.
+<p>A namespace is an immutable object that serves as a distinct tag with which programmers can
+organize and manage groups of identifiers. In this sense, a namespace is a kind of name
+//parameter// that can be used to control the meaning of a name.
 
 <p>Namespaces may be transparent or opaque. Transparent namespaces are represented by strings and
 their equality is defined by the equality of the underlying strings. Opaque namespaces do not have
@@ -57,20 +56,21 @@ two opaque namespaces are ever given the same system-assigned identifier.
 
 === The Public and 4th Edition Namespaces ===
 
-<p>Two important opaque namespaces serve as roots for binding further names in this spec: the 
-public namespace and the 4th edition namespace.
+<p>Two important namespaces serve as roots for binding further names in this spec: the public
+namespace and the 4th edition namespace.
 
-<p>The public namespace is a member of the initial open namespace set when running in either 3rd
-edition or 4th edition mode, and is the initial default binding namespace for new unqualified
-bindings.
+<p>The public namespace is defined as the transparent namespace containing only the empty string. It
+is a member of the initial open namespace set when running in either 3rd edition or 4th edition
+mode, and is the initial default binding namespace for new unqualified bindings.
 
 <p>Therefore in practice, code written for the 3rd edition or earlier -- by definition, ignorant of
 any means for namespace qualification -- sees and creates only bindings qualified by the public
 namespace.
 
-<p>The 4th edition namespace is also a member of the initial open namespace set when running in 
-4th edition mode. All new bindings introduced by the 4th edition built-in library are qualified by
-the 4th edition namespace (or a namespace that is itself qualified by the 4th edition namespace).
+<p>The 4th edition namespace is an opaque namespace. It is also a member of the initial open
+namespace set when running in 4th edition mode. All new bindings introduced by the 4th edition
+built-in library are qualified by the 4th edition namespace (or a namespace that is itself qualified
+by the 4th edition namespace).
 
 <p>The 4th edition namespace is bound to a name formed from the identifier ''__ES4__'' and the 
 public namespace.
@@ -92,48 +92,38 @@ always qualified by the public namespace.
 <INCLUDE file="name.sml" name="val publicNS">
 
 
-== Reference Expressions ==
+== Name Expressions ==
 
-<p>A reference expression is an expression that refers to a property binding. A reference expression
-describes a name that is computed from either an //unqualified identifier// or a namespace
-//qualified identifier//.  In this section we describe how the identifier part
-(''IDENTIFIER_EXPRESSION'') of a reference is resolved to a property name and base object.
+<p>A name expression describes a name that is computed from either a namespace //qualified name// or
+an //unqualified name//.
 
 <IMPL>
 <INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
-<INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
-=== Unqualified Identifiers ===
+<p>Name expressions occur in several contexts, to qualify declarations, identify types, and also in
+three special expression forms called //reference expressions//, defined in a section that follows.
 
-<p>An unqualified identifier consists of a single expression that computes a string value.
-A name value is constructed at runtime by searching for a property name that has an identifier 
-that matches that string value and one of the open namespaces. The algorithm for resolving 
-an unqualified identifier to a name is presented below.
+=== Qualified Name ===
 
-=== Qualified Identifiers ===
+<p>A //qualified name// expression consists of a namespace expression and an identifier. A name
+value is constructed at runtime using the values of these components.
 
-<p>A qualified identifier consists of an expression that computes a namespace value and an 
-expression that computes a string value. A name value is constructed at runtime using the
-values of these expressions.
+=== Unqualified Name ===
 
-=== Scope Chain ===
+<p>An //unqualified name// expression consists of an single identifier and some contextual
+information -- an open namespaces list and a global name set -- that describes the name's static
+environment. A name value is constructed at runtime by using the contextual information to search
+for a property name that has an identifier that matches that string value and a namespace drawn from
+the open namespaces. The algorithm for resolving an unqualified name to a name is presented in
+sections that follow.
 
-<p>A scope chain contains a list of objects that are searched when resolving an identifier. 
-The exact specification of how scope chains are constructed is described in
-//section ..: Execution//. For the purpose of specifying how names are resolved, it is
-sufficient to know that a scope chain yields a sequence of objects to be searched.
+==== Open Namespaces List ====
 
-<NOTE>A scope chain may include a class object (with class ''static'' properties), an
-instance object and one or more local scope objects in addition to the global, activation 
-and with objects of edition 3.
-
-=== Open Namespaces ===
-
-<p>The open namespaces are a list of sets of open namespace (''OPEN_NAMESPACE'') values.  Each
-execution context extends this list of sets with a new set of namespace values representing
-namespaces that are opened in that execution context. We represent the innermost set in the SML
-implementation using a ''NAMESPACE list'', but refer to it throughout the accompanying description as a
-"set" to emphasize its unordered meaning.
+<p>An //open namespaces list// is a list of sets of namespace values.  Each execution context
+extends this list of sets with a new set of namespace values representing namespaces that are opened
+in that execution context. We represent the innermost set in the SML implementation using a
+''NAMESPACE list'', but refer to it throughout the accompanying description as a "set" to emphasize
+its unordered meaning.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="type NAMESPACE_SET">
@@ -143,50 +133,107 @@ implementation using a ''NAMESPACE list'', but refer to it throughout the accomp
 set is effectively unordered; all namespaces opened in the same execution context are given the same
 priority, and all operations on it are order-independent set operations.
 
-=== Identifier Resolution ===
+<p>An open namespaces list is captured in every unqualified name expression.
 
-<p>Identifiers are resolved to an object and a property name using the following algorithms.
+==== Global Name Set ====
 
-<NOTE>References where the target object is provided (''ObjectRef'') are a degenerate case of a
-search over a list of objects, where the list has only a single object. References to lexical
-bindings (''LexicalRef'') imply that the list of objects searched is the list of scope objects that
-constitute the scope chain. Likewise, a qualified identifier (''QualifiedIdentifier'') is a
-degenerate form of unqualified identifier (''Identifier'') where the set of possible qualifiers is
-provided by the open namespaces in the current scope. The algorithms here are used to specify the
-meaning of both kinds of reference and both kinds of identifier.
+<p>The //global name set// is a set of all the names of declared top-level (global) fixtures that
+occur or have occurred in all compilations units before and including the current compilation unit.
 
-==== Identifier Resolution ====
+<p>A global name set is captured in every unqualified name expression.
 
-<p>Given an object list, an identifier and a list of open namespace sets, this algorithm searches
-for an object in the list and a property name on the object that matches identifier and namespaces.
+=== Namespace Expressions ===
 
-<p>Informally, references are resolved to a name and an object containing a property binding with that
-name. Initially, resolution considers all currently open namespaces at once -- the union of all open
-namespaces -- regardless of the nesting structure of the open namespaces. Object list search is then
-performed either once or twice with the flattened namespace set.
+<p>A //namespace expression// consists of either a namespace value or a name expression that must
+itself resolve to a namespace value.
 
-<p>At first, object list search is performed with its search restricted to considering only 
-fixed property bindings. If the first object list search returns no object or no namespaces, 
-object list search is repeated with its search relaxed to include all properties, fixed and expando.
+<IMPL>
+<INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
-<NOTE>Maintaining the integrity of objects requires that identifier resolution perform two-pass
-object list search, and that fixed property bindings cannot be shadowed or otherwise made ambiguous
-by expando property bindings.
+== Reference Expressions ==
 
-<p>If no namespaces, or no object, are returned by object list search, an error is signaled. An
+<p>A //reference expression// is one of three forms of expression that simulatneously describe a name
+//and an object//. Reference expressions are used to locate property bindings.
+
+<IMPL>
+{{{
+       | LexicalReference of { name: NAME_EXPRESSION }
+       | ObjectNameReference of { object: EXPRESSION,
+                                  name: NAME_EXPRESSION }
+       | ObjectIndexReference of { object: EXPRESSION,
+                                   index: EXPRESSION }
+}}}
+
+<p>Of these three forms, ''LexicalReference'' expressions evaluate their name expression using the
+scope chain, described in the following section, whereas ''ObjectNameReference'' and
+''ObjectIndexReference'' expressions evaluate their name expressions using their ''object'' operand.
+
+<NOTE>The third form, ''ObjectIndexReference'', is a degenerate form of ''ObjectNameReference''. It
+is evaluated by evaluating its ''index'' operand to a string value, and then behaving as if it were
+an ''ObjectNameReference'' on a qualified name expression formed from the evaluated string and
+qualified by the public namespace.
+
+=== Scope Chain ===
+
+<p>A scope chain contains a list of objects that are searched when resolving an identifier.  The
+exact specification of how scope chains are constructed is described in //section ..:
+Execution//. For the purpose of specifying how names are resolved, it is sufficient to know that a
+scope chain yields a sequence of objects to be searched.
+
+<NOTE>A scope chain may include a class object (with class ''static'' properties), an instance
+object and one or more local scope objects in addition to the global, activation and with objects of
+edition 3.
+
+=== Reference Expression Resolution ===
+
+<p>Reference expressions are resolved to an object and a property name using the following algorithms.
+
+<NOTE>Reference expressions in which the target object is provided (''ObjectNameReference'' and
+''ObjectIndexReference'') are degenerate cases of a search over a //list// of objects, where the
+list has only a single object. Reference expressions to lexical bindings (''LexicalReference'')
+imply that the list of objects searched is the list of scope objects that constitute the scope
+chain. Likewise, reference expressions using a qualified name expression (''QualifiedName'') are
+degenerate forms of reference expressions to unqualified names (''UnqualifiedName'') where the open
+namespaces list is contains a single set, itself containing the single namespace of the
+''QualifiedName'', and the global name list is the empty list. The algorithms here are used to
+specify the meaning of both kinds of reference expression and name expression.
+
+==== Name Resolution ====
+
+<p>Given an object list, an identifier, a list of open namespace sets and a global name set, this
+algorithm searches for an object in the list and a property name on the object that matches
+identifier and namespaces.
+
+<p>**Informal description** Initially, consider all currently open namespaces at once -- the union
+of all open namespaces -- regardless of the nesting structure of the open namespaces. Perform object
+list search either once or twice with the flattened namespace set, as follows.
+
+<p>At first, perform object list search with its search restricted to considering only fixed
+property bindings. If the first object list search returns no object or no namespaces, repeat the
+object list search with its search relaxed to include all properties, fixed and expando.
+
+<NOTE>Maintaining the integrity of objects requires that name resolution perform two-pass object
+list search, and that fixed property bindings cannot be shadowed or otherwise made ambiguous by
+expando property bindings.
+
+<p>If no namespaces, or no object, are returned by object list search, signal an error. An
 object and a matching namepace set can therefore be assumed for the remainder of resolution.
 
-<p>If one namespace matches, resolution completes with a name formed from the identifier and that
-namespace. If multiple names match, a matching subset is selected using open namespaces based
-namespace selection.
+<p>If one namespace matches, complete resolution with the located object and a name formed from the
+identifier and that namespace. If multiple names match, select a matching subset using open
+namespaces based namespace selection.
 
-<p>Again, if the selection causes no namespaces to match, an error is signaled. 
+<p>Again, if the selection causes no namespaces to match, signal an error. 
 
-<p>If one namepace matches, resolution completes with a name formed from the identifier and that namespace. 
+<p>If one namepace matches, complete resolution with the located object and a name formed from the
+identifier and that namespace.
 
-<p>If multiple namespaces still match, a further subset is selected using the class based namespace
-selection, considering the classes inherited by the object. This is the final attempt: exactly one
-namespace must match, or else an error will be signaled.
+<p>If multiple namespaces still match, select a further subset using class based namespace
+selection, considering the classes inherited by the object. 
+
+<p>If multiple namespaces still match, select a further subset using global name set based namespace
+selection, considering the global name set intially provided. This is the final attempt: exactly one
+namespace must match. If any other number of namespaces match, signal an error.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="fun findName">
@@ -226,11 +273,11 @@ name, return no value.
 opened) and a set of matching namespaces, this algorithm returns a subset of the matching set that
 occurs entirely within a single open namespace set.
 
-<p>**Informal description**: intersect the head of the provided open namespace list with the provided set of
-namespaces. If that intersection is nonempty, return it. Otherwise repeat the process with the tail
-of the open namespace list, and its tail, and so forth up through the list of open namespace
-sets. If the end of the list of open namespace sets is reached without producing a nonempty
-intersection, return an empty set.
+<p>**Informal description**: intersect the head of the provided open namespace list with the
+provided set of namespaces. If that intersection is nonempty, return it. Otherwise repeat the
+process with the tail of the open namespace list, and its tail, and so forth up through the list of
+open namespace sets. If the end of the list of open namespace sets is reached without producing a
+nonempty intersection, return an empty set.
 
 <IMPL>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
@@ -252,6 +299,15 @@ matching namespaces are found, return the empty set.
 
 <IMPL>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">
+
+==== Global Name Based Namespace Selection ====
+
+<p>Given a set of global names, an identifier and a set of namespaces, this algorithm selects any
+namespace in the namespace set for which a name formed from the namespace and the identifier is 
+present in the global name set.
+
+<IMPL>
+<INCLUDE file="fixture.sml" name="fun selectNamespacesByGlobalNames">
 
 <p>**Helper functions**
 

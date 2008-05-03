@@ -1212,7 +1212,7 @@ and newArray (regs:Mach.REGS)
 
 fun evalRegExpInitialiser (env: ENV)
                           (string: Ustring.STRING)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -1241,7 +1241,7 @@ and newBuiltin (regs:Mach.REGS)
 
 fun evalDecimalLiteral (env: ENV)
                        (decimal: Decimal.DEC)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -1255,7 +1255,7 @@ and newDecimal (regs:Mach.REGS)
 
 fun evalDoubleLiteral (env: ENV)
                       (double: Real64.real)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -1279,7 +1279,7 @@ and newStringWrapper (regs:Mach.REGS)
 
 fun evalStringLiteral (env: ENV)
                      (s: Ustring.STRING)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -1301,7 +1301,7 @@ and newBooleanWrapper (regs:Mach.REGS)
 
 fun evalBooleanLiteral (env: ENV)
                        (b: bool)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -1969,7 +1969,7 @@ and typeCheck (regs:Mach.REGS)
 
 fun evalExpression (env: ENV)
                    (expr: Ast.EXPRESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     case expr of
         Ast.LiteralNull => 
             Mach.Null
@@ -2103,7 +2103,7 @@ and evalExpr (regs:Mach.REGS)
 
 fun evalGetExpr (env: ENV)
                 (ref: Ast.REFERENCE)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     let
         val (_, (obj, name)) = evalReference env ident true
     in
@@ -2144,7 +2144,7 @@ and evalObjectIndexReference (regs:Mach.REGS)
 
 fun evalThisExpression (env: ENV)
                        (kind: Ast.THIS_KIND option)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     let
         val { this, thisFunction, thisGenerator, ... } = env
     in
@@ -2234,7 +2234,7 @@ and evalExprsAndSpliceSpreads (regs:Mach.REGS)
 fun evalCallExpr (env: ENV)
                  (func: Ast.EXPRESSION)
                  (actuals: Ast.EXPRESSION list)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -2272,7 +2272,7 @@ and evalCallExpr (regs:Mach.REGS)
 fun evalNewExpr (env: ENV)
                 (func: Ast.EXPRESSION)
                 (actuals: Ast.EXPRESSION list)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -2309,7 +2309,7 @@ fun evalInitExpr (env: ENV)
                  (target: Ast.INIT_TARGET)
                  (head: Ast.HEAD)
                  (inits: Ast.INITS)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -2635,7 +2635,7 @@ and instanceInterface (regs:Mach.REGS)
 fun evalApplyTypeExpr (env: ENV)
                       (expr: Ast.EXPRESSION)
                       (args: Ast.TYPE list)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
 
 *)
 
@@ -2687,9 +2687,9 @@ and evalYieldExpr (regs:Mach.REGS)
 (* SPEC
 
 fun evalArrayInitialiser (env: ENV)
-                         (elements: Mach.VALUEUE list)
+                         (elements: Mach.VALUE list)
                          (typeExpr: Ast.TYPEESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -2748,7 +2748,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
 fun evalObjectInitialiser (env: ENV)
                           (fields: Ast.FIELD list)
                           (typeExpr: Ast.TYPEESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 *)
 
@@ -3040,7 +3040,7 @@ fun evalSetExpr (env: ENV)
                 (assignOp: Ast.ASSIGNOP)
                 (leftSide: Ast.EXPRESSION)
                 (rightSide: Ast.EXPRESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -3148,7 +3148,7 @@ and evalDeleteOp (regs: Mach.REGS)
 fun evalUnaryExpr (env: ENV)
                   (unaryOp: Ast.ASSIGNOP)
                   (expr: Ast.EXPRESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -3249,7 +3249,7 @@ and evalUnaryOp (regs:Mach.REGS)
 
 fun evalYieldExpr (env: ENV)
                   (expr: Ast.EXPRESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -3756,7 +3756,7 @@ fun evalBinaryTypeExpr (env: ENV)
                        (binaryTypeOp: Ast.BINTYPEOP)
                        (expr: Ast.EXPRESSION)
                        (typeExpr: Ast.TYPE)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -3864,7 +3864,7 @@ fun evalBinaryExpr (env: ENV)
                    (binaryOp: Ast.ASSIGNOP)
                    (leftExpr: Ast.EXPRESSION)
                    (rightExpr: Ast.EXPRESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -3891,7 +3891,7 @@ fun evalConditionalExpr (env: ENV)
                         (condExpr: Ast.EXPRESSION)
                         (thenExpr: Ast.EXPRESSION)
                         (elseExpr: Ast.EXPRESSION)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     (* FINISH ME *)
 
 *)
@@ -4210,7 +4210,7 @@ and evalStmts (regs:Mach.REGS)
 
 fun evalStatement (env: Mach.ENV)
                   (stmt: Ast.STATEMENT)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     case stmt of
         Ast.EmptyStmt => 
             Mach.Undef
@@ -5379,7 +5379,7 @@ fun evalIfStatement (env: ENV)
                     (conditionExpr: Ast.EXPRESSION)
                     (thenStmt: Ast.STATEMENT)
                     (elseStmt: Ast.STATEMENT)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     let
         val conditionValue = evalExpr regs conditionExpr
         val booleanConditionValue = toBoolean conditionValue
@@ -5410,7 +5410,7 @@ and evalIfStmt (regs:Mach.REGS)
 fun evalLabeledStatement (env: ENV)
                          (label: Ast.IDENTIFIER)
                          (stmt: Ast.STATEMENT)
-    : Mach.VALUEUE =
+    : Mach.VALUE =
     evalStmt env stmt
     handle BreakException exnLabel =>
            if labelMatch [label] exnLabel

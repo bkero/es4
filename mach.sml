@@ -204,14 +204,14 @@ datatype VALUE = Undef
       * FIXME: The 'arguments' object can't be an array.
       *)
 
-     and PROPERTY_STATE = TypeVarProp
-                        | TypeProp
-                        | UninitProp
+     and PROPERTY_STATE = UninitProp
                         | ValProp of VALUE
                         | NamespaceProp of Ast.NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
                         | MethodProp of FUN_CLOSURE       (* INFORMATIVE *)
                         | ValListProp of VALUE list       (* INFORMATIVE *)
                         | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
+                        | TypeProp
+                        | TypeVarProp
                         | VirtualValProp of
                           { getter: FUN_CLOSURE option,
                             setter: FUN_CLOSURE option }

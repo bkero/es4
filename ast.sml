@@ -42,11 +42,14 @@ type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 type IDENTIFIER = Ustring.STRING
 
 type NONCE = int
-type OPAQUE_NAMESPACE_IDENTIFIER = NONCE
+
+type OPAQUE_NAMESPACE_IDENTIFIER = (* LDOTS *)
+     NONCE
 
 datatype NAMESPACE =
          TransparentNamespace of Ustring.STRING
        | OpaqueNamespace of OPAQUE_NAMESPACE_IDENTIFIER
+
 
 type NAME = { ns: NAMESPACE, id: IDENTIFIER }
 
@@ -131,7 +134,7 @@ datatype PRAGMA =
 
      and NAME_EXPRESSION = 
          QualifiedName of { namespace: NAMESPACE_EXPRESSION,
-							identifier: IDENTIFIER }
+                            identifier: IDENTIFIER }
        | UnqualifiedName of { identifier: IDENTIFIER, 
                               openNamespaces: OPEN_NAMESPACES, 
                               globalNames: NAME_SET }
