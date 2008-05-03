@@ -658,19 +658,50 @@ datatype EXPRESSION =
 
 === Type Expressions ===
 
-
+<P>Type expressions are evaluated as described in the Type Expressions section
+of this chapter.
 
 === Apply Type Expressions ===
 
+<P>Apply type expressions represent the application of a specific type
+to a language construct that accepts parameterized types.
+
+<!-- <pre class="code grammar"><em>TypeApplication</em></pre> -->
+
 ==== Semantics ====
+
+<P>The abstract representation of an apply type expression includes an expression on which to apply the type and a list of types.
+<pre>
+datatype EXPRESSION =
+        ApplyTypeExpr of (EXPRESSION * TYPE list)
+      | ...
+</pre>
+
+<P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
+
 <INCLUDE file="eval.sml" name="fun evalApplyTypeExpr">
 
 === Unary Expressions ===
+<P>A unary expression comprises one operator and an expression that
+serves as the operator's sole operand.
+
+<!-- <pre class="code grammar"><em>UnaryExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
 ==== Semantics ====
+<P>The abstract representation of a unary expression includes a unary operator
+and an expression to which the operator is applied.
+<pre>
+datatype EXPRESSION =
+        UnaryExpr of (UNOP * EXPRESSION)
+      | ...
+</pre>
+
+<P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
+
 <INCLUDE file="eval.sml" name="fun evalUnaryExpr">
 
 === Binary Expressions ===
+
 
 ==== Semantics ====
 <INCLUDE file="eval.sml" name="fun evalBinaryExpr">
