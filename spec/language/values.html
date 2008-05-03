@@ -149,11 +149,49 @@ value associated with the object.
 <IMPL>
 <INCLUDE file="mach.sml" name="and TAG">
 
-=== Magic Tag ===
+<p>The ''ObjectTag'' and ''ArrayTag'' tags are present on objects with ''ObjectType'' and
+''ArrayType'', respectively. These tags exist only to designate the allocated type of the object
+they are present on. In most other respects, objects with ''ObjectTag'' and ''ArrayTag'' tags behave
+as instances of the ES4 classes bound to ''public::Object'' and ''public::Array'', respectively.
 
-<p>There are primitive object values whose state cannot be readily expressed
-in the generic structure defined for objects. We define the internal ("magic") state
-of these primitive values here.
+<p>The ''MagicTag'' tag is present on objects that are instances of a small number of classes,
+described in section ....
+
+<p>The ''InstanceTag'' tag is present on any object that is an instance of an ES4 class but does
+//not// have an ''ObjectTag'', ''ArrayTag'' or ''MagicTag''. Instance tags exist to designate
+instances of classes that are solely defined by general ES4 class definitions, rather than any more
+specific language-supported mechanisms.
+
+<p>The ''NoTag'' tag is present only on un-named objects that implement scopes.
+
+==== Magic Tag ====
+
+<p>Some objects have, beyond their basic structure, an additional semantic (SML) value associated
+with them. These semantic values are captured in the object's magic tag, and may be observed
+directly by SML code. The //presence// of semantic values -- though not always the values
+themselves -- can be indirectly observed by ES4 code through a bijective correspondence that exists
+between magic tags and a particular set of ES4 instance types (classes and interfaces). Any instance
+of such an instance type has the corresponding magic tag, and any object carrying such a magic tag
+is an instance of the corresponding instance type.
+
+<p>The correspondence between magic tags and classes is the following:
+<ul>
+<li>The magic tag ''Boolean'' corresponds to the ES4 class bound to ''public::Boolean''.
+<li>The magic tag ''Double'' corresponds to the ES4 class bound to ''__ES4__::double''.
+<li>The magic tag ''Decimal'' corresponds to the ES4 class bound to ''__ES4__::decimal''.
+<li>The magic tag ''String'' corresponds to the ES4 class bound to ''__ES4__::string''.
+<li>The magic tag ''Namespace'' corresponds to the ES4 class bound to ''__ES4__::Namespace''.
+<li>The magic tag ''Class'' corresponds to the ES4 class bound to ''__ES4__::Class''.
+<li>The magic tag ''Interface'' corresponds to the ES4 class bound to ''__ES4__::Interface''.
+<li>The magic tag ''Function'' corresponds to the ES4 class bound to ''public::Function''.
+<li>The magic tag ''Type'' corresponds to the ES4 class bound to ''__ES4__::Type''.
+<li>The magic tag ''Generator'' corresponds to the ES4 class bound to ''helper::GeneratorImpl''.
+</ul>
+
+<p>The allocated type of an object with such a magic tag may be more specific than the corresponding
+instance type. In particular, function objects may have more specific subtypes of the ES4 class
+bound to ''public::Function''. In such cases, the allocated type of the object is present in the 
+semantic value held by the magic tag.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and MAGIC">
