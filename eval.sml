@@ -5594,31 +5594,6 @@ and callIteratorGet (regs:Mach.REGS)
     in
         needObj regs iterator
     end
-(*
-    let
-        val Mach.Obj { props, ... } = iterable
-        val { bindings, ... } = !props
-        val bindingList = NameMap.listItemsi bindings
-        fun select (name, { seq, prop }) = 
-            case prop of 
-                { state = Mach.ValProp _,
-                  attrs = { dontEnum = false, dontDelete, readOnly, fixed },
-                  ty } => SOME (name, seq)
-              | _ => NONE
-        val filteredList = List.mapPartial select bindingList
-        val bindingArray = Array.fromList filteredList
-        fun sort ((_, seq1), (_, seq2)) = Int.compare (seq2,seq1)
-        val _ = ArrayQSort.sort sort bindingArray
-        fun project ((name:Ast.NAME, _), (curr:Mach.VALUE list)) =
-            (newName regs name) :: curr
-        val vals = Array.foldl project [] bindingArray
-        val iterator = needObj regs (newArray regs vals)
-    in
-        setValue regs iterator Name.public_cursor (newDouble regs 0.0);
-        Mach.inspect (Mach.Object iterator);
-        iterator
-    end
-*)
 
 and callIteratorNext (regs:Mach.REGS)
                      (iterator:Mach.OBJ)
@@ -5627,27 +5602,6 @@ and callIteratorNext (regs:Mach.REGS)
     handle e as ThrowException v => raise (if isStopIteration regs v
                                            then StopIterationException
                                            else e)
-(*
-    let
-        val lengthValue = getValue regs iterator Name.public_length
-        val length      = toInt32 regs lengthValue
-        val cursorValue = getValue regs iterator Name.public_cursor
-        val cursor      = toInt32 regs cursorValue
-    in
-        if cursor < length
-        then
-            let
-                val nextName       = Name.public (Mach.NumberToString cursor)
-                val newCursorValue = newDouble regs (cursor + 1.0)
-            in
-                trace ["iterator next fetching ", fmtName nextName];
-                setValue regs iterator Name.public_cursor newCursorValue;
-                getValue regs iterator nextName
-            end
-        else
-            raise StopIterationException
-    end
-*)
 
 and evalForInStmt (regs:Mach.REGS)
                   (forInStmt:Ast.FOR_ENUM_STATEMENT)
