@@ -87,7 +87,7 @@
         meta static function invoke(v) : iterator::Iterator
             new iterator::Enumerator(v);
 
-        function get(e : boolean = false) : iterator::Iterator // FIXME: in iterator namespace
+        iterator function get(e : boolean = false) : iterator::Iterator
             (e == enumerate) ? this : new iterator::Enumerator(initial_obj, result_fun, e); // FIXME: .<T>
 
         public function next() : * { // FIXME: T
@@ -133,7 +133,7 @@
 
     iterator const function GET(start: Object!, deep: boolean): iterator::Iterator
         (start is iterator::Iterable) // FIXME: like
-        ? start.get(deep) // FIXME: in iterator namespace
+        ? start.iterator::get(deep)
         : iterator::DEFAULT_GET(start, deep)
 
     iterator const function DEFAULT_GET(start: Object!, deep: boolean): iterator::Iterator // FIXME: .<string>
@@ -143,7 +143,7 @@
                                  deep)
 
     iterator type Iterable = { // FIXME: .<T>
-        get: function (boolean=) : iterator::Iterator // FIXME: .<T>, in iterator namespace
+        iterator::get: function (boolean=): iterator::Iterator // FIXME: .<T>
     };
       
     iterator class StopIterationClass {
