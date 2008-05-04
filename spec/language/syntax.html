@@ -70,9 +70,10 @@ Token ::
 
 {{{
 ReservedIdentifier :: [one of]
-  break case cast catch class continue debugger default delete do else false 
-  finally for function if in instanceof internal is new null private protected 
-  public return super switch this throw true try type typeof var void while with
+  break case cast catch class const continue debugger default delete do 
+  dynamic else false final finally for function if in instanceof interface 
+  is let namespace native new null override return static super switch 
+  this throw true try type typeof use var void while with yield __proto__
 }}}
 
 ==== ContextuallyReservedIdentifier ====
@@ -82,9 +83,8 @@ meaning in the syntactic contexts where they are explicitly referenced in the gr
 
 {{{
 ContextuallyReservedIdentifier :: [one of]
-  const dynamic each eval extends external final generator get implements 
-  import interface let namespace native override package prototype set static 
-  strict undefined use xml yield
+  each extends generator get implements set standard strict undefined const 
+  dynamic each eval extends external final generator get implements 
 }}}
 
 === Identifier ===
@@ -259,9 +259,7 @@ other, more primitive, features of the language.
 
 <p>'let' and 'const' variable definitions are moved to the top of the current block.
 
-<p>Global function definitions are moved to the top of the current program fragment.
-
-<p>Local function definitions are moved to the top of the current block.
+<p>Function definitions are moved to the top of the current block.
 
 ==== Destructuring assignment ====
 
@@ -303,10 +301,13 @@ other, more primitive, features of the language.
     for ( let i=j ; i < n ; i++ )
         ...
 
-=>  let (T=j) {
-        let i;
-        for ( i=T ; i < n ; i++ )
-            ...
+=>  { 
+        let T=j;
+        {
+            let i;
+            for ( i=T ; i < n ; i++ )
+                ...
+        }
     }
 }}}
 
@@ -367,9 +368,12 @@ explained it.
     case (e2:T2) { ...e2... }
     }
 
-=>  let (TMP=x) {
-        if (x is T1) { ...e1... }
-        else if (x is T2) { ...e2... }
+=>  {
+        let TMP = x;
+        {
+            if (x is T1) let (e1:T1 = TMP) { ...e1... }
+            else if (x is T2) let (e2:T2 = TMP) { ...e2... }
+        }
     }
 }}}
 

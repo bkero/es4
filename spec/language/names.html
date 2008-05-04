@@ -20,17 +20,13 @@ SCOPE:                      The structure and resolution of names
 <p>The accessibility of a binding is determined by the accessibility of its namespace. In
 other words if you can name a property, you can read it.
 
-<IMPL>
-<pre>
-datatype NAME = Name of (NAMESPACE * IDENTIFIER)
-</pre>
+===== Semantics =====
+<INCLUDE file="ast.sml" name="type NAME">
 
 <p>Identfiers are sequences of characters.
 
-<IMPL>
-<pre>
-type IDENTIFIER = Ustring.STRING
-</pre>
+===== Semantics =====
+<INCLUDE file="ast.sml" name="type IDENTIFIER">
 
 == Namespaces ==
 
@@ -154,9 +150,6 @@ itself resolve to a namespace value.
 
 === Forms that introduce names ===
 
-<P> (Some of this may belong elsewhere in the spec but I felt it was
-necessary to gather it all here, for the moment.)
-
 <P> //Names// are //bound// in //scopes// by //defining forms// and
 //binding forms//.
 
@@ -200,7 +193,7 @@ instance object.  (Dynamic name creation is only possible on instances
 of classes that are declared ''dynamic''.)
 
 <P> Dynamic creation of names is not possible in strict code.
-Top-level created names names can have non-''public'' namespace
+Top-level created names can have non-''public'' namespace
 qualifiers.
 
 <P> Names that are created dynamically can be removed by means of the
@@ -387,6 +380,17 @@ order to preserve compatibility with the 3rd Edition):
   
 </UL>
 
+=== Scope Chain ===
+
+<p>A scope chain contains a list of objects that are searched when resolving an identifier.  The
+exact specification of how scope chains are constructed is described in //section ..:
+Execution//. For the purpose of specifying how names are resolved, it is sufficient to know that a
+scope chain yields a sequence of objects to be searched.
+
+<NOTE>A scope chain may include a class object (with class ''static'' properties), an instance
+object and one or more local scope objects in addition to the global, activation and with objects of
+edition 3.
+
 == Reference Expressions ==
 
 <p>A //reference expression// is one of three forms of expression that simulatneously describe a name
@@ -409,17 +413,6 @@ scope chain, described in the following section, whereas ''ObjectNameReference''
 is evaluated by evaluating its ''index'' operand to a string value, and then behaving as if it were
 an ''ObjectNameReference'' on a qualified name expression formed from the evaluated string and
 qualified by the public namespace.
-
-=== Scope Chain ===
-
-<p>A scope chain contains a list of objects that are searched when resolving an identifier.  The
-exact specification of how scope chains are constructed is described in //section ..:
-Execution//. For the purpose of specifying how names are resolved, it is sufficient to know that a
-scope chain yields a sequence of objects to be searched.
-
-<NOTE>A scope chain may include a class object (with class ''static'' properties), an instance
-object and one or more local scope objects in addition to the global, activation and with objects of
-edition 3.
 
 === Reference Expression Resolution ===
 

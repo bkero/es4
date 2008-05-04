@@ -8,8 +8,8 @@
 namespaces and a set of global names. In the latter case, the open namespaces and global names are
 used to select a namespace qualifier during name resolution (see section ... Names).
 
-<p>Name expressions that occur in a namespace expression or a type expression shall compute
-a ''ResolvedName'' during the definition phase. All other occurances of name expression
+<p>Name expressions that occur in a namespace expression or type expression shall compute
+a ''ResolvedName'' during the binding phase. All other occurances of name expression
 compute a ''ResolvedName'' during evalutation. Once computed the meaning of a name shall not
 change, including becoming ambiguous. This enables early binding of names, as well as increased
 clarity of meaaning.
@@ -614,7 +614,8 @@ withtype
 
 == Reference Expressions ==
 
-<!-- <pre class="code grammar"><em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>LexicalReference<sup>&alpha;, &beta;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>SuperExpression</em></pre> -->
 <!-- <pre class="code grammar"><em>MemberExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 <!-- <pre class="code grammar"><em>CallExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 <!-- <pre class="code grammar"><em>NewExpression<sup>&alpha;, &beta;</sup></em></pre> -->
@@ -625,7 +626,7 @@ withtype
 <!-- <pre class="code grammar"><em>SliceExpression</em></pre> -->
 <!-- <pre class="code grammar"><em>OptionalExpression</em></pre> -->
 <!-- <pre class="code grammar"><em>TypeApplication</em></pre> -->
-<!-- <pre class="code grammar"><em>SuperExpression</em></pre> -->
+<!-- <pre class="code grammar"><em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
 === Lexical References ===
 ===== Semantics =====
@@ -697,6 +698,7 @@ datatype EXPRESSION =
 <P>A unary expression comprises one operator and an expression that
 serves as the operator's sole operand.
 
+<!-- <pre class="code grammar"><em>PostfixExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 <!-- <pre class="code grammar"><em>UnaryExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
 ===== Semantics =====
@@ -712,12 +714,12 @@ datatype EXPRESSION =
 
 <INCLUDE file="eval.sml" name="fun evalUnaryExpr">
 
+=== Postfix Increment Operator ===
+=== Postfix Decrement Operator ===
 === Delete Operator ===
 === Void Operator ===
 === Typeof Operator ===
 === Prefix Increment Operator ===
-=== Prefix Decrement Operator ===
-=== Postfix Increment Operator ===
 === Prefix Decrement Operator ===
 === Unary Plus Operator ===
 === Unary Minus Operator ===
@@ -812,7 +814,14 @@ right side.
 <INCLUDE file="ast.sml" name="datatype ASSIGNOP">
 <INCLUDE file="eval.sml" name="fun evalSetExpr">
 
+== Destructuring Patterns ==
+<!-- ><pre class="code grammar_start"><em>Pattern<sup>&alpha;, &beta;, &gamma;</sup></em></pre>
+<pre class="code grammar_end"><em>LikenedPattern<sup>&beta;</sup></em></pre> -->
+
+
 == Type Expressions ==
+<!-- ><pre class="code grammar_start"><em>TypeExpression</em></pre>
+<pre class="code grammar_end"><em>TypeExpressionList</em></pre> -->
 
 <p>A type expression evaluates to a normalized type value.
 
