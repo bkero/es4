@@ -11,13 +11,12 @@ used to select a namespace qualifier during name resolution (see section ... Nam
 <p>Name expressions that occur in a namespace expression or type expression shall compute
 a ''ResolvedName'' during the binding phase. All other occurances of name expression
 compute a ''ResolvedName'' during evalutation. Once computed the meaning of a name shall not
-change, including becoming ambiguous. This enables early binding of names, as well as increased
-clarity of meaaning.
+change, nor shall its meaning become ambiguous. This enables early binding of names, as well as increased clarity of meaning.
 
-<!-- ><pre class="code grammar"><em>NameExpression</em></pre> -->
-<!-- ><pre class="code grammar"><em>Identifier</em></pre> -->
-<!-- ><pre class="code grammar"><em>PropertyIdentifier</em></pre> -->
-<!-- ><pre class="code grammar"><em>NamespaceExpression</em></pre> -->
+<!-- ><pre class="code grammar"><em>NameExpression</em></pre> 
+<pre class="code grammar"><em>Identifier</em></pre> 
+<pre class="code grammar"><em>PropertyIdentifier</em></pre>
+<pre class="code grammar"><em>NamespaceExpression</em></pre> -->
 
 ===== Semantics =====
 <INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
@@ -180,7 +179,7 @@ This abstract syntax tree is evaluated as if by the following function when its 
 
 <INCLUDE file="eval.sml" name="fun evalObjectInitialiser">
 
-===== Types and fixtures =====
+==== Types and fixtures ====
 
 <P> If a property name in the record type that annotates the literal
 matches a field name in the literal then the field is a fixture (as
@@ -238,7 +237,7 @@ the record type for the object initializer then the getter's return
 type must be equal to the setter's parameter type.
 
 
-===== Namespaces =====
+==== Namespaces ====
 
 <P> Fields are in the public namespace if they don't have an explicit
 qualifier.
@@ -247,7 +246,7 @@ qualifier.
 initializers.
 
 
-===== Enumerability =====
+==== Enumerability ====
 
 <P> Fixture properties are never
 enumerable.  Dynamic fields are enumerable if they are in the public
@@ -258,7 +257,7 @@ namespace and their ''enumerable'' attribute is set.
 relevant if the fields are public).
 
 
-===== const =====
+==== const ====
 
 <P> The ''const'' attribute introduces a fixture.  The meaning of
 
@@ -276,7 +275,7 @@ with the additional constraint that the ''writable'' attribute on
 ''x'' is disabled (''x'' is ReadOnly in ES3 terms).
 
 
-===== var =====
+==== var ====
 
 <P> The ''var'' attribute introduces a fixture.  The meaning of
 
@@ -294,7 +293,7 @@ is the same as the meaning of
 be rewritten as type-annotated initializers.
 
 
-===== Getters and setters =====
+==== Getters and setters ====
 
 <P> A getter (''get Name() <LDOTS>'') must not take any arguments.
 
@@ -380,7 +379,7 @@ initializer, catch-all properties have field types derived from the
 annotations on the catch-all methods.
 -->
 
-===== __proto__ =====
+==== __proto__ ====
 
 <P> The special field name ''__proto__'' allows a value to be
 specified for the internal [[Prototype]] object of the newly
@@ -583,7 +582,7 @@ datatype EXPRESSION =
 variable bindings, followed by an expression that uses the variable bindings.
 
 <!-- <pre class="code grammar_start"><em>LetExpression<sup>&alpha;, &beta;</sup></em></pre>
-<pre class="code grammar_end"><em>NonemptyLetBindingList</em></pre>
+<pre class="code grammar_end"><em>NonemptyLetBindingList</em></pre> -->
 
 <P>The list of variable bindings, //LetBindingList//, is a list of zero or
 more //VariableBindings// that is evaluated in order from left to right.
@@ -614,19 +613,19 @@ withtype
 
 == Reference Expressions ==
 
-<!-- <pre class="code grammar"><em>LexicalReference<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>SuperExpression</em></pre> -->
-<!-- <pre class="code grammar"><em>MemberExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>CallExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>NewExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>Arguments</em></pre> -->
-<!-- <pre class="code grammar"><em>ArgumentsList</em></pre> -->
-<!-- <pre class="code grammar"><em>PropertyOperator</em></pre> -->
-<!-- <pre class="code grammar"><em>Brackets</em></pre> -->
-<!-- <pre class="code grammar"><em>SliceExpression</em></pre> -->
-<!-- <pre class="code grammar"><em>OptionalExpression</em></pre> -->
-<!-- <pre class="code grammar"><em>TypeApplication</em></pre> -->
-<!-- <pre class="code grammar"><em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>LexicalReference<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>SuperExpression</em></pre> 
+<pre class="code grammar"><em>MemberExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>CallExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>NewExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>Arguments</em></pre> 
+<pre class="code grammar"><em>ArgumentsList</em></pre> 
+<pre class="code grammar"><em>PropertyOperator</em></pre> 
+<pre class="code grammar"><em>Brackets</em></pre> 
+<pre class="code grammar"><em>SliceExpression</em></pre> 
+<pre class="code grammar"><em>OptionalExpression</em></pre> 
+<pre class="code grammar"><em>TypeApplication</em></pre> 
+<pre class="code grammar"><em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
 === Lexical References ===
 ===== Semantics =====
@@ -729,15 +728,15 @@ datatype EXPRESSION =
 === Spread Operator ===
 
 == Binary Operators ==
-<!-- <pre class="code grammar"><em>MultiplicativeExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>AdditiveExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>ShiftExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>RelationalExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>EqualityExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>BitwiseAndExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>BitwiseXorExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>LogicalAndExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>MultiplicativeExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>AdditiveExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>ShiftExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>RelationalExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>EqualityExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>BitwiseAndExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>BitwiseXorExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>LogicalAndExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
 ===== Semantics =====
 <INCLUDE file="ast.sml" name="datatype BINOP">
@@ -789,8 +788,8 @@ invoked by the function //evalExpr//.
 
 == Assignment Operators ==
 
-<!-- <pre class="code grammar"><em>AssignmentExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>CompoundAssignmentOperator</em></pre> -->
+<!-- <pre class="code grammar"><em>AssignmentExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>CompoundAssignmentOperator</em></pre> -->
 
 <p>A //set expression// has the concrete syntax of //AssignmentExpression// such as
 the simple form:
