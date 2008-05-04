@@ -62,6 +62,7 @@ type NAME_SET = NAME list
 datatype BINTYPEOP =
          Cast
        | Is
+       | Like
 
 datatype BINOP =
          Plus
@@ -138,6 +139,8 @@ datatype PRAGMA =
        | UnqualifiedName of { identifier: IDENTIFIER, 
                               openNamespaces: OPEN_NAMESPACES, 
                               globalNames: NAME_SET }
+       | ResolvedName of { namespace: NAMESPACE,
+                           identifier: IDENTIFIER }
 
      and NAMESPACE_EXPRESSION =
          Namespace of NAMESPACE
@@ -356,38 +359,6 @@ datatype STATEMENT =
              cases: CATCH_CLAUSE list }
        | DXNStmt of {
              expr: EXPRESSION }
-
-(* SPEC
-
-datatype EXPRESSION =
-         LiteralNull
-       | LiteralDouble of Real64.real
-       | LiteralDecimal of Decimal.DEC
-       | LiteralBoolean of bool
-       | LiteralString of Ustring.STRING
-       | LiteralArray of (EXPRESSION * TYPE option)
-       | LiteralObject of (FIELD list * TYPE option)
-       | LiteralFunction of FUNCTION
-       | LiteralRegExp of Ustring.STRING
-       | ConditionalExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
-       | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
-       | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPERESSION)
-       | UnaryExpr of (UNOP * EXPRESSION)
-       | TypeExpr of TYPE
-       | ThisExpr of THIS_KIND option
-       | YieldExpr of EXPRESSION option
-       | SuperExpr of EXPRESSION option
-       | CallExpr of (EXPRESSION * EXPRESSION list)
-       | ApplyTypeExpr of (EXPRESSION * TYPE list)
-       | LetExpr of (HEAD * EXPRESSION)
-       | NewExpr of (EXPRESSION * EXPRESSION list)
-       | GetExpr of REFERENCE
-       | SetExpr of (ASSIGNOP * REFERENCE * EXPRESSION)
-       | InitExpr of (INIT_TARGET * HEAD * INIT list)   (* HEAD is for temporaries *)
-       | ArrayComprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
-
-
-*)
 
      and EXPRESSION =
          TernaryExpr of (EXPRESSION * EXPRESSION * EXPRESSION)

@@ -150,6 +150,243 @@ itself resolve to a namespace value.
 <IMPL>
 <INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
+== Name Bindings ==
+
+=== Forms that introduce names ===
+
+<P> (Some of this may belong elsewhere in the spec but I felt it was
+necessary to gather it all here, for the moment.)
+
+<P> //Names// are //bound// in //scopes// by //defining forms// and
+//binding forms//.
+
+
+==== Defined and bound names ====
+
+<P> The defining forms are //VariableDefinition//,
+//FunctionDefinition//, //ClassDefinition//, //InterfaceDefinition//,
+//TypeDefinition//, and //NamespaceDefinition//.  Except in block
+scopes (see below) a defining form permits the name to be qualified by
+a namespace.  The current default namespace is used if no qualifier is
+present.
+
+<P> (The initial default namespace in any block scope is ''public'', and it is
+not legal to set a different default namespace in a block scope.
+Therefore all names bound in block scopes are in the ''public''
+namespace.)
+
+<P> The binding forms are //FunctionExpression//, //LetExpression//,
+//CatchClause//, //TypeCaseElement//, //LetStatement//,
+//LetBlockStatement//, //ForStatement//, and //ArrayComprehension//.
+The binding forms do not permit names to be qualified by namespaces;
+all names bound by these forms are in the ''public'' namespace.
+
+<P> Names that are introduced by defining forms and binding forms are
+//fixtures//: they are guaranteed always to be present at run-time.
+
+
+==== Created and introduced names ====
+
+<P> Names can be //created// dynamically (at run-time) in the global
+scope by means of assignment and by the pre-defined global ''eval''
+function.  Names can also be created dynamically in the global scope
+and in any function scope by the ''eval'' operator evaluating a
+program text that contains a top-level ''var'' or ''function''
+definition,
+
+<P> Names can be created dynamically in class static and class
+instance scopes by creating a new property on the class object or the
+instance object.  (Dynamic name creation is only possible on instances
+of classes that are declared ''dynamic''.)
+
+<P> Dynamic creation of names is not possible in strict code.
+Top-level created names names can have non-''public'' namespace
+qualifiers.
+
+<P> Names that are created dynamically can be removed by means of the
+''delete'' operator.
+
+<P> Names are also //introduced// in scopes by the //WithStatement//.
+(The //WithStatement// is disallowed in strict code.)
+
+<P> Names that created dynamically are never fixtures.  Names that are
+introduced by a //WithStatement// are as a rule not fixtures.  Created
+and introduced names can as a rule appear and disappear at
+unpredictable times during program evaluation.
+
+
+==== Visibility ====
+
+<FIXME> More here.
+
+<P> Bound, created, and introduced names are visible in the entire
+scope of the binding.  However, the scope of a binding is "static" (it
+is determined by the source text) and bindings in inner scopes can
+//shadow// bindings in outer scopes.
+
+<P> "use namespace" controls the shadowing, to an extent.  
+
+<P> A shadowed identifier in a base class may sometimes be made
+visible in a subclass by means of a //SuperExpression//.
+
+
+=== Scopes ===
+
+<P> The following are the kinds of scopes and the forms that introduce
+names in those scopes:
+
+<UL>
+  <LI> The //global scope// is shared between multiple //Programs//.
+  It contains pre-defined bindings (the language-defined libraries and
+  any host-defined extensions) and is extended when definitions have
+  an effect on it.  A possibly unbounded sequence of //Programs// is
+  evaluted in the global scope in a linear order.  A definition
+  introduced by a later //Program// is visible to every earlier
+  //Program//.
+
+  <P > The forms that introduce names into the global environment are
+  //VariableDefinition//, //ClassDefinition//,
+  //InterfaceDefinition//, //TypeDefinition//,
+  //NamespaceDefinition//, //FunctionDefinition//,
+  //AssignmentStatement//, and //EvalExpression//.
+
+
+  <LI> The //file scope// is specific to one "file", that is to say,
+  one chunk of program text that matches the the //Program//
+  nonterminal and which is processed independently from other files.
+
+  <P > The only form that operates on the file scope is the //Pragma//.
+
+
+  <LI> The //class static scope// extends from the left curly brace
+  that starts the class body to the right curly brace that ends the
+  class body.  The class static scope is nested within the global
+  scope.
+
+  <P > The forms that introduce names into the class static scope are
+  the ''static'' annotated forms of //VariableDefinition//,
+  //TypeDefinition//, //NamespaceDefinition//, and
+  //FunctionDefinition//.  In addition, an //AssignmentExpression// can
+  introduce names into a class static scope dynamically.
+
+  <P > The surrounding scope of a function defined in the class static
+  scope is that class static scope.
+
+
+  <LI> The //class instance scope// is defined by multiple disjoint
+  pieces of text.  It extends from the left curly brace that starts
+  the class body to the right curly brace that ends the class body.
+  It also incorporates the class instance scope of its direct
+  superclass.  In addition, an //AssignmentExpression// can introduce
+  names into a class instance scope dynamically, provided that the
+  class has been declared ''dynamic''.
+
+  <P > The class instance scope for a class definition is nested within
+  the class static scope for that definition.
+
+  <P > The forms that introduce names into the class instance scope are
+  //VariableDefinition// and //FunctionDefinition//.
+
+  <P > The surrounding scope of a function defined in the class
+  instance scope is that instance scope; however, the surrounding
+  scope of a function inherited from a superclass is the instance
+  scope of the class from which it is inherited.
+
+
+  <LI> The //function scope// covers the body of a function, either
+  from the opening left brace of the body to the closing right brace,
+  or the expression that makes up the function body in an expression
+  closure.
+
+  <P > (That is, types in the signature are resolved in the enclosing
+  scope.)
+
+  <P > Since a static initializer block for a class is treated as an
+  anonymous function, the function scope extends also from the left
+  curly brace of the initializer block through the closing right curly
+  brace.
+
+  <P > The forms that introduce names into a function scope are the
+  function form itself -- the parameter names are bound in the
+  function scope -- as well as instances of //VariableDefinition// and
+  //FunctionDefinition// that occur in the body.
+
+
+  <LI> The //block scope// is introduced by the left curly brace of
+  certain source phrases (//Block//, //SwitchStatement//,
+  //CatchClause//, //TypeCaseElement//, and //LetBlockStatement//) and
+  extends to the matching right curly brace.
+
+  <P > A block scope is also introduced by a binding //ForStatement//
+  and extends through the end of that statement's //SubStatement//.
+
+  <P > **Note:** Among these statements, only the //Block// and a
+  primitive form of //CatchClause// are fundamental, all the other
+  statements can be expressed in terms of these two.
+
+  <P > The forms that introduce names into a block scope are
+  //VariableDefinition// and //FunctionDefinition//.
+  //LetBlockStatement//, //CatchClause//, and //TypeCaseElement//.
+  (However, these forms are not allowed as the direct
+  //SubStatements// of a binding //ForStatement//, and the only form
+  to introduce a binding into the block scope of a //ForStatement// is
+  the statement itself.)
+
+
+  <LI> The //with scope// is introduced by a //WithStatement// and
+  extends through the end of the statement's //SubStatement//.
+
+  <P > New names can be introduced into a with scope dynamically by
+  means of //AssignmentExpression//: an assignment that creates a new
+  property on the object that the //WithStatement// operates upon
+  introduces the name of the property into the with scope.
+
+
+  <LI> The //expression scope// is introduced by the left parenthesis
+  of a //LetExpression//, the name of a named //FunctionExpression//,
+  or the left square bracket of an //ArrayComprehension//.  The scope
+  extends to the end of the //LetExpression//, the end of the
+  //FunctionExpression//, or to the matching right square bracket of
+  the array comprehension.
+
+  <P > There are no forms to introduce new names into expression scopes
+  except the names introduced by those expression forms themselves:
+  the names introduced in the //LetExpression// head, the name of the
+  //FunctionExpression//, and the names introduced by ''for'' and
+  ''let'' clauses in the //ArrayComprehension//.
+  
+</UL>
+
+<P> As a rule it is not legal to introduce a particular name in a
+particular scope more than once.  (Note that top-level bindings in a
+function are bound in the same scope as the function's parameters and
+its implicit ''arguments'' parameter.)
+
+<P> However, in "strict" code more than one ''var'' (or ''let'')
+binding can introduce a particular name in a particular global,
+function, or block scope, provided the two bindings have the same type
+annotation (or no annotation at all).  The binding keyword used to
+bind the name must be the same in all the binding forms that introduce
+the name.  (Parameters and the ''arguments'' object are assumed to be
+bound by some system-internal binding form, not ''var'', and duplicate
+parameter names are not allowed.)
+
+<P> Additionally, in "standard" mode the following are allowed (in
+order to preserve compatibility with the 3rd Edition):
+
+<UL>
+
+  <LI> Parameter bindings and the ''arguments'' binding are assumed to
+  be bound as if by ''var'', so duplicate parameter names are allowed,
+  as are ''var'' bindings in a function body that bind names that are
+  also bound as parameters.  Again, annotations must be the same in
+  all bindings of a particular name.
+
+  <LI> Multiple ''var'' and ''function'' forms may bind the same name,
+  provided the bindings are all unannotated.
+  
+</UL>
+
 == Reference Expressions ==
 
 <p>A //reference expression// is one of three forms of expression that simulatneously describe a name

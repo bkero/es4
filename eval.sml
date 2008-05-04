@@ -3858,18 +3858,6 @@ and evalOperatorComma (regs:Mach.REGS)
      evalExpr regs bexpr)
 
 
-(* SPEC
-
-fun evalBinaryExpr (env: ENV)
-                   (binaryOp: Ast.ASSIGNOP)
-                   (leftExpr: Ast.EXPRESSION)
-                   (rightExpr: Ast.EXPRESSION)
-    : Mach.VALUE =
-    (* FINISH ME *)
-
-*)
-
-
 and evalBinaryOp (regs:Mach.REGS)
                  (bop:Ast.BINOP)
                  (aexpr:Ast.EXPRESSION)

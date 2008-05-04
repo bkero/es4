@@ -1117,47 +1117,6 @@ and forInExpression (ts0: TOKENS)
     end
 
 (*
-    XMLInitialiser
-        XMLMarkup
-        XMLElement
-        <  >  XMLElementContent  </  >
-
-    XMLElementContent
-        XMLMarkup  XMLElementContentopt
-        XMLText  XMLElementContentopt
-        XMLElement  XMLElementContentopt
-        {  ListExpressionallowIn  }  XMLElementContentopt
-
-    XMLElement
-        <  XMLTagContent  XMLWhitespaceopt  />
-        <  XMLTagContent  XMLWhitespaceopt  >  XMLElementContent
-                  </  XMLTagName  XMLWhitespaceopt  >
-
-    XMLTagContent
-        XMLTagName  XMLAttributes
-
-    XMLTagName
-        {  ListExpressionallowIn  }
-        XMLName
-
-    XMLAttributes
-        XMLWhitespace  {  ListExpressionallowIn  }
-        XMLAttribute  XMLAttributes
-        empty
-
-    XMLAttribute
-        XMLWhitespace  XMLName  XMLWhitespaceopt  =  XMLWhitespaceopt  {  ListExpressionallowIn  }
-        XMLWhitespace  XMLName  XMLWhitespaceopt  =  XMLWhitespaceopt  XMLAttributeValue
-
-    XMLElementContent
-        {  ListExpressionallowIn  }  XMLElementContent
-        XMLMarkup  XMLElementContent
-        XMLText  XMLElementContent
-        XMLElement  XMLElementContent
-        empty
-*)
-
-(*
     PrimaryExpression(alpha,beta)
         null
         true
@@ -1215,11 +1174,6 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
              (rest, Ast.LiteralExpr(Ast.LiteralRegExp {str=str}))
            | _ => error ["non-regexp-literal token after '/' lexbreak"])
 
-(* todo:
-      | (XmlMarkup | LessThan ) :: _ => error ["syntax reserved for E4X"]
-*)
-
-      | (At, _) :: _ => error ["syntax reserved for E4X"]
       | (Let, _) :: _ =>
             let
                 val (ts1, nd1) = letExpression (ts0, a, b)
@@ -3162,6 +3116,20 @@ and typeUnionList (ts0:TOKENS)
 (*
     RecordType
         {  FieldTypeList  }
+
+
+RecordType  
+    {  FieldTypeList  }
+    
+FieldTypeList   
+    empty
+    FieldType
+    FieldType  ,  FieldTypeList
+    
+FieldType   
+    FieldName
+    FieldName  :  TypeExpression
+
 *)
 
 and objectType (ts0:TOKENS)

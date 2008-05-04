@@ -1,59 +1,101 @@
+<hr>
 = Statements =
-===== Description =====
-===== Abstract Syntax =====
-<INCLUDE file="ast.sml" name="datatype STATEMENT">
+<hr>
+
+<!-- <pre class="code grammar"><em>Statement<sup>&tau;, &omega;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>Substatement<sup>&omega;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>Semicolon<sup>abbrev</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>Semicolon<sup>noShortIf</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>Semicolon<sup>full</sup></em></pre> -->
+
 ===== Semantics =====
+<INCLUDE file="ast.sml" name="datatype STATEMENT">
 <INCLUDE file="eval.sml" name="fun evalStatement">
 
-== Empty statement ==
-===== Description =====
+== Empty Statement ==
+<!-- <pre class="code grammar"><em>EmptyStatement</em></pre> -->
 <p>The empty statement evaluates to **undefined**.
 
-== Expression statements ==
-===== Description =====
-<p>An expression statement evaluates to the value of the constituent expression.
+== Expression Statements ==
+<!-- <pre class="code grammar"><em>ExpressionStatement</em></pre> -->
+<p>An expression statement evaluates to the value of //CommaExpression//.
 
-== For statements ==
+== Block Statements ==
+<!-- <pre class="code grammar"><em>BlockStatement<sup>&tau;</sup></em></pre> -->
 
-== For-In statements ==
+== Let Block Statements ==
+<!-- <pre class="code grammar"><em>LetBlockStatement</em></pre> -->
 
-== Throw statements ==
+== Labeled Statements ==
+<!-- <pre class="code grammar"><em>LabeledStatement<sup>&omega;</sup></em></pre> -->
 
-== Return statements ==
-
-== Break statements ==
-
-== Continue statements ==
-
-== Block statements ==
-
-== Labeled statements ==
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalLabeledStatement">
 
-== While statements ==
-===== Semantics =====
-<INCLUDE file="eval.sml" name="and evalWhileStmt">
+== If Statements ==
 
-== DoWhile statements ==
-===== Semantics =====
-<INCLUDE file="eval.sml" name="and evalDoWhileStmt">
+<!-- <pre class="code grammar"><em>IfStatement<sup>abbrev</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>IfStatement<sup>full</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>IfStatement<sup>noShortIf</sup></em></pre> -->
 
-== If statements ==
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="fun evalIfStatement">
 
-== With statements ==
+== For Statements ==
+<!-- <pre class="code grammar"><em>ForStatement<sup>&omega;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>ForInitialiser</em></pre> -->
+<!-- <pre class="code grammar"><em>ForInBinding</em></pre> -->
+
+== Throw Statements ==
+<!-- <pre class="code grammar"><em>ThrowStatement</em></pre> -->
+
+== Return Statements ==
+<!-- <pre class="code grammar"><em>ReturnStatement</em></pre> -->
+
+== Break Statements ==
+<!-- <pre class="code grammar"><em>BreakStatement</em></pre> -->
+
+== Continue Statements ==
+<!-- <pre class="code grammar"><em>ContinueStatement</em></pre> -->
+
+== While Statements ==
+<!-- <pre class="code grammar"><em>WhileStatement<sup>&omega;</sup></em></pre> -->
+
+===== Semantics =====
+<INCLUDE file="eval.sml" name="and evalWhileStmt">
+
+== Do-While Statements ==
+<!-- <pre class="code grammar"><em>DoStatement</em></pre> -->
+
+===== Semantics =====
+<INCLUDE file="eval.sml" name="and evalDoWhileStmt">
+
+== With Statements ==
+<!-- <pre class="code grammar"><em>WithStatement<sup>&omega;</sup></em></pre> -->
+
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="and evalWithStmt">
 
-== Try statements ==
+== Try Statements ==
+<!-- <pre class="code grammar"><em>TryStatement</em></pre> -->
+<!-- <pre class="code grammar"><em>CatchClauses</em></pre> -->
+<!-- <pre class="code grammar"><em>CatchClause</em></pre> -->
+
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="and evalTryStmt">
 
-== Switch statements ==
+== Switch Statements ==
+<!-- <pre class="code grammar"><em>SwitchStatement</em></pre> -->
+<!-- <pre class="code grammar"><em>CaseElements</em></pre> -->
+<!-- <pre class="code grammar"><em>CaseClauses</em></pre> -->
+<!-- <pre class="code grammar"><em>CaseClause</em></pre> -->
+<!-- <pre class="code grammar"><em>DefaultClause</em></pre> -->
+
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="and evalSwitchStmt">
 
-== Switch Type statements ==
+== Switch Type Statements ==
+<!-- <pre class="code grammar"><em>SwitchTypeStatement</em></pre> -->
+<!-- <pre class="code grammar"><em>TypeCaseElements</em></pre> -->
+<!-- <pre class="code grammar"><em>TypeCaseElement</em></pre> -->
 

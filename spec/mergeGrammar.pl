@@ -330,6 +330,7 @@ sub AddFormattingTags {
           $str =~ s/\b(a)\b/&alpha;/g;
           $str =~ s/\b(b)\b/&beta;/g;
           $str =~ s/\b(g)\b/&gamma;/g;
+          $str =~ s/\b(t)\b/&tau;/g;
           $str =~ s/\b(w)\b/&omega;/g;
           $formatArray[$#formatArray] = $str;
 
@@ -373,6 +374,7 @@ sub AddFormattingTags {
           $str =~ s/\b(a)\b/&alpha;/g;
           $str =~ s/\b(b)\b/&beta;/g;
           $str =~ s/\b(g)\b/&gamma;/g;
+          $str =~ s/\b(t)\b/&tau;/g;
           $str =~ s/\b(w)\b/&omega;/g;
           $formatArray[$#formatArray] = $str;
 
@@ -402,6 +404,7 @@ sub AddFormattingTags {
     $str =~ s/\b(a)\b/&alpha;/g;
     $str =~ s/\b(b)\b/&beta;/g;
     $str =~ s/\b(g)\b/&gamma;/g;
+    $str =~ s/\b(t)\b/&tau;/g;
     $str =~ s/\b(w)\b/&omega;/g;
     $formatArray[$#formatArray] = $str;
   }
