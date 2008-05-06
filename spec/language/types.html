@@ -66,13 +66,15 @@ subtype relation is included below.
 <p>The //any// type, denoted ''*'',  that represents all
 possible ES4 values.
 
-<p><FIXME> Should ''void'' be a type?
-
 <p>A record type, such as ''{x: Number, y: Number}'', which represents
 a record with two fields ''x'' and ''y'', both of type ''Number''.
 
-<p>An array type, such as ''[String]'' or ''[String,Number]''.
-<FIXME>Have we resolved the tuple issue?
+<p>An array type, such as ''[... String]'', which describes arrays
+containing zero or more ''String'' object. An array type can provide
+different types for some initial array entries, as in the type
+''[Number, Number, ...String]'', which says that the array has at
+least two entries, that these entries are both ''Number'' objects, and that
+any additional entries are ''String'' objects.
 
 <p>A union type, such as ''(Number | String)'', which describes both
 ''Number'' and ''String'' values.
@@ -80,12 +82,12 @@ a record with two fields ''x'' and ''y'', both of type ''Number''.
 <p>A function type, such as
 
 {{{
-    function (Number, String) : void
+    function (Number, String) : String
 }}}
 
 The return type can be omitted, in which case it defaults to the
-//any// type
-''*''.
+//any// type ''*''. The return type can also be declared as ''void'',
+to indicate that no value is returned.
 
 <p>A function type may include generic type parameters, as in the following
 type for the generic identity function. 
@@ -98,14 +100,14 @@ type for the generic identity function.
 include a type constraint for the ''this'' binding, as in
 
 {{{
-    function(this : Vector, Number, String) : void
+    function(this : Vector, Number, String) : String
 }}}
 
 <p>A function type may use the symbol "''=''"  to indicate
 which arguments have default values, as in:
 
 {{{
-    function(Number, String=) : void
+    function(Number, String=) : String
 }}}
 
 For this function type, the number of arguments at a corresponding
@@ -117,7 +119,7 @@ by "''...''", to indicate that any number of additional parameters are
 permitted, as in:
 
 {{{
-    function(String, ...) : void
+    function(String, ...) : String
 }}}
 
 <p> A //nullable type//, such as ''?String'', is simply an
@@ -171,47 +173,14 @@ yet be consistent with the following code.
 
 
 
-== Type Normalization ==
-
-<p>When each type is encountered in the program source code at
-compile-time, it is first //normalized// according to the following algorithm.
-
-<p>In the scope of a type abbreviation such as
-
-{{{
-    type X = T;
-}}}
-
-type normalization replaces all references to the type variable ''X''
-with the corresponding type ''T''.
-
-<p>Similarly, in the content of a parameterized type abbreviation
-
-{{{
-    type X.&lt;Y1, .., Yn> = T;
-}}}
-
-type normalization replaces all occurrences of ''X.&lt;S1, .., Sn>''
-with ''T[Y1:=S1, .., Yn:=Sn]''.
-
-<NOTE> We use the notation '' T[Y1:=S1,..,Yn:=Sn] '' to denote the
-capture-free replacement of all free occurrences of each type variable
-''Yi'' within the type ''T'' by the corresponding type ''Si''.
-
-<p>References to nominal types
-
-<p>ObjectRefType
-
-<FIXME>Finally, type normalization finally converts the resulting type
-into a canonical or representative element of its equivalence class.
-The notion of type equivalence is defined below.
-This //canonicalization// process is necessary to efficiently support generics.
-
-== The Subtyping Relation ==
+== The Subtype and Type Equivalence Relations ==
 
 <p>The subtyping relation is a binary relation on normalized types.
 If a type ''S'' is a subtype of type ''T'', then a value of type ''S''
 generally behaves as if it had type ''T''.
+
+<p>The type equivalence relation is also a binary relation on types.
+Two types are equivalent if and only if they are both subtypes of each other.
 
 <p>The subtyping
 relation is defined by the  collection of subtype rules described in
@@ -240,17 +209,19 @@ make the above rule applicable.
 
 === Subtyping Array Types ===
 
-<p> An array type ''[S1,...,Sn]'' is a subtype of
-''[T1,...,Tm]'' provided that each ''S_i'' is //equivalent// to the
-corresponding type ''Ti''.  If the two sequences of types are of
-different length, then the shorter sequence is first extended to match
-the length of the longer sequence by repeating the last element, before
-applying the above test. Thus, for example, ''[Number,String,String]''
-is a subtype of ''[Number,String]''.
-The equivalence relation on types is defined
-below.
+<p> An array type ''[S1, .., Sn, S, ..., S]'' is a subtype of ''[S1,
+.., S_n, ..., S}]''.  The supertype demands one fewer element in the
+array than the subtype does.  For example, ''[Number, String, String,
+...String]'' is a subtype of ''[Number, ...String]'', via transitivity.
 
-<FIXME> Have we converged on array/tuple types?
+<NOTE> Here, "''...''" represents concrete syntax, but "''..''" is
+meta-syntax, and so "''S1, .., Sn''" represents a sequence of
+zero-or-more types.
+
+<p> An array type ''[S1, .., Sn, ..., S]'' is a subtype of ''[T1,
+.., Tn, ..., T]'' if ''S'' is equivalent to ''T'' and if each ''S_i'' is
+//equivalent// to  ''Ti'' for i in 1..n.
+
 
 === Subtyping Union Types ===
 
@@ -341,9 +312,8 @@ if ''S'' is a subtype of the union type ''(T | null)''.
 if ''S'' is a subtype of ''T''
 and the type ''null'' is //not// a subtype of ''S''.
 
-<p>The type ''null'' is always a subtype of a nominal type ''C'' (or
-''C.&lt;T1, .., Tn>'')
-except when ''C'' is declared as a non-null type, via any of the
+<p>A nominal type ''C'' (or
+''C.&lt;T1, .., Tn>'') can be declared as a //non-null// type via any of the
 following declarations:
 
 {{{
@@ -352,6 +322,17 @@ following declarations:
     interface C! ..
     interface C.&lt;X1, .., Xn>! ..
 }}}
+
+<p>If ''C'' is a non-null nominal type, then the types ''C'' and
+''C!'' are equivalent.
+''C''.
+
+<p>If ''C'' is a nominal type that is not declared as non-null, then
+the types ''C'' and ''(C!  | null)'' are equivalent.
+
+
+<p>Analogous subtype rules hold for type applications of the form
+''C.&lt;T1, .., Tn>''.
 
 === Subtyping Nominal Types ===
 
@@ -362,7 +343,7 @@ Given a class definition
     class C extends D implements I1, .., In { ... }
 }}}
 
-he type ''C'' is a subtype of ''D'', and also ''C'' is a subtype of
+the type ''C'' is a subtype of ''D'', and also ''C'' is a subtype of
 ''Ij'' for j in 1..n.
 
 <p>
@@ -408,6 +389,56 @@ types ''public::Array'' and ''public::Object''.
 <p> Any function type  is a subtype of the nominal
 types ''public::Function'' and ''public::Object''.
 
+=== Type Definitions and Type References ===
+
+<p>
+In the scope of a type definition
+
+{{{
+    type X = T
+}}}
+
+the type ''X'' (that is, a reference to that type variable) is
+equivalent to the type ''T''.
+
+<p>
+In the scope of a generic type definition
+
+{{{
+    type X.&lt;Y1, .., Yn> = T
+}}}
+
+the type application ''X.&lt;<S1, .., Sn>'' is
+equivalent to the type ''T[Y1:=S1, .., Yn:=Sn]''.
+
+<p>A //type name reference type// of the form ''T.name'' is equivalent to the type
+''S'' if ''T'' is a record type  ''{ name:S, .. }''.
+
+<p>A //type index reference type// of the form ''T[i]'' is equivalent to the type
+''Si'' if ''T'' is an array type   ''[S1, .., Sn, ...S]''
+and 1 <LEQ> i <LEQ> n. If i <GT> n, then ''T[i]'' is equivalent to ''S''.
+
+== Type Normalization ==
+
+<p>At compile time, each type ''T'' in the program source code is
+//normalized// into a canonical or representative element of its
+equivalence class.  That is, the type ''T'' is considered equivalent
+(under the equivalence relation defined above) to some collection of
+types, and the normalization process replaces ''T'' with some
+representative element of this equivalence class. In particular, if
+two types ''T1'' and ''T2'' are equivalent, then normalization will
+convert them both into an identical normalized type.
+
+<p>This //normalization// process is necessary to efficiently support
+generics.
+
+<p>A //normalized type// is one that is the result of this
+normalization process. Normalized types do not (1) include references to
+type definitions, (2) type name reference types, or (3) type index
+reference types.
+
+<FIXME>References to nominal types
+
 == Implementation of the Subtype Relation ==
 
 <p>
@@ -444,12 +475,16 @@ inadequate in an implementation.
 
 <p>The compatibility relation is a binary relation on types. Two types ''S''
 and ''T'' are compatible if ''T'' can be obtained from ''S'' by replacing certain
-portions of ''S'' by the any type ''*''. Thus, for example, the record
-type ''{x : int}'' is
-compatible with both ''{x : *}'' and with ''*'', but the type ''{x : *}'' is not
+portions of ''S'' by the any type ''*''.
+
+<p>Thus, for example, the record type ''{x : int}'' is compatible with
+both ''{x : *}'' and with ''*'', but the type ''{x : *}'' is not
 compatible with ''{x : int}''.
 
-This compatibility relation is reflexive and transitive, but not
+<p>In addition, if ''T'' is a generic nominal type, then the type
+''T.&lt;Number>'' is compatible with ''T.&lt;*>''.
+
+<p>This compatibility relation is reflexive and transitive, but not
 symmetric.
 
 == Compatible-Subtyping ==
@@ -483,6 +518,6 @@ type is always a reifiable type. The allocated type of a value is invariant; for
 updating the fields of an object cannot change the allocated tpe of that object.
 
 <p>If a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
-is a //compatible-subtype// of ''T''.  
+is a compatible-subtype of ''T''.  
 
 

@@ -343,7 +343,7 @@ fun desugarPattern (loc:Ast.LOC option)
                     let
                         val num = Ast.LiteralExpr (Ast.LiteralDouble (Real64.fromInt n))
                         val e = SOME (Ast.ObjectIndexReference {object=temp, index=num, loc=loc})
-                        val t = Ast.ElementTypeRef (element_types,n)
+                        val t = Ast.TypeIndexReferenceType (element_types,n)
                         val (binds, inits) = desugarPattern loc p t e (nesting+1)
                         val (binds', inits') = desugarArrayPattern plist element_types temp (n+1)
                     in
@@ -394,7 +394,7 @@ fun desugarPattern (loc:Ast.LOC option)
             : (Ast.BINDING list * Ast.INIT_STEP list) =
             let
                 val {name, pattern=p} = field_pattern
-                val t = Ast.FieldTypeRef (field_types, name)
+                val t = Ast.TypeNameReferenceType (field_types, name)
                 val e = SOME (Ast.ObjectNameReference {object=temp, name=name, loc=loc})
             in
                 desugarPattern loc p t e (nesting+1)

@@ -83,12 +83,11 @@
  *   then normalization maps those types to the same type. This property in necessary
  *   to implement C#-style semantics for static fields of generic classes.
  *
- * - Normalized types are closed, no free TypeNames. 
+ * - Normalized types are closed, no free TypeNames without nonces 
  *   In particular:
  *     references to TypeFixtures are replaced by the corresponding type
- *     references TypeVarFixtures (which has a nonce) are replaced by a TypeVarFixtureRef
- *     containing that nonce.
- *   At evaluation time, all normalized types should be closed, so no TypeVarFixtureRefs.
+ *     references TypeVarFixtures (which has a nonce) give a TypeName with that nonce.
+ *   At evaluation time, all normalized types should be closed, so no TypeNames.
  *
  * - Normalized types are in beta-normal form, in that any applications of LamTypes 
  *   have been reduced. 
@@ -152,6 +151,20 @@ val cacheSave : (((int -> Ast.TYPE -> unit) option) ref) = ref NONE
 
 
 (* -----------------------------------------------------------------------------
+ * Name equality, post defn phase
+ * ----------------------------------------------------------------------------- *)
+
+fun nameExpressionEqual (name1 : Ast.NAME_EXPRESSION)
+                        (name2 : Ast.NAME_EXPRESSION)
+    : bool =
+    case (name1, name2) of
+        (Ast.QualifiedName { namespace=Ast.Namespace n1, identifier = i1 },
+         Ast.QualifiedName { namespace=Ast.Namespace n2, identifier = i2 } ) =>
+        n1 = n2 andalso i1 = i2
+
+     (* other match cases cannot appear post defn *)
+
+(* -----------------------------------------------------------------------------
  * Normalization
  * ----------------------------------------------------------------------------- *)
 
@@ -206,10 +219,10 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
         Ast.ArrayType (map f tys)
       | Ast.FunctionType fty => 
         Ast.FunctionType (mapFuncTy f fty)
-      | Ast.ElementTypeRef (t, idx) => 
-        Ast.ElementTypeRef (f t, idx)
-      | Ast.FieldTypeRef (t, id) =>
-        Ast.FieldTypeRef (f t, id)
+      | Ast.TypeIndexReferenceType (t, idx) => 
+        Ast.TypeIndexReferenceType (f t, idx)
+      | Ast.TypeNameReferenceType (t, id) =>
+        Ast.TypeNameReferenceType (f t, id)
       | Ast.InstanceType { name, typeParams, typeArgs, 
                            nonnullable, superTypes, ty, dynamic } =>
         Ast.InstanceType { name=name, 
@@ -217,7 +230,7 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
                            typeArgs = map f typeArgs,
                            nonnullable=nonnullable, 
                            superTypes=superTypes, ty=ty, dynamic=dynamic }
-      | Ast.TypeVarFixtureRef _ => ty
+(*      | Ast.TypeVarFixtureRef _ => ty *)
 (*      | _ => (error ["Unknown type ", LogErr.ty ty]; anyType)
 *)
 
@@ -253,7 +266,7 @@ fun normalizeRefs (env:Ast.RIBS)
                   (ty:Ast.TYPE)
     : Ast.TYPE =
     case ty of 
-        Ast.ElementTypeRef (Ast.ArrayType arr, idx) => 
+        Ast.TypeIndexReferenceType (Ast.ArrayType arr, idx) => 
         let
             val t = if idx < length arr 
                     then List.nth (arr, idx)
@@ -264,11 +277,11 @@ fun normalizeRefs (env:Ast.RIBS)
         in
             normalizeRefs env t
         end
-      | Ast.ElementTypeRef (t, _) => error ["ElementTypeRef on non-ArrayType: ", LogErr.ty t]
-      | Ast.FieldTypeRef (Ast.RecordType fields, nameExpr) => 
+      | Ast.TypeIndexReferenceType (t, _) => error ["TypeIndexReferenceType on non-ArrayType: ", LogErr.ty t]
+      | Ast.TypeNameReferenceType (Ast.RecordType fields, nameExpr) => 
         let                    
             val fname = nameExprToFieldName env nameExpr
-            fun f [] = error ["FieldTypeRef on unknown field: ", LogErr.name fname]
+            fun f [] = error ["TypeNameReferenceType on unknown field: ", LogErr.name fname]
               | f ({name,ty}::fields) = if (nameExprToFieldName env name) = fname 
                                         then ty
                                         else f fields
@@ -276,7 +289,7 @@ fun normalizeRefs (env:Ast.RIBS)
         in
             normalizeRefs env t
         end
-      | Ast.FieldTypeRef (t, _) => error ["FieldTypeRef on non-RecordType: ", LogErr.ty t]
+      | Ast.TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
       | x => mapTyExpr (normalizeRefs env) x
                                    
 (* ----------------------------------------------------------------------------- *)
@@ -382,9 +395,14 @@ fun checkProperType (ty:Ast.TYPE) : unit =
 (* ----------------------------------------------------------------------------- *)
 (* normalizeNames: replace all references to TypeFixtures by the corresponding type. *)
 
+fun makeNameExpression (id:Ast.IDENTIFIER) : Ast.NAME_EXPRESSION 
+  = Ast.QualifiedName { namespace = Ast.Namespace (Name.publicNS),
+                        identifier = id }
+    
+
 fun normalizeNames (useCache:bool)
                    (env:Ast.RIBS)
-                   (ids:Ast.IDENTIFIER list)
+                   (ids:Ast.NAME_EXPRESSION list)
                    (ty:Ast.TYPE)                    
   : Ast.TYPE = 
     let
@@ -399,10 +417,10 @@ fun normalizeNames (useCache:bool)
                     (* Pulling ty out of env', need to normalize first, in the right environment *)
                     normalizeNames useCache env' [] ty'
                 end
-                
+ (*               
               | (env', n, Ast.TypeVarFixture nonce) =>
                 Ast.TypeVarFixtureRef nonce
-
+*)
                 (* FIXME: not sure about the following, and generic classes ... *)
               | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, nonnullable, ... })) => 
                 if nonnullable
@@ -421,14 +439,9 @@ fun normalizeNames (useCache:bool)
         fun doResolve _ =         
             case ty of 
                 Ast.TypeName (nameExpr, _) => 
-                (case nameExpr of 
-                     Ast.UnqualifiedName { identifier, ... } => 
-                     if List.exists (fn i => i=identifier) ids
+                     if List.exists (nameExpressionEqual nameExpr) ids
                      then ty (* local binding, don't replace *)
                      else getType nameExpr
-                   (* FIXME: sure this is not a reference to a type var? *)
-                   | _ => getType nameExpr)
-                
 (*
               | Ast.LamType { params, body } => 
                 Ast.LamType { params = params, 
@@ -466,7 +479,7 @@ fun uniqueIdent (id:Ast.IDENTIFIER) : Ast.IDENTIFIER =
     end
 
 fun makeTypeName (id:Ast.IDENTIFIER) : Ast.TYPE = 
-    Ast.TypeName (Ast.UnqualifiedName {identifier=id, openNamespaces=[], globalNames=[] }, NONE)
+    Ast.TypeName (makeNameExpression id, NONE)
 
 
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
@@ -588,36 +601,10 @@ fun normalize (ribs:Ast.RIB list)
  * here is incorrect. Sadly. Remove this comment when we know better. -Graydon
  *)
 
-fun getIdent (Ast.QualifiedName { identifier, ... }) = identifier
-  | getIdent (Ast.UnqualifiedName { identifier, ... }) = identifier 
-
-fun isNamedField (name:Ast.IDENTIFIER) (field:Ast.FIELD_TYPE) = 
-    Ustring.stringEquals name (getIdent (#name field))
-    
-fun extractFieldType (name:Ast.IDENTIFIER) 
-                     (fields:Ast.FIELD_TYPE list)
-    : (Ast.TYPE * Ast.FIELD_TYPE list) option = 
-    case List.partition (isNamedField name) fields of
-        ([field], rest) => SOME ((#ty field), rest)
-      | _ => NONE
-             
 fun arrayPairWise predicate xs ys = 
     ((length xs) = (length ys)) andalso
     ListPair.all (fn (t1,t2) => predicate t1 t2) (xs, ys)
     
-fun fieldPairWise predicate [] [] = true
-  | fieldPairWise predicate ({ name, ty }::ts1) ts2 =
-    (case extractFieldType (getIdent name) ts2 of
-         NONE => false
-       | SOME (ty2, rest) => predicate ty ty2 andalso fieldPairWise predicate ts1 rest)                             
-  | fieldPairWise _ _ _ = false
-
-fun fieldPairWiseSuperset predicate _ [] = true
-  | fieldPairWiseSuperset predicate ts1 ({ name, ty }::ts2) =
-    (case extractFieldType (getIdent name) ts1 of
-         NONE => false
-       | SOME (ty1, rest) => predicate ty1 ty andalso fieldPairWise predicate rest ts2)
-
 fun optionWise predicate (SOME a) (SOME b) = predicate a b
   | optionWise _ NONE NONE = true
   | optionWise _ _ _ = false
@@ -677,107 +664,6 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
           | _ => NONE
     end
 
-(*
-datatype TYPE_COMPARISON = SubType | EquivType
-
-fun compareTypes (extra : Ast.TYPE -> Ast.TYPE -> bool)
-                 (v:TYPE_COMPARISON)
-                 (ty1:Ast.TYPE)
-                 (ty2:Ast.TYPE)
-    
-    : bool = 
-    (ty1 = ty2)
-    orelse
-    (extra ty1 ty2)
-    orelse
-    case (v, ty1, ty2) of 
-
-      (* A-OBJ *)
-        (_, Ast.RecordType fields1, Ast.RecordType fields2) => 
-        fieldPairWiseSuperset (compareTypes extra EquivType) fields1 fields2
-        
-      (* A-ARROW *)
-      | (_, 
-         Ast.FunctionType
-                     {params   = params1,
-                      result   = result1,
-                      thisType = thisType1,
-                      hasRest  = hasRest1,
-                  minArgs  = minArgs1},
-             Ast.FunctionType
-                     {params   = params2,
-                      result   = result2,
-                      thisType = thisType2,
-                      hasRest  = hasRest2,
-                      minArgs  = minArgs2}) 
-        => 
-        (optionWise (compareTypes extra EquivType) thisType1 thisType2) andalso     (* will drop option *)
-        minArgs1 >= minArgs2 andalso
-        (if not hasRest1 andalso not hasRest2
-         then length params1 = length params2
-         else hasRest1 andalso length params1 <= length params2) andalso
-        (arrayPairWise (compareTypes extra EquivType)  params1 (List.take(params2, length params1))) andalso
-        compareTypes extra v result1 result2 
-
-      (* A-INSTANCE -- generalized from A-INT *)
-      | (_, Ast.InstanceType it1, Ast.InstanceType it2) =>
-        (nameEq (#name it1) (#name it2) andalso
-         (arrayPairWise (compareTypes extra EquivType) (#typeArgs it1) (#typeArgs it2)))
-        orelse 
-        (List.exists (fn sup => compareTypes extra v sup ty2) 
-                     (#superTypes it1))
-        
-      (* Extra rules covering nullable, array and union types. *)
-        
-      | (_, Ast.NonNullType nt1, Ast.NonNullType nt2) =>
-        (#nullable nt1) = (#nullable nt2) andalso
-        compareTypes extra v (#expr nt1) (#expr nt2)
-        
-      | (_, Ast.ArrayType tys1, Ast.ArrayType tys2) => 
-        (* last entry repeats *)
-        let fun check tys1 tys2 =
-                case (tys1,tys2) of
-                    ([],[]) => true
-                  | ([ty1],[ty2]) => 
-                    compareTypes extra EquivType ty1 ty2
-                  | (ty1::tys1, ty2::tys2) => 
-                    compareTypes extra EquivType ty1 ty2
-                    andalso check (if List.null tys1 then [ty1] else tys1)
-                                  (if List.null tys2 then [ty2] else tys2)
-        in
-            check tys1 tys2
-        end
-
-      | (_, Ast.UnionType tys1, _) => 
-        List.all (fn t => compareTypes extra v t ty2) tys1
-
-      | (_, _, Ast.UnionType tys2) => 
-        List.exists (compareTypes extra v ty1) tys2
-
-      (* A-STRUCTURAL -- knit the structural types on the end of the nominal lattice. *)
-
-      | (_, Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-            List.exists (nameEq name) [ Name.public_Array,
-                                                        Name.public_Object ]
-        
-      | (_, Ast.RecordType _, Ast.InstanceType { name, ... }) => 
-            List.exists (nameEq name) [ Name.public_Object ]
-        
-      | (_, Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-            List.exists (nameEq name) [ Name.public_Function, 
-                                                        Name.public_Object ]
-        
-      | (_, Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
-        (nonce1 = nonce2)
-
-      (* A-GENERIC *)
-      (* FIXME: need to alpha-rename so have consistent parameters *)
-      | (_, Ast.LamType lt1, Ast.LamType lt2) => 
-        compareTypes extra v (#body lt1) (#body lt2)
-      
-      | _ => false
-
-*)
 
 fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
             (ty1 : Ast.TYPE)
@@ -790,32 +676,28 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
       (* record types *)
 
         (Ast.RecordType fields1, Ast.RecordType fields2) => 
-        fieldPairWiseSuperset (equivType extra) fields1 fields2
+        List.all (fn {name = name1, ty = ty1} =>
+                     List.exists (fn {name = name2, ty = ty2} =>
+                                     nameExpressionEqual name1 name2 andalso
+                                     equivType extra ty1 ty2)
+                                 fields2)
+                 fields1
         
       (* array types *)        
 
       | (Ast.ArrayType tys1, Ast.ArrayType tys2) =>   (* last entry repeats *)
-        let fun check tys1 tys2 =
-                case (tys1,tys2) of
-                    ([],[]) => true
-                  | ([ty1],[ty2]) => 
-                    equivType extra ty1 ty2
-                  | (ty1::tys1, ty2::tys2) => 
-                    equivType extra ty1 ty2
-                    andalso check (if List.null tys1 then [ty1] else tys1)
-                                  (if List.null tys2 then [ty2] else tys2)
-                  | (_, _) => error ["mismatched array-type lengths"]
-        in
-            check tys1 tys2
-        end
-
+        length tys1 > length tys2 andalso
+        ListPair.all (fn (t1,t2) => equivType extra t1 t2)
+                     (tys1,
+                      tys2 @ List.tabulate(length tys1 - length tys2,
+                                           (fn _ => List.last tys2)))
       (* union types *)
 
       | (Ast.UnionType tys1, ty2) => 
-        List.all (fn t => subType extra t ty2) tys1
+        List.all    (fn ty1 => subType extra ty1 ty2) tys1
 
       | (ty1, Ast.UnionType tys2) => 
-        List.exists (subType extra ty1) tys2
+        List.exists (fn ty2 => subType extra ty1 ty2) tys2
 
       (* function types *)
 
@@ -840,21 +722,22 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
             (case (result1, result2) of
                  (SOME t1, SOME t2) => subType extra t1 t2
                | (NONE,    NONE)    => true)
-              andalso
+          andalso
             equivType extra thisType1 thisType2
-              andalso    
+          andalso    
             minArgs1 <= minArgs2 
-              andalso
-            arrayPairWise (equivType extra)  (List.take(params1, min)) 
-                                             (List.take(params2, min))
-              andalso
+          andalso
+            ListPair.all (fn (t1,t2) => equivType extra t1 t2)  
+                         (List.take(params1, min),
+                          List.take(params2, min))
+          andalso
             (case (hasRest1, hasRest2) of
                  (false, false) => length params2 <= length params1
                | (false, true ) => false
                | (true,  false) => true
                | (true,  true ) =>
                      List.all (fn t => equivType extra t Ast.AnyType)
-                              (List.drop(params1,min)))
+                              (List.drop(params1, min)))
         end
 
       (* non-null types *)
@@ -889,10 +772,10 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
                                         Name.public_Object ]
         
       (* ? *)
-
+(*
       | (Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
         (nonce1 = nonce2)
-
+*)
       | _ => false
 
 
@@ -902,8 +785,8 @@ and equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
     : bool = 
       (subType extra ty1 ty2)
     andalso
-      (subType extra ty2 ty1)
-
+      (subType (fn ty1 => fn ty2 => extra ty2 ty1)
+               ty2 ty1)
 
 (* -----------------------------------------------------------------------------
  * Compatible-subtyping:  <*

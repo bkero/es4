@@ -1769,11 +1769,11 @@ and defTypeExpr (env:ENV)
         Ast.RecordType (map (defFieldType env) tys)
       | Ast.NonNullType t =>
         Ast.NonNullType (defTypeExpr env t)
-      | Ast.ElementTypeRef (ty, n) =>
-        Ast.ElementTypeRef (defTypeExpr env ty, n)
+      | Ast.TypeIndexReferenceType (ty, n) =>
+        Ast.TypeIndexReferenceType (defTypeExpr env ty, n)
 
-      | Ast.FieldTypeRef (ty, ident) =>
-        Ast.FieldTypeRef (defTypeExpr env ty, ident)
+      | Ast.TypeNameReferenceType (ty, ident) =>
+        Ast.TypeNameReferenceType (defTypeExpr env ty, ident)
 
       | Ast.AppType { base, args } => 
         Ast.AppType { base = defTypeExpr env base,

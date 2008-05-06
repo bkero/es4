@@ -627,10 +627,10 @@ and valAllocState (regs:Mach.REGS)
       | Ast.TypeName ident =>
         error regs ["allocating fixture with unresolved type name: ", LogErr.ty ty]
         
-      | Ast.ElementTypeRef _ =>
+      | Ast.TypeIndexReferenceType _ =>
         error regs ["allocating fixture of unresolved element type reference"]
         
-      | Ast.FieldTypeRef _ =>
+      | Ast.TypeNameReferenceType _ =>
         error regs ["allocating fixture of unresolved field type reference"]
         
       | Ast.InstanceType n =>

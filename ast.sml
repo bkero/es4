@@ -145,6 +145,16 @@ datatype PRAGMA =
          Namespace of NAMESPACE
        | NamespaceName of NAME_EXPRESSION
 
+(* Post-defn phase, only the following variants should appear:
+
+     and NAME_EXPRESSION = 
+         QualifiedName of { namespace: NAMESPACE_EXPRESSION,
+							identifier: IDENTIFIER }
+
+     and NAMESPACE_EXPRESSION =
+         Namespace of NAMESPACE
+*)
+
                             
      and FUNC_NAME_KIND =
          Ordinary
@@ -247,16 +257,14 @@ datatype TYPE =
                            params: TYPE list,
                            minArgs: int, 
                            hasRest: bool,
-                           result: TYPE
+                           result: TYPE option       (* NONE indicates void return type *)
                          }
        | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
 
        | NominalType of NAME
-       | TypeNameRefType of (TYPE * NAME_EXPRESSION)
-       | TypeIndexRefType of (TYPE * int)
-
-| TypeVarFixtureRef ???
+       | TypeNameReferenceType  of (TYPE * NAME_EXPRESSION)
+       | TypeIndexReferenceType of (TYPE * int)
 
 (* last two cases removed during normalization *)
 
@@ -267,28 +275,19 @@ datatype TYPE =
          NullType
        | UndefinedType
        | AnyType
-     (*  | VoidType *)
-       | RecordType of FIELD_TYPE list     (* TODO: rename *)
-       | UnionType of TYPE list
+       | RecordType of FIELD_TYPE list   
        | ArrayType of TYPE list
+       | UnionType of TYPE list
        | FunctionType of FUNC_TYPE
-       | TypeName of (NAME_EXPRESSION * NONCE option)
-       | ElementTypeRef of (TYPE * int)
-       | FieldTypeRef of (TYPE * NAME_EXPRESSION)
-       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
-(*
-       | LamType of
-         { params: IDENTIFIER list,
-           body: TYPE }
-*)
-
-(*       | NonNullType of           
-         { expr:TYPE,
-           nullable:bool }
-*)
        | NonNullType of TYPE
-       | InstanceType of INSTANCE_TYPE
-       | TypeVarFixtureRef of NONCE  
+       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
+
+       | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
+       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
+       | TypeIndexReferenceType of (TYPE * int)
+
+       | InstanceType of INSTANCE_TYPE        (* *)
+  (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 
 (* SPEC
 
