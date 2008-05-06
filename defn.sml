@@ -1775,9 +1775,8 @@ and defTypeExpr (env:ENV)
       | Ast.TypeNameReferenceType (ty, ident) =>
         Ast.TypeNameReferenceType (defTypeExpr env ty, ident)
 
-      | Ast.AppType { base, args } => 
-        Ast.AppType { base = defTypeExpr env base,
-                      args = map (defTypeExpr env) args }
+      | Ast.AppType ( base, args ) => 
+        Ast.AppType ( defTypeExpr env base, map (defTypeExpr env) args )
 (*
       | Ast.LamType { params, body } => 
         Ast.LamType { params = params,

@@ -191,7 +191,7 @@ fun ty t =
 			
           | Ast.RecordType fields => 
 			"{" ^ fieldList fields ^ "}"
-          | Ast.AppType {base, args} => 
+          | Ast.AppType (base, args) => 
 			(ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NonNullType t => (ty t) ^ "!"
           | Ast.InstanceType { name=n, ... } => 

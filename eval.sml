@@ -615,7 +615,7 @@ and valAllocState (regs:Mach.REGS)
       | Ast.RecordType _ =>
         Mach.ValProp (Mach.Null)
         
-      | Ast.AppType {base, ...} =>
+      | Ast.AppType (base, _) =>
         valAllocState regs base
 (*        
       | Ast.NonNullType { expr, nullable=true } =>
@@ -2431,7 +2431,7 @@ and applyTypes (regs:Mach.REGS)
         val fullTy = 
             case args of 
                 [] => base
-              | _ => Ast.AppType { base = base, args = args }
+              | _ => Ast.AppType ( base, args )
     in
         evalTy regs fullTy
     end    

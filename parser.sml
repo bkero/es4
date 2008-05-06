@@ -3004,8 +3004,7 @@ and basicTypeExpression (ts0:TOKENS)
                         val (ts2,nd2) = typeExpressionList (tl ts1)
                     in case ts2 of
                         (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
-                        (tl ts2, Ast.AppType { base = typeName nd1,
-                                               args = nd2 })
+                        (tl ts2, Ast.AppType ( typeName nd1, nd2 ))
                       | _ => error ["unknown final token of AppType type expression"]
                     end
               | _ => (ts1, typeName nd1)

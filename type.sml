@@ -201,9 +201,8 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
     (*  | Ast.VoidType => ty *)
       | Ast.UndefinedType => ty
       | Ast.TypeName _ => ty
-      | Ast.AppType { base, args } => 
-        Ast.AppType { base = f base,
-                      args = map f args}
+      | Ast.AppType ( base, args ) => 
+        Ast.AppType ( f base, map f args )
 (*
       | Ast.LamType { params, body } => 
         Ast.LamType { params = params, 
@@ -376,7 +375,7 @@ fun checkProperType (ty:Ast.TYPE) : unit =
                 error ["Improper occurrence of type constructor ", LogErr.ty ty2, 
                        " in normalized type ", LogErr.ty ty]
 *)
-                Ast.AppType { base, args } =>
+                Ast.AppType ( base, args ) =>
                 error ["Improper occurrence of type application ", LogErr.ty ty2, 
                        " in normalized type ", LogErr.ty ty]
 

@@ -280,14 +280,16 @@ datatype TYPE =
        | UnionType of TYPE list
        | FunctionType of FUNC_TYPE
        | NonNullType of TYPE
-       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
-
+       | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
        | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
        | TypeIndexReferenceType of (TYPE * int)
-
        | InstanceType of INSTANCE_TYPE        (* *)
+
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
+(*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
+*)
+
 
 (* SPEC
 
