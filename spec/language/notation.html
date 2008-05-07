@@ -132,3 +132,30 @@ or the other.
 
 === ECMAScript ===
 
+== Source Text ==
+
+ECMAScript source text is represented as a sequence of characters in the Unicode character encoding,
+version 4.0 or later, using an unspecified encoding. The text is expected to have been normalised to
+Unicode Normalized Form C (canonical composition), as described in Unicode Standard Annex
+#15. Conforming ECMAScript implementations are not required to perform any normalisation of text, or
+behave as though they were performing normalisation of text, themselves.
+
+ECMAScript source text can contain any of the Unicode characters. All Unicode white space characters
+are treated as white space, and all Unicode line/paragraph separators are treated as line
+separators. Non-Latin Unicode characters are allowed in identifiers, string literals, regular
+expression literals and comments.
+
+Throughout the rest of this document, the phrase "code point" and the word "character" will be used
+to refer to a 32-bit unsigned value used to represent a single 32-bit unit of UTF-32 text, as
+defined by Unicode Standard Annex #19. Such a unit is sufficient to encode any character or code
+point defined by the Unicode or ISO-10646 standards. These terms only refer to entities represented
+by single Unicode code points: the components of a combining character sequence are still individual
+characters, even though a user might think of the whole sequence as a single character.
+
+In string literals, regular expression literals and identifiers, any character may also be expressed
+as a Unicode escape sequence consisting of six characters, namely **\u** plus four hexadecimal
+digits. Within a comment, such an escape sequence is effectively ignored as part of the
+comment. Within a string literal or regular expression literal, the Unicode escape sequence
+contributes one character to the value of the literal. Within an identifier, the escape sequence
+contributes one character to the identifier.
+

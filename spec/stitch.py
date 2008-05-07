@@ -228,8 +228,6 @@ def extractES(fn, name, isSignature, isContextual):
 
 def extractSML(fn, name):
     f = open(os.path.normpath(rul_dir + "/" + fn), 'r')
-    isContextual = False
-    isSignature = False
     outside = True
     # Avoid matching prefixes of names
     lastIsIdent = isIdent(name[len(name)-1])
@@ -237,24 +235,16 @@ def extractSML(fn, name):
     if lastIsIdent:
 	name = name + r"(?![a-zA-Z0-9_])"
     starting = re.compile("^( *)" + name)
-    starting2 = re.compile("^( *)" + str(isContextual))
     blanks = 0
     prev = ""
     ldots = re.compile("\(\* *LDOTS *\*\)")
-    inContext = False
     for line in f:
 
         # Skip informative lines
         if re.search("INFORMATIVE", line):
             continue
 
-        line = adHocFixFunctionType(line)
 	if outside:
-	    if isContextual and not inContext:
-		m = starting2.search(line)
-		if m:
-		    inContext = True
-		continue
 	    m = starting.search(line)
 	    if m:
 
@@ -273,8 +263,6 @@ def extractSML(fn, name):
                 else:
                     ending = re.compile("^" + m.group(1) + r"[^\s]")
 
-		openbrace = re.compile(m.group(1) + r"\{")
-		closebrace = re.compile(m.group(1) + r"\}")
 		res = [line.rstrip()]
 		outside = False
 		continue
@@ -282,13 +270,6 @@ def extractSML(fn, name):
 	    line = line.rstrip()
 
 	    if ending.search(line):
-		# Special case for common pattern: open brace indented like the name
-		if openbrace.search(line):
-		    res = res + [line]
-		    continue
-		if closebrace.search(line):
-		    res = res + [line]
-		    break
 		break
             else:
                 # format comments indicating elision and stop there
@@ -316,24 +297,10 @@ def extractSML(fn, name):
 	print fn + ": Could not find definition for " + name
 	sys.exit(1)
     undent = len(re.search(r"^(\s*)", res[0]).group(1))
-    if isSignature:
-	s = res[0][undent:]
-	s = re.sub(r" native", "", s)
-	if s[len(s)-1] == "{" or s[len(s)-1] == ";":
-	    s = s[:len(s)-1].rstrip()
-	if len(s) >= LINELIM:
-	    i = len(s)-1;
-	    while i >= 0 and s[i] != ')':
-		if s[i] == ':' and (i == 0 or s[i-1] == ' ' or s[i-1] == ')'):
-		    s = s[:i] + "\n        " + s[i:]
-		    break
-		i = i - 1
-	return s + " &#x0085";
-    else:
-	ss = "\n"
-	for s in res:
-	    ss = ss + s[undent:] + "\n"
-	return ss
+    ss = "\n"
+    for s in res:
+        ss = ss + s[undent:] + "\n"
+    return ss
 
 def extractRUL(fn, name):
     f = open(os.path.normpath(rul_dir + "/" + fn), 'r')

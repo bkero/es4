@@ -22,36 +22,34 @@ and manipulation of values.
 type, called the value's //allocated type//, which is fixed when the value is allocated in memory,
 and cannot change over the lifetime of the value. 
 
-<NOTE>In the 3rd edition of the language, nine individual //types// were defined. Six of these types
-are described differently in the 4th edition: the 3 types formerly called primitive (Number, String,
-Boolean) are now represented as object values, and the 3 types formerly reserved for intermediate
-results of expressions (Reference, List and Completion) are described through separate specification
-mechanisms, rather than as part of the set of possible values.
-
 <IMPL>
 <INCLUDE file="mach.sml" name="datatype VALUE">
 
+<COMP>In the 3rd edition of the language, several individual //types// were defined. The 3 types
+formerly called primitive (number, string, boolean) are now represented as object values. The term
+//type// has a different meaning in the 4th edition.
+
 == Undefined == 
 
-<p>There is exactly one undefined value, denoted by ''Undef'' in SML and bound to the top-level
-name **public::undefined** in ES4. 
+<p>There is exactly one undefined value, denoted by the semantic value ''Undef'' and stored in the
+global constant property **public::undefined** in ES4.
 
 <p>The allocated type of the undefined value is called the undefined type. The undefined value is
-the only value with the undefined type as its allocated type. The undefined type is denoted by
-''UndefinedType'' in SML and denoted in ES4 type-expression contexts by the identifier
-**undefined**.
+the only value with the undefined type as its allocated type. The undefined type is denoted by the
+semantic value ''UndefinedType'', which is the denoted in ES4 type-expression contexts by the
+identifier **undefined**.
 
-<NOTE>As with earlier editions of the language, **undefined** is not a reserved word outside of
+<COMP>As with earlier editions of the language, **undefined** is not a reserved word outside of
 type-expression contexts, and so might be shadowed by a user defined property with the same name.
 
 == Null ==
 
-<p>There is exactly one null value, denoted by ''Null'' in SML and by the null literal **null** in 
-ES4. 
+<p>There is exactly one null value, denoted by the semantic value ''Null'' and by the null literal
+**null** in ES4.
 
-<p>The allocated type of the null value is called the null type. The null value is the only value 
-with the null type as its allocated type. The null type is denoted by ''NullType'' in SML and 
-denoted in ES4 type-expression contexts by the null literal **null**.
+<p>The allocated type of the null value is called the null type. The null value is the only value
+with the null type as its allocated type. The null type is denoted by the semantic value
+''NullType'' and denoted in ES4 type-expression contexts by the null literal **null**.
 
 <NOTE>While the null and undefined values have similar meanings, they have different conventions of
 use. The null value is intended to indicate a missing object value, while the undefined value is
@@ -68,13 +66,13 @@ immutable tag, and a mutable prototype value.
 <IMPL>
 <INCLUDE file="mach.sml" name="and OBJ">
 
-=== Property Bindings === 
+=== Property Binding Map === 
 
-<p>Each object contains zero or more //property bindings//. A property binding is logically a pair
-that associates a name and property. The property bindings of an object are arranged in a mutable,
-partial associative one-to-one map from names to properties, such that the map associates at most
-one property with any name. This map is called the object's //property binding map//. Property
-bindings may be added, removed, or replaced within a property binding map. The SML type of a
+<p>A property binding map associates at most one property with any name. If an object's property map
+associates a property ''P'' with a name ''N'', then the object is said to have a //binding// for
+''N''. Alternatively, the property ''P'' is said to be //bound to// the name ''N'', in the object.
+
+<p>Bindings can be added, removed, or replaced within a property binding map. The semantic type of a
 property binding map is unspecified.
 
 <IMPL>
@@ -86,10 +84,10 @@ property binding map is unspecified.
 also called the property's //storage type//, to differentiate it from the allocated type of any
 value that the property may contain.
 
-<NOTE>In earlier editions of the language, some characteristics of an object were modeled as
+<COMP>In earlier editions of the language, some characteristics of an object were modeled as
 //internal properties// with distinct names such as ''[[Class]]'' or ''[[Value]]''. These
 characteristics of objects are described differently in the 4th edition, using a combination of
-supporting SML and ES4 standard library functionality.
+supporting semantic and ES4 standard library functionality.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and PROPERTY">
@@ -120,9 +118,8 @@ variables, and virtual properties (defined by getter and setter functions).
 
 ==== Property Attributes ==== 
 
-<p>The //attributes// of a property describe various parameters that govern the behavior of property
-lookup, enumeration, modification and deletion. There are four attributes that may be set on a
-property.
+<p>The //attributes// of a property govern the behavior of property lookup, enumeration,
+modification and deletionThere are four attributes that may be set on a property.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="type ATTRS">
@@ -136,7 +133,7 @@ access on an object in terms of subsequent property accesses on the object's pro
 
 === Object Identifier ===
 
-<p>The //identifier// of an object uniquely identifies the object. The SML type of an object
+<p>The //identifier// of an object uniquely identifies the object. The semantic type of an object
 identifier is unspecified, and its value cannot be directly observed by ES4 code. Equality of
 objects is partially defined in terms of equality of the objects' identifiers, so all identifiers
 must be comparable with one another for equality.
@@ -146,64 +143,60 @@ must be comparable with one another for equality.
 
 === Object Tag === 
 
-<p>The //tag// of an object encodes both the object's ES4 type, and any underlying semantic (SML)
-value associated with the object.
+<p>The //tag// of an object encodes both the object's ES4 type, and any underlying semantic value
+associated with the object.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and TAG">
 
 <p>The ''ObjectTag'' and ''ArrayTag'' tags are present on objects of structural types ''ObjectType''
-and ''ArrayType'', respectively. These tags exist only to designate the allocated type of the object
-they are present on. In most other respects, objects with ''ObjectTag'' and ''ArrayTag'' tags behave
-as instances of the ES4 classes bound to **public::Object** and **public::Array**, respectively.
+and ''ArrayType'', respectively. 
 
 <p>The ''MagicTag'' tag is present on objects that are instances of a small number of classes,
 described in the following section.
 
 <p>The ''InstanceTag'' tag is present on any object that is an instance of an ES4 class but does
-//not// have an ''ObjectTag'', ''ArrayTag'' or ''MagicTag''. Instance tags exist to designate
-instances of classes that are solely defined by general ES4 class definitions, rather than any more
-specific language-supported mechanisms such as structural types or magic objects.
+//not// have an ''ObjectTag'', ''ArrayTag'' or ''MagicTag''. 
 
 <p>The ''NoTag'' tag is present only on un-named objects that implement scopes.
 
 ==== Magic Tag ====
 
-<p>Some objects have, beyond their basic structure, an additional semantic (SML) value associated
-with them. Such objects are called //magic objects//. The semantic values of magic objects are
-captured in the object's magic tag, and may be observed directly by SML code. The //presence// of
-semantic values -- though not always the values themselves -- can be indirectly observed by ES4 code
-through a bijective correspondence that exists between magic tags and a particular set of ES4
-instance types (classes and interfaces). Any instance of such an instance type has the corresponding
-magic tag, and any object carrying such a magic tag is an instance of the corresponding instance
-type.
+<p>Some objects have additional a semantic value associated with them. Such objects are called
+//magic objects// and have a //magic tag//. The semantic value is held in the tag, and is only
+directly accessible in semantic code.
+
+<p>ES4 code can determine if an object is magic through a correspondence between magic tags and a
+set of 10 specific ES4 instance types. The correspondence is a bijection: any instance of these
+types has the corresponding magic tag, and any object with a magic tag is an instance of the
+corresponding type.
+
+<p>The allocated type of a magic object may be more specific than the corresponding instance
+type. In particular, function objects may have more specific subtypes of the ES4 class
+**public::Function**. In such cases, the allocated type of the object is present in the semantic
+value held by the magic tag.
 
 <p>The correspondence between magic tags and classes is the following:
 <ul>
-<li>The magic tag ''Boolean'' corresponds to the ES4 class bound to **__ES4__::boolean**.
-<li>The magic tag ''Double'' corresponds to the ES4 class bound to **__ES4__::double**.
-<li>The magic tag ''Decimal'' corresponds to the ES4 class bound to **__ES4__::decimal**.
-<li>The magic tag ''String'' corresponds to the ES4 class bound to **__ES4__::string**.
-<li>The magic tag ''Namespace'' corresponds to the ES4 class bound to **__ES4__::Namespace**.
-<li>The magic tag ''Class'' corresponds to the ES4 class bound to **__ES4__::Class**.
-<li>The magic tag ''Interface'' corresponds to the ES4 class bound to **__ES4__::Interface**.
-<li>The magic tag ''Function'' corresponds to the ES4 class bound to **public::Function**.
-<li>The magic tag ''Type'' corresponds to the ES4 class bound to **__ES4__::Type**.
-<li>The magic tag ''Generator'' corresponds to the ES4 class bound to **helper::GeneratorImpl**.
+<li>The magic tag ''Boolean'' corresponds to the ES4 class **__ES4__::boolean**.
+<li>The magic tag ''Double'' corresponds to the ES4 class **__ES4__::double**.
+<li>The magic tag ''Decimal'' corresponds to the ES4 class **__ES4__::decimal**.
+<li>The magic tag ''String'' corresponds to the ES4 class **__ES4__::string**.
+<li>The magic tag ''Namespace'' corresponds to the ES4 class **__ES4__::Namespace**.
+<li>The magic tag ''Class'' corresponds to the ES4 class **__ES4__::Class**.
+<li>The magic tag ''Interface'' corresponds to the ES4 class **__ES4__::Interface**.
+<li>The magic tag ''Function'' corresponds to the ES4 class **public::Function**.
+<li>The magic tag ''Type'' corresponds to the ES4 class **__ES4__::Type**.
+<li>The magic tag ''Generator'' corresponds to the ES4 class **helper::GeneratorImpl**.
 </ul>
-
-<p>The allocated type of an object with such a magic tag may be more specific than the corresponding
-instance type. In particular, function objects may have more specific subtypes of the ES4 class
-bound to **public::Function**. In such cases, the allocated type of the object is present in the 
-semantic value held by the magic tag.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and MAGIC">
 
 == Semantic Values ==
 
-<p>Many aspects of the language depend on the semantic (SML) values associated with magic
-objects. The following sections describe the semantic values, and highlights various details of the
+<p>Many aspects of the language depend on the semantic values associated with magic objects. The
+following sections describe the semantic values, and highlights various details of the
 correspondences that exist between particular semantic values and the ES4 values they are present
 on.
 
@@ -211,402 +204,179 @@ on.
 
 <p>While much of the behavior of magic objects is defined //inside// the ES4 language (in the
 section ...library), the means of //constructing// magic objects and associating semantic values
-with them is (at least partially) defined //outside// the ES4 language, in SML code. 
+with them is (at least partially) defined //outside// the ES4 language, in semantic code. 
 
 <p>Therefore the construction of any magic object is described by a //special constructor// defined
-in SML, rather than a //standard constructor// defined in ES4. The behavior of each special
-constructor is described in the following sections.
+in semantic code, rather than a //standard constructor// defined in ES4. The behavior of each
+special constructor is described in the following sections.
 
 === Boolean Values ===
 
-<p>Boolean values are one of two logical semantic values called ''true'' and ''false''. These
-correspond to the ES4 boolean literal values **true** and **false**, which denote the two sole
-instances of the ES4 class **__ES4__::boolean**.
-
-<p>The two boolean values can always be denoted literally, so are not otherwise bound to names.
+<p>A boolean value is either of two semantic values called ''true'' and ''false''. These correspond
+to the ES4 boolean literal values **true** and **false**, which denote the two sole instances of the
+ES4 class **__ES4__::boolean**.
 
 <p>No instances of the ES4 class **__ES4__::boolean** can be constructed aside from the two values
 **true** and **false**: the **__ES4__::boolean** constructor is a special constructor that always
 evaluates to one of the two boolean values.
 
-<p>All ES4 values can be converted to boolean values by providing them as arguments to the
-**__ES4__::boolean** constructor, or by calling the **__ES4__::boolean** class as a function.
-
-<p>The relational operators in the language evaluate to boolean values. 
-
-<p>Equality of boolean values is defined by object identifier equality on boolean values.
-
-<p>Inequality of boolean values is defined by the judgment that **false** is less than **true**, and
-by logical and algebraic consistency of the other relational operators with this judgment.
-
-<p>Two binary operators (boolean-and and boolean-or) combine boolean values by the standard
-truth-table interpretation, using short-circuit evaluation, and one unary operator (boolean-not)
-maps each boolean value to the other.
-
-<p>For compatibility with earlier editions of the language, a "wrapper class" called
-**public::Boolean** exists. Instances of **public::Boolean** contain a single **__ES4__::boolean**
-magic object, and delegate most of their functionality to this inner "wrapped" value. 
+<p>A "wrapper class" called **public::Boolean** exists. Instances of **public::Boolean** contain a
+single **__ES4__::boolean** magic object, and delegate most of their functionality to this inner
+"wrapped" value.
 
 <p>The value of **public::Boolean.prototype** is identical to **__ES4__::boolean.prototype**. This
 value is refered to without distinction as //the boolean prototype//, since it is shared between
 both classes.
 
-<p>Unlike multiple instances of the **__ES4__::boolean** class, multiple instances of the
-**public::Boolean** class compare as non-equal, even if their inner "wrapped" **__ES4__::Boolean**
-values are equal.
+=== Double Values ===
 
-<p>Use of the **public::Boolean** class is not recommended.
+<p>A double value can be one of exactly 18437736874454810927 (that is,
+2<sup>64</sup>-2<sup>53</sup>+3) possible values, representing the double-precision 64 bit format
+IEEE 754 values as specified in the IEEE Standard for Binary Floating-Point Arithmetic, except that
+none of the 9007199254740990 (that is, 2<sup>53</sup>-2) distinct "Not-a-Number" (NaN) values of the
+IEEE Standard can be distinguished from one another.
 
-<NOTE>In earlier editions fo the language, a type existed called the //boolean object type//. This
-type corresponds to the 4th edition wrapper class **public::Boolean**, whereas the //boolean type//
-of former editions corresponds to the 4th edition class **__ES4__::boolean**. Since both
-**public::Boolean** and **__ES4__::boolean** are types of object in the 4th edition, earlier
-terminology concerning the //boolean type// and the //boolean object type// has been removed.
+<p>One such NaN value is bound to the ES4 constant **public::NaN**, and every NaN value compares
+unequal to every other NaN value, including itself. Double and decimal NaN values are the only
+values that compare unequal to themselves under the ES4 **===** operator.
+
+<p>All other operations on double values corresond to operations defined in IEEE 754.
+
+<FIXME>Copy more text here and edit the text from ES3 describing Number values. Or just rewrite, as
+the ES3 text focused on odd things and wasn't very plain.
+
+=== Decimal Values ===
+
+<p>A decimal value can be any of those described by the //decimal128// datatype of the IEEE 754r
+draft standard for floating point arithmetic.
+
+<FIXME>fill in more
 
 === String Values ===
 
-<FIXME>This text says we handle each string as a sequence of code points. ES3 said a string is a
-sequence of uninterpreted uint16_t values that could be treated sometimes as UTF-16 code units --
-presumably in those cases where the string was valid UTF-16 -- but that no such checks would ever be
-performed. This is therefore a change, and observably so: ''String.fromCharCode(0xD800)'' in
-particular should not form a code point (it is a UTF-16 surrogate), but in ES3 it //does// form the
-invalid-Unicode, valid-ES3 "string" containing a single uint16_t value 0xD800. My feeling is that
-continuing to do so, or to imitate this behavior in any way, is of dubious value, though there are
-various conclusions about what we should do in ES4 one might choose to draw from that. One
-possibility is to define ''fromCharCode'' -- and for that matter, the escape processor on string
-literals -- to throw an error when given a sole member of the surrogates (0xD800 - 0xDBFF) and to
-process all //other// values in (0x0 - 0x10FFFF) by considering them as code points. Another
-possibility is to repeat the bogusness of the past and permit ''code points'' from the surrogate
-range, permitting the formation of non-unicode strings, but just exand the maximum //size// of each
-element of the string from 16 to 21 (or 32?) bits. Many other silly options exist as well, such as
-permitting surrogates but collapsing them any time enough accumulate to form a UTF-16 surrogate
-pair. We're sort of in a bind because what the old system does is nonsense, in purely textual
-Unicode/10646 terminology, but there are probably some number of ways legacy code relies on that
-nonsense. Defining imitative new nonsense hardly seems virtuous.
+<p>A string value is a finite ordered sequence of zero or more 32 bit unsigned integer values
+("elements"). String values are generally used to represent textual data, in which case each element
+in the string is treated as a code point value (see section ...).
 
-<FIXME>This text //also// says we reduce all strings to NFC. That is //definitely// observable, even
-more so: you can observe it with simple things like ''"A\u030A".length'' (in ES3 it's 2, with NFC
-applied it merges to the single combined code point ''"\u005c"''). This is even more likely to
-corrupt users who were treating strings as byte buffers, and likely even to foul up some code that
-is using strings as text but expects certain string lengths and/or the persistence of decomposed
-forms. ES3 explicitly states that it does //not// NFC-ize any strings it encounters, and only
-suggests that an implementation might like to NFC-ize incoming external text before feeding it
-//to// the implementation. Do we change this, or not?
+<p>Each element is regarded as occupying a position within the sequence. These positions are indexed
+with nonnegative integers. The first element (if any) is at position 0, the next element (if any) is
+at position 1, and so on. The length of a string is the number of elements (32-bit values) within
+it. The empty string has length zero and therefore contains no elements.
 
-<p>String values are finite ordered sequences of zero or more ISO 10646 code points normalized to
-Unicode normalization form C. Such code points are identical to the code points of the Unicode
-standard version 4.0, and are also called //characters//. The legal characters correspond to
-integers within the range [0x0 - 0x10FFFF] excluding the surrogate range [0xD800 - 0xDBFF].
+<p>When a string contains actual textual data, each element is considered to be a single UTF-32 code
+point (or "character"). Whether or not this is the actual storage format of a string, the characters
+within a string are numbered as though they were represented using UTF-32. 
 
-<p>String values are generally used to represent textual data in a running ECMAScript program.
+<p>All operations on string (except as otherwise stated) treat them as sequences of undifferentiated
+32-bit unsigned integers. In particular, operations on strings do not ensure the resulting string is
+in normalised form, they do not ensure language-sensitive results, and they do not alter their
+behavior when dealing with 32-bit values outside the legal range of UTF-32 code points.
+
+<NOTE>The rationale behind these decisions was to keep the implementation of strings as simple and
+high-performing as possible. The intent is that textual data coming into the execution environment
+from outside (e.g., user input, text read from a file or received over the network, etc.) be
+converted to Unicode Normalised Form C before the running program sees it. Usually this would occur
+at the same time incoming text is converted from its original character encoding to Unicode (and would
+impose no additional overhead). Since it is recommended that ECMAScript source code be in Normalised
+Form C, string literals are guaranteed to be normalisec (if source text is guaranteed to be normalised), 
+as long as they do not contain any Unicode escape sequences.
+
+<FIXME>The previous paragraphs regarding string values are adapted from ES3, but personally I think
+they are very awkward-reading, and would like to rewrite them a bit.
 
 <p>String values are instances of the ES4 class **__ES4__::string**.
 
 <p>String literals in ES4 programs evaluate to instances of **__ES4__::string**. 
 
 <p>The equality of **__ES4__::string** objects -- in both the **==** and **===** sense -- is defined
-as the equality of the underlying string values. This in turn is established by identity of the
-underlying sequence of characters. Inequalities and relational operations of strings are similarly
-defined in terms of sequence comparisons on characters. No other forms of textual equality or
-collation are defined.
+as the equality of the underlying string values. This in turn is established by the identities of
+the string elements, considered pairwise and in sequence. Inequalities and relational operations of
+strings are similarly defined in terms of sequence comparisons on string elements. No other forms of
+textual equality or collation are defined.
 
-<p>For compatibility with earlier editions of the language, a "wrapper class" called
-**public::String** exists. Instances of **public::String** contain a single **__ES4__::string**
-magic object, and delegate most of their functionality to this inner "wrapped" value. 
+<p>A "wrapper class" called **public::String** exists. Instances of **public::String** contain a
+single **__ES4__::string** magic object, and delegate most of their functionality to this inner
+"wrapped" value.
 
 <p>The value of **public::String.prototype** is identical to **__ES4__::string.prototype**. This
 value is refered to without distinction as //the string prototype//, since it is shared between
 both classes.
-
-<p>Unlike distinct instances of the **__ES4__::string** class, distinct instances of the
-**public::String** class compare as non-equal, even if their inner "wrapped" **__ES4__::string**
-values are equal.
-
-<p>Use of the **public::String** class is not recommended.
-
-<NOTE>In earlier editions fo the language, a type existed called the //string object type//. This
-type corresponds to the 4th edition wrapper class **public::String**, whereas the //string type// of
-former editions corresponds to the 4th edition class **__ES4__::string**. Since both
-**public::String** and **__ES4__::string** are types of object in the 4th edition, earlier
-terminology concerning the //string type// and the //string object type// has been removed.
-
-=== Double Values ===
-
-<p>Double values can be one of exactly 18437736874454810927 (that is,
-2<sup>64</sup>-2<sup>53</sup>+3) possible values, representing the double-precision 64 bit format
-IEEE 754 values as specified in the IEEE Standard for Binary Floating-Point Arithmetic, except that
-none of the 9007199254740990 (that is, 2<sup>53</sup>-2) distinct "Not-a-Number" (NaN) values of the
-IEEE Standard can be distinguished from one another. 
-
-<p>One such NaN value is bound to the ES4 constant **public::NaN**, and every NaN value compares
-unequal to every other NaN value, including itself. NaN values are the only values that compare
-unequal to themselves under the ES4 **===** operator.
-
-<p>All other operations on double values corresond to operations defined in IEEE 754.
-
-<FIXME>Copy more text here and edit the text from ES3 describing Number values
 
 === Namespace Values ===
 
 <p>Namespaces are defined and discussed in section ...names. Their notable features are recounted
 here.
 
-<p>Namespace values are either transparent or opaque. Transparent namespaces are represented by
-semantic string values and their equality is defined by the equality of the underlying semantic
-strings. Opaque namespaces do not have an underlying string value. The semantic identity of an
-opaque namespace is established through unique, system-assigned identifiers. These identifiers are
-unspecified.
+<p>A namespace value is either transparent or opaque. A transparent namespace has an associated
+identifying string value. An opaque namespace has an associated unique identifier of unspecified
+representation.
 
 <IMPL>
 <INCLUDE file="ast.sml" name="datatype NAMESPACE">
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
 
-<p>Any two transparent namespaces with the same identifier string are considered equal.  An opaque
-namespace is specified to be equal only to itself. This is also true in the SML implementation as no
-two opaque namespaces are ever given the same system-assigned identifier.
+<p>A namespace value is an instance of the ES4 class **__ES4__::Namespace**, and can be defined as
+a fixture in a scope using a **namespace** definition.
 
-<p>Namespace values are instances of the ES4 class **__ES4__::Namespace**, and can be defined as
-fixtures in a scope using a **namespace** definition.
+<p>Any two transparent namespaces with equal identifying strings are considered equal. Any two
+opaque namespaces with equal unique identifiers are equal. 
 
-<FIXME>This section, and the remainder of the "values" document, is incomplete
+<p>Each fixture for an opaque namespace is assigned a new unique namespace identifier by the
+execution context, and the same namespace identifier is never assigned to more than one opaque
+namespace fixture in a single execution context.
+
+=== Class Values ===
+
+<p>A class value is an object holding the semantic description of a class definition. Each class
+definition corresponds to zero or more class values. If a class definition is not type-parametric,
+it corresponds to exactly one class value, and that class value is called //the value of// the
+class.
+
+<IMPL>
+<INCLUDE file="ast.sml" name="and CLS">
+
+<p>The semantic definition of a class **C** lists //class fixtures// and //instance fixtures//. The
+class fixtures of the semantic definition of **C** describe the fixtures found on the class object
+**C**. In this way, the class fixtures effectively describe an implicit anonymous //meta-class//
+that the class object **C** is an instance of.
+
+<FIXME>This tying-knots stuff at the top of the type hierarchy is always a little subtle and hard to
+word. Suggestions welcome.
+
+==== Instance Fixtures ====
+
+<p>In addition to class fixtures, the semantic value of a class definition holds a description of
+//instance fixtures//. These describe the fixed structure of //instances// of the class.
+
+<p>An object is an //instance// of a class value **C** if the object's tag is ''InstanceTag'' and the
+instance type in the tag is the ''InstanceType'' found in the semantic class definition held in **C**.
+
+<p>If an object **X** is an instance of a class value **C**, then every for every //instance
+fixture// **F** in the semantic class value held in **C**, a property **P** exists on **X**
+satisfying the following conditions:
+<ul>
+<li>**P** is not ''Removable''.
+<li>**P** is not ''Enumerable''.
+<li>**P** is ''Fixed''.
+<li>If **F** is declared as **const** then **P** is not ''Writable''. Otherwise **P** is ''Writable''.
+<li>The type of **F** is the type of **P**.
+</ul>
+
+<p>In this way the instance fixtures in the semantic class value associated with the class
+object **C** describe the fixed properties that exist in every instance of **C**.
+
+=== Interface Values ===
+
+<FIXME>fill in
 
 === Function Values ===
 
-<p>Function values represent the definition of the function object, including
-the internal procedure for invoking the function, an optional reference to
-the **this** object, and the lexical scope of the function. 
+<FIXME>fill in
 
-<IMPL>
-<pre>
-type FUN_CLOSURE = { function: FUNCTION
-                   , this: OBJECT option
-                   , env:  SCOPE }
-</pre>
+=== Type Values ===
 
-<p>The function definition contains a name, a block, parameters, 
-default parameter value expressions, variables and a type. The
-type of a function value is derived from the surface form of the 
-function. The precise translation of the surface syntax to the 
-abstract function definition is given in //section ..: Syntax//
+<FIXME>fill in
 
-<IMPL>
-<pre>
-datatype FUNCTION =
-         Function of { name: FUNC_NAME
-                     , block: BLOCK
-                     , param: HEAD
-                     , vars: HEAD
-                     , defaults: EXPR list
-                     , ty: TYPE }
-</pre>
+=== Generator Values ===
 
-== Conversions ==
-
-<p>There are three object types that have implicit conversions from values
-of other types. These types are **boolean**, **double** and **string**.
-
-=== Boolean Conversions ===
-
-<p>Conversion to the **boolean** type results in **false** if the original value is one of: **false**, **undefined**,
-**null**, **+0**, **-0**, or **NaN**. Otherwise the result is **true**.
-
-<IMPL>
-<pre>
-fun toBoolean (v:VALUE) : bool =
-    case v of
-        Mach.Undefined => false
-      | Mach.Null => false
-      | Mach.Object (Mach.Obj ob) =>
-        let
-            val {magic, ...} = ob
-        in case !magic of
-            SOME (Mach.Boolean b) => b
-          | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
-                                         orelse
-                                         Real64.isNan x)
-          | SOME (Mach.Decimal x) => not ((x = Decimal.zero)
-                                          orelse
-                                          (Decimal.isNaN x))
-          | SOME (Mach.String s) => not (Ustring.stringLength s = 0)
-          | _ => true
-        end
-</pre>
-
-=== Double Conversions ===
-
-<FIXME>This section is incomplete
-
-<p>Conversion to double...
-
-<IMPL>
-<pre>
-and toDouble (v:Mach.VAL)
-    : Real64.real =
-    let
-        fun NaN _ = (Real64.posInf / Real64.posInf)
-        fun zero _ = (Real64.fromInt 0)
-        fun one _ = (Real64.fromInt 1)
-    in
-        case v of
-            Mach.Undef => NaN ()
-          | Mach.Null => zero ()
-          | Mach.Object (Mach.Obj ob) =>
-            let
-               val {magic, ...} = ob
-            in case (!magic) of
-                (SOME (Mach.Double d)) => d
-              | (SOME (Mach.Boolean false)) => zero ()
-              | (SOME (Mach.Boolean true)) => one ()
-              | (SOME (Mach.String us)) => stringToDouble (us)
-              | _ => zero ())
-            end
-    end
-</pre>
-
-==== String to Double ====
-
-<FIXME>This section is incomplete
-
-<IMPL>
-<pre>
-fun stringToDouble (ustr)
-    : Real64.real =
-    let
-        fun NaN _ = (Real64.posInf / Real64.posInf)
-    in case Real64.fromString ustr of  (* FIXME I doubt this matches ES3 9.3.1 *)
-        SOME r => r
-      | NONE => NaN ()
-    end
-</pre>
-
-=== Int32 Conversions ===
-
-<FIXME>This section is incomplete
-
-<IMPL>
-<pre>
-and toInt32 (regs:Mach.REGS)
-            (v:Mach.VAL)
-    : Real64.real =
-    let
-        val v' = toNumeric regs v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then 0.0
-        else
-            let
-                val l31 = IntInf.pow (2, 31)
-                val l32 = IntInf.pow (2, 32)
-                val v'' = IntInf.mod (signFloorAbs v', l32)
-            in
-                Real64.fromLargeInt (if LargeInt.>= (v'', l31)
-                                     then LargeInt.- (v'', l32)
-                                     else v'')
-            end
-    end
-</pre>
-
-=== UInt Conversions ===
-
-<FIXME>This section is incomplete
-
-<IMPL>
-<pre>
-and toUIntNN (regs:Mach.REGS)
-             (nn:int)
-             (v:Mach.VAL)
-    : Real64.real =
-    let
-        val v' = toNumeric regs v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then 0.0
-        else
-            let
-                val mask = IntInf.pow (2, nn)
-            in
-                Real64.fromLargeInt (LargeInt.mod (signFloorAbs v', mask))
-            end
-    end
-</pre>
-
-=== String Conversions ===
-
-<FIXME>This section is incomplete
-
-<p> The undefined value **undefined** value converts to string **"undefined"**.
-
-<p> The null value **null** value converts to string **"null"**.
-
-<p> The boolean values **true** and **false** convert to strings **"true"** and **"false"**, respectively.
-
-<p> The object values are converted to string values by ...
-
-==== Double to String ====
-
-<p> The double values are converted to string values by the following ''NumberToString'' function
-
-<IMPL>
-
-=== Primitive Conversions ===
-
-<p>Conversion to a primitive value results in the original value if that value is a
-primitive value, otherwise the values default value is the result.
-
-
-<IMPL>
-<pre>
-and toPrimitive (regs:Mach.REGS)
-                (v:Mach.VAL) 
-                (hint:Ustring.STRING)
-    : Mach.VAL =
-    if isPrimitive v
-    then v
-    else defaultValue regs (needObj regs v) hint
-</pre>
-
-<p>The default value of an object results from calling either the **valueOf** or
-**toString** functions on that object. The order that these functions are called
-depends on the preferred type of the result as indicated by the optional hint string
-argument.
-
-<pre>
-and defaultValue (regs:Mach.REGS)
-                 (obj:Mach.OBJ)
-                 (preferredType:Ustring.STRING)
-    : Mach.VAL =
-    let
-        val (na, nb) = if preferredType = Ustring.String_
-                       then (Name.nons_toString, Name.nons_valueOf)
-                       else (Name.nons_valueOf, Name.nons_toString)
-        val va = if hasValue obj na
-                 then evalNamedMethodCall regs obj na []
-                 else Mach.Undef
-        val vb = if not (isPrimitive va) andalso hasValue obj nb
-                 then evalNamedMethodCall regs obj nb []
-                 else va
-    in
-        if isPrimitive vb
-        then vb
-        else (throwTypeErr regs ["defaultValue"]; dummyVal)
-    end
-</pre>
-
-<pre>
-and isPrimitive (v:Mach.VAL)
-    : bool =
-    Mach.isNull v orelse
-    Mach.isUndef v orelse
-    Mach.isNumeric v orelse
-    Mach.isString v orelse
-    Mach.isBoolean v
-</pre>
-
+<FIXME>fill in
