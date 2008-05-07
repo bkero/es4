@@ -281,6 +281,7 @@ fun normalizeRefs (env:Ast.RIBS)
       | Ast.TypeIndexReferenceType (t, _) => error ["TypeIndexReferenceType on non-ArrayType: ", LogErr.ty t]
       | Ast.TypeNameReferenceType (Ast.RecordType fields, nameExpr) => 
         (case List.find
+                  (* FIXME: nameExpr is *not* resolved at defn time *)
                   (fn { name, ty } => nameExpressionEqual name nameExpr)
                   fields of
              NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
@@ -478,16 +479,46 @@ fun makeTypeName (id:Ast.IDENTIFIER) : Ast.TYPE =
     Ast.TypeName (makeNameExpression id, NONE)
 
 
-(* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
- * All are normalized, so no TypeNames in args or ty, just TypeVarFixtureRefs.
- *)
+fun nameExpressionNonceEqual (name1, nonce1) (name2, nonce2) =
+    nameExpressionEqual name1 name1 andalso nonce1 = nonce2
 
 (* 
  * FIXME: Cormac, I am pretty sure the use of unqualified names here
  * is not quite right; please discuss details with me sometime -Graydon
  *)
 
-fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : Ast.TYPE =
+(* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
+ *)
+
+type SUBST = (Ast.NAME_EXPRESSION * Ast.NONCE option) * Ast.TYPE
+
+fun substTypes (s : SUBST list) 
+               (ty: Ast.TYPE) 
+    : Ast.TYPE =
+    case ty of
+        Ast.TypeName tn =>
+        (case List.find (fn (tn', ty) => nameExpressionNonceEqual tn tn') s of
+             NONE => ty
+           | SOME (_,ty) => ty)
+      (* FIXME: think about funny name collisions, and alpha-renaming given nonces *)
+      | _ => mapTyExpr (substTypes s) ty
+
+(*
+
+and FUNCTION_TYPE =
+    { typeParams : IDENTIFIER list,
+      thisType   : TYPE,
+      params  : TYPE list,
+      minArgs : int,
+      hasRest : bool,
+      result  : TYPE option    (* NONE indicates void return type *)
+    }
+
+
+fun substTypes (typenames: (NAME_EXPRESSION * NONCE option) list) 
+               (args:Ast.TYPE list) 
+               (ty:Ast.TYPE) 
+    : Ast.TYPE =
     case ty of
 (*
         Ast.LamType { params, body } =>
@@ -499,7 +530,8 @@ fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : As
             Ast.LamType { params=uniqParams, body=body'' }
         end
         *)
-        Ast.TypeName (Ast.UnqualifiedName { identifier=id', ... }, _) =>
+        Ast.TypeName tn =>
+        case List.find (nameExpressionEquals tn) 
         let fun lookup ids args =
                 case (ids, args) of
                     ([],[]) => ty
@@ -513,7 +545,7 @@ fun substTypes (ids:Ast.IDENTIFIER list) (args:Ast.TYPE list) (ty:Ast.TYPE) : As
         end
       | _ => mapTyExpr (substTypes ids args) ty
 
-
+*)
 (* ----------------------------------------------------------------------------- *)
 (* Perform beta-reduction of all AppTypes applied to a LamType.
  *)
@@ -712,18 +744,26 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
               hasRest  = hasRest2,
               minArgs  = minArgs2}) 
         => 
-        (* FIXME: handle typeParams *)
         let val min = Int.min( length params1, length params2 ) 
+            (* set up a substitution to alpha-rename typeParams to be identical *)
+            val subst = substTypes 
+                            (ListPair.map 
+                                 (fn (id1, id2) =>
+                                     ((makeNameExpression id1, NONE),
+                                      Ast.TypeName (makeNameExpression id2, NONE)))
+                                 (typeParams1, typeParams2))
         in
+            length typeParams1 = length typeParams2
+          andalso
             (case (result1, result2) of
-                 (SOME t1, SOME t2) => subType extra t1 t2
+                 (SOME t1, SOME t2) => subType extra t1 (subst t2)
                | (NONE,    NONE)    => true)
           andalso
             equivType extra thisType1 thisType2
           andalso    
             minArgs1 <= minArgs2 
           andalso
-            ListPair.all (fn (t1,t2) => equivType extra t1 t2)  
+            ListPair.all (fn (t1,t2) => equivType extra t1 (subst t2))  
                          (List.take(params1, min),
                           List.take(params2, min))
           andalso
@@ -751,6 +791,7 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         (nameEq (#name it1) (#name it2) andalso
          (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
         orelse 
+        (* FIXME: is this right for generic classes? *)
         (List.exists (fn sup => subType extra sup ty2) 
                      (#superTypes it1))
 
@@ -766,12 +807,7 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
       | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
             List.exists (nameEq name) [ Name.public_Function, 
                                         Name.public_Object ]
-        
-      (* ? *)
-(*
-      | (Ast.TypeVarFixtureRef nonce1, Ast.TypeVarFixtureRef nonce2) => 
-        (nonce1 = nonce2)
-*)
+  
       | _ => false
 
 

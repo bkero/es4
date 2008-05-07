@@ -154,8 +154,7 @@ datatype PRAGMA =
      and NAMESPACE_EXPRESSION =
          Namespace of NAMESPACE
 *)
-
-                            
+                       
      and FUNC_NAME_KIND =
          Ordinary
        | Operator

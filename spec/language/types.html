@@ -14,11 +14,9 @@ SCOPE:                      The dynamic type system
 </pre>
 <hr>
 
-<FIXME> typeParams in function type
-<FIXME> References to nominal types, INSTANCE_TYPE, typedefs, etc
-<FIXME> Generic type application
 <FIXME> Cross-check with normative grammer on terminology, etc
-<FIXME> Introduce ''..'' meta-notation somewhere
+<FIXME> Double-check that the specification and implementation of the
+subtype relation are consistent.
 
 <p>ECMAScript includes a gradual type system that supports a range of
 typing disciplines, including dynamically-typed code (as in ES3),
@@ -77,6 +75,10 @@ different types for some initial array entries, as in the type
 ''[Number, Number, ...String]'', which says that the array has at
 least two entries, that these entries are both ''Number'' objects, and that
 any additional entries are ''String'' objects.
+
+<NOTE> Here, "''...''" represents concrete syntax, but "''..''" is
+meta-syntax, and so "''S1, .., Sn''" represents a sequence of
+zero-or-more types.
 
 <p>A union type, such as ''(Number | String)'', which describes both
 ''Number'' and ''String'' values.
@@ -245,10 +247,6 @@ make the above rule applicable.
 .., S_n, ..., S}]''.  The supertype demands one fewer element in the
 array than the subtype does.  For example, ''[Number, String, String,
 ...String]'' is a subtype of ''[Number, ...String]'', via transitivity.
-
-<NOTE> Here, "''...''" represents concrete syntax, but "''..''" is
-meta-syntax, and so "''S1, .., Sn''" represents a sequence of
-zero-or-more types.
 
 <p> An array type ''[S1, .., Sn, ..., S]'' is a subtype of ''[T1,
 .., Tn, ..., T]'' if ''S'' is equivalent to ''T'' and if each ''S_i'' is
@@ -440,7 +438,7 @@ In the scope of a generic type definition
     type X.&lt;Y1, .., Yn> = T
 }}}
 
-the type application ''X.&lt;<S1, .., Sn>'' is
+the type application ''X.&lt;S1, .., Sn>'' is
 equivalent to the type ''T[Y1:=S1, .., Yn:=Sn]''.
 
 <p>A //type name reference type// of the form ''T.name'' is equivalent to the type
@@ -452,31 +450,41 @@ and 1 <LEQ> i <LEQ> n. If i <GT> n, then ''T[i]'' is equivalent to ''S''.
 
 == Type Normalization ==
 
-<p>At compile time, each type ''T'' in the program source code is
-//normalized// into a canonical or representative element of its
-equivalence class.  That is, the type ''T'' is considered equivalent
-(under the equivalence relation defined above) to some collection of
-types, and the normalization process replaces ''T'' with some
-representative element of this equivalence class. In particular, if
-two types ''T1'' and ''T2'' are equivalent, then normalization will
-convert them both into an identical normalized type.
+<p>Each type ''T'' is considered equivalent (under the equivalence
+relation defined above) to some collection of types. The process of
+//type normalization// converts a type in the program source code into
+a canonical or representative element of its equivalence class.  In
+particular, if two types ''T1'' and ''T2'' are equivalent, then
+normalization will convert them both into an identical normalized
+type.
 
 <p>This //normalization// process is necessary to efficiently support
 generics.
 
 <p>A //normalized type// is one that is the result of this
-normalization process. Normalized types do not (1) include references to
-type definitions, (2) type name reference types, or (3) type index
-reference types.
+normalization process. Normalized types do not include any of the
+following:
 
-<FIXME>References to nominal types
+<UL>
+  <LI> type name reference types
+  <LI> type index reference types
+  <LI>  type names that refer to nominal types (instance
+types are used instead)
+  <LI> type names that refer to type  definitions (which are inlined
+  instead)
+  </UL>
+  
+Normalized types may include type names that refer to generic type
+parameters; these references include a nonce.
+
+<p>The type normalization code is not presented here.
 
 == Implementation of the Subtype Relation ==
 
-<p>
-The subtype relation is defined by the following
-function ''subType''. This function takes an additional argument
-called ''extra'', which is later used to extend the subtype relation with
+<p> The subtype relation is defined by the following function
+''subType''. This function assumes that its argument types are already
+normalized. This function takes an additional argument called
+''extra'', which is later used to extend the subtype relation with
 additional rules (for example, to define the compatible-subtyping
 relation below).
 
@@ -487,9 +495,8 @@ of all the other rules for subtyping.
 <IMPL>
 <INCLUDE file="type.sml" name="fun subType">
 
-== Type Equivalence ==
+== Implementation of the Type Equivalence Relation ==
 
-Two types are //equivalent// if they are both subtypes of each other.
 The function ''equivType'' below checks type equivalence in a
 straightforward manner by checking subtyping in both directions, but
 more efficient implementations are of course possible. Like
