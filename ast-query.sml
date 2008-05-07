@@ -84,7 +84,7 @@ fun needInstanceType (t:Ast.TYPE)
     end
 
 fun needFunctionType (t:Ast.TYPE)
-    : Ast.FUNC_TYPE =
+    : Ast.FUNCTION_TYPE =
     let 
         fun isFunctionType ty = 
             case ty of
@@ -102,7 +102,7 @@ fun resultTyOfFuncTy t =
 
 val minArgsOfFuncTy = (#minArgs) o needFunctionType
 
-fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a) 
+fun queryFuncTy (q:Ast.FUNCTION_TYPE -> 'a) 
                 (funcTy:Ast.TYPE)                 
     : 'a =
     q (needFunctionType funcTy)

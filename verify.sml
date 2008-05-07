@@ -515,8 +515,8 @@ and verifyExpr2 (env:ENV)
                   | Ast.LiteralNamespace _ => NamespaceType
                   | Ast.LiteralRegExp _    => RegExpType
             end
-
-          | Ast.CallExpr {func, actuals} =>
+          | Ast.CallExpr {func, actuals} => Ast.AnyType
+(* FIXME: get calls working
             let
                 val t = verifySub func
                 val args = verifySubList actuals
@@ -549,7 +549,7 @@ and verifyExpr2 (env:ENV)
 		       *)
                   | _ => (warning ["ill-typed call to type ", LogErr.ty t]; anyType)
             end
-
+*)
             (* FIXME: what is this? *)
           | Ast.ApplyTypeExpr { expr, actuals } =>
             let
@@ -580,8 +580,8 @@ and verifyExpr2 (env:ENV)
           | Ast.ObjectIndexReference { object, index, loc } =>
             (verifySub object; 
              verifySub index)
-
-          | Ast.ObjectNameReference { object, name, loc } =>
+          | Ast.ObjectNameReference { object, name, loc } => Ast.AnyType
+(* FIXME: get working
             let
                 val _ = LogErr.setLoc loc
                 val t = verifySub object
@@ -606,7 +606,7 @@ and verifyExpr2 (env:ENV)
                   | _ => (warning ["ObjectNameReference on non-object type: ", LogErr.ty t]; 
                           anyType)
             end
-
+*)
 (*
 
 

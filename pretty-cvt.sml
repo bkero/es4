@@ -218,7 +218,7 @@ structure PrettyCvt = struct
      | cvtTYPE (UnionType ls431) = PrettyRep.Ctor ("UnionType", SOME (PrettyRep.List (List.map (fn x430 => 
                                                                                                       cvtTYPE x430
                                                                                                ) ls431)))
-     | cvtTYPE (FunctionType x437) = PrettyRep.Ctor ("FunctionType", SOME (cvtFUNC_TYPE x437))
+     | cvtTYPE (FunctionType x437) = PrettyRep.Ctor ("FunctionType", SOME (cvtFUNCTION_TYPE x437))
      | cvtTYPE (NonNullType x440) = PrettyRep.Ctor ("NonNullType", SOME (cvtTYPE x440))
      | cvtTYPE (AppType(x443, ls445)) = PrettyRep.Ctor ("AppType", SOME (PrettyRep.Tuple [cvtTYPE x443, 
           PrettyRep.List (List.map (fn x444 => cvtTYPE x444
@@ -463,31 +463,29 @@ structure PrettyCvt = struct
    and cvtINITS ls1010 = PrettyRep.List (List.map (fn (x1007, x1008) => PrettyRep.Tuple [cvtFIXTURE_NAME x1007, 
                                                          cvtEXPRESSION x1008]
                                                   ) ls1010)
-   and cvtINSTANCE_TYPE {name=x1014, typeParams=ls1016, typeArgs=ls1021, nonnullable=b1025, 
+   and cvtINSTANCE_TYPE {name=x1014, typeArgs=ls1016, nonnullable=b1020, typeParams=ls1022, 
           superTypes=ls1027, ty=x1031, dynamic=b1032} = PrettyRep.Rec [("name", 
-          cvtNAME x1014), ("typeParams", PrettyRep.List (List.map (fn x1015 => 
-                                                                         cvtIDENTIFIER x1015
-                                                                  ) ls1016)), 
-          ("typeArgs", PrettyRep.List (List.map (fn x1020 => cvtTYPE x1020
-                                                ) ls1021)), ("nonnullable", 
-          PrettyRep.Bool b1025), ("superTypes", PrettyRep.List (List.map (fn x1026 => 
-                                                                                cvtTYPE x1026
-                                                                         ) ls1027)), 
-          ("ty", cvtTYPE x1031), ("dynamic", PrettyRep.Bool b1032)]
+          cvtNAME x1014), ("typeArgs", PrettyRep.List (List.map (fn x1015 => 
+                                                                       cvtTYPE x1015
+                                                                ) ls1016)), 
+          ("nonnullable", PrettyRep.Bool b1020), ("typeParams", PrettyRep.List (List.map (fn x1021 => 
+                                                                                                cvtIDENTIFIER x1021
+                                                                                         ) ls1022)), 
+          ("superTypes", PrettyRep.List (List.map (fn x1026 => cvtTYPE x1026
+                                                  ) ls1027)), ("ty", cvtTYPE x1031), 
+          ("dynamic", PrettyRep.Bool b1032)]
    and cvtFIELD {kind=x1048, name=x1049, init=x1050} = PrettyRep.Rec [("kind", 
           cvtVAR_DEFN_TAG x1048), ("name", cvtNAME_EXPRESSION x1049), ("init", 
           cvtEXPRESSION x1050)]
    and cvtFIELD_TYPE {name=x1058, ty=x1059} = PrettyRep.Rec [("name", cvtNAME_EXPRESSION x1058), 
           ("ty", cvtTYPE x1059)]
-   and cvtFUNC_TYPE {typeParams=ls1066, thisType=x1070, params=ls1072, hasRest=b1076, 
-          minArgs=n1077, result=opt1079} = PrettyRep.Rec [("typeParams", PrettyRep.List (List.map (fn x1065 => 
-                                                                                                         cvtIDENTIFIER x1065
-                                                                                                  ) ls1066)), 
-          ("thisType", cvtTYPE x1070), ("params", PrettyRep.List (List.map (fn x1071 => 
-                                                                                  cvtTYPE x1071
-                                                                           ) ls1072)), 
-          ("hasRest", PrettyRep.Bool b1076), ("minArgs", PrettyRep.Int n1077), 
-          ("result", 
+   and cvtFUNCTION_TYPE {typeParams=ls1066, thisType=x1070, params=ls1072, 
+          minArgs=n1076, hasRest=b1077, result=opt1079} = PrettyRep.Rec [("typeParams", 
+          PrettyRep.List (List.map (fn x1065 => cvtIDENTIFIER x1065
+                                   ) ls1066)), ("thisType", cvtTYPE x1070), 
+          ("params", PrettyRep.List (List.map (fn x1071 => cvtTYPE x1071
+                                              ) ls1072)), ("minArgs", PrettyRep.Int n1076), 
+          ("hasRest", PrettyRep.Bool b1077), ("result", 
        (case opt1079 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1078 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE x1078))

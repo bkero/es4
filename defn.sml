@@ -1736,8 +1736,8 @@ and defExprs (env:ENV)
 *)
 
 and defFuncTy (env:ENV)
-              (ty:Ast.FUNC_TYPE)
-    : Ast.FUNC_TYPE =
+              (ty:Ast.FUNCTION_TYPE)
+    : Ast.FUNCTION_TYPE =
         let
             val {typeParams,params,result,thisType,hasRest,minArgs} = ty
             val params' = map (defTypeExpr env) params

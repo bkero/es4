@@ -252,17 +252,12 @@ datatype TYPE =
        | RecordType of (NAME_EXPRESSION * TYPE) list
        | ArrayType  of TYPE list
        | UnionType  of TYPE list
-       | FunctionType of { typeParams: IDENTIFIER list,
-                           thisType: TYPE,
-                           params: TYPE list,
-                           minArgs: int, 
-                           hasRest: bool,
-                           result: TYPE option       (* NONE indicates void return type *)
-                         }
+       | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
+       | TypeName of (NAME_EXPRESSION * NONCE option)  
 
-       | NominalType of NAME
+       | InstanceType of INSTANCE_TYPE
        | TypeNameReferenceType  of (TYPE * NAME_EXPRESSION)
        | TypeIndexReferenceType of (TYPE * int)
 
@@ -275,10 +270,10 @@ datatype TYPE =
          NullType
        | UndefinedType
        | AnyType
-       | RecordType of FIELD_TYPE list   
+       | RecordType of FIELD_TYPE list    (* TODO *)
        | ArrayType of TYPE list
        | UnionType of TYPE list
-       | FunctionType of FUNC_TYPE
+       | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
@@ -288,6 +283,12 @@ datatype TYPE =
 
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 (*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
+
+     and FIELD_TYPE =
+           { name: NAME_EXPRESSION,
+             ty: TYPE }
+
+
 *)
 
 
@@ -494,13 +495,16 @@ withtype
   In the above AST, typeArgs is implicitly ["X"]
 *)
      and INSTANCE_TYPE =
-          {  name: NAME,
-             typeParams: IDENTIFIER list,      
-             typeArgs: TYPE list,
-             nonnullable: bool,           (* redundant, ignored in verify.sml *)
-             superTypes: TYPE list,  (* redundant, ignored in verify.sml *)
-             ty: TYPE,               (* redundant, ignored in verify.sml *)
-             dynamic: bool }              (* redundant, ignored in verify.sml *)
+          {  name : NAME,
+             typeArgs : TYPE list,
+
+             (* following fields cached for fast evaluation *)
+             nonnullable : bool,   
+             typeParams : IDENTIFIER list,      
+             superTypes : TYPE list,
+             ty : TYPE,             
+             dynamic : bool 
+          }       
 
      and FIELD =
            { kind: VAR_DEFN_TAG,
@@ -511,13 +515,13 @@ withtype
            { name: NAME_EXPRESSION,
              ty: TYPE }
 
-     and FUNC_TYPE =
+     and FUNCTION_TYPE =
          { typeParams : IDENTIFIER list,
-           thisType: TYPE,
-           params: TYPE list,
-           hasRest: bool,         (* if true, the last elem in params is array type *)
-           minArgs: int,          (* necessary because some of params can have defaults *)
-           result: TYPE option    (* NONE => void *)
+           thisType   : TYPE,
+           params  : TYPE list,
+           minArgs : int,          
+           hasRest : bool,         
+           result  : TYPE option    (* NONE indicates void return type *)
          }
 
      and FUNC_DEFN =

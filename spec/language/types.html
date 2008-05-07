@@ -57,6 +57,8 @@ subtype relation is included below.
 
 == The Type Language ==
 
+=== The External Type Language ===
+
 <p>ES4 includes the following types:
 
 <p>The type ''null'', populated only by the value ''null''.
@@ -145,12 +147,26 @@ introduces a binding for ''Vector'', but ''Vector'' itself is not actually a
 type, since it requires additional type parameters to become a
 normal type, as in ''Vector.&lt;Number>''.
 
+<p>The type language includes //type names//, which can refer to
+nominal types (ie, class or interface types), type definitions, or to
+type variables bound by a generic parameter list, for example, the
+type variable ''X'' in the following class definition:
 
-<p> Internally, the reference implementation also introduces the
-following types:
+{{{
+    class Vector.<X> {
+        ...
+    }
+}}}
 
-<p> A //NominalType// is a reference to a class or interface
-definition.
+To help avoid name collision during type normalization (described
+below), each type variable bound in generic parameter list is assigned
+an associated //nonce//, or unique integer, and any corresponding
+reference to that type variable includes that nonce.  References to
+nominal types or to types introduced via type definitions do not
+include a nonce.
+
+
+=== The Internal Representation of Types ===
 
 <p> To support destructuring assignment, the reference implementation
 internally uses the following two additional type forms:
@@ -165,8 +181,24 @@ type and ''i'' is an integer. The type ''T'' should resolve to an
 array type whose entry at index ''i'' is some type ''S'', and ''T[i]''
 denotes that type ''S''.
 
+<p> Internally, the reference implementation also resolves type names
+that refer to nominal types into an //instance type//. Essentially, an
+instance type includes the Name of a particular nominal type, plus any
+type arguments to which that nominal type is being applied. (This type
+argument list is empty for references to non-generic nominal types.)
+
+<p> In addition, instance types do not include null, and so a type
+name that refers to a nullable class ''C'' would be expanded into a
+union type that includes ''null'' explicitly in addition to an
+instance type for ''C''. The ''INSTANCE_TYPE''
+implementation type described below includes additional fields that
+facilitate efficient evaluation, and these are described elsewhere.
+
+<FIXME>Additional  ''INSTANCE_TYPE'' fields described where?
 <IMPL>
 <INCLUDE file="ast.sml" name="datatype TYPE">
+<INCLUDE file="ast.sml" name="and FUNCTION_TYPE">
+<INCLUDE file="ast.sml" name="and INSTANCE_TYPE">
 
 <FIXME>The above datatype is commented out in the RI, and so may not
 yet be consistent with the following code.

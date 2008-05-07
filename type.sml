@@ -169,8 +169,8 @@ fun nameExpressionEqual (name1 : Ast.NAME_EXPRESSION)
  * ----------------------------------------------------------------------------- *)
 
 fun mapFuncTy (f:(Ast.TYPE -> Ast.TYPE))
-              (fty:Ast.FUNC_TYPE)
-    : Ast.FUNC_TYPE = 
+              (fty:Ast.FUNCTION_TYPE)
+    : Ast.FUNCTION_TYPE = 
     let
         val { typeParams, params, result, thisType, hasRest, minArgs } = fty
     in
@@ -242,12 +242,14 @@ fun foreachTyExpr (f:Ast.TYPE -> unit) (ty:Ast.TYPE) : unit =
 (* FIXME: this is dubious: unlike many other contexts, when it comes to fields we 
  * consider an unqualified name to be in public::, not in default-declaration-namespace.
  * Possibly fix/change this. It's subtle.
- *)
+ * CF: Post-defn, no UnqualifiedName, so a non-issue, I believe.
+ *
 fun nameExprToFieldName (env:Ast.RIBS) (Ast.QualifiedName {namespace, identifier}) = 
     { ns = Fixture.resolveNamespaceExpr env namespace, id = identifier }
+
   | nameExprToFieldName (env:Ast.RIBS) (Ast.UnqualifiedName { identifier, ... }) =
     { ns = Name.publicNS, id = identifier }
-        
+*)        
 
 (* ----------------------------------------------------------------------------- *)
 
@@ -272,22 +274,17 @@ fun normalizeRefs (env:Ast.RIBS)
                     else 
                         if length arr > 0
                         then List.last arr
-                        else Ast.AnyType
+                        else Ast.AnyType (* FIXME: do we allow 0-length array types? *)
         in
             normalizeRefs env t
         end
       | Ast.TypeIndexReferenceType (t, _) => error ["TypeIndexReferenceType on non-ArrayType: ", LogErr.ty t]
       | Ast.TypeNameReferenceType (Ast.RecordType fields, nameExpr) => 
-        let                    
-            val fname = nameExprToFieldName env nameExpr
-            fun f [] = error ["TypeNameReferenceType on unknown field: ", LogErr.name fname]
-              | f ({name,ty}::fields) = if (nameExprToFieldName env name) = fname 
-                                        then ty
-                                        else f fields
-            val t = f fields
-        in
-            normalizeRefs env t
-        end
+        (case List.find
+                  (fn { name, ty } => nameExpressionEqual name nameExpr)
+                  fields of
+             NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
+           | SOME { name, ty } => normalizeRefs env ty)
       | Ast.TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
       | x => mapTyExpr (normalizeRefs env) x
                                    
