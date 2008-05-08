@@ -185,7 +185,7 @@
 
             this[name] = value;
             magic::setPropertyIsDontEnum(this, name, !enumerable);
-            magic::setPropertyIsDontDelete(this, name, !removable);
+            magic::setPropertyIsRemovable(this, name, removable);
             magic::setPropertyIsReadOnly(this, name, !writable);
         }
     }

@@ -338,7 +338,7 @@ fun allocRib (regs:Mach.REGS)
                 else Mach.setRib obj (f @ (Mach.getRib obj))
         val {scope, ...} = regs
         val methodScope = extendScope scope obj Mach.ActivationScope                 
-        val attrs0 = { dontDelete = true,
+        val attrs0 = { removable = false,
                        dontEnum = true,
                        readOnly = true,
                        fixed = true }
@@ -396,7 +396,7 @@ fun allocRib (regs:Mach.REGS)
                             allocProp "method"
                                       { ty = normalize regs ty,
                                         state = p,
-                                        attrs = { dontDelete = true,
+                                        attrs = { removable = false,
                                                   dontEnum = true,
                                                   readOnly = readOnly,
                                                   fixed = true } }
@@ -411,7 +411,7 @@ fun allocRib (regs:Mach.REGS)
                                         state = if readOnly
 						then Mach.UninitProp
 						else valAllocState regs ty,
-                                        attrs = { dontDelete = true,
+                                        attrs = { removable = false,
                                                   dontEnum = true, 
                                                   readOnly = readOnly,
                                                   fixed = true } }
@@ -430,7 +430,7 @@ fun allocRib (regs:Mach.REGS)
                                       { ty = evalTy regs ty,
                                         state = Mach.VirtualValProp { getter = getFn,
                                                                       setter = setFn },
-                                        attrs = { dontDelete = true,
+                                        attrs = { removable = false,
                                                   dontEnum = true, 
                                                   readOnly = true,
                                                   fixed = true } }
@@ -1010,7 +1010,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                     let
                         val prop = { state = Mach.ValProp v,
                                      ty = Ast.AnyType,
-                                     attrs = { dontDelete = false,
+                                     attrs = { removable = true,
                                                dontEnum = false,
                                                readOnly = false,
                                                fixed = false } }
@@ -2738,7 +2738,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                                else Ast.AnyType)
                 val prop = { ty = ty,
                              state = Mach.ValProp v,
-                             attrs = { dontDelete = false,
+                             attrs = { removable = true,
                                        dontEnum = false,
                                        readOnly = false,
                                        fixed = false } }
@@ -2839,7 +2839,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 val (n:Ast.NAME) = evalNameExpr regs name
                 val v = evalExpr regs init
                 val ty = searchFieldTypes n tyExprs
-                val attrs = { dontDelete = const,
+                val attrs = { removable = not const,
                               dontEnum = false,
                               readOnly = const,
                               fixed = false }
@@ -3137,17 +3137,6 @@ and evalCrement (regs:Mach.REGS)
         else v'
     end        
         
-and evalDeleteOp (regs: Mach.REGS)
-                 (expr: Ast.EXPRESSION)
-    : Mach.VALUE =
-    let
-        val (_, (Mach.Obj {props, ...}, name)) = resolveRefExpr regs expr true
-    in
-        if (#dontDelete (#attrs (Mach.getProp props name)))
-        then newBoolean regs false
-        else (Mach.delProp props name; newBoolean regs true)		    
-    end
-
 (* SPEC
 
 fun evalUnaryExpr (env: ENV)
@@ -3166,14 +3155,14 @@ and evalUnaryOp (regs:Mach.REGS)
     let
     in
         case unop of
-            Ast.Delete =>
+            Ast.Delete => 
             let
                 val (_, (Mach.Obj {props, ...}, name)) = resolveRefExpr regs expr false
             in
                 if (Mach.hasProp props name)
-                then if (#dontDelete (#attrs (Mach.getProp props name)))
-                     then newBoolean regs false
-                     else (Mach.delProp props name; newBoolean regs true)
+                then if (#removable (#attrs (Mach.getProp props name)))
+                     then (Mach.delProp props name; newBoolean regs true)
+                     else newBoolean regs false
                 else newBoolean regs true
             end
 
@@ -4496,7 +4485,7 @@ and bindArgs (regs:Mach.REGS)
             (Mach.addProp props Name.arguments { state = Mach.ValListProp args,  
                                      (* args is a better approximation than finalArgs *)
                                                  ty = Name.typename Name.public_Object,
-                                                 attrs = { dontDelete = true,
+                                                 attrs = { removable = false,
                                                            dontEnum = true,
                                                            readOnly = false,
                                                            fixed = true } };
@@ -5117,11 +5106,11 @@ and setPrototype (regs:Mach.REGS)
 	val Mach.Obj { props, ... } = obj
 	val n = Name.public_prototype
 	val prop = { ty = Ast.AnyType,
-                     state = Mach.ValProp proto,
-		     attrs = { dontDelete = true,
-			       dontEnum = true, (* FIXME: is this wrong? (DAH) *)
-			       readOnly = false,
-			       fixed = true } }
+                 state = Mach.ValProp proto,
+		         attrs = { removable = false,
+			               dontEnum = true, (* FIXME: is this wrong? (DAH) *)
+			               readOnly = false,
+			               fixed = true } }
     in
 	if Mach.hasProp props n
 	then Mach.delProp props n

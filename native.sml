@@ -283,7 +283,7 @@ fun getEnumerableIds (regs:Mach.REGS)
                 fun select (name, { seq, prop }) = 
                     case prop of 
                         { state = Mach.ValProp _,
-                          attrs = { dontEnum = false, dontDelete, readOnly, fixed },
+                          attrs = { dontEnum = false, removable, readOnly, fixed },
                           ty } => SOME (name, seq)
                       | _ => NONE
                 val filteredList = List.mapPartial select bindingList
@@ -348,18 +348,18 @@ fun getPropertyIsDontEnum (regs:Mach.REGS)
 
 (*
  * Return true if the property p does exists locally on o and its
- * DontDelete bit is set
+ * removable bit is set
  *
- * magic native function getPropertyIsDontDelete(o : Object!, p : string) : Boolean;
+ * magic native function getPropertyIsRemovable(o : Object!, p : string) : Boolean;
  *)
 
-fun getPropertyIsDontDelete (regs:Mach.REGS)
-                            (vals:Mach.VALUE list)
+fun getPropertyIsRemovable (regs:Mach.REGS)
+                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
         fun f props n =
             if Mach.hasProp props n
-            then (#dontDelete (#attrs (Mach.getProp props n)))
+            then (#removable (#attrs (Mach.getProp props n)))
             else false
     in
         propQuery regs vals f
@@ -1040,7 +1040,7 @@ fun registerNatives _ =
         addFn 1 Name.magic_getPrototype getPrototype;
         addFn 2 Name.magic_hasOwnProperty hasOwnProperty;
         addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
-        addFn 2 Name.magic_getPropertyIsDontDelete getPropertyIsDontDelete;
+        addFn 2 Name.magic_getPropertyIsRemovable getPropertyIsRemovable;
         addFn 3 Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
 
         addFn 2 Name.magic_toPrimitive toPrimitive;

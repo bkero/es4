@@ -72,7 +72,7 @@ val cachesz = 4096
  * all through the code. Yay.
  *)
                                        
-type ATTRS = { dontDelete: bool,
+type ATTRS = { removable: bool,
                dontEnum: bool,
                readOnly: bool,
                fixed: bool }     
@@ -283,7 +283,7 @@ withtype FUN_CLOSURE =
          int
          
 (* Important to model "fixedness" separately from
- * "dontDelete-ness" because fixedness affects
+ * "removable-ness" because fixedness affects
  * which phase of name lookup the name is found during.
  *)
 
@@ -437,7 +437,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          *)
         {ty=Ast.UndefinedType  ,
          state=ValProp Undef,
-         attrs={dontDelete=false,  (* unused attrs *)
+         attrs={removable=true,  (* unused attrs *)
                 dontEnum=false,
                 readOnly=false,
                 fixed=false}}
@@ -492,7 +492,7 @@ fun setPropDontEnum (props:PROPERTY_BINDINGS)
             val attrs = (#attrs prop)
             val newProp = { ty = (#ty prop),
                             state = (#state prop),
-                            attrs = { dontDelete = (#dontDelete attrs),
+                            attrs = { removable = (#removable attrs),
                                       dontEnum = dontEnum,
                                       readOnly = (#readOnly attrs),
                                       fixed = (#fixed attrs) } }
@@ -675,15 +675,15 @@ fun inspect (v:VALUE)
 
         fun nl _ = TextIO.print "\n";
 
-        fun att {dontDelete,dontEnum,readOnly,fixed} =
-            if not dontDelete
+        fun att {removable,dontEnum,readOnly,fixed} =
+            if not removable
                andalso not dontEnum
                andalso not readOnly
                andalso not fixed
             then ""
             else
                 (" ("
-                 ^ (if dontDelete then "DD," else "")
+                 ^ (if removable then "RM," else "")
                  ^ (if dontEnum then "DE," else "")
                  ^ (if readOnly then "RO," else "")
                  ^ (if fixed then "FX" else "")

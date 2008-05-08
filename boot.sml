@@ -93,7 +93,7 @@ fun instantiateRootClass (regs:Mach.REGS)
       val _ = Mach.addProp props fullName
                            { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
-                             attrs = { dontDelete = true,
+                             attrs = { removable = false,
                                        dontEnum = true,
                                        readOnly = true,
                                        fixed = true } }

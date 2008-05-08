@@ -102,8 +102,8 @@
     magic native function getPropertyIsDontEnum(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
-       DontDelete bit is set */
-    magic native function getPropertyIsDontDelete(o : Object!, p : (Name|string)) : boolean;
+       Removable bit is set */
+    magic native function getPropertyIsRemovable(o : Object!, p : (Name|string)) : boolean;
 
     /* Provided that the property p exists locally on o, set its DontEnum
        flag according to f.  If the property p does not exist locally on
