@@ -74,7 +74,7 @@ val cachesz = 4096
                                        
 type ATTRS = { removable: bool,
                enumerable: bool,
-               readOnly: bool,
+               writable: bool,
                fixed: bool }     
 
 type IDENTIFIER = Ustring.STRING
@@ -439,7 +439,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          state=ValProp Undef,
          attrs={removable=true,  (* unused attrs *)
                 enumerable=false,
-                readOnly=false,
+                writable=true,
                 fixed=false}}
 
 
@@ -494,7 +494,7 @@ fun setPropEnumerable (props:PROPERTY_BINDINGS)
                             state = (#state prop),
                             attrs = { removable = (#removable attrs),
                                       enumerable = enumerable,
-                                      readOnly = (#readOnly attrs),
+                                      writable = (#writable attrs),
                                       fixed = (#fixed attrs) } }
         in
             delProp props n;
@@ -675,18 +675,18 @@ fun inspect (v:VALUE)
 
         fun nl _ = TextIO.print "\n";
 
-        fun att {removable,enumerable,readOnly,fixed} =
+        fun att {removable,enumerable,writable,fixed} =
             if not removable
                andalso not enumerable
-               andalso not readOnly
+               andalso not writable
                andalso not fixed
             then ""
             else
                 (" ("
-                 ^ (if removable then "RM," else "")
-                 ^ (if enumerable then "EN," else "")
-                 ^ (if readOnly then "RO," else "")
-                 ^ (if fixed then "FX" else "")
+                 ^ (if removable then "R," else "")
+                 ^ (if enumerable then "E," else "")
+                 ^ (if writable then "W," else "")
+                 ^ (if fixed then "F" else "")
                  ^ ") ")
 
         fun id (Obj ob) = Int.toString (#ident ob)

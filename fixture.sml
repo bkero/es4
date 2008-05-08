@@ -130,7 +130,7 @@ fun mergeFixtures (tyeq:TYEQ)
                                 (mergeVirtuals tyeq newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
             if (tyeq (#ty new) (#ty old)) 
-               andalso (#readOnly new) = (#readOnly old)
+               andalso (#writable new) = (#writable old)
             then oldRib
             else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) =>

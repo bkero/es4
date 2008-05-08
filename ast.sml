@@ -458,12 +458,12 @@ datatype FIXTURE =
        | MethodFixture of
            { func: FUNC,
              ty: TYPE,
-             readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+             writable: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool }
        | ValFixture of
            { ty: TYPE,
-             readOnly: bool }
+             writable: bool }
        | VirtualValFixture of
          { ty: TYPE, 
            getter: FUNC option,

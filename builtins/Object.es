@@ -178,14 +178,14 @@
 
             let obj = magic::getPrototype(this);
             while (obj != null) {
-                if (magic::hasOwnProperty(obj, name) && magic::getPropertyIsReadOnly(obj, name))
-                    throw new TypeError(/* Property is ReadOnly in prototype chain */);
+                if (magic::hasOwnProperty(obj, name) && !magic::getPropertyIsWritable(obj, name))
+                    throw new TypeError(/* non-Writable property in prototype chain */);
                 obj = magic::getPrototype(obj);
             }
 
             this[name] = value;
             magic::setPropertyIsEnumerable(this, name, enumerable);
             magic::setPropertyIsRemovable(this, name, removable);
-            magic::setPropertyIsReadOnly(this, name, !writable);
+            magic::setPropertyIsWritable(this, name, writable);
         }
     }

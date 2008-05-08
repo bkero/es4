@@ -965,7 +965,7 @@ and verifyFixture (env:ENV)
       (* FIXME: verify interfaces *)
 
       | Ast.TypeFixture (typeParams,ty) => (verifyType env ty; ())   (* FIXME: extend env with typeParams *)
-      | Ast.ValFixture { ty, readOnly } => (verifyType env ty; ())
+      | Ast.ValFixture { ty, writable } => (verifyType env ty; ())
       | Ast.MethodFixture { func, ty, ... } =>
         let
         in

@@ -1165,14 +1165,14 @@ and defVar (env:ENV)
         Ast.Binding { ident, ty } =>
         let
             val ty':Ast.TYPE = defTypeExpr env ty
-            val readOnly' = case kind of
-                                 Ast.Const => true
-                               | Ast.LetConst => true
-                               | _ => false
+            val writable' = case kind of
+                                Ast.Const => false
+                              | Ast.LetConst => false
+                              | _ => true
             val offset = (#tempOffset env)
             val name' = fixtureNameFromPropIdent env (SOME ns) ident offset
         in
-            (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
+            (name', Ast.ValFixture {ty=ty',writable=writable'})
         end
 
 (*
@@ -1433,7 +1433,7 @@ and defFunc (env:ENV)
 (*
     FUNC_DEFN
 
-    A function can be bound or unbound, writable or readonly, have constrained or
+    A function can be bound or unbound, writable or not, have constrained or
     unconstrainted 'this'. In all cases however a function definition specifies
     the function's name, type, and implementation
 
@@ -1468,19 +1468,19 @@ and defFuncDefn (env:ENV)
                           setter = SOME newFunc }
                   | Ast.Ordinary =>
                     let
-                        val (ftype, isReadOnly) =
+                        val (ftype, isWritable) =
                             if (#kind f) = Ast.Var                            
                             then  
                                 (* e3 style writeable function *)
-                                (makeTy env (Ast.AnyType), false)  
+                                (makeTy env (Ast.AnyType), true)  
                             else 
                                 (* read only, method *)
-                                (ty, true)                        
+                                (ty, false)
                     in
                         Ast.MethodFixture
                             { func = newFunc,
                               ty = ftype,
-                              readOnly = isReadOnly,
+                              writable = isWritable,
                               final = (#final f),
                               override = (#override f)}
                     end
@@ -1488,14 +1488,14 @@ and defFuncDefn (env:ENV)
                     Ast.MethodFixture
                         { func = newFunc,
                           ty = ty,
-                          readOnly = true,
+                          writable = false,
                           final = true,
                           override = false}
                   | Ast.Has =>
                     Ast.MethodFixture
                         { func = newFunc,
                           ty = ty,
-                          readOnly = true,
+                          writable = false,
                           final = true,
                           override = false}
                   | Ast.Operator =>

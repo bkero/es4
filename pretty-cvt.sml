@@ -427,12 +427,12 @@ structure PrettyCvt = struct
      | cvtFIXTURE (TypeFixture(ls918, x922)) = PrettyRep.Ctor ("TypeFixture", 
           SOME (PrettyRep.Tuple [PrettyRep.List (List.map (fn x917 => cvtIDENTIFIER x917
                                                           ) ls918), cvtTYPE x922]))
-     | cvtFIXTURE (MethodFixture{func=x926, ty=x927, readOnly=b928, override=b929, 
+     | cvtFIXTURE (MethodFixture{func=x926, ty=x927, writable=b928, override=b929, 
           final=b930}) = PrettyRep.Ctor ("MethodFixture", SOME (PrettyRep.Rec [("func", 
-          cvtFUNC x926), ("ty", cvtTYPE x927), ("readOnly", PrettyRep.Bool b928), 
+          cvtFUNC x926), ("ty", cvtTYPE x927), ("writable", PrettyRep.Bool b928), 
           ("override", PrettyRep.Bool b929), ("final", PrettyRep.Bool b930)]))
-     | cvtFIXTURE (ValFixture{ty=x944, readOnly=b945}) = PrettyRep.Ctor ("ValFixture", 
-          SOME (PrettyRep.Rec [("ty", cvtTYPE x944), ("readOnly", PrettyRep.Bool b945)]))
+     | cvtFIXTURE (ValFixture{ty=x944, writable=b945}) = PrettyRep.Ctor ("ValFixture", 
+          SOME (PrettyRep.Rec [("ty", cvtTYPE x944), ("writable", PrettyRep.Bool b945)]))
      | cvtFIXTURE (VirtualValFixture{ty=x953, getter=opt955, setter=opt960}) = 
           PrettyRep.Ctor ("VirtualValFixture", SOME (PrettyRep.Rec [("ty", 
           cvtTYPE x953), ("getter", 

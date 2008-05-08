@@ -283,7 +283,7 @@ fun getEnumerableIds (regs:Mach.REGS)
                 fun select (name, { seq, prop }) = 
                     case prop of 
                         { state = Mach.ValProp _,
-                          attrs = { enumerable = true, removable, readOnly, fixed },
+                          attrs = { enumerable = true, removable, writable, fixed },
                           ty } => SOME (name, seq)
                       | _ => NONE
                 val filteredList = List.mapPartial select bindingList

@@ -340,7 +340,7 @@ fun allocRib (regs:Mach.REGS)
         val methodScope = extendScope scope obj Mach.ActivationScope                 
         val attrs0 = { removable = false,
                        enumerable = false,
-                       readOnly = true,
+                       writable = false,
                        fixed = true }
         fun allocFixture (n, f) =
             case n of
@@ -386,7 +386,7 @@ fun allocRib (regs:Mach.REGS)
                                         state = Mach.TypeProp,
                                         attrs = attrs0 }
                             
-                      | Ast.MethodFixture { func, ty, readOnly, ... } =>
+                      | Ast.MethodFixture { func, ty, writable, ... } =>
                         let
                             val Ast.Func { native, ... } = func
                             val p = if native
@@ -398,22 +398,22 @@ fun allocRib (regs:Mach.REGS)
                                         state = p,
                                         attrs = { removable = false,
                                                   enumerable = false,
-                                                  readOnly = readOnly,
+                                                  writable = writable,
                                                   fixed = true } }
                         end
                         
-                      | Ast.ValFixture { ty, readOnly, ... } =>
+                      | Ast.ValFixture { ty, writable, ... } =>
                         let
                             val ty = evalTy regs ty
                         in
                             allocProp "value"
                                       { ty = ty,
-                                        state = if readOnly
-						then Mach.UninitProp
-						else valAllocState regs ty,
+                                        state = if writable
+						                        then valAllocState regs ty
+						                        else Mach.UninitProp,
                                         attrs = { removable = false,
                                                   enumerable = false, 
-                                                  readOnly = readOnly,
+                                                  writable = writable,
                                                   fixed = true } }
                         end
 
@@ -432,7 +432,7 @@ fun allocRib (regs:Mach.REGS)
                                                                       setter = setFn },
                                         attrs = { removable = false,
                                                   enumerable = false, 
-                                                  readOnly = true,
+                                                  writable = false,
                                                   fixed = true } }
                         end
                         
@@ -967,7 +967,7 @@ and setValueOrVirtual (regs:Mach.REGS)
             SOME existingProp =>
             let
                 val { state, attrs, ty, ... } = existingProp
-                val { readOnly, ... } = attrs
+                val { writable, ... } = attrs
                 fun newProp _ = { state = Mach.ValProp (checkAndConvert regs v ty),
                                   ty = ty,
                                   attrs = attrs }
@@ -982,10 +982,10 @@ and setValueOrVirtual (regs:Mach.REGS)
                 case state of
                     
                     Mach.MethodProp _ =>
-                    if readOnly
-                    then throwExn (newTypeErr regs ["setValue on read-only method property: ",
+                    if writable
+                    then write ()  (* ES3 style mutable fun props are readOnly *)
+                    else throwExn (newTypeErr regs ["setValue on non-writable method property: ",
                                                     LogErr.name name])
-                    else write ()  (* ES3 style mutable fun props are readOnly *)
 
                   | Mach.VirtualValProp { setter, ... } =>
                     if doVirtual
@@ -998,9 +998,9 @@ and setValueOrVirtual (regs:Mach.REGS)
                         write ()
 
                   | Mach.ValProp _ =>
-                    if readOnly
-                    then ()  (* ignore it *)
-                    else write ()
+                    if writable
+                    then write ()
+                    else ()  (* ignore it *)
                          
                   | _ => badPropAccess regs "setValue" name state
             end
@@ -1012,7 +1012,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                                      ty = Ast.AnyType,
                                      attrs = { removable = true,
                                                enumerable = true,
-                                               readOnly = false,
+                                               writable = true,
                                                fixed = false } }
                     in
                         if isDynamic regs obj
@@ -1071,7 +1071,7 @@ and defValue (regs:Mach.REGS)
              *
              *   - No adding props, only overwriting allocated ones
              *   - Permitted to write to uninitialized props
-             *   - Permitted to write to read-only (const) props
+             *   - Permitted to write to non-writable (const) props
              *)
             let
                 val existingProp = Mach.getProp props name
@@ -2740,7 +2740,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                              state = Mach.ValProp v,
                              attrs = { removable = true,
                                        enumerable = true,
-                                       readOnly = false,
+                                       writable = true,
                                        fixed = false } }
             in
                 Mach.addProp props name prop;
@@ -2841,7 +2841,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 val ty = searchFieldTypes n tyExprs
                 val attrs = { removable = not const,
                               enumerable = true,
-                              readOnly = const,
+                              writable = not const,
                               fixed = false }
                 val state = getPropState v
                 val existingProp = Mach.findProp props n
@@ -4483,11 +4483,11 @@ and bindArgs (regs:Mach.REGS)
              * of 'arguments'.
              *)
             (Mach.addProp props Name.arguments { state = Mach.ValListProp args,  
-                                     (* args is a better approximation than finalArgs *)
+                                                 (* args is a better approximation than finalArgs *)
                                                  ty = Name.typename Name.public_Object,
                                                  attrs = { removable = false,
                                                            enumerable = false,
-                                                           readOnly = false,
+                                                           writable = true,
                                                            fixed = true } };
              bindArg 0 finalArgs)
 
@@ -5103,19 +5103,19 @@ and setPrototype (regs:Mach.REGS)
 		 (proto:Mach.VALUE)
     : unit = 
     let
-	val Mach.Obj { props, ... } = obj
-	val n = Name.public_prototype
-	val prop = { ty = Ast.AnyType,
-                 state = Mach.ValProp proto,
-		         attrs = { removable = false,
-			               enumerable = false, (* FIXME: is this wrong? (DAH) *)
-			               readOnly = false,
-			               fixed = true } }
+	    val Mach.Obj { props, ... } = obj
+	    val n = Name.public_prototype
+	    val prop = { ty = Ast.AnyType,
+                     state = Mach.ValProp proto,
+		             attrs = { removable = false,
+			                   enumerable = false, (* FIXME: is this wrong? (DAH) *)
+			                   writable = true,
+			                   fixed = true } }
     in
-	if Mach.hasProp props n
-	then Mach.delProp props n
-	else ();
-	Mach.addProp props n prop
+	    if Mach.hasProp props n
+	    then Mach.delProp props n
+	    else ();
+	    Mach.addProp props n prop
     end
 
 
