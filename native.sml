@@ -312,7 +312,7 @@ fun getPrototype (regs:Mach.REGS)
     let
         val Mach.Obj { proto, ... } = nthAsObj vals 0
     in
-        !proto
+        proto
     end
 
 
@@ -632,7 +632,7 @@ fun get (regs:Mach.REGS)
             let
                 val Mach.Obj { proto, ... } = curr
             in
-                case !proto of
+                case proto of
                     Mach.Object ob => 
                     Eval.getValueOrVirtual regs ob name false propNotFound
                   | _ =>
@@ -1011,7 +1011,7 @@ fun proto (regs:Mach.REGS)
     let
         val Mach.Obj { proto, ... } = nthAsObj vals 0
     in
-        !proto
+        proto
     end
 
 fun id (regs:Mach.REGS)

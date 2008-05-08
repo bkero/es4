@@ -340,4 +340,4 @@
     }
 
     helper function isTrimmableSpace(x)
-        Unicode.isTrimmableSpace(x);
+        Unicode::isTrimmableSpace(x);

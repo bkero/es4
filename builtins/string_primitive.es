@@ -670,7 +670,7 @@
             let s = "";
 
             for ( let i=0, limit=S.length ; i < limit ; i++ ) {
-                let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
+                let u = Unicode::toLowerCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
                 if (u is double)
                     s += magic::fromCharCode(intrinsic::toUint(u));
                 else {
@@ -714,7 +714,7 @@
             let s   = "";
 
             for ( let i=0, limit=S.length ; i < limit ; i++ ) {
-                let u = Unicode.toUpperCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
+                let u = Unicode::toUpperCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
                 if (u is double)
                     s += magic::fromCharCode(intrinsic::toUint(u));
                 else {
@@ -763,9 +763,9 @@
             let len = s.length;
             let i, j;
 
-            for ( i=0 ; i < len && Unicode.isTrimmableSpace(s.charAt(i)) ; i++ )
+            for ( i=0 ; i < len && Unicode::isTrimmableSpace(s.charAt(i)) ; i++ )
                 ;
-            for ( j=len-1 ; j >= i && Unicode.isTrimmableSpace(s.charAt(j)) ; j-- )
+            for ( j=len-1 ; j >= i && Unicode::isTrimmableSpace(s.charAt(j)) ; j-- )
                 ;
             return s.substring(i,j+1);
         }

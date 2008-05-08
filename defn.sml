@@ -2414,7 +2414,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       innerRibs = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
-                        then [[Name.publicNS ], [Name.ES4NS]]
+                        then [[Name.ES4NS], [Name.publicNS ]]
                         else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,

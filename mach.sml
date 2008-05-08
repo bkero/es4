@@ -87,7 +87,7 @@ datatype VALUE = Undef
 
      and OBJ =
          Obj of { props: PROPERTY_BINDINGS,                  
-                  proto: VALUE ref,
+                  proto: VALUE,
                   ident: OBJ_IDENTIFIER,
                   tag: TAG
                 , rib: Ast.RIB ref     (* INFORMATIVE *)
@@ -516,7 +516,7 @@ fun newObject (t:TAG)
     Obj { ident = nextIdent (),
           tag = t,
           props = newPropBindings (),
-          proto = ref p,
+          proto = p,
           rib = ref [] }
 
 fun newObjectNoTag _
@@ -528,16 +528,7 @@ fun getProto (ob:OBJ)
     let
          val Obj {proto, ...} = ob
     in
-        !proto
-    end
-
-fun setProto (ob:OBJ) (p:VALUE)
-    : OBJ =
-    let
-         val Obj {proto, ...} = ob
-    in
-        proto := p;
-        ob
+        proto
     end
 
 fun getTemp (temps:TEMPS)
@@ -762,7 +753,7 @@ fun inspect (v:VALUE)
                 TextIO.print "Obj {\n";
                 p indent ["    tag = ", (tag obj)]; nl();
                 p indent ["  ident = ", (id obj)]; nl();
-                p indent ["  proto = "]; subVal indent (!proto);
+                p indent ["  proto = "]; subVal indent (proto);
                 p indent ["  props = ["]; nl();
                 NameMap.appi prop bindings;
                 p indent ["          ] }"]; nl()
@@ -1230,7 +1221,7 @@ fun getInstanceBindingNames (class: CLASS)
 fun getPrototypeObject (Obj {proto, ...}: OBJECT)
     : OBJECT option =
     (* get the prototype (as in '[[proto]]') object of an object *)
-    case !proto of 
+    case proto of 
         Object obj => SOME obj
       | _ => NONE
 
