@@ -98,17 +98,17 @@
     magic native function hasOwnProperty(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
-       DontEnum bit is set */
-    magic native function getPropertyIsDontEnum(o : Object!, p : (Name|string)) : boolean;
+       Enumerable bit is set */
+    magic native function getPropertyIsEnumerable(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        Removable bit is set */
     magic native function getPropertyIsRemovable(o : Object!, p : (Name|string)) : boolean;
 
-    /* Provided that the property p exists locally on o, set its DontEnum
+    /* Provided that the property p exists locally on o, set its Enumerable
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    magic native function setPropertyIsDontEnum(o : Object!, p : (Name|string), f : boolean) : void;
+    magic native function setPropertyIsEnumerable(o : Object!, p : (Name|string), f : boolean) : void;
 
     magic native function isPrimitive(v:*) : boolean;
     magic native function toPrimitive(v:*, hint:string) : *;

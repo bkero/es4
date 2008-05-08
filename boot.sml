@@ -94,7 +94,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                            { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { removable = false,
-                                       dontEnum = true,
+                                       enumerable = false,
                                        readOnly = true,
                                        fixed = true } }
       val _ = Eval.bindAnySpecialIdentity regs obj

@@ -283,7 +283,7 @@ fun getEnumerableIds (regs:Mach.REGS)
                 fun select (name, { seq, prop }) = 
                     case prop of 
                         { state = Mach.ValProp _,
-                          attrs = { dontEnum = false, removable, readOnly, fixed },
+                          attrs = { enumerable = true, removable, readOnly, fixed },
                           ty } => SOME (name, seq)
                       | _ => NONE
                 val filteredList = List.mapPartial select bindingList
@@ -329,17 +329,17 @@ fun hasOwnProperty (regs:Mach.REGS)
 
 (*
  * Return true if the property p does exists locally on o and its
- * DontEnum bit is set
+ * Enumerable bit is set
  *
- * magic native function getPropertyIsDontEnum(o : Object!, p : string) : Boolean;
+ * magic native function getPropertyIsEnumerable(o : Object!, p : string) : Boolean;
  *)
-fun getPropertyIsDontEnum (regs:Mach.REGS)
+fun getPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
         fun f props n =
             if Mach.hasProp props n
-            then (#dontEnum (#attrs (Mach.getProp props n)))
+            then (#enumerable (#attrs (Mach.getProp props n)))
             else false
     in
         propQuery regs vals f
@@ -366,13 +366,13 @@ fun getPropertyIsRemovable (regs:Mach.REGS)
     end
 
 
-(* Provided that the property p exists locally on o, set its DontEnum
+(* Provided that the property p exists locally on o, set its Enumerable
  * flag according to f.  If the property p does not exist locally on
  * o, it does nothing.
  *
- * magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
+ * magic native function setPropertyIsEnumerable(o : Object!, p : string, f : Boolean) : void;
  *)
-fun setPropertyIsDontEnum (regs:Mach.REGS)
+fun setPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
@@ -380,7 +380,7 @@ fun setPropertyIsDontEnum (regs:Mach.REGS)
         val n = nthAsName regs vals 1
         val b = nthAsBool vals 2
     in
-        Mach.setPropDontEnum props n b;
+        Mach.setPropEnumerable props n b;
         Mach.Undef
     end
 
@@ -1039,9 +1039,9 @@ fun registerNatives _ =
         addFn 1 Name.magic_getEnumerableIds getEnumerableIds;
         addFn 1 Name.magic_getPrototype getPrototype;
         addFn 2 Name.magic_hasOwnProperty hasOwnProperty;
-        addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
+        addFn 2 Name.magic_getPropertyIsEnumerable getPropertyIsEnumerable;
         addFn 2 Name.magic_getPropertyIsRemovable getPropertyIsRemovable;
-        addFn 3 Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
+        addFn 3 Name.magic_setPropertyIsEnumerable setPropertyIsEnumerable;
 
         addFn 2 Name.magic_toPrimitive toPrimitive;
         addFn 1 Name.magic_isPrimitive isPrimitive;

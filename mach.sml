@@ -73,7 +73,7 @@ val cachesz = 4096
  *)
                                        
 type ATTRS = { removable: bool,
-               dontEnum: bool,
+               enumerable: bool,
                readOnly: bool,
                fixed: bool }     
 
@@ -438,7 +438,7 @@ fun getProp (b:PROPERTY_BINDINGS)
         {ty=Ast.UndefinedType  ,
          state=ValProp Undef,
          attrs={removable=true,  (* unused attrs *)
-                dontEnum=false,
+                enumerable=false,
                 readOnly=false,
                 fixed=false}}
 
@@ -482,9 +482,9 @@ fun getRibs (scope:SCOPE)
       end
 
 
-fun setPropDontEnum (props:PROPERTY_BINDINGS)
+fun setPropEnumerable (props:PROPERTY_BINDINGS)
                     (n:Ast.NAME)
-                    (dontEnum:bool)
+                    (enumerable:bool)
     : unit =
     case findProp props n of
         SOME prop =>
@@ -493,7 +493,7 @@ fun setPropDontEnum (props:PROPERTY_BINDINGS)
             val newProp = { ty = (#ty prop),
                             state = (#state prop),
                             attrs = { removable = (#removable attrs),
-                                      dontEnum = dontEnum,
+                                      enumerable = enumerable,
                                       readOnly = (#readOnly attrs),
                                       fixed = (#fixed attrs) } }
         in
@@ -675,16 +675,16 @@ fun inspect (v:VALUE)
 
         fun nl _ = TextIO.print "\n";
 
-        fun att {removable,dontEnum,readOnly,fixed} =
+        fun att {removable,enumerable,readOnly,fixed} =
             if not removable
-               andalso not dontEnum
+               andalso not enumerable
                andalso not readOnly
                andalso not fixed
             then ""
             else
                 (" ("
                  ^ (if removable then "RM," else "")
-                 ^ (if dontEnum then "DE," else "")
+                 ^ (if enumerable then "EN," else "")
                  ^ (if readOnly then "RO," else "")
                  ^ (if fixed then "FX" else "")
                  ^ ") ")

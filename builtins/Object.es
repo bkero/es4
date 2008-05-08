@@ -139,7 +139,7 @@
         private function propertyIsEnumerable(name) {
             if (!magic::hasOwnProperty(this, name))
                 return false;
-            return !magic::getPropertyIsDontEnum(this, name);
+            return !magic::getPropertyIsEnumerable(this, name);
         }
 
         /* Old code
@@ -154,10 +154,10 @@
             if (!magic::hasOwnProperty(this, name))
                 return false;
 
-            let oldval = !magic::getPropertyIsDontEnum(this, name);
+            let oldval = !magic::getPropertyIsEnumerable(this, name);
             if (!magic::getPropertyIsDontDelete(this, name))
                 if (flag !== undefined) 
-                    magic::setPropertyIsDontEnum(this, name, !flag);
+                    magic::setPropertyIsEnumerable(this, name, !flag);
             return oldval;
         }
         */
@@ -184,7 +184,7 @@
             }
 
             this[name] = value;
-            magic::setPropertyIsDontEnum(this, name, !enumerable);
+            magic::setPropertyIsEnumerable(this, name, enumerable);
             magic::setPropertyIsRemovable(this, name, removable);
             magic::setPropertyIsReadOnly(this, name, !writable);
         }

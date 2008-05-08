@@ -339,7 +339,7 @@ fun allocRib (regs:Mach.REGS)
         val {scope, ...} = regs
         val methodScope = extendScope scope obj Mach.ActivationScope                 
         val attrs0 = { removable = false,
-                       dontEnum = true,
+                       enumerable = false,
                        readOnly = true,
                        fixed = true }
         fun allocFixture (n, f) =
@@ -397,7 +397,7 @@ fun allocRib (regs:Mach.REGS)
                                       { ty = normalize regs ty,
                                         state = p,
                                         attrs = { removable = false,
-                                                  dontEnum = true,
+                                                  enumerable = false,
                                                   readOnly = readOnly,
                                                   fixed = true } }
                         end
@@ -412,7 +412,7 @@ fun allocRib (regs:Mach.REGS)
 						then Mach.UninitProp
 						else valAllocState regs ty,
                                         attrs = { removable = false,
-                                                  dontEnum = true, 
+                                                  enumerable = false, 
                                                   readOnly = readOnly,
                                                   fixed = true } }
                         end
@@ -431,7 +431,7 @@ fun allocRib (regs:Mach.REGS)
                                         state = Mach.VirtualValProp { getter = getFn,
                                                                       setter = setFn },
                                         attrs = { removable = false,
-                                                  dontEnum = true, 
+                                                  enumerable = false, 
                                                   readOnly = true,
                                                   fixed = true } }
                         end
@@ -1011,7 +1011,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                         val prop = { state = Mach.ValProp v,
                                      ty = Ast.AnyType,
                                      attrs = { removable = true,
-                                               dontEnum = false,
+                                               enumerable = true,
                                                readOnly = false,
                                                fixed = false } }
                     in
@@ -1429,7 +1429,7 @@ and newFunctionFromClosure (regs:Mach.REGS)
     in
         setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj Name.public_constructor (Mach.Object obj) false;
-        Mach.setPropDontEnum newProtoProps Name.public_constructor true;
+        Mach.setPropEnumerable newProtoProps Name.public_constructor false;
         Mach.Object obj
     end
 
@@ -2739,7 +2739,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                 val prop = { ty = ty,
                              state = Mach.ValProp v,
                              attrs = { removable = true,
-                                       dontEnum = false,
+                                       enumerable = true,
                                        readOnly = false,
                                        fixed = false } }
             in
@@ -2840,7 +2840,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 val v = evalExpr regs init
                 val ty = searchFieldTypes n tyExprs
                 val attrs = { removable = not const,
-                              dontEnum = false,
+                              enumerable = true,
                               readOnly = const,
                               fixed = false }
                 val state = getPropState v
@@ -4486,7 +4486,7 @@ and bindArgs (regs:Mach.REGS)
                                      (* args is a better approximation than finalArgs *)
                                                  ty = Name.typename Name.public_Object,
                                                  attrs = { removable = false,
-                                                           dontEnum = true,
+                                                           enumerable = false,
                                                            readOnly = false,
                                                            fixed = true } };
              bindArg 0 finalArgs)
@@ -4561,7 +4561,7 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
                              val Mach.Obj { props, ... } = obj
                          in
                              setValue regs obj pn v;
-                             Mach.setPropDontEnum props pn true
+                             Mach.setPropEnumerable props pn false
                          end
                      else defValue regs obj pn v)
                   | Ast.TempName tn =>
@@ -5108,7 +5108,7 @@ and setPrototype (regs:Mach.REGS)
 	val prop = { ty = Ast.AnyType,
                  state = Mach.ValProp proto,
 		         attrs = { removable = false,
-			               dontEnum = true, (* FIXME: is this wrong? (DAH) *)
+			               enumerable = false, (* FIXME: is this wrong? (DAH) *)
 			               readOnly = false,
 			               fixed = true } }
     in
@@ -5251,7 +5251,7 @@ and initClassPrototype (regs:Mach.REGS)
 				                       Name.public_constructor 
 				                       (Mach.Object obj) 
 				                       false;
-		             Mach.setPropDontEnum newProtoProps Name.public_constructor true)
+		             Mach.setPropEnumerable newProtoProps Name.public_constructor false)
 		        else 
 		            ();
 		        traceConstruct ["finished initialising class prototype"]
