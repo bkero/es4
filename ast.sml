@@ -145,16 +145,6 @@ datatype PRAGMA =
          Namespace of NAMESPACE
        | NamespaceName of NAME_EXPRESSION
 
-(* Post-defn phase, only the following variants should appear:
-
-     and NAME_EXPRESSION = 
-         QualifiedName of { namespace: NAMESPACE_EXPRESSION,
-							identifier: IDENTIFIER }
-
-     and NAMESPACE_EXPRESSION =
-         Namespace of NAMESPACE
-*)
-                       
      and FUNC_NAME_KIND =
          Ordinary
        | Operator
