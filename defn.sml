@@ -1763,8 +1763,8 @@ and defTypeExpr (env:ENV)
         Ast.TypeName ((defNameExpr env n), nonce)
       | Ast.UnionType tys =>
         Ast.UnionType (map (defTypeExpr env) tys)
-      | Ast.ArrayType tys =>
-        Ast.ArrayType (map (defTypeExpr env) tys)
+      | Ast.ArrayType (tys, to) =>
+        Ast.ArrayType (map (defTypeExpr env) tys, Option.map (defTypeExpr env) to)
       | Ast.RecordType tys =>
         Ast.RecordType (map (defFieldType env) tys)
       | Ast.NonNullType t =>

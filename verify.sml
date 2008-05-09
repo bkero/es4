@@ -429,7 +429,7 @@ and verifyExpr2 (env:ENV)
                       | Ast.UnaryMinus    => AnyNumberType
                       | Ast.BitwiseNot    => AnyNumberType
                       | Ast.LogicalNot    => booleanType
-                      | Ast.Spread        => Ast.ArrayType [anyType]
+                      | Ast.Spread        => Ast.ArrayType ([], SOME anyType)
                       (* TODO: isn't this supposed to be the prefix of a type expression? *)
                       | Ast.Type          => TypeType
             in
@@ -501,7 +501,7 @@ and verifyExpr2 (env:ENV)
                     let                        
                     in
                         List.map (verifyExpr env) exprs;
-                        liftOption (verifyType env) ty (Ast.ArrayType [anyType])
+                        liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE))
                     end
 
                   | Ast.LiteralNull        => nullType

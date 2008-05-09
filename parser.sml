@@ -2905,7 +2905,7 @@ and typedPattern (ts:TOKENS, b:BETA)
                         (ts2,(nd1,nd2))
                     end
               | _ =>
-                    (ts1,(nd1,Ast.ArrayType []))
+                    (ts1,(nd1,Ast.ArrayType ([],NONE)))
             end
       | _ =>
             let
@@ -3214,7 +3214,7 @@ and arrayType (ts0:TOKENS)
             let
                 val (ts1, nd1) = elementTypeList (tl ts0)
             in case ts1 of
-                (RightBracket, _) :: _ => (tl ts1, Ast.ArrayType nd1)
+                (RightBracket, _) :: _ => (tl ts1, Ast.ArrayType (nd1,NONE))
               | _ => error ["unknown token in arrayType"]
             end
       | _ => error ["unknown token in arrayType"]
@@ -6042,13 +6042,13 @@ and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.
             let
             in case tl ts of
                 (RightParen, _) :: _ =>
-                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.AnyType}],[]),[],[Ast.ArrayType [Ast.AnyType]]))
+                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.AnyType}],[]),[],[Ast.ArrayType ([Ast.AnyType],NONE)]))
               | _ =>
                     let
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
                         val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
                     in
-                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=Ast.ListExpr [],ty=NONE})],[Ast.ArrayType [Ast.AnyType]]))
+                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=Ast.ListExpr [],ty=NONE})],[Ast.ArrayType ([Ast.AnyType],NONE)]))
                     end
             end
       | _ => error ["unknown token in restParameter"]
@@ -6061,7 +6061,7 @@ and restParameterType (ts) : (TOKENS * (Ast.EXPRESSION list * Ast.TYPE list)) =
             let
             in case tl ts of
                 (RightParen, _) :: _ =>
-                    (tl ts,([],[Ast.ArrayType []]))
+                    (tl ts,([],[Ast.ArrayType ([],NONE)]))
               | _ =>
                     let
                         val (ts1:TOKENS,ty) = parameterType (tl ts)

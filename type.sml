@@ -214,8 +214,8 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
         Ast.RecordType (mapObjTy f fields)
       | Ast.UnionType tys =>
         Ast.UnionType (map f tys)
-      | Ast.ArrayType tys => 
-        Ast.ArrayType (map f tys)
+      | Ast.ArrayType (tys, to) => 
+        Ast.ArrayType (map f tys, Option.map f to)
       | Ast.FunctionType fty => 
         Ast.FunctionType (mapFuncTy f fty)
       | Ast.TypeIndexReferenceType (t, idx) => 
@@ -267,13 +267,13 @@ fun normalizeRefs (env:Ast.RIBS)
                   (ty:Ast.TYPE)
     : Ast.TYPE =
     case ty of 
-        Ast.TypeIndexReferenceType (Ast.ArrayType arr, idx) => 
+        Ast.TypeIndexReferenceType (Ast.ArrayType (arr,to), idx) => 
         let
             val t = if idx < length arr 
                     then List.nth (arr, idx)
-                    else 
+                    else    
                         if length arr > 0
-                        then List.last arr
+                        then List.last arr (* FIXME: use to *)
                         else Ast.AnyType (* FIXME: do we allow 0-length array types? *)
         in
             normalizeRefs env t
@@ -355,8 +355,8 @@ fun normalizeUnions (ty:Ast.TYPE)
 fun normalizeArrays (ty:Ast.TYPE)
     : Ast.TYPE =
     case ty of 
-        Ast.ArrayType [] => Ast.ArrayType [Ast.AnyType]
-      | x => mapTyExpr normalizeArrays x
+(*        Ast.ArrayType [] => Ast.ArrayType [Ast.AnyType]
+      | *) x => mapTyExpr normalizeArrays x
 
 
 (* ----------------------------------------------------------------------------- *)
@@ -713,12 +713,25 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
         
       (* array types *)        
 
-      | (Ast.ArrayType tys1, Ast.ArrayType tys2) =>   (* last entry repeats *)
-        length tys1 > length tys2 andalso
-        ListPair.all (fn (t1,t2) => equivType extra t1 t2)
-                     (tys1,
-                      tys2 @ List.tabulate(length tys1 - length tys2,
-                                           (fn _ => List.last tys2)))
+      | (Ast.ArrayType (tys1,to1), Ast.ArrayType (tys2,to2)) =>  
+        let val min = Int.min( length tys1, length tys2 ) 
+        in
+            length tys1 >= length tys2 
+            andalso
+            ListPair.all (fn (t1,t2) => equivType extra t1 t2)  
+                         (List.take(tys1, min),
+                          List.take(tys2, min))
+          andalso
+            (case (to1, to2) of
+                 (NONE,    NONE   ) => length tys1 = length tys2
+               | (NONE,    SOME _ ) => false
+               | (SOME t1, NONE   ) => true
+               | (SOME t1, SOME t2) =>
+                 equivType extra t1 t2 andalso
+                 List.all (fn t => equivType extra t t2)
+                          (List.drop(tys1, min)))
+        end
+
       (* union types *)
 
       | (Ast.UnionType tys1, ty2) => 

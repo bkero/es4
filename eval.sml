@@ -2712,7 +2712,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                 NONE => 
                 ((Mach.ArrayTag [Ast.AnyType]), 
                  getValue regs (#global regs) Name.public_Array, [])
-              | SOME (Ast.ArrayType tys) => 
+              | SOME (Ast.ArrayType (tys,tyo)) =>  (* FIXME: use tyo *)
                 (Mach.ArrayTag tys,
                  getValue regs (#global regs) Name.public_Array, tys)
               | SOME (Ast.InstanceType ity) => 
@@ -3654,7 +3654,7 @@ and typeOfTag (regs:Mach.REGS)
         case tag of
             Mach.InstanceTag ity => Ast.InstanceType ity
           | Mach.ObjectTag tys => Ast.RecordType tys
-          | Mach.ArrayTag tys => Ast.ArrayType tys
+          | Mach.ArrayTag tys => Ast.ArrayType (tys,NONE) (* FIXME *)
           | Mach.MagicTag (Mach.Boolean _) => magicInstanceType Mach.getBooleanClassSlot
           | Mach.MagicTag (Mach.Double _) => magicInstanceType Mach.getDoubleClassSlot
           | Mach.MagicTag (Mach.Decimal _) => magicInstanceType Mach.getDecimalClassSlot

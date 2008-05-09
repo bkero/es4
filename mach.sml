@@ -95,7 +95,7 @@ datatype VALUE = Undef
 
      and TAG =
          ObjectTag of Ast.FIELD_TYPE list
-       | ArrayTag of Ast.TYPE list
+       | ArrayTag of Ast.TYPE list (* FIXME: need TYPE option too - see ArrayType *)
        | InstanceTag of Ast.INSTANCE_TYPE
        | MagicTag of MAGIC
        | NoTag

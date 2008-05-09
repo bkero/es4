@@ -257,8 +257,6 @@ datatype TYPE =
        | TypeName of (NAME_EXPRESSION * NONCE option)  
 
        | InstanceType of INSTANCE_TYPE
-       | TypeNameReferenceType  of (TYPE * NAME_EXPRESSION)
-       | TypeIndexReferenceType of (TYPE * int)
 
 (* last two cases removed during normalization *)
 

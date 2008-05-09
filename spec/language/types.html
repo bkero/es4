@@ -59,15 +59,15 @@ subtype relation is included below.
 
 <p>ES4 includes the following types:
 
-<p>The type ''null'', populated only by the value ''null''.
+<p>The type **null**, populated only by the value **null**.
 
-<p>The type ''undefined'', populated only by the value ''undefined''.
+<p>The type **undefined**, populated only by the value ''undefined''.
 
-<p>The //any// type, denoted ''*'',  that represents all
+<p>The //any// type, denoted *****,  that represents all
 possible ES4 values.
 
-<p>A record type, such as ''{x: Number, y: Number}'', which represents
-a record with two fields ''x'' and ''y'', both of type ''Number''.
+<p>A record type, such as **{x: Number, y: Number}**, which represents
+a record with two fields **x** and **y**, both of type **Number**.
 
 <p>Array types include both //fixed-length// and //variable-length//
 array types.
@@ -83,12 +83,12 @@ example, the type **[Number, ... String]** describes arrays of length at
 least 1, where the entry at index 0 has type **Number**, and any
 remaining entries have type **String**.
 
-<NOTE> Here, "''...''" represents concrete syntax, but "''..''" is
-meta-syntax, and so "''S1, .., Sn''" represents a sequence of
+<NOTE> Here, "**...**" represents concrete syntax, but "**..**" is
+meta-syntax, and so "**S1, .., Sn**" represents a sequence of
 zero-or-more types.
 
-<p>A union type, such as ''(Number | String)'', which describes both
-''Number'' and ''String'' values.
+<p>A union type, such as **(Number | String)**, which describes both
+**Number** and **String** values.
 
 <p>A function type, such as
 
@@ -97,7 +97,7 @@ zero-or-more types.
 }}}
 
 The return type can be omitted, in which case it defaults to the
-//any// type ''*''. The return type can also be declared as ''void'',
+//any// type *****. The return type can also be declared as **void**,
 to indicate that no value is returned.
 
 <p>A function type may include generic type parameters, as in the following
@@ -108,13 +108,13 @@ type for the generic identity function.
 }}}
 
 <p>A function type may
-include a type constraint for the ''this'' binding, as in
+include a type constraint for the **this** binding, as in
 
 {{{
     function(this : Vector, Number, String) : String
 }}}
 
-<p>A function type may use the symbol "''=''"  to indicate
+<p>A function type may use the symbol "**=**"  to indicate
 which arguments have default values, as in:
 
 {{{
@@ -122,44 +122,44 @@ which arguments have default values, as in:
 }}}
 
 For this function type, the number of arguments at a corresponding
-call site may be either 1 (a ''Number'') or 2 (a ''Number'' and a
-''String'').
+call site may be either 1 (a **Number**) or 2 (a **Number** and a
+**String**).
 
 <p>Finally, a function type may include a rest-argument, denoted
-by "''...''", to indicate that any number of additional parameters are
+by "**...**", to indicate that any number of additional parameters are
 permitted, as in:
 
 {{{
     function(String, ...) : String
 }}}
 
-<p> A //nullable type//, such as ''?String'', is simply an
+<p> A //nullable type//, such as **?String**, is simply an
 abbreviation for the union type
-''(String | null)''. (Nullable types are desugared by the parser, and
+**(String | null)**. (Nullable types are desugared by the parser, and
 so do not appear in the AST below.)
 
-<p> A //non-null type// has the form ''T!''. This type is identical to the
-type ''T'' except that it does not include the value ''null''.
+<p> A //non-null type// has the form **T!**. This type is identical to the
+type **T** except that it does not include the value **null**.
 
-<p>A reference to a named type, such as ''String'' or
-''X''.
+<p>A reference to a named type, such as **String** or
+**X**.
 
-<p>A type application, such as ''Vector.&lt;Number>'', which
-instantiates the generic class ''Vector'' to hold values of type
-''Number''. Note that a  generic class definition such as
+<p>A type application, such as **Vector.&lt;Number>**, which
+instantiates the generic class **Vector** to hold values of type
+**Number**. Note that a  generic class definition such as
 
 {{{
     class Vector.&lt;X> {...}
 }}}
 
-introduces a binding for ''Vector'', but ''Vector'' itself is not actually a
+introduces a binding for **Vector**, but **Vector** itself is not actually a
 type, since it requires additional type parameters to become a
-normal type, as in ''Vector.&lt;Number>''.
+normal type, as in **Vector.&lt;Number>**.
 
 <p>The type language includes //type names//, which can refer to
 nominal types (ie, class or interface types), type definitions, or to
 type variables bound by a generic parameter list, for example, the
-type variable ''X'' in the following class definition:
+type variable **X** in the following class definition:
 
 {{{
     class Vector.<X> {
@@ -177,29 +177,16 @@ include a nonce.
 
 === The Internal Representation of Types ===
 
-<p> To support destructuring assignment, the reference implementation
-internally uses the following two additional type forms:
-
-<p> A //type name reference// has the form ''T.n'', where ''T'' is a type
-and ''n'' is a name. The type ''T'' should resolve to a record type
-with a field named ''n'' of some type ''S'', and ''T.n'' denotes that
-type ''S''.
-
-<p> A //type index reference// has the form ''T[i]'', where ''T'' is a
-type and ''i'' is an integer. The type ''T'' should resolve to an
-array type whose entry at index ''i'' is some type ''S'', and ''T[i]''
-denotes that type ''S''.
-
-<p> Internally, the reference implementation also resolves type names
+<p> Internally, the reference implementation resolves type names
 that refer to nominal types into an //instance type//. Essentially, an
 instance type includes the Name of a particular nominal type, plus any
 type arguments to which that nominal type is being applied. (This type
 argument list is empty for references to non-generic nominal types.)
 
 <p> In addition, instance types do not include null, and so a type
-name that refers to a nullable class ''C'' would be expanded into a
-union type that includes ''null'' explicitly in addition to an
-instance type for ''C''. The ''INSTANCE_TYPE''
+name that refers to a nullable class **C** would be expanded into a
+union type that includes **null** explicitly in addition to an
+instance type for **C**. The ''INSTANCE_TYPE''
 implementation type described below includes additional fields that
 facilitate efficient evaluation, and these are described elsewhere.
 
@@ -217,8 +204,8 @@ yet be consistent with the following code.
 == The Subtype and Type Equivalence Relations ==
 
 <p>The subtyping relation is a binary relation on normalized types.
-If a type ''S'' is a subtype of type ''T'', then a value of type ''S''
-generally behaves as if it had type ''T''.
+If a type **S** is a subtype of type **T**, then a value of type **S**
+generally behaves as if it had type **T**.
 
 <p>The type equivalence relation is also a binary relation on types.
 Two types are equivalent if and only if they are both subtypes of each other.
@@ -233,55 +220,66 @@ the following subsections.
 Subtyping is reflexive, so every type is a subtype of itself.
 
 <p>
-Subtyping is transitive, so if ''S'' is a subtype of ''T'' and ''T''
-is in turn a subtype of ''U'', then ''S'' is also a subtype of ''U''.
+Subtyping is transitive, so if **S** is a subtype of **T** and **T**
+is in turn a subtype of **U**, then **S** is also a subtype of **U**.
 
 === Subtyping Record Types ===
 
-<p> A record type ''{N1:S1, .., Nn:Sn}'' (where each ''Ni'' is a name
-and each ''Si'' is a type) is a subtype of
-''{N1:T1, .., Nm:Tm}'' if m <LEQ> n and ''Si'' is equivalent to ''Ti''
+<p> A record type **{N1:S1, .., Nn:Sn}** (where each **Ni** is a name
+and each **Si** is a type) is a subtype of
+**{N1:T1, .., Nm:Tm}** if m <LEQ> n and **Si** is equivalent to **Ti**
 for all i in 1..m.
 
-<p> The ordering of the ''Name:Type'' bindings in a record type is
+<p> The ordering of the **Name:Type** bindings in a record type is
 irrelevant, and so re-arranging these bindings yields an equivalent
 type.  In particular, this re-arranging may be necessary in order to
 make the above rule applicable.
 
 === Subtyping Array Types ===
 
-<p> An array type ''[S1, .., Sn, S, ..., S]'' is a subtype of ''[S1,
-.., S_n, ..., S}]''.  The supertype demands one fewer element in the
-array than the subtype does.  For example, ''[Number, String, String,
-...String]'' is a subtype of ''[Number, ...String]'', via transitivity.
+<p> A fixed-length array type **[S1, .., Sn, S]** is a subtype of
+**[S1, .., S_n]**.  The supertype demands one fewer element in the
+array than the subtype does.  For example, **[Number, String,
+String]** is a subtype of **[Number, String]**.
 
-<p> An array type ''[S1, .., Sn, ..., S]'' is a subtype of ''[T1,
-.., Tn, ..., T]'' if ''S'' is equivalent to ''T'' and if each ''S_i'' is
-//equivalent// to  ''Ti'' for i in 1..n.
+<p> A fixed-length array type **[S1, .., Sn]** is a subtype of **[T1,
+.., Tn]** if each **S_i** is equivalent to **Ti** for i in 1..n.
+
+<p> A variable-length array type **[S1, .., Sn, S, ..., S]** is a subtype of **[S1,
+.., S_n, ..., S}]**.  The supertype demands one fewer element in the
+array than the subtype does.  For example, **[Number, String, String,
+...String]** is a subtype of **[Number, ...String]**, via transitivity.
+
+<p> A variable-length array type **[S1, .., Sn, ..., S]** is a subtype
+of **[T1, .., Tn, ..., T]** if **S** is equivalent to **T** and if
+each **S_i** is equivalent to **Ti** for i in 1..n.
+
+<p> A variable-length array type **[S1, .., Sn, ..., S]** is a subtype
+of the fixed-length array type **[S1, .., Sn]**.
 
 
 === Subtyping Union Types ===
 
-<p> A union type ''(S1 | .. | Sn)'' is a subtype of a type ''T'' if
-''Si'' is a subtype of ''T'' for all i in 1..n.
+<p> A union type **(S1 | .. | Sn)** is a subtype of a type **T** if
+**Si** is a subtype of **T** for all i in 1..n.
 
-<p> A type ''S'' is a subtype of ''(T1 | .. | Tn)'' if
-there exists some i in 1..n such that ''S'' is a subtype of ''Ti''.
+<p> A type **S** is a subtype of **(T1 | .. | Tn)** if
+there exists some i in 1..n such that **S** is a subtype of **Ti**.
 
 
 === Subtyping Function Types ===
 
-<p> A function type ''function(S1, .., Sn) : U'' is a subtype of
-''function(T1, .., Tn) : R'' if ''U'' is a subtype of ''R'' and ''Si'' is
-equivalent to ''Ti'' for all i in 1..m.
+<p> A function type **function(S1, .., Sn) : U** is a subtype of
+**function(T1, .., Tn) : R** if **U** is a subtype of **R** and **Si** is
+equivalent to **Ti** for all i in 1..m.
 
 <NOTE> Function subtyping is invariant in the argument position, and
 covariant in the result type.
 
-<p> This rule generalizes to ''this'' arguments, default arguments,
+<p> This rule generalizes to **this** arguments, default arguments,
 and rest arguments according to the following rule, where the number
-of default arguments (indicated via the ''='' symbol) in each function
-type may be zero, and where ''[...]'' indicates an optional rest
+of default arguments (indicated via the **=** symbol) in each function
+type may be zero, and where **[...]** indicates an optional rest
 argument.  A function type
 
 {{{
