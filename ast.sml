@@ -249,7 +249,7 @@ datatype TYPE =
        | UndefinedType
        | AnyType
        | RecordType of (NAME_EXPRESSION * TYPE) list
-       | ArrayType  of TYPE list
+       | ArrayType  of (TYPE list * TYPE option)
        | UnionType  of TYPE list
        | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE
@@ -270,7 +270,7 @@ datatype TYPE =
        | UndefinedType
        | AnyType
        | RecordType of FIELD_TYPE list    (* TODO *)
-       | ArrayType of TYPE list
+       | ArrayType  of (TYPE list * TYPE option)
        | UnionType of TYPE list
        | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE

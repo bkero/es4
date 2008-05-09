@@ -69,12 +69,19 @@ possible ES4 values.
 <p>A record type, such as ''{x: Number, y: Number}'', which represents
 a record with two fields ''x'' and ''y'', both of type ''Number''.
 
-<p>An array type, such as ''[... String]'', which describes arrays
-containing zero or more ''String'' object. An array type can provide
-different types for some initial array entries, as in the type
-''[Number, Number, ...String]'', which says that the array has at
-least two entries, that these entries are both ''Number'' objects, and that
-any additional entries are ''String'' objects.
+<p>Array types include both //fixed-length// and //variable-length//
+array types.
+
+A fixed-length array type has the form **[Type, .., Type]**. For
+example, the type **[Number, String]** describes arrays of length at
+least 2, where the entry at index 0 has type **Number** and the entry
+at index 1 has type **String**. The empty array type **[]** describes arrays
+of length at least 0, that is, it describes all arrays.
+
+<p>A variable-length array type has the form **[Type, .., Type, ... Type]**. For
+example, the type **[Number, ... String]** describes arrays of length at
+least 1, where the entry at index 0 has type **Number**, and any
+remaining entries have type **String**.
 
 <NOTE> Here, "''...''" represents concrete syntax, but "''..''" is
 meta-syntax, and so "''S1, .., Sn''" represents a sequence of
