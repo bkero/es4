@@ -3,7 +3,7 @@
 <hr>
 <pre>
 FILE:                       spec/language/names.html
-DRAFT STATUS:               DRAFT 5 - UNREVIEWED - 2008-05-02
+DRAFT STATUS:               DRAFT 6 - UNREVIEWED - 2008-05-08
 AUTHORS:                    Jeff, Graydon
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
@@ -39,7 +39,7 @@ their equality is defined by the equality of the underlying strings. Opaque name
 an underlying string value. In the implementation code, each opaque namespace is given a unique,
 system-assigned identifier.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="ast.sml" name="datatype NAMESPACE">
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
 
@@ -47,22 +47,25 @@ system-assigned identifier.
 namespace is specified to be equal only to itself. This is also true in the SML implementation as no
 two opaque namespaces are ever given the same system-assigned identifier.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun compareNamespaces">
 
-=== The Public and 4th Edition Namespaces ===
+=== The Public Namespace ===
 
-<p>Two important namespaces serve as roots for binding further names in this spec: the public
-namespace and the 4th edition namespace.
+<p>The public namespace is defined as the trasparent namespace containing only the empty string.
+It is only member of the initial open namespace set, and is the initial default binding namespace 
+for new unqualified bindings. 
 
-<p>The public namespace is defined as the transparent namespace containing only the empty string. It
-is a member of the initial open namespace set when running in either 3rd edition or 4th edition
-mode, and is the initial default binding namespace for new unqualified bindings.
+<p>Namespace attributes are not allowed on local definitions. The names of local definitions are
+always qualified by the public namespace.
 
-<p>Therefore in practice, code written for the 3rd edition or earlier -- by definition, ignorant of
-any means for namespace qualification -- sees and creates only bindings qualified by the public
-namespace.
+<p>Code written for the 3rd edition or earlier -- by definition, ignorant of any means for namespace 
+qualification -- sees and creates only bindings qualified by the public namespace.
 
+===== Semantics =====
+<INCLUDE file="name.sml" name="val publicNS">
+
+<!-- 
 <p>The 4th edition namespace is an opaque namespace. It is also a member of the initial open
 namespace set when running in 4th edition mode. All new bindings introduced by the 4th edition
 built-in library are qualified by the 4th edition namespace (or a namespace that is itself qualified
@@ -79,153 +82,25 @@ through the unqualified reference ''__ES4__'', and will not see a binding for th
 namespace. In contrast, code running in 4th edition mode will see the public namespace as the
 unqualified reference ''public'', and also -- since 4th edition code can by definition contain 
 qualified references -- as the qualified name ''__ES4__::public''.
+--> 
 
-<NOTE>Namespace attributes are not allowed on local definitions. The names of local definitions are
-always qualified by the public namespace.
+== Prototype Chains ==
 
-<IMPL>
-<INCLUDE file="name.sml" name="val ES4NS">
-<INCLUDE file="name.sml" name="val publicNS">
+<p>A prototype chain contains a list of objects that are searched when resolving a name on the
+first object in the list.
 
+== Scope Chains and Scope Objects ==
 
-== Name Expressions ==
+<p>A scope chain contains a list of scope objects that are searched when resolving a lexical 
+reference.
 
-<p>A name expression describes a name that is computed from either a namespace //qualified name// or
-an //unqualified name//.
+<p>A scope chain may include a class object (with class ''static'' properties), an instance
+object and one or more local scope objects in addition to the global, activation and with objects of
+edition 3.
 
-<IMPL>
-<INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
+=== Scope Objects ===
 
-<p>Name expressions occur in several contexts, to qualify declarations, identify types, and also in
-three special expression forms called //reference expressions//, defined in a section that follows.
-
-=== Qualified Name ===
-
-<p>A //qualified name// expression consists of a namespace expression and an identifier. A name
-value is constructed at runtime using the values of these components.
-
-=== Unqualified Name ===
-
-<p>An //unqualified name// expression consists of an single identifier and some contextual
-information -- an open namespaces list and a global name set -- that describes the name's static
-environment. A name value is constructed at runtime by using the contextual information to search
-for a property name that has an identifier that matches that string value and a namespace drawn from
-the open namespaces. The algorithm for resolving an unqualified name to a name is presented in
-sections that follow.
-
-==== Open Namespaces List ====
-
-<p>An //open namespaces list// is a list of sets of namespace values.  Each execution context
-extends this list of sets with a new set of namespace values representing namespaces that are opened
-in that execution context. We represent the innermost set in the SML implementation using a
-''NAMESPACE list'', but refer to it throughout the accompanying description as a "set" to emphasize
-its unordered meaning.
-
-<IMPL>
-<INCLUDE file="mach.sml" name="type NAMESPACE_SET">
-<INCLUDE file="mach.sml" name="type OPEN_NAMESPACES">
-
-<p>The ordering of the outer list is used to to prioritize the search for a matching name. The inner
-set is effectively unordered; all namespaces opened in the same execution context are given the same
-priority, and all operations on it are order-independent set operations.
-
-<p>An open namespaces list is captured in every unqualified name expression.
-
-==== Global Name Set ====
-
-<p>The //global name set// is a set of all the names of declared top-level (global) fixtures that
-occur or have occurred in all compilations units before and including the current compilation unit.
-
-<p>A global name set is captured in every unqualified name expression.
-
-=== Namespace Expressions ===
-
-<p>A //namespace expression// consists of either a namespace value or a name expression that must
-itself resolve to a namespace value.
-
-<IMPL>
-<INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
-
-== Name Bindings ==
-
-=== Forms that introduce names ===
-
-<P> //Names// are //bound// in //scopes// by //defining forms// and
-//binding forms//.
-
-
-==== Defined and bound names ====
-
-<P> The defining forms are //VariableDefinition//,
-//FunctionDefinition//, //ClassDefinition//, //InterfaceDefinition//,
-//TypeDefinition//, and //NamespaceDefinition//.  Except in block
-scopes (see below) a defining form permits the name to be qualified by
-a namespace.  The current default namespace is used if no qualifier is
-present.
-
-<P> (The initial default namespace in any block scope is ''public'', and it is
-not legal to set a different default namespace in a block scope.
-Therefore all names bound in block scopes are in the ''public''
-namespace.)
-
-<P> The binding forms are //FunctionExpression//, //LetExpression//,
-//CatchClause//, //TypeCaseElement//, //LetStatement//,
-//LetBlockStatement//, //ForStatement//, and //ArrayComprehension//.
-The binding forms do not permit names to be qualified by namespaces;
-all names bound by these forms are in the ''public'' namespace.
-
-<P> Names that are introduced by defining forms and binding forms are
-//fixtures//: they are guaranteed always to be present at run-time.
-
-
-==== Created and introduced names ====
-
-<P> Names can be //created// dynamically (at run-time) in the global
-scope by means of assignment and by the pre-defined global ''eval''
-function.  Names can also be created dynamically in the global scope
-and in any function scope by the ''eval'' operator evaluating a
-program text that contains a top-level ''var'' or ''function''
-definition,
-
-<P> Names can be created dynamically in class static and class
-instance scopes by creating a new property on the class object or the
-instance object.  (Dynamic name creation is only possible on instances
-of classes that are declared ''dynamic''.)
-
-<P> Dynamic creation of names is not possible in strict code.
-Top-level created names can have non-''public'' namespace
-qualifiers.
-
-<P> Names that are created dynamically can be removed by means of the
-''delete'' operator.
-
-<P> Names are also //introduced// in scopes by the //WithStatement//.
-(The //WithStatement// is disallowed in strict code.)
-
-<P> Names that created dynamically are never fixtures.  Names that are
-introduced by a //WithStatement// are as a rule not fixtures.  Created
-and introduced names can as a rule appear and disappear at
-unpredictable times during program evaluation.
-
-
-==== Visibility ====
-
-<FIXME> More here.
-
-<P> Bound, created, and introduced names are visible in the entire
-scope of the binding.  However, the scope of a binding is "static" (it
-is determined by the source text) and bindings in inner scopes can
-//shadow// bindings in outer scopes.
-
-<P> "use namespace" controls the shadowing, to an extent.  
-
-<P> A shadowed identifier in a base class may sometimes be made
-visible in a subclass by means of a //SuperExpression//.
-
-
-=== Scopes ===
-
-<P> The following are the kinds of scopes and the forms that introduce
+<P> The following are the kinds of scope objects and the forms that introduce
 names in those scopes:
 
 <UL>
@@ -304,7 +179,6 @@ names in those scopes:
   function scope -- as well as instances of //VariableDefinition// and
   //FunctionDefinition// that occur in the body.
 
-
   <LI> The //block scope// is introduced by the left curly brace of
   certain source phrases (//Block//, //SwitchStatement//,
   //CatchClause//, //TypeCaseElement//, and //LetBlockStatement//) and
@@ -380,55 +254,196 @@ order to preserve compatibility with the 3rd Edition):
   
 </UL>
 
-=== Scope Chain ===
+=== Visibility ===
 
-<p>A scope chain contains a list of objects that are searched when resolving an identifier.  The
-exact specification of how scope chains are constructed is described in //section ..:
-Execution//. For the purpose of specifying how names are resolved, it is sufficient to know that a
-scope chain yields a sequence of objects to be searched.
+<FIXME> More here.
 
-<NOTE>A scope chain may include a class object (with class ''static'' properties), an instance
-object and one or more local scope objects in addition to the global, activation and with objects of
-edition 3.
+<P> Bound, created, and introduced names are visible in the entire
+scope of the binding.  However, the scope of a binding is "static" (it
+is determined by the source text) and bindings in inner scopes can
+//shadow// bindings in outer scopes.
+
+<P> "use namespace" controls the shadowing, to an extent.  
+
+<P> A shadowed identifier in a base class may sometimes be made
+visible in a subclass by means of a //SuperExpression//.
+
+<!--
+
+== Name Bindings ==
+
+=== Forms that introduce names ===
+
+<P> //Names// are //bound// in //scopes// by //defining forms// and
+//binding forms//.
+
+==== Defined and bound names ====
+
+<P> The defining forms are //VariableDefinition//,
+//FunctionDefinition//, //ClassDefinition//, //InterfaceDefinition//,
+//TypeDefinition//, and //NamespaceDefinition//.  Except in block
+scopes (see below) a defining form permits the name to be qualified by
+a namespace.  The current default namespace is used if no qualifier is
+present.
+
+<P> (The initial default namespace in any block scope is ''public'', and it is
+not legal to set a different default namespace in a block scope.
+Therefore all names bound in block scopes are in the ''public''
+namespace.)
+
+<P> The binding forms are //FunctionExpression//, //LetExpression//,
+//CatchClause//, //TypeCaseElement//, //LetStatement//,
+//LetBlockStatement//, //ForStatement//, and //ArrayComprehension//.
+The binding forms do not permit names to be qualified by namespaces;
+all names bound by these forms are in the ''public'' namespace.
+
+<P> Names that are introduced by defining forms and binding forms are
+//fixtures//: they are guaranteed always to be present at run-time.
+
+
+==== Created and introduced names ====
+
+<P> Names can be //created// dynamically (at run-time) in the global
+scope by means of assignment and by the pre-defined global ''eval''
+function.  Names can also be created dynamically in the global scope
+and in any function scope by the ''eval'' operator evaluating a
+program text that contains a top-level ''var'' or ''function''
+definition,
+
+<P> Names can be created dynamically in class static and class
+instance scopes by creating a new property on the class object or the
+instance object.  (Dynamic name creation is only possible on instances
+of classes that are declared ''dynamic''.)
+
+<P> Dynamic creation of names is not possible in strict code.
+Top-level created names can have non-''public'' namespace
+qualifiers.
+
+<P> Names that are created dynamically can be removed by means of the
+''delete'' operator.
+
+<P> Names are also //introduced// in scopes by the //WithStatement//.
+(The //WithStatement// is disallowed in strict code.)
+
+<P> Names that created dynamically are never fixtures.  Names that are
+introduced by a //WithStatement// are as a rule not fixtures.  Created
+and introduced names can as a rule appear and disappear at
+unpredictable times during program evaluation.
+
+-->
+
+== Name Expressions ==
+
+<p>A name expression describes a name that is computed from either a namespace //qualified name// or
+an //unqualified name//.
+
+===== Semantics =====
+<INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
+
+<p>Name expressions occur in several contexts, to qualify declarations, identify types, and also in
+three special expression forms called //reference expressions//, defined in a section that follows.
+
+=== Qualified Name ===
+
+<p>A //qualified name// expression consists of a namespace expression and an identifier. A name
+value is constructed at runtime using the values of these components.
+
+<NOTE>Every qualfied name expression terminates with a ''NAMESPACE_EXPRESSION'' that is either a literal
+namespace (''Namespace'') value or an unqualfied name (''UnqualifiedName'').
+
+==== Namespace Expressions ====
+
+<p>A //namespace expression// consists of either a namespace value or a name expression that must
+itself resolve to a namespace value.
+
+===== Semantics =====
+<INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
+
+=== Unqualified Name ===
+
+<p>An //unqualified name// expression consists of an single identifier and some contextual
+information -- an open namespaces list and a global name set -- that describes the name's static
+environment. A name value is constructed at runtime by using the contextual information to search
+for a property name that has an identifier that matches that string value and a namespace drawn from
+the open namespaces. The algorithm for resolving an unqualified name to a name is presented in
+sections that follow.
+
+==== Open Namespaces List ====
+
+<p>An //open namespaces list// is a list of sets of namespace values.  Each execution context
+extends this list of sets with a new set of namespace values representing namespaces that are opened
+in that execution context. We represent the innermost set in the SML implementation using a
+''NAMESPACE list'', but refer to it throughout the accompanying description as a "set" to emphasize
+its unordered meaning.
+
+<p>Each namespace set contains the namespaces opened in the same scope which are given the same 
+priority during disambiguation. The lowest priority set consists of only the public namespace.
+
+===== Semantics =====
+<INCLUDE file="mach.sml" name="type NAMESPACE_SET">
+<INCLUDE file="mach.sml" name="type OPEN_NAMESPACES">
+
+<p>The ordering of the outer list is used to to prioritize the search for a matching name. The inner
+set is effectively unordered; all namespaces opened in the same execution context are given the same
+priority, and all operations on it are order-independent set operations.
+
+<p>An open namespaces list is captured in every unqualified name expression.
 
 == Reference Expressions ==
 
 <p>A //reference expression// is one of three forms of expression that simulatneously describe a name
 //and an object//. Reference expressions are used to locate property bindings.
 
-<IMPL>
+===== Semantics =====
 {{{
-       | LexicalReference of { name: NAME_EXPRESSION }
+datatype EXPRESSION =
+         LexicalReference of { name: NAME_EXPRESSION }
        | ObjectNameReference of { object: EXPRESSION,
                                   name: NAME_EXPRESSION }
        | ObjectIndexReference of { object: EXPRESSION,
                                    index: EXPRESSION }
+       <LDOTS>
 }}}
 
 <p>Of these three forms, ''LexicalReference'' expressions evaluate their name expression using the
 scope chain, described in the following section, whereas ''ObjectNameReference'' and
 ''ObjectIndexReference'' expressions evaluate their name expressions using their ''object'' operand.
 
-<NOTE>The third form, ''ObjectIndexReference'', is a degenerate form of ''ObjectNameReference''. It
-is evaluated by evaluating its ''index'' operand to a string value, and then behaving as if it were
-an ''ObjectNameReference'' on a qualified name expression formed from the evaluated string and
-qualified by the public namespace.
+<NOTE>The third form, ''ObjectIndexReference'', is evaluated by evaluating its ''index'' operand 
+to a string value, and then behaving as if it were an ''ObjectNameReference'' on a qualified name 
+expression formed from the evaluated string and qualified by the public namespace.
 
-=== Reference Expression Resolution ===
+== Name Resolution ==
 
-<p>Reference expressions are resolved to an object and a property name using the following algorithms.
+<p>Name resolution normalizes the various combinations of reference expressions and name expressions
+to an object and a name. There are four possible combinations.
 
-<NOTE>Reference expressions in which the target object is provided (''ObjectNameReference'' and
-''ObjectIndexReference'') are degenerate cases of a search over a //list// of objects, where the
-list has only a single object. Reference expressions to lexical bindings (''LexicalReference'')
-imply that the list of objects searched is the list of scope objects that constitute the scope
-chain. Likewise, reference expressions using a qualified name expression (''QualifiedName'') are
-degenerate forms of reference expressions to unqualified names (''UnqualifiedName'') where the open
-namespaces list is contains a single set, itself containing the single namespace of the
-''QualifiedName'', and the global name list is the empty list. The algorithms here are used to
-specify the meaning of both kinds of reference expression and name expression.
+=== Lexical References ===
 
-==== Name Resolution ====
+<p>Here we describe how a target object and a name are computed from a lexical reference.
+
+<p>For each scope object in the scope chain, search for a matching name in that object. If a match
+is found, return the scope object and the matching name.
+
+<p>Scope objects contain fixed and dynamic bindings. Fixed names in outer scopes may shadow
+dynamic names in inner scopes. For example, a fixed class static name might shadow a dynamic 
+instance name. This is necessary to allow early resolution of names. 
+
+<p>If a static name (in a namespace or type expression) resolves to a global name, we reserve
+the set of names that consist of the open namespaces with priority equal or higher than the
+matched name and the matched names identifier.
+
+=== Object References ===
+
+<p>Here we describe how a name is computed from an object reference.
+
+<p>Evaluate the ''object'' expression and search the resutling object value for the name specified
+by the name expression called ''name''.
+
+=== Common Algorithms ===
+
+
+==== Name Resolution  ====
 
 <p>Given an object list, an identifier, a list of open namespace sets and a global name set, this
 algorithm searches for an object in the list and a property name on the object that matches
@@ -465,8 +480,9 @@ selection, considering the classes inherited by the object.
 selection, considering the global name set intially provided. This is the final attempt: exactly one
 namespace must match. If any other number of namespaces match, signal an error.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="mach.sml" name="fun findName">
+
 
 ==== Object list search ====
 
@@ -479,8 +495,9 @@ nonempty matching namespace set. Otherwise repeat the process with the tail of t
 tail, and so forth along the list. If all objects in the list are searched and no matching
 namespaces are found, return no value.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="mach.sml" name="fun objectListSearch">
+
 
 ==== Object Search ====
 
@@ -494,8 +511,9 @@ it. Otherwise repeat the process on the prototype of the object, and its prototy
 along the prototype chain. If the end of the prototype chain is reached without producing a matching
 name, return no value.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="mach.sml" name="fun objectSearch">
+
 
 ==== Open Namespace Based Namespace Selection ====
 
@@ -509,7 +527,7 @@ process with the tail of the open namespace list, and its tail, and so forth up 
 open namespace sets. If the end of the list of open namespace sets is reached without producing a
 nonempty intersection, return an empty set.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
 
 ==== Class Based Namespace Selection ====
@@ -527,7 +545,7 @@ matching namespaces is nonempty, return it. Otherwise repeat the process on the 
 and its tail, and so forth down the list. If all the classes in the list are searched and no
 matching namespaces are found, return the empty set.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">
 
 ==== Global Name Based Namespace Selection ====
@@ -536,12 +554,12 @@ matching namespaces are found, return the empty set.
 namespace in the namespace set for which a name formed from the namespace and the identifier is 
 present in the global name set.
 
-<IMPL>
+===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByGlobalNames">
 
 <p>**Helper functions**
 
-<IMPL>
+===== Semantics =====
 {{{
 fun head x = hd x (* return the first element of a list *)
 fun tail x = tl x (* return all but the first element of a list *)

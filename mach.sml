@@ -72,9 +72,9 @@ val cachesz = 4096
  * all through the code. Yay.
  *)
                                        
-type ATTRS = { dontDelete: bool,
-               dontEnum: bool,
-               readOnly: bool,
+type ATTRS = { removable: bool,
+               enumerable: bool,
+               writable: bool,
                fixed: bool }     
 
 type IDENTIFIER = Ustring.STRING
@@ -97,7 +97,7 @@ datatype VALUE = Undef
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE list (* FIXME: need TYPE option too - see ArrayType *)
        | InstanceTag of Ast.INSTANCE_TYPE
-       | MagicTag of MAGIC
+       | PrimitiveTag of PRIMITIVE
        | NoTag
 
      and OBJ_CACHE = 
@@ -150,11 +150,11 @@ datatype VALUE = Undef
          Frame of { name: string, args: VALUE list }
 
 (*
- * Magic is visible only to the interpreter;
+ * Primitive is visible only to the interpreter;
  * it is not visible to users.
  *)
 
-     and MAGIC =
+     and PRIMITIVE =
          Boolean of bool
        | Double of Real64.real
        | Decimal of Decimal.DEC
@@ -283,7 +283,7 @@ withtype FUN_CLOSURE =
          int
          
 (* Important to model "fixedness" separately from
- * "dontDelete-ness" because fixedness affects
+ * "removable-ness" because fixedness affects
  * which phase of name lookup the name is found during.
  *)
 
@@ -308,34 +308,34 @@ fun isObject (v:VALUE) : bool =
       | _ => false
 
 
-fun isDouble (Object (Obj {tag = MagicTag (Double _), ...})) = true
+fun isDouble (Object (Obj {tag = PrimitiveTag (Double _), ...})) = true
   | isDouble _ = false
 
-fun isDecimal (Object (Obj {tag = MagicTag (Decimal _), ...})) = true
+fun isDecimal (Object (Obj {tag = PrimitiveTag (Decimal _), ...})) = true
   | isDecimal _ = false
 
-fun isString (Object (Obj {tag = MagicTag (String _), ...})) = true
+fun isString (Object (Obj {tag = PrimitiveTag (String _), ...})) = true
   | isString _ = false
 
-fun isBoolean (Object (Obj {tag = MagicTag (Boolean _), ...})) = true
+fun isBoolean (Object (Obj {tag = PrimitiveTag (Boolean _), ...})) = true
   | isBoolean _ = false
 
-fun isNamespace (Object (Obj {tag = MagicTag (Namespace _), ...})) = true
+fun isNamespace (Object (Obj {tag = PrimitiveTag (Namespace _), ...})) = true
   | isNamespace _ = false
 
-fun isClass (Object (Obj {tag = MagicTag (Class _), ...})) = true
+fun isClass (Object (Obj {tag = PrimitiveTag (Class _), ...})) = true
   | isClass _ = false
 
-fun isInterface (Object (Obj {tag = MagicTag (Interface _), ...})) = true
+fun isInterface (Object (Obj {tag = PrimitiveTag (Interface _), ...})) = true
   | isInterface _ = false
 
-fun isFunction (Object (Obj {tag = MagicTag (Function _), ...})) = true
+fun isFunction (Object (Obj {tag = PrimitiveTag (Function _), ...})) = true
   | isFunction _ = false
                    
-fun isType (Object (Obj {tag = MagicTag (Type _), ...})) = true
+fun isType (Object (Obj {tag = PrimitiveTag (Type _), ...})) = true
   | isType _ = false
 
-fun isNativeFunction (Object (Obj {tag = MagicTag (NativeFunction _), ...})) = true
+fun isNativeFunction (Object (Obj {tag = PrimitiveTag (NativeFunction _), ...})) = true
   | isNativeFunction _ = false
                          
 fun isNumeric ob = isDouble ob orelse isDecimal ob
@@ -437,9 +437,9 @@ fun getProp (b:PROPERTY_BINDINGS)
          *)
         {ty=Ast.UndefinedType  ,
          state=ValProp Undef,
-         attrs={dontDelete=false,  (* unused attrs *)
-                dontEnum=false,
-                readOnly=false,
+         attrs={removable=true,  (* unused attrs *)
+                enumerable=false,
+                writable=true,
                 fixed=false}}
 
 
@@ -450,8 +450,8 @@ fun hasProp (b:PROPERTY_BINDINGS)
         NONE => false
       | SOME _ => true
 
-fun hasMagic (Obj { tag = MagicTag _, ... }) = true
-  | hasMagic _ = false
+fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
+  | hasPrimitive _ = false
 
 fun setRib (obj:OBJ)
            (r:Ast.RIB)
@@ -482,9 +482,9 @@ fun getRibs (scope:SCOPE)
       end
 
 
-fun setPropDontEnum (props:PROPERTY_BINDINGS)
+fun setPropEnumerable (props:PROPERTY_BINDINGS)
                     (n:Ast.NAME)
-                    (dontEnum:bool)
+                    (enumerable:bool)
     : unit =
     case findProp props n of
         SOME prop =>
@@ -492,9 +492,9 @@ fun setPropDontEnum (props:PROPERTY_BINDINGS)
             val attrs = (#attrs prop)
             val newProp = { ty = (#ty prop),
                             state = (#state prop),
-                            attrs = { dontDelete = (#dontDelete attrs),
-                                      dontEnum = dontEnum,
-                                      readOnly = (#readOnly attrs),
+                            attrs = { removable = (#removable attrs),
+                                      enumerable = enumerable,
+                                      writable = (#writable attrs),
                                       fixed = (#fixed attrs) } }
         in
             delProp props n;
@@ -588,9 +588,9 @@ fun isInRange (low:Real64.real)
  * Some stringification helpers on low-level values.
  *)
 
-fun magicToUstring (magic:MAGIC)
+fun primitiveToUstring (primitive:PRIMITIVE)
     : Ustring.STRING =
-    case magic of
+    case primitive of
         Double n => NumberToString n
       | Decimal d => Ustring.fromString (Decimal.toString d)
       | String s => s
@@ -675,18 +675,18 @@ fun inspect (v:VALUE)
 
         fun nl _ = TextIO.print "\n";
 
-        fun att {dontDelete,dontEnum,readOnly,fixed} =
-            if not dontDelete
-               andalso not dontEnum
-               andalso not readOnly
+        fun att {removable,enumerable,writable,fixed} =
+            if not removable
+               andalso not enumerable
+               andalso not writable
                andalso not fixed
             then ""
             else
                 (" ("
-                 ^ (if dontDelete then "DD," else "")
-                 ^ (if dontEnum then "DE," else "")
-                 ^ (if readOnly then "RO," else "")
-                 ^ (if fixed then "FX" else "")
+                 ^ (if removable then "R," else "")
+                 ^ (if enumerable then "E," else "")
+                 ^ (if writable then "W," else "")
+                 ^ (if fixed then "F" else "")
                  ^ ") ")
 
         fun id (Obj ob) = Int.toString (#ident ob)
@@ -707,7 +707,7 @@ fun inspect (v:VALUE)
         (* FIXME: elaborate printing of type expressions. *)
         fun mag m = case m of
                         String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
-                      | m => Ustring.toAscii (magicToUstring m) ^ (magType m)
+                      | m => Ustring.toAscii (primitiveToUstring m) ^ (magType m)
                 
         fun tag (Obj ob) =
             case (#tag ob) of
@@ -715,7 +715,7 @@ fun inspect (v:VALUE)
                 ObjectTag _ => "<Object>"
               | ArrayTag _ => "<Arrray>"
               | InstanceTag t => "<Instance " ^ (typ (Ast.InstanceType t)) ^ ">"
-              | MagicTag m => "<Magic " ^ (mag m) ^ ">"
+              | PrimitiveTag m => "<Primitive " ^ (mag m) ^ ">"
               | NoTag => "<NoTag>"
 
         fun printVal indent _ Undef = TextIO.print "undefined\n"
@@ -767,7 +767,7 @@ fun inspect (v:VALUE)
  * To get from any object to its CLS, you work out the
  * "nominal base" of the object's tag. You can then find
  * a fixed prop in the global object that has a "Class"
- * magic value pointing to the CLS.
+ * primitive value pointing to the CLS.
  *)
 
 fun nominalBaseOfTag (to:TAG)
@@ -776,58 +776,58 @@ fun nominalBaseOfTag (to:TAG)
         ObjectTag _ => Name.public_Object
       | ArrayTag _ => Name.public_Array
       | InstanceTag ity => (#name ity)
-      | MagicTag (Boolean _) => Name.ES4_boolean
-      | MagicTag (Double _) => Name.ES4_double
-      | MagicTag (Decimal _) => Name.ES4_decimal
-      | MagicTag (String _) => Name.ES4_string
-      | MagicTag (Namespace _) => Name.ES4_Namespace
-      | MagicTag (Class _) => Name.intrinsic_Class
-      | MagicTag (Interface _) => Name.intrinsic_Interface
-      | MagicTag (Function _) => Name.public_Function
-      | MagicTag (Type _) => Name.intrinsic_Type
-      | MagicTag (NativeFunction _) => Name.public_Function
-      | MagicTag (Generator _) => Name.helper_GeneratorImpl
+      | PrimitiveTag (Boolean _) => Name.ES4_boolean
+      | PrimitiveTag (Double _) => Name.ES4_double
+      | PrimitiveTag (Decimal _) => Name.ES4_decimal
+      | PrimitiveTag (String _) => Name.ES4_string
+      | PrimitiveTag (Namespace _) => Name.ES4_Namespace
+      | PrimitiveTag (Class _) => Name.intrinsic_Class
+      | PrimitiveTag (Interface _) => Name.intrinsic_Interface
+      | PrimitiveTag (Function _) => Name.public_Function
+      | PrimitiveTag (Type _) => Name.intrinsic_Type
+      | PrimitiveTag (NativeFunction _) => Name.public_Function
+      | PrimitiveTag (Generator _) => Name.helper_GeneratorImpl
       | NoTag => error ["nominalBaseOfTag on NoTag"]
         
                                   
-fun getObjMagic (Obj { tag = MagicTag m, ... }) = SOME m
-  | getObjMagic _ = NONE
+fun getObjPrimitive (Obj { tag = PrimitiveTag m, ... }) = SOME m
+  | getObjPrimitive _ = NONE
 
-fun getMagic (Object (Obj { tag = MagicTag m, ... })) = SOME m
-  | getMagic _ = NONE
+fun getPrimitive (Object (Obj { tag = PrimitiveTag m, ... })) = SOME m
+  | getPrimitive _ = NONE
 
-fun needMagic (Object (Obj { tag = MagicTag m, ... })) = m
-  | needMagic _ = error ["require object with magic"]
+fun needPrimitive (Object (Obj { tag = PrimitiveTag m, ... })) = m
+  | needPrimitive _ = error ["require object with primitive"]
 
-fun needClass (Object (Obj {tag = MagicTag (Class c), ...})) = c
+fun needClass (Object (Obj {tag = PrimitiveTag (Class c), ...})) = c
   | needClass _ = error ["require class object"]
 
-fun needInterface (Object (Obj {tag = MagicTag (Interface i), ...})) = i
+fun needInterface (Object (Obj {tag = PrimitiveTag (Interface i), ...})) = i
   | needInterface _ = error ["require interface object"]
 
-fun needFunction (Object (Obj {tag = MagicTag (Function f), ...})) = f
+fun needFunction (Object (Obj {tag = PrimitiveTag (Function f), ...})) = f
   | needFunction _ = error ["require function object]"]
 
-fun needNamespace (Object (Obj {tag = MagicTag (Namespace n), ...})) = n
+fun needNamespace (Object (Obj {tag = PrimitiveTag (Namespace n), ...})) = n
   | needNamespace _ = error ["require namespace object"]
 
 fun needNamespaceOrNull Null = Name.publicNS
-  | needNamespaceOrNull (Object (Obj {tag = MagicTag (Namespace n), ...})) = n
+  | needNamespaceOrNull (Object (Obj {tag = PrimitiveTag (Namespace n), ...})) = n
   | needNamespaceOrNull _ = error ["require namespace object"]
 
-fun needType (Object (Obj {tag = MagicTag (Type t), ...})) = t
+fun needType (Object (Obj {tag = PrimitiveTag (Type t), ...})) = t
   | needType _ = error ["require type object"]
 
-fun needDouble (Object (Obj {tag = MagicTag (Double d), ...})) = d
+fun needDouble (Object (Obj {tag = PrimitiveTag (Double d), ...})) = d
   | needDouble _ = error ["require double object"]
 
-fun needDecimal (Object (Obj {tag = MagicTag (Decimal d), ...})) = d
+fun needDecimal (Object (Obj {tag = PrimitiveTag (Decimal d), ...})) = d
   | needDecimal _ = error ["require decimal object"]
 
-fun needBoolean (Object (Obj {tag = MagicTag (Boolean b), ...})) = b
+fun needBoolean (Object (Obj {tag = PrimitiveTag (Boolean b), ...})) = b
   | needBoolean _ = error ["require boolean object"]
 
-fun needString (Object (Obj {tag = MagicTag (String s), ...})) = s
+fun needString (Object (Obj {tag = PrimitiveTag (String s), ...})) = s
   | needString _ = error ["require string object"]
 
 
@@ -841,10 +841,10 @@ fun approx (arg:VALUE)
         Null => "null"
       | Undef => "undefined"
       | Object ob =>
-        if hasMagic ob
+        if hasPrimitive ob
         then
             let
-                val str = Ustring.toAscii (magicToUstring (needMagic arg))
+                val str = Ustring.toAscii (primitiveToUstring (needPrimitive arg))
             in
                 if isString arg
                 then "\"" ^ str ^ "\""
@@ -1295,9 +1295,9 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                                 case Fixture.selectNamespacesByGlobalNames (identifier, matches''', globalNames) of
                                     namespace :: [] => SOME (object, {ns=namespace,id=identifier})
                                   | [] => raise (LogErr.NameError "internal error")
-                                  | _ => raise (LogErr.NameError "ambiguous reference")
+                                  | _ => raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
                             else
-                                raise (LogErr.NameError "ambiguous reference")
+                                raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
                     end
             end
     end

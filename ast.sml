@@ -145,16 +145,6 @@ datatype PRAGMA =
          Namespace of NAMESPACE
        | NamespaceName of NAME_EXPRESSION
 
-(* Post-defn phase, only the following variants should appear:
-
-     and NAME_EXPRESSION = 
-         QualifiedName of { namespace: NAMESPACE_EXPRESSION,
-							identifier: IDENTIFIER }
-
-     and NAMESPACE_EXPRESSION =
-         Namespace of NAMESPACE
-*)
-                       
      and FUNC_NAME_KIND =
          Ordinary
        | Operator
@@ -456,12 +446,12 @@ datatype FIXTURE =
        | MethodFixture of
            { func: FUNC,
              ty: TYPE,
-             readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+             writable: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool }
        | ValFixture of
            { ty: TYPE,
-             readOnly: bool }
+             writable: bool }
        | VirtualValFixture of
          { ty: TYPE, 
            getter: FUNC option,

@@ -66,7 +66,7 @@
 
 //         intrinsic function superTypes() {
 //             // FIXME #158: don't use "let" here, "let function" is broken.
-//             var supers = []; // magic::superTypes(this);
+//             var supers = []; // helper::superTypes(this);
 //             var i = 0;
 //             // Clunky
 //             function next() {

@@ -45,7 +45,7 @@
     /*
      * The boolean class is final and non-dynamic because most
      * implementations will in fact represent boolean objects not
-     * using objects, but using some magic tagged value, of which
+     * using objects, but using some primitive tagged value, of which
      * there will be only two, one for "true" and the other for
      * "false".
      *
@@ -58,7 +58,7 @@
 
         /* Don't remove this
         function boolean(value=false)
-            magic::newBoolean(value)
+            helper::newBoolean(value)
         */
 
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */

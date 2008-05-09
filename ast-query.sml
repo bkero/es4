@@ -97,8 +97,7 @@ fun needFunctionType (t:Ast.TYPE)
 fun resultTyOfFuncTy t = 
     case (#result (needFunctionType t)) of
         SOME t => t
-    (* void case should never occur, I think *)
-                  
+      | NONE => error ["resultTyOfFuncTy: none found"]                  
 
 val minArgsOfFuncTy = (#minArgs) o needFunctionType
 

@@ -40,9 +40,6 @@
  * Status: Complete; Not reviewed against spec.
  */
 
-
-    use namespace ECMAScript4_Internal;
-
     public dynamic class Object
     {
         // IMPLEMENTATION ARTIFACT: A getter because Object is loaded before int.
@@ -68,7 +65,7 @@
             "[object " + helper::getClassName() + "]";
 
         helper function getClassName()
-            magic::getClassName(this);
+            informative::getClassName(this);
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         public prototype function toLocaleString()
@@ -96,14 +93,14 @@
         public prototype function hasOwnProperty(name)
             this.private::hasOwnProperty(helper::toEnumerableId(name));
 
-        // Bootstrapping barfs if this does not go directly to the magic,
+        // Bootstrapping barfs if this does not go directly to the helper,
         // though I don't know why.  Could be that Object is not fully
         // set up yet when it's called.
         intrinsic function hasOwnProperty(name: EnumerableId): boolean
-            magic::hasOwnProperty(this, name);
+            helper::hasOwnProperty(this, name);
 
         private function hasOwnProperty(name: EnumerableId): boolean
-            magic::hasOwnProperty(this, name);
+            helper::hasOwnProperty(this, name);
 
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
@@ -119,7 +116,7 @@
 
             let obj = value;
             while (true) {
-                obj = magic::getPrototype(obj);
+                obj = helper::getPrototype(obj);
                 if (obj === null || obj === undefined)
                     return false;
                 if (obj === this)
@@ -137,9 +134,9 @@
             private::propertyIsEnumerable(name);
 
         private function propertyIsEnumerable(name) {
-            if (!magic::hasOwnProperty(this, name))
+            if (!helper::hasOwnProperty(this, name))
                 return false;
-            return !magic::getPropertyIsDontEnum(this, name);
+            return !helper::getPropertyIsEnumerable(this, name);
         }
 
         /* Old code
@@ -151,13 +148,13 @@
             private::propertyIsEnumerable(name, flag);
 
         private function propertyIsEnumerable(name, flag) {
-            if (!magic::hasOwnProperty(this, name))
+            if (!helper::hasOwnProperty(this, name))
                 return false;
 
-            let oldval = !magic::getPropertyIsDontEnum(this, name);
-            if (!magic::getPropertyIsDontDelete(this, name))
+            let oldval = !helper::getPropertyIsEnumerable(this, name);
+            if (!helper::getPropertyIsDontDelete(this, name))
                 if (flag !== undefined) 
-                    magic::setPropertyIsDontEnum(this, name, !flag);
+                    helper::setPropertyIsEnumerable(this, name, !flag);
             return oldval;
         }
         */
@@ -173,19 +170,19 @@
             private::__defineProperty__(name, value, enumerable, removable, writable);
 
         private function __defineProperty__(name, value, enumerable, removable, writable) {
-            if (!magic::hasOwnProperty(this, name))
+            if (!helper::hasOwnProperty(this, name))
                 throw new TypeError(/* Property exists */);
 
-            let obj = magic::getPrototype(this);
+            let obj = helper::getPrototype(this);
             while (obj != null) {
-                if (magic::hasOwnProperty(obj, name) && magic::getPropertyIsReadOnly(obj, name))
-                    throw new TypeError(/* Property is ReadOnly in prototype chain */);
-                obj = magic::getPrototype(obj);
+                if (helper::hasOwnProperty(obj, name) && !helper::getPropertyIsWritable(obj, name))
+                    throw new TypeError(/* non-Writable property in prototype chain */);
+                obj = helper::getPrototype(obj);
             }
 
             this[name] = value;
-            magic::setPropertyIsDontEnum(this, name, !enumerable);
-            magic::setPropertyIsDontDelete(this, name, !removable);
-            magic::setPropertyIsReadOnly(this, name, !writable);
+            helper::setPropertyIsEnumerable(this, name, enumerable);
+            helper::setPropertyIsRemovable(this, name, removable);
+            helper::setPropertyIsWritable(this, name, writable);
         }
     }

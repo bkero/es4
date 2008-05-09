@@ -40,11 +40,10 @@
  * by a strongly-typed global intrinsic const variable also called
  * "Math", and for intrinsic methods on objects of this type.
  */
-
-    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
+    use namespace helper;
 
-    ECMAScript4_Internal namespace MathInternals;
+    helper namespace MathInternals;
 
     type AnyNumber = (double|decimal);
     type FloatNumber = (double|decimal);
@@ -534,7 +533,7 @@
     // 15.8.2 Public function Properties of the Math Object.  These
     // are {DE} only.
     //
-    // FIXME: these properties need to be set to DontEnum, but
+    // FIXME: these properties need to be set to Enumerable, but
     // that's not yet possible because propertyIsEnumerable
     // does not work and (maybe) because one can't construct
     // Name objects in the public namespace.  See tickets #89

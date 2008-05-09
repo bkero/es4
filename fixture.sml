@@ -130,7 +130,7 @@ fun mergeFixtures (tyeq:TYEQ)
                                 (mergeVirtuals tyeq newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
             if (tyeq (#ty new) (#ty old)) 
-               andalso (#readOnly new) = (#readOnly old)
+               andalso (#writable new) = (#writable old)
             then oldRib
             else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) =>
@@ -388,6 +388,7 @@ and resolveNameExpr (ribs:Ast.RIBS)
                 [] => error ["qualified name not present in ribs: ", LogErr.name name]
               | (rib::ribs) => ((rib::ribs), name, (getFixture rib (Ast.PropName name)))
         end
+      | Ast.ResolvedName { ns, id } => resolveNameExpr ribs (Ast.QualifiedName { namespace=(Ast.Namespace ns), identifier=id })
       | Ast.UnqualifiedName { identifier, openNamespaces, globalNames } => 
         case findName (ribs, identifier, openNamespaces, globalNames) of
             NONE => error ["unable to resolve unqualified name expression: ", LogErr.nameExpr ne]

@@ -46,9 +46,7 @@
  *    might be done.
  */
 
-    use default namespace public;
     use namespace intrinsic;
-    use namespace ECMAScript4_Internal;
 
     // The [[Prototype]] of "double" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
@@ -74,7 +72,7 @@
 
         /* Don't remove this
         function double(value=false)
-            magic::newDouble(value)
+            helper::newDouble(value)
         */
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */

@@ -126,37 +126,29 @@ type ENV =
 val (initRib:Ast.RIB) = 
 	[ 
 	 (* This is the new name that non-backward-compatibly pollutes the ES3 unqualified global. *)
-	 (Ast.PropName Name.public_ES4_, Ast.NamespaceFixture Name.ES4NS),
+	 (Ast.PropName Name.public_ES4, Ast.NamespaceFixture Name.ES4NS),
 	 
 	 (* These are the namespaces in ES4 that have spec-defined, normative roles and meanings. *)
-	 (Ast.PropName Name.ES4_public_, Ast.NamespaceFixture Name.publicNS),
-     (Ast.PropName Name.ES4_meta_, Ast.NamespaceFixture Name.metaNS),
-     (Ast.PropName Name.ES4_magic_, Ast.NamespaceFixture Name.magicNS),
-     (Ast.PropName Name.ES4_intrinsic_, Ast.NamespaceFixture Name.intrinsicNS),
+	 (Ast.PropName Name.ES4_public, Ast.NamespaceFixture Name.publicNS),
+     (Ast.PropName Name.ES4_meta, Ast.NamespaceFixture Name.metaNS),
+     (Ast.PropName Name.ES4_intrinsic, Ast.NamespaceFixture Name.intrinsicNS),
 
 	 (* 
-	  * This is the namespace in ES4 that holds all additional non-normative namespaces of the 
-	  * standard library 
-	  *)
-	 
-	 (Ast.PropName Name.ES4_ECMAScript4_Internal_, Ast.NamespaceFixture Name.ECMAScript4_InternalNS),
-
-	 (* 
-	  * This is a namespace that *would* be defined in the standard library except that we 
-	  * define a bunch of native methods in it, and therefore wish to have access to it here.
-	  * In theory we could back off and look it up once the interpreter boots. It's just here
+	  * These are a namespaces that *would* be defined in the standard library except that we 
+	  * define a bunch of native methods in them, and therefore wish to have access to them here.
+	  * In theory we could back off and look it up once the interpreter boots. They're just here
 	  * to be convenient.
 	  *)
-	 (Ast.PropName Name.ECMAScript4_Internal_informative_, Ast.NamespaceFixture Name.informativeNS),
+	 (Ast.PropName Name.ES4_helper, Ast.NamespaceFixture Name.helperNS),
+	 (Ast.PropName Name.ES4_informative, Ast.NamespaceFixture Name.informativeNS),
 
 
 	 (* 
 	  * These are namespaces that *could* be defined in the boot process, but that code is 
 	  * sufficiently tangly and order-sensitive that it's much easier to define them here. 
 	  *)
-	 (Ast.PropName Name.ECMAScript4_Internal_helper_, Ast.NamespaceFixture Name.helperNS),
-	 (Ast.PropName Name.ECMAScript4_Internal_Unicode_, Ast.NamespaceFixture Name.UnicodeNS),
-	 (Ast.PropName Name.ECMAScript4_Internal_RegExpInternals_, Ast.NamespaceFixture Name.RegExpInternalsNS)
+	 (Ast.PropName Name.ES4_Unicode, Ast.NamespaceFixture Name.UnicodeNS),
+	 (Ast.PropName Name.ES4_RegExpInternals, Ast.NamespaceFixture Name.RegExpInternalsNS)
 	]
 
 
@@ -257,6 +249,9 @@ and defNameExpr (env:ENV)
           | Ast.QualifiedName { namespace, identifier } =>
             Ast.QualifiedName { namespace = defNamespaceExpr env namespace,
                                 identifier = identifier }
+
+          | Ast.ResolvedName name => 
+            Ast.ResolvedName name
     end
     
 fun resolve (env:ENV)
@@ -1165,14 +1160,14 @@ and defVar (env:ENV)
         Ast.Binding { ident, ty } =>
         let
             val ty':Ast.TYPE = defTypeExpr env ty
-            val readOnly' = case kind of
-                                 Ast.Const => true
-                               | Ast.LetConst => true
-                               | _ => false
+            val writable' = case kind of
+                                Ast.Const => false
+                              | Ast.LetConst => false
+                              | _ => true
             val offset = (#tempOffset env)
             val name' = fixtureNameFromPropIdent env (SOME ns) ident offset
         in
-            (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
+            (name', Ast.ValFixture {ty=ty',writable=writable'})
         end
 
 (*
@@ -1433,7 +1428,7 @@ and defFunc (env:ENV)
 (*
     FUNC_DEFN
 
-    A function can be bound or unbound, writable or readonly, have constrained or
+    A function can be bound or unbound, writable or not, have constrained or
     unconstrainted 'this'. In all cases however a function definition specifies
     the function's name, type, and implementation
 
@@ -1468,19 +1463,19 @@ and defFuncDefn (env:ENV)
                           setter = SOME newFunc }
                   | Ast.Ordinary =>
                     let
-                        val (ftype, isReadOnly) =
+                        val (ftype, isWritable) =
                             if (#kind f) = Ast.Var                            
                             then  
                                 (* e3 style writeable function *)
-                                (makeTy env (Ast.AnyType), false)  
+                                (makeTy env (Ast.AnyType), true)  
                             else 
                                 (* read only, method *)
-                                (ty, true)                        
+                                (ty, false)
                     in
                         Ast.MethodFixture
                             { func = newFunc,
                               ty = ftype,
-                              readOnly = isReadOnly,
+                              writable = isWritable,
                               final = (#final f),
                               override = (#override f)}
                     end
@@ -1488,14 +1483,14 @@ and defFuncDefn (env:ENV)
                     Ast.MethodFixture
                         { func = newFunc,
                           ty = ty,
-                          readOnly = true,
+                          writable = false,
                           final = true,
                           override = false}
                   | Ast.Has =>
                     Ast.MethodFixture
                         { func = newFunc,
                           ty = ty,
-                          readOnly = true,
+                          writable = false,
                           final = true,
                           override = false}
                   | Ast.Operator =>

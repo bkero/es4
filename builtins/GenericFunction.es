@@ -103,7 +103,7 @@
 
    (2) The RI has no real meta-object functionality at this point, so
        this code uses some primitives that have been hacked into the
-       system as magic hooks.  These hooks will eventually be useful
+       system as helper hooks.  These hooks will eventually be useful
        for the meta-objects system anyhow.
 
    (3) Using arrays like I do here is nuts, we should switch to
@@ -441,7 +441,7 @@
         switch type (v) {
         case (v:undefined) { return UndefinedType }
         case (v:null) { return NullType }
-        case (v:*) { return magic::getClassOfObject(v) }
+        case (v:*) { return helper::getClassOfObject(v) }
         }
     }
 
@@ -487,11 +487,11 @@
         let supers = [];
         switch type (clsOrInterface) {
         case (cls:Class) {
-            let probe = magic::getSuperClass(cls);
+            let probe = helper::getSuperClass(cls);
             if (probe !== null)
                 supers.push(probe);
             for ( let i=0 ; ; i++ ) {
-                let probe = magic::getImplementedInterface(cls, toUint(i));
+                let probe = helper::getImplementedInterface(cls, toUint(i));
                 if (probe === null)
                     break;
                 supers.push(probe);
@@ -499,7 +499,7 @@
         }
         case (iface:Interface) {
             for ( let i=0 ; ; i++ ) {
-                let probe = magic::getSuperInterface(iface, toUint(i));
+                let probe = helper::getSuperInterface(iface, toUint(i));
                 if (probe === null)
                     break;
                 supers.push(probe);

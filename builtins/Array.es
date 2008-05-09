@@ -38,9 +38,7 @@
  * Status: not reviewed against specs.
  */
 
-    use default namespace public;
     use namespace intrinsic;
-    use namespace ECMAScript4_Internal;
 
     // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras

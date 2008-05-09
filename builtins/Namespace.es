@@ -46,7 +46,7 @@
         // function here for dynamic namespaces. Not a ctor!
         //
         // For bootstrapping purposes, the ctor of Namespace must *not*
-        // call magic::foo on any foo, since it'll feed back on itself
-        // during construction of the magic namespace itself. So we
+        // call helper::foo on any foo, since it'll feed back on itself
+        // during construction of the helper namespace itself. So we
         // insist on an empty ctor for the time being.
     }

@@ -152,61 +152,61 @@ associated with the object.
 <p>The ''ObjectTag'' and ''ArrayTag'' tags are present on objects of structural types ''ObjectType''
 and ''ArrayType'', respectively. 
 
-<p>The ''MagicTag'' tag is present on objects that are instances of a small number of classes,
+<p>The ''PrimitiveTag'' tag is present on objects that are instances of a small number of classes,
 described in the following section.
 
 <p>The ''InstanceTag'' tag is present on any object that is an instance of an ES4 class but does
-//not// have an ''ObjectTag'', ''ArrayTag'' or ''MagicTag''. 
+//not// have an ''ObjectTag'', ''ArrayTag'' or ''PrimitiveTag''. 
 
 <p>The ''NoTag'' tag is present only on un-named objects that implement scopes.
 
-==== Magic Tag ====
+==== Primitive Tag ====
 
 <p>Some objects have additional a semantic value associated with them. Such objects are called
-//magic objects// and have a //magic tag//. The semantic value is held in the tag, and is only
+//primitive objects// and have a //primitive tag//. The semantic value is held in the tag, and is only
 directly accessible in semantic code.
 
-<p>ES4 code can determine if an object is magic through a correspondence between magic tags and a
+<p>ES4 code can determine if an object is primitive through a correspondence between primitive tags and a
 set of 10 specific ES4 instance types. The correspondence is a bijection: any instance of these
-types has the corresponding magic tag, and any object with a magic tag is an instance of the
+types has the corresponding primitive tag, and any object with a primitive tag is an instance of the
 corresponding type.
 
-<p>The allocated type of a magic object may be more specific than the corresponding instance
+<p>The allocated type of a primitive object may be more specific than the corresponding instance
 type. In particular, function objects may have more specific subtypes of the ES4 class
 **public::Function**. In such cases, the allocated type of the object is present in the semantic
-value held by the magic tag.
+value held by the primitive tag.
 
-<p>The correspondence between magic tags and classes is the following:
+<p>The correspondence between primitive tags and classes is the following:
 <ul>
-<li>The magic tag ''Boolean'' corresponds to the ES4 class **__ES4__::boolean**.
-<li>The magic tag ''Double'' corresponds to the ES4 class **__ES4__::double**.
-<li>The magic tag ''Decimal'' corresponds to the ES4 class **__ES4__::decimal**.
-<li>The magic tag ''String'' corresponds to the ES4 class **__ES4__::string**.
-<li>The magic tag ''Namespace'' corresponds to the ES4 class **__ES4__::Namespace**.
-<li>The magic tag ''Class'' corresponds to the ES4 class **__ES4__::Class**.
-<li>The magic tag ''Interface'' corresponds to the ES4 class **__ES4__::Interface**.
-<li>The magic tag ''Function'' corresponds to the ES4 class **public::Function**.
-<li>The magic tag ''Type'' corresponds to the ES4 class **__ES4__::Type**.
-<li>The magic tag ''Generator'' corresponds to the ES4 class **helper::GeneratorImpl**.
+<li>The primitive tag ''Boolean'' corresponds to the ES4 class **__ES4__::boolean**.
+<li>The primitive tag ''Double'' corresponds to the ES4 class **__ES4__::double**.
+<li>The primitive tag ''Decimal'' corresponds to the ES4 class **__ES4__::decimal**.
+<li>The primitive tag ''String'' corresponds to the ES4 class **__ES4__::string**.
+<li>The primitive tag ''Namespace'' corresponds to the ES4 class **__ES4__::Namespace**.
+<li>The primitive tag ''Class'' corresponds to the ES4 class **__ES4__::Class**.
+<li>The primitive tag ''Interface'' corresponds to the ES4 class **__ES4__::Interface**.
+<li>The primitive tag ''Function'' corresponds to the ES4 class **public::Function**.
+<li>The primitive tag ''Type'' corresponds to the ES4 class **__ES4__::Type**.
+<li>The primitive tag ''Generator'' corresponds to the ES4 class **helper::GeneratorImpl**.
 </ul>
 
 <IMPL>
-<INCLUDE file="mach.sml" name="and MAGIC">
+<INCLUDE file="mach.sml" name="and PRIMITIVE">
 
 == Semantic Values ==
 
-<p>Many aspects of the language depend on the semantic values associated with magic objects. The
+<p>Many aspects of the language depend on the semantic values associated with primitive objects. The
 following sections describe the semantic values, and highlights various details of the
 correspondences that exist between particular semantic values and the ES4 values they are present
 on.
 
 === Special Constructors ===
 
-<p>While much of the behavior of magic objects is defined //inside// the ES4 language (in the
-section ...library), the means of //constructing// magic objects and associating semantic values
+<p>While much of the behavior of primitive objects is defined //inside// the ES4 language (in the
+section ...library), the means of //constructing// primitive objects and associating semantic values
 with them is (at least partially) defined //outside// the ES4 language, in semantic code. 
 
-<p>Therefore the construction of any magic object is described by a //special constructor// defined
+<p>Therefore the construction of any primitive object is described by a //special constructor// defined
 in semantic code, rather than a //standard constructor// defined in ES4. The behavior of each
 special constructor is described in the following sections.
 
@@ -221,7 +221,7 @@ ES4 class **__ES4__::boolean**.
 evaluates to one of the two boolean values.
 
 <p>A "wrapper class" called **public::Boolean** exists. Instances of **public::Boolean** contain a
-single **__ES4__::boolean** magic object, and delegate most of their functionality to this inner
+single **__ES4__::boolean** primitive object, and delegate most of their functionality to this inner
 "wrapped" value.
 
 <p>The value of **public::Boolean.prototype** is identical to **__ES4__::boolean.prototype**. This
@@ -295,7 +295,7 @@ strings are similarly defined in terms of sequence comparisons on string element
 textual equality or collation are defined.
 
 <p>A "wrapper class" called **public::String** exists. Instances of **public::String** contain a
-single **__ES4__::string** magic object, and delegate most of their functionality to this inner
+single **__ES4__::string** primitive object, and delegate most of their functionality to this inner
 "wrapped" value.
 
 <p>The value of **public::String.prototype** is identical to **__ES4__::string.prototype**. This

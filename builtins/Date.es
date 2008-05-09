@@ -43,12 +43,9 @@
  * extensive use of expression functions.
  */
 
-    use namespace ECMAScript4_Internal;
     use namespace helper;
     use namespace informative;
     use namespace intrinsic;
-
-    use default namespace public;
 
     const NOARG = {};
 

@@ -72,7 +72,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
       val closure = Eval.newClsClosure (#scope regs) cls
-      val obj = Mach.newObject (Mach.MagicTag (Mach.Class closure)) (Mach.Object proto)
+      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.Class closure)) (Mach.Object proto)
 
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
@@ -93,9 +93,9 @@ fun instantiateRootClass (regs:Mach.REGS)
       val _ = Mach.addProp props fullName
                            { ty = Ast.InstanceType cty,
                              state = Mach.ValProp (Mach.Object obj),
-                             attrs = { dontDelete = true,
-                                       dontEnum = true,
-                                       readOnly = true,
+                             attrs = { removable = false,
+                                       enumerable = false,
+                                       writable = false,
                                        fixed = true } }
       val _ = Eval.bindAnySpecialIdentity regs obj
   in
@@ -272,8 +272,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val (prog, otherFrags) = 
             loadFiles prog 
                       [builtin "Namespace.es",
-                       builtin "Magic.es",
-                       builtin "Internal.es",
+                       builtin "Helper.es",
                        builtin "Conversions.es",
 
 
@@ -324,11 +323,10 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "RegExpEvaluator.es",
                        builtin "RegExp.es",
                        builtin "Date.es",
-                       builtin "MetaObjects.es", (* before JSON *)
-                       builtin "JSON.es",
+                       builtin "MetaObjects.es"
+
                        (* builtin "Vector.es", *)
-                       (* builtin "Map.es", *)
-                       builtin "DecimalContext.es"
+                       (* builtin "Map.es" *)
                  ]
 
         val glob = 

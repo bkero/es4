@@ -53,7 +53,7 @@
  * The raw unicode character data and the scripts to process them are
  * in the directory ../unicode.
  */
-    use namespace ECMAScript4_Internal;
+    use namespace helper;
     use namespace intrinsic;
     use namespace Unicode;
     use default namespace Unicode;

@@ -149,6 +149,7 @@ and nameExpr (ne:Ast.NAME_EXPRESSION) =
 		   unqualName openNamespaces identifier
 		 | Ast.QualifiedName { namespace, identifier } => 
 		   ((nsExpr namespace) ^ "::" ^ (Ustring.toAscii identifier))
+		 | Ast.ResolvedName n => name n
    end
    
 fun identList fields =

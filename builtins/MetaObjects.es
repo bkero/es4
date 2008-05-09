@@ -34,7 +34,6 @@
  */
 
 
-    use namespace ECMAScript4_Internal;
     use namespace helper;
     use namespace intrinsic;
     
@@ -92,7 +91,7 @@
             return nulltype;
         if (v is undefined)
             return undefinedtype;
-        return getClassMetaObject(magic::getClassOfObject(v));
+        return getClassMetaObject(helper::getClassOfObject(v));
     }
 
     intrinsic interface NullType extends Type
@@ -149,14 +148,14 @@
         function pushClass(cls) {
             if (cls !== null) {
                 supers.push(getClassMetaObject(cls));
-                pushClass(magic::getSuperClass(cls));
+                pushClass(helper::getSuperClass(cls));
             }
         }
 
         function pushSuperInterfaces(iface) {
             let i = 0;
             while (true) {
-                let iface2 = magic::getSuperInterface(iface, toUint(i));
+                let iface2 = helper::getSuperInterface(iface, toUint(i));
                 if (iface2 == null)
                     break;
                 supers.push(getInterfaceMetaObject(iface2));
@@ -168,7 +167,7 @@
         function pushImplementedInterfaces(cls) {
             let i = 0;
             while (true) {
-                let iface = magic::getImplementedInterface(cls, toUint(i));
+                let iface = helper::getImplementedInterface(cls, toUint(i));
                 if (iface == null)
                     break;
                 supers.push(getInterfaceMetaObject(iface));
@@ -240,7 +239,7 @@
                 return;
 
             supers = [];
-            pushClass(magic::getSuperClass(cls));
+            pushClass(helper::getSuperClass(cls));
             pushImplementedInterfaces(cls);
         }
     }

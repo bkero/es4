@@ -48,7 +48,7 @@
  * start with the digit '0'.
  */
 
-    use namespace ECMAScript4_Internal;
+    use namespace helper;
     use namespace intrinsic;
     use namespace Unicode;
     use namespace RegExpInternals;
@@ -466,7 +466,7 @@
 
             let (t : double? = decimalEscape()) {
                 if (t !== null)
-                    return new CharsetAdhoc(string.fromCharCode(t));
+                    return new CharsetAdhoc(string.intrinsic::fromCharCode(t));
             }
 
             fail( SyntaxError, "Failed to match escape sequence " + peekChar() );
@@ -551,11 +551,11 @@
                 let (c : string = peekChar()) {
                     if (c >= "A" && c <= "Z") {
                         eat(c);
-                        return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0) + 1);
+                        return string.intrinsic::fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0) + 1);
                     }
                     if (c >= "a" && c <= "z") {
                         eat(c);
-                        return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0) + 1);
+                        return string.intrinsic::fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0) + 1);
                     }
                     else
                         return "c";
@@ -582,7 +582,7 @@
                         res = hexDigits(4);
                     if (res === null) {
                         idx = saved;
-                        res = string.fromCharCode(c);
+                        res = string.intrinsic::fromCharCode(c);
                     }
                     return res;
                 }
@@ -679,7 +679,7 @@
             if (n !== null && i < m || i == 0)
                 return null;
             skip();
-            return string.fromCharCode(k);
+            return string.intrinsic::fromCharCode(k);
         }
 
         function decimalDigits() : double {
@@ -705,7 +705,7 @@
             // no faster than peekChar. In our reference
             // implementation, it is substantially faster.
             if (idx < slen)
-                return magic::charCodeAt(source, intrinsic::toUint(idx));
+                return informative::charCodeAt(source, intrinsic::toUint(idx));
             else
                 return 0x0;
         }

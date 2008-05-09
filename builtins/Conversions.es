@@ -44,16 +44,16 @@
 
     /*
     intrinsic function IsPrimitive(value)
-        magic::isPrimitive(value);
+        helper::isPrimitive(value);
     */
 
     /*
     intrinsic function DefaultValue(obj, preferredType)
-        magic::defaultValue(obj, preferredType);
+        helper::defaultValue(obj, preferredType);
     */
 
     intrinsic function ToPrimitive(value, preferredType)
-        magic::toPrimitive(value, preferredType);
+        helper::toPrimitive(value, preferredType);
 
     /*
      * ES-262-3 9.9: ToObject.

@@ -42,12 +42,10 @@
  * See RegExpEvaluator.es for the evaluator and compiled code representation.
  */
 
-    use namespace ECMAScript4_Internal;
+    use namespace helper;
     use namespace intrinsic;
     use namespace Unicode;
     use namespace RegExpInternals;
-
-    use default namespace public;
  
     /* E262-3 15.10: Regular expression object */
     public dynamic class RegExp

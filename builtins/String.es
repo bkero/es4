@@ -42,22 +42,20 @@
  * Status: complete; not reviewed; not tested.
  *
  * Strings are constructed by:
- *    new String + magic::setStringValue
- *    magic::fromCharCode
- *    magic::stringAppend
+ *    new String + helper::setStringValue
+ *    helper::fromCharCode
+ *    helper::stringAppend
  *
  * A string's length is obtained by:
- *    magic::stringLength
+ *    helper::stringLength
  *
  * Strings are picked apart by:
- *    magic::charCodeAt
+ *    helper::charCodeAt
  *
- * (We would expect "+" to map to magic::stringAppend().)
+ * (We would expect "+" to map to helper::stringAppend().)
  */
 
-    use default namespace public;
     use namespace intrinsic;
-    use namespace ECMAScript4_Internal;
 
     __ES4__ type AnyString = (string|String!);
 

@@ -146,7 +146,7 @@ fun propQuery (regs:Mach.REGS)
  * protocol for it (and its base classes, initializers, settings,
  * ctors). Return the resulting instance, always an Object!
  *
- * magic native function construct(cls:Class!, args:[*]) : Object!;
+ * helper native function construct(cls:Class!, args:[*]) : Object!;
  *)
 fun construct (regs:Mach.REGS)
               (vals:Mach.VALUE list)
@@ -162,7 +162,7 @@ fun construct (regs:Mach.REGS)
 (*
  * Retrieve the [[Class]] property of o
  *
- * magic native function getClassName(o : Object!) : string;
+ * informative native function getClassName(o : Object!) : string;
  *)
 fun getClassName (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
@@ -178,7 +178,7 @@ fun getClassName (regs:Mach.REGS)
  * Meta-object interface:
  * Retrieve the class of an object instance.
  *
- * magic native function getClassOfObject(o: Object!) : Class;
+ * helper native function getClassOfObject(o: Object!) : Class;
  *)
 fun getClassOfObject (regs:Mach.REGS)
                      (vals:Mach.VALUE list)
@@ -194,7 +194,7 @@ fun getClassOfObject (regs:Mach.REGS)
  * Meta-object interface:
  * Retrieve the possibly null base class of cls.
  *
- * magic native function getSuperClass(cls : Class!) : Class;
+ * helper native function getSuperClass(cls : Class!) : Class;
  *)
 fun getSuperClass (regs:Mach.REGS)
                   (vals:Mach.VALUE list)
@@ -216,7 +216,7 @@ fun getSuperClass (regs:Mach.REGS)
  * Meta-object interface:
  * Retrieve the possibly null kth implemented interface of cls.
  *
- * magic native function getClassExtends(cls : Class!, k: uint) : Class;
+ * helper native function getClassExtends(cls : Class!, k: uint) : Class;
  *)
 fun getImplementedInterface (regs:Mach.REGS)
                             (vals:Mach.VALUE list)
@@ -241,7 +241,7 @@ fun getImplementedInterface (regs:Mach.REGS)
  * Meta-object interface:
  * Retrieve the possibly null kth base interface of iface.
  *
- * magic native function getSuperInterface(iface: Interface!, k: uint): Interface;
+ * helper native function getSuperInterface(iface: Interface!, k: uint): Interface;
  *)
 fun getSuperInterface (regs:Mach.REGS)
                       (vals:Mach.VALUE list)
@@ -265,7 +265,7 @@ fun getSuperInterface (regs:Mach.REGS)
 (*
  * Retrieve the array of enumerable properties of o, in property creation order.
  *
- * magic native function getEnumerableIds(o : Object) : iterator::EnumerableIdArray;
+ * helper native function getEnumerableIds(o : Object) : iterator::EnumerableIdArray;
  *)
 fun getEnumerableIds (regs:Mach.REGS)
                      (vals:Mach.VALUE list)
@@ -283,7 +283,7 @@ fun getEnumerableIds (regs:Mach.REGS)
                 fun select (name, { seq, prop }) = 
                     case prop of 
                         { state = Mach.ValProp _,
-                          attrs = { dontEnum = false, dontDelete, readOnly, fixed },
+                          attrs = { enumerable = true, removable, writable, fixed },
                           ty } => SOME (name, seq)
                       | _ => NONE
                 val filteredList = List.mapPartial select bindingList
@@ -304,7 +304,7 @@ fun getEnumerableIds (regs:Mach.REGS)
 (*
  * Retrieve the possibly null [[Prototype]] property of o
  *
- * magic native function getPrototype(o : Object!) : Object;
+ * helper native function getPrototype(o : Object!) : Object;
  *)
 fun getPrototype (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
@@ -319,7 +319,7 @@ fun getPrototype (regs:Mach.REGS)
 (*
  * Return true iff o has a local property named by p.
  *
- * magic native function hasOwnProperty(o : Object!, p : string) : Boolean;
+ * helper native function hasOwnProperty(o : Object!, p : string) : Boolean;
  *)
 fun hasOwnProperty (regs:Mach.REGS)
                    (vals:Mach.VALUE list)
@@ -329,17 +329,17 @@ fun hasOwnProperty (regs:Mach.REGS)
 
 (*
  * Return true if the property p does exists locally on o and its
- * DontEnum bit is set
+ * Enumerable bit is set
  *
- * magic native function getPropertyIsDontEnum(o : Object!, p : string) : Boolean;
+ * helper native function getPropertyIsEnumerable(o : Object!, p : string) : Boolean;
  *)
-fun getPropertyIsDontEnum (regs:Mach.REGS)
+fun getPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
         fun f props n =
             if Mach.hasProp props n
-            then (#dontEnum (#attrs (Mach.getProp props n)))
+            then (#enumerable (#attrs (Mach.getProp props n)))
             else false
     in
         propQuery regs vals f
@@ -348,31 +348,31 @@ fun getPropertyIsDontEnum (regs:Mach.REGS)
 
 (*
  * Return true if the property p does exists locally on o and its
- * DontDelete bit is set
+ * removable bit is set
  *
- * magic native function getPropertyIsDontDelete(o : Object!, p : string) : Boolean;
+ * helper native function getPropertyIsRemovable(o : Object!, p : string) : Boolean;
  *)
 
-fun getPropertyIsDontDelete (regs:Mach.REGS)
-                            (vals:Mach.VALUE list)
+fun getPropertyIsRemovable (regs:Mach.REGS)
+                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
         fun f props n =
             if Mach.hasProp props n
-            then (#dontDelete (#attrs (Mach.getProp props n)))
+            then (#removable (#attrs (Mach.getProp props n)))
             else false
     in
         propQuery regs vals f
     end
 
 
-(* Provided that the property p exists locally on o, set its DontEnum
+(* Provided that the property p exists locally on o, set its Enumerable
  * flag according to f.  If the property p does not exist locally on
  * o, it does nothing.
  *
- * magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
+ * helper native function setPropertyIsEnumerable(o : Object!, p : string, f : Boolean) : void;
  *)
-fun setPropertyIsDontEnum (regs:Mach.REGS)
+fun setPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
@@ -380,7 +380,7 @@ fun setPropertyIsDontEnum (regs:Mach.REGS)
         val n = nthAsName regs vals 1
         val b = nthAsBool vals 2
     in
-        Mach.setPropDontEnum props n b;
+        Mach.setPropEnumerable props n b;
         Mach.Undef
     end
 
@@ -416,7 +416,7 @@ fun defaultValue (regs:Mach.REGS)
  * Given a function object, a this object, and an array of argument
  * values, call the function with the this object and arguments.
  *
- * magic native function apply(fn : Function!, t : Object!, args : Array) : *;
+ * helper native function apply(fn : Function!, t : Object!, args : Array) : *;
  *)
 fun apply (regs:Mach.REGS)
           (vals:Mach.VALUE list)
@@ -437,9 +437,9 @@ fun fnLength (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
         val len = 
             case tag of
-                Mach.MagicTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
+                Mach.PrimitiveTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
                 => AstQuery.minArgsOfFuncTy ty
-              | Mach.MagicTag (Mach.NativeFunction {length, ...}) => length
+              | Mach.PrimitiveTag (Mach.NativeFunction {length, ...}) => length
               | _ => error ["wrong kind of object to fnLength"]
     in
         Eval.newDouble regs (Real64.fromInt len)
@@ -453,7 +453,7 @@ fun genSend (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.MagicTag (Mach.Generator gen) => Eval.sendToGen regs gen arg
+            Mach.PrimitiveTag (Mach.Generator gen) => Eval.sendToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -465,7 +465,7 @@ fun genThrow (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.MagicTag (Mach.Generator gen) => Eval.throwToGen regs gen arg
+            Mach.PrimitiveTag (Mach.Generator gen) => Eval.throwToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -476,7 +476,7 @@ fun genClose (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
     in
         case tag of
-            Mach.MagicTag (Mach.Generator gen) => Eval.closeGen regs gen
+            Mach.PrimitiveTag (Mach.Generator gen) => Eval.closeGen regs gen
           | _ => error ["wrong kind of object to genSend"];
         Mach.Undef
     end
@@ -486,7 +486,7 @@ fun genClose (regs:Mach.REGS)
  * numeric value of the character at that position in the
  * string.
  *
- * magic native function charCodeAt(s : string, pos : uint) : uint;
+ * informative native function charCodeAt(s : string, pos : uint) : uint;
  *)
 fun charCodeAt (regs:Mach.REGS)
                (vals:Mach.VALUE list)
@@ -506,7 +506,7 @@ fun charCodeAt (regs:Mach.REGS)
  * Given a numeric character value, return a string of length 1
  * whose element 0 is the character with that same value.
  *
- * magic native function fromCharCode(ch : uint) : string;
+ * informative native function fromCharCode(ch : uint) : string;
  *)
 fun fromCharCode (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
@@ -526,7 +526,7 @@ fun fromCharCode (regs:Mach.REGS)
  * Given a string object, return the number of characters in the
  * string.
  *
- * magic native function stringLength(s : string) : uint;
+ * informative native function stringLength(s : string) : uint;
  *)
 fun stringLength (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
@@ -543,7 +543,7 @@ fun stringLength (regs:Mach.REGS)
  * containing the characters from A followed by the characters
  * from B.
  *
- * magic native function stringAppend(a : string, b : string) : string;
+ * informative native function stringAppend(a : string, b : string) : string;
  *)
 fun stringAppend (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
@@ -985,7 +985,7 @@ fun dumpFunc (regs:Mach.REGS)
     in
         if Mach.isFunction v
         then
-            case Mach.needMagic v of
+            case Mach.needPrimitive v of
                 Mach.Function { func, ... } => Pretty.ppFunc func
               | _ => ()
         else
@@ -1030,33 +1030,33 @@ fun registerNatives _ =
         fun addFn (len:int) (name:Ast.NAME) f =
             Mach.registerNativeFunction name {length=len, func=f}
     in
-        addFn 2 Name.magic_construct construct;
-        addFn 1 Name.magic_getClassName getClassName;
-        addFn 1 Name.magic_getClassOfObject getClassOfObject;
-        addFn 1 Name.magic_getSuperClass getSuperClass;
-        addFn 2 Name.magic_getImplementedInterface getImplementedInterface;
-        addFn 2 Name.magic_getSuperInterface getSuperInterface;
-        addFn 1 Name.magic_getEnumerableIds getEnumerableIds;
-        addFn 1 Name.magic_getPrototype getPrototype;
-        addFn 2 Name.magic_hasOwnProperty hasOwnProperty;
-        addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
-        addFn 2 Name.magic_getPropertyIsDontDelete getPropertyIsDontDelete;
-        addFn 3 Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
+        addFn 2 Name.helper_construct construct;
+        addFn 1 Name.informative_getClassName getClassName;
+        addFn 1 Name.helper_getClassOfObject getClassOfObject;
+        addFn 1 Name.helper_getSuperClass getSuperClass;
+        addFn 2 Name.helper_getImplementedInterface getImplementedInterface;
+        addFn 2 Name.helper_getSuperInterface getSuperInterface;
+        addFn 1 Name.helper_getEnumerableIds getEnumerableIds;
+        addFn 1 Name.helper_getPrototype getPrototype;
+        addFn 2 Name.helper_hasOwnProperty hasOwnProperty;
+        addFn 2 Name.helper_getPropertyIsEnumerable getPropertyIsEnumerable;
+        addFn 2 Name.helper_getPropertyIsRemovable getPropertyIsRemovable;
+        addFn 3 Name.helper_setPropertyIsEnumerable setPropertyIsEnumerable;
 
-        addFn 2 Name.magic_toPrimitive toPrimitive;
-        addFn 1 Name.magic_isPrimitive isPrimitive;
-        addFn 2 Name.magic_defaultValue defaultValue;
+        addFn 2 Name.helper_toPrimitive toPrimitive;
+        addFn 1 Name.helper_isPrimitive isPrimitive;
+        addFn 2 Name.helper_defaultValue defaultValue;
 
-        addFn 3 Name.magic_apply apply;
-        addFn 1 Name.magic_fnLength fnLength;
-        addFn 2 Name.magic_genSend genSend;
-        addFn 2 Name.magic_genThrow genThrow;
-        addFn 1 Name.magic_genClose genClose;
+        addFn 3 Name.helper_apply apply;
+        addFn 1 Name.helper_fnLength fnLength;
+        addFn 2 Name.helper_genSend genSend;
+        addFn 2 Name.helper_genThrow genThrow;
+        addFn 1 Name.helper_genClose genClose;
 
-        addFn 2 Name.magic_charCodeAt charCodeAt;
-        addFn 1 Name.magic_fromCharCode fromCharCode;
-        addFn 1 Name.magic_stringLength stringLength;
-        addFn 2 Name.magic_stringAppend stringAppend;
+        addFn 2 Name.informative_charCodeAt charCodeAt;
+        addFn 1 Name.informative_fromCharCode fromCharCode;
+        addFn 1 Name.informative_stringLength stringLength;
+        addFn 2 Name.informative_stringAppend stringAppend;
 
         addFn 1 Name.intrinsic_eval eval;
         addFn 1 Name.intrinsic_parseFloat parseFloat;

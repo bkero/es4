@@ -43,9 +43,6 @@
  */
 
     use namespace intrinsic;
-    use namespace ECMAScript4_Internal;
-
-    use default namespace public;
 
     __ES4__ type AnyNumber = (double|decimal|Number!);
 
