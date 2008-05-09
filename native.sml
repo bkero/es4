@@ -437,9 +437,9 @@ fun fnLength (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
         val len = 
             case tag of
-                Mach.MagicTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
+                Mach.PrimitiveTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
                 => AstQuery.minArgsOfFuncTy ty
-              | Mach.MagicTag (Mach.NativeFunction {length, ...}) => length
+              | Mach.PrimitiveTag (Mach.NativeFunction {length, ...}) => length
               | _ => error ["wrong kind of object to fnLength"]
     in
         Eval.newDouble regs (Real64.fromInt len)
@@ -453,7 +453,7 @@ fun genSend (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.MagicTag (Mach.Generator gen) => Eval.sendToGen regs gen arg
+            Mach.PrimitiveTag (Mach.Generator gen) => Eval.sendToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -465,7 +465,7 @@ fun genThrow (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.MagicTag (Mach.Generator gen) => Eval.throwToGen regs gen arg
+            Mach.PrimitiveTag (Mach.Generator gen) => Eval.throwToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -476,7 +476,7 @@ fun genClose (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
     in
         case tag of
-            Mach.MagicTag (Mach.Generator gen) => Eval.closeGen regs gen
+            Mach.PrimitiveTag (Mach.Generator gen) => Eval.closeGen regs gen
           | _ => error ["wrong kind of object to genSend"];
         Mach.Undef
     end
@@ -985,7 +985,7 @@ fun dumpFunc (regs:Mach.REGS)
     in
         if Mach.isFunction v
         then
-            case Mach.needMagic v of
+            case Mach.needPrimitive v of
                 Mach.Function { func, ... } => Pretty.ppFunc func
               | _ => ()
         else
