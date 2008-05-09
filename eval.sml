@@ -3712,36 +3712,14 @@ and evalLogicalOr (regs:Mach.REGS)
     end
 
 
-
 and evalOperatorIs (regs:Mach.REGS)
                    (v:Mach.VALUE)
                    (te:Ast.TYPE)
     : bool = 
     let
         val vt = typeOfVal regs v 
-        fun isLike (Mach.Object obj) (Ast.RecordType fields) = List.all (objHasLikeField obj) fields
-          | isLike v lte = (typeOfVal regs v) <* lte
-        and objHasLikeField obj {name, ty} = 
-            let
-                val name = evalNameExpr regs name 
-            in
-                if hasOwnValue obj name
-                then 
-                    let 
-                        val v2 = getValue regs obj name
-                    in
-                        isLike v2 ty
-                    end
-                else 
-                    false
-            end
     in
-        case te of 
-        (*    (* IS-LIKE *)
-            Ast.LikeType lte => isLike v lte
-                                
-          (* IS-OK *)
-          |*) _ => vt <* te
+        vt <* te
     end
 
 (* SPEC
@@ -3769,6 +3747,28 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             then v
             else throwExn (newTypeOpFailure regs "cast failed" v ty)
           | Ast.Is => newBoolean regs (evalOperatorIs regs v (evalTy regs ty))
+          | Ast.Like => 
+            let
+                val vt = typeOfVal regs v 
+                fun isLike (Mach.Object obj) (Ast.RecordType fields) = List.all (objHasLikeField obj) fields
+                  | isLike v lte = (typeOfVal regs v) <* lte
+                and objHasLikeField obj {name, ty} = 
+                    let
+                        val name = evalNameExpr regs name 
+                    in
+                        if hasOwnValue obj name
+                        then 
+                            let 
+                                val v2 = getValue regs obj name
+                            in
+                                isLike v2 ty
+                            end
+                        else 
+                            false
+                    end
+            in
+                newBoolean regs (isLike v ty)
+            end
     end
 
 
