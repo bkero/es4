@@ -69,8 +69,6 @@
  * to create it.
  */
 
-    use namespace ECMAScript4_Internal;
-
     __ES4__ dynamic class Map.<K,V>
     {
         static public const length = 2;

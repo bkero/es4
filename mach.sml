@@ -1295,9 +1295,9 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                                 case Fixture.selectNamespacesByGlobalNames (identifier, matches''', globalNames) of
                                     namespace :: [] => SOME (object, {ns=namespace,id=identifier})
                                   | [] => raise (LogErr.NameError "internal error")
-                                  | _ => raise (LogErr.NameError "ambiguous reference")
+                                  | _ => raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
                             else
-                                raise (LogErr.NameError "ambiguous reference")
+                                raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
                     end
             end
     end

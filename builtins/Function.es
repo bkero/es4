@@ -46,9 +46,6 @@
  * just fine.
  */
 
-    use namespace __ES4__;
-    use namespace ECMAScript4_Internal;
-
     public dynamic class Function
     {
         // IMPLEMENTATION ARTIFACT: A getter because Function is loaded before int.
@@ -56,7 +53,7 @@
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
         static meta function invoke(...args)
-            magic::construct(Function, args);
+            helper::construct(Function, args);
 
         /* The following is for the benefit of the specification, don't remove it.
 
@@ -72,7 +69,7 @@
                 parameters = args.join(",");
             }
             body = string(body);
-            magic::initializeFunction(this, __ES4__::global, parameters, body);
+            helper::initializeFunction(this, __ES4__::global, parameters, body);
         }
 
         */
@@ -93,11 +90,9 @@
             throw new Error("Implementation error");
         }
 
-        /* XXX: The prototype object behaves like a function (and
-           system magic makes its classname be "Function", though it's
-           not an instance of the Function class).  So here we install
-           some things in the prototype that ensures that the object
-           behaves like a function in some trivial ways.
+        /* XXX: The prototype object behaves like a function.  So here
+           we install some things in the prototype that ensures that
+           the object behaves like a function in some trivial ways.
          */
         public prototype meta function invoke(...args)
             undefined;
@@ -133,7 +128,7 @@
                 thisArg = global;
             if (argArray === null)
                 argArray = [];
-            return magic::apply(fn, thisArg, argArray);
+            return helper::apply(fn, thisArg, argArray);
         }
 
         /* E262-3 15.3.4.4: Function.prototype.call.
@@ -184,7 +179,7 @@
                 throw new TypeError("[[HasInstance]]: prototype is not object");
 
             while (true) {
-                V = magic::getPrototype(V);
+                V = helper::getPrototype(V);
                 if (V === null)
                     return false;
                 if (O == V)
@@ -203,7 +198,7 @@
         // This is a getter because 'double' is not defined by the time we
         // start constructing Functions.
         public function get length()
-            magic::fnLength(this);
+            helper::fnLength(this);
 
         // 'length' is logically a read-only property, so setting it should fail silently
         public function set length(x) {

@@ -49,8 +49,6 @@
  * verified.
  */
 
-    use namespace ECMAScript4_Internal;
-
     helper function isExactlyType(obj, t) {
         // FIXME.  What we want is
         //

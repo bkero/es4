@@ -35,8 +35,6 @@
  *
  */
 
-    use namespace ECMAScript4_Internal;
-
     __ES4__ final class Name extends String 
     {
         // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.

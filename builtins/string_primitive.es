@@ -45,17 +45,17 @@
  * Status: incomplete; not reviewed; not tested.
  *
  * Strings are constructed by:
- *    new string + magic::setStringValue
- *    magic::fromCharCode
- *    magic::stringAppend
+ *    the primitive string ctor
+ *    informative::fromCharCode
+ *    informative::stringAppend
  *
  * A string's length is obtained by:
- *    magic::stringLength
+ *    informative::stringLength
  *
  * strings are picked apart by:
- *    magic::charCodeAt
+ *    informative::charCodeAt
  *
- * (We would expect "+" to map to magic::stringAppend().)
+ * (We would expect "+" to map to informative::stringAppend().)
  *
  * Note, most string functions are "generic".  This is implemented as
  * either a static method on the "string" class that treats a "self"
@@ -65,9 +65,8 @@
  * type of "this".
  */
 
-    use default namespace public;
+    use namespace helper;
     use namespace intrinsic;
-    use namespace ECMAScript4_Internal;
     use namespace Unicode;
     use namespace RegExpInternals;
 
@@ -82,7 +81,7 @@
 
         /* Don't remove this
         function string(value="")
-            magic::newString(value)
+            helper::newString(value)
         */
 
         /* E262-3 15.5.3.2: String.fromCharCode
@@ -100,7 +99,7 @@
         helper static function fromCharCode(codes: Array): string {
             let s = "";
             for (let i=0, limit=codes.length ; i < limit ; ++i)
-                s += magic::fromCharCode(intrinsic::toUint(codes[i] & 0x1FFFFF));
+                s += informative::fromCharCode(intrinsic::toUint(codes[i] & 0x1FFFFF));
             return s;
         }
 
@@ -142,7 +141,7 @@
             let ipos = helper::toInteger(pos);
             if (ipos < 0 || ipos >= S.length)
                 return "";
-            return magic::fromCharCode(magic::charCodeAt(S, intrinsic::toUint(ipos)));
+            return informative::fromCharCode(informative::charCodeAt(S, intrinsic::toUint(ipos)));
         }
 
 
@@ -158,7 +157,7 @@
             let ipos = helper::toInteger(pos);
             if (ipos < 0 || ipos >= S.length)
                 return NaN;
-            return magic::charCodeAt(S, intrinsic::toUint(ipos));
+            return informative::charCodeAt(S, intrinsic::toUint(ipos));
         }
 
 
@@ -213,7 +212,7 @@
             outer:
             for ( let k = m ; k < lim ; k++ ) {
                 for ( let w = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(S, intrinsic::toUint(k+w)) !== magic::charCodeAt(SS, intrinsic::toUint(w)))
+                    if (informative::charCodeAt(S, intrinsic::toUint(k+w)) !== informative::charCodeAt(SS, intrinsic::toUint(w)))
                         continue outer;
                 }
                 return k;
@@ -248,7 +247,7 @@
             outer:
             for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {
                 for ( let w = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(S, intrinsic::toUint(k+w)) !== magic::charCodeAt(SS, intrinsic::toUint(w)))
+                    if (informative::charCodeAt(S, intrinsic::toUint(k+w)) !== informative::charCodeAt(SS, intrinsic::toUint(w)))
                         continue outer;
                 }
                 return k;
@@ -670,12 +669,12 @@
             let s = "";
 
             for ( let i=0, limit=S.length ; i < limit ; i++ ) {
-                let u = Unicode::toLowerCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
+                let u = Unicode::toLowerCaseCharCode(informative::charCodeAt(S,intrinsic::toUint(i)));
                 if (u is double)
-                    s += magic::fromCharCode(intrinsic::toUint(u));
+                    s += informative::fromCharCode(intrinsic::toUint(u));
                 else {
                     for ( let j=0 ; j < u.length ; j++ )
-                        s += magic::fromCharCode(u[j]);
+                        s += informative::fromCharCode(u[j]);
                 }
             }
             return s;
@@ -714,12 +713,12 @@
             let s   = "";
 
             for ( let i=0, limit=S.length ; i < limit ; i++ ) {
-                let u = Unicode::toUpperCaseCharCode(magic::charCodeAt(S,intrinsic::toUint(i)));
+                let u = Unicode::toUpperCaseCharCode(informative::charCodeAt(S,intrinsic::toUint(i)));
                 if (u is double)
-                    s += magic::fromCharCode(intrinsic::toUint(u));
+                    s += informative::fromCharCode(intrinsic::toUint(u));
                 else {
                     for ( let j=0 ; j < u.length ; j++ )
-                        s += magic::fromCharCode(u[j]);
+                        s += informative::fromCharCode(u[j]);
                 }
             }
             return s;
@@ -773,7 +772,7 @@
 
         /* E262-3 15.5.5.1: length. */
         function get length() : double
-            magic::stringLength(this);
+            informative::stringLength(this);
 
         /* Catchall indexing operation. */
         meta function get(pos) {

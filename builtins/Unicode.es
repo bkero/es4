@@ -33,7 +33,7 @@
  *
  */
 
-    use namespace ECMAScript4_Internal;
+    use namespace helper;
     use namespace intrinsic;
     use namespace Unicode;
     use default namespace Unicode;

@@ -40,11 +40,10 @@
  * by a strongly-typed global intrinsic const variable also called
  * "Math", and for intrinsic methods on objects of this type.
  */
-
-    use namespace ECMAScript4_Internal;
     use namespace intrinsic;
+    use namespace helper;
 
-    ECMAScript4_Internal namespace MathInternals;
+    helper namespace MathInternals;
 
     type AnyNumber = (double|decimal);
     type FloatNumber = (double|decimal);

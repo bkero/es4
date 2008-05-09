@@ -1,6 +1,6 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - magic functions
+ * ECMAScript 4 builtins - miscellaneous helper functions
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
@@ -33,27 +33,6 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
- *
- * Magic functions are implementation traps that express aspects of
- * the language that cannot be expressed without either (a) modeling
- * the language in the language, eg, by modeling objects and their
- * property lists, or (b) breaking security.
- *
- * A good example is [[Prototype]], which exists on all objects but
- * which is presumed not to be available for reading or writing by the
- * user program.  We can model it directly using eg ___proto___, but
- * not without creating facilities that are presumed not to exist
- * (reading that field).
- *
- * Library code references magic functions as global functions in the
- * "magic" namespace, eg "magic::getPrototype(o)".
- *
- * Do note that a conforming implementation can't express the magic
- * hooks quite like shown here because the magic namespace pollutes
- * the name space for user programs.  An implementation might instead
- * supply a flag --magic to the compiler that allows the compiler to
- * magically know about "magic" when the library files are being
- * compiled.
  */
     use namespace intrinsic;
 
@@ -66,7 +45,7 @@
      * protocol for it (and its base classes, initializers, settings,
      * ctors). Return the resulting instance, always an Object!
      */
-    magic native function construct(cls:Class!, args:[*]) : Object!;
+    helper native function construct(cls:Class!, args:[*]) : Object!;
 
 
     /* --------------------------------------------------------------
@@ -74,45 +53,45 @@
        PROPERTY MANIPULATION.  */
 
     /* Retrieve the [[Class]] property of o */
-    magic native function getClassName(o : Object!) : string;
+    informative native function getClassName(o : Object!) : string;
 
     /* Retrieve the class object of o */
-    magic native function getClassOfObject(o : Object!) : Class;
+    helper native function getClassOfObject(o : Object!) : Class;
 
     /* Retrieve the base class of cls, or null. */
-    magic native function getSuperClass(cls : Class!) : Class;
+    helper native function getSuperClass(cls : Class!) : Class;
 
     /* Retrieve the kth implemented interface of cls, or null. */
-    magic native function getImplementedInterface(cls: Class!, k: double) : Interface;
+    helper native function getImplementedInterface(cls: Class!, k: double) : Interface;
 
     /* Retrieve the kth superinterface of iface, or null. */
-    magic native function getSuperInterface(iface: Interface!, k: double) : Interface;
+    helper native function getSuperInterface(iface: Interface!, k: double) : Interface;
 
     /* Retrieve the array of enumerable properties of o, in property creation order. */
-    magic native function getEnumerableIds(o : Object) : Array; // FIXME: EnumerableIdArray
+    helper native function getEnumerableIds(o : Object) : Array; // FIXME: EnumerableIdArray
 
     /* Retrieve the possibly null [[Prototype]] property of o */
-    magic native function getPrototype(o : Object!) : Object;
+    helper native function getPrototype(o : Object!) : Object;
 
     /* Return true iff o has a local property named by p. */
-    magic native function hasOwnProperty(o : Object!, p : (Name|string)) : boolean;
+    helper native function hasOwnProperty(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        Enumerable bit is set */
-    magic native function getPropertyIsEnumerable(o : Object!, p : (Name|string)) : boolean;
+    helper native function getPropertyIsEnumerable(o : Object!, p : (Name|string)) : boolean;
 
     /* Return true if the property p does exists locally on o and its
        Removable bit is set */
-    magic native function getPropertyIsRemovable(o : Object!, p : (Name|string)) : boolean;
+    helper native function getPropertyIsRemovable(o : Object!, p : (Name|string)) : boolean;
 
     /* Provided that the property p exists locally on o, set its Enumerable
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    magic native function setPropertyIsEnumerable(o : Object!, p : (Name|string), f : boolean) : void;
+    helper native function setPropertyIsEnumerable(o : Object!, p : (Name|string), f : boolean) : void;
 
-    magic native function isPrimitive(v:*) : boolean;
-    magic native function toPrimitive(v:*, hint:string) : *;
-    magic native function defaultValue(ob:Object!, hint:string) : *;
+    helper native function isPrimitive(v:*) : boolean;
+    helper native function toPrimitive(v:*, hint:string) : *;
+    helper native function defaultValue(ob:Object!, hint:string) : *;
 
     /* ----------------------------------------------------------------
 
@@ -120,42 +99,42 @@
 
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */
-    magic native function apply(fn : Function!, t : Object!, args : Array) : *;
+    helper native function apply(fn : Function!, t : Object!, args : Array) : *;
 
 
-    magic native function fnLength(fn: Function!) : double;
+    helper native function fnLength(fn: Function!) : double;
 
     /* ----------------------------------------------------------------
 
        GENERATOR MANIPULATION.  */
 
-    magic native function genSend(g : Object!, x : *) : *;
+    helper native function genSend(g : Object!, x : *) : *;
 
-    magic native function genThrow(g : Object!, x : *) : *;
+    helper native function genThrow(g : Object!, x : *) : *;
 
-    magic native function genClose(g : Object!) : *;
+    helper native function genClose(g : Object!) : *;
 
     /* ----------------------------------------------------------------
 
        STRING MANIPULATION.  Strings contain string data in some
        unspecified way - there is no representation of string data in
-       the language.  The following magic functions access and set
+       the language.  The following helper functions access and set
        those string data.  */
 
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the
        string.  */
-    magic native function charCodeAt(s : string, pos : double) : double;
+    informative native function charCodeAt(s : string, pos : double) : double;
 
     /* Given a numeric character value, return a string of length 1
        whose element 0 is the character with that same value.  */
-    magic native function fromCharCode(ch : double) : string;
+    informative native function fromCharCode(ch : double) : string;
 
     /* Given a string object, return the number of characters in the
      * string. */
-    magic native function stringLength(s : string) : double;
+    informative native function stringLength(s : string) : double;
 
     /* Given two string objects A and B , return a new string object
        containing the characters from A followed by the characters
        from B.  */
-    magic native function stringAppend(a : string, b : string) : string;
+    informative native function stringAppend(a : string, b : string) : string;

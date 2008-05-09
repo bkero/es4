@@ -272,8 +272,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val (prog, otherFrags) = 
             loadFiles prog 
                       [builtin "Namespace.es",
-                       builtin "Magic.es",
-                       builtin "Internal.es",
+                       builtin "Helper.es",
                        builtin "Conversions.es",
 
 
@@ -324,11 +323,10 @@ fun boot (baseDir:string) : Mach.REGS =
                        builtin "RegExpEvaluator.es",
                        builtin "RegExp.es",
                        builtin "Date.es",
-                       builtin "MetaObjects.es", (* before JSON *)
-                       builtin "JSON.es",
+                       builtin "MetaObjects.es"
+
                        (* builtin "Vector.es", *)
-                       (* builtin "Map.es", *)
-                       builtin "DecimalContext.es"
+                       (* builtin "Map.es" *)
                  ]
 
         val glob = 

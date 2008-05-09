@@ -39,8 +39,6 @@
  * Status: not reviewed against specs.
  */
 
-    use namespace ECMAScript4_Internal;
-
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity
     // 15.1.1.3 undefined
@@ -80,7 +78,7 @@
         {
             initial_obj = (v is Object) ? v : null;
             current_obj = initial_obj;
-            current_ids = magic::getEnumerableIds(initial_obj);
+            current_ids = helper::getEnumerableIds(initial_obj);
         }
 
         // FIXME: why no ResultFun, boolean args?
@@ -101,24 +99,24 @@
                         throw iterator::StopIteration;
 
                     // No more properties in current_obj: try walking up the prototype chain.
-                    current_obj = magic::getPrototype(current_obj);
+                    current_obj = helper::getPrototype(current_obj);
                     if (current_obj === null)
                         throw iterator::StopIteration;
 
-                    current_ids = magic::getEnumerableIds(current_obj);
+                    current_ids = helper::getEnumerableIds(current_obj);
                     current_index = 0;
                 }
 
                 let id : EnumerableId = current_ids[current_index++];
 
                 // Check for a shadowing property from initial_obj to current_obj on the prototype chain.
-                for (let obj : Object = initial_obj; obj !== current_obj; obj = magic::getPrototype(obj)) {
-                    if (magic::hasOwnProperty(obj, id))
+                for (let obj : Object = initial_obj; obj !== current_obj; obj = helper::getPrototype(obj)) {
+                    if (helper::hasOwnProperty(obj, id))
                         continue loop;
                 }
 
                 // Check whether name is still bound in order to skip deleted properties.
-                if (magic::hasOwnProperty(current_obj, id))
+                if (helper::hasOwnProperty(current_obj, id))
                     return result_fun(id, initial_obj);
             }
         }
@@ -166,15 +164,15 @@
             this.send(undefined)
 
         public function send(i)
-            magic::genSend(this, i)
+            helper::genSend(this, i)
 
         public function throw_(e)
-            magic::genThrow(this, e)
+            helper::genThrow(this, e)
 
         public function close() : void
-            magic::genClose(this)
+            helper::genClose(this)
 
-        // FIXME: this gets trumped by Mach.magicToUstring
+        // FIXME: this gets trumped by Mach.primitiveToUstring
         //public function toString()
         //    "[object Generator]"
     }
@@ -182,7 +180,7 @@
     // 15.1.2.1 eval (x)
     //
     // FIXME: This should probably be an intrinsic::eval that looks
-    // like public::eval below but which delegates to magic::eval,
+    // like public::eval below but which delegates to helper::eval,
     // passing "this function" as the object from which to extract the
     // scope chain.
 

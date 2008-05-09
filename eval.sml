@@ -1454,7 +1454,7 @@ and newNativeFunction (regs:Mach.REGS)
     
 and getIteratorNamespace (regs:Mach.REGS)
     : Ast.NAMESPACE =
-    Mach.needNamespace (getValue regs (#global regs) Name.ES4_iterator_)
+    Mach.needNamespace (getValue regs (#global regs) Name.ES4_iterator)
 
 and getStopIteration (regs:Mach.REGS) =
     getValue regs (#global regs) { id = Ustring.StopIteration_,

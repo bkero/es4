@@ -55,7 +55,6 @@ fun meta (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = magicNS }
 fun intrinsic (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = intrinsicNS }
 fun helper (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = helperNS }
-fun ECMAScript4_Internal (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = ECMAScript4_InternalNS }
 fun informative (id:Ast.IDENTIFIER) : Ast.NAME = { id = id, ns = informativeNS }
 
 (*
@@ -247,31 +246,32 @@ val intrinsic_get = intrinsic Ustring.get_
 val intrinsic_DaylightSavingsTA = intrinsic Ustring.DaylightSavingsTA_
 val intrinsic_LocalTZA = intrinsic Ustring.LocalTZA_
 
-val magic_stringAppend = magic Ustring.stringAppend_
-val magic_stringLength = magic Ustring.stringLength_
-val magic_fromCharCode = magic Ustring.fromCharCode_
-val magic_charCodeAt = magic Ustring.charCodeAt_
-val magic_fnLength = magic Ustring.fnLength_
-val magic_genSend = magic Ustring.genSend_
-val magic_genThrow = magic Ustring.genThrow_
-val magic_genClose = magic Ustring.genClose_
-val magic_apply = magic Ustring.apply_
+val informative_stringAppend = informative Ustring.stringAppend_
+val informative_stringLength = informative Ustring.stringLength_
+val informative_fromCharCode = informative Ustring.fromCharCode_
+val informative_charCodeAt = informative Ustring.charCodeAt_
 
-val magic_toPrimitive = magic Ustring.toPrimitive_
-val magic_isPrimitive = magic Ustring.isPrimitive_
-val magic_defaultValue = magic Ustring.defaultValue_
-val magic_setPropertyIsEnumerable = magic Ustring.setPropertyIsEnumerable_
-val magic_getPropertyIsRemovable = magic Ustring.getPropertyIsRemovable_
-val magic_getPropertyIsEnumerable = magic Ustring.getPropertyIsEnumerable_
-val magic_hasOwnProperty = magic Ustring.hasOwnProperty_
-val magic_getPrototype = magic Ustring.getPrototype_
-val magic_getSuperClass = magic Ustring.getSuperClass_
-val magic_getSuperInterface = magic Ustring.getSuperInterface_
-val magic_getImplementedInterface = magic Ustring.getImplementedInterface_
-val magic_getEnumerableIds = magic Ustring.getEnumerableIds_
-val magic_getClassOfObject = magic Ustring.getClassOfObject_
-val magic_getClassName = magic Ustring.getClassName_
-val magic_construct = magic Ustring.construct_
+val helper_fnLength = helper Ustring.fnLength_
+val helper_genSend = helper Ustring.genSend_
+val helper_genThrow = helper Ustring.genThrow_
+val helper_genClose = helper Ustring.genClose_
+val helper_apply = helper Ustring.apply_
+
+val helper_toPrimitive = helper Ustring.toPrimitive_
+val helper_isPrimitive = helper Ustring.isPrimitive_
+val helper_defaultValue = helper Ustring.defaultValue_
+val helper_setPropertyIsEnumerable = helper Ustring.setPropertyIsEnumerable_
+val helper_getPropertyIsRemovable = helper Ustring.getPropertyIsRemovable_
+val helper_getPropertyIsEnumerable = helper Ustring.getPropertyIsEnumerable_
+val helper_hasOwnProperty = helper Ustring.hasOwnProperty_
+val helper_getPrototype = helper Ustring.getPrototype_
+val helper_getSuperClass = helper Ustring.getSuperClass_
+val helper_getSuperInterface = helper Ustring.getSuperInterface_
+val helper_getImplementedInterface = helper Ustring.getImplementedInterface_
+val helper_getEnumerableIds = helper Ustring.getEnumerableIds_
+val helper_getClassOfObject = helper Ustring.getClassOfObject_
+val informative_getClassName = informative Ustring.getClassName_
+val helper_construct = helper Ustring.construct_
 
 (*
  * Property names that have special meanings to the interpreter.
@@ -295,20 +295,16 @@ val arguments = public Ustring.arguments_
 val empty = public Ustring.empty
 
 (* These are the property names that are opaque namespaces themselves are bound under. *)
-val public_ES4_ = public Ustring.ES4_
+val public_ES4 = public Ustring.ES4_
 
-val ES4_public_ = ES4 Ustring.public_
-val ES4_meta_ = ES4 Ustring.meta_
-val ES4_magic_ = ES4 Ustring.magic_
-val ES4_intrinsic_ = ES4 Ustring.intrinsic_
-val ES4_iterator_ = ES4 Ustring.iterator_
-
-val ES4_ECMAScript4_Internal_ = ES4 Ustring.ECMAScript4_Internal_
-
-val ECMAScript4_Internal_informative_ = ECMAScript4_Internal Ustring.informative_
-val ECMAScript4_Internal_helper_ = ECMAScript4_Internal Ustring.helper_
-val ECMAScript4_Internal_Unicode_ = ECMAScript4_Internal Ustring.Unicode_
-val ECMAScript4_Internal_RegExpInternals_ = ECMAScript4_Internal Ustring.RegExpInternals_
+val ES4_public = ES4 Ustring.public_
+val ES4_meta = ES4 Ustring.meta_
+val ES4_helper = ES4 Ustring.helper_
+val ES4_intrinsic = ES4 Ustring.intrinsic_
+val ES4_iterator = ES4 Ustring.iterator_
+val ES4_informative = ES4 Ustring.informative_
+val ES4_Unicode = ES4 Ustring.Unicode_
+val ES4_RegExpInternals = ES4 Ustring.RegExpInternals_
 
 val helper_GeneratorImpl = helper Ustring.GeneratorImpl_
 

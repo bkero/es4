@@ -41,9 +41,7 @@
  * Status: Incomplete (toExponential, toPrecision, toFixed; constants); not reviewed; not tested.
  */
 
-    use default namespace public;
     use namespace intrinsic;
-    use namespace ECMAScript4_Internal;
 
     // The [[Prototype]] of "decimal" is Number.[[Prototype]]
     // Don't add prototype methods or properties here!
@@ -71,7 +69,7 @@
 
         /* Don't remove this
         function decimal(value=false)
-            magic::newDecimal(value)
+            helper::newDecimal(value)
         */
 
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */

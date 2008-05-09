@@ -40,7 +40,7 @@
  * Status: Complete, not reviewed, not tested.
  */
 
-    use namespace ECMAScript4_Internal;
+    use namespace helper;
     use namespace intrinsic;
     use namespace RegExpInternals;
     use default namespace RegExpInternals;
@@ -467,7 +467,7 @@
             let lo_code = lo.charCodeAt(0);
             let hi_code = hi.charCodeAt(0);
             for ( let i=lo_code ; i <= hi_code ; i++ )
-                if (Canonicalize(ctx, string.fromCharCode(i)) == c)
+                if (Canonicalize(ctx, string.intrinsic::fromCharCode(i)) == c)
                     return true;
             return false;
         }

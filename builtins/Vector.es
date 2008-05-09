@@ -37,8 +37,6 @@
  * Status: not reviewed against specs, not tested.
  */
 
-    use namespace ECMAScript4_Internal;
-
     __ES4__ class Vector.<T>
     {
         public function Vector(length: double=0, fixed: boolean=false) 
@@ -500,5 +498,4 @@
 
         private const storage = new Array();
     }
-}
 
