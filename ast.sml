@@ -242,41 +242,21 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENTIFIER * EXPRESSION)
        | AssignStep of (EXPRESSION * EXPRESSION)
 
-(*
-
-datatype TYPE =
-         NullType
-       | UndefinedType
-       | AnyType
-       | RecordType of (NAME_EXPRESSION * TYPE) list
-       | ArrayType  of (TYPE list * TYPE option)
-       | UnionType  of TYPE list
-       | NonNullType of TYPE
-       | FunctionType of FUNCTION_TYPE
-       | AppType of (TYPE * TYPE list)
-       | TypeName of (NAME_EXPRESSION * NONCE option)  
-       | InstanceType of INSTANCE_TYPE
-
-(* last two cases removed during normalization *)
-
- | LamType of (IDENTIFIER list * TYPE)
-*)
-
      and TYPE =
          NullType
        | UndefinedType
        | AnyType
-       | RecordType of FIELD_TYPE list    (* TODO *)
+       | RecordType of (NAME_EXPRESSION * TYPE) list   
        | ArrayType  of (TYPE list * TYPE option)
        | UnionType of TYPE list
-       | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE
+       | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
        | InstanceType of INSTANCE_TYPE        (* *)
 
  | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
-       | TypeIndexReferenceType of (TYPE * int)
+ | TypeIndexReferenceType of (TYPE * int)
 
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 (*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
