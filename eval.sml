@@ -3901,31 +3901,6 @@ and evalCondExpr (regs:Mach.REGS)
  * ES-262-3 11.2.1: Resolving member expressions to REFs.
  *)
 
-(*
-
-fun evalLexicalRef (env: ENV)
-                   (identifier: Ast.IDENTIFIER_EXPRESSIONESSION)
-                   (errIfNotFound: bool)
-    : (OBJECT * NAME) =
-    let
-        val {scope, ...} = env
-        val reference = Mach.findName (scope, identifier)
-    in case (reference, errIfNotFound) of
-        (NONE, true) => throwReferenceError (identifier)
-      | (NONE, false) => (getGlobal (env), getDefaultName (identifier))
-      | (SOME r, _) => r
-    end
-
-fun getDefaultName (identifier: Ast.IDENTIFIER_EXPRESSIONESSION)
-    : NAME =
-    case identifier of
-        QualifiedIdentifier {namespace, identifier} =>
-        (evalNamespaceRef (env, namespace), identifier)
-      | Identifier {identifier} =>
-        (Mach.publicNamespace, identifier)
-*)
-
-        
 and resolveLexicalReference (regs:Mach.REGS)
                             (expr:Ast.EXPRESSION)
                             (errIfNotFound:bool)
@@ -3957,23 +3932,6 @@ and resolveLexicalReference (regs:Mach.REGS)
             end
           | _ => error regs ["need lexical reference expression"]
     end
-
-(*
-
-fun evalObjectRef (env: ENV)
-                  (baseExpr: EXPRESSION)
-                  (identifier: IDENTIFIER_EXPRESSIONESSION)
-   : (OBJECT, NAME) =
-   let
-       val baseObject = evalExpr (env, baseExpr)
-       val reference = findName ([baseObject], identifier)
-    in case (reference, errIfNotFound) of
-        (NONE, true) => throwReferenceError (identifier)
-      | (NONE, false) => (baseObject, getDefaultName (identifier))
-      | (SOME r, _) => r
-   end
- 
-*)
 
 and resolveObjectNameReference (regs:Mach.REGS)
                                (expr:Ast.EXPRESSION)
@@ -4059,22 +4017,6 @@ and resolveObjectIndexReference (regs:Mach.REGS)
           | _ => error regs ["need object index reference expression"]
     end
 
-(* SPEC
-
-fun evalReference (env: ENV)
-                  (ref: REFERENCE)
-                  (errIfNotFound:bool)
-    : (Mach.OBJECT option * REF) =
-    let
-    in
-        case expr of
-            Ast.LexicalRef _ => (NONE, evalLexicalRef regs expr errIfNotFound)
-          | Ast.ObjectRef _ => evalObjectRef regs expr errIfNotFound
-          | _ => error regs ["need lexical or object-reference expression"]
-    end
-
-*)
-
 and resolveRefExpr (regs:Mach.REGS)
                    (expr:Ast.EXPRESSION)
                    (errIfNotFound:bool)
@@ -4087,20 +4029,6 @@ and resolveRefExpr (regs:Mach.REGS)
           | Ast.ObjectIndexReference _ => resolveObjectIndexReference regs expr errIfNotFound
           | _ => error regs ["need lexical or object-reference expression"]
     end
-
-(*
-
-fun evalLetExpr (env: ENV)
-                (head: Ast.HEAD)
-                (body: Ast.EXPRESSION)
-    : Mach.VALUE =
-    let
-        val letRegs = evalHead env head
-    in
-        evalExpr letRegs body
-    end
-
-*)
 
 and evalLetExpr (regs:Mach.REGS)
                 (head:Ast.HEAD)
