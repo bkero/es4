@@ -139,6 +139,7 @@ datatype PRAGMA =
        | UnqualifiedName of { identifier: IDENTIFIER, 
                               openNamespaces: OPEN_NAMESPACES, 
                               globalNames: NAME_SET }
+       | ResolvedName of NAME
 
      and NAMESPACE_EXPRESSION =
          Namespace of NAMESPACE
