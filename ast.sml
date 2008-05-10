@@ -251,11 +251,10 @@ datatype TYPE =
        | RecordType of (NAME_EXPRESSION * TYPE) list
        | ArrayType  of (TYPE list * TYPE option)
        | UnionType  of TYPE list
-       | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE
+       | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  
-
        | InstanceType of INSTANCE_TYPE
 
 (* last two cases removed during normalization *)
@@ -274,9 +273,10 @@ datatype TYPE =
        | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
-       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
-       | TypeIndexReferenceType of (TYPE * int)
        | InstanceType of INSTANCE_TYPE        (* *)
+
+ | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
+       | TypeIndexReferenceType of (TYPE * int)
 
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 (*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
@@ -517,8 +517,8 @@ withtype
            thisType   : TYPE,
            params  : TYPE list,
            minArgs : int,          
-           hasRest : bool,         
-           result  : TYPE option    (* NONE indicates void return type *)
+           hasRest : bool,          (* TODO : TYPE option *)
+           result  : TYPE option    (* NONE indicates return type is void *)
          }
 
      and FUNC_DEFN =

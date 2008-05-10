@@ -501,7 +501,8 @@ and verifyExpr2 (env:ENV)
                     let                        
                     in
                         List.map (verifyExpr env) exprs;
-                        liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE))
+                        liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE)
+)
                     end
 
                   | Ast.LiteralNull        => nullType

@@ -234,11 +234,11 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x459 => PrettyRep.Ctor ("SOME", SOME (cvtNONCE x459))
        )]))
-     | cvtTYPE (TypeNameReferenceType(x467, x468)) = PrettyRep.Ctor ("TypeNameReferenceType", 
-          SOME (PrettyRep.Tuple [cvtTYPE x467, cvtNAME_EXPRESSION x468]))
-     | cvtTYPE (TypeIndexReferenceType(x472, n473)) = PrettyRep.Ctor ("TypeIndexReferenceType", 
-          SOME (PrettyRep.Tuple [cvtTYPE x472, PrettyRep.Int n473]))
-     | cvtTYPE (InstanceType x477) = PrettyRep.Ctor ("InstanceType", SOME (cvtINSTANCE_TYPE x477))
+     | cvtTYPE (InstanceType x467) = PrettyRep.Ctor ("InstanceType", SOME (cvtINSTANCE_TYPE x467))
+     | cvtTYPE (TypeNameReferenceType(x470, x471)) = PrettyRep.Ctor ("TypeNameReferenceType", 
+          SOME (PrettyRep.Tuple [cvtTYPE x470, cvtNAME_EXPRESSION x471]))
+     | cvtTYPE (TypeIndexReferenceType(x475, n476)) = PrettyRep.Ctor ("TypeIndexReferenceType", 
+          SOME (PrettyRep.Tuple [cvtTYPE x475, PrettyRep.Int n476]))
    and cvtSTATEMENT (EmptyStmt) = PrettyRep.Ctor ("EmptyStmt", NONE)
      | cvtSTATEMENT (ExprStmt x481) = PrettyRep.Ctor ("ExprStmt", SOME (cvtEXPRESSION x481))
      | cvtSTATEMENT (InitStmt{kind=x484, ns=opt486, prototype=b490, static=b491, 

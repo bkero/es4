@@ -697,11 +697,65 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
             (ty1 : Ast.TYPE)
             (ty2 : Ast.TYPE)
     : bool = 
-    (ty1 = ty2) (* reflexivity *) orelse
-    (extra ty1 ty2) orelse
-    case (ty1, ty2) of 
+    (ty1 = ty2)   (* reflexivity *) orelse
+    (subTypeFunction extra ty1 ty2) orelse
+    (subTypeRecord   extra ty1 ty2) orelse
+    (subTypeUnion    extra ty1 ty2) orelse
+    (subTypeArray    extra ty1 ty2) orelse
+    (subTypeNonNull  extra ty1 ty2) orelse
+    (subTypeNominal  extra ty1 ty2) orelse
+    (subTypeStructuralNominal extra ty1 ty2) orelse
+    (extra ty1 ty2) 
 
-      (* record types *)
+and subTypeStructuralNominal extra type1 type2 =
+    case (type1, type2) of
+
+
+      (* relating structural and nominal types *)
+
+        (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
+        (* FIXME: allow for supertypes of Array other than Object *)
+        List.exists (nameEq name) [ Name.public_Array,
+                                    Name.public_Object ]
+        
+      | (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
+        List.exists (nameEq name) [ Name.public_Object ]
+        
+      | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
+        (* FIXME: allow for supertypes of Function other than Object *)
+        List.exists (nameEq name) [ Name.public_Function, 
+                                    Name.public_Object ]
+
+      | _ => false
+
+
+and subTypeNominal extra type1 type2 =
+    case (type1, type2) of
+
+        (Ast.InstanceType it1, Ast.InstanceType it2) =>
+        (nameEq (#name it1) (#name it2) andalso
+         (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
+        orelse 
+        (* FIXME: is this right for generic classes? *)
+        (List.exists (fn sup => subType extra sup type2) 
+                     (#superTypes it1))
+
+      | _ => false
+
+and subTypeNonNull extra type1 type2 =
+    case (type1, type2) of
+
+        (Ast.NonNullType type1, type2) =>
+        subType extra type1 (Ast.UnionType [type2, Ast.NullType])
+
+      | (type1, Ast.NonNullType type2) =>
+        subType extra type1 type2 andalso
+        not (subType extra Ast.NullType type1)
+   
+      | _ => false
+
+and subTypeRecord extra type1 type2 =
+    case (type1, type2) of
 
         (Ast.RecordType fields1, Ast.RecordType fields2) => 
         List.all (fn {name = name1, ty = ty1} =>
@@ -711,17 +765,31 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
                                  fields2)
                  fields1
         
-      (* array types *)        
+      | _ => false
 
-      | (Ast.ArrayType (tys1,to1), Ast.ArrayType (tys2,to2)) =>  
+
+and subTypeUnion extra type1 type2 =
+    case (type1, type2) of
+
+        (Ast.UnionType tys1, ty2) => 
+        List.all    (fn ty1 => subType extra ty1 ty2) tys1
+        
+      | (ty1, Ast.UnionType tys2) => 
+        List.exists (fn ty2 => subType extra ty1 ty2) tys2
+        
+      | _ => false
+
+and subTypeArray extra type1 type2 =
+    case (type1, type2) of
+        (Ast.ArrayType (tys1,to1), Ast.ArrayType (tys2,to2)) =>  
         let val min = Int.min( length tys1, length tys2 ) 
         in
             length tys1 >= length tys2 
             andalso
-            ListPair.all (fn (t1,t2) => equivType extra t1 t2)  
+            ListPair.all (fn (type1,type2) => equivType extra type1 type2)  
                          (List.take(tys1, min),
                           List.take(tys2, min))
-          andalso
+            andalso
             (case (to1, to2) of
                  (NONE,    NONE   ) => length tys1 = length tys2
                | (NONE,    SOME _ ) => false
@@ -731,18 +799,11 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
                  List.all (fn t => equivType extra t t2)
                           (List.drop(tys1, min)))
         end
+      | _ => false
 
-      (* union types *)
-
-      | (Ast.UnionType tys1, ty2) => 
-        List.all    (fn ty1 => subType extra ty1 ty2) tys1
-
-      | (ty1, Ast.UnionType tys2) => 
-        List.exists (fn ty2 => subType extra ty1 ty2) tys2
-
-      (* function types *)
-
-      | (Ast.FunctionType
+and subTypeFunction extra type1 type2 =
+    case (type1,type2) of
+        (Ast.FunctionType
              {typeParams = typeParams1,
               params   = params1,
               result   = result1,
@@ -769,14 +830,14 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
             length typeParams1 = length typeParams2
           andalso
             (case (result1, result2) of
-                 (SOME t1, SOME t2) => subType extra t1 (subst t2)
+                 (SOME type1, SOME type2) => subType extra type1 (subst type2)
                | (NONE,    NONE)    => true)
           andalso
             equivType extra thisType1 thisType2
           andalso    
             minArgs1 <= minArgs2 
           andalso
-            ListPair.all (fn (t1,t2) => equivType extra t1 (subst t2))  
+            ListPair.all (fn (type1,type2) => equivType extra type1 (subst type2))  
                          (List.take(params1, min),
                           List.take(params2, min))
           andalso
@@ -788,48 +849,14 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
                      List.all (fn t => equivType extra t Ast.AnyType)
                               (List.drop(params1, min)))
         end
-
-      (* non-null types *)
-
-      | (Ast.NonNullType t1, t2) =>
-        subType extra t1 (Ast.UnionType [t2, Ast.NullType])
-
-      | (t1, Ast.NonNullType t2) =>
-        subType extra t1 t2 andalso
-        not (subType extra Ast.NullType t1)
-   
-      (* nominal types *)
-
-      | (Ast.InstanceType it1, Ast.InstanceType it2) =>
-        (nameEq (#name it1) (#name it2) andalso
-         (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
-        orelse 
-        (* FIXME: is this right for generic classes? *)
-        (List.exists (fn sup => subType extra sup ty2) 
-                     (#superTypes it1))
-
-      (* relating structural and nominal types *)
-
-      | (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-            List.exists (nameEq name) [ Name.public_Array,
-                                        Name.public_Object ]
-        
-      | (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
-            List.exists (nameEq name) [ Name.public_Object ]
-        
-      | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-            List.exists (nameEq name) [ Name.public_Function, 
-                                        Name.public_Object ]
-  
       | _ => false
-
+ 
 
 and equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
               (ty1 : Ast.TYPE)
               (ty2 : Ast.TYPE)
     : bool = 
-      (subType extra ty1 ty2)
-    andalso
+      (subType extra ty1 ty2) andalso
       (subType (fn ty1 => fn ty2 => extra ty2 ty1)
                ty2 ty1)
 
@@ -883,13 +910,13 @@ fun groundMatches ty1 ty2
 
 fun matches (prog:Fixture.PROGRAM)
             (locals:Ast.RIBS)
-            (t1:Ast.TYPE)
-            (t2:Ast.TYPE)
+            (type1:Ast.TYPE)
+            (type2:Ast.TYPE)
   =
   let
       (* FIXME: it is *super wrong* to just be using the root rib here. *)
-      val norm1 = normalize (locals @ [Fixture.getRootRib prog]) t1
-      val norm2 = normalize (locals @ [Fixture.getRootRib prog]) t2
+      val norm1 = normalize (locals @ [Fixture.getRootRib prog]) type1
+      val norm2 = normalize (locals @ [Fixture.getRootRib prog]) type2
   in
       groundMatches norm1 norm2
   end
