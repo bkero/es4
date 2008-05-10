@@ -258,6 +258,8 @@ def extractSML(fn, name):
 
                 if re.search("^datatype", name):
                     ending = re.compile("^" + m.group(1) + r"([^\s]|     and)")
+                elif re.search("^withtype", name):
+                    ending = re.compile("^" + m.group(1) + r"([^\s]|     and)")
                 elif re.search("^type", name):
                     ending = re.compile("^" + m.group(1) + r"([^\s]| and)")
                 else:
