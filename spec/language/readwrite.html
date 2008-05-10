@@ -1,0 +1,283 @@
+= Reading and writing properties =
+
+<pre>
+Draft 0, 2008-05-09 / lth
+</pre>
+
+
+== Outline ==
+
+<UL>
+<LI> XREF: properties in objects, flag bits, states
+<LI> Generally about "read barriers" ===
+<LI> Generally about "write barriers" ===
+<LI> Generally about "catch-alls"
+</UL>
+
+
+<!--
+== Topics ==
+
+Assume: we have an object and want to read or write a property on it.
+
+- uninitialized checking (a read barrier)
+- non-nullable types with non-default values read from array holes (a read barrier)
+- type checking (a write barrier)
+- read-only names (a write barrier, modified by strict mode)
+- getters and setters (read and write barriers)
+- catchall getters and setters (read and write barriers, since getter may be
+  invoked even if the object exists in the proto chain)
+- catchall protocol in general
+
+meta::get
+meta::set
+meta::has
+meta::delete
+meta::invoke
+class meta::DefaultBehavior {}
+meta const defaultBehavior;
+-->
+
+== Getting ==
+
+<P> The following algorithm is different from the RI as follows.
+
+<UL>
+<LI> The RI gives precedence to existing dynamic props over catchalls,
+     but that is wrong.
+</UL>
+
+<P> Wrinkles not incorporated:
+
+<UL>
+<LI> "Upgrading" from type or namespace value (maybe others?) to full objects
+<LI> Native properties
+</UL>
+
+{{{
+fun get property(obj, name, isStrict, virtualOK) {
+  if (name is a property on the property list of obj && 
+      obj is not a getter/setter pair && 
+      the isFixed attribute of obj.name is true)
+    if obj.name is a method then
+      return a new closure where 'obj' is bound as 'this' to the method extracted from obj.name
+    return the value of obj.name
+
+  if (virtualOK && 
+      meta::get is a property on the property list of obj && 
+      the isFixed attribute of meta::get is true)
+    try 
+      invoke meta::get on obj, passing name
+    catch DefaultBehavior
+      get property(obj, name, isStrict, false)
+    return
+
+  if name is a property on the property list of obj
+    if obj.name is a getter/setter pair
+      invoke the getter, this=obj
+      return its result
+    return obj.name
+
+  cantHappen // actually, meta::has lied, so throw an error
+}
+}}}
+
+<P> The full lookup algorithm has the following wrinkle.  If the obj
+itself and the prototype chain did not contain the property, then the
+following code is run:
+
+{{{
+  if the dynamic attribute on obj is true
+    if the dynamic type constraint has a default value
+      return that default value
+
+  return undefined  // maybe not in strict mode??
+}}}
+
+== Setting ==
+
+<P> The following algorithm is different from the RI in several ways.
+
+<UL>
+<LI> the RI gives precedence to existing dynamic props over catchalls
+<LI> the RI throws an error in standard mode if trying to overwrite
+     method fixtures, but here it fails silently (by design)
+</UL>
+
+<P> Wrinkles not incorporated:
+
+<UL>
+<LI> natives
+</UL>
+
+{{{
+; The 'find property' algorithm has determined that obj believes 
+; it has a property called 'name'.
+
+fun set property(obj, name, value, isStrict, virtualOK) {
+
+  fun standard behavior() {
+
+    ; assume name is a property on obj, denote obj.name
+    ; it could be a dynamic property, in which case the
+    ; type constraint is the constraint applied to all
+    ; dynamic properties on the object.
+
+    if obj.name is a getter/setter pair
+      invoke the setter, passing value, this=obj
+      return
+
+    if the writeable attribute of obj.name is false
+      if isStrict
+        throw error "read-only value"
+      return
+
+    if not the type of value <~ type of obj.name
+      throw error "incompatible type"
+
+    store value in obj.name
+
+    if the writeOnce attribute of obj.name is true
+      set the writeOnce attribute of obj.name to false
+      set the writeable attribute of obj.name to false
+  }
+
+  if (name is a property on the property list of obj && 
+      obj.name is not a getter/setter pair &&
+      the isFixed attribute of obj.name is true)
+    standard behavior
+    return
+
+  if (virtualOK && 
+      meta::set is a property on the property list of obj && 
+      the isFixed attribute of meta::set is true)
+    try 
+      invoke meta::set
+    catch DefaultBehavior
+      set property(obj, name, value, isStrict, false)
+    return
+
+  if name is a property on the property list of obj
+    standard behavior
+    return
+
+  if the dynamic attribute on obj is true
+
+    if isStrict && obj is the global object
+      throw error "illegal to create props on global obj in strict mode"
+
+    if not the type of value <~ of the dynamic property constraint of obj
+      throw error "incompatible type"
+
+    place a new object onto the property list of obj, with the name 'name':
+      initial value = value
+      flags = (writeable=true, enumerable=true, deletable=true, writeOnce=false, isFixed=false)
+    return
+
+  cantHappen // actually, meta::has lied, so throw an error
+}
+}}}
+
+
+== Checking presence ==
+
+{{{
+fun has property(obj, name, isStrict, virtualOK) {
+  if (name is a property on the property list of obj &&
+      the isFixed attribute of obj.name is true)
+    return true
+
+  if (virtualOK && 
+      meta::has is a property on the property list of obj && 
+      the isFixed attribute of meta::has is true)
+    try 
+      invoke meta::has and return its result
+    catch DefaultBehavior
+      return has property(obj, name, isStrict, false)
+  
+  if (name is a property on the property list of obj)
+    return true
+
+  return false;
+}
+}}}
+
+== Deleting ==
+
+{{{
+fun delete property(obj, name, isStrict, virtualOK) {
+  if (name is a property on the property list of obj &&
+      the isFixed attribute of obj.name is true)
+    if isStrict
+      throw "can't delete fixtures"
+    return false
+
+  if (virtualOK && 
+      meta::delete is a property on the property list of obj && 
+      the isFixed attribute of meta::delete is true)
+    try 
+      invoke meta::delete and return its result
+    catch DefaultBehavior
+      return delete property(obj, name, isStrict, false)
+  
+  if (name is a property on the property list of obj)
+    if the deletable attribute of obj.name is true
+      remove the property
+      return true
+    
+    if isStrict
+      throw "can't delete non-deletable property"
+    return false
+
+  return false;
+}
+}}}
+
+<!--
+
+== Some archaeology ==
+
+eval.sml:getValueOrVirtual() 
+
+  Retrieves a named property from an object.  It throws errors if the
+  property is uninitialized.  It invokes the getter or the catchall
+  getter if it's there.  It binds a method if the property extracts a
+  method from a class instance.  It reifies 'arguments' (yow!).
+
+  It may be buggy, looks like eg a global 'meta const function get()',
+  which is probably legal, won't be invoked.
+
+  called from getValue; native.sml:get()  -- what the latter does is
+  mysterious but it disallows the use of catchalls.  It's intrinsic::get
+  in the global object.  Looks like a holdover from the old days?
+
+  Seems likely that the full catchall protocol has not been implemented.
+
+  The way this is structured, the function is passed a fallback
+  handler that it invokes if the property is not found, so there is no
+  notion of returning success or failure.  Really, it's CPS.
+
+  Unfortunately, hasOwnProperty and [[HasProperty]] do not use the
+  same kind of protocol; they will not invoke catchalls.  That's a
+  bug.
+
+
+
+eval.sml:getValue()
+
+  The only customer in this file of getValueOrVirtual.  Performs the
+  prototype chain search.  Determines whether a lookup throws an error
+  or not (as when not finding a prop in a non-dynamic object).
+
+
+eval.sml:setValueOrVirtual()
+
+  Ditto.  
+
+  We need to decide if the asymmetry here should be kept, it throws
+  when writing to R/O method props but not when writing to R/O value
+  props.
+
+  Needs to know about strict code for when it writes to R/O props.
+  
+-->
