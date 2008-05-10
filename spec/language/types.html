@@ -73,7 +73,7 @@ example, the type **[Number, ... String]** describes arrays of length at
 least 1, where the entry at index 0 has type **Number**, and any
 remaining entries have type **String**.
 
-<NOTE> Here, "**...**" represents concrete syntax, but "**..**" is
+<NOTE> Here, "**... **" represents concrete syntax, but "**..**" is
 meta-syntax, and so "**S1, .., Sn**" represents a sequence of
 zero-or-more types.
 
@@ -118,11 +118,11 @@ call site may be either 1 (a **Number**) or 2 (a **Number** and a
 **String**).
 
 <p>Finally, a function type may include a rest-argument, denoted
-by "**...**", to indicate that any number of additional parameters are
+by "**... **", to indicate that any number of additional parameters are
 permitted, as in:
 
 {{{
-    function(String, ...) : String
+    function(String, ... ) : String
 }}}
 
 <p> A //nullable type//, such as **?String**, is simply an
@@ -138,7 +138,7 @@ instantiates the generic class **Vector** to hold values of type
 **Number**. Note that a  generic class definition such as
 
 {{{
-    class Vector.&lt;X> {...}
+    class Vector.&lt;X> { ... }
 }}}
 
 introduces a binding for **Vector**, but **Vector** itself is not actually a
@@ -153,7 +153,7 @@ type variable **X** in the following class definition:
 
 {{{
     class Vector.<X> {
-        ...
+        ... 
     }
 }}}
 
@@ -207,7 +207,7 @@ is in turn a subtype of **U**, then **S** is also a subtype of **U**.
 Two types are equivalent if and only if they are both subtypes of each other.
 
 
-== Implementation of the Subtype Relation ==
+=== Implementation of the Subtype Relation ===
 
 <p> The subtype relation is defined by the following function
 ''subType''.  This function takes an additional argument called
@@ -223,7 +223,7 @@ described in the following subsections.
 <IMPL>
 <INCLUDE file="type.sml" name="fun subType">
 
-== Implementation of the Type Equivalence Relation ==
+=== Implementation of the Type Equivalence Relation ===
 
 The function ''equivType'' below checks type equivalence in a
 straightforward manner by checking subtyping in both directions. Like
@@ -265,17 +265,22 @@ String]** is a subtype of **[Number, String]**.
 <p> A fixed-length array type **[S1, .., Sn]** is a subtype of **[T1,
 .., Tn]** if each **S_i** is equivalent to **Ti** for i in 1..n.
 
-<p> A variable-length array type **[S1, .., Sn, S, ... S]** is a subtype of **[S1,
-.., S_n, ... S}]**.  The supertype demands one fewer element in the
-array than the subtype does.  For example, **[Number, String, String,
-...String]** is a subtype of **[Number, ...String]**, via transitivity.
+<p> A variable-length array type **[S1, .., Sn, S, ... S]** is a
+subtype of **[S1, .., S_n, ... S}]**.  The supertype demands one fewer
+element in the array than the subtype does.  For example, **[Number,
+String, String, ... String]** is a subtype of **[Number,
+... String]**, via transitivity.
 
 <p> A variable-length array type **[S1, .., Sn, ... S]** is a subtype
-of **[T1, .., Tn, ... T]** if **S** is equivalent to **T** and if
-each **S_i** is equivalent to **Ti** for i in 1..n.
+of **[T1, .., Tn, ... T]** if **S** is equivalent to **T** and if each
+**S_i** is equivalent to **Ti** for i in 1..n.
 
 <p> A variable-length array type **[S1, .., Sn, ... S]** is a subtype
 of the fixed-length array type **[S1, .., Sn]**.
+
+Via transitivity, the above rules may be applied multiple times, in
+various combinations. The following code combines all of these rules
+into a single deterministic algorithm for array subtyping.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and subTypeArray">
@@ -304,15 +309,15 @@ covariant in the result type.
 <p> This rule generalizes to **this** arguments, default arguments,
 and rest arguments according to the following rule, where the number
 of default arguments (indicated via the **=** symbol) in each function
-type may be zero, and where **[...]** indicates an optional rest
+type may be zero, and where **[... ]** indicates an optional rest
 argument.  A function type
 
 {{{
-    function(this:S1, S2, .., Sn, S_{n+1}=, .., Sm=, [...]) : U
+    function(this:S1, S2, .., Sn, S_{n+1}=, .., Sm=, [... ]) : U
 }}}
 is a subtype of
 {{{
-    function(this:T1, T2, .., Tp, T_{p+1}=, .., Tq=, [...]) : R
+    function(this:T1, T2, .., Tp, T_{p+1}=, .., Tq=, [... ]) : R
 }}}
 
 if ''U'' is a subtype of ''R'' and n <LEQ> p and ''Si'' is equivalent
@@ -324,9 +329,11 @@ to ''Ti'' for all i in 1..min(q,m). In addition:
   <LI>If only the first function type has a rest argument, then no
 additional conditions are needed.
 
-  <LI>If the second function type has a rest argument, then the first
-function type must have a rest argument as well, and ''Si'' must be
-equivalent to ''*'' for all i in ''(q+1)..m''.
+  <LI>If only the second function type has a rest argument, then
+  subtyping does not hold.
+
+  <LI>If both function types have a rest argument, then ''Si'' must be
+equivalent to the any type ''*'' for all i in ''(q+1)..m''.
 
 </UL>
 
@@ -352,16 +359,15 @@ is a subtype of
     function(argtypes2) : R2
 }}}
 
-That is, to check subtyping between generic functions, we alpha-rename
+Hence, to check subtyping between generic functions, we alpha-rename
 the type variables to be identical in both types, and then proceed to
 check subtyping on the non-generic versions of the two function types.
 
-<p>
-The types in a subtype relation may
-contain free type variables, which are assumed to denote some unknown
-type. For example, within the scope of any binding for a type
-variable ''X'',   the type ''X'' is a subtype of type ''X''
-(via reflexivity).
+<p> The types in a subtype relation may contain free type variables,
+which are assumed to denote the same unknown type in both arguments to
+the subtype relation. For example, within the scope of a binding for a
+type variable ''X'', the type ''[X, X]'' is a subtype of the type
+''[X]''.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and subTypeFunction">
@@ -374,6 +380,15 @@ if ''S'' is a subtype of the union type ''(T | null)''.
 <p>A type ''S'' is a subtype of a non-null type ''!T''
 if ''S'' is a subtype of ''T''
 and the type ''null'' is //not// a subtype of ''S''.
+
+<p>Analogous subtype rules hold for type applications of the form
+''C.&lt;T1, .., Tn>''.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeNonNull">
+
+===  Non-Null Nominal Types ===
+
 
 <p>A nominal type ''C'' (or
 ''C.&lt;T1, .., Tn>'') can be declared as a //non-null// type via any of the
@@ -396,9 +411,7 @@ the types ''C'' and ''(!C  | null)'' are equivalent.
 <p>Analogous subtype rules hold for type applications of the form
 ''C.&lt;T1, .., Tn>''.
 
-<IMPL>
-<INCLUDE file="type.sml" name="and subTypeNonNull">
-
+<FIXME> Implementation
 
 === Subtyping Nominal Types ===
 
@@ -409,7 +422,7 @@ Given a class definition
     class C extends D implements I1, .., In { ... }
 }}}
 
-the type ''C'' is a subtype of ''D'', and also ''C'' is a subtype of
+the type ''C'' is a subtype of ''D'', and  ''C'' is also a subtype of
 ''Ij'' for j in 1..n.
 
 <p>
@@ -426,7 +439,7 @@ appropriate renaming of bound variables. For example, given a generic
 class definition
 
 {{{
-    class C.&lt;x1, .., xn> extends D.&lt;T1, .., Tm> {...}
+    class C.&lt;x1, .., xn> extends D.&lt;T1, .., Tm> { ... }
 }}}
 
 we have that ''C.&lt;S1, .., Sn>'' is a subtype of
@@ -445,7 +458,7 @@ The notation **T[x1:=S1,..,xn:=Sn]** denotes the type **T** with each
 occurrence of the type variable **xi** replaced (in a capture-free
 manner) by the corresponding type **Si**.
 
-
+<FIXME>Need to explain ''INSTANCE_TYPE'' more.
 <IMPL>
 <INCLUDE file="type.sml" name="and subTypeNominal">
 

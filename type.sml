@@ -694,18 +694,18 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
 
 
 fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
-            (ty1 : Ast.TYPE)
-            (ty2 : Ast.TYPE)
+            (type1 : Ast.TYPE)
+            (type2 : Ast.TYPE)
     : bool = 
-    (ty1 = ty2)   (* reflexivity *) orelse
-    (subTypeFunction extra ty1 ty2) orelse
-    (subTypeRecord   extra ty1 ty2) orelse
-    (subTypeUnion    extra ty1 ty2) orelse
-    (subTypeArray    extra ty1 ty2) orelse
-    (subTypeNonNull  extra ty1 ty2) orelse
-    (subTypeNominal  extra ty1 ty2) orelse
-    (subTypeStructuralNominal extra ty1 ty2) orelse
-    (extra ty1 ty2) 
+    (type1 = type2)   (* reflexivity *) orelse
+    (subTypeFunction extra type1 type2) orelse
+    (subTypeRecord   extra type1 type2) orelse
+    (subTypeUnion    extra type1 type2) orelse
+    (subTypeArray    extra type1 type2) orelse
+    (subTypeNonNull  extra type1 type2) orelse
+    (subTypeNominal  extra type1 type2) orelse
+    (subTypeStructuralNominal extra type1 type2) orelse
+    (extra type1 type2) 
 
 and subTypeStructuralNominal extra type1 type2 =
     case (type1, type2) of
@@ -732,13 +732,16 @@ and subTypeStructuralNominal extra type1 type2 =
 and subTypeNominal extra type1 type2 =
     case (type1, type2) of
 
-        (Ast.InstanceType it1, Ast.InstanceType it2) =>
-        (nameEq (#name it1) (#name it2) andalso
-         (arrayPairWise (equivType extra) (#typeArgs it1) (#typeArgs it2)))
+        ( Ast.InstanceType { name = name1, typeArgs = typeArgs1, superTypes = superTypes1, ...}, 
+          Ast.InstanceType { name = name2, typeArgs = typeArgs2, ...} ) 
+        =>
+        (nameEq name1 name2 andalso
+         length typeArgs1 = length typeArgs2 andalso
+         ListPair.all (fn (type1, type2) => equivType extra type1 type2)
+                      ( typeArgs1, typeArgs2 ))
         orelse 
-        (* FIXME: is this right for generic classes? *)
-        (List.exists (fn sup => subType extra sup type2) 
-                     (#superTypes it1))
+        (List.exists (fn superType1 => subType extra superType1 type2) 
+                     superTypes1)
 
       | _ => false
 
@@ -754,14 +757,14 @@ and subTypeNonNull extra type1 type2 =
    
       | _ => false
 
-and subTypeRecord extra type1 type2 =
+and subTypeRecord extra type1 type2 = 
     case (type1, type2) of
 
         (Ast.RecordType fields1, Ast.RecordType fields2) => 
-        List.all (fn {name = name1, ty = ty1} =>
-                     List.exists (fn {name = name2, ty = ty2} =>
+        List.all (fn {name = name1, ty = type1} =>
+                     List.exists (fn {name = name2, ty = type2} =>
                                      nameExpressionEqual name1 name2 andalso
-                                     equivType extra ty1 ty2)
+                                     equivType extra type1 type2)
                                  fields2)
                  fields1
         
@@ -771,94 +774,93 @@ and subTypeRecord extra type1 type2 =
 and subTypeUnion extra type1 type2 =
     case (type1, type2) of
 
-        (Ast.UnionType tys1, ty2) => 
-        List.all    (fn ty1 => subType extra ty1 ty2) tys1
+        (Ast.UnionType types1, type2) => 
+        List.all    (fn type1 => subType extra type1 type2) types1
         
-      | (ty1, Ast.UnionType tys2) => 
-        List.exists (fn ty2 => subType extra ty1 ty2) tys2
+      | (type1, Ast.UnionType types2) => 
+        List.exists (fn type2 => subType extra type1 type2) types2
         
       | _ => false
 
 and subTypeArray extra type1 type2 =
     case (type1, type2) of
-        (Ast.ArrayType (tys1,to1), Ast.ArrayType (tys2,to2)) =>  
-        let val min = Int.min( length tys1, length tys2 ) 
+
+        (Ast.ArrayType (types1, rest1), 
+         Ast.ArrayType (types2, rest2)) =>  
+
+        let
+            val min = Int.min( length types1, length types2 ) 
         in
-            length tys1 >= length tys2 
+            ListPair.all (fn (type1, type2) => equivType extra type1 type2)  
+                         ( List.take(types1, min),
+                           List.take(types2, min) )
             andalso
-            ListPair.all (fn (type1,type2) => equivType extra type1 type2)  
-                         (List.take(tys1, min),
-                          List.take(tys2, min))
-            andalso
-            (case (to1, to2) of
-                 (NONE,    NONE   ) => length tys1 = length tys2
+            (case (rest1, rest2) of
+                 (NONE,    NONE   ) => length types1 = length types2
                | (NONE,    SOME _ ) => false
-               | (SOME t1, NONE   ) => true
+               | (SOME t1, NONE   ) => length types1 >= length types2
                | (SOME t1, SOME t2) =>
+                 length types1 >= length types2 andalso            
                  equivType extra t1 t2 andalso
                  List.all (fn t => equivType extra t t2)
-                          (List.drop(tys1, min)))
+                          (List.drop(types1, length types2)))
         end
+
       | _ => false
 
 and subTypeFunction extra type1 type2 =
-    case (type1,type2) of
+    case (type1, type2) of
+
         (Ast.FunctionType
-             {typeParams = typeParams1,
-              params   = params1,
-              result   = result1,
-              thisType = thisType1,
-              hasRest  = hasRest1,
-              minArgs  = minArgs1},
+             { typeParams = typeParams1,   params  = params1,     result  = result1,
+               thisType   = thisType1,     hasRest = hasRest1,    minArgs = minArgs1 },
          Ast.FunctionType 
-             {typeParams = typeParams2,
-              params   = params2,
-              result   = result2,
-              thisType = thisType2,
-              hasRest  = hasRest2,
-              minArgs  = minArgs2}) 
+             { typeParams = typeParams2,   params  = params2,     result  = result2,
+               thisType   = thisType2,     hasRest = hasRest2,    minArgs = minArgs2 }) 
         => 
-        let val min = Int.min( length params1, length params2 ) 
-            (* set up a substitution to alpha-rename typeParams to be identical *)
+        (* set up a substitution to alpha-rename typeParams to be identical *)
+        let
             val subst = substTypes 
                             (ListPair.map 
-                                 (fn (id1, id2) =>
-                                     ((makeNameExpression id1, NONE),
-                                      Ast.TypeName (makeNameExpression id2, NONE)))
+                                 (fn (typeParam1, typeParam2) =>
+                                     ( (makeNameExpression typeParam1, NONE),
+                                       Ast.TypeName (makeNameExpression typeParam2, NONE) ))
                                  (typeParams1, typeParams2))
+            val min = Int.min( length params1, length params2 ) 
         in
             length typeParams1 = length typeParams2
           andalso
             (case (result1, result2) of
                  (SOME type1, SOME type2) => subType extra type1 (subst type2)
-               | (NONE,    NONE)    => true)
+               | (NONE,       NONE)       => true)
           andalso
-            equivType extra thisType1 thisType2
+            equivType extra thisType1 (subst thisType2)
           andalso    
             minArgs1 <= minArgs2 
           andalso
-            ListPair.all (fn (type1,type2) => equivType extra type1 (subst type2))  
+            ListPair.all (fn (type1, type2) => equivType extra type1 (subst type2))  
                          (List.take(params1, min),
                           List.take(params2, min))
           andalso
             (case (hasRest1, hasRest2) of
                  (false, false) => length params2 <= length params1
-               | (false, true ) => false
                | (true,  false) => true
+               | (false, true ) => false
                | (true,  true ) =>
                      List.all (fn t => equivType extra t Ast.AnyType)
                               (List.drop(params1, min)))
         end
+
       | _ => false
  
 
 and equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
-              (ty1 : Ast.TYPE)
-              (ty2 : Ast.TYPE)
+              (type1 : Ast.TYPE)
+              (type2 : Ast.TYPE)
     : bool = 
-      (subType extra ty1 ty2) andalso
-      (subType (fn ty1 => fn ty2 => extra ty2 ty1)
-               ty2 ty1)
+      (subType extra type1 type2) andalso
+      (subType (fn type1 => fn type2 => extra type2 type1)
+               type2 type1)
 
 (* -----------------------------------------------------------------------------
  * Compatible-subtyping:  <*
@@ -866,20 +868,20 @@ and equivType (extra : Ast.TYPE -> Ast.TYPE -> bool)
 
 (* cannot use findSpecialConversion here, or Boolean(1) != true *)
 
-fun compatibleSubtype (ty1 : Ast.TYPE) (ty2 : Ast.TYPE) : bool = 
+fun compatibleSubtype (type1 : Ast.TYPE) (type2 : Ast.TYPE) : bool = 
     subType
-        (fn ty1 => fn ty2 => ty2 = anyType)   
-        ty1 ty2
+        (fn type1 => fn type2 => type2 = anyType)   
+        type1 type2
 
 (*
-fun compatibleSubtype ty1 ty2 = 
+fun compatibleSubtype type1 type2 = 
     let in
-        traceTy "compatibleSubtype:ty1 " ty1;
-        traceTy "compatibleSubtype:ty2 " ty2;
+        traceTy "compatibleSubtype:type1 " type1;
+        traceTy "compatibleSubtype:type2 " type2;
         compareTypes
-            (fn ty1 => fn ty2 => ty2 = anyType)
+            (fn type1 => fn type2 => type2 = anyType)
             SubType
-            ty1 ty2
+            type1 type2
     end
 *)
 
@@ -889,23 +891,23 @@ fun compatibleSubtype ty1 ty2 =
  * Matching: ~<
  * ----------------------------------------------------------------------------- *)
 
-fun groundMatches ty1 ty2
+fun groundMatches type1 type2
   = subType 
-        (fn ty1 => fn ty2 =>
-                      ty1 = anyType orelse
-                      ty2 = anyType orelse
-                      findSpecialConversion ty1 ty2 <> NONE)
-        ty1 ty2
+        (fn type1 => fn type2 =>
+                      type1 = anyType orelse
+                      type2 = anyType orelse
+                      findSpecialConversion type1 type2 <> NONE)
+        type1 type2
 
 (*
-fun groundMatches ty1 ty2
+fun groundMatches type1 type2
   = compareTypes 
-        (fn ty1 => fn ty2 =>
-                      ty1 = anyType orelse
-                      ty2 = anyType orelse
-                      findSpecialConversion ty1 ty2 <> NONE)
+        (fn type1 => fn type2 =>
+                      type1 = anyType orelse
+                      type2 = anyType orelse
+                      findSpecialConversion type1 type2 <> NONE)
         SubType
-        ty1 ty2
+        type1 type2
 *)
 
 fun matches (prog:Fixture.PROGRAM)
