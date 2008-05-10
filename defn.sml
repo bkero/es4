@@ -1787,13 +1787,13 @@ and defTypeExpr (env:ENV)
 
 
 and defFieldType (env:ENV)
-              (ty:Ast.FIELD_TYPE)
+                 (ty:Ast.FIELD_TYPE)
     : Ast.FIELD_TYPE =
     let
-        val {name,ty} = ty
+        val (name,ty) = ty
         val ty = defTypeExpr env ty
     in
-        {name=name,ty=ty}
+        (name,ty)
     end
 
 

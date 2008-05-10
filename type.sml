@@ -186,7 +186,7 @@ fun mapObjTy (f:(Ast.TYPE -> Ast.TYPE))
              (fields:Ast.FIELD_TYPE list)
     : Ast.FIELD_TYPE list =
     let
-        fun mapField { name, ty } = { name = name, ty = f ty }
+        fun mapField ( name, ty ) = ( name, f ty )
     in
         map mapField fields
     end
@@ -282,10 +282,10 @@ fun normalizeRefs (env:Ast.RIBS)
       | Ast.TypeNameReferenceType (Ast.RecordType fields, nameExpr) => 
         (case List.find
                   (* FIXME: nameExpr is *not* resolved at defn time *)
-                  (fn { name, ty } => nameExpressionEqual name nameExpr)
+                  (fn ( name, ty ) => nameExpressionEqual name nameExpr)
                   fields of
              NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
-           | SOME { name, ty } => normalizeRefs env ty)
+           | SOME ( name, ty ) => normalizeRefs env ty)
       | Ast.TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
       | x => mapTyExpr (normalizeRefs env) x
                                    
@@ -761,8 +761,8 @@ and subTypeRecord extra type1 type2 =
     case (type1, type2) of
 
         (Ast.RecordType fields1, Ast.RecordType fields2) => 
-        List.all (fn {name = name1, ty = type1} =>
-                     List.exists (fn {name = name2, ty = type2} =>
+        List.all (fn ( name1, type1 ) =>
+                     List.exists (fn ( name2, type2 ) =>
                                      nameExpressionEqual name1 name2 andalso
                                      equivType extra type1 type2)
                                  fields2)

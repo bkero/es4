@@ -3196,7 +3196,7 @@ and fieldType (ts0:TOKENS)
             let
                 val (ts2, nd2) = typeExpression (tl ts1)
             in
-                (ts2, {name=nd1, ty=nd2})
+                (ts2, (nd1, nd2))
             end
       | _ => error ["unknown token in fieldType"]
     end

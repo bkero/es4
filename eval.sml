@@ -2766,7 +2766,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
     : Mach.VALUE =
     let
         fun searchFieldTypes n [] = Ast.AnyType
-          | searchFieldTypes n ({name,ty}::ts) =
+          | searchFieldTypes n ((name,ty)::ts) =
             if n = (evalNameExpr regs name)
             then ty
             else searchFieldTypes n ts
@@ -3732,7 +3732,7 @@ and evalOperatorIs (regs:Mach.REGS)
         val vt = typeOfVal regs v 
         fun isLike (Mach.Object obj) (Ast.RecordType fields) = List.all (objHasLikeField obj) fields
           | isLike v lte = (typeOfVal regs v) <* lte
-        and objHasLikeField obj {name, ty} = 
+        and objHasLikeField obj (name, ty) = 
             let
                 val name = evalNameExpr regs name 
             in

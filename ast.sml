@@ -508,10 +508,11 @@ withtype
              name: NAME_EXPRESSION,
              init: EXPRESSION }
 
-     and FIELD_TYPE =
+     and FIELD_TYPE = NAME_EXPRESSION * TYPE
+(*
            { name: NAME_EXPRESSION,
              ty: TYPE }
-
+*)
      and FUNCTION_TYPE =
          { typeParams : IDENTIFIER list,
            thisType   : TYPE,
