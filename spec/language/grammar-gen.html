@@ -1,6 +1,9 @@
 = Grammar =
 
-== Name Expressions ==
+== Expressions ==
+
+&alpha; = { <i>allowColon</i>, <i>noColon</i> }<br>
+&beta; = { <i>allowIn</i>, <i>noIn</i> }
 
 <br/><br/><span><em>Identifier</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Identifier</strong><br/>
@@ -14,13 +17,11 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier</em><br/>
 &nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NamespaceExpression  </em><strong>::</strong><em>  PropertyIdentifier</em><br/>
 <br/>
-</span>
-== Expressions ==
-
-&alpha; = { <i>allowColon</i>, <i>noColon</i> }<br>
-&beta; = { <i>allowIn</i>, <i>noIn</i> }
-
-<br/><br/><span><em>ParenExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+<span><em>NamespaceExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>NameExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>StringLiteral</strong><br/>
+<br/>
+<span><em>ParenExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  CommaExpression<sup>allowColon, allowIn</sup></em><strong>  )</strong><br/>
 <br/>
 <span><em>FunctionExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
@@ -590,20 +591,13 @@
 <br/>
 </span>
 == Directives ==
-
-<br/><br/><span><em>Directives<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+<br/><span><em>Directives<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
 &nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>DirectivesPrefix<sup>&tau;</sup>  Directive<sup>&tau;, abbrev</sup></em><br/>
-<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<code> </code><br/>
-<br/>
 <br/>
 <span><em>DirectivesPrefix<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
 &nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>DirectivesPrefix<sup>&tau;</sup>  Directive<sup>&tau;, full</sup></em><br/>
-<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<code> </code><br/>
-<br/>
 <br/>
 <span><em>Directive<sup>class, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pragma<sup>class</sup></em><br/>
