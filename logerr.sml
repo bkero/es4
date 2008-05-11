@@ -161,7 +161,7 @@ fun ty t =
             join ", " (map ty tys)
         fun typeOrList tys =
             join "|" (map ty tys)
-        fun fieldToString {name, ty=fieldType} = 
+        fun fieldToString (name, fieldType) = 
 			(nameExpr name) ^ ": " ^ (ty fieldType)
         fun fieldList fields =
             join ", " (map fieldToString fields)

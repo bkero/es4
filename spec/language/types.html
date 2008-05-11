@@ -17,25 +17,15 @@ SCOPE:                      The dynamic type system
 <FIXME> Cross-check with normative grammer on terminology, etc
 <FIXME> Double-check that the specification and implementation of the
 subtype relation are consistent.
+<FIXME> Clean up subscripts
 
 <p>ECMAScript includes a gradual type system that supports a range of
-typing disciplines, including dynamically-typed code (as in ES3),
-statically-typed code (much like in Java or C#), and various
-combinations of statically- and dynamically-typed code, with
-convenient interoperation between the two.
+typing disciplines, including dynamically-typed code, statically-typed
+code, and combinations of statically- and dynamically-typed code.
 
 <p>Type annotations are supported, but not required. A variable with
 no type annotation implicitly is assigned the type "*", meaning that
-it can hold any value (much like variables in ES3).
-
-<p>ES4 provides two language modes. In //standard mode//, all type
-annotations are enforced via dynamic checks (unless static analysis
-can prove such checks to never fail). In strict mode, a program is
-first checked by a static type checker or verifier before being
-executed; any program that is ill-typed will be rejected by the
-verifier. If the program is not rejected, then it is executed as in
-"standard" mode. That is, there is no difference in run-time behavior
-between "strict" and "standard" modes.
+it can hold any value.
 
 <p>Every value has an //allocated type//. The allocated type is the 
 type given to a value when it is created and which defines its fixed 
@@ -45,13 +35,11 @@ structure.
 property is given by its definition and constrains the set of values
 that can be stored in the property.
 
-<p>If a property holds a value, then that value must have
-an allocated type that is a //compatible subtype// of property's
-storage type. The compatible subtype relation is an extension of the
-traditional subtype relation that supports more flexible
-interoperation between typed and untyped code.
-The precise definition of the compatible
-subtype relation is included below.
+<p>If a property holds a value, then that value must have an allocated
+type that is a //compatible subtype// of property's storage type. The
+compatible subtype relation is an extension of the traditional subtype
+relation that supports interoperation between typed and untyped code.
+The definition of the compatible subtype relation is included below.
 
 == The Type Language ==
 
@@ -59,14 +47,16 @@ subtype relation is included below.
 
 <p>ES4 includes the following types:
 
-<p>The type **null**, populated only by the value **null**.
+<p>The  type **null** is populated only by the value **null**.
 
-<p>The type **undefined**, populated only by the value ''undefined''.
+<p>The  type **undefined** is populated only by the undefined value
+**public::undefined**.
 
-<p>The //any// type, denoted *****,  that represents all
+
+<p>The //any// type, denoted *****,   represents all
 possible ES4 values.
 
-<p>A record type, such as **{x: Number, y: Number}**, which represents
+<p>A record type, such as **{x: Number, y: Number}**,   represents
 a record with two fields **x** and **y**, both of type **Number**.
 
 <p>Array types include both //fixed-length// and //variable-length//
@@ -83,14 +73,14 @@ example, the type **[Number, ... String]** describes arrays of length at
 least 1, where the entry at index 0 has type **Number**, and any
 remaining entries have type **String**.
 
-<NOTE> Here, "**...**" represents concrete syntax, but "**..**" is
+<NOTE> Here, "**... **" represents concrete syntax, but "**..**" is
 meta-syntax, and so "**S1, .., Sn**" represents a sequence of
 zero-or-more types.
 
-<p>A union type, such as **(Number | String)**, which describes both
+<p>A union type, such as **(Number | String)**,   describes both
 **Number** and **String** values.
 
-<p>A function type, such as
+<p>An example of a function type is:
 
 {{{
     function (Number, String) : String
@@ -107,15 +97,17 @@ type for the generic identity function.
     function.&lt;X>(X) : X
 }}}
 
-<p>A function type may
-include a type constraint for the **this** binding, as in
+<p>A function type may include a type constraint for the **this**
+binding, as in
 
 {{{
     function(this : Vector, Number, String) : String
 }}}
 
+<NOTE><FIXME>
+
 <p>A function type may use the symbol "**=**"  to indicate
-which arguments have default values, as in:
+that some trailing arguments have default values, as in:
 
 {{{
     function(Number, String=) : String
@@ -126,35 +118,33 @@ call site may be either 1 (a **Number**) or 2 (a **Number** and a
 **String**).
 
 <p>Finally, a function type may include a rest-argument, denoted
-by "**...**", to indicate that any number of additional parameters are
+by "**... **", to indicate that any number of additional parameters are
 permitted, as in:
 
 {{{
-    function(String, ...) : String
+    function(String, ... ) : String
 }}}
 
 <p> A //nullable type//, such as **?String**, is simply an
 abbreviation for the union type
 **(String | null)**. (Nullable types are desugared by the parser, and
-so do not appear in the AST below.)
+so do not appear in the ''TYPE'' datatype below.)
 
-<p> A //non-null type// has the form **T!**. This type is identical to the
+<p> A //non-null type// has the form **!T**. This type is identical to the
 type **T** except that it does not include the value **null**.
-
-<p>A reference to a named type, such as **String** or
-**X**.
 
 <p>A type application, such as **Vector.&lt;Number>**, which
 instantiates the generic class **Vector** to hold values of type
 **Number**. Note that a  generic class definition such as
 
 {{{
-    class Vector.&lt;X> {...}
+    class Vector.&lt;X> { ... }
 }}}
 
 introduces a binding for **Vector**, but **Vector** itself is not actually a
 type, since it requires additional type parameters to become a
-normal type, as in **Vector.&lt;Number>**.
+normal type, as in **Vector.&lt;Number>**. Instead, **Vector** is
+referred to as a //type constructor//.
 
 <p>The type language includes //type names//, which can refer to
 nominal types (ie, class or interface types), type definitions, or to
@@ -163,36 +153,35 @@ type variable **X** in the following class definition:
 
 {{{
     class Vector.<X> {
-        ...
+        ... 
     }
 }}}
 
-To help avoid name collision during type normalization (described
-below), each type variable bound in generic parameter list is assigned
-an associated //nonce//, or unique integer, and any corresponding
-reference to that type variable includes that nonce.  References to
-nominal types or to types introduced via type definitions do not
-include a nonce.
+To help avoid name collisions, each type variable bound in generic
+parameter list is assigned an associated //nonce//, or unique integer,
+and any corresponding reference to that type variable includes that
+nonce.  References to nominal types or to types introduced via type
+definitions do not require a nonce.
 
 
 === The Internal Representation of Types ===
 
-<p> Internally, the reference implementation resolves type names
-that refer to nominal types into an //instance type//. Essentially, an
-instance type includes the Name of a particular nominal type, plus any
-type arguments to which that nominal type is being applied. (This type
+<p> The semantics resolves type names that refer to nominal types into
+an ''INSTANCE_TYPE'' data structure. Essentially, an ''INSTANCE_TYPE''
+includes the ''Name'' of a particular nominal type, plus any type
+arguments to which that nominal type is being applied. (This type
 argument list is empty for references to non-generic nominal types.)
-
-<p> In addition, instance types do not include null, and so a type
-name that refers to a nullable class **C** would be expanded into a
-union type that includes **null** explicitly in addition to an
-instance type for **C**. The ''INSTANCE_TYPE''
-implementation type described below includes additional fields that
+The ''INSTANCE_TYPE'' data structure includes additional fields that
 facilitate efficient evaluation, and these are described elsewhere.
+
+<p> Instance types do not include null, and so a type name that refers
+to a nullable class **C** would be expanded into a union type that
+includes **null** explicitly in addition to an instance type for
+**C**.
 
 <FIXME>Additional  ''INSTANCE_TYPE'' fields described where?
 <IMPL>
-<INCLUDE file="ast.sml" name="datatype TYPE">
+<INCLUDE file="ast.sml" name="and TYPE">
 <INCLUDE file="ast.sml" name="and FUNCTION_TYPE">
 <INCLUDE file="ast.sml" name="and INSTANCE_TYPE">
 
@@ -203,18 +192,9 @@ yet be consistent with the following code.
 
 == The Subtype and Type Equivalence Relations ==
 
-<p>The subtyping relation is a binary relation on normalized types.
-If a type **S** is a subtype of type **T**, then a value of type **S**
-generally behaves as if it had type **T**.
-
-<p>The type equivalence relation is also a binary relation on types.
-Two types are equivalent if and only if they are both subtypes of each other.
-
-<p>The subtyping
-relation is defined by the  collection of subtype rules described in
-the following subsections.
-
-=== Subtyping is Reflexive and Transitive ===
+<p>The subtyping relation is a binary relation on types.  It is
+defined by the collection of subtype rules described below and in the
+following subsections.
 
 <p>
 Subtyping is reflexive, so every type is a subtype of itself.
@@ -223,9 +203,45 @@ Subtyping is reflexive, so every type is a subtype of itself.
 Subtyping is transitive, so if **S** is a subtype of **T** and **T**
 is in turn a subtype of **U**, then **S** is also a subtype of **U**.
 
+<p>The type equivalence relation is also a binary relation on types.
+Two types are equivalent if and only if they are both subtypes of each other.
+
+
+=== Implementation of the Subtype Relation ===
+
+<p> The subtype relation is defined by the following function
+''subType''.  This function takes an additional argument called
+''extra'', which is later used to extend the subtype relation with
+additional rules (for example, to define the compatible-subtyping
+relation below).
+
+<p>Reflexivity is included explicitly in the code below, whereas
+transitivity is a consequence of all the other rules for subtyping.
+This function dispatches to additional subtype functions
+described in the following subsections.
+
+<IMPL>
+<INCLUDE file="type.sml" name="fun subType">
+
+=== Implementation of the Type Equivalence Relation ===
+
+The function ''equivType'' below checks type equivalence in a
+straightforward manner by checking subtyping in both directions. Like
+''subType'', ''equivType'' also takes an ''extra'' parameter.
+
+<IMPLNOTE>The following implementation is straightforward and sufficies
+for a specification, but its worst-case time complexity is exponential
+in the height of a type, and so this naive approach would be
+inadequate in an implementation.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and equivType">
+
+
+
 === Subtyping Record Types ===
 
-<p> A record type **{N1:S1, .., Nn:Sn}** (where each **Ni** is a name
+<p> A record type **{N1:S1, .., Nn:Sn}** (where each distinct **Ni** is a name
 and each **Si** is a type) is a subtype of
 **{N1:T1, .., Nm:Tm}** if m <LEQ> n and **Si** is equivalent to **Ti**
 for all i in 1..m.
@@ -234,6 +250,10 @@ for all i in 1..m.
 irrelevant, and so re-arranging these bindings yields an equivalent
 type.  In particular, this re-arranging may be necessary in order to
 make the above rule applicable.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeRecord">
+
 
 === Subtyping Array Types ===
 
@@ -245,18 +265,25 @@ String]** is a subtype of **[Number, String]**.
 <p> A fixed-length array type **[S1, .., Sn]** is a subtype of **[T1,
 .., Tn]** if each **S_i** is equivalent to **Ti** for i in 1..n.
 
-<p> A variable-length array type **[S1, .., Sn, S, ..., S]** is a subtype of **[S1,
-.., S_n, ..., S}]**.  The supertype demands one fewer element in the
-array than the subtype does.  For example, **[Number, String, String,
-...String]** is a subtype of **[Number, ...String]**, via transitivity.
+<p> A variable-length array type **[S1, .., Sn, S, ... S]** is a
+subtype of **[S1, .., S_n, ... S}]**.  The supertype demands one fewer
+element in the array than the subtype does.  For example, **[Number,
+String, String, ... String]** is a subtype of **[Number,
+... String]**, via transitivity.
 
-<p> A variable-length array type **[S1, .., Sn, ..., S]** is a subtype
-of **[T1, .., Tn, ..., T]** if **S** is equivalent to **T** and if
-each **S_i** is equivalent to **Ti** for i in 1..n.
+<p> A variable-length array type **[S1, .., Sn, ... S]** is a subtype
+of **[T1, .., Tn, ... T]** if **S** is equivalent to **T** and if each
+**S_i** is equivalent to **Ti** for i in 1..n.
 
-<p> A variable-length array type **[S1, .., Sn, ..., S]** is a subtype
+<p> A variable-length array type **[S1, .., Sn, ... S]** is a subtype
 of the fixed-length array type **[S1, .., Sn]**.
 
+Via transitivity, the above rules may be applied multiple times, in
+various combinations. The following code combines all of these rules
+into a single deterministic algorithm for array subtyping.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeArray">
 
 === Subtyping Union Types ===
 
@@ -265,6 +292,9 @@ of the fixed-length array type **[S1, .., Sn]**.
 
 <p> A type **S** is a subtype of **(T1 | .. | Tn)** if
 there exists some i in 1..n such that **S** is a subtype of **Ti**.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeUnion">
 
 
 === Subtyping Function Types ===
@@ -279,15 +309,15 @@ covariant in the result type.
 <p> This rule generalizes to **this** arguments, default arguments,
 and rest arguments according to the following rule, where the number
 of default arguments (indicated via the **=** symbol) in each function
-type may be zero, and where **[...]** indicates an optional rest
+type may be zero, and where **[... ]** indicates an optional rest
 argument.  A function type
 
 {{{
-    function(this:S1, S2, .., Sn, S_{n+1}=, .., Sm=, [...]) : U
+    function(this:S1, S2, .., Sn, S_{n+1}=, .., Sm=, [... ]) : U
 }}}
 is a subtype of
 {{{
-    function(this:T1, T2, .., Tp, T_{p+1}=, .., Tq=, [...]) : R
+    function(this:T1, T2, .., Tp, T_{p+1}=, .., Tq=, [... ]) : R
 }}}
 
 if ''U'' is a subtype of ''R'' and n <LEQ> p and ''Si'' is equivalent
@@ -299,9 +329,11 @@ to ''Ti'' for all i in 1..min(q,m). In addition:
   <LI>If only the first function type has a rest argument, then no
 additional conditions are needed.
 
-  <LI>If the second function type has a rest argument, then the first
-function type must have a rest argument as well, and ''Si'' must be
-equivalent to ''*'' for all i in ''(q+1)..m''.
+  <LI>If only the second function type has a rest argument, then
+  subtyping does not hold.
+
+  <LI>If both function types have a rest argument, then ''Si'' must be
+equivalent to the any type ''*'' for all i in ''(q+1)..m''.
 
 </UL>
 
@@ -327,47 +359,59 @@ is a subtype of
     function(argtypes2) : R2
 }}}
 
-That is, to check subtyping between generic functions, we alpha-rename
+Hence, to check subtyping between generic functions, we alpha-rename
 the type variables to be identical in both types, and then proceed to
 check subtyping on the non-generic versions of the two function types.
 
-<p>
-The types in a subtype relation may
-contain free type variables, which are assumed to denote some unknown
-type. For example, within the scope of any binding for a type
-variable ''X'',   the type ''X'' is a subtype of type ''X''
-(via reflexivity).
+<p> The types in a subtype relation may contain free type variables,
+which are assumed to denote the same unknown type in both arguments to
+the subtype relation. For example, within the scope of a binding for a
+type variable ''X'', the type ''[X, X]'' is a subtype of the type
+''[X]''.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeFunction">
 
 === Subtyping Non-Null Types ===
 
-<p>A non-null type ''S!'' is a subtype of type ''T''
+<p>A non-null type ''!S'' is a subtype of type ''T''
 if ''S'' is a subtype of the union type ''(T | null)''.
 
-<p>A type ''S'' is a subtype of a non-null type ''T!''
+<p>A type ''S'' is a subtype of a non-null type ''!T''
 if ''S'' is a subtype of ''T''
 and the type ''null'' is //not// a subtype of ''S''.
+
+<p>Analogous subtype rules hold for type applications of the form
+''C.&lt;T1, .., Tn>''.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeNonNull">
+
+===  Non-Null Nominal Types ===
+
 
 <p>A nominal type ''C'' (or
 ''C.&lt;T1, .., Tn>'') can be declared as a //non-null// type via any of the
 following declarations:
 
 {{{
-    class C! ..
+    class !C ..
     class C.&lt;X1, .., Xn>! ..
-    interface C! ..
-    interface C.&lt;X1, .., Xn>! ..
+    interface !C ..
+    interface !C.&lt;X1, .., Xn> ..
 }}}
 
 <p>If ''C'' is a non-null nominal type, then the types ''C'' and
-''C!'' are equivalent.
-''C''.
+''!C'' are equivalent. 
 
 <p>If ''C'' is a nominal type that is not declared as non-null, then
-the types ''C'' and ''(C!  | null)'' are equivalent.
+the types ''C'' and ''(!C  | null)'' are equivalent.
 
 
 <p>Analogous subtype rules hold for type applications of the form
 ''C.&lt;T1, .., Tn>''.
+
+<FIXME> Implementation
 
 === Subtyping Nominal Types ===
 
@@ -378,7 +422,7 @@ Given a class definition
     class C extends D implements I1, .., In { ... }
 }}}
 
-the type ''C'' is a subtype of ''D'', and also ''C'' is a subtype of
+the type ''C'' is a subtype of ''D'', and  ''C'' is also a subtype of
 ''Ij'' for j in 1..n.
 
 <p>
@@ -395,7 +439,7 @@ appropriate renaming of bound variables. For example, given a generic
 class definition
 
 {{{
-    class C.&lt;x1, .., xn> extends D.&lt;T1, .., Tm> {...}
+    class C.&lt;x1, .., xn> extends D.&lt;T1, .., Tm> { ... }
 }}}
 
 we have that ''C.&lt;S1, .., Sn>'' is a subtype of
@@ -409,9 +453,14 @@ we have that ''C.&lt;S1, .., Sn>'' is a subtype of
 ''C.&lt;S1, .., Sn>'' if each type ''Ti'' is equivalent to the
 corresponding type ''Si'' for i in 1..n.
 
-<NOTE>The subtype relation only relates normalized types, and so does
-not deal with the type constructors ''IdentType'', or
-''ObjectRefType'',  which are removed during type normalization.
+<NOTE>
+The notation **T[x1:=S1,..,xn:=Sn]** denotes the type **T** with each
+occurrence of the type variable **xi** replaced (in a capture-free
+manner) by the corresponding type **Si**.
+
+<FIXME>Need to explain ''INSTANCE_TYPE'' more.
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeNominal">
 
 === Relating Structural and Nominal Types ===
 
@@ -419,10 +468,13 @@ not deal with the type constructors ''IdentType'', or
 type ''public::Object''.
 
 <p> An array type ''[S1, .., Sn]''  is a subtype of the nominal
-types ''public::Array'' and ''public::Object''.
+type ''public::Array''.
 
 <p> Any function type  is a subtype of the nominal
-types ''public::Function'' and ''public::Object''.
+type ''public::Function''.
+
+<IMPL>
+<INCLUDE file="type.sml" name="and subTypeStructuralNominal">
 
 === Type Definitions and Type References ===
 
@@ -445,14 +497,7 @@ In the scope of a generic type definition
 
 the type application ''X.&lt;S1, .., Sn>'' is
 equivalent to the type ''T[Y1:=S1, .., Yn:=Sn]''.
-
-<p>A //type name reference type// of the form ''T.name'' is equivalent to the type
-''S'' if ''T'' is a record type  ''{ name:S, .. }''.
-
-<p>A //type index reference type// of the form ''T[i]'' is equivalent to the type
-''Si'' if ''T'' is an array type   ''[S1, .., Sn, ...S]''
-and 1 <LEQ> i <LEQ> n. If i <GT> n, then ''T[i]'' is equivalent to ''S''.
-
+ 
 == Type Normalization ==
 
 <p>Each type ''T'' is considered equivalent (under the equivalence
@@ -471,49 +516,15 @@ normalization process. Normalized types do not include any of the
 following:
 
 <UL>
-  <LI> type name reference types
-  <LI> type index reference types
   <LI>  type names that refer to nominal types (instance
 types are used instead)
-  <LI> type names that refer to type  definitions (which are inlined
-  instead)
+  <LI> type names that refer to type  definitions (which are inlined instead)
   </UL>
   
 Normalized types may include type names that refer to generic type
 parameters; these references include a nonce.
 
 <p>The type normalization code is not presented here.
-
-== Implementation of the Subtype Relation ==
-
-<p> The subtype relation is defined by the following function
-''subType''. This function assumes that its argument types are already
-normalized. This function takes an additional argument called
-''extra'', which is later used to extend the subtype relation with
-additional rules (for example, to define the compatible-subtyping
-relation below).
-
-<p>Reflexivity is included
-explicitly in the code below, whereas transitivity is a consequence
-of all the other rules for subtyping.
-
-<IMPL>
-<INCLUDE file="type.sml" name="fun subType">
-
-== Implementation of the Type Equivalence Relation ==
-
-The function ''equivType'' below checks type equivalence in a
-straightforward manner by checking subtyping in both directions, but
-more efficient implementations are of course possible. Like
-''subType'', ''equivType'' also takes an ''extra'' parameter.
-
-<NOTE>The following implementation is straightforward and sufficies
-for a specification, but its worst-case time complexity is exponential
-in the height of a type, and so this naive approach would be
-inadequate in an implementation.
-
-<IMPL>
-<INCLUDE file="type.sml" name="and equivType">
 
 == Compatible Types ==
 
@@ -559,9 +570,9 @@ compatible with ''*''.
 <p>Every value in ES has an associated //allocated type//, which is a type that is
 associated with the value when the value is first allocated or created. An allocated
 type is always a reifiable type. The allocated type of a value is invariant; for example,
-updating the fields of an object cannot change the allocated tpe of that object.
+updating the fields of an object cannot change the allocated type of that object.
 
-<p>If a property of type ''T'' hold a value ''v'' of type ''S'', then ''S''
+<p>If a property of storage type ''T'' hold a value ''v'' of type ''S'', then ''S''
 is a compatible-subtype of ''T''.  
 
 

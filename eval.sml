@@ -2766,7 +2766,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
     : Mach.VALUE =
     let
         fun searchFieldTypes n [] = Ast.AnyType
-          | searchFieldTypes n ({name,ty}::ts) =
+          | searchFieldTypes n ((name,ty)::ts) =
             if n = (evalNameExpr regs name)
             then ty
             else searchFieldTypes n ts

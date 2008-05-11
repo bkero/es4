@@ -232,41 +232,21 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENTIFIER * EXPRESSION)
        | AssignStep of (EXPRESSION * EXPRESSION)
 
-(*
-
-datatype TYPE =
-         NullType
-       | UndefinedType
-       | AnyType
-       | RecordType of (NAME_EXPRESSION * TYPE) list
-       | ArrayType  of (TYPE list * TYPE option)
-       | UnionType  of TYPE list
-       | FunctionType of FUNCTION_TYPE
-       | NonNullType of TYPE
-       | AppType of (TYPE * TYPE list)
-       | TypeName of (NAME_EXPRESSION * NONCE option)  
-
-       | InstanceType of INSTANCE_TYPE
-
-(* last two cases removed during normalization *)
-
- | LamType of (IDENTIFIER list * TYPE)
-*)
-
      and TYPE =
          NullType
        | UndefinedType
        | AnyType
-       | RecordType of FIELD_TYPE list    (* TODO *)
+       | RecordType of (NAME_EXPRESSION * TYPE) list   
        | ArrayType  of (TYPE list * TYPE option)
        | UnionType of TYPE list
-       | FunctionType of FUNCTION_TYPE
        | NonNullType of TYPE
+       | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
-       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
-       | TypeIndexReferenceType of (TYPE * int)
        | InstanceType of INSTANCE_TYPE        (* *)
+
+ | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
+ | TypeIndexReferenceType of (TYPE * int)
 
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 (*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
@@ -498,17 +478,18 @@ withtype
              name: NAME_EXPRESSION,
              init: EXPRESSION }
 
-     and FIELD_TYPE =
+     and FIELD_TYPE = NAME_EXPRESSION * TYPE
+(*
            { name: NAME_EXPRESSION,
              ty: TYPE }
-
+*)
      and FUNCTION_TYPE =
          { typeParams : IDENTIFIER list,
            thisType   : TYPE,
            params  : TYPE list,
            minArgs : int,          
-           hasRest : bool,         
-           result  : TYPE option    (* NONE indicates void return type *)
+           hasRest : bool,          (* TODO : TYPE option *)
+           result  : TYPE option    (* NONE indicates return type is void *)
          }
 
      and FUNC_DEFN =
