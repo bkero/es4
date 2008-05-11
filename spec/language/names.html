@@ -435,7 +435,7 @@ namespace:
 
 <li>Evaluate the namespace expression to a namespace
 <li>Invoke ''searchScope'' with the scope chain, identifier and the namespace resulting from the previous step
-<li>If no object results, throw ...
+<li>If no value results, return the global object and name constructed from computed namespace and the given identifier
 <li>Return the object and name constructed from the computed namespace and the given identifier
 
 ==== Unqualified Lexical References ====
@@ -444,46 +444,44 @@ namespace:
 the set of names that consist of the open namespaces with priority equal or higher than the
 matched name and the matched names identifier.
 
-<p>Given a scope chain, an identifier, and a list of sets of open namespaces, this algorithm searches for
+<p>Given an execution phase, the scope chain, an identifier, and a list of sets of open namespaces, this algorithm searches for
 an object in the scope chain and a name on that object that matches the identifier and one of the
 open namespaces:
 
 <li>Invoke the abstract procedure ''searchScope'' with the scope chain, identifier and the
 set of all unique open namespaces
-<li>If no scope object results, throw ...
-<li>If more than one namespace results, invoke ''selectNamespace'' with the scope object, 
-    identifier, matching namespaces
+<li>If no value results, return the global object and name constructed from public namespace and the given identifier
+<li>If more than one namespace results, invoke ''selectNamespace'' with the scope object, identifier, matching namespaces
 <li>If more than one namespace results, throw ...
-<li>If the found object is the global object, then invoke the abstract procedure 
+<li>If the phase is "static" and the found object is the global object, then invoke the abstract procedure 
 ''reservedNames'' with the identifier, selected namespace, and the open namespaces
 <li>Return the scope object, a name constructed from the identifier and selected namespace, and
 the set of reserved names.
 
 ==== Searching a Scope Chain ====
 
-<p>Given a scope chain, an identifier, and a list of namespaces, this algorithm searches
+<p>Given a scope chain, an identifier, and a set of namespaces, this algorithm searches
 for an object in the scope chain and a name on that object that matches the identifier and the
 open namespaces.
 
-<p>Initially, consider all currently open namespaces at once -- the union
-of all open namespaces -- regardless of the nesting structure of the open namespaces. Search
-each scope object
-
-<p>Perform object list search either once or twice with the flattened namespace set, as follows.
+<p>Search each scope object in the scope chain. Perform this search either once or twice with 
+the flattened namespace set, as follows:
 
 <NOTE>Maintaining the integrity of objects requires that name resolution perform two-pass object
 list search, and that fixed property bindings cannot be shadowed or otherwise made ambiguous by
 expando property bindings.
 
-<p>At first, perform object list search with its search restricted to considering only fixed
-property bindings. If the first object list search returns no object or no namespaces, repeat the
+<li>At first, perform object list search with its search restricted to considering only fixed
+property bindings. 
+
+<li>If the first object list search returns no object or no namespaces, repeat the
 object list search with its search relaxed to include all properties, fixed and dynamic.
 
 <NOTE>With scopes and function scopes that might be mutated by 'eval' must be searched fully
 during the first pass and ignored during the second pass, to allow shadowing of outer bindings
 as is required for backward compatibility.
 
-<p>If no namespaces, or no object, are returned by object list search, return no value. An
+<li>If no namespaces, or no object, are returned by object list search, return no value. An
 object and a matching namepace set can therefore be assumed and are returned.
 
 {{{
@@ -514,7 +512,7 @@ are two kinds of object references, qualified and unqualified.
 ==== Qualified Object References ====
 
 <p>Given an expression, an identifier, and a namespace expression, this algorithm computes
-the object and the name.
+an object and the name.
 
 <li>Evaluate the expression
 <li>If the result is not an object, throw
@@ -522,6 +520,10 @@ the object and the name.
 <li>Return the object and name constructed from the resulting namespace and the given identifier
 
 ==== Unqualified Object References ====
+
+<p>If a static name (in a namespace or type expression) resolves to a global name, we reserve
+the set of names that consist of the open namespaces with priority equal or higher than the
+matched name and the matched names identifier.
 
 <p>Given an expression, an identifier, and a list of open namespace sets, this algorithm searches 
 for a name on the object that matches the identifier and the open namespaces.
@@ -532,8 +534,10 @@ for a name on the object that matches the identifier and the open namespaces.
 that match the identifier
 <li>If the resulting set of namespaces is empty, then use the set containing only the public namespace
 <li>If more than one namespace results, invoke ''selectNamespace'' with the scope object, identifier, matching namespaces
+<li>If the phase is "static" and the computed object is the global object, then invoke the abstract procedure 
+''reservedNames'' with the identifier, selected namespace, and the open namespaces
 <li>If more than one namespace results, throw ...
-<li>Return the object and a name constructed with the identifier and the matching namespace
+<li>Return the object, a name constructed with the identifier and the matching namespace, and the list of reserved names.
 
 === Common Algorithms ===
 
@@ -555,11 +559,12 @@ name, return no value.
 
 <p>Given an identifier, a list of namespaces, a list of classes, a list of open namespaces, this algorithm
 filters the set of namespaces accoring to the order that the namespaces appear in bindings in the given
-classes, first, and then the order of priority given by the list of open namespaces.
+classes first, and then in the priority given by the list of open namespaces.
 
 <FIXME> need more
-<li>Invoke ''selectNamespaceByClass with the list of classes, list of namespaces, and identifier.
-<li>If the result set contains more than one namespace, invoke ''selectNamespacesByOpenNamespaces
+
+<li>Invoke ''selectNamespaceByClass'' with the list of classes, list of namespaces, and identifier.
+<li>If the result set contains more than one namespace, invoke ''selectNamespacesByOpenNamespaces''
 with the resulting set of namespaces and the list of open namespaces.
 <li>If the result set does not contain just one namespace, throw ...
 <li>Return the selected namespace
