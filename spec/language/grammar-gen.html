@@ -1,0 +1,883 @@
+= Grammar =
+
+== Name Expressions ==
+
+<br/><br/><span><em>Identifier</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Identifier</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>ContextuallyReservedIdentifier</strong><br/>
+<br/>
+<span><em>PropertyIdentifier</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>ReservedIdentifier</strong><br/>
+<br/>
+<span><em>NameExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NamespaceExpression  </em><strong>::</strong><em>  PropertyIdentifier</em><br/>
+<br/>
+</span>
+== Expressions ==
+
+&alpha; = { <i>allowColon</i>, <i>noColon</i> }<br>
+&beta; = { <i>allowIn</i>, <i>noIn</i> }
+
+<br/><br/><span><em>ParenExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  CommaExpression<sup>allowColon, allowIn</sup></em><strong>  )</strong><br/>
+<br/>
+<span><em>FunctionExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>function  </strong><em>PropertyIdentifier  FunctionSignature  FunctionExpressionBody<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function</strong><em>  FunctionSignature  FunctionExpressionBody<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>FunctionExpressionBody<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>{  Directives<sup>local</sup>  }</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CommaExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>ObjectInitialiser<sup>noColon</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>InitialiserAttribute  </em><strong>{</strong><em>  FieldList  </em><strong>}</strong><br/>
+<br/>
+<span><em>ObjectInitialiser<sup>allowColon</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>InitialiserAttribute  </em><strong>{</strong><em>  FieldList  </em><strong>}</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>InitialiserAttribute  </em><strong>{  </strong><em>FieldList</em><strong>  }  :  </strong><em>TypeExpression</em><br/>
+<br/>
+<span><em>FieldList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Field</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Field  </em><strong>,</strong><em>  FieldList</em><br/>
+<br/>
+<span><em>Field</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>InitialiserAttribute  FieldName  </em><strong>:</strong><em>  AssignmentExpression<sup>allowColon, allowIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>InitialiserAttribute  </em><strong>get</strong><em>  FieldName  GetterSignature  FunctionExpressionBody<sup>allowColon, allowIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>InitialiserAttribute  </em><strong>set</strong><em>  FieldName  SetterSignature  FunctionExpressionBody<sup>allowColon, allowIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>__proto__</strong><em>  </em><strong>:</strong><em>  AssignmentExpression<sup>allowColon, allowIn</sup></em><br/>
+<br/>
+<span><em>InitialiserAttribute</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>const</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>var</strong><br/>
+<br/>
+<span><em>FieldName</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>NameExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>StringLiteral</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>NumberLiteral</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>[lookahead !{</em><strong>__proto__</strong><em>}]  </em><strong>ReservedIdentifier</strong><br/>
+<br/>
+<span><em>ArrayInitialiser<sup>noColon</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>InitialiserAttribute  </em><strong>[</strong><em>  ArrayElements  </em><strong>]</strong><br/>
+<br/>
+<span><em>ArrayInitialiser<sup>allowColon</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>InitialiserAttribute  </em><strong>[</strong><em>  ArrayElements  </em><strong>]</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>InitialiserAttribute  </em><strong>[ </strong><em> ArrayElements</em><strong>  ]  :  </strong><em>TypeExpression</em><br/>
+<br/>
+<span><em>ArrayElements</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ArrayElementList</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ArrayComprehension</em><br/>
+<br/>
+<span><em>ArrayElementList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AssignmentExpression<sup>allowColon, allowIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SpreadExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>,</strong><em>  ArrayElementList</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AssignmentExpression<sup>allowColon, allowIn</sup>  </em><strong>,</strong><em>  ArrayElementList</em><br/>
+<br/>
+<span><em>SpreadExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>...</strong><em>  AssignmentExpression<sup>allowColon, allowIn</sup></em><br/>
+<br/>
+<span><em>ArrayComprehension</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>AssignmentExpression<sup>allowColon, allowIn</sup>  ComprehensionExpression</em><br/>
+<br/>
+<span><em>ComprehensionExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>for</strong><em>  </em><strong>(</strong><em>  TypedPattern<sup>noIn</sup>  </em><strong>in</strong><em>  CommaExpression<sup>allowColon, allowIn</sup>  </em><strong>)  </strong><em>ComprehensionClause</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>for</strong><em>  </em><strong>each</strong><em>  </em><strong>(</strong><em>  TypedPattern<sup>noIn</sup>  </em><strong>in</strong><em>  CommaExpression<sup>allowColon, allowIn</sup>  </em><strong>)</strong><em>  ComprehensionClause</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>let</strong><em>  </em><strong>(</strong><em>  LetBindingList  </em><strong>)</strong><em>  ComprehensionClause</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>if</strong><em>  ParenExpression  ComprehensionClause</em><br/>
+<br/>
+<span><em>ComprehensionClause</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ComprehensionExpression</em><br/>
+<br/>
+<span><em>PrimaryExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>null</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>true</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>false</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>DoubleLiteral</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>DecimalLiteral</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>StringLiteral</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>RegExpInitialiser</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ArrayInitialiser<sup>&alpha;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ObjectInitialiser<sup>&alpha;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FunctionExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ThisExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LetExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ParenExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NameExpression</em><br/>
+<br/>
+<span><em>ThisExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>this</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>this</strong><em>  [no line break]  </em><strong>function</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>this</strong><em>  [no line break]  </em><strong>generator</strong><br/>
+<br/>
+<span><em>LetExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>let</strong><em>  </em><strong>(</strong><em>  LetBindingList  </em><strong>)</strong><em>  CommaExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>LetBindingList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableBindingList<sup>allowIn</sup></em><br/>
+<br/>
+<span><em>Arguments</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  </em><strong>)</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>(</strong><em>  SpreadExpression  </em><strong>)</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>(</strong><em>  ArgumentList  </em><strong>)</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>(</strong><em>  ArgumentList  </em><strong>,</strong><em>  SpreadExpression  </em><strong>)</strong><br/>
+<br/>
+<span><em>ArgumentList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>AssignmentExpression<sup>allowColon, allowIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ArgumentList  </em><strong>,</strong><em>  AssignmentExpression<sup>allowColon, allowIn</sup></em><br/>
+<br/>
+<span><em>PropertyOperator</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>.</strong><em>  </em><strong>ReservedIdentifier</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>.  </strong><em>NameExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Brackets</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeApplication</em><br/>
+<br/>
+<span><em>Brackets</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>[</strong><em>  CommaExpression<sup>noColon, allowIn</sup></em><strong>  ]</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>[</strong><em>  SliceExpression </em><strong>]</strong><br/>
+<br/>
+<span><em>SliceExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>OptionalExpression<sup>noColon</sup>  </em><strong>: </strong><em> OptionalExpression<sup>noColon</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>OptionalExpression<sup>noColon</sup>  </em><strong>:</strong><em>  OptionalExpression<sup>noColon</sup>  </em><strong>:</strong><em>  OptionalExpression<sup>allowColon</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>::</strong><em>  OptionalExpression<sup>allowColon</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>OptionalExpression<sup>noColon</sup>  </em><strong>::</strong><br/>
+<br/>
+<span><em>OptionalExpression<sup>&alpha;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CommaExpression<sup>&alpha;, allowIn</sup></em><br/>
+<br/>
+<span><em>TypeApplication</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>.<</strong><em>  TypeExpressionList  </em><strong>></strong><br/>
+<br/>
+<span><em>MemberExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>PrimaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>new</strong><em>  MemberExpression<sup>&alpha;, &beta;</sup>  Arguments</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SuperExpression  PropertyOperator</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>MemberExpression<sup>&alpha;, &beta;</sup>  PropertyOperator</em><br/>
+<br/>
+<span><em>SuperExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>super</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>super</strong><em>  ParenExpression</em><br/>
+<br/>
+<span><em>CallExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>MemberExpression<sup>&alpha;, &beta;</sup>  Arguments</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CallExpression<sup>&alpha;, &beta;</sup>  Arguments</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CallExpression<sup>&alpha;, &beta;</sup>  PropertyOperator</em><br/>
+<br/>
+<span><em>NewExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>MemberExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>new </strong><em> NewExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>NewExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CallExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>PostfixExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LeftHandSideExpression<sup>&alpha;, &beta;</sup>  [no line break]</em><strong>  ++</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LeftHandSideExpression<sup>&alpha;, &beta;</sup>  [no line break]  </em><strong>--</strong><br/>
+<br/>
+<span><em>UnaryExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>PostfixExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>delete</strong><em>  PostfixExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>void</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>typeof</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>++</strong><em>   PostfixExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>--  </strong><em>PostfixExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>+</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>-</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>~</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>!</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>type  </strong><em>TypeExpression</em><br/>
+<br/>
+<span><em>MultiplicativeExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>MultiplicativeExpression<sup>&alpha;, &beta;</sup>  </em><strong>*</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>MultiplicativeExpression<sup>&alpha;, &beta;</sup>  </em><strong>/</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>MultiplicativeExpression<sup>&alpha;, &beta;</sup>  </em><strong>%</strong><em>  UnaryExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>AdditiveExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>MultiplicativeExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AdditiveExpression<sup>&alpha;, &beta;</sup>  </em><strong>+</strong><em>  MultiplicativeExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AdditiveExpression<sup>&alpha;, &beta;</sup>  </em><strong>-</strong><em>  MultiplicativeExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>ShiftExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>AdditiveExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ShiftExpression<sup>&alpha;, &beta;</sup>  </em><strong><<</strong><em>  AdditiveExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ShiftExpression<sup>&alpha;, &beta;</sup>  </em><strong>>></strong><em>  AdditiveExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ShiftExpression<sup>&alpha;, &beta;</sup>  </em><strong>>>></strong><em>  AdditiveExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>RelationalExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>< </strong><em> ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>> </strong><em> ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong><= </strong><em> ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>>= </strong><em> ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  [&beta; == allowIn]  </em><strong>in </strong><em> ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>instanceof</strong><em>  ShiftExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>cast</strong><em>  TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>is</strong><em>  TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup>  </em><strong>like</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>EqualityExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>RelationalExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>EqualityExpression<sup>&alpha;, &beta;</sup>  </em><strong>==</strong><em>  RelationalExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>EqualityExpression<sup>&alpha;, &beta;</sup> </em><strong>!=</strong><em>  RelationalExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>EqualityExpression<sup>&alpha;, &beta;</sup>  </em><strong>===</strong><em>  RelationalExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>EqualityExpression<sup>&alpha;, &beta;</sup>  </em><strong>!==</strong><em>  RelationalExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>BitwiseAndExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>EqualityExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>BitwiseAndExpression<sup>&alpha;, &beta;</sup>  &  EqualityExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>BitwiseXorExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>BitwiseAndExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>BitwiseXorExpression<sup>&alpha;, &beta;</sup>  </em><strong>^</strong><em>  BitwiseAndExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>BitwiseOrExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>BitwiseXorExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>BitwiseOrExpression<sup>&alpha;,  &beta;</sup>  </em><strong>|</strong><em>  BitwiseXorExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>LogicalAndExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>BitwiseOrExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LogicalAndExpression<sup>&alpha;, &beta;</sup>  </em><strong>&&</strong><em>  BitwiseOrExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>LogicalAndExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LogicalOrExpression<sup>&alpha;, &beta;</sup>  </em><strong>||</strong><em>  LogicalAndExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>ConditionalExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>YieldExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LogicalOrExpression<sup>&alpha;, &beta;</sup>  </em><strong>?</strong><em>  AssignmentExpression<sup>noColon, &beta;</sup></em><strong>  </strong><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>                                       </em><strong>:</strong><em>  AssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>NonAssignmentExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>YieldExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LogicalOrExpression<sup>&alpha;, &beta;</sup>  </em><strong>?</strong><em>  NonAssignmentExpression<sup>noColon, &beta;</sup></em><strong>  </strong><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>                                       </em><strong>:</strong><em>  NonAssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>YieldExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>yield</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>yield</strong><em>  [no line break]  AssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>AssignmentExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ConditionalExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Pattern<sup>&alpha;, &beta;, allowExpr</sup>  </em><strong>=</strong><em>  AssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SimplePattern<sup>&alpha;, &beta;, allowExpr</sup>  CompoundAssignmentOperator  AssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>CompoundAssignmentOperator</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>*=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>/=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>%=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>+=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>-=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong><<=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>>>=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>>>>=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>&=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>^=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>|=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>&&=</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>||=</strong><br/>
+<br/>
+<span><em>CommaExpression<sup>&alpha;, &beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>AssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CommaExpression<sup>&alpha;, &beta;</sup>  </em><strong>,</strong><em>  AssignmentExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+</span>
+== Patterns ==
+
+&gamma; = { <i>allowExpr</i>, <i>noExpr</i> }
+
+<br/><br/><span><em>Pattern<sup>&alpha;, &beta;, &gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>SimplePattern<sup>&alpha;, &beta;, &gamma;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ObjectPattern<sup>&alpha;, &beta;, &gamma;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ArrayPattern<sup>&gamma;</sup></em><br/>
+<br/>
+<span><em>SimplePattern<sup>&alpha;, &beta;, noExpr</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier</em><br/>
+<br/>
+<span><em>SimplePattern<sup>&alpha;, &beta;, allowExpr</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em><br/>
+<br/>
+<span><em>ObjectPattern<sup>&gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{</strong><em>  FieldListPattern<sup>&gamma;</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>FieldListPattern<sup>&gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldPattern<sup>&gamma;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldListPattern<sup>&gamma;</sup>  </em><strong>,</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldListPattern<sup>&gamma;</sup>  </em><strong>,</strong><em>  FieldPattern<sup>&gamma;</sup></em><br/>
+<br/>
+<span><em>FieldPattern<sup>&gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>FieldName</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldName  </em><strong>:</strong><em>  Pattern<sup>allowColon, allowIn, &gamma;</sup></em><br/>
+<br/>
+<span><em>ArrayPattern<sup>&gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>[</strong><em>  ElementListPattern<sup>&gamma;</sup>  </em><strong>]</strong><br/>
+<br/>
+<span><em>ElementListPattern<sup>&gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ElementPattern<sup>&gamma;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>...</strong><em>  SimplePattern<sup>allowColon, allowIn, &gamma;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>,</strong><em>  ElementListPattern<sup>&gamma;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ElementPattern<sup>&gamma;</sup>  </em><strong>,</strong><em>  ElementListPattern<sup>&gamma;</sup></em><br/>
+<br/>
+<span><em>ElementPattern<sup>&gamma;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pattern<sup>allowColon, allowIn,</sup> <sup>&gamma;</sup></em><br/>
+<br/>
+<span><em>TypedIdentifier</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Identifier  </em><strong>:</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>TypedPattern<sup>&beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pattern<sup>noColon, &beta;, noExpr</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Pattern<sup>noColon, &beta;, noExpr</sup>  </em><strong>:</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>LikenedPattern<sup>&beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pattern<sup>noColon, &beta;, noExpr</sup>  </em><strong>like</strong><em> TypeExpression</em><br/>
+<br/>
+</span>
+== Type Expressions ==
+
+<br/><br/><span><em>TypeExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>BasicTypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>?</strong><em>  BasicTypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>!</strong><em>  BasicTypeExpression</em><br/>
+<br/>
+<span><em>BasicTypeExpression</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>*</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>null</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>undefined</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeName</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FunctionType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>UnionType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>RecordType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ArrayType</em><br/>
+<br/>
+<span><em>TypeName</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>NameExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NameExpression  TypeApplication</em><br/>
+<br/>
+<span><em>FunctionType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>function  </strong><em>FunctionSignatureType</em><br/>
+<br/>
+<span><em>FunctionSignatureType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeParameters</em><strong>  (</strong><em>  </em><strong>)</strong><em>  ResultType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters</em><strong>  (</strong><em>  ParametersType  </em><strong>)</strong><em>  ResultType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters  </em><strong>(</strong><em> </em><strong> this  :</strong><em>  TypeName  </em><strong>)</strong><em>  ResultType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters  </em><strong>(</strong><em>  </em><strong>this  :</strong><em>  TypeName  </em><strong>,</strong><em>  ParametersType  </em><strong>)</strong><em>  ResultType</em><br/>
+<br/>
+<span><em>ParametersType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>RestParameterType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NonRestParametersType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NonRestParametersType  </em><strong>,</strong><em>  RestParameterType</em><br/>
+<br/>
+<span><em>NonRestParametersType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ParameterType  </em><strong>, </strong><em> NonRestParametersType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ParameterType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>OptionalParametersType</em><br/>
+<br/>
+<span><em>OptionalParametersType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>OptionalParameterType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>OptionalParameterType  </em><strong>,</strong><em>  OptionalParametersType</em><br/>
+<br/>
+<span><em>OptionalParameterType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ParameterType  </em><strong>=</strong><br/>
+<br/>
+<span><em>ParameterType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Identifier  </em><strong>:</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>RestParameterType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>...</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>...</strong><em>  Identifier</em><br/>
+<br/>
+<span><em>UnionType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  TypeUnionList  </em><strong>)</strong><br/>
+<br/>
+<span><em>TypeUnionList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NonemptyTypeUnionList</em><br/>
+<br/>
+<span><em>NonemptyTypeUnionList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeExpression  </em><strong>|</strong><em>  NonemptyTypeUnionList</em><br/>
+<br/>
+<span><em>RecordType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{</strong><em>  FieldTypeList  </em><strong>}</strong><br/>
+<br/>
+<span><em>FieldTypeList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldType  </em><strong>,</strong><em>  FieldTypeList</em><br/>
+<br/>
+<span><em>FieldType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>FieldName</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FieldName  </em><strong>:</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>ArrayType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>[</strong><em>  ElementTypeList  </em><strong>]</strong><br/>
+<br/>
+<span><em>ElementTypeList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>...</strong><em>  TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>,</strong><em>  ElementTypeList</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeExpression  </em><strong>,</strong><em>  ElementTypeList</em><br/>
+<br/>
+<span><em>TypeExpressionList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeExpressionList  </em><strong>,</strong><em>  TypeExpression</em><br/>
+<br/>
+</span>
+== Statements ==
+
+&tau; = { <i>constructor</i>, <i>class</i>, <i>global</i>, <i>interface</i>, <i>local</i>, <i>statement</i> }
+&omega; = { <i>abbrev</i>, <i>noShortIf</i>, <i>full</i> }
+
+<br/><br/><span><em>Statement<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>BlockStatement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>BreakStatement Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ContinueStatement Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>DoWhileStatement Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>EmptyStatement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ExpressionStatement Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ForStatement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>IfStatement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LabeledStatement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>LetBlockStatement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ReturnStatement Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SwitchStatement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SwitchTypeStatement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ThrowStatement Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TryStatement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>WhileStatement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>WithStatement<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>Substatement<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Statement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableDefinition<sup>noIn, statement</sup></em><br/>
+<br/>
+<span><em>Semicolon<sup>abbrev</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>;</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>VirtualSemicolon</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>&laquo;empty&raquo;</em><br/>
+<br/>
+<span><em>Semicolon<sup>noShortIf</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>;</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>VirtualSemicolon</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>&laquo;empty&raquo;</em><br/>
+<br/>
+<span><em>Semicolon<sup>full</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>;</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>VirtualSemicolon</strong><br/>
+<br/>
+<span><em>EmptyStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>;</strong><br/>
+<br/>
+<span><em>ExpressionStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>[lookahead  !{ </em><strong>{</strong><em>, </em><strong>const</strong><em>, </em><strong>function</strong><em>, </em><strong>let</strong><em>, </em><strong>var</strong><em> }]  CommaExpression<sup>allowColon, allowIn</sup></em><br/>
+<br/>
+<span><em>BlockStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>LabeledStatement<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier  </em><strong>:</strong><em>  Substatement<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>LetBlockStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>let</strong><em>  </em><strong>(</strong><em>  LetBindingList  </em><strong>)</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>IfStatement<sup>abbrev</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>if</strong><em>  ParenExpression  Substatement<sup>abbrev</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>if</strong><em>  ParenExpression  Substatement<sup>noShortIf</sup>  </em><strong>else</strong><em>  Substatement<sup>abbrev</sup></em><br/>
+<br/>
+<span><em>IfStatement<sup>full</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>if</strong><em>  ParenExpression  Substatement<sup>full</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>if</strong><em>  ParenExpression  Substatement<sup>noShortIf</sup>  </em><strong>else</strong><em>  Substatement<sup>full</sup></em><br/>
+<br/>
+<span><em>IfStatement<sup>noShortIf</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>if</strong><em>  ParenExpression  Substatement<sup>noShortIf</sup>  </em><strong>else</strong><em>  Substatement<sup>noShortIf</sup></em><br/>
+<br/>
+<span><em>WithStatement<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>with</strong><em>  ParenExpression  Substatement<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>SwitchStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>switch</strong><em>  ParenExpression  </em><strong>{</strong><em>  CaseElements  </em><strong>}</strong><br/>
+<br/>
+<span><em>CaseElements</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>CaseClauses<sup>full</sup>  DefaultClause<sup>full</sup>  CaseClauses<sup>abbrev</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CaseClauses<sup>full</sup>  DefaultClause<sup>abbrev</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CaseClauses<sup>abbrev</sup></em><br/>
+<br/>
+<span><em>CaseClauses<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CaseClauses<sup>full</sup>  CaseClause<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>CaseClause<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>case</strong><em>  CommaExpression<sup>allowColon, allowIn</sup>  </em><strong>:  </strong><em>Directives<sup>local, &omega;</sup></em><br/>
+<br/>
+<span><em>DefaultClause<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>default  :  </strong><em>Directives<sup>local, &omega;</sup></em><br/>
+<br/>
+<span><em>SwitchTypeStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>switch  type</strong><em>  ParenExpression  </em><strong>{</strong><em>  TypeCaseElements  </em><strong>}</strong><br/>
+<br/>
+<span><em>TypeCaseElements</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeCaseElement</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeCaseElements  TypeCaseElement</em><br/>
+<br/>
+<span><em>TypeCaseElement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>case</strong><em>  </em><strong>(</strong><em>  TypedPattern<sup>allowColon, allowIn</sup>  </em><strong>)</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>DoWhileStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>do</strong><em>  Substatement<sup>abbrev</sup>  </em><strong>while</strong><em>  ParenExpression</em><br/>
+<br/>
+<span><em>WhileStatement<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>while</strong><em>  ParenExpression  Substatement<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>ForStatement<sup>&omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>for</strong><em>  </em><strong>(</strong><em>  ForInitialiser  </em><strong>;</strong><em>  OptionalExpression<sup>allowColon</sup>  </em><strong>;</strong><em>  OptionalExpression<sup>allowColon</sup>  </em><strong>)</strong><em>  Substatement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>for</strong><em>  </em><strong>(</strong><em>  ForInBinding  </em><strong>in</strong><em>  CommaExpression<sup>allowColon, allowIn</sup>  </em><strong>)</strong><em>  Substatement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>for</strong><em>  </em><strong>each</strong><em>  </em><strong>(</strong><em> ForInBinding  </em><strong>in</strong><em>  CommaExpression<sup>allowColon, allowIn</sup>  </em><strong>)</strong><em>  Substatement<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>ForInitialiser</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CommaExpression<sup>allowColon, noIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableDefinition<sup>noIn, &tau;</sup></em><br/>
+<br/>
+<span><em>ForInBinding</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pattern<sup>allowColon, noIn, allowExpr</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableDefinitionKind<sup>local</sup>  VariableBinding<sup>noIn</sup></em><br/>
+<br/>
+<span><em>ContinueStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>continue</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>continue</strong><em>  [no line break]  Identifier</em><br/>
+<br/>
+<span><em>BreakStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>break</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>break</strong><em>  [no line break]  Identifier</em><br/>
+<br/>
+<span><em>ReturnStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>return</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>return</strong><em>  [no line break]  CommaExpression<sup>allowColon, allowIn</sup></em><br/>
+<br/>
+<span><em>ThrowStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>throw</strong><em>  CommaExpression<sup>allowColon, allowIn</sup></em><br/>
+<br/>
+<span><em>TryStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>try</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><em>  CatchClauses</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>try</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><em>  CatchClauses  </em><strong>finally</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>try</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><em>  </em><strong>finally</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>CatchClauses</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>CatchClause</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CatchClauses  CatchClause</em><br/>
+<br/>
+<span><em>CatchClause</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>catch</strong><em>  </em><strong>(</strong><em>  Parameter  </em><strong>)</strong><em>  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>SuperStatement</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>super  (</strong><em>  Arguments  </em><strong>)</strong><br/>
+<br/>
+</span>
+== Directives ==
+
+<br/><br/><span><em>Directives<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>DirectivesPrefix<sup>&tau;</sup>  Directive<sup>&tau;, abbrev</sup></em><br/>
+<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<code> </code><br/>
+<br/>
+<br/>
+<span><em>DirectivesPrefix<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>DirectivesPrefix<sup>&tau;</sup>  Directive<sup>&tau;, full</sup></em><br/>
+<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<code> </code><br/>
+<br/>
+<br/>
+<span><em>Directive<sup>class, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pragma<sup>class</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>static</strong><em>  [no line break]  </em><strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AnnotatableDirective<sup>class, &omega;</sup></em><br/>
+<br/>
+<span><em>Directive<sup>interface, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pragma<sup>interface</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AnnotatableDirective<sup>interface, &omega;</sup></em><br/>
+<br/>
+<span><em>Directive<sup>constructor, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pragma<sup>local</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SuperStatement  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Statement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AnnotatableDirective<sup>local, &omega;</sup></em><br/>
+<br/>
+<span><em>Directive<sup>&tau;, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pragma<sup>&tau;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Statement<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>AnnotatableDirective<sup>&tau;, &omega;</sup></em><br/>
+<br/>
+<span><em>AnnotatableDirective<sup>global, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Attribute  [no line break]  AnnotatableDirective<sup>global, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableDefinition<sup>allowIn, global</sup>  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FunctionDefinition<sup>global, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NamespaceDefinition  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ClassDeclaration  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ClassDefinition</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>InterfaceDeclaration  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>InterfaceDefinition</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeDeclaration  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeDefinition  Semicolon<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>AnnotatableDirective<sup>class, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Attribute  [no line break]  AnnotatableDirective<sup>class, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableDefinition<sup>allowIn, class</sup>  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FunctionDefinition<sup>class, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NamespaceDefinition  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeDefinition  Semicolon<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>AnnotatableDirective<sup>interface, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Attribute  [no line break]  AnnotatableDirective<sup>interface, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FunctionDeclaration  Semicolon<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>AnnotatableDirective<sup>local, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>VariableDefinition<sup>allowIn, local</sup>  Semicolon<sup>&omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>FunctionDefinition<sup>local, &omega;</sup></em><br/>
+<br/>
+<span><em>Attribute</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>NamespaceExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>dynamic</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>final</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>override</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>__proto__</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>static</strong><br/>
+<br/>
+</span>
+== Definitions ==
+
+<br/><br/><span><em>VariableDefinition<sup>&beta;, &tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>VariableDefinitionKind<sup>&tau;</sup>  VariableBindingList<sup>&beta;</sup></em><br/>
+<br/>
+<span><em>VariableDefinitionKind<sup>statement</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>var</strong><br/>
+<br/>
+<span><em>VariableDefinitionKind<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>const</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>let</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>var</strong><br/>
+<br/>
+<span><em>VariableBindingList<sup>&beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>VariableBinding<sup>&beta;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>VariableBindingList<sup>&beta;</sup>  </em><strong>,</strong><em>  VariableBinding<sup>&beta;</sup></em><br/>
+<br/>
+<span><em>VariableBinding<sup>&beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypedIdentifier</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypedPattern<sup>&beta;</sup>  VariableInitialisation<sup>&beta;</sup></em><br/>
+<br/>
+<span><em>VariableInitialisation<sup>&beta;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>=</strong><em>  AssignmentExpression<sup>allowColon, &beta;</sup></em><br/>
+<br/>
+<span><em>FunctionDeclaration</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>function  </strong><em>PropertyIdentifier  FunctionSignatureType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  get  </strong><em>PropertyIdentifier  GetterSignature</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  set  </strong><em>PropertyIdentifier  SetterSignature</em><br/>
+<br/>
+<span><em>FunctionDefinition<sup>class, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>function  </strong><em>Identifier  [Identifier == outer classname]  ConstructorSignature  </em><strong>{</strong><em>  Directives<sup>constructor</sup>  </em><strong>}</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  </strong><em>PropertyIdentifier  FunctionSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  get  </strong><em>PropertyIdentifier  GetterSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  set  </strong><em>PropertyIdentifier  SetterSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>native</strong><em>  FunctionDeclaration</em><br/>
+<br/>
+<span><em>FunctionDefinition<sup>local, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>const  function  </strong><em>PropertyIdentifier  FunctionSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  </strong><em>PropertyIdentifier  FunctionSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+<br/>
+<span><em>FunctionDefinition<sup>&tau;, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>const  function  </strong><em>PropertyIdentifier  FunctionSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  </strong><em>PropertyIdentifier  FunctionSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  get  </strong><em>PropertyIdentifier  GetterSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>function  set  </strong><em>PropertyIdentifier  SetterSignature  FunctionBody<sup>allowIn, &omega;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>native</strong><em>  FunctionDeclaration</em><br/>
+<br/>
+<span><em>FunctionSignature</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeParameters</em><strong>  (</strong><em>  </em><strong>)</strong><em>  ResultTypeOrLike</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters</em><strong>  (</strong><em>  Parameters  </em><strong>)</strong><em>  ResultTypeOrLike</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters  </em><strong>(</strong><em>  </em><strong>this  :</strong><em>  TypeName  </em><strong>)</strong><em>  ResultTypeOrLike</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters  </em><strong>(</strong><em>  </em><strong>this  :</strong><em>  TypeName  </em><strong>,</strong><em>  Parameters  </em><strong>)</strong><em>  ResultTypeOrLike</em><br/>
+<br/>
+<span><em>GetterSignature</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  </em><strong>)</strong><em>  ResultTypeOrLike</em><br/>
+<br/>
+<span><em>SetterSignature</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  Parameter  </em><strong>)  </strong><em>ResultTypeVoid</em><br/>
+<br/>
+<span><em>FunctionBody<sup>&alpha;, &beta;, &omega;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{</strong><em>  Directives<sup>local</sup>  </em><strong>}</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>CommaExpression<sup>&alpha;, &beta;</sup>  Semicolon<sup>&omega;</sup></em><br/>
+<br/>
+<span><em>TypeParameters</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>.<</strong><em>  TypeParameterList  </em><strong>></strong><em>  </em><br/>
+<br/>
+<span><em>TypeParameterList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Identifier</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Identifier  </em><strong>,</strong><em>  TypeParameterList</em><br/>
+<br/>
+<span><em>Parameters</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>RestParameter</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NonRestParameters</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>NonRestParameters  </em><strong>,</strong><em>  RestParameter</em><br/>
+<br/>
+<span><em>NonRestParameters</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Parameter  </em><strong>, </strong><em> NonRestParameters</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>Parameter</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>OptionalParameters</em><br/>
+<br/>
+<span><em>OptionalParameters</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>OptionalParameter</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>OptionalParameter  ,  OptionalParameters</em><strong></strong><br/>
+<br/>
+<span><em>OptionalParameter</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Parameter  </em><strong>=</strong><em>  NonAssignmentExpression<sup>allowIn</sup></em><br/>
+<br/>
+<span><em>Parameter</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ParameterAttribute  TypedPattern<sup>allowIn</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>ParameterAttribute  LikenedPattern<sup>allowIn</sup></em><br/>
+<br/>
+<span><em>ParameterAttribute</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>const</strong><br/>
+<br/>
+<span><em>RestParameter</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>...</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>...</strong><em>  Identifier</em><br/>
+<br/>
+<span><em>ResultTypeOrLike</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>ResultType</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>like</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>ResultType</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>:</strong><em>  </em><strong>void</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>:</strong><em>  TypeExpression</em><br/>
+<br/>
+<span><em>ResultTypeVoid</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>:  void</strong><br/>
+<br/>
+<span><em>ConstructorSignature</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>(</strong><em>  Parameters  </em><strong>)</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>(</strong><em>  Parameters  </em><strong>)</strong><em>  </em><strong>:</strong><em>  ConstructorInitialiser</em><br/>
+<br/>
+<span><em>ConstructorInitialiser</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>SettingList</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SettingList  </em><strong>,</strong><em>  SuperInitialiser</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SuperInitialiser</em><br/>
+<br/>
+<span><em>SettingList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Setting</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>SettingList  </em><strong>,</strong><em>  Setting</em><br/>
+<br/>
+<span><em>Setting</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Pattern<sup>allowIn, allowExpr</sup>  VariableInitialisation<sup>allowIn</sup></em><br/>
+<br/>
+<span><em>SuperInitialiser</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>super</strong><em>  Arguments</em><br/>
+<br/>
+<span><em>ClassDeclaration</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>class</strong><em>  Identifier  TypeSignature</em><br/>
+<br/>
+<span><em>ClassDefinition</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>class</strong><em>  Identifier  TypeSignature  ClassInheritance  ClassBody</em><br/>
+<br/>
+<span><em>TypeSignature</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeParameters</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeParameters  </em><strong>!</strong><br/>
+<br/>
+<span><em>ClassInheritance</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>extends  </strong><em>TypeName</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>implements  </strong><em>TypeNameList</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>extends  </strong><em>TypeName</em><strong>  implements  </strong><em>TypeNameList</em><br/>
+<br/>
+<span><em>TypeNameList</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>TypeName</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>TypeNameList  ,  TypeName</em><br/>
+<br/>
+<span><em>ClassBody</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{</strong><em>  Directives<sup>class</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>InterfaceDeclaration</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>interface</strong><em>  Identifier  TypeSignature</em><br/>
+<br/>
+<span><em>InterfaceDefinition</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>interface</strong><em>  Identifier  TypeSignature  InterfaceInheritance  InterfaceBody</em><br/>
+<br/>
+<span><em>InterfaceInheritance</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>extends  </strong><em>TypeNameList</em><br/>
+<br/>
+<span><em>InterfaceBody</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{</strong><em>  Directives<sup>interface</sup>  </em><strong>}</strong><br/>
+<br/>
+<span><em>TypeDeclaration</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>type</strong><em>  Identifier  TypeSignature</em><br/>
+<br/>
+<span><em>TypeDefinition</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>type</strong><em>  Identifier  TypeSignature  TypeInitialisation</em><br/>
+<br/>
+<span><em>TypeInitialisation</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>=  </strong><em>TypeExpression</em><br/>
+<br/>
+<span><em>NamespaceDefinition</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>namespace</strong><em>  Identifier  NamespaceInitialisation</em><br/>
+<br/>
+<span><em>NamespaceInitialisation</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>&laquo;empty&raquo;</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>=  </strong><em>NamespaceExpression</em><br/>
+<br/>
+</span>
+== Directives ==
+
+<br/><br/><span><em>Pragma<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>UsePragma<sup>&tau;</sup>  Semicolon<sup>full</sup></em><br/>
+<br/>
+<span><em>UsePragma<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>use</strong><em>  PragmaItems<sup>&tau;</sup></em><br/>
+<br/>
+<span><em>PragmaItems<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>PragmaItem<sup>&tau;</sup></em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<em>PragmaItems<sup>&tau;</sup>  </em><strong>,</strong><em>  PragmaItem<sup>&tau;</sup></em><br/>
+<br/>
+<span><em>PragmaItem<sup>local</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>namespace  </strong><em>NamespaceExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>standard</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>strict</strong><br/>
+<br/>
+<span><em>PragmaItem<sup>global</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>default  namespace  </strong><em>NamespaceExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>namespace  </strong><em>NamespaceExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>standard</strong><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>strict</strong><br/>
+<br/>
+<span><em>PragmaItem<sup>&tau;</sup></em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>default  namespace  </strong><em>NamespaceExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>namespace  </strong><em>NamespaceExpression</em><br/>
+&nbsp;&nbsp;&nbsp;<code>|</code>&nbsp;<strong>strict</strong><br/>
+<br/>
+</span>
+== Programs ==
+
+<span><em>Program</em>&nbsp;&nbsp;&nbsp;&rarr; <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<em>Directives<sup>global</sup></em><br/>
+<br/>
+</span>
