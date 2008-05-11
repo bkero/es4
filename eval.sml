@@ -3711,7 +3711,6 @@ and evalLogicalOr (regs:Mach.REGS)
         else evalExpr regs bexpr
     end
 
-
 and evalOperatorIs (regs:Mach.REGS)
                    (v:Mach.VALUE)
                    (te:Ast.TYPE)
@@ -3752,7 +3751,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                 val vt = typeOfVal regs v 
                 fun isLike (Mach.Object obj) (Ast.RecordType fields) = List.all (objHasLikeField obj) fields
                   | isLike v lte = (typeOfVal regs v) <* lte
-                and objHasLikeField obj {name, ty} = 
+                and objHasLikeField obj (name, ty) = 
                     let
                         val name = evalNameExpr regs name 
                     in
