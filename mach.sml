@@ -1178,7 +1178,7 @@ type OPEN_NAMESPACES = NAMESPACE_SET list
 fun head x = hd x (* return the first element of a list *)
 fun tail x = tl x (* return all but the first element of a list *)
 
-
+fun getScopeObjectAndKind ( Scope {object, kind, ...}: SCOPE) = (object, kind)
 
 fun getBindingNamespaces (object: OBJECT, 
                           identifier: IDENTIFIER,
@@ -1225,10 +1225,10 @@ fun getPrototypeObject (Obj {proto, ...}: OBJECT)
         Object obj => SOME obj
       | _ => NONE
 
-fun objectSearch (NONE, _, _, _) = NONE
-  | objectSearch (SOME object: OBJECT option, 
-                  namespaces: NAMESPACE_SET, 
+fun searchObject (NONE, _, _, _) = NONE
+  | searchObject (SOME object: OBJECT option, 
                   identifier: IDENTIFIER, 
+                  namespaces: NAMESPACE_SET, 
                   fixedOnly: bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
@@ -1237,27 +1237,66 @@ fun objectSearch (NONE, _, _, _) = NONE
         case matches of
             [] => if fixedOnly
                   then NONE 
-                  else objectSearch (getPrototypeObject (object), namespaces, identifier, fixedOnly)
+                  else searchObject (getPrototypeObject (object), identifier, namespaces, fixedOnly)
           | _ => SOME (object, matches)
     end
 
 fun objectListSearch ([], _, _, _) = NONE
-  | objectListSearch (objects: OBJECT list, 
-                      namespaces: NAMESPACE_SET, 
+  | objectListSearch (objects: OBJECT list,
+                      namespaces: NAMESPACE_SET,
                       identifier: IDENTIFIER,
                       fixedOnly: bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
         val object = head (objects)
-        val matches = objectSearch (SOME object, namespaces, identifier, fixedOnly)
+        val matches = searchObject (SOME object, identifier, namespaces, fixedOnly)
     in
         case matches of
             NONE => objectListSearch (tail (objects), namespaces, identifier, fixedOnly)
           | _ => matches
     end
 
-fun inheritedClassesOf (object: OBJECT)
-    : CLASS list =
+fun searchMutableScopeObject (object: OBJECT,
+                              namespaces: NAMESPACE_SET,
+                              identifier: IDENTIFIER)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val result = searchObject (SOME object, identifier, namespaces, true)
+    in case result of
+        NONE => searchObject (SOME object, identifier, namespaces, false)
+      | _ => result
+    end
+
+fun searchScope (scope: SCOPE,
+                 namespaces: NAMESPACE_SET,
+                 identifier: IDENTIFIER,
+                 fixedOnly: bool)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val (object, kind) = getScopeObjectAndKind (scope)
+    in case (kind, fixedOnly) of
+        (WithScope, true) => searchMutableScopeObject (object, namespaces, identifier)
+      | (WithScope, false) => NONE
+      | (_,_) => searchObject (SOME object, identifier, namespaces, fixedOnly)
+    end
+
+
+fun searchScopeList ([], _, _) = NONE
+  | searchScopeList (scopes: SCOPE list,
+                      identifier: IDENTIFIER,
+                      namespaces: NAMESPACE_SET)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val scope = hd scopes
+        val matches = searchScope (scope, namespaces, identifier, true)
+    in
+        case matches of
+            NONE => searchScopeList (tl scopes, identifier, namespaces)
+          | _ => matches
+    end
+
+fun instanceRibsOf (object: OBJECT)
+    : Ast.RIBS =
     []
 
 fun getObjId (Obj { ident, ...}) = ident
@@ -1283,8 +1322,8 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                   | [] => NONE
                   | _ =>
                     let
-                        val classList = inheritedClassesOf (object)
-                        val matches''' = Fixture.selectNamespacesByClass (classList, namespaces, identifier)
+                        val instanceRibs = instanceRibsOf (object)
+                        val matches''' = Fixture.selectNamespacesByClass (instanceRibs, namespaces, identifier)
                     in 
                         case matches''' of
                             namespace :: [] => SOME (object, {ns=namespace, id=identifier})
@@ -1301,6 +1340,4 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                     end
             end
     end
-
 end
-

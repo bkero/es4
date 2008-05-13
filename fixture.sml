@@ -294,7 +294,7 @@ fun ribListSearch ([], _, _) = NONE
           | SOME (_, m) => SOME (ribs, m)
     end
 
-fun getInstanceBindingNamespaces (class: CLASS, 
+fun getInstanceBindingNamespaces (rib: Ast.RIB, 
                                   identifier: IDENTIFIER,
                                   namespaces: NAMESPACE_SET)
     : NAMESPACE_SET =
@@ -308,18 +308,44 @@ fun getInstanceBindingNamespaces (class: CLASS,
     namespaces
 
 fun selectNamespacesByClass ([], namespaces, _) = namespaces
- |  selectNamespacesByClass (classes: CLASS list, 
+ |  selectNamespacesByClass (instanceRibs: Ast.RIBS,
                              namespaces: NAMESPACE_SET, 
                              identifier: IDENTIFIER)
     : NAMESPACE list =
     let
-        val class = head (classes)
-        val bindingNamespaces = getInstanceBindingNamespaces (class, identifier, namespaces)
+        val rib = head (instanceRibs)
+        val bindingNamespaces = getInstanceBindingNamespaces (rib, identifier, namespaces)
         val matches = intersectNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
-            [] => selectNamespacesByClass (tail (classes), namespaces, identifier)
+            [] => selectNamespacesByClass (tail (instanceRibs), namespaces, identifier)
           | _ => matches
+    end
+
+fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET, 
+                      instanceRibs: Ast.RIBS, openNamespaces: OPEN_NAMESPACES)
+    : NAMESPACE_SET =
+    let
+        val openNamespaceSet = List.concat (openNamespaces)
+    in
+        case namespaces of
+            _ :: [] => namespaces
+          | _ =>
+            let
+                val matches' = selectNamespacesByClass (instanceRibs, openNamespaceSet, identifier)
+            in
+                case matches' of
+                    [] => raise (LogErr.NameError "internal error")
+                  | _ :: [] => matches'
+                  | _ =>
+                    let
+                        val matches'' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
+                    in 
+                        case matches'' of
+                            [] => raise (LogErr.NameError "internal error")
+                          | _ => matches''
+                    end
+            end
     end
 
 fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, globalNames: Ast.NAME_SET)

@@ -438,6 +438,9 @@ namespace:
 <li>If no value results, return the global object and name constructed from computed namespace and the given identifier
 <li>Return the object and name constructed from the computed namespace and the given identifier
 
+<IMPL>
+<INCLUDE file="eval.sml" name="and resolveQualifiedLexicalReference">
+
 ==== Unqualified Lexical References ====
 
 <p>If a static name (in a namespace or type expression) resolves to a global name, we reserve
@@ -457,6 +460,9 @@ set of all unique open namespaces
 ''reservedNames'' with the identifier, selected namespace, and the open namespaces
 <li>Return the scope object, a name constructed from the identifier and selected namespace, and
 the set of reserved names.
+
+<IMPL>
+<INCLUDE file="eval.sml" name="and resolveUnqualifiedLexicalReference">
 
 ==== Searching a Scope Chain ====
 
@@ -484,12 +490,9 @@ as is required for backward compatibility.
 <li>If no namespaces, or no object, are returned by object list search, return no value. An
 object and a matching namepace set can therefore be assumed and are returned.
 
-{{{
-
-fun searchScopeChain (scopeChain, identifier, namespaces)
-    : (OBJECT * NAME) option =
-    <LDOTS>
-}}}
+<INCLUDE file="mach.sml" name="fun searchScopeList">
+<INCLUDE file="mach.sml" name="fun searchScope">
+<INCLUDE file="mach.sml" name="fun searchMutableScopeObject">
 
 <!-- this is done elsewhere
 <p>If one namepace matches, complete resolution with the located object and a name formed from the
@@ -509,6 +512,8 @@ namespace must match. If any other number of namespaces match, signal an error.
 <p>Here we describe how a name is computed from a object reference. There
 are two kinds of object references, qualified and unqualified.
 
+<INCLUDE file="eval.sml" name="and resolveObjectReference">
+
 ==== Qualified Object References ====
 
 <p>Given an expression, an identifier, and a namespace expression, this algorithm computes
@@ -518,6 +523,8 @@ an object and the name.
 <li>If the result is not an object, throw
 <li>Evaluate the namespace expression
 <li>Return the object and name constructed from the resulting namespace and the given identifier
+
+<INCLUDE file="eval.sml" name="and resolveQualifiedObjectReference">
 
 ==== Unqualified Object References ====
 
@@ -539,6 +546,8 @@ that match the identifier
 <li>If more than one namespace results, throw ...
 <li>Return the object, a name constructed with the identifier and the matching namespace, and the list of reserved names.
 
+<INCLUDE file="eval.sml" name="and resolveUnqualifiedObjectReference">
+
 === Common Algorithms ===
 
 ==== Search an Object  ====
@@ -553,7 +562,7 @@ it. Otherwise repeat the process on the prototype of the object, and its prototy
 along the prototype chain. If the end of the prototype chain is reached without producing a matching
 name, return no value.
 
-<INCLUDE file="mach.sml" name="fun objectSearch">
+<INCLUDE file="mach.sml" name="fun searchObject">
 
 ==== Namespace Selection ====
 
@@ -569,7 +578,9 @@ with the resulting set of namespaces and the list of open namespaces.
 <li>If the result set does not contain just one namespace, throw ...
 <li>Return the selected namespace
 
-==== Class Based Namespace Selection ====
+<INCLUDE file="fixture.sml" name="fun selectNamespaces">
+
+===== Class Base Namespace Selection =====
 
 <p>Given a list of classes, an identifier and a set of namespaces, this algorithm selects the
 namespaces used on the most generic class of that list. This step is necessary to avoid object
@@ -586,10 +597,9 @@ matching namespaces is nonempty, return it. Otherwise repeat the process on the 
 and its tail, and so forth down the list. If all the classes in the list are searched and no
 matching namespaces are found, return the empty set.
 
-===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">
 
-==== Open Namespace Based Namespace Selection ====
+===== Open Namespace Based Namespace Selection =====
 
 <p>Given a list of sets of open namespaces (ordered from most recently opened to least recently
 opened) and a set of matching namespaces, this algorithm returns a subset of the matching set that
@@ -601,7 +611,6 @@ process with the tail of the open namespace list, and its tail, and so forth up 
 open namespace sets. If the end of the list of open namespace sets is reached without producing a
 nonempty intersection, return an empty set.
 
-===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
 
 ==== Reserving Names ====
