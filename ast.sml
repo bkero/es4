@@ -244,9 +244,8 @@ datatype PRAGMA =
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
        | InstanceType of INSTANCE_TYPE        (* *)
-
- | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
- | TypeIndexReferenceType of (TYPE * int)
+       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
+       | TypeIndexReferenceType of (TYPE * int)
 
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 (*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
