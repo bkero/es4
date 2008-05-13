@@ -1223,17 +1223,18 @@ and newRegExp (regs:Mach.REGS)
         regs Name.public_RegExp 
         [newString regs pattern, newString regs flags]
 
-and newBuiltin (regs:Mach.REGS)
-               (n:Ast.NAME) 
-               (m:Mach.PRIMITIVE option)
-    : Mach.VALUE =
-    let
-        val args = case m of 
-                     NONE => []
-                   | SOME m' => [Mach.Object (Mach.newObject (Mach.PrimitiveTag m') Mach.Null)]
-    in
-        instantiateGlobalClass regs n args
-    end
+
+and newPrimitive (regs:Mach.REGS)
+			   (prim:Mach.PRIMITIVE)
+			   (getter: Mach.REGS -> (Mach.OBJ option) ref)
+	: Mach.VALUE =
+	let
+		val args = [Mach.Object (Mach.newObject (Mach.PrimitiveTag prim) Mach.Null)]
+		val (class, closure) = getClassObjectAndClosure regs getter
+	in
+		constructClassInstance regs class closure args
+	end
+		
 
 (* SPEC
 
@@ -1247,7 +1248,7 @@ fun evalDecimalLiteral (env: ENV)
 and newDecimal (regs:Mach.REGS) 
                (n:Decimal.DEC)
     : Mach.VALUE =
-    newBuiltin regs Name.ES4_decimal (SOME (Mach.Decimal n))
+    newPrimitive regs (Mach.Decimal n) Mach.getDecimalClassSlot
 
 (* SPEC
 
@@ -1261,17 +1262,8 @@ fun evalDoubleLiteral (env: ENV)
 and newDouble (regs:Mach.REGS) 
               (n:Real64.real)
     : Mach.VALUE =
-    if Real64.isNan n
-    then newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
-    else
-	case Mach.findInDoubleCache regs n of
-	    SOME obj => Mach.Object obj
-	  | NONE => newBuiltin regs Name.ES4_double (SOME (Mach.Double n))
+	newPrimitive regs (Mach.Double n) Mach.getDoubleClassSlot
 
-and newStringWrapper (regs:Mach.REGS)
-                    (s:Ustring.STRING)
-    : Mach.VALUE =
-    newBuiltin regs Name.public_String (SOME (Mach.String s))
 
 (* SPEC
 
@@ -1286,14 +1278,8 @@ fun evalStringLiteral (env: ENV)
 and newString (regs:Mach.REGS)
               (s:Ustring.STRING)
     : Mach.VALUE =
-    case Mach.findInStrCache regs s of
-        SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_string (SOME (Mach.String s))
+	newPrimitive regs (Mach.String s) Mach.getStringClassSlot
 
-and newBooleanWrapper (regs:Mach.REGS)
-                      (b:bool)
-    : Mach.VALUE =
-    newBuiltin regs Name.public_Boolean (SOME (Mach.Boolean b))
 
 (* SPEC
 
@@ -1307,25 +1293,12 @@ fun evalBooleanLiteral (env: ENV)
 and newBoolean (regs:Mach.REGS)
                (b:bool)
     : Mach.VALUE =
-    let
-        val cell = 
-            if b 
-            then Mach.getBooleanTrueSlot regs 
-            else Mach.getBooleanFalseSlot regs
-    in
-        case !cell of
-            SOME obj => Mach.Object obj
-          | NONE => newBuiltin 
-                        regs Name.ES4_boolean 
-                        (SOME (Mach.Boolean b))
-    end
+	newPrimitive regs (Mach.Boolean b) Mach.getBooleanClassSlot
 
 and newNamespace (regs:Mach.REGS)
                  (n:Ast.NAMESPACE)
     : Mach.VALUE =
-    case Mach.findInNsCache regs n of
-        SOME obj => Mach.Object obj
-      | NONE => newBuiltin regs Name.ES4_Namespace (SOME (Mach.Namespace n))
+	newPrimitive regs (Mach.Namespace n) Mach.getNamespaceClassSlot
 
 and newName (regs:Mach.REGS)
             (n:Ast.NAME)
@@ -1355,7 +1328,7 @@ and newClass (regs:Mach.REGS)
     let
         val closure = newClsClosure e cls
     in
-	    newBuiltin regs Name.intrinsic_Class (SOME (Mach.Class closure))
+	    newPrimitive regs (Mach.Class closure) Mach.getClassClassSlot 
     end
 
 and newIfaceClosure (env:Mach.SCOPE)
@@ -1370,7 +1343,7 @@ and newInterface (regs:Mach.REGS)
     let
         val closure = newIfaceClosure e iface
     in
-	newBuiltin regs Name.intrinsic_Interface (SOME (Mach.Interface closure))
+		newPrimitive regs (Mach.Interface closure) Mach.getInterfaceClassSlot
     end
 
 and newFunClosure (e:Mach.SCOPE)
@@ -5061,12 +5034,12 @@ and constructSpecial (regs:Mach.REGS)
             in
                 if ident = id 
                 then 
-		    (trace ["running special ctor for instance of class #", 
-			        Int.toString id, " = ", fmtName name];
-		     SOME (f regs classObj classClosure args))
+					(trace ["running special ctor for instance of class #", 
+							Int.toString id, " = ", fmtName name];
+					 SOME (f regs classObj classClosure args))
                 else 
-		    findSpecial rest
-	    end
+					findSpecial rest
+			end
     in
         findSpecial 
             [

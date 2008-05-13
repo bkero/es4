@@ -213,8 +213,8 @@
 %% [Global.es] parse
 @builtins/Global.es
 
-%% [Magic.es] parse
-@builtins/Magic.es
+%% [Helper.es] parse
+@builtins/Helper.es
 
 %% [Math.es] parse
 @builtins/Math.es
