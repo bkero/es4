@@ -41,6 +41,9 @@ output/Error.html: Error.html library/Error.html $(LIBDEPS)
 output/enumerability.html: enumerability.html language/enumerability.html $(LIBDEPS)
 	python stitch.py enumerability.html output/enumerability.html
 
+output/readwrite.html: readwrite.html language/readwrite.html $(LIBDEPS)
+	python stitch.py readwrite.html output/readwrite.html
+
 output/assert.html: assert.html language/assert.html $(LIBDEPS)
 	python stitch.py assert.html output/assert.html
 
