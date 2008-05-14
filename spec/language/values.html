@@ -139,30 +139,36 @@ variables, and virtual properties (defined by getter and setter functions).
 </tr>
 <tr>
   <td>''writable''</td>
-  <td>
-    The property can be written to. Attempts to write to a property after initialization fail unless
-    the property has the ''writable'' attribute. In standard mode such failures are silently ignored.
-    In strict mode such failures throw an exception.
+  <td>  
+    An attribute that can be one of three values. When the value is ''Writable'', the property can
+    be written to an arbitrary number of times. When the value is ''WriteOnce'', the property can be
+    written to once, after which the attribute assumes the value ''ReadOnly''. When the value is
+    ''ReadOnly'', attempts to write to the property after initialization will fail, either silently
+    or by throwing an exception, depending on the operating mode.
   </td>
 </tr>
 <tr>
   <td>''enumerable''</td>
   <td>
-    The property is to be enumerated by **for-in** and **for-each-in** enumeration. 
+    A boolean attribute. If true, then the property is to be enumerated by **for-in** and
+    **for-each-in** enumeration. Otherwise the property is ignored by such enumeration.
   </td>
 </tr>
 <tr>
   <td>''removable''</td>
   <td>
-    The property can be removed using the **delete** operator.
+    A boolean attribute. If true, then the property can be removed using the **delete** operator.
+    If false, the **delete** operator either fails silently or throws an exception, depending on 
+    the operating mode.
   </td>
 </tr>
 <tr>
   <td>''fixed''</td>
   <td>
-    <p>The property was defined as part of the object's fixed structure. Name resolution prefers
-    ''fixed'' properties over non-''fixed'' ("dynamic") properties, therefore fixed properties
-    cannot be shadowed by dynamic properties.</p>
+    <p>A boolean attribute. If true, then the property was defined as part of the object's fixed
+      structure and dominates non-fixed properties during name resolution. If false, then the
+      property is a dynamic addition to the object and is consulted //after// fixed properties
+      during name resolution.</p>
   </td>
 </tr>
 </table>
@@ -400,109 +406,107 @@ namespace fixture in a single execution context.
 <INCLUDE file="ast.sml" name="datatype NAMESPACE">
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
 
-=== Class Closures ===
+=== Class Values ===
 
-<p>A //class closure value// consists of a captured scope chain and a semantic class.
+<p>A //class value// consists of a name and a set of namespaces, fixtures and types.
 
-<p>A class closure value can be held in the primitive tag of an instance of the class
+<p>A class value can be held in the primitive tag of an instance of the class
 **__ES4__::Class**. Such objects are called //class objects//.
 
-<p>A class closure value and can be defined as a fixture in a scope using a **class** definition.
+<p>A class value and can be defined as a fixture in a scope using a **class** definition.
 
-<p>Each ECMAScript //class definition// corresponds to zero or more class closure values, and thus
-zero or more class objects. If a class definition is not type-parametric, it corresponds to exactly
-one class object, and that class object is called //the value of// the class definition.
+<p>Each ECMAScript //class definition// corresponds to zero or more class values, and thus zero or
+more class objects. If a class definition is not type-parametric, it corresponds to exactly one
+class object, and that class object is called //the value of// the class definition.
 
-
-<p>A semantic class holds //class fixtures// and //instance fixtures//. If **C** is a class object
-holding a class closure, then the class fixtures of the associated semantic class describe fixed
-properties found on the class object **C**. In this way, the class fixtures effectively describe an
-implicit anonymous //meta-class// that the class object **C** is an instance of.
+<p>A class value holds //class fixtures// and //instance fixtures//. If **C** is a class object,
+then the class fixtures of the associated class value describe fixed properties found on the
+class object **C**. In this way, the class fixtures effectively describe an implicit anonymous
+//meta-class// that the class object **C** is an instance of.
 
 <FIXME>This tying-knots stuff at the top of the type hierarchy is always a little subtle and hard to
 word. Suggestions welcome.
 
-<p>Class closure values can be //instantiated// to produce new objects. Instantiation is described
-in section....
+<p>Class values can be //instantiated// to produce new objects. Instantiation is described in
+section....
 
 <IMPL>
-<INCLUDE file="mach.sml" name="and CLS_CLOSURE">
 <INCLUDE file="ast.sml" name="and CLS">
 
-==== Class-Instance Fixtures ====
+==== Instance Fixtures ====
 
-<p>In addition to class fixtures, a semantic class holds //instance fixtures//. These describe the
+<p>In addition to class fixtures, a class value holds //instance fixtures//. These describe the
 fixed properties found on //instances of// the class.
 
-<p>An object is an //instance// of a semantic class ''C'' if the object's tag is ''InstanceTag'' and
+<p>An object is an //instance// of a class value ''C'' if the object's tag is ''InstanceTag'' and
 the instance type in the tag is the ''InstanceType'' found in ''C''.
 
-<p>If an object **X** is an instance of a semantic class ''C'', then every for every //instance
+<p>If an object **X** is an instance of a class value ''C'', then every for every //instance
 fixture// ''F'' in ''C'', a property ''P'' exists on **X** satisfying the following conditions:
 <ul>
 <li>''P'' is not ''removable''.
 <li>''P'' is not ''enumerable''.
 <li>''P'' is ''fixed''.
-<li>If ''F'' is declared as **const** then ''P'' is not ''writable''. Otherwise **P** is ''writable''.
+<li>If ''F'' is declared as **const** then the ''writable'' attribute of ''P'' is initially
+''WriteOnce''. Otherwise the attribute is initially ''Writable''.
 <li>The type of ''F'' is the type of ''P''.
 </ul>
 
 ==== Class Types and Class-Instance Types ====
 
-<p>A semantic class also corresponds to a particular pair of types: a class type and a
-class-instance type.
+<p>A class value also corresponds to a particular pair of types: a class type and a class-instance
+type.
 
-<p>The //class-instance type// in semantic class ''C'' is the type of any object that is an instance
+<p>The //class-instance type// in a class value ''C'' is the type of any object that is an instance
 of ''C''. Such objects hold an ''InstanceTag'' with the class-instance type of ''C''.
 
-<p>The //class type// of a semantic class ''C'' is the instance type of the class object holding
+<p>The //class type// of a class value ''C'' is the instance type of the class object holding
 ''C''. This instance type can also be considered the class-instance type of the implicit meta-class
 of ''C''.
 
-=== Interface Closures ===
+=== Interface Values ===
 
-<p>An //interface closure value// consists of a captured scope chain and a semantic interface. 
+<p>An //interface value// consists of a name and a set of fixtures and types.
 
 <p>An interface closure value can be held in the primitive tag of an instance of the class
 **__ES4__::Interface**. Such objects are called //interface objects//.
 
-<p>An interface closure value and can be defined as a fixture in a scope using an **interface**
-definition.
+<p>An interface value and can be defined as a fixture in a scope using an **interface** definition.
 
 <p>Each //interface definition// corresponds to zero or more interface objects. If an
 interface definition is not type-parametric, it corresponds to exactly one interface object, and
 that interface object is called //the value of// the interface definition.
 
-<p>A semantic interface contains declarations of //instance fixtures//, but no definitions.
+<p>An interface value contains declarations of //instance fixtures//, but no definitions.
 
-<p>Interfaces are //implemented// by classes, and any class implementing an interface must define an
-instance fixture with the same name and type of every instance fixture declared by the interface.
+<p>Interfaces are //implemented// by classes, and any class implementing an interface must define,
+for each instance fixture declared in the interface, an instance fixture with the same name and type
+of the instance fixture.
 
-<p>A semantic interface also defines an instance type. If a class implements an interface, then the
+<p>An interface value also defines an instance type. If a class implements an interface, then the
 instance type of the class is a subtype of the instance type of the interface.
 
 <IMPL>
-<INCLUDE file="mach.sml" name="and IFACE_CLOSURE">
 <INCLUDE file="ast.sml" name="and IFACE">
 
 === Function Closures ===
 
 <p>A //function closure value// consists of a captured scope chain, an optional captured ''this''
-object, and a semantic function.
+object, and a function value.
 
 <p>A function closure value can be held in the primitive tag of an instance of the class
 **__ES4__::Function**. Such objects are called //function objects//.
 
 <p>A function closure value can be defined as a fixture in a scope using a **function** definition.
 
-<p>Each //function definition// corresponds to zero of more function objects. If a functoin
-definition is not type-parametric, it corresponds to exactly one function object, and that function
-object is called // the value of// the function definition.
+<p>Each //function definition// corresponds to zero of more function objects. 
 
-<p>A semantic function contains set of parameter fixtures and a block of ECMAScript code. 
+<P>A //function expression// may also evaluate to a function object.
 
-<p>Function closure values can be //invoked// to execute the ECMAScript code stored in the closure's
-associated block. Invocation is described in section....
+<p>A function value contains set of parameter fixtures and a block of ECMAScript code. 
+
+<p>Function closure values can be //invoked// to execute the ECMAScript code stored in the block of
+the closure's associated function value. Invocation is described in section....
 
 <IMPL>
 <INCLUDE file="mach.sml" name="withtype FUN_CLOSURE">

@@ -73,7 +73,7 @@ fun nthAsObj (vals:Mach.VALUE list)
 
 fun nthAsObjAndCls (vals:Mach.VALUE list)
                    (n:int)
-    : (Mach.OBJ * Mach.CLS_CLOSURE) =
+    : (Mach.OBJ * Ast.CLS) =
     let
         val obj = nthAsObj vals n
         val c = Mach.needClass (Mach.Object obj)
@@ -200,9 +200,8 @@ fun getSuperClass (regs:Mach.REGS)
                   (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val { cls, env, ... } = Mach.needClass (rawNth vals 0)
-        val Ast.Cls { extends, ... } = cls
-        val regs = Eval.withScope regs env 
+        val (classObj, Ast.Cls { extends, ... }) = nthAsObjAndCls vals 0
+        val regs = Eval.withScope regs (Eval.getClassScope regs classObj)
     in
         (case extends of 
              SOME ty => Mach.Object 
@@ -222,7 +221,7 @@ fun getImplementedInterface (regs:Mach.REGS)
                             (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val { cls, env, ... } = Mach.needClass (rawNth vals 0)
+        val cls = Mach.needClass (rawNth vals 0)
         val k = Word32.toInt (nthAsUInt regs vals 1)
         val Ast.Cls { implements, ... } = cls
     in
@@ -247,9 +246,8 @@ fun getSuperInterface (regs:Mach.REGS)
                       (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val { iface, env, ... } = Mach.needInterface (rawNth vals 0)
+        val Ast.Iface { extends, ... } = Mach.needInterface (rawNth vals 0)
         val k = Word32.toInt(nthAsUInt regs vals 1)
-        val Ast.Iface { extends, ... } = iface
     in
         if k >= (List.length extends) then
             Mach.Null

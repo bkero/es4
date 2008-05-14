@@ -64,15 +64,14 @@ fun lookupRoot (prog:Fixture.PROGRAM)
 fun instantiateRootClass (regs:Mach.REGS) 
                          (fullName:Ast.NAME) 
                          (proto:Mach.OBJ)
-    : (Ast.CLS * Mach.CLS_CLOSURE * Mach.OBJ) =
+    : (Ast.CLS * Mach.OBJ) =
   let
       val prog = (#prog regs)
       val (cls, _) = lookupRoot prog fullName
       val (_, cty) = lookupRoot prog Name.intrinsic_Class
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val closure = Eval.newClsClosure (#scope regs) cls
-      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.Class closure)) (Mach.Object proto)
+      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.Class cls)) (Mach.Object proto)
 
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
@@ -99,7 +98,7 @@ fun instantiateRootClass (regs:Mach.REGS)
                                        fixed = true } }
       val _ = Eval.bindAnySpecialIdentity regs obj
   in
-      (cls, closure, obj)
+      (cls, obj)
   end
 
 fun completeClassFixtures (regs:Mach.REGS)
@@ -129,7 +128,6 @@ fun completeClassFixtures (regs:Mach.REGS)
 fun runConstructorOnObject (regs:Mach.REGS)
                            (class:Ast.CLS) 
                            (classObj:Mach.OBJ) 
-                           (classClosure:Mach.CLS_CLOSURE)
                            (obj:Mach.OBJ)
     : unit =
     let
@@ -139,7 +137,7 @@ fun runConstructorOnObject (regs:Mach.REGS)
         val classRegs = Eval.withThis regs obj
         val _ = Eval.allocObjRib classRegs obj (SOME obj) instanceRib
     in
-        Eval.initializeAndConstruct classRegs classClosure classObj [] obj
+        Eval.initializeAndConstruct classRegs class classObj [] obj
     end
 
 fun loadFile (prog:Fixture.PROGRAM)
@@ -362,12 +360,10 @@ fun boot (baseDir:string) : Mach.REGS =
         val objPrototype = Mach.newObject (Mach.InstanceTag objTy) Mach.Null
         val funPrototype = Mach.newObject (Mach.InstanceTag objTy) (Mach.Object objPrototype)
 
-        val (objClass, objClassClosure, objClassObj) = 
-            instantiateRootClass regs Name.public_Object funPrototype
-
-        val (_, _, classClassObj) = instantiateRootClass regs Name.intrinsic_Class funPrototype
-        val (_, _, funClassObj) = instantiateRootClass regs Name.public_Function funPrototype
-        val (_, _, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface funPrototype            
+        val (objClass, objClassObj) = instantiateRootClass regs Name.public_Object funPrototype
+        val (_, classClassObj) = instantiateRootClass regs Name.intrinsic_Class funPrototype
+        val (_, funClassObj) = instantiateRootClass regs Name.public_Function funPrototype
+        val (_, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface funPrototype            
 
         (* Allocate runtime representations of anything in the initRib. *)
         val _ = trace ["allocating ribs for all builtins"]
@@ -394,25 +390,13 @@ fun boot (baseDir:string) : Mach.REGS =
         trace ["evaluating other files"];
         evalFiles regs otherFrags;
 
-        trace ["executing object constructor on global object"];
-        runConstructorOnObject 
-            regs objClass objClassObj objClassClosure glob;
+        runConstructorOnObject regs objClass objClassObj glob;
+        runConstructorOnObject regs objClass objClassObj objPrototype;        
+        runConstructorOnObject regs objClass objClassObj funPrototype;
 
-        trace ["executing object constructor on object prototype"];
-        runConstructorOnObject 
-            regs objClass objClassObj objClassClosure objPrototype;
-        
-        trace ["executing object constructor on function prototype"];
-        runConstructorOnObject 
-            regs objClass objClassObj objClassClosure funPrototype;
-
-        trace ["evaluating top fragments for Object"];
         Eval.evalTopFragment regs (filterOutRootClasses objFrag);
-        trace ["evaluating top fragments for Class"];
         Eval.evalTopFragment regs (filterOutRootClasses clsFrag);
-        trace ["evaluating top fragments for Function"];
         Eval.evalTopFragment regs (filterOutRootClasses funFrag);
-        trace ["evaluating top fragments of Interface"];
         Eval.evalTopFragment regs (filterOutRootClasses ifaceFrag);
 
         Mach.setBooting regs false;

@@ -162,8 +162,8 @@ datatype VALUE = Undef
        | Decimal of Decimal.DEC
        | String of Ustring.STRING
        | Namespace of Ast.NAMESPACE
-       | Class of CLS_CLOSURE
-       | Interface of IFACE_CLOSURE
+       | Class of Ast.CLS
+       | Interface of Ast.IFACE
        | Function of FUN_CLOSURE
        | Type of Ast.TYPE
        | NativeFunction of NATIVE_FUNCTION  (* INFORMATIVE *)
@@ -249,14 +249,6 @@ datatype VALUE = Undef
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
-           env: SCOPE }
-
-     and CLS_CLOSURE =
-         { cls: Ast.CLS,
-           env: SCOPE }
-
-     and IFACE_CLOSURE =
-         { iface: Ast.IFACE,
            env: SCOPE }
 
      and REGS = 
@@ -700,9 +692,9 @@ fun inspect (v:VALUE)
 
         fun magType t = 
             case t of 
-                Class { cls = Ast.Cls { instanceType, classType, ... }, ... } => 
+                Class (Ast.Cls { instanceType, classType, ... }) => 
                 (" : instanceType=" ^ (typ instanceType) ^ ", classType=" ^ (typ classType))
-              | Interface { iface = Ast.Iface { instanceType, ... }, ... } => 
+              | Interface (Ast.Iface { instanceType, ... }) => 
                 (" : instanceType=" ^ (typ instanceType))
               | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
                 (" : " ^ (typ ty0))
