@@ -23,17 +23,21 @@ subtype relation are consistent.
 typing disciplines, including dynamically-typed code, statically-typed
 code, and combinations of statically- and dynamically-typed code.
 
-<p>Type annotations are supported, but not required. A variable with
-no type annotation implicitly is assigned the type "*", meaning that
-it can hold any value.
-
-<p>Every value has an //allocated type//. The allocated type is the 
-type given to a value when it is created and which defines its fixed 
-structure.
+<p>Every value has an //allocated type//. The allocated type is the
+type given to a value when it is created and which defines its fixed
+structure. 
 
 <p>Every property has a //storage type//. The storage type of a
-property is given by its definition and constrains the set of values
-that can be stored in the property.
+property is given by its declaration and constrains the set of values
+that can be stored in the property. The storage type of a property is
+also called the property's //type constraint//.
+
+<p>The declarations of properties can carry type //annotations//,
+which define the storage type of the property. Annotation is denoted
+by following the annotated property name with a colon and a type
+expression. Annotations are not required: any property lacking an
+annotation is implicitly given the storage type <b>*</b>, meaning that
+the property can hold a value of any allocated type.
 
 <p>If a property holds a value, then that value must have an allocated
 type that is a //compatible subtype// of property's storage type. The
@@ -41,44 +45,141 @@ compatible subtype relation is an extension of the traditional subtype
 relation that supports interoperation between typed and untyped code.
 The definition of the compatible subtype relation is included below.
 
+<p>For a given type **T**, a set of values is said to //populate//
+**T** if the values all have allocated types that are compatible
+subtypes of **T**. Some types are specified by specifying the values
+that populate them.
+
 == The Type Language ==
 
 === The External Type Language ===
 
 <p>ES4 includes the following types:
 
-<p>The  type **null** is populated only by the value **null**.
+==== The any type ====
 
-<p>The  type **undefined** is populated only by the undefined value
-**public::undefined**.
+<p>The //any type// is the type populated by every possible value. In
+other words, every other type is a compatible subtype of the any type.
 
+<p>The any type is denoted in a type expression as <b>*</b>.
 
-<p>The //any// type, denoted *** **,   represents all
-possible ES4 values.
+<p>No value has the any type as its allocated type. The any type
+is only meaningful as the storage type of a property.
 
-<p>A record type, such as **{x: Number, y: Number}**,   represents
-a record with two fields **x** and **y**, both of type **Number**.
+==== The null type ====
 
-<p>Array types include both //fixed-length// and //variable-length//
-array types.
+<p>The //null type// is the type populated only by the **null** value.
 
-A fixed-length array type has the form **[Type, .., Type]**. For
-example, the type **[Number, String]** describes arrays of length at
-least 2, where the entry at index 0 has type **Number** and the entry
-at index 1 has type **String**. The empty array type **[]** describes arrays
-of length at least 0, that is, it describes all arrays.
+<p>The null type is denoted in a type expression as **null**.
 
-<p>A variable-length array type has the form **[Type, .., Type, ... Type]**. For
-example, the type **[Number, ... String]** describes arrays of length at
-least 1, where the entry at index 0 has type **Number**, and any
-remaining entries have type **String**.
+==== The undefined type ====
 
-<NOTE> Here, "**... **" represents concrete syntax, but "**..**" is
-meta-syntax, and so "**S1, .., Sn**" represents a sequence of
-zero-or-more types.
+<p>The //undefined type// the type populated only by the value stored in
+the global constant **public::undefined**.
 
-<p>A union type, such as **(Number | String)**,   describes both
-**Number** and **String** values.
+<p>The undefined type is denoted in type expressions as **undefined**.
+
+==== Instance types ====
+
+<p>An //instance type// is a type defined by a class or interface
+definition. 
+
+<p>Instance types are arranged in an explicit subtype relation through
+the use of **extends** and **implements** clauses in class and
+interface definitions.
+
+<p>An instance type is denoted in type expressions by the name of the
+class or interface that defined the instance type.
+
+==== Record types ====
+
+<p>A //record type// is an subtype of the **public::Object** instance
+type that has additional type constraints on some specific set of
+named properties.
+
+<p>Record types are arranged implicitly into a subtype relation
+through structural comparison of their property constraints.
+
+<p>A record type is denoted in a type expression by listing the names
+of the specified properties in a comma separated list, with optional
+type annotations, enclosed in curly braces.
+
+<p>An example is **{x: Number, y: String}**, which denotes a record
+type with two properties **x** and **y**, the first constrained to
+type **Number** and the second to type **String**.
+
+==== Array types ====
+
+<p>An //array type// is a subtype of the **public::Array** type that
+has type constraints on some prefix of the set of all possible
+integer-indexed properties. An array types may be either
+//fixed-length// or //variable-length//.
+
+<p>Array types are arranged implicitly into a subtype relation through
+structural comparison of their property constraints.
+
+===== Fixed-length array types =====
+
+<p>A //fixed-length array type// describes an explicit set of initial
+integer-indexed property constraints that must be satisfied by properties
+found at those indices. 
+
+<p>A fixed-lenght array type is denoted in a type expression by
+listing the types of the specified properties in a comma-separated
+list enclosed in square brackets.
+
+<p>For example, the type **[Number, String]** describes arrays of
+length at least 2, where the entry at index 0 has type **Number** and
+the entry at index 1 has type **String**.
+
+===== Variable-length array types =====
+
+<p>A //variable-length array type// describes an explicit set of
+initial integer-indexed property constraints and then a //final
+constraint// that is implied for any further integer-indexed
+properties (including zero further properties).
+
+<p>A variable length array type is denoted, initially, the same way a
+fixed-length array is, but concludes its type list with symbol **...**
+and a trailing type expression.
+
+<p>For example, the type **[Number, ...String]** describes arrays of
+length at least 1, where the entry at index 0 has type **Number**, and
+any remaining entries have type **String**. The type **[...Number]**
+describes arrays or zero or more elements, all of which must be of
+type **Number**.
+
+==== Union types ====
+
+<p>A //union type// is a storage type that is populated by all values
+that populate all of the types that make up the union.
+
+<p>A union type is denoted in a type expresison by listing the types of 
+the union members, separated by the vertical-bar character, enclosed 
+in parentheses.
+
+<p>For example, the type **(Number | String)** denotes a type that is
+populated by both **Number** and **String** values. A property
+annotated with this type can therefore hold either instances of the
+**Number** type //or// instances of the **String** type.
+
+<p>No value has a union type as its allocated type. Union types
+are only meaningful as the storage types of properties.
+
+==== Function types ====
+
+<p>A //function type// is a subtype of the **public::Function** type
+that describes additional type constraints on any function populating
+it.
+
+<p>A function type describes the number and type of required
+parameters, any optional parameters, any trailing "rest" parameter
+that accumulates excess arguments, and the return value.
+
+<p>Function types are denoted with the keyword **function**, followed
+by a parenthesis-enclosed, comma-separated list of parameter types --
+optionally including default and rest symbols -- and an optional colon
+and trailing return type. 
 
 <p>An example of a function type is:
 
@@ -86,85 +187,142 @@ zero-or-more types.
     function (Number, String) : String
 }}}
 
-The return type can be omitted, in which case it defaults to the
-//any// type *** **. The return type can also be declared as **void**,
-to indicate that no value is returned.
+<p>This function type is populated by any function that is declared as
+taking a **Number** value and a **String** value as parameters, and
+returning a **String** value.
 
-<p>A function type may include generic type parameters, as in the following
-type for the generic identity function. 
+<p>The return type of a function type can be omitted, in which case
+the return type is implicity the any type.
 
-{{{
-    function.&lt;X>(X) : X
-}}}
+<p>If a function should not return a value, the function return type
+can be annotated as **void**, which is a notation for defining return
+types of function types only; there is no separate "void type" that
+can be denoted elsewhere. 
 
 <p>A function type may include a type constraint for the **this**
-binding, as in
+binding. Such a constraint must be listed as the first parameter in 
+the function type parameter list, and must be denoted with the keyword
+**this** and a colon. For example, the function type
 
 {{{
-    function(this : Vector, Number, String) : String
+    function(this : Number, String) : String
 }}}
 
-<NOTE><FIXME>
+denotes a type of functions that require a **Number** value as their
+implicit **this** parameter, as well as taking a **String** argument and
+returning a **String**.
 
-<p>A function type may use the symbol "**=**"  to indicate
-that some trailing arguments have default values, as in:
+<p>A function type may denote the presence of default value
+assignments for some suffix of its parameter types by annotating the
+types of such parameters with trailing **=** symbols. For example, the
+function type
 
 {{{
     function(Number, String=) : String
 }}}
 
-For this function type, the number of arguments at a corresponding
-call site may be either 1 (a **Number**) or 2 (a **Number** and a
-**String**).
+denotes a type of function that takes a mandatory **Number** argument
+and an optional second **String** argument, and returns a **String**. 
 
-<p>Finally, a function type may include a rest-argument, denoted
-by "**... **", to indicate that any number of additional parameters are
-permitted, as in:
+<p>A function type may demote the presence of a trailing
+"rest-argument" with the symbol **...** in the final position of the
+function parameter list. This final parameter, if present, indicates
+that there is no maximum number of arguments to the function:
+additional arguments beyond the parameter list are collected into an
+array object and passed to the function. For example, the function
+type
 
 {{{
     function(String, ... ) : String
 }}}
 
-<p> A //nullable type//, such as **?String**, is simply an
-abbreviation for the union type
-**(String | null)**. (Nullable types are desugared by the parser, and
-so do not appear in the ''TYPE'' datatype below.)
+denotes a type of function that takes a *String* and any number of
+additional arguments (of any type), returning a *String*. Rest
+arguments cannot have type constraints.
 
-<p> A //non-null type// has the form **!T**. This type is identical to the
-type **T** except that it does not include the value **null**.
 
-<p>A type application, such as **Vector.&lt;Number>**, which
-instantiates the generic class **Vector** to hold values of type
-**Number**. Note that a  generic class definition such as
+==== Nullable types ====
+
+<p> A //nullable type// is an abbreviation for a union between some 
+type and the null type.
+
+<p>A nullable type is denoted **?T** for some type **T**.
+
+<p>For example, the nullable type **?string** is an abbreviation for
+the union type **(string | null)**. 
+
+<p>Nullable types are purely a syntactic convenience, and are not
+given further special treatment.
+
+
+==== Non-null types ====
+
+<p> A //non-null type// is a type that excludes the **null** value from 
+the population of some type. 
+
+<p>A non-null type is denoted **!T** for some type **T**.
+
+<p>For example, the non-null type **!(string | null)** is identical to
+the type **string**.
+
+
+==== Parametric types ====
+
+<p>A //parametric type// is a user-defined //type constructor// -- not
+a proper type -- associated with some fixed definition such as a
+class, interface, function or type. A parametric type takes some
+number of types as arguments and produces a new type as its result.
+
+<p>Parametric types are denoted by appending a type-parameter list to
+the name of a class, interface, type or function at the site of its
+definition. A type parameter list consists of a single period, a
+less-than (or "left angle bracket") character, a comma-separated list
+of identifiers, and a greater-than (or "right angle-bracket")
+character.
+
+<p>For example, the class definition
 
 {{{
-    class Vector.&lt;X> { ... }
+    class Vector.&lt;X&gt; { .. }
 }}}
 
-introduces a binding for **Vector**, but **Vector** itself is not actually a
-type, since it requires additional type parameters to become a
-normal type, as in **Vector.&lt;Number>**. Instead, **Vector** is
-referred to as a //type constructor//.
-
-<p>The type language includes //type names//, which can refer to
-nominal types (ie, class or interface types), type definitions, or to
-type variables bound by a generic parameter list, for example, the
-type variable **X** in the following class definition:
-
-{{{
-    class Vector.<X> {
-        ... 
-    }
-}}}
-
-To help avoid name collisions, each type variable bound in generic
-parameter list is assigned an associated //nonce//, or unique integer,
-and any corresponding reference to that type variable includes that
-nonce.  References to nominal types or to types introduced via type
-definitions do not require a nonce.
+defines a class **Vector** that is parameterized over a single type
+variable **X**. This class has an associated parametric instance type
+that can be used in type applications to form proper types.
 
 
-=== The Internal Representation of Types ===
+==== Type applications ====
+
+
+<p>A //type application// is a combination of a parametric type with a
+set of //type arguments// that serve to //instantiate// the parametric
+type into a proper type that can be populated by values.
+
+<p>A type application is denoted by appending a type-argument list to
+the name of a parametric type. A type argument list consists of a
+single period, a less-than character, a coman-separated list of type
+expressions, and a greater-than character.
+
+<p>For example, the type application **Vector.&lt;Number&gt;** denotes an
+instance type that can be used as the allocated type of new objects.
+
+
+==== Type names ====
+
+<p>A //type name// is a symbolic reference to a fixed property with an
+associated type or parametric type. 
+
+<p>A type name can refer to a class, an interface, a type definition,
+or a type variable bound by a parameter in a parametric type.
+
+<p>A type name is denoted in a type expression by the same syntax as
+an lexical reference expression. 
+
+<p>A type name that refers to a class resolves to either an instance
+type, if the class is declared as non-nullable, or to the union of an
+instance type with null, if the class is declared as nullable.
+
+=== Semantics ===
 
 <p> The semantics resolves type names that refer to nominal types into
 an ''INSTANCE_TYPE'' data structure. Essentially, an ''INSTANCE_TYPE''
@@ -241,9 +399,9 @@ inadequate in an implementation.
 
 === Subtyping Record Types ===
 
-<p> A record type **{N1:S1, .., Nn:Sn}** (where each distinct **Ni** is a name
-and each **Si** is a type) is a subtype of
-**{N1:T1, .., Nm:Tm}** if m <LEQ> n and **Si** is equivalent to **Ti**
+<p> A record type **{N_{1}:S_{1}, .., N_{n}:S_{n}}** (where each distinct **N_{i}** is a name
+and each **S_{i}** is a type) is a subtype of
+**{N_{1}:T_{1}, .., N_{m}:T_{m}}** if m <LEQ> n and **S_{i}** is equivalent to **T_{i}**
 for all i in 1..m.
 
 <p> The ordering of the **Name:Type** bindings in a record type is
@@ -257,26 +415,26 @@ make the above rule applicable.
 
 === Subtyping Array Types ===
 
-<p> A fixed-length array type **[S1, .., Sn, S]** is a subtype of
-**[S1, .., S_n]**.  The supertype demands one fewer element in the
+<p> A fixed-length array type **[S_{1}, .., S_{n}, S]** is a subtype of
+**[S_{1}, .., S_{n}]**.  The supertype demands one fewer element in the
 array than the subtype does.  For example, **[Number, String,
 String]** is a subtype of **[Number, String]**.
 
-<p> A fixed-length array type **[S1, .., Sn]** is a subtype of **[T1,
-.., Tn]** if each **S_i** is equivalent to **Ti** for i in 1..n.
+<p> A fixed-length array type **[S_{1}, .., S_{n}]** is a subtype of **[T_{1},
+.., T_{n}]** if each **S_{i}** is equivalent to **T_{i}** for i in 1..n.
 
-<p> A variable-length array type **[S1, .., Sn, S, ... S]** is a
-subtype of **[S1, .., S_n, ... S}]**.  The supertype demands one fewer
+<p> A variable-length array type **[S_{1}, .., S_{n}, S, ... S]** is a
+subtype of **[S_{1}, .., S_{n}, ... S}]**.  The supertype demands one fewer
 element in the array than the subtype does.  For example, **[Number,
 String, String, ... String]** is a subtype of **[Number,
 ... String]**, via transitivity.
 
-<p> A variable-length array type **[S1, .., Sn, ... S]** is a subtype
-of **[T1, .., Tn, ... T]** if **S** is equivalent to **T** and if each
-**S_i** is equivalent to **Ti** for i in 1..n.
+<p> A variable-length array type **[S_{1}, .., S_{n}, ... S]** is a subtype
+of **[T_{1}, .., T_{n}, ... T]** if **S** is equivalent to **T** and if each
+**S_{i}** is equivalent to **T_{i}** for i in 1..n.
 
-<p> A variable-length array type **[S1, .., Sn, ... S]** is a subtype
-of the fixed-length array type **[S1, .., Sn]**.
+<p> A variable-length array type **[S_{1}, .., S_{n}, ... S]** is a subtype
+of the fixed-length array type **[S_{1}, .., S_{n}]**.
 
 Via transitivity, the above rules may be applied multiple times, in
 various combinations. The following code combines all of these rules
@@ -287,11 +445,11 @@ into a single deterministic algorithm for array subtyping.
 
 === Subtyping Union Types ===
 
-<p> A union type **(S1 | .. | Sn)** is a subtype of a type **T** if
-**Si** is a subtype of **T** for all i in 1..n.
+<p> A union type **(S_{1} | .. | S_{n})** is a subtype of a type **T** if
+**S_{i}** is a subtype of **T** for all i in 1..n.
 
-<p> A type **S** is a subtype of **(T1 | .. | Tn)** if
-there exists some i in 1..n such that **S** is a subtype of **Ti**.
+<p> A type **S** is a subtype of **(T_{1} | .. | T_{n})** if
+there exists some i in 1..n such that **S** is a subtype of **T_{i}**.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and subTypeUnion">
@@ -299,9 +457,9 @@ there exists some i in 1..n such that **S** is a subtype of **Ti**.
 
 === Subtyping Function Types ===
 
-<p> A function type **function(S1, .., Sn) : U** is a subtype of
-**function(T1, .., Tn) : R** if **U** is a subtype of **R** and **Si** is
-equivalent to **Ti** for all i in 1..m.
+<p> A function type **function(S_{1}, .., S_{n}) : U** is a subtype of
+**function(T_{1}, .., T_{n}) : R** if **U** is a subtype of **R** and **S_{i}** is
+equivalent to **T_{i}** for all i in 1..m.
 
 <NOTE> Function subtyping is invariant in the argument position, and
 covariant in the result type.
@@ -313,15 +471,15 @@ type may be zero, and where **[... ]** indicates an optional rest
 argument.  A function type
 
 {{{
-    function(this:S1, S2, .., Sn, S_{n+1}=, .., Sm=, [... ]) : U
+    function(this:S_{1}, S_{2}, .., S_{n}, S_{n+1}=, .., S_{m}=, [... ]) : U
 }}}
 is a subtype of
 {{{
-    function(this:T1, T2, .., Tp, T_{p+1}=, .., Tq=, [... ]) : R
+    function(this:T_{1}, T_{2}, .., T_{p}, T_{p+1}=, .., T_{q}=, [... ]) : R
 }}}
 
-if **U** is a subtype of **R** and n <LEQ> p and **Si** is equivalent
-to **Ti** for all i in 1..min(q,m). In addition:
+if **U** is a subtype of **R** and n <LEQ> p and **S_{i}** is equivalent
+to **T_{i}** for all i in 1..min(q,m). In addition:
 
 <UL>
   <LI>If neither function type  has a rest argument, then we require that  q <LEQ> m.
@@ -332,7 +490,7 @@ additional conditions are needed.
   <LI>If only the second function type has a rest argument, then
   subtyping does not hold.
 
-  <LI>If both function types have a rest argument, then **Si** must be
+  <LI>If both function types have a rest argument, then **S_{i}** must be
 equivalent to the any type *** ** for all i in (q+1)..m.
 
 </UL>
@@ -342,11 +500,11 @@ For generic functions, alpha-renaming of the type variable preserves
 the meaning of types.  Moreover,
 
 {{{
-    function.&lt;X1,..,Xn> (argtypes1) : R1
+    function.&lt;X_{1},..,X_{n}> (argtypes1) : R1
 }}}
 is a subtype of
 {{{
-    function.&lt;X1,..,Xn> (argtypes2) : R2
+    function.&lt;X_{1},..,X_{n}> (argtypes2) : R2
 }}}
 
 if and only if
@@ -382,7 +540,7 @@ if **S** is a subtype of **T**
 and the type **null** is //not// a subtype of **S**.
 
 <p>Analogous subtype rules hold for type applications of the form
-**C.&lt;T1, .., Tn>**.
+**C.&lt;T_{1}, .., T_{n}>**.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and subTypeNonNull">
@@ -391,14 +549,14 @@ and the type **null** is //not// a subtype of **S**.
 
 
 <p>A nominal type **C** (or
-**C.&lt;T1, .., Tn>**) can be declared as a //non-null// type via any of the
+**C.&lt;T_{1}, .., T_{n}>**) can be declared as a //non-null// type via any of the
 following declarations:
 
 {{{
     class !C ..
-    class C.&lt;X1, .., Xn>! ..
+    class !C.&lt;X_{1}, .., X_{n}> ..
     interface !C ..
-    interface !C.&lt;X1, .., Xn> ..
+    interface !C.&lt;X_{1}, .., X_{n}> ..
 }}}
 
 <p>If **C** is a non-null nominal type, then the types **C** and
@@ -409,7 +567,7 @@ the types **C** and **(!C  | null)** are equivalent.
 
 
 <p>Analogous subtype rules hold for type applications of the form
-**C.&lt;T1, .., Tn>**.
+**C.&lt;T_{1}, .., T_{n}>**.
 
 <FIXME> Implementation
 
@@ -419,7 +577,7 @@ the types **C** and **(!C  | null)** are equivalent.
 Given a class definition
 
 {{{
-    class C extends D implements I1, .., In { ... }
+    class C extends D implements I_{1}, .., I_{n} { ... }
 }}}
 
 the type **C** is a subtype of **D**, and  **C** is also a subtype of
@@ -429,7 +587,7 @@ the type **C** is a subtype of **D**, and  **C** is also a subtype of
 Given an interface definition
 
 {{{
-    interface K extends I1, .., In { ... }
+    interface K extends I_{1}, .., I_{n} { ... }
 }}}
 
 we have that the type **K** is a subtype of **Ij** for j in 1..m.
@@ -439,24 +597,24 @@ appropriate renaming of bound variables. For example, given a generic
 class definition
 
 {{{
-    class C.&lt;x1, .., xn> extends D.&lt;T1, .., Tm> { ... }
+    class C.&lt;x_{1}, .., x_{n}> extends D.&lt;T_{1}, .., T_{m}> { ... }
 }}}
 
-we have that **C.&lt;S1, .., Sn>** is a subtype of
+we have that **C.&lt;S_{1}, .., S_{n}>** is a subtype of
 
 {{{
-    D.&lt;T1[x1:=S1,..,xn:=Sn], .., Tm[x1:=S1,..,xn:=Sn]>
+    D.&lt;T_{1}[x_{1}:=S_{1},..,x_{n}:=S_{n}], .., T_{m}[x_{1}:=S_{1},..,x_{n}:=S_{n}]>
 }}}
 
 <p>Also,
-**C.&lt;T1, .., Tn>** is a subtype of
-**C.&lt;S1, .., Sn>** if each type **Ti** is equivalent to the
-corresponding type **Si** for i in 1..n.
+**C.&lt;T_{1}, .., T_{n}>** is a subtype of
+**C.&lt;S_{1}, .., S_{n}>** if each type **T_{i}** is equivalent to the
+corresponding type **S_{i}** for i in 1..n.
 
 <NOTE>
-The notation **T[x1:=S1,..,xn:=Sn]** denotes the type **T** with each
-occurrence of the type variable **xi** replaced (in a capture-free
-manner) by the corresponding type **Si**.
+The notation **T[x_{1}:=S_{1},..,x_{n}:=S_{n}]** denotes the type **T** with each
+occurrence of the type variable **x_{i}** replaced (in a capture-free
+manner) by the corresponding type **S_{i}**.
 
 <FIXME>Need to explain ''INSTANCE_TYPE'' more.
 <IMPL>
@@ -464,10 +622,10 @@ manner) by the corresponding type **Si**.
 
 === Relating Structural and Nominal Types ===
 
-<p> A record type **{N1:S1, .., Nn:Sn}**  is a subtype of the nominal
+<p> A record type **{N_{1}:S_{1}, .., N_{n}:S_{n}}**  is a subtype of the nominal
 type **public::Object**.
 
-<p> An array type **[S1, .., Sn]**  is a subtype of the nominal
+<p> An array type **[S_{1}, .., S_{n}]**  is a subtype of the nominal
 type **public::Array**.
 
 <p> Any function type  is a subtype of the nominal
@@ -492,11 +650,11 @@ equivalent to the type **T**.
 In the scope of a generic type definition
 
 {{{
-    type X.&lt;Y1, .., Yn> = T
+    type X.&lt;Y_{1}, .., Y_{n}> = T
 }}}
 
-the type application **X.&lt;S1, .., Sn>** is
-equivalent to the type **T[Y1:=S1, .., Yn:=Sn]**.
+the type application **X.&lt;S_{1}, .., S_{n}>** is
+equivalent to the type **T[Y_{1}:=S_{1}, .., Y_{n}:=S_{n}]**.
  
 == Type Normalization ==
 
@@ -504,7 +662,7 @@ equivalent to the type **T[Y1:=S1, .., Yn:=Sn]**.
 relation defined above) to some collection of types. The process of
 //type normalization// converts a type in the program source code into
 a canonical or representative element of its equivalence class.  In
-particular, if two types **T1** and **T2** are equivalent, then
+particular, if two types **T_{1}** and **T_{2}** are equivalent, then
 normalization will convert them both into an identical normalized
 type.
 
