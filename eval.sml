@@ -2109,7 +2109,7 @@ and evalObjectNameReference (regs:Mach.REGS)
                             (expr:Ast.EXPRESSION)
     : Mach.VALUE =
     let
-        val (this, (obj, name)) = resolveObjectNameReference regs expr false
+        val (this, (obj, name)) = resolveObjectReference regs expr false
     in
         getValue regs obj name
     end
@@ -2118,7 +2118,7 @@ and evalObjectIndexReference (regs:Mach.REGS)
                              (expr:Ast.EXPRESSION)
     : Mach.VALUE =
     let
-        val (this, (obj, name)) = resolveObjectIndexReference regs expr false
+        val (this, (obj, name)) = resolveObjectReference regs expr false
     in
         getValue regs obj name
     end
@@ -2950,7 +2950,7 @@ and evalNamedMethodCall (regs:Mach.REGS)
 			            (args:Mach.VALUE list)
     : Mach.VALUE = 
     let
-	val refOpt = resolveName regs [obj] (Name.nameExprOf name)
+        val refOpt = resolveName regs [obj] (Name.nameExprOf name)
     in
 	case refOpt of 
 	    NONE => error regs ["unable to resolve method: ", LogErr.name name]
@@ -3205,9 +3205,11 @@ and evalUnaryOp (regs:Mach.REGS)
                 newString regs
                     (case expr of
                          Ast.LexicalReference { name, loc } =>
-                         (case resolveOnScopeChain regs (#scope regs) name of
-                              NONE => Ustring.undefined_
-                            | SOME (obj, name) => typeNameOfVal (getValue regs obj name))
+                              let
+                                  val (obj, name) = resolveLexicalReference regs expr true
+                              in
+                                  typeNameOfVal (getValue regs obj name)
+                              end
                        | _ => typeNameOfVal (evalExpr regs expr))
             end
     end
@@ -3866,46 +3868,10 @@ and evalCondExpr (regs:Mach.REGS)
         else evalExpr regs els
     end
 
-(*
- * ES-262-3 11.2.1: Resolving member expressions to REFs.
- *)
-
-and resolveLexicalReference (regs:Mach.REGS)
-                            (expr:Ast.EXPRESSION)
-                            (errIfNotFound:bool)
-    : REF =
-    let
-        fun defaultRef obj nameExpr =
-            case nameExpr of 
-                Ast.UnqualifiedName { identifier, ... } => 
-                (obj, Name.public identifier)
-              | Ast.QualifiedName { namespace, identifier } => 
-                (obj, { id=identifier, 
-                        ns=evalNamespaceExpr regs namespace })                
-              | Ast.ResolvedName name => (obj, name)                
-    in
-        case expr of
-            Ast.LexicalReference { name, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-                val refOpt = resolveOnScopeChain regs (#scope regs) name
-                val _ = LogErr.setLoc loc
-                val r = case refOpt of
-                            SOME r => r
-                          | NONE => if errIfNotFound
-                                    then throwExn (newRefErr regs ["unresolved lexical reference ",
-                                                                   LogErr.nameExpr name])
-                                    else defaultRef (#global regs) name
-            in
-                r
-            end
-          | _ => error regs ["need lexical reference expression"]
-    end
-
 and resolveObjectReference (regs:Mach.REGS)
                            (Ast.ObjectNameReference { object, name, ... }:Ast.EXPRESSION)
                            (errIfNotFound:bool)
-    : (Mach.OBJ * Ast.NAME) =
+    : (Mach.OBJ option * (Mach.OBJ * Ast.NAME)) =
     let
         val v = evalExpr regs object
         val obj = case v of Mach.Object ob => ob
@@ -3914,10 +3880,22 @@ and resolveObjectReference (regs:Mach.REGS)
     in
         case name of
             Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
-            resolveUnqualifiedObjectReference regs obj identifier openNamespaces
+            (SOME obj, resolveUnqualifiedObjectReference regs obj identifier openNamespaces)
           | Ast.QualifiedName { namespace, identifier } => 
             resolveQualifiedObjectReference regs obj identifier namespace
-          | Ast.ResolvedName name => (obj, name)
+          | Ast.ResolvedName name => (SOME obj, (obj, name))
+    end
+  | resolveObjectReference regs (Ast.ObjectIndexReference {object, index, ...}) errIfNotFound = 
+    let
+        val v = evalExpr regs object
+        val obj = case v of Mach.Object ob => ob
+                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+        val idx = evalExpr regs index
+        val identifier = toUstring regs idx  (* FIXME if its an Name, then don't convert *)
+        val namespace = Ast.Namespace Name.publicNS
+    in
+        resolveQualifiedObjectReference regs obj identifier namespace
     end
   | resolveObjectReference  regs  _  _ = error regs ["need object reference expression"]
 
@@ -3925,187 +3903,11 @@ and resolveQualifiedObjectReference (regs: Mach.REGS)
                                     (object: Mach.OBJ)
                                     (identifier: Ast.IDENTIFIER)
                                     (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
-    : (Mach.OBJ * Ast.NAME) =
+    : (Mach.OBJ option * (Mach.OBJ * Ast.NAME)) =
     let
         val namespace = evalNamespaceExpr regs namespaceExpr
     in
-        (object, {ns=namespace, id=identifier})
-    end
-
-and resolveObjectNameReference (regs:Mach.REGS)
-                               (expr:Ast.EXPRESSION)
-                               (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
-    let
-        fun defaultRef obj nameExpr =
-            case nameExpr of
-                Ast.UnqualifiedName { identifier, ... } => 
-                (obj, Name.public identifier)
-              | Ast.QualifiedName { namespace, identifier } => 
-                (obj, { id=identifier, 
-                        ns=evalNamespaceExpr regs namespace })
-              | Ast.ResolvedName name => (obj, name)
-    in
-        case expr of
-            Ast.ObjectNameReference { object, name, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-                val v = evalExpr regs object
-                val _ = LogErr.setLoc loc
-                val ob = case v of
-                             Mach.Object ob => ob
-                           | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
-                           | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
-                val refOpt = resolveName regs [ob] name
-                val _ = LogErr.setLoc loc
-                val r = case refOpt of
-                            SOME ro => ro
-                          | NONE => if errIfNotFound
-                                    then throwExn (newRefErr regs ["unresolved object reference ",
-                                                                   LogErr.nameExpr name])
-                                    else defaultRef ob name
-                val _ = LogErr.setLoc loc
-                val (holder, n) = r
-                val _ = trace ["resolved object ref to ", fmtName n,
-                               " on object #", Int.toString (getObjId holder),
-                               " with this=#", Int.toString (getObjId ob)]
-            in
-                (SOME ob, r)
-            end
-            
-          | _ => error regs ["need object name reference expression"]
-    end
-
-and resolveObjectIndexReference (regs:Mach.REGS)
-                                (expr:Ast.EXPRESSION)
-                                (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
-    let
-        fun defaultRef obj ident = (obj, Name.public ident)
-    in
-        case expr of
-            Ast.ObjectIndexReference { object, index, loc } =>
-            let
-                val _ = LogErr.setLoc loc
-                val v = evalExpr regs object
-                val _ = LogErr.setLoc loc
-                val idx = evalExpr regs index
-                val ident = toUstring regs idx
-                val name = Ast.QualifiedName { identifier=ident, namespace=Ast.Namespace Name.publicNS }
-                val ob = case v of
-                             Mach.Object ob => ob
-                           | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
-                           | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
-                val refOpt = resolveName regs [ob] name
-                val _ = LogErr.setLoc loc
-                val r = case refOpt of
-                            SOME ro => ro
-                          | NONE => if errIfNotFound
-                                    then throwExn (newRefErr regs ["unresolved object reference ",
-                                                                   LogErr.nameExpr name])
-                                    else defaultRef ob ident
-                val _ = LogErr.setLoc loc
-                val (holder, n) = r
-                val _ = trace ["resolved object ref to ", fmtName n,
-                               " on object #", Int.toString (getObjId holder),
-                               " with this=#", Int.toString (getObjId ob)]
-            in
-                (SOME ob, r)
-            end
-            
-          | _ => error regs ["need object index reference expression"]
-    end
-
-and resolveRefExpr (regs:Mach.REGS)
-                   (expr:Ast.EXPRESSION)
-                   (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
-    let
-    in
-        case expr of
-            Ast.LexicalReference _ => (NONE, resolveLexicalReference regs expr errIfNotFound)
-          | Ast.ObjectNameReference _ => resolveObjectNameReference regs expr errIfNotFound
-          | Ast.ObjectIndexReference _ => resolveObjectIndexReference regs expr errIfNotFound
-          | _ => error regs ["need lexical or object-reference expression"]
-    end
-
-and evalLetExpr (regs:Mach.REGS)
-                (head:Ast.HEAD)
-                (body:Ast.EXPRESSION)
-    : Mach.VALUE =
-    let
-        val letRegs = evalHead regs head
-    in
-        evalExpr letRegs body
-    end
-
-
-and resolveOnScopeChain (regs:Mach.REGS)
-                        (scope:Mach.SCOPE)
-                        (nameExpr:Ast.NAME_EXPRESSION)
-    : REF option =
-
-    let
-        fun extractScopeChain (Mach.Scope {object, parent=NONE, ...}) = [object]
-          | extractScopeChain (Mach.Scope {object, parent=(SOME s), ...}) = object :: (extractScopeChain s)
-
-        val objs = extractScopeChain scope
-    in
-        resolveName regs objs nameExpr
-    end
-
-and resolveLexicalReference' (regs: Mach.REGS)
-                     (scopes: Mach.SCOPE list)
-                     (nameExpr:Ast.NAME_EXPRESSION)
-    : REF option =
-    let
-        val (identifier, openNamespaces, globalNames) = 
-            case nameExpr of
-                Ast.QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]], [])
-              | Ast.UnqualifiedName { identifier, openNamespaces, globalNames } => (identifier, openNamespaces, globalNames)
-              | Ast.ResolvedName {ns, id} => (id, [[ns]], [])
-        val result = Mach.searchScopeList (scopes, identifier, List.concat openNamespaces)
-    in case result of
-        SOME (object, namespaces) => SOME (object, {ns=hd namespaces,id=identifier})
-      | _ => NONE
-    end
-
-and resolveQualifiedLexicalReference (regs: Mach.REGS)
-                                     (scopes: Mach.SCOPE list)
-                                     (identifier: Ast.IDENTIFIER)
-                                     (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
-    : (Mach.OBJ * Ast.NAME) =
-    let
-        val namespace = evalNamespaceExpr regs namespaceExpr
-        val result = Mach.searchScopeList (scopes, identifier, [namespace])
-    in case result of
-        NONE => ((#global regs), {ns=Name.publicNS, id=identifier})
-      | SOME (object, namespaces) => (object, {ns=namespace, id=identifier})
-    end
-
-and resolveUnqualifiedLexicalReference (regs: Mach.REGS)
-                                       (scopes: Mach.SCOPE list)
-                                       (identifier: Ast.IDENTIFIER)
-                                       (openNamespaces: Ast.OPEN_NAMESPACES)
-    : (Mach.OBJ * Ast.NAME) =
-    let
-        val namespaces = List.concat openNamespaces
-        val result = Mach.searchScopeList (scopes, identifier, namespaces)
-    in case result of
-        NONE => ((#global regs), {ns=Name.publicNS, id=identifier})
-      | SOME (object, namespaces) =>
-            let
-                val classRibs = instanceRibsOf (object)
-                val result = Fixture.selectNamespaces (identifier, namespaces, classRibs, openNamespaces)
-            in case result of
-                namespace :: [] =>
-                   let
-                       val reservedNames = [] (* reserveNames (object, namespace, openNamespaces) *)
-                   in
-                       (object, {ns=namespace, id=identifier})
-                   end 
-              | _ => error regs ["ambiguous reference"]
-            end
+        (SOME object, (object, {ns=namespace, id=identifier}))
     end
 
 and resolveUnqualifiedObjectReference (regs: Mach.REGS)
@@ -4124,14 +3926,86 @@ and resolveUnqualifiedObjectReference (regs: Mach.REGS)
                 val result = Fixture.selectNamespaces (identifier, namespaces, instanceRibs, openNamespaces)
             in case result of
                 [] => LogErr.internalError ["resolveUnqualifiedObjectReference: empty namespace set"]
-              | namespace :: [] =>
-                   let
-                       val reservedNames = [] (* reserveNames (object, namespace, openNamespaces) *)
-                   in
-                       (object, {ns=namespace, id=identifier})
-                   end 
+              | namespace :: [] => (object, {ns=namespace, id=identifier})
               | _ => error regs ["ambiguous reference"]
             end
+    end
+
+and resolveRefExpr (regs:Mach.REGS)
+                   (expr:Ast.EXPRESSION)
+                   (errIfNotFound:bool)
+    : (Mach.OBJ option * REF) =
+    let
+    in
+        case expr of
+            Ast.LexicalReference _ => (NONE, resolveLexicalReference regs expr errIfNotFound)
+          | Ast.ObjectNameReference _ => resolveObjectReference regs expr errIfNotFound
+          | Ast.ObjectIndexReference _ => resolveObjectReference regs expr errIfNotFound
+          | _ => error regs ["need lexical or object-reference expression"]
+    end
+
+and evalLetExpr (regs:Mach.REGS)
+                (head:Ast.HEAD)
+                (body:Ast.EXPRESSION)
+    : Mach.VALUE =
+    let
+        val letRegs = evalHead regs head
+    in
+        evalExpr letRegs body
+    end
+
+(*
+ * ES-262-3 11.2.1: Resolving member expressions to REFs.
+ *)
+
+and resolveLexicalReference (regs: Mach.REGS)
+                            (expr: Ast.EXPRESSION)
+                            (errorIfNotFound: bool)
+    : REF =
+    let
+       val {scope, ...} = regs
+       val name = case expr of Ast.LexicalReference { name, ... } => name 
+                             | _ => error regs ["need lexical reference"]
+       
+    in case name of
+          Ast.QualifiedName {identifier, namespace} => 
+          resolveQualifiedLexicalReference regs identifier namespace
+        | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
+          resolveUnqualifiedLexicalReference regs identifier openNamespaces
+        | Ast.ResolvedName {ns, id} => error regs ["internal error"]
+    end
+
+and resolveQualifiedLexicalReference (regs: Mach.REGS)
+                                     (identifier: Ast.IDENTIFIER)
+                                     (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
+    : (Mach.OBJ * Ast.NAME) =
+    let
+        val {scope, global, ...} = regs
+        val namespace = evalNamespaceExpr regs namespaceExpr
+        val result = Mach.searchScopeChain (SOME scope, identifier, [namespace])
+    in case result of
+        NONE => (global, {ns=Name.publicNS, id=identifier})
+      | SOME (object, namespaces) => (object, {ns=namespace, id=identifier})
+    end
+
+and resolveUnqualifiedLexicalReference (regs: Mach.REGS)
+                                       (identifier: Ast.IDENTIFIER)
+                                       (openNamespaces: Ast.OPEN_NAMESPACES)
+    : (Mach.OBJ * Ast.NAME) =
+    let
+        val {scope, global, ...} = regs
+        val namespaces = List.concat openNamespaces
+        val result = Mach.searchScopeChain (SOME scope, identifier, namespaces)
+    in case result of
+        NONE => (global, {ns=Name.publicNS, id=identifier})
+      | SOME (object, namespaces) =>
+        let
+            val classRibs = instanceRibsOf (object)
+            val result = Fixture.selectNamespaces (identifier, namespaces, classRibs, openNamespaces)
+        in case result of
+            namespace :: [] => (object, {ns=namespace, id=identifier})
+          | _ => error regs ["ambiguous reference"]
+        end
     end
 
 and instanceRibsOf (object: Mach.OBJ) = []  (* FIXME *)
@@ -4140,6 +4014,7 @@ and instanceRibsOf (object: Mach.OBJ) = []  (* FIXME *)
  * Scans provided object and prototype chain looking for a slot that
  * matches name (or multiname). Returns a REF to the exact object found.
  *)
+
 and resolveName (regs:Mach.REGS)
                 (objects:Mach.OBJ list)
                 (nameExpr:Ast.NAME_EXPRESSION)
@@ -4171,11 +4046,11 @@ and evalNamespaceExpr (regs:Mach.REGS)
     case nsExpr of 
         Ast.Namespace ns => ns
       | Ast.NamespaceName ne => 
-        case resolveOnScopeChain regs (#scope regs) ne of
-            SOME (obj, name) => Mach.needNamespace (getValue regs obj name)
-          | NONE => throwExn (newTypeErr regs ["namespace expression did not resolve to namespace: ", 
-                                               LogErr.nameExpr ne])
-                    
+        let
+           val (obj, name) = resolveLexicalReference regs (Ast.LexicalReference {name=ne, loc=NONE}) true
+        in
+           Mach.needNamespace (getValue regs obj name)
+        end
 
 and labelMatch (stmtLabels:Ast.IDENTIFIER list)
                (exnLabel:Ast.IDENTIFIER option)

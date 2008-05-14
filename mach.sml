@@ -1280,18 +1280,17 @@ fun searchScope (scope: SCOPE,
       | (_,_) => searchObject (SOME object, identifier, namespaces, fixedOnly)
     end
 
-
-fun searchScopeList ([], _, _) = NONE
-  | searchScopeList (scopes: SCOPE list,
+fun searchScopeChain (NONE, _, _) = NONE
+  | searchScopeChain (SOME scope: SCOPE option,
                       identifier: IDENTIFIER,
                       namespaces: NAMESPACE_SET)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val scope = hd scopes
         val matches = searchScope (scope, namespaces, identifier, true)
+        val Scope { parent, ... } = scope
     in
         case matches of
-            NONE => searchScopeList (tl scopes, identifier, namespaces)
+            NONE => searchScopeChain (parent, identifier, namespaces)
           | _ => matches
     end
 
@@ -1340,4 +1339,5 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                     end
             end
     end
+
 end

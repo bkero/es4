@@ -427,6 +427,9 @@ are two kinds of lexical references, unqualified and qualified.
 dynamic names in inner scopes. For example, a fixed class static name might shadow a dynamic 
 instance name. This is necessary to allow early resolution of names. 
 
+<IMPL>
+<INCLUDE file="eval.sml" name="and resolveLexicalReference">
+
 ==== Qualified Lexical References ====
 
 <p>Given a scope chain, an identifier, and a namespace expression, this algorithm searches for
@@ -470,48 +473,38 @@ the set of reserved names.
 for an object in the scope chain and a name on that object that matches the identifier and the
 open namespaces.
 
-<p>Search each scope object in the scope chain. Perform this search either once or twice with 
-the flattened namespace set, as follows:
-
 <NOTE>Maintaining the integrity of objects requires that name resolution perform two-pass object
 list search, and that fixed property bindings cannot be shadowed or otherwise made ambiguous by
 expando property bindings.
 
-<li>At first, perform object list search with its search restricted to considering only fixed
-property bindings. 
+<p>Search each scope object in the scope chain. Perform this search either once or twice with 
+the flattened namespace set, as follows:
 
-<li>If the first object list search returns no object or no namespaces, repeat the
-object list search with its search relaxed to include all properties, fixed and dynamic.
+<li>At first, perform scope chain search with its search restricted to considering only fixed
+property bindings on immutable scopes and both fixed and dynamic bindings on mutable scopes.
 
 <NOTE>With scopes and function scopes that might be mutated by 'eval' must be searched fully
 during the first pass and ignored during the second pass, to allow shadowing of outer bindings
 as is required for backward compatibility.
 
+<li>If the first scope chain search returns no object or no namespaces, repeat the
+search with its search relaxed to include all property bindings, fixed and dynamic, and ignoring
+mutable scopes.
+
 <li>If no namespaces, or no object, are returned by object list search, return no value. An
 object and a matching namepace set can therefore be assumed and are returned.
 
-<INCLUDE file="mach.sml" name="fun searchScopeList">
+<IMPL>
+<INCLUDE file="mach.sml" name="fun searchScopeChain">
 <INCLUDE file="mach.sml" name="fun searchScope">
 <INCLUDE file="mach.sml" name="fun searchMutableScopeObject">
-
-<!-- this is done elsewhere
-<p>If one namepace matches, complete resolution with the located object and a name formed from the
-identifier and that namespace. If multiple namespaces match, select a further subset using class based namespace
-selection, considering the classes inherited by the object. 
-
-<p>Again, if the selection causes no namespaces to match, signal an error. 
-
-<p>If one namespace matches, complete resolution with the located object and a name formed from the
-identifier and that namespace. If multiple names match, select a matching subset using open
-namespaces based namespace selection. This is the final attempt: exactly one
-namespace must match. If any other number of namespaces match, signal an error.
--->
 
 === Object References ===
 
 <p>Here we describe how a name is computed from a object reference. There
 are two kinds of object references, qualified and unqualified.
 
+<IMPL>
 <INCLUDE file="eval.sml" name="and resolveObjectReference">
 
 ==== Qualified Object References ====
@@ -524,6 +517,7 @@ an object and the name.
 <li>Evaluate the namespace expression
 <li>Return the object and name constructed from the resulting namespace and the given identifier
 
+<IMPL>
 <INCLUDE file="eval.sml" name="and resolveQualifiedObjectReference">
 
 ==== Unqualified Object References ====
@@ -615,15 +609,12 @@ nonempty intersection, return an empty set.
 
 ==== Reserving Names ====
 
+<p>Statically resolved names must keep their meaning at runtime and therefore cannot be shadowed or
+become ambiguous.
+
 <p>Given an identifier, a namespace, and a list of sets of open namespaces, this algorithm
 computes a set of names consisting of the identifier and each of the open namespaces with
 an equal or higher priority than the given namespace.
-
-{{{
-fun reservedNames (identifier, namespace, openNamespaces)
-    : NAME list =
-    <LDOTS>
-}}}
 
 <!--
 ==== Helper functions ====

@@ -395,7 +395,6 @@ fun resolveNamespaceExpr (ribs:Ast.RIBS)
         (case resolveNameExpr ribs ne of
              (_, _, Ast.NamespaceFixture ns) => ns
            | _ => error ["namespace expression resolved to non-namespace fixture: ", LogErr.nsExpr nse])
-        
 
 and resolveNameExpr (ribs:Ast.RIBS) 
                     (ne:Ast.NAME_EXPRESSION) 
@@ -420,6 +419,5 @@ and resolveNameExpr (ribs:Ast.RIBS)
             NONE => error ["unable to resolve unqualified name expression: ", LogErr.nameExpr ne]
           | SOME ((rib::ribs), name) => (rib::ribs, name, (getFixture rib (Ast.PropName name)))
           | SOME ([], _) => error ["name expression resolved to reference in empty rib: ", LogErr.nameExpr ne]
-
 
 end

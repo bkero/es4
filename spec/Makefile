@@ -6,6 +6,9 @@ language.html: stitch.py part2.html es4.css language/*.html ../builtins/*.es ../
 library.html: stitch.py part3.html es4.css library/*.html ../builtins/*.es ../*.sml
 	python stitch.py part3.html library.html
 
+appendicies.html: stitch.py part4.html es4.css library/*.html ../builtins/*.es ../*.sml
+	python stitch.py part4.html appendicies.html
+
 lib-march-2008.html: stitch.py lib-march-2008-template.html es4.css library/*.html ../builtins/*.es ../*.sml
 	python stitch.py lib-march-2008-template.html lib-march-2008.html
 
