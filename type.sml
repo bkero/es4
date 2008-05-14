@@ -707,25 +707,23 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
     (subTypeStructuralNominal extra type1 type2) orelse
     (extra type1 type2) 
 
+
+(* FIXME: allow for supertypes of Function other than Object *)
+
 and subTypeStructuralNominal extra type1 type2 =
     case (type1, type2) of
 
-
-      (* relating structural and nominal types *)
-
-        (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-        (* FIXME: allow for supertypes of Array other than Object *)
+        (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
+        List.exists (nameEq name) [ Name.public_Object ]
+        
+      | (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
         List.exists (nameEq name) [ Name.public_Array,
                                     Name.public_Object ]
         
-      | (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
-        List.exists (nameEq name) [ Name.public_Object ]
-        
       | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-        (* FIXME: allow for supertypes of Function other than Object *)
         List.exists (nameEq name) [ Name.public_Function, 
                                     Name.public_Object ]
-
+        
       | _ => false
 
 
