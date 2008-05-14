@@ -340,7 +340,7 @@ fun allocRib (regs:Mach.REGS)
         val methodScope = extendScope scope obj Mach.ActivationScope                 
         val attrs0 = { removable = false,
                        enumerable = false,
-                       writable = false,
+                       writable = Mach.ReadOnly,
                        fixed = true }
         fun allocFixture (n, f) =
             case n of
@@ -398,7 +398,9 @@ fun allocRib (regs:Mach.REGS)
                                         state = p,
                                         attrs = { removable = false,
                                                   enumerable = false,
-                                                  writable = writable,
+                                                  writable = if writable 
+                                                             then Mach.Writable
+                                                             else Mach.WriteOnce,
                                                   fixed = true } }
                         end
                         
@@ -413,7 +415,9 @@ fun allocRib (regs:Mach.REGS)
 						                        else Mach.UninitProp,
                                         attrs = { removable = false,
                                                   enumerable = false, 
-                                                  writable = writable,
+                                                  writable = if writable 
+                                                             then Mach.Writable
+                                                             else Mach.WriteOnce,
                                                   fixed = true } }
                         end
 
@@ -432,7 +436,7 @@ fun allocRib (regs:Mach.REGS)
                                                                       setter = setFn },
                                         attrs = { removable = false,
                                                   enumerable = false, 
-                                                  writable = false,
+                                                  writable = Mach.ReadOnly,
                                                   fixed = true } }
                         end
                         
@@ -967,26 +971,40 @@ and setValueOrVirtual (regs:Mach.REGS)
             SOME existingProp =>
             let
                 val { state, attrs, ty, ... } = existingProp
-                val { writable, ... } = attrs
-                fun newProp _ = { state = Mach.ValProp (checkAndConvert regs v ty),
-                                  ty = ty,
-                                  attrs = attrs }
-                fun write _ =
+                val { removable, enumerable, fixed, writable } = attrs
+                fun newProp _ = 
+                    { state = Mach.ValProp (checkAndConvert regs v ty),
+                      ty = ty,
+                      attrs = { removable = removable,
+                                enumerable = enumerable,
+                                fixed = fixed,
+                                writable = case writable of 
+                                               (* If we got here we were actually upgrading an uninitprop. *)
+                                               Mach.ReadOnly => Mach.ReadOnly
+                                             | Mach.WriteOnce => Mach.ReadOnly
+                                             | Mach.Writable => Mach.Writable } }
+                fun write _ = 
                     let
-                        val np = newProp()
+                        val np = newProp ()
                     in
                         Mach.delProp props name;
                         Mach.addProp props name np
                     end
+
+                fun maybeWrite throwIfReadOnly =
+                    case writable of 
+                        Mach.ReadOnly => if throwIfReadOnly
+                                         then throwExn (newTypeErr regs ["setValue on non-writable property: ",
+                                                                         LogErr.name name])
+                                         else ()
+                      | Mach.WriteOnce => write ()
+                      | Mach.Writable => write ()
             in
                 case state of
                     
-                    Mach.MethodProp _ =>
-                    if writable
-                    then write ()  (* ES3 style mutable fun props are readOnly *)
-                    else throwExn (newTypeErr regs ["setValue on non-writable method property: ",
-                                                    LogErr.name name])
-
+                  (* FIXME: change UninitProp state to another state in the Writability datatype. *)
+                    Mach.UninitProp => write ()
+                  | Mach.MethodProp _ => maybeWrite true
                   | Mach.VirtualValProp { setter, ... } =>
                     if doVirtual
                     then 
@@ -995,13 +1013,10 @@ and setValueOrVirtual (regs:Mach.REGS)
                                                                LogErr.name name])
                           | SOME s => (invokeFuncClosure (withThis regs obj) s NONE [v]; ())
                     else 
-                        write ()
+                        maybeWrite true
 
-                  | Mach.ValProp _ =>
-                    if writable
-                    then write ()
-                    else ()  (* ignore it *)
-                         
+                  (* FIXME: predicate throw/ignore on the presence of runtime strict-mode flag. *)
+                  | Mach.ValProp _ => maybeWrite false                  
                   | _ => badPropAccess regs "setValue" name state
             end
           | NONE =>
@@ -1012,7 +1027,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                                      ty = Ast.AnyType,
                                      attrs = { removable = true,
                                                enumerable = true,
-                                               writable = true,
+                                               writable = Mach.Writable,
                                                fixed = false } }
                     in
                         if isDynamic regs obj
@@ -1051,73 +1066,12 @@ and setValue (regs:Mach.REGS)
     : unit =
     setValueOrVirtual regs base name v true
 
-
-(* A "defValue" call occurs when assigning a property definition's
- * initial value, as specified by the user. All other assignments
- * to a property go through "setValue". *)
-
 and defValue (regs:Mach.REGS)
              (base:Mach.OBJ)
              (name:Ast.NAME)
              (v:Mach.VALUE)
     : unit =
-    case base of
-        Mach.Obj { props, ... } =>
-        if not (Mach.hasProp props name)
-        then error regs ["defValue on missing property: ", LogErr.name name]
-        else
-            (*
-             * defProp is similar to setProp, but follows different rules:
-             *
-             *   - No adding props, only overwriting allocated ones
-             *   - Permitted to write to uninitialized props
-             *   - Permitted to write to non-writable (const) props
-             *)
-            let
-                val existingProp = Mach.getProp props name
-                val ty = (#ty existingProp)
-                val newProp = { state = Mach.ValProp (checkAndConvert regs v ty),
-                                ty = (#ty existingProp),
-                                attrs = (#attrs existingProp) }
-                fun writeProp _ =
-                    (Mach.delProp props name;
-                     Mach.addProp props name newProp)
-            in
-                case (#state existingProp) of
-                    Mach.TypeVarProp =>
-                    error regs ["defValue on type variable property: ",
-                                LogErr.name name]
-
-                  | Mach.TypeProp =>
-                    error regs ["defValue on type property: ",
-                                LogErr.name name]
-
-                  | Mach.NamespaceProp _ =>
-                    error regs ["defValue on namespace property: ",
-                                LogErr.name name]
-
-                  | Mach.NativeFunctionProp _ =>
-                    error regs ["defValue on native function property: ",
-                                LogErr.name name]
-
-                  | Mach.MethodProp _ =>
-                    error regs ["defValue on method property: ",
-                                LogErr.name name]
-
-                  | Mach.ValListProp _ =>
-                    error regs ["defValue on value-list property: ",
-                                LogErr.name name]
-
-                  | Mach.VirtualValProp { setter = SOME s, ... } =>
-                    (invokeFuncClosure (withThis regs base) s NONE [v]; ())
-                    
-                  | Mach.VirtualValProp { setter = NONE, ... } =>
-                    error regs ["defValue on virtual property w/o setter: ",
-                                LogErr.name name]
-
-                  | Mach.UninitProp => writeProp ()
-                  | Mach.ValProp _ => writeProp ()
-            end
+    setValueOrVirtual regs base name v false
 
 and instantiateGlobalClass (regs:Mach.REGS)
                            (n:Ast.NAME)
@@ -2713,7 +2667,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                              state = Mach.ValProp v,
                              attrs = { removable = true,
                                        enumerable = true,
-                                       writable = true,
+                                       writable = Mach.Writable,
                                        fixed = false } }
             in
                 Mach.addProp props name prop;
@@ -2805,16 +2759,20 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
 
         fun processField {kind, name, init} =
             let
-                val const = case kind of
-                                Ast.Const => true
-                              | Ast.LetConst => true
-                              | _ => false
+                val writability = case kind of
+                                      Ast.Const => Mach.WriteOnce
+                                    | Ast.LetConst => Mach.WriteOnce
+                                    | _ => Mach.Writable
+                val removable = case kind of 
+                                    Ast.Const => false
+                                  | Ast.LetConst => false
+                                  | _ => true
                 val (n:Ast.NAME) = evalNameExpr regs name
                 val v = evalExpr regs init
                 val ty = searchFieldTypes n tyExprs
-                val attrs = { removable = not const,
+                val attrs = { removable = removable,
                               enumerable = true,
-                              writable = not const,
+                              writable = writability,
                               fixed = false }
                 val state = getPropState v
                 val existingProp = Mach.findProp props n
@@ -4374,7 +4332,7 @@ and bindArgs (regs:Mach.REGS)
                                                  ty = Name.typename Name.public_Object,
                                                  attrs = { removable = false,
                                                            enumerable = false,
-                                                           writable = true,
+                                                           writable = Mach.Writable,
                                                            fixed = true } };
              bindArg 0 finalArgs)
 
@@ -4723,7 +4681,7 @@ and specialArrayConstructor (regs:Mach.REGS)
           | [k] => let val idx = asArrayIndex k
                    in
                        if not (idx = 0wxFFFFFFFF) then
-                           setValueOrVirtual regs instanceObj Name.public_length k false
+                           setValue regs instanceObj Name.public_length k
                        else
                            bindVal 0 args
                    end
@@ -4996,7 +4954,7 @@ and setPrototype (regs:Mach.REGS)
                      state = Mach.ValProp proto,
 		             attrs = { removable = false,
 			                   enumerable = false, (* FIXME: is this wrong? (DAH) *)
-			                   writable = true,
+			                   writable = Mach.Writable,
 			                   fixed = true } }
     in
 	    if Mach.hasProp props n

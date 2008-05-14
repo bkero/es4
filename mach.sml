@@ -71,11 +71,13 @@ val cachesz = 4096
  * Unfortunately it means we have to go invert the sense of the first three
  * all through the code. Yay.
  *)
-                                       
+
+datatype WRITABILITY = ReadOnly | WriteOnce | Writable
+
 type ATTRS = { removable: bool,
                enumerable: bool,
-               writable: bool,
-               fixed: bool }     
+               fixed: bool,
+               writable: WRITABILITY }
 
 type IDENTIFIER = Ustring.STRING
 
@@ -439,7 +441,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          state=ValProp Undef,
          attrs={removable=true,  (* unused attrs *)
                 enumerable=false,
-                writable=true,
+                writable=Writable,
                 fixed=false}}
 
 
@@ -678,14 +680,17 @@ fun inspect (v:VALUE)
         fun att {removable,enumerable,writable,fixed} =
             if not removable
                andalso not enumerable
-               andalso not writable
+               andalso (writable = ReadOnly)
                andalso not fixed
             then ""
             else
                 (" ("
                  ^ (if removable then "R," else "")
                  ^ (if enumerable then "E," else "")
-                 ^ (if writable then "W," else "")
+                 ^ (case writable of 
+                        ReadOnly => ""
+                      | WriteOnce => "WO"
+                      | Writable => "W")
                  ^ (if fixed then "F" else "")
                  ^ ") ")
 
