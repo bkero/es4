@@ -490,9 +490,10 @@ fun nameExpressionNonceEqual (name1, nonce1) (name2, nonce2) =
 (* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
  *)
 
+
 type SUBST = (Ast.NAME_EXPRESSION * Ast.NONCE option) * Ast.TYPE
 
-fun substTypes (s : SUBST list) 
+fun substTypesInternal (s : SUBST list) 
                (ty: Ast.TYPE) 
     : Ast.TYPE =
     case ty of
@@ -501,8 +502,45 @@ fun substTypes (s : SUBST list)
              NONE => ty
            | SOME (_,ty) => ty)
       (* FIXME: think about funny name collisions, and alpha-renaming given nonces *)
-      | _ => mapTyExpr (substTypes s) ty
+      | _ => mapTyExpr (substTypesInternal s) ty
 
+(* SPEC
+
+fun substTypes (typeParams : Ast.IDENTIFIER list) 
+               (typeArgs : Ast.TYPE list) 
+               (ty : Ast.TYPE)
+    :  Ast.TYPE 
+    = ...
+
+*)
+
+fun substTypes (typeParams : Ast.IDENTIFIER list) (typeArgs : Ast.TYPE list) 
+    : Ast.TYPE -> Ast.TYPE =
+    substTypesInternal 
+        (ListPair.map 
+             (fn (typeParam, typeArg) =>
+                 ( (makeNameExpression typeParam, NONE), typeArg ))
+             (typeParams, typeArgs))
+    
+(* SPEC
+
+fun rename (typeParams1 : Ast.IDENTIFIER list) 
+           (typeParams2 : Ast.IDENTIFIER list) 
+           (ty : Ast.TYPE)
+    :  Ast.TYPE 
+    = ...
+
+*)
+
+fun rename (typeParams1 : Ast.IDENTIFIER list)
+           (typeParams2 : Ast.IDENTIFIER list)
+    : Ast.TYPE -> Ast.TYPE =
+    substTypesInternal 
+        (ListPair.map 
+             (fn (typeParam1, typeParam2) =>
+                 ( (makeNameExpression typeParam1, NONE),
+                   Ast.TypeName (makeNameExpression typeParam2, NONE) ))
+             (typeParams1, typeParams2))
 (*
 
 and FUNCTION_TYPE =
@@ -692,6 +730,7 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
           | _ => NONE
     end
 
+(* SPEC
 
 fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
             (type1 : Ast.TYPE)
@@ -703,14 +742,47 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
     (subTypeUnion    extra type1 type2) orelse
     (subTypeArray    extra type1 type2) orelse
     (subTypeNonNull  extra type1 type2) orelse
+    (subTypeNullable extra type1 type2) orelse
     (subTypeNominal  extra type1 type2) orelse
+    (subTypeHierarchy extra type1 type2) orelse
     (subTypeStructuralNominal extra type1 type2) orelse
     (extra type1 type2) 
 
+*)
+
+fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
+            (type1 : Ast.TYPE)
+            (type2 : Ast.TYPE)
+    : bool = 
+    (type1 = type2)   (* reflexivity *) orelse
+    (subTypeFunction extra type1 type2) orelse
+    (subTypeRecord   extra type1 type2) orelse
+    (subTypeUnion    extra type1 type2) orelse
+    (subTypeArray    extra type1 type2) orelse
+    (subTypeNonNull     extra type1 type2) orelse
+    (subTypeNominalOld  extra type1 type2) orelse
+    (subTypeStructuralNominalOld extra type1 type2) orelse
+    (extra type1 type2) 
 
 (* FIXME: allow for supertypes of Function other than Object *)
 
 and subTypeStructuralNominal extra type1 type2 =
+    case (type1, type2) of
+
+        (Ast.RecordType _,  Ast.ClassType (Ast.Cls { name, ... })) 
+        => List.exists (nameEq name) [ Name.public_Object ]
+           
+      | (Ast.ArrayType _, Ast.ClassType (Ast.Cls { name, ... })) 
+        => List.exists (nameEq name) [ Name.public_Array,
+                                       Name.public_Object ]
+           
+      | (Ast.FunctionType _, Ast.ClassType (Ast.Cls { name, ... })) 
+        => List.exists (nameEq name) [ Name.public_Function, 
+                                       Name.public_Object ]
+           
+      | _ => false
+
+and subTypeStructuralNominalOld extra type1 type2 =
     case (type1, type2) of
 
         (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
@@ -727,7 +799,7 @@ and subTypeStructuralNominal extra type1 type2 =
       | _ => false
 
 
-and subTypeNominal extra type1 type2 =
+and subTypeNominalOld extra type1 type2 =
     case (type1, type2) of
 
         ( Ast.InstanceType { name = name1, typeArgs = typeArgs1, superTypes = superTypes1, ...}, 
@@ -741,6 +813,84 @@ and subTypeNominal extra type1 type2 =
         (List.exists (fn superType1 => subType extra superType1 type2) 
                      superTypes1)
 
+      | _ => false
+
+and subTypeNominal extra type1 type2 =
+    case (type1, type2) of
+
+        ( Ast.AppType (typeConstructor1, typeArgs1),
+          Ast.AppType (typeConstructor2, typeArgs2) )
+        => 
+        typeConstructor1 = typeConstructor2 andalso
+        length typeArgs1 = length typeArgs2 andalso
+        ListPair.all
+            (fn (type1, type2) => equivType extra type1 type2)
+            (typeArgs1, typeArgs2)
+
+      | _ => false
+
+
+and subTypeHierarchy extra type1 type2 =
+    case (type1, type2) of
+
+        ( Ast.ClassType (Ast.Cls { typeParams = [], extends = SOME extends, ...}), _ )
+        => subType extra extends type2 
+
+      | ( Ast.AppType 
+              (Ast.ClassType (Ast.Cls { typeParams, extends = SOME extends, ...}),
+               typeArgs),
+          _ )
+        => subType extra (substTypes typeParams typeArgs extends) type2
+
+      | ( Ast.ClassType (Ast.Cls { typeParams = [], implements, ...}), _ )
+        => List.exists 
+               (fn iface => subType extra iface type2) 
+               implements
+
+      | ( Ast.AppType 
+              (Ast.ClassType (Ast.Cls { typeParams, implements, ...}), 
+               typeArgs),
+          _ )
+        => List.exists 
+               (fn iface => subType extra (substTypes typeParams typeArgs iface) type2)
+               implements
+
+      | ( Ast.InterfaceType (Ast.Iface { typeParams = [], extends, ...}), _ )
+        => List.exists 
+               (fn iface => subType extra iface type2) 
+               extends
+
+      | ( Ast.AppType 
+              (Ast.InterfaceType (Ast.Iface { typeParams, extends, ...}),
+               typeArgs),
+          _ )
+        => List.exists  
+               (fn iface => subType extra (substTypes typeParams typeArgs iface) type2) 
+               extends
+
+       | _ => false
+
+and subTypeNullable extra type1 type2 =
+    case (type1, type2) of
+
+        (Ast.NullType, 
+         Ast.ClassType (Ast.Cls { nonnullable = false, ... }))
+        => true
+
+      | (Ast.NullType, 
+         Ast.AppType (Ast.ClassType (Ast.Cls { nonnullable = false, ... }),
+                      typeArgs))
+        => true
+
+      | (Ast.NullType, 
+         Ast.InterfaceType (Ast.Iface { nonnullable = false, ... }))
+        => true
+
+      | (Ast.NullType, 
+         Ast.AppType (Ast.InterfaceType (Ast.Iface { nonnullable = false, ... }),
+                      typeArgs))
+        => true
+               
       | _ => false
 
 and subTypeNonNull extra type1 type2 =
@@ -818,12 +968,7 @@ and subTypeFunction extra type1 type2 =
         => 
         (* set up a substitution to alpha-rename typeParams to be identical *)
         let
-            val subst = substTypes 
-                            (ListPair.map 
-                                 (fn (typeParam1, typeParam2) =>
-                                     ( (makeNameExpression typeParam1, NONE),
-                                       Ast.TypeName (makeNameExpression typeParam2, NONE) ))
-                                 (typeParams1, typeParams2))
+            val subst = rename typeParams1 typeParams2 
             val min = Int.min( length params1, length params2 ) 
         in
             length typeParams1 = length typeParams2
