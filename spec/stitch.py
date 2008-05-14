@@ -86,11 +86,12 @@ wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL|---)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|SPECNOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL|---)>")
 subscript = re.compile(r"([a-zA-Z]+)_\{([^}]+)\}")
 
 entities = { "INFINITY": "&#x221E;",
 	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
+	     "SPECNOTE": "<p class=\"note\"><b>SPEC NOTE</b>&nbsp;&nbsp; ",
 	     "COMP": "<p class=\"note\"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; ",
 	     "IMPLNOTE": "<p class=\"note\"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; ",
 	     "FIXME": "<p class=\"fixme\"><b>FIXME</b>&nbsp;&nbsp; ",
