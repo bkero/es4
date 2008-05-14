@@ -1,120 +1,208 @@
-= Reading and writing properties =
+<html>
+<head>
+<title>Reading and writing properties</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Reading and writing properties</h1>
 
 <pre>
 Draft 0.75, 2008-05-13 / lth
 </pre>
 
-<P> This chapter describes the algorithms for //property access//:
+<P><span class="pcounter"></span> This chapter describes the algorithms for <i>property access</i>:
 testing objects for the presence of a property, reading from and
 writing to a property, and removing a property.  Property access is
 always by the name of the property.  A property name is represented
-either as an instance of the pre-defined class ''Name'', or as a plain
-string (which represents a name in the ''public'' namespace).
+either as an instance of the pre-defined class <code>Name</code>, or as a plain
+string (which represents a name in the <code>public</code> namespace).
 
-<SPECNOTE> This chapter complements the chapter on names, scopes, and name
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  This chapter complements the chapter on names, scopes, and name
 resolution.  At this time, there is probably some overlap between the
 two chapters.
 
-<P> Property accesses are subject to run-time checks, and property
+<P><span class="pcounter"></span> Property accesses are subject to run-time checks, and property
 access fails (an exception is thrown) if a check does not pass.  The
 exact exception depends on the particular check.
 
-<NOTE> For example, a property created by ''let'' or ''const'' or a
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  For example, a property created by <code>let</code> or <code>const</code> or a
 property whose type is a non-nullable type without a default value
 must be written (initialized) before it is read; properties created by
-''const'' cannot be written more than once; and properties that have
+<code>const</code> cannot be written more than once; and properties that have
 type annotations can be updated with a new value only if the allocated
 type of the new value is a compatible subtype of the storage type of
 the property.
 
-<P> A property may be virtual, that is to say, the reading and writing
-of the property may be implemented by //getter// and //setter//
+<P><span class="pcounter"></span> A property may be virtual, that is to say, the reading and writing
+of the property may be implemented by <i>getter</i> and <i>setter</i>
 methods on the object, and an expression that is syntactically a
 reference to the property is in fact an invocation of these methods.
-Virtual dynamic properties may be implemented by //catch-all//
+Virtual dynamic properties may be implemented by <i>catch-all</i>
 methods, described in the next section.
 
 
-= Catch-all methods =
+<h1>Catch-all methods</h1>
 
-<P> This section contains a normative overview of the catch-all
+<P><span class="pcounter"></span> This section contains a normative overview of the catch-all
 facility.  A more precise, also normative, description is given in
 later sections of this chapter, as part of the general description of
 property access.
 
-<SPECNOTE> Any conflicts between the two descriptions are obviously bugs.
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  Any conflicts between the two descriptions are obviously bugs.
 
-<P> Objects may contain fixture properties in the ''meta'' namespace:
-''meta::get'', ''meta::set'', ''meta::has'', and ''meta::delete''.
+<P><span class="pcounter"></span> Objects may contain fixture properties in the <code>meta</code> namespace:
+<code>meta::get</code>, <code>meta::set</code>, <code>meta::has</code>, and <code>meta::delete</code>.
 These properties always name methods (the syntactic constructs that
 introduce them only allow them to carry method values).  Jointly they
-are known as //catch-all methods//.
+are known as <i>catch-all methods</i>.
 
-<P> If a catch-all method is defined on the object then it is invoked
-when a dynamic property is accessed: ''meta::has'' is invoked to
-determine if the object has the property; ''meta::get'' is invoked to
-read a property's value; ''meta::set'' is invoked to update or create
-a property; and ''meta::delete'' is invoked to delete a property.  A
+<P><span class="pcounter"></span> If a catch-all method is defined on the object then it is invoked
+when a dynamic property is accessed: <code>meta::has</code> is invoked to
+determine if the object has the property; <code>meta::get</code> is invoked to
+read a property's value; <code>meta::set</code> is invoked to update or create
+a property; and <code>meta::delete</code> is invoked to delete a property.  A
 catch-all method is invoked even if the dynamic property that is being
 accessed already exists on the object.
 
-<P> A catch-all method operates on the object that contains the
+<P><span class="pcounter"></span> A catch-all method operates on the object that contains the
 method, not on that object's prototype objects.
 
-<P> If a catch-all method returns normally then the value it returns
+<P><span class="pcounter"></span> If a catch-all method returns normally then the value it returns
 (if any) becomes the result of the operation, possibly after being
 converted to a canonical type.
 
-<P> If a catch-all method throws an exception, and the exception
+<P><span class="pcounter"></span> If a catch-all method throws an exception, and the exception
 thrown is an instance of the pre-defined class
-''DefaultBehaviorClass'', then the default behavior for the catch-all
+<code>DefaultBehaviorClass</code>, then the default behavior for the catch-all
 is triggered.
 
-<P> ''DefaultBehaviorClass'' is a singleton class; its only instance
-is is stored in the global constant ''DefaultBehavior''.
+<P><span class="pcounter"></span> <code>DefaultBehaviorClass</code> is a singleton class; its only instance
+is is stored in the global constant <code>DefaultBehavior</code>.
 
-<NOTE> The mechanism is analogous to the one defined for iterators,
-where an instance of the singleton ''StopIterationClass'' is stored in
-the global property ''StopIteration''.
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The mechanism is analogous to the one defined for iterators,
+where an instance of the singleton <code>StopIterationClass</code> is stored in
+the global property <code>StopIteration</code>.
 
-<P> The ''meta::get'' method is invoked on one argument, a property
+<P><span class="pcounter"></span> The <code>meta::get</code> method is invoked on one argument, a property
 name.  The value returned is the property value.  The default behavior
-for ''meta::get'' is to retrieve the value from a dynamic property in
+for <code>meta::get</code> is to retrieve the value from a dynamic property in
 the object's property map.
 
-<P> The ''meta::set'' method is invoked on two arguments, a property
+<P><span class="pcounter"></span> The <code>meta::set</code> method is invoked on two arguments, a property
 name and a value.  Any value returned is ignored.  The default
-behavior for ''meta::set'' is to update or attempt to create a dynamic
+behavior for <code>meta::set</code> is to update or attempt to create a dynamic
 property in the object's property map.
 
-<P> The ''meta::has'' method is invoked on one argument, a property
-name.  Any value returned by the method is converted to ''boolean''.
-The default behavior for ''meta::has'' is to search for a dynamic
+<P><span class="pcounter"></span> The <code>meta::has</code> method is invoked on one argument, a property
+name.  Any value returned by the method is converted to <code>boolean</code>.
+The default behavior for <code>meta::has</code> is to search for a dynamic
 property in the object's property map.
 
-<P> The ''meta::delete'' method is invoked on one argument, a property
-name.  Any value returned by the method is converted to ''boolean''.
-The default behavior for ''meta::delete'' is to attempt to delete a
+<P><span class="pcounter"></span> The <code>meta::delete</code> method is invoked on one argument, a property
+name.  Any value returned by the method is converted to <code>boolean</code>.
+The default behavior for <code>meta::delete</code> is to attempt to delete a
 dynamic property from the object's property map.
 
 
-= Checking for the presence of a property =
+<h1>Checking for the presence of a property</h1>
 
-<P> The HasOwnProperty protocol is invoked to check whether an object
-//obj// contains a property named by //name//.
+<P><span class="pcounter"></span> The HasOwnProperty protocol is invoked to check whether an object
+<i>obj</i> contains a property named by <i>name</i>.
 
-<SPECNOTE> In terms of the 3rd Edition Specification, the
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  In terms of the 3rd Edition Specification, the
 HasOwnProperty protocol implements the test for whether an object "has
-a property", as used in the implementations of [[Get]], [[Put]],
-[[HasProperty]], and other internal subroutines.
+a property", as used in the implementations of <code>[[Get]]</code>, <code>[[Put]]</code>,
+<code>[[HasProperty]]</code>, and other internal subroutines.
 
-<P> An object is said to contain a property if the property is in the
-object's prototype map or if the ''meta::has'' catchall claims the
+<P><span class="pcounter"></span> An object is said to contain a property if the property is in the
+object's prototype map or if the <code>meta::has</code> catchall claims the
 object to be present.
 
-<FIXME> This protocol must be specified as SML code.
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  This protocol must be specified as SML code.
 
-{{{
+<PRE>
 fun HasOwnProperty(obj, name)
   if (name is a property in the property map of obj, denote it obj.name &&
       the isFixed attribute of obj.name is true)
@@ -136,38 +224,38 @@ fun HasOwnProperty(obj, name)
 
   return false
 end
-}}}
+</PRE>
 
 
-= Reading a property value =
+<h1>Reading a property value</h1>
 
-<P> The GetProperty protocol is invoked to read the value of a
-property named by //name// from an object //obj//.  The flag
-//isStrict// is true if the ES4 code that caused GetProperty to be
+<P><span class="pcounter"></span> The GetProperty protocol is invoked to read the value of a
+property named by <i>name</i> from an object <i>obj</i>.  The flag
+<i>isStrict</i> is true if the ES4 code that caused GetProperty to be
 invoked was compiled in strict mode.
 
-<FIXME> The notion of "ES4 code that caused GetProperty to be invoked"
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  The notion of "ES4 code that caused GetProperty to be invoked"
 is a little soft and must be tighter.  The gist of it is that there
-will be an AST node for property reference whose ''strict'' flag is
+will be an AST node for property reference whose <code>strict</code> flag is
 set because it represents a source code phrase that was recognized in
 a region of code that was covered by a strict mode pragma.  There
 might even be several types of AST nodes carrying strict flags and
 invoking GetProperty, depending on how the AST is structured.
 
-<P> The GetProperty protocol queries the object for the presence of
+<P><span class="pcounter"></span> The GetProperty protocol queries the object for the presence of
 the property using the HasOwnProperty protocol, moving up the object's
 prototype chain if the object does not contain the property.  Once an
 object on the prototype chain is found that contains the object, the
-internal ''getPropertyHelper'' function is invoked to extract the
+internal <code>getPropertyHelper</code> function is invoked to extract the
 property value.  If no property is found, then a default value may be
 returned, or, in strict mode, an exception may be thrown.
 
-<FIXME> The GetProperty protocol below overlaps with the one described
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  The GetProperty protocol below overlaps with the one described
 in the chapter on names; the two must be reconciled.  That will happen
 when the protocol here is described in terms of SML (because then they
 will use the same code).
 
-{{{
+<PRE>
 fun GetProperty(obj, name, isStrict)
   for every object in obj, obj.[[Prototype]], obj.[[Prototype]].[[Prototype]], ...
     if HasOwnProperty(obj, name)
@@ -192,15 +280,15 @@ fun GetProperty(obj, name, isStrict)
 
   return undefined
 end
-}}}
+</PRE>
 
-<P> The internal ''getPropertyHelper'' function reads the property named by
-//name// from an object //obj//, implementing strict mode checking if
-//isStrict// is true.  An error is signalled in strict mode if the
-object's ''meta::has'' catch-all returned true for //name// and the
+<P><span class="pcounter"></span> The internal <code>getPropertyHelper</code> function reads the property named by
+<i>name</i> from an object <i>obj</i>, implementing strict mode checking if
+<i>isStrict</i> is true.  An error is signalled in strict mode if the
+object's <code>meta::has</code> catch-all returned true for <i>name</i> and the
 property cannot be read.
 
-{{{
+<PRE>
 fun getPropertyHelper(obj, name, isStrict)
   if (name is a property in the property map of obj, denote it obj.name && 
       the isFixed attribute of obj.name is true)
@@ -235,27 +323,27 @@ fun getPropertyHelper(obj, name, isStrict)
     return undefined
   end
 end
-}}}
+</PRE>
 
 
-<FIXME> We need to specify whether the bound method is cached or not,
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  We need to specify whether the bound method is cached or not,
 ie, if, given that o.m is a method, (o.m === o.m).
 
 
-= Writing a property value =
+<h1>Writing a property value</h1>
 
-<P> The SetProperty protocol is invoked to write a value //value// to
-a property named by //name// on an object //obj//.  The object may or
+<P><span class="pcounter"></span> The SetProperty protocol is invoked to write a value <i>value</i> to
+a property named by <i>name</i> on an object <i>obj</i>.  The object may or
 may not have a property of that name when SetProperty is invoked, and
-SetProperty may attempt to create the property.  The flag //isStrict//
+SetProperty may attempt to create the property.  The flag <i>isStrict</i>
 is true if the ES4 code that caused SetProperty to be invoked was
 compiled in strict mode.
 
-<FIXME> Se notes for GetProperty above on strict mode.
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Se notes for GetProperty above on strict mode.
 
-<FIXME> This protocol must be specified as SML code.
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  This protocol must be specified as SML code.
 
-{{{
+<PRE>
 fun SetProperty(obj, name, value, isStrict)
   if (name is a property in the property map of obj, denote it obj.name && 
       the isFixed attribute of obj.name is true)
@@ -296,16 +384,16 @@ fun SetProperty(obj, name, value, isStrict)
     throw a ReferenceError, "cannot create a property on a non-dynamic object"
   end
 }
-}}}
+</PRE>
 
-<P> The internal ''setPropertyHelper'' function is invoked when
-//name// is known to name a property in //obj//.
+<P><span class="pcounter"></span> The internal <code>setPropertyHelper</code> function is invoked when
+<i>name</i> is known to name a property in <i>obj</i>.
 
-<FIXME> Here I simply assume that methods are not writeable, but this
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Here I simply assume that methods are not writeable, but this
 may or may not be the right abstraction we want to use; the RI has two
 cases here anyway, and that's the code that will eventually be here.
 
-{{{
+<PRE>
 fun setPropertyHelper(obj, name, value, isStrict)
   if obj.name is a getter/setter pair, denote the setter obj.name.[[Setter]]
     return obj.name.[[Setter]](name)
@@ -331,22 +419,22 @@ fun setPropertyHelper(obj, name, value, isStrict)
     set the writeable attribute of obj.name to false
   end
 end
-}}}
+</PRE>
 
 
-= Deleting a property =
+<h1>Deleting a property</h1>
 
-<P> The DeleteProperty protocol is invoked to remove a property named
-by //name// from an object //obj//.  The object may or may not have a
+<P><span class="pcounter"></span> The DeleteProperty protocol is invoked to remove a property named
+by <i>name</i> from an object <i>obj</i>.  The object may or may not have a
 property of that name when DeleteProperty is invoked.  The flag
-//isStrict// is true if the ES4 code that caused DeleteProperty to be
+<i>isStrict</i> is true if the ES4 code that caused DeleteProperty to be
 invoked was compiled in strict mode.
 
-<FIXME> Se notes for GetProperty above on strict mode.
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Se notes for GetProperty above on strict mode.
 
-<FIXME> This protocol must be specified as SML code.
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  This protocol must be specified as SML code.
 
-{{{
+<PRE>
 fun DeleteProperty(obj, name, isStrict)
   if (name is a property in the property map of obj, denote it obj.name &&
       the isFixed attribute of obj.name is true)
@@ -378,4 +466,8 @@ fun DeleteProperty(obj, name, isStrict)
 
   return false
 end
-}}}
+</PRE>
+
+
+</body>
+</html>

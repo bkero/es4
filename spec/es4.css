@@ -20,7 +20,7 @@ code { font-style: normal; font-weight: normal }
 
 pre { font-size: 10pt }
 
-body { counter-reset: chapter section subsection subsubsection;
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
        font-size: 11pt; 
        margin: 0.75in }
 
@@ -75,5 +75,14 @@ H4:before {
     counter-increment: subsubsection }
 
 H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
     counter-reset: para;
 }

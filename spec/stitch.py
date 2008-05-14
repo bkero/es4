@@ -25,6 +25,7 @@
 #    contents unprocessed.  The triple braces must be at the start of a line.
 #  - ""..."" for bold, normal text (handy inside the scope of //..//)
 #  - <entity> for some simple replacements, see full list in the code below
+#  - foo_{bar} for foo<sub>bar</sub>
 
 # Rules for processing in general:
 #  - Read the entire file
@@ -85,10 +86,12 @@ wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL|---)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|SPECNOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL|---)>")
+subscript = re.compile(r"([a-zA-Z]+)_\{([^}]+)\}")
 
 entities = { "INFINITY": "&#x221E;",
 	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
+	     "SPECNOTE": "<p class=\"note\"><b>SPEC NOTE</b>&nbsp;&nbsp; ",
 	     "COMP": "<p class=\"note\"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; ",
 	     "IMPLNOTE": "<p class=\"note\"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; ",
 	     "FIXME": "<p class=\"fixme\"><b>FIXME</b>&nbsp;&nbsp; ",
@@ -540,6 +543,8 @@ def process(fn, hdrlvl):
     text = re.sub(wikiformatLiteralRecover, revealLiteral, text)
     trace("include")
     text = re.sub(includetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
+    trace("subscripts")
+    text = re.sub(subscript, r"\1<sub>\2</sub>", text)
     trace("numberpredefined")
     
     # FIXME (comment by graydon): this last substitution doubly-counterizes blocks that were

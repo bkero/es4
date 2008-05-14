@@ -232,6 +232,23 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENTIFIER * EXPRESSION)
        | AssignStep of (EXPRESSION * EXPRESSION)
 
+(*
+
+datatype TYPE =
+         NullType
+       | UndefinedType
+       | AnyType
+       | RecordType of (NAME_EXPRESSION * TYPE) list
+       | ArrayType  of (TYPE list * TYPE option)
+       | UnionType  of TYPE list
+       | NonNullType of TYPE
+       | FunctionType of FUNCTION_TYPE
+       | AppType of (TYPE * TYPE list)
+       | TypeName of (NAME_EXPRESSION * NONCE option)  
+       | InstanceType of INSTANCE_TYPE
+
+*)
+
      and TYPE =
          NullType
        | UndefinedType
@@ -244,9 +261,10 @@ datatype PRAGMA =
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
        | InstanceType of INSTANCE_TYPE        (* *)
+(* Following will be removed during defn phase *)
 
- | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
- | TypeIndexReferenceType of (TYPE * int)
+       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
+       | TypeIndexReferenceType of (TYPE * int)
 
   (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
 (*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
