@@ -1,7 +1,7 @@
 = Reading and writing properties =
 
 <pre>
-Draft 0.5, 2008-05-12 / lth
+Draft 0.75, 2008-05-13 / lth
 </pre>
 
 <P> This chapter describes the algorithms for //property access//:
@@ -11,37 +11,38 @@ always by the name of the property.  A property name is represented
 either as an instance of the pre-defined class ''Name'', or as a plain
 string (which represents a name in the ''public'' namespace).
 
-<NOTE> This chapter complements the chapter on names, scopes, and name
-resolution.  At this time, there is probaly some overlap between the
+<SPECNOTE> This chapter complements the chapter on names, scopes, and name
+resolution.  At this time, there is probably some overlap between the
 two chapters.
 
 <P> Property accesses are subject to run-time checks, and property
-access fails with an exception being thrown if a check does not pass.
-The exact exception depends on the particular check.
+access fails (an exception is thrown) if a check does not pass.  The
+exact exception depends on the particular check.
 
 <NOTE> For example, a property created by ''let'' or ''const'' or a
 property whose type is a non-nullable type without a default value
 must be written (initialized) before it is read; properties created by
 ''const'' cannot be written more than once; and properties that have
 type annotations can be updated with a new value only if the allocated
-type of the value is a compatible subtype of the annotation type.
+type of the new value is a compatible subtype of the storage type of
+the property.
 
 <P> A property may be virtual, that is to say, the reading and writing
 of the property may be implemented by //getter// and //setter//
 methods on the object, and an expression that is syntactically a
 reference to the property is in fact an invocation of these methods.
-Virtual dynamic (non-fixed) properties may be implemented by
-//catch-all// methods, described in the next section.
+Virtual dynamic properties may be implemented by //catch-all//
+methods, described in the next section.
 
 
 = Catch-all methods =
 
-<P> This section contains is a normative overview of the catch-all
-behavior in the language.  A more precise, also normative, description
-is given in later sections of this chapter, as part of the general
-description of property access.
+<P> This section contains a normative overview of the catch-all
+facility.  A more precise, also normative, description is given in
+later sections of this chapter, as part of the general description of
+property access.
 
-<NOTE> Any conflicts between the two descriptions are obviously bugs.
+<SPECNOTE> Any conflicts between the two descriptions are obviously bugs.
 
 <P> Objects may contain fixture properties in the ''meta'' namespace:
 ''meta::get'', ''meta::set'', ''meta::has'', and ''meta::delete''.
@@ -49,15 +50,11 @@ These properties always name methods (the syntactic constructs that
 introduce them only allow them to carry method values).  Jointly they
 are known as //catch-all methods//.
 
-<NOTE> There is also a ''meta::invoke'' catch-all which does not
-participate in property access protocols and which is described
-elsewhere.
-
 <P> If a catch-all method is defined on the object then it is invoked
-when a dynamic (non-fixture) is accessed: ''meta::has'' is invoked to
+when a dynamic property is accessed: ''meta::has'' is invoked to
 determine if the object has the property; ''meta::get'' is invoked to
-read a property's value; ''meta::set'' is invoked to update a
-property; and ''meta::delete'' is invoked to delete a property.  A
+read a property's value; ''meta::set'' is invoked to update or create
+a property; and ''meta::delete'' is invoked to delete a property.  A
 catch-all method is invoked even if the dynamic property that is being
 accessed already exists on the object.
 
@@ -65,12 +62,13 @@ accessed already exists on the object.
 method, not on that object's prototype objects.
 
 <P> If a catch-all method returns normally then the value it returns
-(if any) is the result of the operation, possibly converted to a
-canonical type.
+(if any) becomes the result of the operation, possibly after being
+converted to a canonical type.
 
 <P> If a catch-all method throws an exception, and the exception
 thrown is an instance of the pre-defined class
-''DefaultBehaviorClass'', then a default behavior is triggered.
+''DefaultBehaviorClass'', then the default behavior for the catch-all
+is triggered.
 
 <P> ''DefaultBehaviorClass'' is a singleton class; its only instance
 is is stored in the global constant ''DefaultBehavior''.
@@ -87,7 +85,7 @@ the object's property map.
 <P> The ''meta::set'' method is invoked on two arguments, a property
 name and a value.  Any value returned is ignored.  The default
 behavior for ''meta::set'' is to update or attempt to create a dynamic
-property on the object.
+property in the object's property map.
 
 <P> The ''meta::has'' method is invoked on one argument, a property
 name.  Any value returned by the method is converted to ''boolean''.
@@ -97,18 +95,18 @@ property in the object's property map.
 <P> The ''meta::delete'' method is invoked on one argument, a property
 name.  Any value returned by the method is converted to ''boolean''.
 The default behavior for ''meta::delete'' is to attempt to delete a
-dynamic property in the object's property map.
+dynamic property from the object's property map.
 
 
 = Checking for the presence of a property =
 
-<P> The ''hasProperty'' protocol is invoked to check whether an object
-//obj// contains a property //name//.
+<P> The HasOwnProperty protocol is invoked to check whether an object
+//obj// contains a property named by //name//.
 
-<NOTE> In terms of the 3rd Edition Specification, the ''hasProperty''
-protocol implements the test for whether an object "has a property",
-as used in the implementations of [[Get]], [[Put]], [[HasProperty]],
-and other internal subroutines.
+<SPECNOTE> In terms of the 3rd Edition Specification, the
+HasOwnProperty protocol implements the test for whether an object "has
+a property", as used in the implementations of [[Get]], [[Put]],
+[[HasProperty]], and other internal subroutines.
 
 <P> An object is said to contain a property if the property is in the
 object's prototype map or if the ''meta::has'' catchall claims the
@@ -117,7 +115,7 @@ object to be present.
 <FIXME> This protocol must be specified as SML code.
 
 {{{
-fun hasProperty(obj, name)
+fun HasOwnProperty(obj, name)
   if (name is a property in the property map of obj, denote it obj.name &&
       the isFixed attribute of obj.name is true)
     return true
@@ -126,7 +124,7 @@ fun hasProperty(obj, name)
   if (meta::has is a property in the property map of obj, denote it obj.meta::has && 
       the isFixed attribute of obj.meta::has is true)
     try 
-      return the result of the call obj.meta::has(name)
+      return obj.meta::has(name)
     catch DefaultBehaviorClass
       ; fall through to the next case
     end
@@ -143,35 +141,36 @@ end
 
 = Reading a property value =
 
-<P> The ''getProperty'' protocol is invoked to read the value of a
-property //name// from an object //obj//.  The flag //isStrict// is
-true if the ES4 code that caused ''getProperty'' to be invoked was
-compiled in strict mode.
+<P> The GetProperty protocol is invoked to read the value of a
+property named by //name// from an object //obj//.  The flag
+//isStrict// is true if the ES4 code that caused GetProperty to be
+invoked was compiled in strict mode.
 
-<FIXME> The notion of "ES4 code that caused ''getProperty'' to be
-invoked" is a little soft and must be tighter.  The gist of it is that
-there will be an AST node for property reference whose ''strict'' flag
-is set because it originated in a region of code that was compiled in
-strict mode.  There might even be several types of node, depending on
-how the AST is structured.
+<FIXME> The notion of "ES4 code that caused GetProperty to be invoked"
+is a little soft and must be tighter.  The gist of it is that there
+will be an AST node for property reference whose ''strict'' flag is
+set because it represents a source code phrase that was recognized in
+a region of code that was covered by a strict mode pragma.  There
+might even be several types of AST nodes carrying strict flags and
+invoking GetProperty, depending on how the AST is structured.
 
-<P> The ''getProperty'' protocol queries the object for the presence
-of the property using the ''hasProperty'' protocol, moving up the
-object's prototype chain if the object does not contain the property.
-Once an object on the prototype chain is found that contains the
-object, the ''getPropertyHelper'' protocol is invoked to extract the
+<P> The GetProperty protocol queries the object for the presence of
+the property using the HasOwnProperty protocol, moving up the object's
+prototype chain if the object does not contain the property.  Once an
+object on the prototype chain is found that contains the object, the
+internal ''getPropertyHelper'' function is invoked to extract the
 property value.  If no property is found, then a default value may be
-returned, or, in strict mode, and exception may be thrown.
+returned, or, in strict mode, an exception may be thrown.
 
-<FIXME> The ''getProperty'' protocol here overlaps with the one
-described in the chapter on names; the two must be reconciled that
-will happen when the protocol here is described in terms of SML
-(because then they will use the same code).
+<FIXME> The GetProperty protocol below overlaps with the one described
+in the chapter on names; the two must be reconciled.  That will happen
+when the protocol here is described in terms of SML (because then they
+will use the same code).
 
 {{{
-fun getProperty(obj, name, isStrict)
-  for every object in obj, obj.[[Prototype]], obj.[[Prototype]].[[Prototype]], ...)
-    if hasProperty(obj, name)
+fun GetProperty(obj, name, isStrict)
+  for every object in obj, obj.[[Prototype]], obj.[[Prototype]].[[Prototype]], ...
+    if HasOwnProperty(obj, name)
       return getPropertyHelper(obj, name, isStrict)
     end
   end
@@ -181,22 +180,25 @@ fun getProperty(obj, name, isStrict)
       if obj.[[DynamicType]] has a default value
         return that default value
       else
-        throw an error, "Cannot read uninitialized property with non-nullable type"
+        throw a ReferenceError, "Cannot read uninitialized property with non-nullable type"
       end
     end
     return undefined
   end
 
   if isStrict
-    throw an error, "Trying to read undefined property from non-dynamic object"
+    throw a ReferenceError, "Trying to read undefined property from non-dynamic object"
   end
 
   return undefined
 end
 }}}
 
-<P> The ''getPropertyHelper'' function reads the property from an
-object.
+<P> The internal ''getPropertyHelper'' function reads the property named by
+//name// from an object //obj//, implementing strict mode checking if
+//isStrict// is true.  An error is signalled in strict mode if the
+object's ''meta::has'' catch-all returned true for //name// and the
+property cannot be read.
 
 {{{
 fun getPropertyHelper(obj, name, isStrict)
@@ -206,7 +208,7 @@ fun getPropertyHelper(obj, name, isStrict)
       return a closure where obj is bound as this to the method extracted from obj.name
     end
     if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
-      return the result of invoking obj.name.[[Getter]](name)
+      return obj.name.[[Getter]](name)
     end
     return the value of obj.name
   end
@@ -214,7 +216,7 @@ fun getPropertyHelper(obj, name, isStrict)
   if (meta::get is a property in the property map of obj, denote it obj.meta::get && 
       the isFixed attribute of obj.meta::get is true)
     try 
-      return the result of invoking obj.meta::get(name)
+      return obj.meta::get(name)
     catch DefaultBehavior
       ; fall through to the next case
     end
@@ -222,13 +224,13 @@ fun getPropertyHelper(obj, name, isStrict)
 
   if name is a property in the property map of obj
     if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
-      return the result of invoking obj.name.[[Getter]](name)
+      return obj.name.[[Getter]](name)
     end
     return obj.name
   end
 
   if isStrict
-    throw a ReferenceError, "hasProperty lied about the existence of " + name
+    throw a ReferenceError, "Property not found"
   else
     return undefined
   end
@@ -236,60 +238,57 @@ end
 }}}
 
 
-<FIXME> Wrinkles not incorporated in the preceding algorithm yet are
-"Upgrading" from type or namespace value (and maybe others?) to full
-objects, and handling native properties.
-
 <FIXME> We need to specify whether the bound method is cached or not,
 ie, if, given that o.m is a method, (o.m === o.m).
 
 
 = Writing a property value =
 
+<P> The SetProperty protocol is invoked to write a value //value// to
+a property named by //name// on an object //obj//.  The object may or
+may not have a property of that name when SetProperty is invoked, and
+SetProperty may attempt to create the property.  The flag //isStrict//
+is true if the ES4 code that caused SetProperty to be invoked was
+compiled in strict mode.
 
-<P> The ''setProperty'' protocol is invoked to write //value// to a
-property //name// on an object //obj//.  The object may or may not
-have a property of that name when ''setProperty'' is invoked.  The
-flag //isStrict// is true if the ES4 code that caused ''setProperty''
-to be invoked was compiled in strict mode.
-
-<FIXME> Se notes for ''getProperty'' above on strict mode.
+<FIXME> Se notes for GetProperty above on strict mode.
 
 <FIXME> This protocol must be specified as SML code.
 
 {{{
-fun setProperty(obj, name, value, isStrict)
+fun SetProperty(obj, name, value, isStrict)
   if (name is a property in the property map of obj, denote it obj.name && 
       the isFixed attribute of obj.name is true)
-    return the result of invoking setPropertyHelper(obj, name, value, isStrict)
+    return setPropertyHelper(obj, name, value, isStrict)
   end
 
   if (meta::set is a property in the property map of obj, denote it obj.meta::set && 
       the isFixed attribute of meta::set is true)
     try 
       invoke obj.meta::set(name, value)
-      return nothing
+      return
     catch DefaultBehavior
       ; fall through to the next case
     end
   end
 
   if name is a property in the property map of obj
-    return the result of invoking setPropertyHelper(obj, name, value, isStrict)
+    return setPropertyHelper(obj, name, value, isStrict)
   end
 
   if the dynamic attribute on obj is true
     if isStrict && obj is a global object
-      throw an error, "illegal to create props on global obj in strict mode"
+      throw a ReferenceError, "illegal to create props on global obj in strict mode"
     end
 
     if the type of value is not a compatible subtype of the dynamic property constraint of obj
-      throw error "incompatible type"
+      throw a TypeError, "allocated type of value is not compatible with storage type of property"
     end
 
-    place a new object into the property map of obj, with the name 'name':
-      initial value = value
-      flags = (writeable=true, enumerable=true, removable=true, writeOnce=false, isFixed=false)
+    place a new object into the property map of obj
+      property name = name
+      property value = value
+      property flags = (writeable=true, enumerable=true, removable=true, writeOnce=false, isFixed=false)
     return
   end
 
@@ -299,8 +298,8 @@ fun setProperty(obj, name, value, isStrict)
 }
 }}}
 
-<P> The ''setPropertyHelper'' protocol is invoked when //name// is
-known to name a property in //obj//.
+<P> The internal ''setPropertyHelper'' function is invoked when
+//name// is known to name a property in //obj//.
 
 <FIXME> Here I simply assume that methods are not writeable, but this
 may or may not be the right abstraction we want to use; the RI has two
@@ -309,19 +308,19 @@ cases here anyway, and that's the code that will eventually be here.
 {{{
 fun setPropertyHelper(obj, name, value, isStrict)
   if obj.name is a getter/setter pair, denote the setter obj.name.[[Setter]]
-    return the result of invoking obj.name.[[Setter]](name)
+    return obj.name.[[Setter]](name)
   end
 
   if the writeable attribute of obj.name is false
     if isStrict
-      throw error "Attempting to update read-only value"
+      throw a ReferenceError, "Attempting to update read-only value"
     end
     return
   end
 
   if obj.name has a type annotation, call it obj.name.[[Type]]
     if the type of value is not a compatible subtype of obj.name.[[Type]]
-      throw error "Attempting to store value of incompatible type"
+      throw a TypeError, "Attempting to store value of incompatible type"
     end
   end
 
@@ -334,28 +333,25 @@ fun setPropertyHelper(obj, name, value, isStrict)
 end
 }}}
 
-<FIXME> Wrinkles not incorporated in the previous algorithm include
-dealing with native properties.
-
 
 = Deleting a property =
 
-<P> The ''deleteProperty'' protocol is invoked to remove a property
-//name// from an object //obj//.  The object may or may not have a
-property of that name when ''deleteProperty'' is invoked.  The flag
-//isStrict// is true if the ES4 code that caused ''deleteProperty'' to
-be invoked was compiled in strict mode.
+<P> The DeleteProperty protocol is invoked to remove a property named
+by //name// from an object //obj//.  The object may or may not have a
+property of that name when DeleteProperty is invoked.  The flag
+//isStrict// is true if the ES4 code that caused DeleteProperty to be
+invoked was compiled in strict mode.
 
-<FIXME> Se notes for ''getProperty'' above on strict mode.
+<FIXME> Se notes for GetProperty above on strict mode.
 
 <FIXME> This protocol must be specified as SML code.
 
 {{{
-fun deleteProperty(obj, name, isStrict)
+fun DeleteProperty(obj, name, isStrict)
   if (name is a property in the property map of obj, denote it obj.name &&
       the isFixed attribute of obj.name is true)
     if isStrict
-      throw an error, "can't delete fixture properties"
+      throw a ReferenceError, "can't delete fixture properties"
     end
     return false
   end
@@ -363,20 +359,20 @@ fun deleteProperty(obj, name, isStrict)
   if (meta::delete is a property in the property map of obj, denote it obj.meta::delete && 
       the isFixed attribute of meta::delete is true)
     try 
-      return the result of invoking obj.meta::delete(name)
+      return obj.meta::delete(name)
     catch DefaultBehavior
       ; fall through to the next case
     end
   end
   
-  if name is a property in the property map of obj
+  if name is a property in the property map of obj, denote it obj.name
     if the removable attribute of obj.name is true
-      remove the property
+      remove obj.name from the property map of obj
       return true
     end
 
     if isStrict
-      throw an error, "can't delete non-removable property"
+      throw a ReferenceError, "can't delete non-removable property"
     end
   end
 
