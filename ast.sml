@@ -168,8 +168,7 @@ datatype PRAGMA =
              instanceRib: RIB,
              instanceInits: HEAD,
              constructor: CTOR option,
-             classType: TYPE,  (* RecordType *)
-             instanceType: TYPE }
+             classType: TYPE }
 
      and IFACE =
          Iface of
@@ -177,8 +176,7 @@ datatype PRAGMA =
              typeParams: IDENTIFIER list,
              nonnullable: bool,
              extends: TYPE list,
-             instanceRib: RIB,
-             instanceType: TYPE }
+             instanceRib: RIB }
 
      and CTOR =
          Ctor of 
@@ -245,7 +243,8 @@ datatype TYPE =
        | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  
-       | InstanceType of INSTANCE_TYPE
+       | ClassType of CLS
+       | InterfaceType of IFACE
 
 *)
 
@@ -260,22 +259,12 @@ datatype TYPE =
        | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
-       | InstanceType of INSTANCE_TYPE        (* *)
-(* Following will be removed during defn phase *)
+       | ClassType of CLS
+       | InterfaceType of IFACE
 
+(* Following will be removed during defn phase *)
        | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
        | TypeIndexReferenceType of (TYPE * int)
-
-  (*     | TypeVarFixtureRef of NONCE          moved into TypeName above *)
-(*       | AppType of  { base: TYPE, args: TYPE list }   (* TODO: make pair *)
-
-     and FIELD_TYPE =
-           { name: NAME_EXPRESSION,
-             ty: TYPE }
-
-
-*)
-
 
 (* SPEC
 
@@ -506,7 +495,7 @@ withtype
            thisType   : TYPE,
            params  : TYPE list,
            minArgs : int,          
-           hasRest : bool,          (* TODO : TYPE option *)
+           hasRest : bool,          
            result  : TYPE option    (* NONE indicates return type is void *)
          }
 

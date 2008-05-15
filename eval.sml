@@ -289,7 +289,11 @@ fun getGlobalScope (regs:Mach.REGS)
        Mach.makeGlobalScopeWith global
     end 
 
-
+fun getClassScope (regs:Mach.REGS)
+                  (classObj:Mach.OBJ)
+    : Mach.SCOPE = 
+    extendScope (getGlobalScope regs) classObj Mach.InstanceScope
+        
 (*
  * A small number of functions do not fully evaluate to Mach.VALUE
  * values, but instead to REFs; these are temporary artifacts of
@@ -340,7 +344,7 @@ fun allocRib (regs:Mach.REGS)
         val methodScope = extendScope scope obj Mach.ActivationScope                 
         val attrs0 = { removable = false,
                        enumerable = false,
-                       writable = false,
+                       writable = Mach.ReadOnly,
                        fixed = true }
         fun allocFixture (n, f) =
             case n of
@@ -398,7 +402,9 @@ fun allocRib (regs:Mach.REGS)
                                         state = p,
                                         attrs = { removable = false,
                                                   enumerable = false,
-                                                  writable = writable,
+                                                  writable = if writable 
+                                                             then Mach.Writable
+                                                             else Mach.WriteOnce,
                                                   fixed = true } }
                         end
                         
@@ -413,7 +419,9 @@ fun allocRib (regs:Mach.REGS)
 						                        else Mach.UninitProp,
                                         attrs = { removable = false,
                                                   enumerable = false, 
-                                                  writable = writable,
+                                                  writable = if writable 
+                                                             then Mach.Writable
+                                                             else Mach.WriteOnce,
                                                   fixed = true } }
                         end
 
@@ -432,7 +440,7 @@ fun allocRib (regs:Mach.REGS)
                                                                       setter = setFn },
                                         attrs = { removable = false,
                                                   enumerable = false, 
-                                                  writable = false,
+                                                  writable = Mach.ReadOnly,
                                                   fixed = true } }
                         end
                         
@@ -440,7 +448,7 @@ fun allocRib (regs:Mach.REGS)
                         let
                             val Ast.Cls {classRib, ...} = cls
                             val _ = traceConstruct ["allocating class object for class ", fmtName pn]
-                            val classObj = needObj regs (newClass regs scope cls)
+                            val classObj = needObj regs (newClass regs cls)
                             val _ = traceConstruct ["allocating class rib on class ", fmtName pn]
                             (* FIXME: 'this' binding in class objects might be wrong here. *)
                             val _ = allocObjRib regs classObj NONE classRib
@@ -466,7 +474,7 @@ fun allocRib (regs:Mach.REGS)
                       | Ast.InterfaceFixture iface =>  (* FIXME *)
                         let
                             val _ = traceConstruct ["allocating interface object for interface ", fmtName pn]
-                            val ifaceObj = needObj regs (newInterface regs scope iface)
+                            val ifaceObj = needObj regs (newInterface regs iface)
                         in
                             allocProp "interface"
                                       { ty = Name.typename Name.intrinsic_Type,
@@ -601,6 +609,10 @@ and valAllocState (regs:Mach.REGS)
 			  | firstSimpleType ((Ast.AnyType)::xs) = Mach.ValProp (Mach.Undef)
 			  | firstSimpleType ((Ast.NullType)::xs) = Mach.ValProp (Mach.Null)
 			  | firstSimpleType ((Ast.UndefinedType)::xs) = Mach.ValProp (Mach.Undef)
+			  | firstSimpleType ((Ast.ClassType (Ast.Cls {nonnullable=false, ...}))::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.InterfaceType (Ast.Iface {nonnullable=false, ...}))::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.AppType (Ast.ClassType (Ast.Cls {nonnullable=false, ...}), _))::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.AppType (Ast.InterfaceType (Ast.Iface {nonnullable=false, ...}), _))::xs) = Mach.ValProp (Mach.Null)
 			  | firstSimpleType (x::xs) = firstSimpleType xs
 		in
 			firstSimpleType ts
@@ -617,12 +629,9 @@ and valAllocState (regs:Mach.REGS)
         
       | Ast.AppType (base, _) =>
         valAllocState regs base
-(*        
-      | Ast.NonNullType { expr, nullable=true } =>
-        Mach.ValProp (Mach.Null)
- *)       
+
       | Ast.NonNullType expr =>
-        valAllocState regs expr
+        Mach.UninitProp
         
       | Ast.TypeName ident =>
         error regs ["allocating fixture with unresolved type name: ", LogErr.ty ty]
@@ -633,25 +642,28 @@ and valAllocState (regs:Mach.REGS)
       | Ast.TypeNameReferenceType _ =>
         error regs ["allocating fixture of unresolved field type reference"]
         
-      | Ast.InstanceType n =>
+      | Ast.ClassType (Ast.Cls {name, nonnullable, ...}) =>
         (* It is possible that we're booting and the class n doesn't even exist yet. *)
         if (not (Mach.isBooting regs)) orelse 
-           Mach.isClass (getValue regs (#global regs) (#name n))
+           Mach.isClass (getValue regs (#global regs) name)
         then			
             let 
-                val clsid = getObjId (needObj regs (getValue regs (#global regs) (#name n)))
+                val clsid = getObjId (needObj regs (getValue regs (#global regs) name))
             in
                 case allocSpecial regs clsid of
                     SOME v => Mach.ValProp v
-                  | NONE => Mach.UninitProp
+                  | NONE => if nonnullable 
+                            then Mach.UninitProp
+                            else Mach.ValProp (Mach.Null)
             end
         else
-            Mach.UninitProp
-            
-(*
-      | Ast.LamType _ => 
+            if nonnullable
+            then Mach.UninitProp
+            else Mach.ValProp (Mach.Null)
+
+      | Ast.InterfaceType (Ast.Iface {name, ...}) => 
         Mach.UninitProp
-*)
+
 
 and allocSpecial (regs:Mach.REGS)
                  (id:Mach.OBJ_IDENTIFIER)
@@ -893,7 +905,7 @@ and checkAndConvert (regs:Mach.REGS)
                     case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
                         NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
-                val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
+                val (classTy:Ast.TYPE) = AstQuery.needClassType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
                 val converted = evalCallByRef (withThis regs classObj) (classObj, Name.meta_invoke) [v]
@@ -923,7 +935,7 @@ and isDynamic (regs:Mach.REGS)
           | typeIsDynamic (Ast.RecordType _) = true
       (*    | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body *)
           | typeIsDynamic (Ast.NonNullType t) = typeIsDynamic t
-          | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
+          | typeIsDynamic (Ast.ClassType (Ast.Cls { dynamic, ... })) = dynamic
           | typeIsDynamic _ = false
     in
         typeIsDynamic (typeOfVal regs (Mach.Object obj))
@@ -967,26 +979,40 @@ and setValueOrVirtual (regs:Mach.REGS)
             SOME existingProp =>
             let
                 val { state, attrs, ty, ... } = existingProp
-                val { writable, ... } = attrs
-                fun newProp _ = { state = Mach.ValProp (checkAndConvert regs v ty),
-                                  ty = ty,
-                                  attrs = attrs }
-                fun write _ =
+                val { removable, enumerable, fixed, writable } = attrs
+                fun newProp _ = 
+                    { state = Mach.ValProp (checkAndConvert regs v ty),
+                      ty = ty,
+                      attrs = { removable = removable,
+                                enumerable = enumerable,
+                                fixed = fixed,
+                                writable = case writable of 
+                                               (* If we got here we were actually upgrading an uninitprop. *)
+                                               Mach.ReadOnly => Mach.ReadOnly
+                                             | Mach.WriteOnce => Mach.ReadOnly
+                                             | Mach.Writable => Mach.Writable } }
+                fun write _ = 
                     let
-                        val np = newProp()
+                        val np = newProp ()
                     in
                         Mach.delProp props name;
                         Mach.addProp props name np
                     end
+
+                fun maybeWrite throwIfReadOnly =
+                    case writable of 
+                        Mach.ReadOnly => if throwIfReadOnly
+                                         then throwExn (newTypeErr regs ["setValue on non-writable property: ",
+                                                                         LogErr.name name])
+                                         else ()
+                      | Mach.WriteOnce => write ()
+                      | Mach.Writable => write ()
             in
                 case state of
                     
-                    Mach.MethodProp _ =>
-                    if writable
-                    then write ()  (* ES3 style mutable fun props are readOnly *)
-                    else throwExn (newTypeErr regs ["setValue on non-writable method property: ",
-                                                    LogErr.name name])
-
+                  (* FIXME: change UninitProp state to another state in the Writability datatype. *)
+                    Mach.UninitProp => write ()
+                  | Mach.MethodProp _ => maybeWrite true
                   | Mach.VirtualValProp { setter, ... } =>
                     if doVirtual
                     then 
@@ -995,13 +1021,10 @@ and setValueOrVirtual (regs:Mach.REGS)
                                                                LogErr.name name])
                           | SOME s => (invokeFuncClosure (withThis regs obj) s NONE [v]; ())
                     else 
-                        write ()
+                        maybeWrite true
 
-                  | Mach.ValProp _ =>
-                    if writable
-                    then write ()
-                    else ()  (* ignore it *)
-                         
+                  (* FIXME: predicate throw/ignore on the presence of runtime strict-mode flag. *)
+                  | Mach.ValProp _ => maybeWrite false                  
                   | _ => badPropAccess regs "setValue" name state
             end
           | NONE =>
@@ -1012,7 +1035,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                                      ty = Ast.AnyType,
                                      attrs = { removable = true,
                                                enumerable = true,
-                                               writable = true,
+                                               writable = Mach.Writable,
                                                fixed = false } }
                     in
                         if isDynamic regs obj
@@ -1051,73 +1074,12 @@ and setValue (regs:Mach.REGS)
     : unit =
     setValueOrVirtual regs base name v true
 
-
-(* A "defValue" call occurs when assigning a property definition's
- * initial value, as specified by the user. All other assignments
- * to a property go through "setValue". *)
-
 and defValue (regs:Mach.REGS)
              (base:Mach.OBJ)
              (name:Ast.NAME)
              (v:Mach.VALUE)
     : unit =
-    case base of
-        Mach.Obj { props, ... } =>
-        if not (Mach.hasProp props name)
-        then error regs ["defValue on missing property: ", LogErr.name name]
-        else
-            (*
-             * defProp is similar to setProp, but follows different rules:
-             *
-             *   - No adding props, only overwriting allocated ones
-             *   - Permitted to write to uninitialized props
-             *   - Permitted to write to non-writable (const) props
-             *)
-            let
-                val existingProp = Mach.getProp props name
-                val ty = (#ty existingProp)
-                val newProp = { state = Mach.ValProp (checkAndConvert regs v ty),
-                                ty = (#ty existingProp),
-                                attrs = (#attrs existingProp) }
-                fun writeProp _ =
-                    (Mach.delProp props name;
-                     Mach.addProp props name newProp)
-            in
-                case (#state existingProp) of
-                    Mach.TypeVarProp =>
-                    error regs ["defValue on type variable property: ",
-                                LogErr.name name]
-
-                  | Mach.TypeProp =>
-                    error regs ["defValue on type property: ",
-                                LogErr.name name]
-
-                  | Mach.NamespaceProp _ =>
-                    error regs ["defValue on namespace property: ",
-                                LogErr.name name]
-
-                  | Mach.NativeFunctionProp _ =>
-                    error regs ["defValue on native function property: ",
-                                LogErr.name name]
-
-                  | Mach.MethodProp _ =>
-                    error regs ["defValue on method property: ",
-                                LogErr.name name]
-
-                  | Mach.ValListProp _ =>
-                    error regs ["defValue on value-list property: ",
-                                LogErr.name name]
-
-                  | Mach.VirtualValProp { setter = SOME s, ... } =>
-                    (invokeFuncClosure (withThis regs base) s NONE [v]; ())
-                    
-                  | Mach.VirtualValProp { setter = NONE, ... } =>
-                    error regs ["defValue on virtual property w/o setter: ",
-                                LogErr.name name]
-
-                  | Mach.UninitProp => writeProp ()
-                  | Mach.ValProp _ => writeProp ()
-            end
+    setValueOrVirtual regs base name v false
 
 and instantiateGlobalClass (regs:Mach.REGS)
                            (n:Ast.NAME)
@@ -1230,7 +1192,7 @@ and newPrimitive (regs:Mach.REGS)
 	: Mach.VALUE =
 	let
 		val args = [Mach.Object (Mach.newObject (Mach.PrimitiveTag prim) Mach.Null)]
-		val (class, closure) = getClassObjectAndClosure regs getter
+		val (class, closure) = getClassObjectAndClass regs getter
 	in
 		constructClassInstance regs class closure args
 	end
@@ -1316,35 +1278,15 @@ and newName (regs:Mach.REGS)
             Mach.Object (Mach.updateNmCache regs (n, needObj regs v))
         end
 
-and newClsClosure (env:Mach.SCOPE)
-                  (cls:Ast.CLS)
-    : Mach.CLS_CLOSURE =
-    { cls = cls, env = env }
-    
 and newClass (regs:Mach.REGS)
-             (e:Mach.SCOPE)
-             (cls:Ast.CLS)
+             (class:Ast.CLS)
     : Mach.VALUE =
-    let
-        val closure = newClsClosure e cls
-    in
-	    newPrimitive regs (Mach.Class closure) Mach.getClassClassSlot 
-    end
-
-and newIfaceClosure (env:Mach.SCOPE)
-                    (iface:Ast.IFACE)
-    : Mach.IFACE_CLOSURE =
-    { iface = iface, env = env }
+	newPrimitive regs (Mach.Class class) Mach.getClassClassSlot 
 
 and newInterface (regs:Mach.REGS)
-                 (e:Mach.SCOPE)
                  (iface:Ast.IFACE)
     : Mach.VALUE =
-    let
-        val closure = newIfaceClosure e iface
-    in
-		newPrimitive regs (Mach.Interface closure) Mach.getInterfaceClassSlot
-    end
+	newPrimitive regs (Mach.Interface iface) Mach.getInterfaceClassSlot
 
 and newFunClosure (e:Mach.SCOPE)
                   (f:Ast.FUNC)
@@ -1352,32 +1294,32 @@ and newFunClosure (e:Mach.SCOPE)
     : Mach.FUN_CLOSURE =
     { func = f, this = this, env = e }
 
-and getClassObjectAndClosure regs getter = 
+and getClassObjectAndClass regs getter = 
     let
         val classObj = case !(getter regs) of 
                            NONE => error regs ["midding special class"]
                          | SOME c => c
-        val closure = Mach.needClass (Mach.Object classObj)
+        val class = Mach.needClass (Mach.Object classObj)
     in
-        (classObj, closure)
+        (classObj, class)
     end
 
-and getFunctionClassObjectAndClosure (regs:Mach.REGS) 
-    : (Mach.OBJ * Mach.CLS_CLOSURE) = 
+and getFunctionClassObjectAndClass (regs:Mach.REGS) 
+    : (Mach.OBJ * Ast.CLS) = 
     (* LDOTS *)
-    getClassObjectAndClosure regs Mach.getFunctionClassSlot
+    getClassObjectAndClass regs Mach.getFunctionClassSlot
 
-and getObjectClassObjectAndClosure (regs:Mach.REGS) 
-    : (Mach.OBJ * Mach.CLS_CLOSURE) = 
+and getObjectClassObjectAndClass (regs:Mach.REGS) 
+    : (Mach.OBJ * Ast.CLS) = 
     (* LDOTS *)
-    getClassObjectAndClosure regs Mach.getObjectClassSlot
+    getClassObjectAndClass regs Mach.getObjectClassSlot
 
 
 and newFunctionFromClosure (regs:Mach.REGS)
                            (closure:Mach.FUN_CLOSURE) =
     let
-        val (funClass, funClassClosure) = getFunctionClassObjectAndClosure regs
-        val funProto = getPrototype regs funClass
+        val (funClassObj, funClass) = getFunctionClassObjectAndClass regs
+        val funProto = getPrototype regs funClassObj
                 
         (* This is a little weird: we're construction function f, but f.prototype needs to 
          * point to an instance of public::Function -- in order to behave "functiony" in the
@@ -1392,12 +1334,12 @@ and newFunctionFromClosure (regs:Mach.REGS)
          *)
 
 	    val originalObjectProto = getOriginalObjectPrototype regs
-        val newProtoObj = constructStandard regs funClass funClassClosure originalObjectProto []
+        val newProtoObj = constructStandard regs funClassObj funClass originalObjectProto []
         val newProto = Mach.Object newProtoObj
         val _ = traceConstruct ["built new prototype chained to Object.prototype"]
 
         val tag = Mach.PrimitiveTag (Mach.Function closure)
-        val obj = constructStandardWithTag regs funClass funClassClosure tag funProto []                  
+        val obj = constructStandardWithTag regs funClassObj funClass tag funProto []                  
         val Mach.Obj { props=newProtoProps, ... } = newProtoObj
     in
         setPrototype regs obj newProto;
@@ -1417,10 +1359,10 @@ and newFunctionFromFunc (regs:Mach.REGS)
 and newNativeFunction (regs:Mach.REGS)
                       (f:Mach.NATIVE_FUNCTION) =
     let 
-        val (classObj, classClosure) = getFunctionClassObjectAndClosure regs
+        val (classObj, class) = getFunctionClassObjectAndClass regs
         val tag = Mach.PrimitiveTag (Mach.NativeFunction f)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj classClosure tag proto [] 
+        val obj = constructStandardWithTag regs classObj class tag proto [] 
     in
 	    Mach.Object obj
     end
@@ -1467,12 +1409,12 @@ and newGenerator (regs:Mach.REGS)
         val classObj = case !(Mach.getGeneratorClassSlot regs) of 
                            NONE => error regs ["cannot find helper::GeneratorImpl"]
                          | SOME ob => ob
-        val classClosure = Mach.needClass (Mach.Object classObj)
+        val class = Mach.needClass (Mach.Object classObj)
         val objRef = ref (Mach.newObjectNoTag ())
         val gen = newGen (fn () => execBody (!objRef))
         val tag = Mach.PrimitiveTag (Mach.Generator gen)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj classClosure tag proto [] 
+        val obj = constructStandardWithTag regs classObj class tag proto [] 
     in
         objRef := obj;
         Mach.Object obj
@@ -2344,45 +2286,31 @@ and evalSuperCall (regs:Mach.REGS)
     let                                         
         val Mach.Obj { tag, ... } = object
         val thisType = case tag of 
-                           Mach.InstanceTag thisType => thisType
-                         | _ => error regs ["missing InstanceType tag during super call"]
+                           Mach.InstanceTag c  => Ast.ClassType c
+                         | _ => error regs ["missing ClassType tag during super call"]
                                 
-        (* 
-         *
-         * For this to work properly, the supertype list has to be
-         * sorted such that subtypes precede the supertypes. We
-         * are synthesizing a special ribs environment for
-         * multiname lookup to find the appropriate ancestor in.
-         *
-         * FIXME: this is pretty ugly, it would be nicer to
-         * resolve all this during definition.
-         *)
-            
-        fun extractInstanceType (Ast.InstanceType ity) = SOME ity
-          | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
-                                                 Ast.NullType ]) = SOME ity
-          | extractInstanceType t = (error regs ["unexpected supertype ",
-                                                 "in super() expression:", 
-                                                 LogErr.ty t]; 
-                                     NONE)
-                                    
-        fun getClassObjOf ity = 
-            if Mach.isClass (getValue regs (#global regs) (#name ity))
-            then SOME (instanceClass regs ity)
-            else NONE
-                 
+        fun getSuperClassObjs t = 
+            case t of 
+                (Ast.ClassType (Ast.Cls {extends, ...})) =>
+                (instanceClass regs t) :: 
+                (case extends of 
+                     NONE => []
+                   | SOME t' => getSuperClassObjs t')
+              | _ => error regs ["non-class type in extends clause during super call"]
+
         fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
 
-        val superClassObjs = List.mapPartial 
-                                 getClassObjOf
-                                 (List.mapPartial extractInstanceType 
-                                                  (#superTypes thisType))
-                             
+        val superClassObjs = getSuperClassObjs thisType 
+
         val superRibs = map (instanceRibOf 
-                             o (#cls) 
                              o Mach.needClass 
                              o (Mach.Object))
-                            superClassObjs
+                        superClassObjs
+                            
+                        
+        val superRibs = case superRibs of 
+                            [] => []
+                          | x::xs => xs
                             
         val (n, superClassInstanceRib, func) =
             case Fixture.resolveNameExpr superRibs nameExpr of 
@@ -2392,7 +2320,7 @@ and evalSuperCall (regs:Mach.REGS)
           
 
         val superClassObj = List.nth (superClassObjs,n)
-        val superClassEnv = (#env (Mach.needClass (Mach.Object superClassObj)))
+        val superClassEnv = getClassScope regs superClassObj
         val env = extendScope superClassEnv (#this regs) Mach.InstanceScope
         val funcClosure = { func = func, env = env, this = SOME (#this regs) }
 
@@ -2484,38 +2412,26 @@ and applyTypesToClass (regs:Mach.REGS)
                       (typeArgs:Ast.TYPE list)
     : Mach.VALUE = 
     let
-        val clsClosure = Mach.needClass classVal
-        val { cls, env } = clsClosure
-        val Ast.Cls { instanceType, ... } = cls
+        val cls = Mach.needClass classVal
+        val Ast.Cls c = cls
+        val newCls = Ast.Cls { name = (#name c), 
+                               privateNS = (#privateNS c),
+                               protectedNS = (#protectedNS c),
+                               parentProtectedNSs = (#parentProtectedNSs c),
+                               typeParams = (#typeParams c),
+                               nonnullable = (#nonnullable c),
+                               dynamic = (#dynamic c),
+                               (* FIXME: apply to base types when logic for this is present in defn. *)
+                               extends = (#extends c),
+                               implements = (#implements c),
+                               classRib = (#classRib c),
+                               instanceRib = (#instanceRib c),
+                               instanceInits = (#instanceInits c),
+                               constructor = (#constructor c),
+                               classType = (#classType c)  }
+        val baseClassObj = needObj regs classVal
     in
-        if Type.isGroundType instanceType (* CF: ?? *)
-        then classVal
-        else 
-            let
-                fun applyArgs t = applyTypes regs t typeArgs
-                val Ast.Cls c = cls
-                val newCls = Ast.Cls { name = (#name c), 
-                                       privateNS = (#privateNS c),
-                                       protectedNS = (#protectedNS c),
-                                       parentProtectedNSs = (#parentProtectedNSs c),
-                                       typeParams = (#typeParams c),
-                                       nonnullable = (#nonnullable c),
-                                       dynamic = (#dynamic c),
-                                       (* FIXME: apply to base types when logic for this is present in defn. *)
-                                       extends = (#extends c), (* Option.map applyArgs (#extends c), *)
-                                       implements = (#implements c), (* map applyArgs (#implements c), *)
-                                       classRib = (#classRib c),
-                                       instanceRib = (#instanceRib c),
-                                       instanceInits = (#instanceInits c),
-                                       constructor = (#constructor c),
-                                       classType = (#classType c),
-                                       instanceType = applyArgs (#instanceType c) }
-                val baseClassObj = needObj regs classVal
-		        val newEnv = bindTypes regs (#typeParams c) typeArgs env
-		        val newClassVal = newClass regs newEnv newCls
-            in
-		        newClassVal
-            end
+        newClass regs newCls
     end
 
 
@@ -2524,26 +2440,15 @@ and applyTypesToInterface (regs:Mach.REGS)
                           (typeArgs:Ast.TYPE list)
     : Mach.VALUE = 
     let
-        val ifaceClosure = Mach.needInterface interfaceVal
-        val { iface, env } = ifaceClosure
-        val Ast.Iface { instanceType, ... } = iface
+        val iface = Mach.needInterface interfaceVal
+        val Ast.Iface i = iface
+        val newIface = Ast.Iface { name = (#name i), 
+                                   typeParams = (#typeParams i),
+                                   nonnullable = (#nonnullable i),
+                                   extends = (#extends i),
+                                   instanceRib = (#instanceRib i) }
     in
-        if Type.isGroundType instanceType 
-        then interfaceVal
-        else 
-            let
-                fun applyArgs t = applyTypes regs t typeArgs
-                val Ast.Iface i = iface
-                val newIface = Ast.Iface { name = (#name i), 
-                                           typeParams = (#typeParams i),
-                                           nonnullable = (#nonnullable i),
-                                           extends = map applyArgs (#extends i),
-                                           instanceRib = (#instanceRib i),
-                                           instanceType = applyArgs (#instanceType i) }
-		val newEnv = bindTypes regs (#typeParams i) typeArgs env
-            in
-		newInterface regs newEnv newIface
-            end
+		newInterface regs newIface
     end
 
 
@@ -2581,34 +2486,38 @@ and applyTypesToFunction (regs:Mach.REGS)
     end
 
 
-and instanceTypeRepresentative (regs:Mach.REGS)
-                               (ity:Ast.INSTANCE_TYPE)
-                               (applier:Mach.REGS 
-                                        -> Mach.VALUE 
-                                        -> Ast.TYPE list 
-                                        -> Mach.VALUE)
+and instanceClass (regs:Mach.REGS)
+                  (ity:Ast.TYPE)
     : Mach.OBJ = 
-    let
-        val { name, typeArgs, ... } = ity
-        val v = getValue regs (#global regs) name
-        val v = case typeArgs of 
-                    [] => v
-                  | _ => applier regs v typeArgs
+    let 
+        fun fetch n = getValue regs (#global regs) n
     in
-        needObj regs v
+        case ity of 
+            Ast.ClassType (Ast.Cls { name, ... }) => 
+            needObj regs (fetch name)
+            
+          | Ast.AppType (Ast.ClassType (Ast.Cls {name, ... }), types) => 
+            needObj regs (applyTypesToClass regs (fetch name) types)
+            
+          | _ => error regs ["unexpected type in instanceClass"]
     end
 
 
-and instanceClass (regs:Mach.REGS)
-                  (ity:Ast.INSTANCE_TYPE)
-    : Mach.OBJ = 
-    instanceTypeRepresentative regs ity applyTypesToClass
-
-
 and instanceInterface (regs:Mach.REGS)
-                      (ity:Ast.INSTANCE_TYPE)
+                      (ity:Ast.TYPE)
     : Mach.OBJ = 
-    instanceTypeRepresentative regs ity applyTypesToClass
+    let 
+        fun fetch n = getValue regs (#global regs) n
+    in
+        case ity of 
+            Ast.InterfaceType (Ast.Iface { name, ... }) => 
+            needObj regs (fetch name)
+            
+          | Ast.AppType (Ast.InterfaceType (Ast.Iface {name, ... }), types) => 
+            needObj regs (applyTypesToInterface regs (fetch name) types)
+            
+          | _ => error regs ["unexpected type in instanceInterface"]
+    end
 
 (* SPEC
 
@@ -2680,43 +2589,32 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
     : Mach.VALUE =
     let
         val vals = evalExprsAndSpliceSpreads regs exprs
-        val (newTag, newClassVal, tyExprs) = 
+        val (newTag, newClassVal) = 
             case Option.map (evalTy regs) ty of 
                 NONE => 
                 ((Mach.ArrayTag [Ast.AnyType]), 
-                 getValue regs (#global regs) Name.public_Array, [])
+                 getValue regs (#global regs) Name.public_Array)
               | SOME (Ast.ArrayType (tys,tyo)) =>  (* FIXME: use tyo *)
                 (Mach.ArrayTag tys,
-                 getValue regs (#global regs) Name.public_Array, tys)
-              | SOME (Ast.InstanceType ity) => 
-                (Mach.InstanceTag ity,
-                 getValue regs (#global regs) (#name ity), [])
-              | SOME ty => throwExn (newTypeErr regs ["initialising unsupported type from literal array: ", 
-                                                      LogErr.ty ty])
+                 getValue regs (#global regs) Name.public_Array)
+              | SOME ty => 
+                let
+                    val cv = Mach.Object (instanceClass regs ty)
+                in
+                    (Mach.InstanceTag (Mach.needClass cv), cv)
+                end
 
-        val newClassClosure = Mach.needClass newClassVal
+        val newClass = Mach.needClass newClassVal
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj 
-        val obj = constructStandardWithTag regs newClassObj newClassClosure newTag proto [] 
+        val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
         val (Mach.Obj {props, ...}) = obj
         fun putVal n [] = n
           | putVal n (v::vs) =
             let
                 val name = Name.public (Ustring.fromInt n)
-                (* FIXME: this is probably incorrect wrt. Array typing rules. *)
-                val ty = if n < (length tyExprs)
-                         then List.nth (tyExprs, n)
-                         else (if (length tyExprs) > 0
-                               then List.last tyExprs
-                               else Ast.AnyType)
-                val prop = { ty = ty,
-                             state = Mach.ValProp v,
-                             attrs = { removable = true,
-                                       enumerable = true,
-                                       writable = true,
-                                       fixed = false } }
             in
-                Mach.addProp props name prop;
+                setValue regs obj name v;
                 putVal (n+1) vs
             end
         val numProps = putVal 0 vals
@@ -2751,16 +2649,17 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 NONE => ((Mach.ObjectTag []), getObjClassVal(), [])
               | SOME (Ast.RecordType fields) => 
                 (Mach.ObjectTag fields, getObjClassVal(), fields)
-              | SOME (Ast.InstanceType ity) => 
-                (Mach.InstanceTag ity,
-                 getValue regs (#global regs) (#name ity), 
-                 [])
-              | SOME ty => throwExn (newTypeErr regs ["initialising unsupported type from literal object: ", 
-                                                      LogErr.ty ty])
-        val newClassClosure = Mach.needClass newClassVal
+              | SOME ty => 
+                let 
+                    val cv = Mach.Object (instanceClass regs ty)
+                in
+                    (Mach.InstanceTag (Mach.needClass cv), cv, [])
+                end
+
+        val newClass = Mach.needClass newClassVal
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj
-        val obj = constructStandardWithTag regs newClassObj newClassClosure newTag proto [] 
+        val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
         val (Mach.Obj {props, ...}) = obj
                                       
         fun getPropState (v:Mach.VALUE) : Mach.PROPERTY_STATE =
@@ -2805,16 +2704,20 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
 
         fun processField {kind, name, init} =
             let
-                val const = case kind of
-                                Ast.Const => true
-                              | Ast.LetConst => true
-                              | _ => false
+                val writability = case kind of
+                                      Ast.Const => Mach.WriteOnce
+                                    | Ast.LetConst => Mach.WriteOnce
+                                    | _ => Mach.Writable
+                val removable = case kind of 
+                                    Ast.Const => false
+                                  | Ast.LetConst => false
+                                  | _ => true
                 val (n:Ast.NAME) = evalNameExpr regs name
                 val v = evalExpr regs init
                 val ty = searchFieldTypes n tyExprs
-                val attrs = { removable = not const,
+                val attrs = { removable = removable,
                               enumerable = true,
-                              writable = not const,
+                              writable = writability,
                               fixed = false }
                 val state = getPropState v
                 val existingProp = Mach.findProp props n
@@ -2898,8 +2801,8 @@ and constructObjectViaFunction (regs:Mach.REGS)
 			            Mach.Object ob => ctorProto
 		              | _ => getOriginalObjectPrototype regs
 
-        val (objClass, objClassClosure) = getObjectClassObjectAndClosure regs
-	    val newObject = constructStandard regs objClass objClassClosure proto []
+        val (objClassObj, objClass) = getObjectClassObjectAndClass regs
+	    val newObject = constructStandard regs objClassObj objClass proto []
 	    val constructorRegs = withThis regs newObject
 	    val constructorResult = invokeFuncClosure constructorRegs ctor (SOME ctorObj) args
     in
@@ -3229,7 +3132,7 @@ and evalTypeExpr (regs:Mach.REGS)
     : Mach.VALUE =
     case te of
         Ast.AnyType => Mach.Null (* FIXME *)
-     (*  | Ast.VoidType => Mach.Null (* FIXME *) *)
+      (*  | Ast.VoidType => Mach.Null (* FIXME *) *)
       | Ast.NullType => Mach.Null (* FIXME *)
       | Ast.UndefinedType => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
@@ -3238,7 +3141,8 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.RecordType ot => Mach.Null (* FIXME *)
       | Ast.NonNullType _ => Mach.Null (* FIXME *)
-      | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
+      | Ast.ClassType c => Mach.Null (* FIXME *)
+      | Ast.InterfaceType t => Mach.Null (* FIXME *)
       | _ => Mach.Null (* FIXME *)
 
 and wordToDouble (x:Word32.word) 
@@ -3261,7 +3165,8 @@ and numTypeOf (regs:Mach.REGS)
         val ty = typeOfVal regs v 
         fun sameItype t2 = 
             case (ty, t2) of
-                (Ast.InstanceType it1, Ast.InstanceType it2) => Mach.nameEq (#name it1) (#name it2)
+                (Ast.ClassType (Ast.Cls {name=name1, ...}), Ast.ClassType (Ast.Cls {name=name2, ...})) => 
+                Mach.nameEq name1 name2
               | _ => false
     in
         (* Don't use ~< here, it is willing to convert numeric types! *)
@@ -3600,35 +3505,31 @@ and typeOfTag (regs:Mach.REGS)
               (tag:Mach.TAG)
     : (Ast.TYPE) =
     let
-        fun primitiveInstanceType getter = 
+        fun primitiveClassType getter = 
             let
                 val cell = getter regs 
             in
                 case !cell of 
-                    SOME (Mach.Obj { tag = Mach.PrimitiveTag 
-                                               (Mach.Class 
-                                                    {cls=Ast.Cls { instanceType, 
-                                                                   ... }, 
-                                                     ...}), 
+                    SOME (Mach.Obj { tag = Mach.PrimitiveTag (Mach.Class c), 
                                      ...}) => 
-                    instanceType
+                    Ast.ClassType c
                   | _ => error regs ["error fetching primitive instance type"]
             end
     in
         case tag of
-            Mach.InstanceTag ity => Ast.InstanceType ity
+            Mach.InstanceTag ity => Ast.ClassType ity
           | Mach.ObjectTag tys => Ast.RecordType tys
           | Mach.ArrayTag tys => Ast.ArrayType (tys,NONE) (* FIXME *)
-          | Mach.PrimitiveTag (Mach.Boolean _) => primitiveInstanceType Mach.getBooleanClassSlot
-          | Mach.PrimitiveTag (Mach.Double _) => primitiveInstanceType Mach.getDoubleClassSlot
-          | Mach.PrimitiveTag (Mach.Decimal _) => primitiveInstanceType Mach.getDecimalClassSlot
-          | Mach.PrimitiveTag (Mach.String _) => primitiveInstanceType Mach.getStringClassSlot
-          | Mach.PrimitiveTag (Mach.Namespace _) => primitiveInstanceType Mach.getNamespaceClassSlot
-          | Mach.PrimitiveTag (Mach.Class _) => primitiveInstanceType Mach.getClassClassSlot
-          | Mach.PrimitiveTag (Mach.Interface _) => primitiveInstanceType Mach.getInterfaceClassSlot
-          | Mach.PrimitiveTag (Mach.Type _) => primitiveInstanceType Mach.getTypeInterfaceSlot
-          | Mach.PrimitiveTag (Mach.NativeFunction _) => primitiveInstanceType Mach.getFunctionClassSlot
-          | Mach.PrimitiveTag (Mach.Generator _) => primitiveInstanceType Mach.getGeneratorClassSlot
+          | Mach.PrimitiveTag (Mach.Boolean _) => primitiveClassType Mach.getBooleanClassSlot
+          | Mach.PrimitiveTag (Mach.Double _) => primitiveClassType Mach.getDoubleClassSlot
+          | Mach.PrimitiveTag (Mach.Decimal _) => primitiveClassType Mach.getDecimalClassSlot
+          | Mach.PrimitiveTag (Mach.String _) => primitiveClassType Mach.getStringClassSlot
+          | Mach.PrimitiveTag (Mach.Namespace _) => primitiveClassType Mach.getNamespaceClassSlot
+          | Mach.PrimitiveTag (Mach.Class _) => primitiveClassType Mach.getClassClassSlot
+          | Mach.PrimitiveTag (Mach.Interface _) => primitiveClassType Mach.getInterfaceClassSlot
+          | Mach.PrimitiveTag (Mach.Type _) => primitiveClassType Mach.getTypeInterfaceSlot
+          | Mach.PrimitiveTag (Mach.NativeFunction _) => primitiveClassType Mach.getFunctionClassSlot
+          | Mach.PrimitiveTag (Mach.Generator _) => primitiveClassType Mach.getGeneratorClassSlot
           | Mach.PrimitiveTag (Mach.Function {func=Ast.Func { ty, ...}, ...}) => ty
             
           | Mach.NoTag =>
@@ -4377,7 +4278,7 @@ and bindArgs (regs:Mach.REGS)
                                                  ty = Name.typename Name.public_Object,
                                                  attrs = { removable = false,
                                                            enumerable = false,
-                                                           writable = true,
+                                                           writable = Mach.Writable,
                                                            fixed = true } };
              bindArg 0 finalArgs)
 
@@ -4527,128 +4428,115 @@ and evalScopeInits (regs:Mach.REGS)
     end
 
 
-and initializeAndConstruct (classRegs:Mach.REGS)
-                           (classClosure:Mach.CLS_CLOSURE)
+and initializeAndConstruct (regs:Mach.REGS)
+                           (class:Ast.CLS)
                            (classObj:Mach.OBJ)
                            (args:Mach.VALUE list)
                            (instanceObj:Mach.OBJ)
     : unit =
     let
-        val { cls, env } = classClosure
-        val Ast.Cls { instanceType, ... } = cls
-        (* NB: leave this here, it faults if we have a non-ground type, which is the point. *)
-        val tyExpr = evalTy classRegs instanceType
-    in
-        let
-            fun idStr ob = Int.toString (getObjId ob)
-            val _ = traceConstruct ["initializeAndConstruct: this=#", (idStr (#this classRegs)),
-                                    ", constructee=#", (idStr instanceObj),
-                                    ", class=#", (idStr classObj)]
-            val _ = if getObjId (#this classRegs) = getObjId instanceObj
-                    then ()
-                    else error classRegs ["constructor running on non-this value"]
-            val Ast.Cls { name,
-                          extends,
-                          instanceInits,
-                          constructor,
-                          ... } = cls
-            fun initializeAndConstructSuper (superArgs:Mach.VALUE list) =
-                case extends of
-                    NONE =>
-                    (traceConstruct ["checking all properties initialized at root class ", fmtName name];
-                     checkAllPropertiesInitialized classRegs instanceObj)
-                  | SOME parentTy =>
-                    let
-                        val parentTy = evalTy classRegs parentTy
-                        val _ = traceConstruct ["initializing and constructing superclass ", 
-                                                Type.fmtType parentTy]
-                        val (superObj:Mach.OBJ) = instanceClass 
-                                         classRegs (AstQuery.needInstanceType parentTy)
-                        val (superClsClosure:Mach.CLS_CLOSURE) = 
-                                         Mach.needClass (Mach.Object superObj)
-                        val (superRegs:Mach.REGS) = 
-                            withThis (withScope classRegs (#env superClsClosure)) instanceObj
-                    in
-                        initializeAndConstruct
-                            superRegs superClsClosure superObj superArgs instanceObj
-                    end
-        in
-            traceConstruct ["evaluating instance initializers for ", fmtName name];
-            evalObjInits classRegs instanceObj instanceInits;
-            case constructor of
-                NONE => initializeAndConstructSuper []
-              | SOME (Ast.Ctor { settings, superArgs, func }) =>
+        fun idStr ob = Int.toString (getObjId ob)
+        val _ = traceConstruct ["initializeAndConstruct: this=#", (idStr (#this regs)),
+                                ", constructee=#", (idStr instanceObj),
+                                ", class=#", (idStr classObj)]
+        val _ = if getObjId (#this regs) = getObjId instanceObj
+                then ()
+                else error regs ["constructor running on non-this value"]
+        val Ast.Cls { name,
+                      extends,
+                      instanceInits,
+                      constructor,
+                      ... } = class
+        fun initializeAndConstructSuper (superArgs:Mach.VALUE list) =
+            case extends of
+                NONE =>
+                (traceConstruct ["checking all properties initialized at root class ", fmtName name];
+                 checkAllPropertiesInitialized regs instanceObj)
+              | SOME parentTy =>
                 let
-                    val _ = Mach.push classRegs ("ctor " ^ (Ustring.toAscii (#id name))) args
-                    val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
-                    val (varObj:Mach.OBJ) = Mach.newObjectNoTag ()
-                    val (varRegs:Mach.REGS) = extendScopeReg classRegs
-                                                             varObj
-                                                             Mach.ActivationScope
-                    val varScope = (#scope varRegs)
-                    val (instanceRegs:Mach.REGS) = extendScopeReg classRegs
-                                                                  instanceObj
-                                                                  Mach.InstanceScope
-                    val (ctorRegs:Mach.REGS) = extendScopeReg instanceRegs
-                                                              varObj
-                                                              Mach.ActivationScope
+                    val parentTy = evalTy regs parentTy
+                    val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
+                    val superObj = instanceClass regs (AstQuery.needClassType parentTy)
+                    val superClass = Mach.needClass (Mach.Object superObj)
+                    val superScope = getClassScope regs superObj
+                    val superRegs = withThis (withScope regs superScope) instanceObj
                 in
-                    traceConstruct ["allocating scope rib for constructor of ", fmtName name];
-                    allocScopeRib varRegs paramRib;
-                    traceConstruct ["binding constructor args of ", fmtName name];
-                    bindArgs classRegs varScope func args;
-                    traceConstruct ["evaluating inits of ", fmtName name,
-                                    " in scope #", Int.toString (getScopeId varScope)];
-                    evalScopeInits varRegs Ast.Local paramInits;
-                    traceConstruct ["evaluating settings"];
-                    evalObjInits varRegs instanceObj settings;
-                    traceConstruct ["initializing and constructing superclass of ", fmtName name];
-                    initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
-                    traceConstruct ["entering constructor for ", fmtName name];
-                    (case block of 
-                         NONE => Mach.Undef
-                       | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
-                                    handle ReturnException v => v));
-                    Mach.pop classRegs;
-                    ()
+                    initializeAndConstruct
+                        superRegs superClass superObj superArgs instanceObj
                 end
-        end
+    in
+        traceConstruct ["evaluating instance initializers for ", fmtName name];
+        evalObjInits regs instanceObj instanceInits;
+        case constructor of
+            NONE => initializeAndConstructSuper []
+          | SOME (Ast.Ctor { settings, superArgs, func }) =>
+            let
+                val _ = Mach.push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
+                val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
+                val (varObj:Mach.OBJ) = Mach.newObjectNoTag ()
+                val (varRegs:Mach.REGS) = extendScopeReg regs
+                                                         varObj
+                                                         Mach.ActivationScope
+                val varScope = (#scope varRegs)
+                val (instanceRegs:Mach.REGS) = extendScopeReg regs
+                                                              instanceObj
+                                                              Mach.InstanceScope
+                val (ctorRegs:Mach.REGS) = extendScopeReg instanceRegs
+                                                          varObj
+                                                          Mach.ActivationScope
+            in
+                traceConstruct ["allocating scope rib for constructor of ", fmtName name];
+                allocScopeRib varRegs paramRib;
+                traceConstruct ["binding constructor args of ", fmtName name];
+                bindArgs regs varScope func args;
+                traceConstruct ["evaluating inits of ", fmtName name,
+                                " in scope #", Int.toString (getScopeId varScope)];
+                evalScopeInits varRegs Ast.Local paramInits;
+                traceConstruct ["evaluating settings"];
+                evalObjInits varRegs instanceObj settings;
+                traceConstruct ["initializing and constructing superclass of ", fmtName name];
+                initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
+                traceConstruct ["entering constructor for ", fmtName name];
+                (case block of 
+                     NONE => Mach.Undef
+                   | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
+                                handle ReturnException v => v));
+                Mach.pop regs;
+                ()
+            end
     end
 
 and constructStandard (regs:Mach.REGS)
                       (classObj:Mach.OBJ)
-                      (classClosure:Mach.CLS_CLOSURE)
+                      (class:Ast.CLS)
                       (proto:Mach.VALUE)
                       (args:Mach.VALUE list)
     : Mach.OBJ =
     let
-        val {cls = Ast.Cls { instanceType, ...}, env, ...} = classClosure
-        val classRegs = withScope regs env
-        val ty = AstQuery.needInstanceType (evalTy classRegs instanceType)
-        val (tag:Mach.TAG) = Mach.InstanceTag ty
+        val regs = withScope regs (getClassScope regs classObj)
+        val tag = Mach.InstanceTag class
     in
-        constructStandardWithTag classRegs classObj classClosure tag proto args 
+        constructStandardWithTag regs classObj class tag proto args 
     end
 
 and constructStandardWithTag (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
-                             (classClosure:Mach.CLS_CLOSURE)
+                             (class:Ast.CLS)
                              (tag:Mach.TAG)
                              (proto:Mach.VALUE)
                              (args:Mach.VALUE list)
     : Mach.OBJ =
     let
-        val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
-        val (instanceObj:Mach.OBJ) = Mach.newObject tag proto
+        val Ast.Cls { name, instanceRib, ...} = class
+        val instanceObj = Mach.newObject tag proto
         (* FIXME: might have 'this' binding wrong in class scope here. *)
-        val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
-        val classRegs = withThis (withScope regs classScope) instanceObj
+        val classScope = getClassScope regs classObj
+        val regs = withThis (withScope regs classScope) instanceObj
     in
-        traceConstruct ["allocating ", Int.toString (length instanceRib),
-                        " instance rib for new ", fmtName name];
-        allocObjRib classRegs instanceObj (SOME instanceObj) instanceRib;
+        traceConstruct ["allocating ", Int.toString (length instanceRib), " instance rib for new ", fmtName name];
+        allocObjRib regs instanceObj (SOME instanceObj) instanceRib;
         traceConstruct ["entering most derived constructor for ", fmtName name];
-        initializeAndConstruct classRegs classClosure classObj args instanceObj;
+        initializeAndConstruct regs class classObj args instanceObj;
         traceConstruct ["finished constructing new ", fmtName name];
         instanceObj
     end
@@ -4689,7 +4577,7 @@ and parseFunctionFromArgs (regs:Mach.REGS)
 
 and specialFunctionConstructor (regs:Mach.REGS)
                                (classObj:Mach.OBJ)
-                               (classClosure:Mach.CLS_CLOSURE)
+                               (class:Ast.CLS)
                                (args:Mach.VALUE list)
     : Mach.OBJ =
     let
@@ -4709,12 +4597,12 @@ and specialFunctionConstructor (regs:Mach.REGS)
 
 and specialArrayConstructor (regs:Mach.REGS)
                             (classObj:Mach.OBJ)
-                            (classClosure:Mach.CLS_CLOSURE)
+                            (class:Ast.CLS)
                             (args:Mach.VALUE list) :
     Mach.OBJ =
     let
         val proto = getPrototype regs classObj
-        val instanceObj = constructStandard regs classObj classClosure proto args
+        val instanceObj = constructStandard regs classObj class proto args
         val Mach.Obj { props, ... } = instanceObj
         fun bindVal _ [] = ()
           | bindVal n (x::xs) =
@@ -4726,7 +4614,7 @@ and specialArrayConstructor (regs:Mach.REGS)
           | [k] => let val idx = asArrayIndex k
                    in
                        if not (idx = 0wxFFFFFFFF) then
-                           setValueOrVirtual regs instanceObj Name.public_length k false
+                           setValue regs instanceObj Name.public_length k
                        else
                            bindVal 0 args
                    end
@@ -4740,7 +4628,7 @@ and specialArrayConstructor (regs:Mach.REGS)
 
 and specialPrimitiveCopyingConstructor (regs:Mach.REGS)
 				                       (classObj:Mach.OBJ)
-				                       (classClosure:Mach.CLS_CLOSURE)
+				                       (class:Ast.CLS)
 				                       (args:Mach.VALUE list)
     : Mach.OBJ =
     let
@@ -4750,19 +4638,19 @@ and specialPrimitiveCopyingConstructor (regs:Mach.REGS)
 	          | v :: _ => Mach.needPrimitive v
         val tag = (Mach.PrimitiveTag primitive)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj classClosure tag proto []
+        val obj = constructStandardWithTag regs classObj class tag proto []
     in
         obj
     end
 
 and specialObjectConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
-                             (classClosure:Mach.CLS_CLOSURE)
+                             (class:Ast.CLS)
                              (args:Mach.VALUE list)
     : Mach.OBJ =
     let
         val proto = getPrototype regs classObj
-        fun instantiate _ = constructStandard regs classObj classClosure proto args
+        fun instantiate _ = constructStandard regs classObj class proto args
     in
         case args of
             [] => instantiate ()
@@ -4776,14 +4664,14 @@ and specialObjectConstructor (regs:Mach.REGS)
                  * implements its lower half (primitive values) by calling into *here*,
                  * so here is where we do any cloning and primitive-copying.
                  *)
-                Mach.PrimitiveTag mt => constructStandardWithTag regs classObj classClosure (Mach.PrimitiveTag mt) proto args
+                Mach.PrimitiveTag mt => constructStandardWithTag regs classObj class (Mach.PrimitiveTag mt) proto args
               | _ => instantiate()
     end
 
 
 and specialBooleanConstructor (regs:Mach.REGS)
                               (classObj:Mach.OBJ)
-                              (classClosure:Mach.CLS_CLOSURE)
+                              (class:Ast.CLS)
                               (args:Mach.VALUE list)
     : Mach.OBJ =
     let
@@ -4801,7 +4689,7 @@ and specialBooleanConstructor (regs:Mach.REGS)
             let 
                 val tag = Mach.PrimitiveTag (Mach.Boolean b)
                 val proto = getPrototype regs classObj
-		        val obj = constructStandardWithTag regs classObj classClosure tag proto []
+		        val obj = constructStandardWithTag regs classObj class tag proto []
             in 
 		        cell := SOME obj;
 		        obj
@@ -4811,7 +4699,7 @@ and specialBooleanConstructor (regs:Mach.REGS)
 
 and specialDoubleConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
-                             (classClosure:Mach.CLS_CLOSURE)
+                             (class:Ast.CLS)
                              (args:Mach.VALUE list)
     : Mach.OBJ =
     let
@@ -4822,7 +4710,7 @@ and specialDoubleConstructor (regs:Mach.REGS)
 	    let
             val tag = Mach.PrimitiveTag (Mach.Double n)
             val proto = getPrototype regs classObj
-		    val obj = constructStandardWithTag regs classObj classClosure tag proto []
+		    val obj = constructStandardWithTag regs classObj class tag proto []
 	    in
 		    obj
 	    end
@@ -4857,7 +4745,7 @@ and specialDoubleConstructor (regs:Mach.REGS)
 
 and specialDecimalConstructor (regs:Mach.REGS)
                               (classObj:Mach.OBJ)
-                              (classClosure:Mach.CLS_CLOSURE)
+                              (class:Ast.CLS)
                               (args:Mach.VALUE list)
     : Mach.OBJ =
     let
@@ -4866,7 +4754,7 @@ and specialDecimalConstructor (regs:Mach.REGS)
 		          | v :: _ => toDecimal v
         val tag = Mach.PrimitiveTag (Mach.Decimal n)
         val proto = getPrototype regs classObj
-	    val obj = constructStandardWithTag regs classObj classClosure tag proto []
+	    val obj = constructStandardWithTag regs classObj class tag proto []
     in
 	    obj
     end
@@ -4874,7 +4762,7 @@ and specialDecimalConstructor (regs:Mach.REGS)
 
 and specialStringConstructor (regs:Mach.REGS)
                              (classObj:Mach.OBJ)
-                             (classClosure:Mach.CLS_CLOSURE)
+                             (class:Ast.CLS)
                              (args:Mach.VALUE list)
     : Mach.OBJ =
     let 
@@ -4888,7 +4776,7 @@ and specialStringConstructor (regs:Mach.REGS)
 	    let 
             val tag = Mach.PrimitiveTag (Mach.String s)
             val proto = getPrototype regs classObj
-		    val obj = constructStandardWithTag regs classObj classClosure tag proto [] 
+		    val obj = constructStandardWithTag regs classObj class tag proto [] 
 	    in 
 		    Mach.updateStrCache regs (s, obj);
 		    obj
@@ -4899,11 +4787,11 @@ and specialStringConstructor (regs:Mach.REGS)
 and constructSpecial (regs:Mach.REGS)
                      (id:Mach.OBJ_IDENTIFIER)
                      (classObj:Mach.OBJ)
-                     (classClosure:Mach.CLS_CLOSURE)
+                     (class:Ast.CLS)
                      (args:Mach.VALUE list) :
     Mach.OBJ option =
     let
-	val { cls = Ast.Cls { name, ... }, ... } = classClosure
+	val Ast.Cls { name, ... } = class
 							 
         fun findSpecial [] = NONE
           | findSpecial ((q,f)::rest) = 
@@ -4914,7 +4802,7 @@ and constructSpecial (regs:Mach.REGS)
                 then 
 					(trace ["running special ctor for instance of class #", 
 							Int.toString id, " = ", fmtName name];
-					 SOME (f regs classObj classClosure args))
+					 SOME (f regs classObj class args))
                 else 
 					findSpecial rest
 			end
@@ -4947,7 +4835,7 @@ and bindAnySpecialIdentity (regs:Mach.REGS)
             val Mach.Obj { ident, tag, ... } = obj
 	in
 	        case tag of 
-	            Mach.PrimitiveTag (Mach.Class { cls = Ast.Cls { name, ... }, ... }) =>
+	            Mach.PrimitiveTag (Mach.Class (Ast.Cls { name, ... })) =>
 		        let
 		            val bindings = [
 			            (Name.intrinsic_Type, Mach.getTypeInterfaceSlot),
@@ -4999,7 +4887,7 @@ and setPrototype (regs:Mach.REGS)
                      state = Mach.ValProp proto,
 		             attrs = { removable = false,
 			                   enumerable = false, (* FIXME: is this wrong? (DAH) *)
-			                   writable = true,
+			                   writable = Mach.Writable,
 			                   fixed = true } }
     in
 	    if Mach.hasProp props n
@@ -5104,14 +4992,14 @@ and initClassPrototype (regs:Mach.REGS)
 	    val Mach.Obj { ident, props, tag, ... } = obj
     in
 	    case tag of 
-	        Mach.PrimitiveTag (Mach.Class {cls=Ast.Cls {name, extends,...},...}) => 
+	        Mach.PrimitiveTag (Mach.Class (Ast.Cls {name, extends,...})) => 
 	        let
 		        val baseProtoVal =
 		            case extends of
 			            NONE => Mach.Null
 		              | SOME baseClassTy =>
 			            let
-			                val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
+			                val ty = AstQuery.needClassType (evalTy regs baseClassTy)
 			                val ob = instanceClass regs ty
 			            in 
 			                getPrototype regs ob
@@ -5124,10 +5012,10 @@ and initClassPrototype (regs:Mach.REGS)
                          (needObj regs p, b))
 		              | NONE => 
                         let 
-                            val (classObj, classClosure) = getObjectClassObjectAndClosure regs
+                            val (classObj, class) = getObjectClassObjectAndClass regs
                         in 
                             traceConstruct ["(standard chained-to-base-class proto instance of Object)"];
-                            (constructStandard regs classObj classClosure baseProtoVal [], true)
+                            (constructStandard regs classObj class baseProtoVal [], true)
                         end
                 val Mach.Obj { props=newProtoProps, ... } = newPrototype
 	        in
@@ -5151,18 +5039,18 @@ and initClassPrototype (regs:Mach.REGS)
     
 and constructClassInstance (regs:Mach.REGS)
                            (classObj:Mach.OBJ)
-                           (classClosure:Mach.CLS_CLOSURE)
+                           (class:Ast.CLS)
                            (args:Mach.VALUE list)
     : Mach.VALUE =
     let
         val Mach.Obj { ident, ... } = classObj
 
-        (* INFORMATIVE *) val {cls = Ast.Cls { name, ...}, ...} = classClosure 
+        (* INFORMATIVE *) val Ast.Cls { name, ...} = class 
         (* INFORMATIVE *) val _ = Mach.push regs ("new " ^ (Ustring.toAscii (#id name))) args 
 	    val obj = 
-	        case constructSpecial regs ident classObj classClosure args of
+	        case constructSpecial regs ident classObj class args of
 		        SOME ob => ob
-              | NONE => constructStandard regs classObj classClosure (getPrototype regs classObj) args
+              | NONE => constructStandard regs classObj class (getPrototype regs classObj) args
     in
         bindAnySpecialIdentity regs obj;
         initClassPrototype regs obj;

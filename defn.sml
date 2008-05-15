@@ -558,24 +558,12 @@ and defInterface (env: ENV)
         (* Inherit rib and check overrides *)
         val instanceRib:Ast.RIB = inheritRib NONE inheritedRib instanceRib
 
-        (* Make the instance type and interface fixture *)
-        val instanceType:Ast.TYPE = 
-            makeTy env (Ast.InstanceType 
-                            { name=name,
-                              nonnullable=nonnullable,
-                              typeParams=params,
-                              typeArgs=[],
-                              superTypes=groundSuperInterfaceExprs,
-                              ty=Ast.AnyType,  (* FIXME needs synthetic record type *)
-                              dynamic=false}) (* interfaces are never dynamic *)
-                        
         val iface:Ast.IFACE = 
             Ast.Iface { name=name, 
                         typeParams=params,
                         nonnullable=nonnullable, 
                         extends=superInterfaces, 
-                        instanceRib=instanceRib,
-                        instanceType=instanceType }
+                        instanceRib=instanceRib }
     in
         ([(Ast.PropName name, Ast.InterfaceFixture iface)],idef)
     end
@@ -810,13 +798,14 @@ and implementFixtures (base:Ast.RIB)
 *)
 
 and resolveClassInheritance (env:ENV)
-                 ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
-						   typeParams, nonnullable, dynamic, classRib, 
-						   instanceRib, instanceInits, constructor, classType, 
-						   instanceType,...}:Ast.CLS)
+                            ({extends,implements,...}: Ast.CLASS_DEFN)
+                            (cls:Ast.CLS)
     : Ast.CLS =
     let
+        val Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
+					 typeParams, nonnullable, dynamic, classRib, 
+					 instanceRib, instanceInits, constructor, classType,...} = cls
+                                                                               
         val _ = trace ["analyzing inheritance for ", fmtName name]
 
         val (extendsTy:Ast.TYPE option, 
@@ -824,34 +813,7 @@ and resolveClassInheritance (env:ENV)
 
         val (implementsTys:Ast.TYPE list, 
              instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
-
-
-        val instanceType = 
-            let
-                val it = AstQuery.needInstanceType instanceType
-                val superTypes:Ast.TYPE list = 
-                    case extendsTy of 
-                        NONE => implementsTys
-                      | SOME ty => ty :: implementsTys
-                val prog = (#program env)
-(*                val superTypes = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superTypes *)
-                val superTypes = map (makeTy env) superTypes
-                val te = Ast.InstanceType { name = (#name it),
-                                            typeParams = (#typeParams it),
-                                            typeArgs = (#typeArgs it),
-                                            nonnullable = (#nonnullable it),
-                                            superTypes = superTypes,
-                                            ty = (#ty it),
-                                            dynamic = (#dynamic it)}
-            in
-                case typeParams of 
-                    [] => te
-(*FIXME
-                  | params => Ast.LamType { params = params, 
-                                            body = te }
-  *)
-          end
-                
+                                     
     in
         Ast.Cls {name=name,
 				 privateNS=privateNS,
@@ -866,8 +828,7 @@ and resolveClassInheritance (env:ENV)
                  instanceRib=instanceRib1,
                  instanceInits=instanceInits,
                  constructor=constructor,
-                 classType=classType,
-                 instanceType=instanceType}
+                 classType=classType}
     end
 
 (*
@@ -953,7 +914,7 @@ and interfaceExtends (ifxtr:Ast.FIXTURE)
 and interfaceInstanceType (ifxtr:Ast.FIXTURE)
     : Ast.TYPE =
     case ifxtr of
-        Ast.InterfaceFixture (Ast.Iface {instanceType,...}) => instanceType
+        Ast.InterfaceFixture i => Ast.InterfaceType i
       |_ => LogErr.internalError ["interfaceInstanceType"]
 
 and classInstanceRib (cfxtr:Ast.FIXTURE)
@@ -971,7 +932,7 @@ and classPrivateNS (cfxtr:Ast.FIXTURE)
 and classInstanceType (cfxtr:Ast.FIXTURE)
     : Ast.TYPE =
     case cfxtr of
-        Ast.ClassFixture (Ast.Cls {instanceType,...}) => instanceType
+        Ast.ClassFixture c => Ast.ClassType c
       |_ => LogErr.internalError ["classInstanceType"]
 
 (*
@@ -1073,16 +1034,6 @@ and analyzeClassBody (env:ENV)
 
         val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
         val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
-
-        val instanceType = 
-            makeTy env (Ast.InstanceType 
-                            { name = name,
-                              nonnullable = nonnullable,
-                              typeParams = params,
-                              typeArgs = [],
-                              superTypes = [], (* set in resolveClassInheritence *)
-                              ty = Ast.AnyType,  (* FIXME needs synthetic record type *)
-                              dynamic = dynamic})
     in
         Ast.Cls { name=name,
 				  privateNS = privateNS,
@@ -1097,8 +1048,7 @@ and analyzeClassBody (env:ENV)
                   instanceRib = instanceRib,
                   instanceInits = instanceInits,
                   constructor = ctor,
-                  classType = makeTy env (Ast.RecordType []),
-                  instanceType = instanceType }
+                  classType = makeTy env (Ast.RecordType []) }
     end
 
 (*

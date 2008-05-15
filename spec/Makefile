@@ -47,6 +47,9 @@ output/enumerability.html: enumerability.html language/enumerability.html $(LIBD
 output/readwrite.html: readwrite.html language/readwrite.html $(LIBDEPS)
 	python stitch.py readwrite.html output/readwrite.html
 
+output/names.html: names.html language/names.html $(LIBDEPS)
+	python stitch.py names.html output/names.html
+
 output/assert.html: assert.html language/assert.html $(LIBDEPS)
 	python stitch.py assert.html output/assert.html
 

@@ -942,7 +942,7 @@ and verifyFixture (env:ENV)
                                    typeParams, nonnullable, 
                                    dynamic, extends, implements, 
                                    classRib, instanceRib, instanceInits, 
-                                   constructor, classType, instanceType }) =>
+                                   constructor, classType }) =>
          let
              val classEnv = withRib env classRib
              val instanceEnv = withRib classEnv instanceRib

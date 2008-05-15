@@ -1,5 +1,6 @@
 = Names =
 
+<!--
 <hr>
 <pre>
 FILE:                       spec/language/names.html
@@ -12,389 +13,248 @@ REVIEWED AGAINST PROPOSALS: NO
 REVIEWED AGAINST CODE:      YES, code is basis of RI
 SCOPE:                      The structure and resolution of names
 </pre>
-
 <hr>
+-->
 
-<p>A property name consists of an identifier and a namespace qualifier.
+<SPECNOTE> This introduction is normative but may eventually be moved
+into other parts of the specification.
 
-<p>The accessibility of a binding is determined by the accessibility of its namespace. In
-other words if you can name a property, you can read it.
+<P> Names in ECMAScript are constants and are comprised of a namespace
+value and an identifier.
 
-===== Semantics =====
+<P> Names denote types, namespaces, and locations.  The denotation of
+a name depends on the context of the name's use: When a name is used
+in a type annotation context it denotes a type; when it is used in a
+qualifier context it denotes a namespace; and in all other contexts it
+denotes a location.
+
+<P> //Unqualified names// are expressed as simple identifiers, for
+example ''encodeURI''.  //Qualified names// are expressed as pairs of
+namespace expressions and simple identifiers, for example
+''intrinsic::substring'' or ''"org.w3.dom"::DOMNode''.
+
+<P> Unqualified names are subject to //name resolution//: every
+unqualified name must resolve to a unique qualified name.  Names that
+denote types and namespaces are resolved at definition time, while
+names that denote locations are resolved (repeatedly) at evaluation
+time.
+
+<NOTE> In a qualified name such as ''intrinsic::substring'' the
+leftmost identifier, ''intrinsic'', is itself unqualified and subject
+to definition-time resolution.
+
+<P> Name resolution makes use of the //open namespaces// that
+implicitly qualify any unqualified name.  In every compilation unit
+the open namespaces starts out being comprised of the **public** and
+**internal** namespaces.  The program can open additional namespaces
+by means of the ''use&nbsp;namespace'' pragma.
+
+<P> Name resolution is performed differently depending on whether the
+name is a //lexical reference// (for example, the variable reference
+''encodeURI'') or a //property reference// on an object (for example,
+the reference ''s.substring'').
+
+<P> In the case of a lexical reference a name is resolved as a
+reference to a name //bound// in the //scope// of the reference; each
+entry in the chain formed by active scope objects binds names to which
+the reference may resolve, with resolutions in scopes closer to the
+point of reference preferred over those in scopes further away.
+
+<FIXME> "Close" and "far away" are fuzzy / imprecise.
+
+<P> In the case of a property reference a name is resolved as a
+reference to a property on a specific object; each entry in the chain
+formed by the object and its prototype objects provides named
+properties to which the reference may resolve, with resolutions in
+objects closer to the original object preferred over those higher up
+in the prototype chain.
+
+<FIXME> "Close" and "high up" are fuzzy / imprecise.
+
+<P> Names that denote types, namespaces, and locations are resolved by
+the same algorithm.  Suppose an unqualified name denoting a type or
+namespace resolves to a particular type or namespace definition in a
+particular scope.  Then the same unqualified name denoting a location
+will resolve unambiguously to an immutable location that holds a value
+that represents the type or namespace, if resolved in the same scope
+as the first name.  A reservation mechanism ensures that names that
+are resolved at definition time cannot become ambiguous at evaluation
+time by the introduction of new bindings.
+
+
+== Name values ==
+
+<p>A name is a constant value comprised of a namespace value and an
+identifier.
+
+<SEM>
 <INCLUDE file="ast.sml" name="type NAME">
 
-<p>Identfiers are sequences of characters.
+<p>An identifier is a character string.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="type IDENTIFIER">
 
-== Namespaces ==
+<p>A namespace value is an immutable object.  A namespace is
+//transparent// or //opaque//.  A transparent namespace contains a
+character string that identifies the namespace; two transparent
+namespaces are equal if and only if their contained strings are equal.
+An opaque namespace contains an unforgeable system-generated value
+that identifies the namespace; two opaque namespaces are equal if and
+only if their contained identifier values are the same object.
 
-<p>A namespace is an immutable object that serves as a distinct tag with which programmers can
-organize and manage groups of identifiers. In this sense, a namespace is a kind of name
-//parameter// that can be used to control the meaning of a name.
-
-<p>Namespaces may be transparent or opaque. Transparent namespaces are represented by strings and
-their equality is defined by the equality of the underlying strings. Opaque namespaces do not have
-an underlying string value. In the implementation code, each opaque namespace is given a unique,
-system-assigned identifier.
-
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="datatype NAMESPACE">
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
-
-<p>Any two transparent namespaces with the same identifier string are considered equal.  An opaque
-namespace is specified to be equal only to itself. This is also true in the SML implementation as no
-two opaque namespaces are ever given the same system-assigned identifier.
-
-===== Semantics =====
 <INCLUDE file="fixture.sml" name="fun compareNamespaces">
 
-=== The Public Namespace ===
+<FIXME> It appears to me that we could simplify here by saying that
+opaque namespaces are equal iff they represent the same object.  Are
+there SML reasons why that might not work?  Do we not have an
+identifier in each object value to make sure that is already possible?
 
-<p>The public namespace is defined as the trasparent namespace containing only the empty string.
-It is only member of the initial open namespace set, and is the initial default binding namespace 
-for new unqualified bindings. 
 
-<p>Namespace attributes are not allowed on local definitions. The names of local definitions are
-always qualified by the public namespace.
+== The namespace <u>public</u> ==
 
-<p>Code written for the 3rd edition or earlier -- by definition, ignorant of any means for namespace 
-qualification -- sees and creates only bindings qualified by the public namespace.
+<P> The namespace known as **public** is the transparent namespace
+whose identifying string is the empty string.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="name.sml" name="val publicNS">
 
-<!-- 
-<p>The 4th edition namespace is an opaque namespace. It is also a member of the initial open
-namespace set when running in 4th edition mode. All new bindings introduced by the 4th edition
-built-in library are qualified by the 4th edition namespace (or a namespace that is itself qualified
-by the 4th edition namespace).
+<NOTE> The **public** namespace is distinguished in several ways.  The
+names of properties added dynamically to objects are qualified by
+**public** by default, so all properties created by 3rd Edition code
+running on a 4th Edition implementation are **public**, and **public**
+is sometimes called "the compatibility namespace" for that reason.
+The default namespace qualifier that is applied to declarations in
+every scope is **public**, so absent other qualification every
+property on every object and every lexically bound name is in the
+**public** namespace.
+
+
+== Prototypes ==
+
+<p> Every object has an internal property denoted [[Prototype]] whose
+value is either **null** or another object.  When a name is to be
+resolved against an object but resolution fails because the object
+does not contain a property matching the name, then the resolution
+continues with the object in the [[Prototype]] property.
+
+<P> The chain of objects formed by following an object's [[Prototype]] 
+link, the [[Prototype]] link of the object's [[Prototype]], and so on,
+is called the //prototype chain// of the object.
+
+<P> Prototypes are described in greater detail in the chapter "Values".
+
+
+== Scopes and visibility ==
+
+<P> Defining and binding forms introduce names into a program.  These
+names can be referenced by name expressions that occur within the
+//scope// of the binding.  The scope of a binding is primarily
+determined textually (ECMAScript is primarily //lexically scoped//)
+and depends also on the defining or binding form that introduced the
+binding.
+
+<NOTE> For example, the scope of a ''var'' binding inside a block
+statement is the entire body of the function or program containing the
+block, whereas the scope of a ''let'' binding inside a block statement
+is that block statement.
+
+<P> Scopes nest textually, and a name that is bound in one scope may
+be //shadowed// in an inner scope by a binding of the same name in the
+inner scope; name expressions in the inner scope will not be able to
+access the outer binding.
+
+<P> In this Specification, the nesting of scopes is modelled as a
+chain of scope objects, called the //scope chain//.  Each scope object
+holds named properties representing the variables bound in that scope.
+Every time a new scope is entered the scope chain is extended with a
+new scope object, and at every point in the program one particular
+scope chain is in effect.
+
+<FIXME> Exhibit the run-time structure for scope chains here.
+
+<P> Some objects that appear on scope chains are dynamically
+extensible, in effect providing a form of dynamic scope.  For example,
+class objects appear on the scope chain of class and instance methods,
+and properties can be added to and removed from class objects; these
+properties then become visible and invisible to the methods.
+
+<P> In order for ECMAScript to have a lexically scoped flavor,
+bindings that are textually visible (//lexical bindings//) are
+preferred over dynamically added bindings (//dynamic bindings//)
+during name resolution.
 
-<p>The 4th edition namespace is bound to a name formed from the identifier ''__ES4__'' and the 
-public namespace.
-
-<p>The public namespace is bound to a name formed from the identifier ''public'' and the 4th 
-edition namespace.
-
-<p>Therefore in practice, code running in 3rd edition mode will see the 4th edition namespace only
-through the unqualified reference ''__ES4__'', and will not see a binding for the public
-namespace. In contrast, code running in 4th edition mode will see the public namespace as the
-unqualified reference ''public'', and also -- since 4th edition code can by definition contain 
-qualified references -- as the qualified name ''__ES4__::public''.
---> 
-
-== Prototype Chains ==
-
-<p>A prototype chain contains a list of objects that are searched when resolving a name on the
-first object in the list.
-
-== Scope Chains and Scope Objects ==
-
-<p>A scope chain contains a list of scope objects that are searched when resolving a lexical 
-reference.
-
-<p>A scope chain may include a class object (with class ''static'' properties), an instance
-object and one or more local scope objects in addition to the global, activation and with objects of
-edition 3.
-
-=== Scope Objects ===
-
-<P> The following are the kinds of scope objects and the forms that introduce
-names in those scopes:
-
-<UL>
-  <LI> The //global scope// is shared between multiple //Programs//.
-  It contains pre-defined bindings (the language-defined libraries and
-  any host-defined extensions) and is extended when definitions have
-  an effect on it.  A possibly unbounded sequence of //Programs// is
-  evaluted in the global scope in a linear order.  A definition
-  introduced by a later //Program// is visible to every earlier
-  //Program//.
-
-  <P > The forms that introduce names into the global environment are
-  //VariableDefinition//, //ClassDefinition//,
-  //InterfaceDefinition//, //TypeDefinition//,
-  //NamespaceDefinition//, //FunctionDefinition//,
-  //AssignmentStatement//, and //EvalExpression//.
-
-
-  <LI> The //file scope// is specific to one "file", that is to say,
-  one chunk of program text that matches the the //Program//
-  nonterminal and which is processed independently from other files.
-
-  <P > The only form that operates on the file scope is the //Pragma//.
-
-
-  <LI> The //class static scope// extends from the left curly brace
-  that starts the class body to the right curly brace that ends the
-  class body.  The class static scope is nested within the global
-  scope.
-
-  <P > The forms that introduce names into the class static scope are
-  the ''static'' annotated forms of //VariableDefinition//,
-  //TypeDefinition//, //NamespaceDefinition//, and
-  //FunctionDefinition//.  In addition, an //AssignmentExpression// can
-  introduce names into a class static scope dynamically.
-
-  <P > The surrounding scope of a function defined in the class static
-  scope is that class static scope.
-
-
-  <LI> The //class instance scope// is defined by multiple disjoint
-  pieces of text.  It extends from the left curly brace that starts
-  the class body to the right curly brace that ends the class body.
-  It also incorporates the class instance scope of its direct
-  superclass.  In addition, an //AssignmentExpression// can introduce
-  names into a class instance scope dynamically, provided that the
-  class has been declared ''dynamic''.
-
-  <P > The class instance scope for a class definition is nested within
-  the class static scope for that definition.
-
-  <P > The forms that introduce names into the class instance scope are
-  //VariableDefinition// and //FunctionDefinition//.
-
-  <P > The surrounding scope of a function defined in the class
-  instance scope is that instance scope; however, the surrounding
-  scope of a function inherited from a superclass is the instance
-  scope of the class from which it is inherited.
-
-
-  <LI> The //function scope// covers the body of a function, either
-  from the opening left brace of the body to the closing right brace,
-  or the expression that makes up the function body in an expression
-  closure.
-
-  <P > (That is, types in the signature are resolved in the enclosing
-  scope.)
-
-  <P > Since a static initializer block for a class is treated as an
-  anonymous function, the function scope extends also from the left
-  curly brace of the initializer block through the closing right curly
-  brace.
-
-  <P > The forms that introduce names into a function scope are the
-  function form itself -- the parameter names are bound in the
-  function scope -- as well as instances of //VariableDefinition// and
-  //FunctionDefinition// that occur in the body.
-
-  <LI> The //block scope// is introduced by the left curly brace of
-  certain source phrases (//Block//, //SwitchStatement//,
-  //CatchClause//, //TypeCaseElement//, and //LetBlockStatement//) and
-  extends to the matching right curly brace.
-
-  <P > A block scope is also introduced by a binding //ForStatement//
-  and extends through the end of that statement's //SubStatement//.
-
-  <P > **Note:** Among these statements, only the //Block// and a
-  primitive form of //CatchClause// are fundamental, all the other
-  statements can be expressed in terms of these two.
-
-  <P > The forms that introduce names into a block scope are
-  //VariableDefinition// and //FunctionDefinition//.
-  //LetBlockStatement//, //CatchClause//, and //TypeCaseElement//.
-  (However, these forms are not allowed as the direct
-  //SubStatements// of a binding //ForStatement//, and the only form
-  to introduce a binding into the block scope of a //ForStatement// is
-  the statement itself.)
-
-
-  <LI> The //with scope// is introduced by a //WithStatement// and
-  extends through the end of the statement's //SubStatement//.
-
-  <P > New names can be introduced into a with scope dynamically by
-  means of //AssignmentExpression//: an assignment that creates a new
-  property on the object that the //WithStatement// operates upon
-  introduces the name of the property into the with scope.
-
-
-  <LI> The //expression scope// is introduced by the left parenthesis
-  of a //LetExpression//, the name of a named //FunctionExpression//,
-  or the left square bracket of an //ArrayComprehension//.  The scope
-  extends to the end of the //LetExpression//, the end of the
-  //FunctionExpression//, or to the matching right square bracket of
-  the array comprehension.
-
-  <P > There are no forms to introduce new names into expression scopes
-  except the names introduced by those expression forms themselves:
-  the names introduced in the //LetExpression// head, the name of the
-  //FunctionExpression//, and the names introduced by ''for'' and
-  ''let'' clauses in the //ArrayComprehension//.
-  
-</UL>
-
-<P> As a rule it is not legal to introduce a particular name in a
-particular scope more than once.  (Note that top-level bindings in a
-function are bound in the same scope as the function's parameters and
-its implicit ''arguments'' parameter.)
-
-<P> However, in "strict" code more than one ''var'' (or ''let'')
-binding can introduce a particular name in a particular global,
-function, or block scope, provided the two bindings have the same type
-annotation (or no annotation at all).  The binding keyword used to
-bind the name must be the same in all the binding forms that introduce
-the name.  (Parameters and the ''arguments'' object are assumed to be
-bound by some system-internal binding form, not ''var'', and duplicate
-parameter names are not allowed.)
-
-<P> Additionally, in "standard" mode the following are allowed (in
-order to preserve compatibility with the 3rd Edition):
-
-<UL>
-
-  <LI> Parameter bindings and the ''arguments'' binding are assumed to
-  be bound as if by ''var'', so duplicate parameter names are allowed,
-  as are ''var'' bindings in a function body that bind names that are
-  also bound as parameters.  Again, annotations must be the same in
-  all bindings of a particular name.
-
-  <LI> Multiple ''var'' and ''function'' forms may bind the same name,
-  provided the bindings are all unannotated.
-  
-</UL>
-
-=== Visibility ===
-
-<FIXME> More here.
-
-<P> Bound, created, and introduced names are visible in the entire
-scope of the binding.  However, the scope of a binding is "static" (it
-is determined by the source text) and bindings in inner scopes can
-//shadow// bindings in outer scopes.
-
-<P> "use namespace" controls the shadowing, to an extent.  
-
-<P> A shadowed identifier in a base class may sometimes be made
-visible in a subclass by means of a //SuperExpression//.
-
-<!--
-
-== Name Bindings ==
-
-=== Forms that introduce names ===
-
-<P> //Names// are //bound// in //scopes// by //defining forms// and
-//binding forms//.
-
-==== Defined and bound names ====
-
-<P> The defining forms are //VariableDefinition//,
-//FunctionDefinition//, //ClassDefinition//, //InterfaceDefinition//,
-//TypeDefinition//, and //NamespaceDefinition//.  Except in block
-scopes (see below) a defining form permits the name to be qualified by
-a namespace.  The current default namespace is used if no qualifier is
-present.
-
-<P> (The initial default namespace in any block scope is ''public'', and it is
-not legal to set a different default namespace in a block scope.
-Therefore all names bound in block scopes are in the ''public''
-namespace.)
-
-<P> The binding forms are //FunctionExpression//, //LetExpression//,
-//CatchClause//, //TypeCaseElement//, //LetStatement//,
-//LetBlockStatement//, //ForStatement//, and //ArrayComprehension//.
-The binding forms do not permit names to be qualified by namespaces;
-all names bound by these forms are in the ''public'' namespace.
-
-<P> Names that are introduced by defining forms and binding forms are
-//fixtures//: they are guaranteed always to be present at run-time.
-
-
-==== Created and introduced names ====
-
-<P> Names can be //created// dynamically (at run-time) in the global
-scope by means of assignment and by the pre-defined global ''eval''
-function.  Names can also be created dynamically in the global scope
-and in any function scope by the ''eval'' operator evaluating a
-program text that contains a top-level ''var'' or ''function''
-definition,
-
-<P> Names can be created dynamically in class static and class
-instance scopes by creating a new property on the class object or the
-instance object.  (Dynamic name creation is only possible on instances
-of classes that are declared ''dynamic''.)
-
-<P> Dynamic creation of names is not possible in strict code.
-Top-level created names can have non-''public'' namespace
-qualifiers.
-
-<P> Names that are created dynamically can be removed by means of the
-''delete'' operator.
-
-<P> Names are also //introduced// in scopes by the //WithStatement//.
-(The //WithStatement// is disallowed in strict code.)
-
-<P> Names that created dynamically are never fixtures.  Names that are
-introduced by a //WithStatement// are as a rule not fixtures.  Created
-and introduced names can as a rule appear and disappear at
-unpredictable times during program evaluation.
-
--->
 
 == Name Expressions ==
 
-<p>A name expression describes a name that is computed from either a namespace //qualified name// or
-an //unqualified name//.
+<p> There are two kinds of name expressions, the unqualified name
+(such as ''encodeURI'') and the namespace-qualified name (such as
+''intrinsic::subtring'' or ''"org.w3.dom"::DOMNode'').  Name
+resolution transforms name expressions into name values.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
 
-<p>Name expressions occur in several contexts, to qualify declarations, identify types, and also in
-three special expression forms called //reference expressions//, defined in a section that follows.
+<FIXME> ResolvedName should not be shown above.
+<FIXME> globalNames should go away above.
 
-=== Qualified Name ===
+<p> A qualified name expression is comprised of a namespace expression
+and an identifier.  The former is either a literal namespace value
+(resulting from using a string as a namespace qualifier) or a name
+expression denoting a namespace binding.
 
-<p>A //qualified name// expression consists of a namespace expression and an identifier. A name
-expression evaluates to a name value.
-
-<NOTE>Every qualified name expression terminates with a ''NAMESPACE_EXPRESSION'' that is either a literal
-namespace (''Namespace'') value or an unqualfied name (''UnqualifiedName'').
-
-==== Namespace Expressions ====
-
-<p>A //namespace expression// consists of either a namespace value or a name expression that must
-itself resolve to a namespace value.
-
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
-=== Unqualified Name ===
+<p> An unqualified name expression is comprised of the namespaces that
+are open at the point where the name expression occurs in the source
+text and and identifier.  The open namespaces will be used to resolve
+the name: an unqualified name matches any binding or property that has
+the same identifier and a namespace value from among the open
+namespaces.
 
-<p>An //unqualified name// expression consists of an single identifier and some contextual
-information -- an open namespaces list -- that describes the name's static
-environment. A name value is constructed using the contextual information to search
-for a property name that has an identifier that matches that string value and a namespace drawn from
-the open namespaces. The algorithm for resolving an unqualified name to a name is presented in
-sections that follow.
+<p> The open namespaces are represented as a list of sets of namespace
+values.  Each set contains namespace values that are given the same
+priority during name resolution.  The list holds sets in priority
+order.
 
-==== Open Namespaces List ====
+<NOTE> A new set is added to the list every time a new lexical scope
+is entered, and the innermost (highest priority) set is extended by
+the ''use&nbsp;namespace'' pragma.  An unqualified name expression
+retains a reference to the open namespaces data structure as it appears
+at the point where the expression occurs.
 
-<p>An //open namespaces list// is a list of sets of namespace values.  Each execution context
-extends this list of sets with a new set of namespace values representing namespaces that are opened
-in that execution context. We represent the innermost set in the SML implementation using a
-''NAMESPACE list'', but refer to it throughout the accompanying description as a "set" to emphasize
-its unordered meaning.
+<P class="note"> The two lowest priority sets are singleton sets
+holding the **public** and **internal** namespaces, respectively.  The
+namespace **internal** is specific to each compilation unit.
 
-<p>Each namespace set contains the namespaces opened in the same scope which are given the same 
-priority during disambiguation. The lowest priority set consists of only the public namespace.
-
-===== Semantics =====
+<SEM>
 <INCLUDE file="mach.sml" name="type NAMESPACE_SET">
 <INCLUDE file="mach.sml" name="type OPEN_NAMESPACES">
 
-<p>The ordering of the outer list is used to to prioritize the search for a matching name. The inner
-set is effectively unordered; all namespaces opened in the same execution context are given the same
-priority, and all operations on it are order-independent set operations.
+<FIXME> The use of a ''NAMESPACE list'' here to represents namespace sets
+is a spec bug.  Sets should be modelled as set data structures.
 
-<p>An open namespaces list is captured in every unqualified name expression.
+<P> The first element on an ''OPEN_NAMESPACES'' list is the highest
+priority element.
+
 
 == Reference Expressions ==
 
-<p>A //reference expression// is one of three forms of expression that simulatneously describe a name
-//and an object//. Reference expressions are used to locate property bindings.
+<P> Name expression are incorporated into //reference expressions//
+that provide context to the name expression.  Name expressions that
+reference names bound in a scope, such as ''encodeURI'' and
+''intrinsic::substring'', are contained in ''LexicalReference'' nodes.
+Name expressions that reference properties on objects, such as
+''s.intrinsic::substring'', are contained in ''ObjectNameReference''
+nodes, which reference both the object expression (''s'', in the
+example) and the name (''intrinsic::substring'').  Finally, the node
+''ObjectIndexReference'' represents computed lookup, such as ''s[e]''.
 
-===== Semantics =====
+<SEM>
 {{{
 datatype EXPRESSION =
          LexicalReference of { name: NAME_EXPRESSION }
@@ -405,13 +265,12 @@ datatype EXPRESSION =
        <LDOTS>
 }}}
 
-<p>Of these three forms, ''LexicalReference'' expressions evaluate their name expression using the
-scope chain, described in the following section, whereas ''ObjectNameReference'' and
-''ObjectIndexReference'' expressions evaluate their name expressions using their ''object'' operand.
+<NOTE> An ''ObjectIndexReference'' is evaluated by evaluating its
+''index'' operand to a ''Name'' object and then treating that value
+the same as a resolved qualified name.  Index operands that do not
+evaluate to ''Name'' objects are converted to string, and a ''Name''
+object is formed from the string and the **public** namespace.
 
-<NOTE>The third form, ''ObjectIndexReference'', is evaluated by evaluating its ''index'' operand 
-to a string value, and then behaving as if it were an ''ObjectNameReference'' on a qualified name 
-expression formed from the evaluated string and qualified by the public namespace.
 
 == Name Resolution ==
 
@@ -608,6 +467,7 @@ matching namespaces is nonempty, return it. Otherwise repeat the process on the 
 and its tail, and so forth down the list. If all the classes in the list are searched and no
 matching namespaces are found, return the empty set.
 
+<SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">
 
 ===== Open Namespace Based Namespace Selection =====
@@ -622,6 +482,7 @@ process with the tail of the open namespace list, and its tail, and so forth up 
 open namespace sets. If the end of the list of open namespace sets is reached without producing a
 nonempty intersection, return an empty set.
 
+<SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
 
 ==== Reserving Names ====
@@ -637,7 +498,7 @@ an equal or higher priority than the given namespace.
 <!--
 ==== Helper functions ====
 
-===== Semantics =====
+<SEM>
 {{{
 fun head x = hd x (* return the first element of a list *)
 fun tail x = tl x (* return all but the first element of a list *)
@@ -711,3 +572,23 @@ fun getOpenNamespaces (env: ENV, identifier: IDENTIFIER)
 <INCLUDE file="mach.sml" name="fun head">
 <INCLUDE file="mach.sml" name="fun tail">
 -->
+
+
+<!-- 
+<p>The 4th edition namespace is an opaque namespace. It is also a member of the initial open
+namespace set when running in 4th edition mode. All new bindings introduced by the 4th edition
+built-in library are qualified by the 4th edition namespace (or a namespace that is itself qualified
+by the 4th edition namespace).
+
+<p>The 4th edition namespace is bound to a name formed from the identifier ''__ES4__'' and the 
+public namespace.
+
+<p>The public namespace is bound to a name formed from the identifier ''public'' and the 4th 
+edition namespace.
+
+<p>Therefore in practice, code running in 3rd edition mode will see the 4th edition namespace only
+through the unqualified reference ''__ES4__'', and will not see a binding for the public
+namespace. In contrast, code running in 4th edition mode will see the public namespace as the
+unqualified reference ''public'', and also -- since 4th edition code can by definition contain 
+qualified references -- as the qualified name ''__ES4__::public''.
+--> 

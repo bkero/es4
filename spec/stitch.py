@@ -86,7 +86,7 @@ wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|SPECNOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SHORTIMPL|---)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|SPECNOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|TIMES|PI|P|p|DESC|RETN|IMPL|SEM|SHORTIMPL|---)>")
 subscript = re.compile(r"([a-zA-Z]+)_\{([^}]+)\}")
 
 entities = { "INFINITY": "&#x221E;",
@@ -107,6 +107,7 @@ entities = { "INFINITY": "&#x221E;",
 	     "DESC": "<P class=\"section\"><b>Description</b> <P><span class=\"pcounter\"></span>",
 	     "RETN": "<P class=\"section\"><b>Returns</b> <P><span class=\"pcounter\"></span>",
 	     "IMPL": "<P class=\"implsection\"><b>Implementation</b> <P><span class=\"pcounter\"></span>",
+	     "SEM": "<P class=\"implsection\"><b>Semantics</b> <P><span class=\"pcounter\"></span>",
 	     "SHORTIMPL": "<P class=\"implsection\"><b>Implementation</b>",
 	     "---": "&#0151;"
 	     }
@@ -432,7 +433,7 @@ def replaceInclude(m, hdrlvl, fn):
 	return r
     ms = smlInclude.match(m.group(0))
     if ms:
-	return "<PRE>" + extractSML(ms.group(1), ms.group(2)) + "\n</PRE>"
+	return "<PRE>" + extractSML(ms.group(1), ms.group(2)) + "</PRE>"
     ms = rulInclude.match(m.group(0))
     if ms:
 	return "<PRE>" + extractRUL(ms.group(1), ms.group(2)) + "\n</PRE>"

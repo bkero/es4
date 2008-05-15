@@ -71,11 +71,13 @@ val cachesz = 4096
  * Unfortunately it means we have to go invert the sense of the first three
  * all through the code. Yay.
  *)
-                                       
+
+datatype WRITABILITY = ReadOnly | WriteOnce | Writable
+
 type ATTRS = { removable: bool,
                enumerable: bool,
-               writable: bool,
-               fixed: bool }     
+               fixed: bool,
+               writable: WRITABILITY }
 
 type IDENTIFIER = Ustring.STRING
 
@@ -97,7 +99,7 @@ datatype VALUE = Undef
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE list (* FIXME: need TYPE option too - see ArrayType *)
        | PrimitiveTag of PRIMITIVE
-       | InstanceTag of Ast.INSTANCE_TYPE
+       | InstanceTag of Ast.CLS
        | NoTag
 
      and OBJ_CACHE = 
@@ -160,8 +162,8 @@ datatype VALUE = Undef
        | Decimal of Decimal.DEC
        | String of Ustring.STRING
        | Namespace of Ast.NAMESPACE
-       | Class of CLS_CLOSURE
-       | Interface of IFACE_CLOSURE
+       | Class of Ast.CLS
+       | Interface of Ast.IFACE
        | Function of FUN_CLOSURE
        | Type of Ast.TYPE
        | NativeFunction of NATIVE_FUNCTION  (* INFORMATIVE *)
@@ -247,14 +249,6 @@ datatype VALUE = Undef
 withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
-           env: SCOPE }
-
-     and CLS_CLOSURE =
-         { cls: Ast.CLS,
-           env: SCOPE }
-
-     and IFACE_CLOSURE =
-         { iface: Ast.IFACE,
            env: SCOPE }
 
      and REGS = 
@@ -439,7 +433,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          state=ValProp Undef,
          attrs={removable=true,  (* unused attrs *)
                 enumerable=false,
-                writable=true,
+                writable=Writable,
                 fixed=false}}
 
 
@@ -678,14 +672,17 @@ fun inspect (v:VALUE)
         fun att {removable,enumerable,writable,fixed} =
             if not removable
                andalso not enumerable
-               andalso not writable
+               andalso (writable = ReadOnly)
                andalso not fixed
             then ""
             else
                 (" ("
                  ^ (if removable then "R," else "")
                  ^ (if enumerable then "E," else "")
-                 ^ (if writable then "W," else "")
+                 ^ (case writable of 
+                        ReadOnly => ""
+                      | WriteOnce => "WO"
+                      | Writable => "W")
                  ^ (if fixed then "F" else "")
                  ^ ") ")
 
@@ -695,10 +692,13 @@ fun inspect (v:VALUE)
 
         fun magType t = 
             case t of 
-                Class { cls = Ast.Cls { instanceType, classType, ... }, ... } => 
-                (" : instanceType=" ^ (typ instanceType) ^ ", classType=" ^ (typ classType))
-              | Interface { iface = Ast.Iface { instanceType, ... }, ... } => 
-                (" : instanceType=" ^ (typ instanceType))
+                Class c => 
+                let
+                    val Ast.Cls { classType, ... } = c
+                in
+                    (" : instanceType=" ^ (typ (Ast.ClassType c)) ^ ", classType=" ^ (typ classType))
+                end
+              | Interface i => (" : instanceType=" ^ (typ (Ast.InterfaceType i)))
               | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
                 (" : " ^ (typ ty0))
               | Type t => (" = " ^ (typ t))
@@ -714,7 +714,7 @@ fun inspect (v:VALUE)
                 (* FIXME: elaborate printing of structural tags. *)
                 ObjectTag _ => "<Object>"
               | ArrayTag _ => "<Arrray>"
-              | InstanceTag t => "<Instance " ^ (typ (Ast.InstanceType t)) ^ ">"
+              | InstanceTag t => "<Instance " ^ (typ (Ast.ClassType t)) ^ ">"
               | PrimitiveTag m => "<Primitive " ^ (mag m) ^ ">"
               | NoTag => "<NoTag>"
 
@@ -775,7 +775,7 @@ fun nominalBaseOfTag (to:TAG)
     case to of
         ObjectTag _ => Name.public_Object
       | ArrayTag _ => Name.public_Array
-      | InstanceTag ity => (#name ity)
+      | InstanceTag (Ast.Cls {name, ...}) => name
       | PrimitiveTag (Boolean _) => Name.ES4_boolean
       | PrimitiveTag (Double _) => Name.ES4_double
       | PrimitiveTag (Decimal _) => Name.ES4_decimal

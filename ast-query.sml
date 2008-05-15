@@ -72,15 +72,18 @@ fun findType (t:Ast.TYPE)
                          " type expression in ", LogErr.ty t])
 
 
-fun needInstanceType (t:Ast.TYPE)
-    : Ast.INSTANCE_TYPE =
+fun needClassType (t:Ast.TYPE)
+    : Ast.TYPE =
     let 
-        fun isInstanceType ty = 
+        fun isClassType ty = 
             case ty of
-                Ast.InstanceType t => SOME t
+                Ast.ClassType t => SOME ty
+              | Ast.AppType (c, _) => (case isClassType c of 
+                                           NONE => NONE
+                                         | SOME _ => SOME ty)
               | _ => NONE
     in
-        findType t isInstanceType "instance"
+        findType t isClassType "class"
     end
 
 fun needFunctionType (t:Ast.TYPE)

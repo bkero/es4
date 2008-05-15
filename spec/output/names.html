@@ -1,0 +1,825 @@
+<html>
+<head>
+<title>Names</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body>
+<h1>Names</h1>
+
+
+
+<p class="note"><b>SPEC NOTE</b>&nbsp;&nbsp;  This introduction is normative but may eventually be moved
+into other parts of the specification.
+
+<P><span class="pcounter"></span> Names in ECMAScript are constants and are comprised of a namespace
+value and an identifier.
+
+<P><span class="pcounter"></span> Names denote types, namespaces, and locations.  The denotation of
+a name depends on the context of the name's use: When a name is used
+in a type annotation context it denotes a type; when it is used in a
+qualifier context it denotes a namespace; and in all other contexts it
+denotes a location.
+
+<P><span class="pcounter"></span> <i>Unqualified names</i> are expressed as simple identifiers, for
+example <code>encodeURI</code>.  <i>Qualified names</i> are expressed as pairs of
+namespace expressions and simple identifiers, for example
+<code>intrinsic::substring</code> or <code>"org.w3.dom"::DOMNode</code>.
+
+<P><span class="pcounter"></span> Unqualified names are subject to <i>name resolution</i>: every
+unqualified name must resolve to a unique qualified name.  Names that
+denote types and namespaces are resolved at definition time, while
+names that denote locations are resolved (repeatedly) at evaluation
+time.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  In a qualified name such as <code>intrinsic::substring</code> the
+leftmost identifier, <code>intrinsic</code>, is itself unqualified and subject
+to definition-time resolution.
+
+<P><span class="pcounter"></span> Name resolution makes use of the <i>open namespaces</i> that
+implicitly qualify any unqualified name.  In every compilation unit
+the open namespaces starts out being comprised of the <b>public</b> and
+<b>internal</b> namespaces.  The program can open additional namespaces
+by means of the <code>use&nbsp;namespace</code> pragma.
+
+<P><span class="pcounter"></span> Name resolution is performed differently depending on whether the
+name is a <i>lexical reference</i> (for example, the variable reference
+<code>encodeURI</code>) or a <i>property reference</i> on an object (for example,
+the reference <code>s.substring</code>).
+
+<P><span class="pcounter"></span> In the case of a lexical reference a name is resolved as a
+reference to a name <i>bound</i> in the <i>scope</i> of the reference; each
+entry in the chain formed by active scope objects binds names to which
+the reference may resolve, with resolutions in scopes closer to the
+point of reference preferred over those in scopes further away.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  "Close" and "far away" are fuzzy / imprecise.
+
+<P><span class="pcounter"></span> In the case of a property reference a name is resolved as a
+reference to a property on a specific object; each entry in the chain
+formed by the object and its prototype objects provides named
+properties to which the reference may resolve, with resolutions in
+objects closer to the original object preferred over those higher up
+in the prototype chain.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  "Close" and "high up" are fuzzy / imprecise.
+
+<P><span class="pcounter"></span> Names that denote types, namespaces, and locations are resolved by
+the same algorithm.  Suppose an unqualified name denoting a type or
+namespace resolves to a particular type or namespace definition in a
+particular scope.  Then the same unqualified name denoting a location
+will resolve unambiguously to an immutable location that holds a value
+that represents the type or namespace, if resolved in the same scope
+as the first name.  A reservation mechanism ensures that names that
+are resolved at definition time cannot become ambiguous at evaluation
+time by the introduction of new bindings.
+
+
+<h2>Name values</h2>
+
+<P><span class="pcounter"></span>A name is a constant value comprised of a namespace value and an
+identifier.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+type NAME = { ns: NAMESPACE, id: IDENTIFIER }
+</PRE>
+
+<P><span class="pcounter"></span>An identifier is a character string.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+type IDENTIFIER = Ustring.STRING
+</PRE>
+
+<P><span class="pcounter"></span>A namespace value is an immutable object.  A namespace is
+<i>transparent</i> or <i>opaque</i>.  A transparent namespace contains a
+character string that identifies the namespace; two transparent
+namespaces are equal if and only if their contained strings are equal.
+An opaque namespace contains an unforgeable system-generated value
+that identifies the namespace; two opaque namespaces are equal if and
+only if their contained identifier values are the same object.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+datatype NAMESPACE =
+         TransparentNamespace of Ustring.STRING
+       | OpaqueNamespace of OPAQUE_NAMESPACE_IDENTIFIER
+</PRE>
+<PRE>
+type OPAQUE_NAMESPACE_IDENTIFIER = &#x0085;
+</PRE>
+<PRE>
+fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
+    case (n1, n2) of
+        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
+      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
+      | _ => false
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  It appears to me that we could simplify here by saying that
+opaque namespaces are equal iff they represent the same object.  Are
+there SML reasons why that might not work?  Do we not have an
+identifier in each object value to make sure that is already possible?
+
+
+<h2>The namespace <u>public</u></h2>
+
+<P><span class="pcounter"></span> The namespace known as <b>public</b> is the transparent namespace
+whose identifying string is the empty string.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+val publicNS = Ast.TransparentNamespace Ustring.empty
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The <b>public</b> namespace is distinguished in several ways.  The
+names of properties added dynamically to objects are qualified by
+<b>public</b> by default, so all properties created by 3rd Edition code
+running on a 4th Edition implementation are <b>public</b>, and <b>public</b>
+is sometimes called "the compatibility namespace" for that reason.
+The default namespace qualifier that is applied to declarations in
+every scope is <b>public</b>, so absent other qualification every
+property on every object and every lexically bound name is in the
+<b>public</b> namespace.
+
+
+<h2>Prototypes</h2>
+
+<P><span class="pcounter"></span> Every object has an internal property denoted <code>[[Prototype]]</code> whose
+value is either <b>null</b> or another object.  When a name is to be
+resolved against an object but resolution fails because the object
+does not contain a property matching the name, then the resolution
+continues with the object in the <code>[[Prototype]]</code> property.
+
+<P><span class="pcounter"></span> The chain of objects formed by following an object's <code>[[Prototype]]</code> 
+link, the <code>[[Prototype]]</code> link of the object's <code>[[Prototype]]</code>, and so on,
+is called the <i>prototype chain</i> of the object.
+
+<P><span class="pcounter"></span> Prototypes are described in greater detail in the chapter "Values".
+
+
+<h2>Scopes and visibility</h2>
+
+<P><span class="pcounter"></span> Defining and binding forms introduce names into a program.  These
+names can be referenced by name expressions that occur within the
+<i>scope</i> of the binding.  The scope of a binding is primarily
+determined textually (ECMAScript is primarily <i>lexically scoped</i>)
+and depends also on the defining or binding form that introduced the
+binding.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  For example, the scope of a <code>var</code> binding inside a block
+statement is the entire body of the function or program containing the
+block, whereas the scope of a <code>let</code> binding inside a block statement
+is that block statement.
+
+<P><span class="pcounter"></span> Scopes nest textually, and a name that is bound in one scope may
+be <i>shadowed</i> in an inner scope by a binding of the same name in the
+inner scope; name expressions in the inner scope will not be able to
+access the outer binding.
+
+<P><span class="pcounter"></span> In this Specification, the nesting of scopes is modelled as a
+chain of scope objects, called the <i>scope chain</i>.  Each scope object
+holds named properties representing the variables bound in that scope.
+Every time a new scope is entered the scope chain is extended with a
+new scope object, and at every point in the program one particular
+scope chain is in effect.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Exhibit the run-time structure for scope chains here.
+
+<P><span class="pcounter"></span> Some objects that appear on scope chains are dynamically
+extensible, in effect providing a form of dynamic scope.  For example,
+class objects appear on the scope chain of class and instance methods,
+and properties can be added to and removed from class objects; these
+properties then become visible and invisible to the methods.
+
+<P><span class="pcounter"></span> In order for ECMAScript to have a lexically scoped flavor,
+bindings that are textually visible (<i>lexical bindings</i>) are
+preferred over dynamically added bindings (<i>dynamic bindings</i>)
+during name resolution.
+
+
+<h2>Name Expressions</h2>
+
+<P><span class="pcounter"></span> There are two kinds of name expressions, the unqualified name
+(such as <code>encodeURI</code>) and the namespace-qualified name (such as
+<code>intrinsic::subtring</code> or <code>"org.w3.dom"::DOMNode</code>).  Name
+resolution transforms name expressions into name values.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+and NAME_EXPRESSION =
+    QualifiedName of { namespace: NAMESPACE_EXPRESSION,
+                       identifier: IDENTIFIER }
+  | UnqualifiedName of { identifier: IDENTIFIER,
+                         openNamespaces: OPEN_NAMESPACES,
+                         globalNames: NAME_SET }
+  | ResolvedName of NAME
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  ResolvedName should not be shown above.
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  globalNames should go away above.
+
+<P><span class="pcounter"></span> A qualified name expression is comprised of a namespace expression
+and an identifier.  The former is either a literal namespace value
+(resulting from using a string as a namespace qualifier) or a name
+expression denoting a namespace binding.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+and NAMESPACE_EXPRESSION =
+    Namespace of NAMESPACE
+  | NamespaceName of NAME_EXPRESSION
+</PRE>
+
+<P><span class="pcounter"></span> An unqualified name expression is comprised of the namespaces that
+are open at the point where the name expression occurs in the source
+text and and identifier.  The open namespaces will be used to resolve
+the name: an unqualified name matches any binding or property that has
+the same identifier and a namespace value from among the open
+namespaces.
+
+<P><span class="pcounter"></span> The open namespaces are represented as a list of sets of namespace
+values.  Each set contains namespace values that are given the same
+priority during name resolution.  The list holds sets in priority
+order.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  A new set is added to the list every time a new lexical scope
+is entered, and the innermost (highest priority) set is extended by
+the <code>use&nbsp;namespace</code> pragma.  An unqualified name expression
+retains a reference to the open namespaces data structure as it appears
+at the point where the expression occurs.
+
+<P class="note"> The two lowest priority sets are singleton sets
+holding the <b>public</b> and <b>internal</b> namespaces, respectively.  The
+namespace <b>internal</b> is specific to each compilation unit.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+type NAMESPACE_SET = NAMESPACE list
+</PRE>
+<PRE>
+type OPEN_NAMESPACES = NAMESPACE_SET list
+</PRE>
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  The use of a <code>NAMESPACE list</code> here to represents namespace sets
+is a spec bug.  Sets should be modelled as set data structures.
+
+<P><span class="pcounter"></span> The first element on an <code>OPEN_NAMESPACES</code> list is the highest
+priority element.
+
+
+<h2>Reference Expressions</h2>
+
+<P><span class="pcounter"></span> Name expression are incorporated into <i>reference expressions</i>
+that provide context to the name expression.  Name expressions that
+reference names bound in a scope, such as <code>encodeURI</code> and
+<code>intrinsic::substring</code>, are contained in <code>LexicalReference</code> nodes.
+Name expressions that reference properties on objects, such as
+<code>s.intrinsic::substring</code>, are contained in <code>ObjectNameReference</code>
+nodes, which reference both the object expression (<code>s</code>, in the
+example) and the name (<code>intrinsic::substring</code>).  Finally, the node
+<code>ObjectIndexReference</code> represents computed lookup, such as <code>s[e]</code>.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+datatype EXPRESSION =
+         LexicalReference of { name: NAME_EXPRESSION }
+       | ObjectNameReference of { object: EXPRESSION,
+                                  name: NAME_EXPRESSION }
+       | ObjectIndexReference of { object: EXPRESSION,
+                                   index: EXPRESSION }
+       &#x0085;
+</PRE>
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  An <code>ObjectIndexReference</code> is evaluated by evaluating its
+<code>index</code> operand to a <code>Name</code> object and then treating that value
+the same as a resolved qualified name.  Index operands that do not
+evaluate to <code>Name</code> objects are converted to string, and a <code>Name</code>
+object is formed from the string and the <b>public</b> namespace.
+
+
+<h2>Name Resolution</h2>
+
+<P><span class="pcounter"></span>Name resolution evaluates the various combinations of reference expressions and name expressions
+to a pair of object and name values. 
+
+<h3>Lexical References</h3>
+
+<P><span class="pcounter"></span>Here we describe how a target object and a name are computed from a lexical reference. There
+are two kinds of lexical references, unqualified and qualified.
+
+<P><span class="pcounter"></span>Scope objects contain fixed and dynamic bindings. Fixed names in outer scopes may shadow
+dynamic names in inner scopes. For example, a fixed class static name might shadow a dynamic 
+instance name. This is necessary to allow early resolution of names. 
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+and resolveLexicalReference (regs: Mach.REGS)
+                            (expr: Ast.EXPRESSION)
+                            (errorIfNotFound: bool)
+    : REF =
+    let
+       val {scope, ...} = regs
+       val name = case expr of Ast.LexicalReference { name, ... } => name
+                             | _ => error regs ["need lexical reference"]
+
+    in case name of
+          Ast.QualifiedName {identifier, namespace} =>
+          resolveQualifiedLexicalReference regs identifier namespace
+        | Ast.UnqualifiedName { identifier, openNamespaces, ... } =>
+          resolveUnqualifiedLexicalReference regs identifier openNamespaces
+        | Ast.ResolvedName {ns, id} => error regs ["internal error"]
+    end
+</PRE>
+
+<h4>Qualified Lexical References</h4>
+
+<P><span class="pcounter"></span>Given a scope chain, an identifier, and a namespace expression, this algorithm searches for
+an object in the scope chain and a name on that object that matches the identifier and the 
+namespace:
+
+<li>Evaluate the namespace expression to a namespace
+<li>Invoke <code>searchScope</code> with the scope chain, identifier and the namespace resulting from the previous step
+<li>If no value results, return the global object and name constructed from computed namespace and the given identifier
+<li>Return the object and name constructed from the computed namespace and the given identifier
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+and resolveQualifiedLexicalReference (regs: Mach.REGS)
+                                     (identifier: Ast.IDENTIFIER)
+                                     (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
+    : (Mach.OBJ * Ast.NAME) =
+    let
+        val {scope, global, ...} = regs
+        val namespace = evalNamespaceExpr regs namespaceExpr
+        val result = Mach.searchScopeChain (SOME scope, identifier, [namespace])
+    in case result of
+        NONE => (global, {ns=Name.publicNS, id=identifier})
+      | SOME (object, namespaces) => (object, {ns=namespace, id=identifier})
+    end
+</PRE>
+
+<h4>Unqualified Lexical References</h4>
+
+<P><span class="pcounter"></span>If a static name (in a namespace or type expression) resolves to a global name, we reserve
+the set of names that consist of the open namespaces with priority equal or higher than the
+matched name and the matched names identifier.
+
+<P><span class="pcounter"></span>Given an execution phase, the scope chain, an identifier, and a list of sets of open namespaces, this algorithm searches for
+an object in the scope chain and a name on that object that matches the identifier and one of the
+open namespaces:
+
+<li>Invoke the abstract procedure <code>searchScope</code> with the scope chain, identifier and the
+set of all unique open namespaces
+<li>If no value results, return the global object and name constructed from public namespace and the given identifier
+<li>If more than one namespace results, invoke <code>selectNamespace</code> with the scope object, identifier, matching namespaces
+<li>If more than one namespace results, throw ...
+<li>If the phase is "static" and the found object is the global object, then invoke the abstract procedure 
+<code>reservedNames</code> with the identifier, selected namespace, and the open namespaces
+<li>Return the scope object, a name constructed from the identifier and selected namespace, and
+the set of reserved names.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+and resolveUnqualifiedLexicalReference (regs: Mach.REGS)
+                                       (identifier: Ast.IDENTIFIER)
+                                       (openNamespaces: Ast.OPEN_NAMESPACES)
+    : (Mach.OBJ * Ast.NAME) =
+    let
+        val {scope, global, ...} = regs
+        val namespaces = List.concat openNamespaces
+        val result = Mach.searchScopeChain (SOME scope, identifier, namespaces)
+    in case result of
+        NONE => (global, {ns=Name.publicNS, id=identifier})
+      | SOME (object, namespaces) =>
+        let
+            val classRibs = instanceRibsOf (object)
+            val result = Fixture.selectNamespaces (identifier, namespaces, classRibs, openNamespaces)
+        in case result of
+            namespace :: [] => (object, {ns=namespace, id=identifier})
+          | _ => error regs ["ambiguous reference"]
+        end
+    end
+</PRE>
+
+<h4>Searching a Scope Chain</h4>
+
+<P><span class="pcounter"></span>Given a scope chain, an identifier, and a set of namespaces, this algorithm searches
+for an object in the scope chain and a name on that object that matches the identifier and the
+open namespaces.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; Maintaining the integrity of objects requires that name resolution perform two-pass object
+list search, and that fixed property bindings cannot be shadowed or otherwise made ambiguous by
+expando property bindings.
+
+<P><span class="pcounter"></span>Search each scope object in the scope chain. Perform this search either once or twice with 
+the flattened namespace set, as follows:
+
+<li>At first, perform scope chain search with its search restricted to considering only fixed
+property bindings on immutable scopes and both fixed and dynamic bindings on mutable scopes.
+
+<p class="note"><b>NOTE</b>&nbsp;&nbsp; With scopes and function scopes that might be mutated by 'eval' must be searched fully
+during the first pass and ignored during the second pass, to allow shadowing of outer bindings
+as is required for backward compatibility.
+
+<li>If the first scope chain search returns no object or no namespaces, repeat the
+search with its search relaxed to include all property bindings, fixed and dynamic, and ignoring
+mutable scopes.
+
+<li>If no namespaces, or no object, are returned by object list search, return no value. An
+object and a matching namepace set can therefore be assumed and are returned.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+fun searchScopeChain (NONE, _, _) = NONE
+  | searchScopeChain (SOME scope: SCOPE option,
+                      identifier: IDENTIFIER,
+                      namespaces: NAMESPACE_SET)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val matches = searchScope (scope, namespaces, identifier, true)
+        val Scope { parent, ... } = scope
+    in
+        case matches of
+            NONE => searchScopeChain (parent, identifier, namespaces)
+          | _ => matches
+    end
+</PRE>
+<PRE>
+fun searchScope (scope: SCOPE,
+                 namespaces: NAMESPACE_SET,
+                 identifier: IDENTIFIER,
+                 fixedOnly: bool)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val (object, kind) = getScopeObjectAndKind (scope)
+    in case (kind, fixedOnly) of
+        (WithScope, true) => searchMutableScopeObject (object, namespaces, identifier)
+      | (WithScope, false) => NONE
+      | (_,_) => searchObject (SOME object, identifier, namespaces, fixedOnly)
+    end
+</PRE>
+<PRE>
+fun searchMutableScopeObject (object: OBJECT,
+                              namespaces: NAMESPACE_SET,
+                              identifier: IDENTIFIER)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val result = searchObject (SOME object, identifier, namespaces, true)
+    in case result of
+        NONE => searchObject (SOME object, identifier, namespaces, false)
+      | _ => result
+    end
+</PRE>
+
+<h3>Object References</h3>
+
+<P><span class="pcounter"></span>Here we describe how a name is computed from a object reference. There
+are two kinds of object references, qualified and unqualified.
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+and resolveObjectReference (regs:Mach.REGS)
+                           (Ast.ObjectNameReference { object, name, ... }:Ast.EXPRESSION)
+                           (errIfNotFound:bool)
+    : (Mach.OBJ option * (Mach.OBJ * Ast.NAME)) =
+    let
+        val v = evalExpr regs object
+        val obj = case v of Mach.Object ob => ob
+                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+    in
+        case name of
+            Ast.UnqualifiedName { identifier, openNamespaces, ... } =>
+            (SOME obj, resolveUnqualifiedObjectReference regs obj identifier openNamespaces)
+          | Ast.QualifiedName { namespace, identifier } =>
+            resolveQualifiedObjectReference regs obj identifier namespace
+          | Ast.ResolvedName name => (SOME obj, (obj, name))
+    end
+  | resolveObjectReference regs (Ast.ObjectIndexReference {object, index, ...}) errIfNotFound =
+    let
+        val v = evalExpr regs object
+        val obj = case v of Mach.Object ob => ob
+                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
+                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+        val idx = evalExpr regs index
+        val identifier = toUstring regs idx  (* FIXME if its an Name, then don't convert *)
+        val namespace = Ast.Namespace Name.publicNS
+    in
+        resolveQualifiedObjectReference regs obj identifier namespace
+    end
+  | resolveObjectReference  regs  _  _ = error regs ["need object reference expression"]
+</PRE>
+
+<h4>Qualified Object References</h4>
+
+<P><span class="pcounter"></span>Given an expression, an identifier, and a namespace expression, this algorithm computes
+an object and the name.
+
+<li>Evaluate the expression
+<li>If the result is not an object, throw
+<li>Evaluate the namespace expression
+<li>Return the object and name constructed from the resulting namespace and the given identifier
+
+<P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
+<PRE>
+and resolveQualifiedObjectReference (regs: Mach.REGS)
+                                    (object: Mach.OBJ)
+                                    (identifier: Ast.IDENTIFIER)
+                                    (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
+    : (Mach.OBJ option * (Mach.OBJ * Ast.NAME)) =
+    let
+        val namespace = evalNamespaceExpr regs namespaceExpr
+    in
+        (SOME object, (object, {ns=namespace, id=identifier}))
+    end
+</PRE>
+
+<h4>Unqualified Object References</h4>
+
+<P><span class="pcounter"></span>If a static name (in a namespace or type expression) resolves to a global name, we reserve
+the set of names that consist of the open namespaces with priority equal or higher than the
+matched name and the matched names identifier.
+
+<P><span class="pcounter"></span>Given an expression, an identifier, and a list of open namespace sets, this algorithm searches 
+for a name on the object that matches the identifier and the open namespaces.
+
+<li>Evaluate the expression
+<li>If the result is not an object, throw ...
+<li>Search the resulting object for the set of namespaces corresponding to the names
+that match the identifier
+<li>If the resulting set of namespaces is empty, then use the set containing only the public namespace
+<li>If more than one namespace results, invoke <code>selectNamespace</code> with the scope object, identifier, matching namespaces
+<li>If the phase is "static" and the computed object is the global object, then invoke the abstract procedure 
+<code>reservedNames</code> with the identifier, selected namespace, and the open namespaces
+<li>If more than one namespace results, throw ...
+<li>Return the object, a name constructed with the identifier and the matching namespace, and the list of reserved names.
+
+<PRE>
+and resolveUnqualifiedObjectReference (regs: Mach.REGS)
+                                      (object: Mach.OBJ)
+                                      (identifier: Ast.IDENTIFIER)
+                                      (openNamespaces: Ast.OPEN_NAMESPACES)
+    : (Mach.OBJ * Ast.NAME) =
+    let
+        val namespaces = List.concat openNamespaces
+        val result = Mach.searchObject (SOME object, identifier, namespaces, false)
+    in case result of
+        NONE => (object, {ns=Name.publicNS, id=identifier})
+      | SOME (object, namespaces) =>
+            let
+                val instanceRibs = instanceRibsOf (object)
+                val result = Fixture.selectNamespaces (identifier, namespaces, instanceRibs, openNamespaces)
+            in case result of
+                [] => LogErr.internalError ["resolveUnqualifiedObjectReference: empty namespace set"]
+              | namespace :: [] => (object, {ns=namespace, id=identifier})
+              | _ => error regs ["ambiguous reference"]
+            end
+    end
+</PRE>
+
+<h3>Common Algorithms</h3>
+
+<h4>Search an Object</h4>
+
+<P><span class="pcounter"></span>Given an object, an identifier and a set of namespaces, this algorithm searches for a matching
+property name.
+
+<P><span class="pcounter"></span>Informal description: search the provided object for property name bindings that are
+named by the provided identifier and any of the namespaces in the provided set. Collect the set of
+matching namespaces used in all such bindings. If the set of matching namespaces is nonempty, return
+it. Otherwise repeat the process on the prototype of the object, and its prototype, and so forth
+along the prototype chain. If the end of the prototype chain is reached without producing a matching
+name, return no value.
+
+<PRE>
+fun searchObject (NONE, _, _, _) = NONE
+  | searchObject (SOME object: OBJECT option,
+                  identifier: IDENTIFIER,
+                  namespaces: NAMESPACE_SET,
+                  fixedOnly: bool)
+    : (OBJECT * NAMESPACE_SET) option =
+    let
+        val matches = getBindingNamespaces (object, identifier, namespaces, fixedOnly)
+    in
+        case matches of
+            [] => if fixedOnly
+                  then NONE
+                  else searchObject (getPrototypeObject (object), identifier, namespaces, fixedOnly)
+          | _ => SOME (object, matches)
+    end
+</PRE>
+
+<h4>Namespace Selection</h4>
+
+<P><span class="pcounter"></span>Given an identifier, a list of namespaces, a list of classes, a list of open namespaces, this algorithm
+filters the set of namespaces accoring to the order that the namespaces appear in bindings in the given
+classes first, and then in the priority given by the list of open namespaces.
+
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  need more
+
+<li>Invoke <code>selectNamespaceByClass</code> with the list of classes, list of namespaces, and identifier.
+<li>If the result set contains more than one namespace, invoke <code>selectNamespacesByOpenNamespaces</code>
+with the resulting set of namespaces and the list of open namespaces.
+<li>If the result set does not contain just one namespace, throw ...
+<li>Return the selected namespace
+
+<PRE>
+fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET,
+                      instanceRibs: Ast.RIBS, openNamespaces: OPEN_NAMESPACES)
+    : NAMESPACE_SET =
+    let
+        val openNamespaceSet = List.concat (openNamespaces)
+    in
+        case namespaces of
+            _ :: [] => namespaces
+          | _ =>
+            let
+                val matches' = selectNamespacesByClass (instanceRibs, openNamespaceSet, identifier)
+            in
+                case matches' of
+                    [] => raise (LogErr.NameError "internal error")
+                  | _ :: [] => matches'
+                  | _ =>
+                    let
+                        val matches'' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
+                    in
+                        case matches'' of
+                            [] => raise (LogErr.NameError "internal error")
+                          | _ => matches''
+                    end
+            end
+    end
+</PRE>
+
+<h5>Class Base Namespace Selection</h5>
+
+<P><span class="pcounter"></span>Given a list of classes, an identifier and a set of namespaces, this algorithm selects the
+namespaces used on the most generic class of that list. This step is necessary to avoid object
+integrity issues that arise when a derived class introduces a binding with the same identifier and a
+different namespace in the open namespaces.
+
+<P><span class="pcounter"></span><b>Informal description</b>: given the list of classes inherited by an object, ordered from most
+generic to most derived, consider the class that is the head of this list. 
+
+Search this class for any
+instance fixture name bindings that are named by the provided identifier and any of the namespaces
+in the provided set. Collect the set of matching namespaces used in all such bindings. If the set of
+matching namespaces is nonempty, return it. Otherwise repeat the process on the tail of the list,
+and its tail, and so forth down the list. If all the classes in the list are searched and no
+matching namespaces are found, return the empty set.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+fun selectNamespacesByClass ([], namespaces, _) = namespaces
+ |  selectNamespacesByClass (instanceRibs: Ast.RIBS,
+                             namespaces: NAMESPACE_SET,
+                             identifier: IDENTIFIER)
+    : NAMESPACE list =
+    let
+        val rib = head (instanceRibs)
+        val bindingNamespaces = getInstanceBindingNamespaces (rib, identifier, namespaces)
+        val matches = intersectNamespaces (bindingNamespaces, namespaces)
+    in
+        case matches of
+            [] => selectNamespacesByClass (tail (instanceRibs), namespaces, identifier)
+          | _ => matches
+    end
+</PRE>
+
+<h5>Open Namespace Based Namespace Selection</h5>
+
+<P><span class="pcounter"></span>Given a list of sets of open namespaces (ordered from most recently opened to least recently
+opened) and a set of matching namespaces, this algorithm returns a subset of the matching set that
+occurs entirely within a single open namespace set.
+
+<P><span class="pcounter"></span><b>Informal description</b>: intersect the head of the provided open namespace list with the
+provided set of namespaces. If that intersection is nonempty, return it. Otherwise repeat the
+process with the tail of the open namespace list, and its tail, and so forth up through the list of
+open namespace sets. If the end of the list of open namespace sets is reached without producing a
+nonempty intersection, return an empty set.
+
+<P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
+<PRE>
+fun selectNamespacesByOpenNamespaces ([], _) = []
+ |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
+                                      namespaces: NAMESPACE_SET)
+    : NAMESPACE list =
+    let
+        val matches = intersectNamespaces (head (namespacesList), namespaces)
+    in
+        case matches of
+            [] => selectNamespacesByOpenNamespaces (tail (namespacesList), namespaces)
+          | _ => matches
+    end
+</PRE>
+
+<h4>Reserving Names</h4>
+
+<P><span class="pcounter"></span>Statically resolved names must keep their meaning at runtime and therefore cannot be shadowed or
+become ambiguous.
+
+<P><span class="pcounter"></span>Given an identifier, a namespace, and a list of sets of open namespaces, this algorithm
+computes a set of names consisting of the identifier and each of the open namespaces with
+an equal or higher priority than the given namespace.
+
+
+
+
+
+ 
+
+
+</body>
+</html>
