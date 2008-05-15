@@ -83,7 +83,7 @@ the global constant **public::undefined**.
 <p>A //class type// is a type defined by a class
 definition. 
 
-<p>An //instance type// is a type defined by an interface
+<p>An //interface type// is a type defined by an interface
 definition. 
 
 <p>Class and interface types are arranged in an explicit subtype
@@ -91,11 +91,11 @@ relation through the use of **extends** and **implements** clauses in
 class and interface definitions.
 
 <p>A class or interface type is denoted in type expressions by the
-name of the class or interface that defined the instance type.
+name of the class or interface that defined the type.
 
 ==== Record types ====
 
-<p>A //record type// is a subtype of the **public::Object** instance
+<p>A //record type// is a subtype of the **public::Object** class
 type that has additional type constraints on some specific set of
 named properties.
 
@@ -294,7 +294,7 @@ character.
 }}}
 
 defines a class **Vector** that is parameterized over a single type
-variable **X**. This class has an associated parametric instance type
+variable **X**. This class therefore also serves as a parametric type
 that can be used in type applications to form proper types.
 
 
@@ -311,7 +311,7 @@ single period, a less-than character, a coman-separated list of type
 expressions, and a greater-than character.
 
 <p>For example, the type application **Vector.&lt;Number&gt;** denotes an
-instance type that can be used as the allocated type of new objects.
+class type that can be used as the allocated type of new objects.
 
 
 ==== Type names ====

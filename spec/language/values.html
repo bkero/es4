@@ -223,11 +223,11 @@ have an ''ObjectTag'', ''ArrayTag'' or ''PrimitiveTag''.
 directly accessible in semantic code.
 
 <p>ECMAScript code can determine if an object is primitive through a correspondence between
-primitive tags and a set of 10 specific ECMAScript instance types. The correspondence is a
+primitive tags and a set of 10 specific ECMAScript class types. The correspondence is a
 bijection: any instance of these types has the corresponding primitive tag, and any object with a
-primitive tag is an instance of the corresponding type.
+primitive tag is an instance of the corresponding class.
 
-<p>The allocated type of a primitive object may be more specific than the corresponding instance
+<p>The allocated type of a primitive object may be more specific than the corresponding class
 type. In particular, function objects may have more specific subtypes of the class
 **public::Function**. In such cases, the allocated type of the object is present in the semantic
 value held by the primitive tag.
@@ -422,7 +422,7 @@ class object, and that class object is called //the value of// the class definit
 <p>A class value holds //class fixtures// and //instance fixtures//. If **C** is a class object,
 then the class fixtures of the associated class value describe fixed properties found on the
 class object **C**. In this way, the class fixtures effectively describe an implicit anonymous
-//meta-class// that the class object **C** is an instance of.
+subtype of **public::Class** that the class object **C** is an instance of.
 
 <FIXME>This tying-knots stuff at the top of the type hierarchy is always a little subtle and hard to
 word. Suggestions welcome.
@@ -439,7 +439,7 @@ section....
 fixed properties found on //instances of// the class.
 
 <p>An object is an //instance// of a class value ''C'' if the object's tag is ''InstanceTag'' and
-the instance type in the tag is the ''InstanceType'' found in ''C''.
+the class type in the tag is ''ClassType C''.
 
 <p>If an object **X** is an instance of a class value ''C'', then every for every //instance
 fixture// ''F'' in ''C'', a property ''P'' exists on **X** satisfying the following conditions:
@@ -454,15 +454,16 @@ fixture// ''F'' in ''C'', a property ''P'' exists on **X** satisfying the follow
 
 ==== Class Types and Class-Instance Types ====
 
-<p>A class value also corresponds to a particular pair of types: a class type and a class-instance
-type.
+<p>A class corresponds to a pair of types: an instance class type and a static class type.
 
-<p>The //class-instance type// in a class value ''C'' is the type of any object that is an instance
-of ''C''. Such objects hold an ''InstanceTag'' with the class-instance type of ''C''.
+<p>The //instance class type// of a class value ''C'' is ''ClassType C'', denoted in a type
+expression by the name of ''C'' itself, and is the allocated type of any instance of ''C''. The tag
+of any instance of ''C'' is ''InstanceTag C''.
 
-<p>The //class type// of a class value ''C'' is the instance type of the class object holding
-''C''. This instance type can also be considered the class-instance type of the implicit meta-class
-of ''C''.
+<p>The //static class type// of a class value ''C'' is the allocated type of the class object
+//holding// ''C''. In such an object, the static class type is stored in a field within ''C'', and
+is an anonymous subtype of the ''ClassType'' of **public::Class**. The tag of such an object is
+''PrimitiveTag (Class C)''.
 
 === Interface Values ===
 
@@ -483,8 +484,8 @@ that interface object is called //the value of// the interface definition.
 for each instance fixture declared in the interface, an instance fixture with the same name and type
 of the instance fixture.
 
-<p>An interface value also defines an instance type. If a class implements an interface, then the
-instance type of the class is a subtype of the instance type of the interface.
+<p>An interface value ''I'' also defines a type ''InterfaceType I''. If a class ''C'' implements
+interface ''I'', the type ''ClassType C'' is a subtype of ''InterfaceType I''.
 
 <IMPL>
 <INCLUDE file="ast.sml" name="and IFACE">

@@ -35,7 +35,7 @@ Virtual dynamic properties may be implemented by //catch-all//
 methods, described in the next section.
 
 
-= Catch-all methods =
+== Catch-all methods ==
 
 <P> This section contains a normative overview of the catch-all
 facility.  A more precise, also normative, description is given in
@@ -97,8 +97,7 @@ name.  Any value returned by the method is converted to ''boolean''.
 The default behavior for ''meta::delete'' is to attempt to delete a
 dynamic property from the object's property map.
 
-
-= Checking for the presence of a property =
+== Checking for the presence of a property ==
 
 <P> The HasOwnProperty protocol is invoked to check whether an object
 //obj// contains a property named by //name//.
@@ -139,7 +138,7 @@ end
 }}}
 
 
-= Reading a property value =
+== Reading a property value ==
 
 <P> The GetProperty protocol is invoked to read the value of a
 property named by //name// from an object //obj//.  The flag
@@ -242,7 +241,7 @@ end
 ie, if, given that o.m is a method, (o.m === o.m).
 
 
-= Writing a property value =
+== Writing a property value ==
 
 <P> The SetProperty protocol is invoked to write a value //value// to
 a property named by //name// on an object //obj//.  The object may or
@@ -334,7 +333,7 @@ end
 }}}
 
 
-= Deleting a property =
+== Deleting a property ==
 
 <P> The DeleteProperty protocol is invoked to remove a property named
 by //name// from an object //obj//.  The object may or may not have a
