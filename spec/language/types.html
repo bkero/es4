@@ -78,20 +78,19 @@ the global constant **public::undefined**.
 
 <p>The undefined type is denoted in type expressions as **undefined**.
 
-==== Class and Interface types ====
+==== Nominal types ====
 
-<p>A //class type// is a type defined by a class
-definition. 
+<p>A //nominal type// is either a class type or an interface type.
 
-<p>An //interface type// is a type defined by an interface
-definition. 
+<p>A //class type// is a type defined by a class definition. 
 
-<p>Class and interface types are arranged in an explicit subtype
-relation through the use of **extends** and **implements** clauses in
-class and interface definitions.
+<p>An //interface type// is a type defined by an interface definition.
 
-<p>A class or interface type is denoted in type expressions by the
-name of the class or interface that defined the type.
+<p>Nominal types are arranged in an explicit subtype relation through the use of **extends** and
+**implements** clauses in class and interface definitions.
+
+<p>A nominal type is denoted in type expressions by the name of the class or interface that defined
+the type.
 
 ==== Record types ====
 
@@ -264,14 +263,18 @@ given further special treatment.
 
 ==== Non-null types ====
 
-<p> A //non-null type// is a type that excludes the **null** value from 
-the population of some type. 
+<FIXME>Cormac recently reformulated the non-null operator such that it does *not* model
+deletion-of-null-from-union but rather persists, as a normal-form of a type term, wrapping a class
+or interface type, and modifies the contained class or interface type to reject null as a
+subtype. It works this way too, but there may be left over text that describes it the older way.
 
-<p>A non-null type is denoted **!T** for some type **T**.
+<p> A //non-null type// is a type that excludes the **null** value from the population of a nullable
+class or interface type.
 
-<p>For example, the non-null type **!(String | null)** is identical to
-the type **String**.
+<p>A non-null type is denoted **!T** for some class or interface type **T**.
 
+<p>For example, the non-null type **!String** is populated by instances of **public::String** but
+//excludes// null values.
 
 ==== Parametric types ====
 
@@ -413,7 +416,7 @@ String]** is a subtype of **[Number, String]**.
 .., T_{n}]** if each **S_{i}** is equivalent to **T_{i}** for i in 1..n.
 
 <p> A variable-length array type **[S_{1}, .., S_{n}, S, ... S]** is a
-subtype of **[S_{1}, .., S_{n}, ... S}]**.  The supertype demands one fewer
+subtype of **[S_{1}, .., S_{n}, ... S]**.  The supertype demands one fewer
 element in the array than the subtype does.  For example, **[Number,
 String, String, ... String]** is a subtype of **[Number,
 ... String]**, via transitivity.
@@ -618,13 +621,13 @@ within the type ''ty''.
 
 === Relating Structural and Nominal Types ===
 
-<p> A record type **{N_{1}:S_{1}, .., N_{n}:S_{n}}**  is a subtype of the nominal
+<p> A record type **{N_{1}:S_{1}, .., N_{n}:S_{n}}**  is a subtype of the class
 type **public::Object**.
 
-<p> An array type **[S_{1}, .., S_{n}]**  is a subtype of the nominal
+<p> An array type **[S_{1}, .., S_{n}]**  is a subtype of the class
 type **public::Array**.
 
-<p> Any function type  is a subtype of the nominal
+<p> Any function type  is a subtype of the class
 type **public::Function**.
 
 <IMPL>

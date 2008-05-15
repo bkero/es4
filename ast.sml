@@ -187,11 +187,11 @@ datatype PRAGMA =
      and FUNC =
          Func of 
          { name: FUNC_NAME,
-           fsig: FUNC_SIG,                       (* redundant, not used in verify *)
+           fsig: FUNC_SIG,
            native: bool,
            generator: bool,
            block: BLOCK option, (* NONE => abstract *)
-           param: HEAD,         (* CF: not sure what this is ... *)
+           param: HEAD,
            defaults: EXPRESSION list,
            ty: TYPE,
            loc: LOC option }
@@ -205,7 +205,7 @@ datatype PRAGMA =
        | NamespaceDefn of NAMESPACE_DEFN
        | TypeDefn of TYPE_DEFN
 
-     and FUNC_SIG =                             (* redundant, not used in verify *)
+     and FUNC_SIG =
          FunctionSignature of 
          { typeParams: IDENTIFIER list,
            params: BINDINGS,
