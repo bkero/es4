@@ -45,19 +45,14 @@ val langEd = 4
 
 fun lookupRoot (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
-    : (Ast.CLS * Ast.INSTANCE_TYPE) = 
+    : Ast.CLS =
     let
         val rib = Fixture.getRootRib prog
         val fix = Fixture.getFixture rib (Ast.PropName n)
-        val cls = case fix of
-                      Ast.ClassFixture cls => cls
-                    | _ => error [LogErr.name n, " did not resolve to a class fixture"]
-        val Ast.Cls { instanceType, ... } = cls
-        val ty = case instanceType of 
-                     Ast.InstanceType ity => ity
-                   | _ => error [LogErr.name n, " does not have an instance type"]
     in
-        (cls, ty)
+        case fix of
+            Ast.ClassFixture cls => cls
+          | _ => error [LogErr.name n, " did not resolve to a class fixture"]
     end
     
 
@@ -67,8 +62,8 @@ fun instantiateRootClass (regs:Mach.REGS)
     : (Ast.CLS * Mach.OBJ) =
   let
       val prog = (#prog regs)
-      val (cls, _) = lookupRoot prog fullName
-      val (_, cty) = lookupRoot prog Name.intrinsic_Class
+      val cls = lookupRoot prog fullName
+      val clsCls = lookupRoot prog Name.intrinsic_Class
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
       val obj = Mach.newObject (Mach.PrimitiveTag (Mach.Class cls)) (Mach.Object proto)
@@ -90,7 +85,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.InstanceType cty,
+                           { ty = Ast.ClassType clsCls,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { removable = false,
                                        enumerable = false,
@@ -120,7 +115,7 @@ fun completeClassFixtures (regs:Mach.REGS)
          * by name until just now.
          *)
         val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
-        val (Ast.Cls { instanceRib, ... }, _) = lookupRoot (#prog regs) Name.intrinsic_Class
+        val Ast.Cls { instanceRib, ... } = lookupRoot (#prog regs) Name.intrinsic_Class
     in
         Eval.allocObjRib classRegs classObj (SOME classObj) instanceRib
     end
@@ -329,9 +324,9 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val glob = 
             let
-                val (_, objIty) = lookupRoot prog Name.public_Object
+                val cls = lookupRoot prog Name.public_Object
             in
-                Mach.newObject (Mach.InstanceTag objIty) Mach.Null
+                Mach.newObject (Mach.InstanceTag cls) Mach.Null
             end
 
         val _ = Mach.setRib glob (Fixture.getRootRib prog)
@@ -355,10 +350,9 @@ fun boot (baseDir:string) : Mach.REGS =
         (* END SPEED HACK *)                
 
         (* Build the Object and Function prototypes as instances of public::Object first. *)
-        val (objClass, objTy) = lookupRoot prog Name.public_Object
-        val (funClass, funTy) = lookupRoot prog Name.public_Object
-        val objPrototype = Mach.newObject (Mach.InstanceTag objTy) Mach.Null
-        val funPrototype = Mach.newObject (Mach.InstanceTag objTy) (Mach.Object objPrototype)
+        val objClass = lookupRoot prog Name.public_Object
+        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.Null
+        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.Object objPrototype)
 
         val (objClass, objClassObj) = instantiateRootClass regs Name.public_Object funPrototype
         val (_, classClassObj) = instantiateRootClass regs Name.intrinsic_Class funPrototype

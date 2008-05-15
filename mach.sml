@@ -99,7 +99,7 @@ datatype VALUE = Undef
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE list (* FIXME: need TYPE option too - see ArrayType *)
        | PrimitiveTag of PRIMITIVE
-       | InstanceTag of Ast.INSTANCE_TYPE
+       | InstanceTag of Ast.CLS
        | NoTag
 
      and OBJ_CACHE = 
@@ -692,10 +692,13 @@ fun inspect (v:VALUE)
 
         fun magType t = 
             case t of 
-                Class (Ast.Cls { instanceType, classType, ... }) => 
-                (" : instanceType=" ^ (typ instanceType) ^ ", classType=" ^ (typ classType))
-              | Interface (Ast.Iface { instanceType, ... }) => 
-                (" : instanceType=" ^ (typ instanceType))
+                Class c => 
+                let
+                    val Ast.Cls { classType, ... } = c
+                in
+                    (" : instanceType=" ^ (typ (Ast.ClassType c)) ^ ", classType=" ^ (typ classType))
+                end
+              | Interface i => (" : instanceType=" ^ (typ (Ast.InterfaceType i)))
               | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
                 (" : " ^ (typ ty0))
               | Type t => (" = " ^ (typ t))
@@ -711,7 +714,7 @@ fun inspect (v:VALUE)
                 (* FIXME: elaborate printing of structural tags. *)
                 ObjectTag _ => "<Object>"
               | ArrayTag _ => "<Arrray>"
-              | InstanceTag t => "<Instance " ^ (typ (Ast.InstanceType t)) ^ ">"
+              | InstanceTag t => "<Instance " ^ (typ (Ast.ClassType t)) ^ ">"
               | PrimitiveTag m => "<Primitive " ^ (mag m) ^ ">"
               | NoTag => "<NoTag>"
 
@@ -772,7 +775,7 @@ fun nominalBaseOfTag (to:TAG)
     case to of
         ObjectTag _ => Name.public_Object
       | ArrayTag _ => Name.public_Array
-      | InstanceTag ity => (#name ity)
+      | InstanceTag (Ast.Cls {name, ...}) => name
       | PrimitiveTag (Boolean _) => Name.ES4_boolean
       | PrimitiveTag (Double _) => Name.ES4_double
       | PrimitiveTag (Decimal _) => Name.ES4_decimal

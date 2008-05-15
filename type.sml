@@ -222,13 +222,10 @@ fun mapTyExpr (f:(Ast.TYPE -> Ast.TYPE))
         Ast.TypeIndexReferenceType (f t, idx)
       | Ast.TypeNameReferenceType (t, id) =>
         Ast.TypeNameReferenceType (f t, id)
-      | Ast.InstanceType { name, typeParams, typeArgs, 
-                           nonnullable, superTypes, ty, dynamic } =>
-        Ast.InstanceType { name=name, 
-                           typeParams=typeParams,
-                           typeArgs = map f typeArgs,
-                           nonnullable=nonnullable, 
-                           superTypes=superTypes, ty=ty, dynamic=dynamic }
+      | Ast.ClassType cls => 
+        Ast.ClassType cls
+      | Ast.InterfaceType iface => 
+        Ast.InterfaceType iface
 (*      | Ast.TypeVarFixtureRef _ => ty *)
 (*      | _ => (error ["Unknown type ", LogErr.ty ty]; anyType)
 *)
@@ -377,13 +374,6 @@ fun checkProperType (ty:Ast.TYPE) : unit =
                 error ["Improper occurrence of type application ", LogErr.ty ty2, 
                        " in normalized type ", LogErr.ty ty]
 
-              | Ast.InstanceType { name, typeParams, typeArgs, ... } =>
-                if length typeParams = length typeArgs
-                then (map (foreachTyExpr check) typeArgs; ())
-                else
-                error ["Improper occurrence of generic class reference ", LogErr.ty ty2, 
-                       " in normalized type ", LogErr.ty ty]
-
               | _ => foreachTyExpr check ty2
     in 
         check ty
@@ -419,16 +409,8 @@ fun normalizeNames (useCache:bool)
                 Ast.TypeVarFixtureRef nonce
 *)
                 (* FIXME: not sure about the following, and generic classes ... *)
-              | (_, _, Ast.ClassFixture (Ast.Cls { instanceType, nonnullable, ... })) => 
-                if nonnullable
-                then instanceType
-                else Ast.UnionType [ instanceType, Ast.NullType]
-
-              | (_, _, Ast.InterfaceFixture (Ast.Iface { instanceType, nonnullable, ... })) => 
-                if nonnullable
-                then instanceType
-                else Ast.UnionType [ instanceType, Ast.NullType ]
-                         
+              | (_, _, Ast.ClassFixture c) => Ast.ClassType c
+              | (_, _, Ast.InterfaceFixture i) => Ast.InterfaceType i                         
               | (_, n, _) => error ["name ", LogErr.name  n, 
                                     " in type expression ", LogErr.ty ty, 
                                     " is not a type"]
@@ -588,6 +570,7 @@ fun substTypes (typenames: (NAME_EXPRESSION * NONCE option) list)
 (* Perform beta-reduction of all AppTypes applied to a LamType.
  *)
 
+(* 
 fun normalizeLambdas (ty:Ast.TYPE) : Ast.TYPE = 
     (* first, normalizeLambdas in subterms *)
     let val ty = mapTyExpr normalizeLambdas ty
@@ -621,6 +604,7 @@ fun normalizeLambdas (ty:Ast.TYPE) : Ast.TYPE =
 
           | _ => ty
     end
+*)
 
 (* ----------------------------------------------------------------------------- *)
 
@@ -633,9 +617,10 @@ fun normalize (ribs:Ast.RIB list)
 
         val _ = traceTy "normalize2: " ty
         val ty = normalizeRefs ribs ty
-
+(*
         val _ = traceTy "normalize3: " ty
         val ty = normalizeLambdas ty
+*)
 
         val _ = traceTy "normalize4: " ty
         val ty = normalizeNulls ty
@@ -683,12 +668,12 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
                           (tyExpr2:Ast.TYPE) 
     : Ast.TYPE option = 
     let
-        fun extract (Ast.UnionType [Ast.InstanceType t, Ast.NullType]) = SOME t
-          | extract (Ast.UnionType [Ast.InstanceType t]) = SOME t
-          | extract (Ast.InstanceType t) = SOME t
+        fun extract (Ast.UnionType [Ast.ClassType t, Ast.NullType]) = SOME t
+          | extract (Ast.UnionType [Ast.ClassType t]) = SOME t
+          | extract (Ast.ClassType t) = SOME t
           | extract _ = NONE
-        val srcInstance = extract tyExpr1
-        val dstInstance = extract tyExpr2
+        val srcClass = extract tyExpr1
+        val dstClass = extract tyExpr2
         fun isNumericType n = 
             List.exists (nameEq n) [ Name.ES4_double, 
                                           Name.ES4_decimal,
@@ -701,11 +686,11 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
             List.exists (nameEq n) [ Name.ES4_boolean,
                                           Name.public_Boolean ]
     in
-        case (srcInstance, dstInstance) of
+        case (srcClass, dstClass) of
             ((SOME src), (SOME dst)) => 
             let
-                val {name=srcName, ...} = src
-                val {name=dstName, ...} = dst
+                val Ast.Cls {name=srcName, ...} = src
+                val Ast.Cls {name=dstName, ...} = dst
             in
                 if 
                     (isBooleanType dstName)
@@ -713,24 +698,22 @@ fun findSpecialConversion (tyExpr1:Ast.TYPE)
                     (isNumericType srcName andalso isNumericType dstName)
                     orelse
                     (isStringType srcName andalso isStringType dstName)
-                then SOME (Ast.InstanceType dst)
+                then SOME (Ast.ClassType dst)
                 else NONE
             end
 
           | (_, (SOME dst)) => 
             let
-                val {name=dstName, ...} = dst
+                val Ast.Cls {name=dstName, ...} = dst
             in
                 if 
                     (isBooleanType dstName)
-                then SOME (Ast.InstanceType dst)
+                then SOME (Ast.ClassType dst)
                 else NONE
             end
 
           | _ => NONE
     end
-
-(* SPEC
 
 fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
             (type1 : Ast.TYPE)
@@ -746,22 +729,6 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
     (subTypeNominal  extra type1 type2) orelse
     (subTypeHierarchy extra type1 type2) orelse
     (subTypeStructuralNominal extra type1 type2) orelse
-    (extra type1 type2) 
-
-*)
-
-fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool) 
-            (type1 : Ast.TYPE)
-            (type2 : Ast.TYPE)
-    : bool = 
-    (type1 = type2)   (* reflexivity *) orelse
-    (subTypeFunction extra type1 type2) orelse
-    (subTypeRecord   extra type1 type2) orelse
-    (subTypeUnion    extra type1 type2) orelse
-    (subTypeArray    extra type1 type2) orelse
-    (subTypeNonNull     extra type1 type2) orelse
-    (subTypeNominalOld  extra type1 type2) orelse
-    (subTypeStructuralNominalOld extra type1 type2) orelse
     (extra type1 type2) 
 
 (* FIXME: allow for supertypes of Function other than Object *)
@@ -782,39 +749,6 @@ and subTypeStructuralNominal extra type1 type2 =
            
       | _ => false
 
-and subTypeStructuralNominalOld extra type1 type2 =
-    case (type1, type2) of
-
-        (Ast.RecordType _, Ast.InstanceType { name, ... }) => 
-        List.exists (nameEq name) [ Name.public_Object ]
-        
-      | (Ast.ArrayType _, Ast.InstanceType { name, ... }) => 
-        List.exists (nameEq name) [ Name.public_Array,
-                                    Name.public_Object ]
-        
-      | (Ast.FunctionType _, Ast.InstanceType { name, ... }) => 
-        List.exists (nameEq name) [ Name.public_Function, 
-                                    Name.public_Object ]
-        
-      | _ => false
-
-
-and subTypeNominalOld extra type1 type2 =
-    case (type1, type2) of
-
-        ( Ast.InstanceType { name = name1, typeArgs = typeArgs1, superTypes = superTypes1, ...}, 
-          Ast.InstanceType { name = name2, typeArgs = typeArgs2, ...} ) 
-        =>
-        (nameEq name1 name2 andalso
-         length typeArgs1 = length typeArgs2 andalso
-         ListPair.all (fn (type1, type2) => equivType extra type1 type2)
-                      ( typeArgs1, typeArgs2 ))
-        orelse 
-        (List.exists (fn superType1 => subType extra superType1 type2) 
-                     superTypes1)
-
-      | _ => false
-
 and subTypeNominal extra type1 type2 =
     case (type1, type2) of
 
@@ -827,34 +761,41 @@ and subTypeNominal extra type1 type2 =
             (fn (type1, type2) => equivType extra type1 type2)
             (typeArgs1, typeArgs2)
 
+      | (Ast.ClassType (Ast.Cls {name=name1, ...}),
+         Ast.ClassType (Ast.Cls {name=name2, ...})) =>
+        nameEq name1 name2
+               
+      | (Ast.InterfaceType (Ast.Iface {name=name1, ...}),
+         Ast.InterfaceType (Ast.Iface {name=name2, ...})) =>
+        nameEq name1 name2
+
       | _ => false
 
 
 and subTypeHierarchy extra type1 type2 =
     case (type1, type2) of
 
-        ( Ast.ClassType (Ast.Cls { typeParams = [], extends = SOME extends, ...}), _ )
-        => subType extra extends type2 
-
-      | ( Ast.AppType 
-              (Ast.ClassType (Ast.Cls { typeParams, extends = SOME extends, ...}),
-               typeArgs),
-          _ )
-        => subType extra (substTypes typeParams typeArgs extends) type2
-
-      | ( Ast.ClassType (Ast.Cls { typeParams = [], implements, ...}), _ )
-        => List.exists 
+        ( Ast.ClassType (Ast.Cls { typeParams = [], extends, implements, ...}), _ )
+        => (case extends of 
+                NONE => false 
+              | SOME extends => subType extra extends type2)
+           orelse
+           List.exists 
                (fn iface => subType extra iface type2) 
                implements
-
+               
       | ( Ast.AppType 
-              (Ast.ClassType (Ast.Cls { typeParams, implements, ...}), 
+              (Ast.ClassType (Ast.Cls { typeParams, extends, implements, ...}),
                typeArgs),
           _ )
-        => List.exists 
+        => (case extends of 
+                NONE => false
+              | SOME extends => subType extra (substTypes typeParams typeArgs extends) type2)
+           orelse
+           List.exists 
                (fn iface => subType extra (substTypes typeParams typeArgs iface) type2)
                implements
-
+               
       | ( Ast.InterfaceType (Ast.Iface { typeParams = [], extends, ...}), _ )
         => List.exists 
                (fn iface => subType extra iface type2) 
@@ -1075,8 +1016,8 @@ fun instanceTy (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
     : Ast.TYPE =
     case Fixture.getFixture (Fixture.getRootRib prog) (Ast.PropName n) of
-        (Ast.ClassFixture (Ast.Cls cls)) => (#instanceType cls)
-      | (Ast.InterfaceFixture (Ast.Iface iface)) => (#instanceType iface)
+        (Ast.ClassFixture c) => Ast.ClassType c
+      | (Ast.InterfaceFixture i) => Ast.InterfaceType i
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
 fun groundType (prog:Fixture.PROGRAM)

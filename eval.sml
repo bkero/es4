@@ -609,6 +609,10 @@ and valAllocState (regs:Mach.REGS)
 			  | firstSimpleType ((Ast.AnyType)::xs) = Mach.ValProp (Mach.Undef)
 			  | firstSimpleType ((Ast.NullType)::xs) = Mach.ValProp (Mach.Null)
 			  | firstSimpleType ((Ast.UndefinedType)::xs) = Mach.ValProp (Mach.Undef)
+			  | firstSimpleType ((Ast.ClassType (Ast.Cls {nonnullable=false, ...}))::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.InterfaceType (Ast.Iface {nonnullable=false, ...}))::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.AppType (Ast.ClassType (Ast.Cls {nonnullable=false, ...}), _))::xs) = Mach.ValProp (Mach.Null)
+			  | firstSimpleType ((Ast.AppType (Ast.InterfaceType (Ast.Iface {nonnullable=false, ...}), _))::xs) = Mach.ValProp (Mach.Null)
 			  | firstSimpleType (x::xs) = firstSimpleType xs
 		in
 			firstSimpleType ts
@@ -625,12 +629,9 @@ and valAllocState (regs:Mach.REGS)
         
       | Ast.AppType (base, _) =>
         valAllocState regs base
-(*        
-      | Ast.NonNullType { expr, nullable=true } =>
-        Mach.ValProp (Mach.Null)
- *)       
+
       | Ast.NonNullType expr =>
-        valAllocState regs expr
+        Mach.UninitProp
         
       | Ast.TypeName ident =>
         error regs ["allocating fixture with unresolved type name: ", LogErr.ty ty]
@@ -641,25 +642,28 @@ and valAllocState (regs:Mach.REGS)
       | Ast.TypeNameReferenceType _ =>
         error regs ["allocating fixture of unresolved field type reference"]
         
-      | Ast.InstanceType n =>
+      | Ast.ClassType (Ast.Cls {name, nonnullable, ...}) =>
         (* It is possible that we're booting and the class n doesn't even exist yet. *)
         if (not (Mach.isBooting regs)) orelse 
-           Mach.isClass (getValue regs (#global regs) (#name n))
+           Mach.isClass (getValue regs (#global regs) name)
         then			
             let 
-                val clsid = getObjId (needObj regs (getValue regs (#global regs) (#name n)))
+                val clsid = getObjId (needObj regs (getValue regs (#global regs) name))
             in
                 case allocSpecial regs clsid of
                     SOME v => Mach.ValProp v
-                  | NONE => Mach.UninitProp
+                  | NONE => if nonnullable 
+                            then Mach.UninitProp
+                            else Mach.ValProp (Mach.Null)
             end
         else
-            Mach.UninitProp
-            
-(*
-      | Ast.LamType _ => 
+            if nonnullable
+            then Mach.UninitProp
+            else Mach.ValProp (Mach.Null)
+
+      | Ast.InterfaceType (Ast.Iface {name, ...}) => 
         Mach.UninitProp
-*)
+
 
 and allocSpecial (regs:Mach.REGS)
                  (id:Mach.OBJ_IDENTIFIER)
@@ -901,7 +905,7 @@ and checkAndConvert (regs:Mach.REGS)
                     case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
                         NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
-                val (classTy:Ast.INSTANCE_TYPE) = AstQuery.needInstanceType classType
+                val (classTy:Ast.TYPE) = AstQuery.needClassType classType
                 val (classObj:Mach.OBJ) = instanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
                 val converted = evalCallByRef (withThis regs classObj) (classObj, Name.meta_invoke) [v]
@@ -931,7 +935,7 @@ and isDynamic (regs:Mach.REGS)
           | typeIsDynamic (Ast.RecordType _) = true
       (*    | typeIsDynamic (Ast.LamType { params, body }) = typeIsDynamic body *)
           | typeIsDynamic (Ast.NonNullType t) = typeIsDynamic t
-          | typeIsDynamic (Ast.InstanceType ity) = (#dynamic ity)
+          | typeIsDynamic (Ast.ClassType (Ast.Cls { dynamic, ... })) = dynamic
           | typeIsDynamic _ = false
     in
         typeIsDynamic (typeOfVal regs (Mach.Object obj))
@@ -2282,44 +2286,31 @@ and evalSuperCall (regs:Mach.REGS)
     let                                         
         val Mach.Obj { tag, ... } = object
         val thisType = case tag of 
-                           Mach.InstanceTag thisType => thisType
-                         | _ => error regs ["missing InstanceType tag during super call"]
+                           Mach.InstanceTag c  => Ast.ClassType c
+                         | _ => error regs ["missing ClassType tag during super call"]
                                 
-        (* 
-         *
-         * For this to work properly, the supertype list has to be
-         * sorted such that subtypes precede the supertypes. We
-         * are synthesizing a special ribs environment for
-         * multiname lookup to find the appropriate ancestor in.
-         *
-         * FIXME: this is pretty ugly, it would be nicer to
-         * resolve all this during definition.
-         *)
-            
-        fun extractInstanceType (Ast.InstanceType ity) = SOME ity
-          | extractInstanceType (Ast.UnionType [ Ast.InstanceType ity, 
-                                                 Ast.NullType ]) = SOME ity
-          | extractInstanceType t = (error regs ["unexpected supertype ",
-                                                 "in super() expression:", 
-                                                 LogErr.ty t]; 
-                                     NONE)
-                                    
-        fun getClassObjOf ity = 
-            if Mach.isClass (getValue regs (#global regs) (#name ity))
-            then SOME (instanceClass regs ity)
-            else NONE
-                 
+        fun getSuperClassObjs t = 
+            case t of 
+                (Ast.ClassType (Ast.Cls {extends, ...})) =>
+                (instanceClass regs t) :: 
+                (case extends of 
+                     NONE => []
+                   | SOME t' => getSuperClassObjs t')
+              | _ => error regs ["non-class type in extends clause during super call"]
+
         fun instanceRibOf (Ast.Cls { instanceRib, ... }) = instanceRib
 
-        val superClassObjs = List.mapPartial 
-                                 getClassObjOf
-                                 (List.mapPartial extractInstanceType 
-                                                  (#superTypes thisType))
-                             
+        val superClassObjs = getSuperClassObjs thisType 
+
         val superRibs = map (instanceRibOf 
                              o Mach.needClass 
                              o (Mach.Object))
-                            superClassObjs
+                        superClassObjs
+                            
+                        
+        val superRibs = case superRibs of 
+                            [] => []
+                          | x::xs => xs
                             
         val (n, superClassInstanceRib, func) =
             case Fixture.resolveNameExpr superRibs nameExpr of 
@@ -2422,34 +2413,25 @@ and applyTypesToClass (regs:Mach.REGS)
     : Mach.VALUE = 
     let
         val cls = Mach.needClass classVal
-        val Ast.Cls { instanceType, ... } = cls
+        val Ast.Cls c = cls
+        val newCls = Ast.Cls { name = (#name c), 
+                               privateNS = (#privateNS c),
+                               protectedNS = (#protectedNS c),
+                               parentProtectedNSs = (#parentProtectedNSs c),
+                               typeParams = (#typeParams c),
+                               nonnullable = (#nonnullable c),
+                               dynamic = (#dynamic c),
+                               (* FIXME: apply to base types when logic for this is present in defn. *)
+                               extends = (#extends c),
+                               implements = (#implements c),
+                               classRib = (#classRib c),
+                               instanceRib = (#instanceRib c),
+                               instanceInits = (#instanceInits c),
+                               constructor = (#constructor c),
+                               classType = (#classType c)  }
+        val baseClassObj = needObj regs classVal
     in
-        if Type.isGroundType instanceType (* CF: ?? *)
-        then classVal
-        else 
-            let
-                fun applyArgs t = applyTypes regs t typeArgs
-                val Ast.Cls c = cls
-                val newCls = Ast.Cls { name = (#name c), 
-                                       privateNS = (#privateNS c),
-                                       protectedNS = (#protectedNS c),
-                                       parentProtectedNSs = (#parentProtectedNSs c),
-                                       typeParams = (#typeParams c),
-                                       nonnullable = (#nonnullable c),
-                                       dynamic = (#dynamic c),
-                                       (* FIXME: apply to base types when logic for this is present in defn. *)
-                                       extends = (#extends c), (* Option.map applyArgs (#extends c), *)
-                                       implements = (#implements c), (* map applyArgs (#implements c), *)
-                                       classRib = (#classRib c),
-                                       instanceRib = (#instanceRib c),
-                                       instanceInits = (#instanceInits c),
-                                       constructor = (#constructor c),
-                                       classType = (#classType c),
-                                       instanceType = applyArgs (#instanceType c) }
-                val baseClassObj = needObj regs classVal
-            in
-                newClass regs newCls
-            end
+        newClass regs newCls
     end
 
 
@@ -2459,23 +2441,14 @@ and applyTypesToInterface (regs:Mach.REGS)
     : Mach.VALUE = 
     let
         val iface = Mach.needInterface interfaceVal
-        val Ast.Iface { instanceType, ... } = iface
+        val Ast.Iface i = iface
+        val newIface = Ast.Iface { name = (#name i), 
+                                   typeParams = (#typeParams i),
+                                   nonnullable = (#nonnullable i),
+                                   extends = (#extends i),
+                                   instanceRib = (#instanceRib i) }
     in
-        if Type.isGroundType instanceType 
-        then interfaceVal
-        else 
-            let
-                fun applyArgs t = applyTypes regs t typeArgs
-                val Ast.Iface i = iface
-                val newIface = Ast.Iface { name = (#name i), 
-                                           typeParams = (#typeParams i),
-                                           nonnullable = (#nonnullable i),
-                                           extends = map applyArgs (#extends i),
-                                           instanceRib = (#instanceRib i),
-                                           instanceType = applyArgs (#instanceType i) }
-            in
-		        newInterface regs newIface
-            end
+		newInterface regs newIface
     end
 
 
@@ -2513,34 +2486,38 @@ and applyTypesToFunction (regs:Mach.REGS)
     end
 
 
-and instanceTypeRepresentative (regs:Mach.REGS)
-                               (ity:Ast.INSTANCE_TYPE)
-                               (applier:Mach.REGS 
-                                        -> Mach.VALUE 
-                                        -> Ast.TYPE list 
-                                        -> Mach.VALUE)
+and instanceClass (regs:Mach.REGS)
+                  (ity:Ast.TYPE)
     : Mach.OBJ = 
-    let
-        val { name, typeArgs, ... } = ity
-        val v = getValue regs (#global regs) name
-        val v = case typeArgs of 
-                    [] => v
-                  | _ => applier regs v typeArgs
+    let 
+        fun fetch n = getValue regs (#global regs) n
     in
-        needObj regs v
+        case ity of 
+            Ast.ClassType (Ast.Cls { name, ... }) => 
+            needObj regs (fetch name)
+            
+          | Ast.AppType (Ast.ClassType (Ast.Cls {name, ... }), types) => 
+            needObj regs (applyTypesToClass regs (fetch name) types)
+            
+          | _ => error regs ["unexpected type in instanceClass"]
     end
 
 
-and instanceClass (regs:Mach.REGS)
-                  (ity:Ast.INSTANCE_TYPE)
-    : Mach.OBJ = 
-    instanceTypeRepresentative regs ity applyTypesToClass
-
-
 and instanceInterface (regs:Mach.REGS)
-                      (ity:Ast.INSTANCE_TYPE)
+                      (ity:Ast.TYPE)
     : Mach.OBJ = 
-    instanceTypeRepresentative regs ity applyTypesToClass
+    let 
+        fun fetch n = getValue regs (#global regs) n
+    in
+        case ity of 
+            Ast.InterfaceType (Ast.Iface { name, ... }) => 
+            needObj regs (fetch name)
+            
+          | Ast.AppType (Ast.InterfaceType (Ast.Iface {name, ... }), types) => 
+            needObj regs (applyTypesToInterface regs (fetch name) types)
+            
+          | _ => error regs ["unexpected type in instanceInterface"]
+    end
 
 (* SPEC
 
@@ -2612,19 +2589,20 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
     : Mach.VALUE =
     let
         val vals = evalExprsAndSpliceSpreads regs exprs
-        val (newTag, newClassVal, tyExprs) = 
+        val (newTag, newClassVal) = 
             case Option.map (evalTy regs) ty of 
                 NONE => 
                 ((Mach.ArrayTag [Ast.AnyType]), 
-                 getValue regs (#global regs) Name.public_Array, [])
+                 getValue regs (#global regs) Name.public_Array)
               | SOME (Ast.ArrayType (tys,tyo)) =>  (* FIXME: use tyo *)
                 (Mach.ArrayTag tys,
-                 getValue regs (#global regs) Name.public_Array, tys)
-              | SOME (Ast.InstanceType ity) => 
-                (Mach.InstanceTag ity,
-                 getValue regs (#global regs) (#name ity), [])
-              | SOME ty => throwExn (newTypeErr regs ["initialising unsupported type from literal array: ", 
-                                                      LogErr.ty ty])
+                 getValue regs (#global regs) Name.public_Array)
+              | SOME ty => 
+                let
+                    val cv = Mach.Object (instanceClass regs ty)
+                in
+                    (Mach.InstanceTag (Mach.needClass cv), cv)
+                end
 
         val newClass = Mach.needClass newClassVal
         val newClassObj = needObj regs newClassVal
@@ -2635,20 +2613,8 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
           | putVal n (v::vs) =
             let
                 val name = Name.public (Ustring.fromInt n)
-                (* FIXME: this is probably incorrect wrt. Array typing rules. *)
-                val ty = if n < (length tyExprs)
-                         then List.nth (tyExprs, n)
-                         else (if (length tyExprs) > 0
-                               then List.last tyExprs
-                               else Ast.AnyType)
-                val prop = { ty = ty,
-                             state = Mach.ValProp v,
-                             attrs = { removable = true,
-                                       enumerable = true,
-                                       writable = Mach.Writable,
-                                       fixed = false } }
             in
-                Mach.addProp props name prop;
+                setValue regs obj name v;
                 putVal (n+1) vs
             end
         val numProps = putVal 0 vals
@@ -2683,12 +2649,13 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                 NONE => ((Mach.ObjectTag []), getObjClassVal(), [])
               | SOME (Ast.RecordType fields) => 
                 (Mach.ObjectTag fields, getObjClassVal(), fields)
-              | SOME (Ast.InstanceType ity) => 
-                (Mach.InstanceTag ity,
-                 getValue regs (#global regs) (#name ity), 
-                 [])
-              | SOME ty => throwExn (newTypeErr regs ["initialising unsupported type from literal object: ", 
-                                                      LogErr.ty ty])
+              | SOME ty => 
+                let 
+                    val cv = Mach.Object (instanceClass regs ty)
+                in
+                    (Mach.InstanceTag (Mach.needClass cv), cv, [])
+                end
+
         val newClass = Mach.needClass newClassVal
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj
@@ -3165,7 +3132,7 @@ and evalTypeExpr (regs:Mach.REGS)
     : Mach.VALUE =
     case te of
         Ast.AnyType => Mach.Null (* FIXME *)
-     (*  | Ast.VoidType => Mach.Null (* FIXME *) *)
+      (*  | Ast.VoidType => Mach.Null (* FIXME *) *)
       | Ast.NullType => Mach.Null (* FIXME *)
       | Ast.UndefinedType => Mach.Null (* FIXME *)
       | Ast.UnionType ut => Mach.Null (* FIXME *)
@@ -3174,7 +3141,8 @@ and evalTypeExpr (regs:Mach.REGS)
       | Ast.FunctionType ft => Mach.Null (* FIXME *)
       | Ast.RecordType ot => Mach.Null (* FIXME *)
       | Ast.NonNullType _ => Mach.Null (* FIXME *)
-      | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
+      | Ast.ClassType c => Mach.Null (* FIXME *)
+      | Ast.InterfaceType t => Mach.Null (* FIXME *)
       | _ => Mach.Null (* FIXME *)
 
 and wordToDouble (x:Word32.word) 
@@ -3197,7 +3165,8 @@ and numTypeOf (regs:Mach.REGS)
         val ty = typeOfVal regs v 
         fun sameItype t2 = 
             case (ty, t2) of
-                (Ast.InstanceType it1, Ast.InstanceType it2) => Mach.nameEq (#name it1) (#name it2)
+                (Ast.ClassType (Ast.Cls {name=name1, ...}), Ast.ClassType (Ast.Cls {name=name2, ...})) => 
+                Mach.nameEq name1 name2
               | _ => false
     in
         (* Don't use ~< here, it is willing to convert numeric types! *)
@@ -3536,31 +3505,31 @@ and typeOfTag (regs:Mach.REGS)
               (tag:Mach.TAG)
     : (Ast.TYPE) =
     let
-        fun primitiveInstanceType getter = 
+        fun primitiveClassType getter = 
             let
                 val cell = getter regs 
             in
                 case !cell of 
-                    SOME (Mach.Obj { tag = Mach.PrimitiveTag (Mach.Class (Ast.Cls { instanceType, ... } )), 
+                    SOME (Mach.Obj { tag = Mach.PrimitiveTag (Mach.Class c), 
                                      ...}) => 
-                    instanceType
+                    Ast.ClassType c
                   | _ => error regs ["error fetching primitive instance type"]
             end
     in
         case tag of
-            Mach.InstanceTag ity => Ast.InstanceType ity
+            Mach.InstanceTag ity => Ast.ClassType ity
           | Mach.ObjectTag tys => Ast.RecordType tys
           | Mach.ArrayTag tys => Ast.ArrayType (tys,NONE) (* FIXME *)
-          | Mach.PrimitiveTag (Mach.Boolean _) => primitiveInstanceType Mach.getBooleanClassSlot
-          | Mach.PrimitiveTag (Mach.Double _) => primitiveInstanceType Mach.getDoubleClassSlot
-          | Mach.PrimitiveTag (Mach.Decimal _) => primitiveInstanceType Mach.getDecimalClassSlot
-          | Mach.PrimitiveTag (Mach.String _) => primitiveInstanceType Mach.getStringClassSlot
-          | Mach.PrimitiveTag (Mach.Namespace _) => primitiveInstanceType Mach.getNamespaceClassSlot
-          | Mach.PrimitiveTag (Mach.Class _) => primitiveInstanceType Mach.getClassClassSlot
-          | Mach.PrimitiveTag (Mach.Interface _) => primitiveInstanceType Mach.getInterfaceClassSlot
-          | Mach.PrimitiveTag (Mach.Type _) => primitiveInstanceType Mach.getTypeInterfaceSlot
-          | Mach.PrimitiveTag (Mach.NativeFunction _) => primitiveInstanceType Mach.getFunctionClassSlot
-          | Mach.PrimitiveTag (Mach.Generator _) => primitiveInstanceType Mach.getGeneratorClassSlot
+          | Mach.PrimitiveTag (Mach.Boolean _) => primitiveClassType Mach.getBooleanClassSlot
+          | Mach.PrimitiveTag (Mach.Double _) => primitiveClassType Mach.getDoubleClassSlot
+          | Mach.PrimitiveTag (Mach.Decimal _) => primitiveClassType Mach.getDecimalClassSlot
+          | Mach.PrimitiveTag (Mach.String _) => primitiveClassType Mach.getStringClassSlot
+          | Mach.PrimitiveTag (Mach.Namespace _) => primitiveClassType Mach.getNamespaceClassSlot
+          | Mach.PrimitiveTag (Mach.Class _) => primitiveClassType Mach.getClassClassSlot
+          | Mach.PrimitiveTag (Mach.Interface _) => primitiveClassType Mach.getInterfaceClassSlot
+          | Mach.PrimitiveTag (Mach.Type _) => primitiveClassType Mach.getTypeInterfaceSlot
+          | Mach.PrimitiveTag (Mach.NativeFunction _) => primitiveClassType Mach.getFunctionClassSlot
+          | Mach.PrimitiveTag (Mach.Generator _) => primitiveClassType Mach.getGeneratorClassSlot
           | Mach.PrimitiveTag (Mach.Function {func=Ast.Func { ty, ...}, ...}) => ty
             
           | Mach.NoTag =>
@@ -4463,81 +4432,75 @@ and initializeAndConstruct (regs:Mach.REGS)
                            (instanceObj:Mach.OBJ)
     : unit =
     let
-        val Ast.Cls { instanceType, ... } = class
-        (* NB: leave this here, it faults if we have a non-ground type, which is the point. *)
-        val tyExpr = evalTy regs instanceType
-    in
-        let
-            fun idStr ob = Int.toString (getObjId ob)
-            val _ = traceConstruct ["initializeAndConstruct: this=#", (idStr (#this regs)),
-                                    ", constructee=#", (idStr instanceObj),
-                                    ", class=#", (idStr classObj)]
-            val _ = if getObjId (#this regs) = getObjId instanceObj
-                    then ()
-                    else error regs ["constructor running on non-this value"]
-            val Ast.Cls { name,
-                          extends,
-                          instanceInits,
-                          constructor,
-                          ... } = class
-            fun initializeAndConstructSuper (superArgs:Mach.VALUE list) =
-                case extends of
-                    NONE =>
-                    (traceConstruct ["checking all properties initialized at root class ", fmtName name];
-                     checkAllPropertiesInitialized regs instanceObj)
-                  | SOME parentTy =>
-                    let
-                        val parentTy = evalTy regs parentTy
-                        val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
-                        val superObj = instanceClass regs (AstQuery.needInstanceType parentTy)
-                        val superClass = Mach.needClass (Mach.Object superObj)
-                        val superScope = getClassScope regs superObj
-                        val superRegs = withThis (withScope regs superScope) instanceObj
-                    in
-                        initializeAndConstruct
-                            superRegs superClass superObj superArgs instanceObj
-                    end
-        in
-            traceConstruct ["evaluating instance initializers for ", fmtName name];
-            evalObjInits regs instanceObj instanceInits;
-            case constructor of
-                NONE => initializeAndConstructSuper []
-              | SOME (Ast.Ctor { settings, superArgs, func }) =>
+        fun idStr ob = Int.toString (getObjId ob)
+        val _ = traceConstruct ["initializeAndConstruct: this=#", (idStr (#this regs)),
+                                ", constructee=#", (idStr instanceObj),
+                                ", class=#", (idStr classObj)]
+        val _ = if getObjId (#this regs) = getObjId instanceObj
+                then ()
+                else error regs ["constructor running on non-this value"]
+        val Ast.Cls { name,
+                      extends,
+                      instanceInits,
+                      constructor,
+                      ... } = class
+        fun initializeAndConstructSuper (superArgs:Mach.VALUE list) =
+            case extends of
+                NONE =>
+                (traceConstruct ["checking all properties initialized at root class ", fmtName name];
+                 checkAllPropertiesInitialized regs instanceObj)
+              | SOME parentTy =>
                 let
-                    val _ = Mach.push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
-                    val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
-                    val (varObj:Mach.OBJ) = Mach.newObjectNoTag ()
-                    val (varRegs:Mach.REGS) = extendScopeReg regs
-                                                             varObj
-                                                             Mach.ActivationScope
-                    val varScope = (#scope varRegs)
-                    val (instanceRegs:Mach.REGS) = extendScopeReg regs
-                                                                  instanceObj
-                                                                  Mach.InstanceScope
-                    val (ctorRegs:Mach.REGS) = extendScopeReg instanceRegs
-                                                              varObj
-                                                              Mach.ActivationScope
+                    val parentTy = evalTy regs parentTy
+                    val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
+                    val superObj = instanceClass regs (AstQuery.needClassType parentTy)
+                    val superClass = Mach.needClass (Mach.Object superObj)
+                    val superScope = getClassScope regs superObj
+                    val superRegs = withThis (withScope regs superScope) instanceObj
                 in
-                    traceConstruct ["allocating scope rib for constructor of ", fmtName name];
-                    allocScopeRib varRegs paramRib;
-                    traceConstruct ["binding constructor args of ", fmtName name];
-                    bindArgs regs varScope func args;
-                    traceConstruct ["evaluating inits of ", fmtName name,
-                                    " in scope #", Int.toString (getScopeId varScope)];
-                    evalScopeInits varRegs Ast.Local paramInits;
-                    traceConstruct ["evaluating settings"];
-                    evalObjInits varRegs instanceObj settings;
-                    traceConstruct ["initializing and constructing superclass of ", fmtName name];
-                    initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
-                    traceConstruct ["entering constructor for ", fmtName name];
-                    (case block of 
-                         NONE => Mach.Undef
-                       | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
-                                    handle ReturnException v => v));
-                    Mach.pop regs;
-                    ()
+                    initializeAndConstruct
+                        superRegs superClass superObj superArgs instanceObj
                 end
-        end
+    in
+        traceConstruct ["evaluating instance initializers for ", fmtName name];
+        evalObjInits regs instanceObj instanceInits;
+        case constructor of
+            NONE => initializeAndConstructSuper []
+          | SOME (Ast.Ctor { settings, superArgs, func }) =>
+            let
+                val _ = Mach.push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
+                val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
+                val (varObj:Mach.OBJ) = Mach.newObjectNoTag ()
+                val (varRegs:Mach.REGS) = extendScopeReg regs
+                                                         varObj
+                                                         Mach.ActivationScope
+                val varScope = (#scope varRegs)
+                val (instanceRegs:Mach.REGS) = extendScopeReg regs
+                                                              instanceObj
+                                                              Mach.InstanceScope
+                val (ctorRegs:Mach.REGS) = extendScopeReg instanceRegs
+                                                          varObj
+                                                          Mach.ActivationScope
+            in
+                traceConstruct ["allocating scope rib for constructor of ", fmtName name];
+                allocScopeRib varRegs paramRib;
+                traceConstruct ["binding constructor args of ", fmtName name];
+                bindArgs regs varScope func args;
+                traceConstruct ["evaluating inits of ", fmtName name,
+                                " in scope #", Int.toString (getScopeId varScope)];
+                evalScopeInits varRegs Ast.Local paramInits;
+                traceConstruct ["evaluating settings"];
+                evalObjInits varRegs instanceObj settings;
+                traceConstruct ["initializing and constructing superclass of ", fmtName name];
+                initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
+                traceConstruct ["entering constructor for ", fmtName name];
+                (case block of 
+                     NONE => Mach.Undef
+                   | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
+                                handle ReturnException v => v));
+                Mach.pop regs;
+                ()
+            end
     end
 
 and constructStandard (regs:Mach.REGS)
@@ -4547,10 +4510,8 @@ and constructStandard (regs:Mach.REGS)
                       (args:Mach.VALUE list)
     : Mach.OBJ =
     let
-        val Ast.Cls { instanceType, ...} = class
         val regs = withScope regs (getClassScope regs classObj)
-        val ty = AstQuery.needInstanceType (evalTy regs instanceType)
-        val tag = Mach.InstanceTag ty
+        val tag = Mach.InstanceTag class
     in
         constructStandardWithTag regs classObj class tag proto args 
     end
@@ -5035,7 +4996,7 @@ and initClassPrototype (regs:Mach.REGS)
 			            NONE => Mach.Null
 		              | SOME baseClassTy =>
 			            let
-			                val ty = AstQuery.needInstanceType (evalTy regs baseClassTy)
+			                val ty = AstQuery.needClassType (evalTy regs baseClassTy)
 			                val ob = instanceClass regs ty
 			            in 
 			                getPrototype regs ob

@@ -168,8 +168,7 @@ datatype PRAGMA =
              instanceRib: RIB,
              instanceInits: HEAD,
              constructor: CTOR option,
-             classType: TYPE,  (* RecordType *)
-             instanceType: TYPE }
+             classType: TYPE }
 
      and IFACE =
          Iface of
@@ -177,8 +176,7 @@ datatype PRAGMA =
              typeParams: IDENTIFIER list,
              nonnullable: bool,
              extends: TYPE list,
-             instanceRib: RIB,
-             instanceType: TYPE }
+             instanceRib: RIB }
 
      and CTOR =
          Ctor of 
@@ -261,9 +259,6 @@ datatype TYPE =
        | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
-       | InstanceType of INSTANCE_TYPE        (* *)
-
-(* Following will replace InstanceType *)
        | ClassType of CLS
        | InterfaceType of IFACE
 

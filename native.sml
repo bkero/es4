@@ -205,8 +205,7 @@ fun getSuperClass (regs:Mach.REGS)
     in
         (case extends of 
              SOME ty => Mach.Object 
-                            (Eval.instanceClass 
-                                 regs (AstQuery.needInstanceType (Eval.evalTy regs ty)))
+                            (Eval.instanceClass regs(Eval.evalTy regs ty))                        
            | _ => Mach.Null)
     end
 
@@ -229,10 +228,9 @@ fun getImplementedInterface (regs:Mach.REGS)
             Mach.Null
         else
             Mach.Object 
-                (Eval.instanceInterface 
-                     regs (AstQuery.needInstanceType 
-                               (Eval.evalTy 
-                                    regs (List.nth(implements, k)))))
+            (Eval.instanceInterface regs 
+                                    (Eval.evalTy 
+                                         regs (List.nth(implements, k))))
     end
 
 
@@ -254,9 +252,8 @@ fun getSuperInterface (regs:Mach.REGS)
         else
             Mach.Object
                 (Eval.instanceInterface 
-                     regs (AstQuery.needInstanceType 
-                               (Eval.evalTy 
-                                    regs (List.nth(extends, k)))))
+                     regs (Eval.evalTy 
+                               regs (List.nth(extends, k))))
     end
 
 

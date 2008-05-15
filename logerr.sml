@@ -196,7 +196,9 @@ fun ty t =
           | Ast.AppType (base, args) => 
 			(ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NonNullType t => (ty t) ^ "!"
-          | Ast.InstanceType { name=n, ... } => 
+          | Ast.ClassType (Ast.Cls { name=n, ... }) => 
+			name n
+          | Ast.InterfaceType (Ast.Iface { name=n, ... }) => 
 			name n
 (*		  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"      *)
 (*	  | Ast.LamType { params, body } => 
