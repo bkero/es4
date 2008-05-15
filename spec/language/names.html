@@ -276,22 +276,37 @@ object is formed from the string and the **public** namespace.
 
 <p>The evaluation of a name expression depends on where that name occurs. Name expressions that occur
 in namespace expressions and type expressions are resolved statically to namespace and type fixtures,
-respectively. All other name expressions are resolved at runtime to any of the various kinds of static
-and dynamic bindings.
+respectively. All other name expressions are resolved at runtime to a storage location.
 
-<p>Name resolution evaluates the various combinations of reference expressions and name expressions
-to a pair of object and name values. 
+=== Namespace and Type Expressions ===
 
-=== Namespace Expressions ===
-
-<IMPL>
-<INCLUDE file="fixture.sml" name="fun resolveNamespaceExpr">
-
-=== Name Expressions ===
+<p>Namespace and type expressions resolve at compile time to namespace and type values, respectively.
+Name expressions that occur in either form are resolved using the semantics described here.
 
 <IMPL>
 <INCLUDE file="fixture.sml" name="and resolveNameExpr">
+
+==== Qualified Name Expressions ====
+
+<IMPL>
+<INCLUDE file="fixture.sml" name="fun resolveQualifiedName">
+
+==== Unqualified Name Expressions ====
+
+<IMPL>
 <INCLUDE file="fixture.sml" name="fun resolveUnqualifiedName">
+
+==== Reserving Names ====
+
+<p>Statically resolved names must keep their meaning at runtime and therefore cannot be shadowed or
+be made ambiguous by the later introduction of names. Therefore we reserve the set of names that 
+would cause such conflicts at runtime.
+
+<p>Given an identifier, a namespace, and a list of sets of open namespaces, this algorithm
+computes a set of names consisting of the identifier and each of the open namespaces with
+an equal or higher priority than the given namespace.
+
+<IMPL>
 <INCLUDE file="fixture.sml" name="and reserveNames">
 
 === Lexical References ===
@@ -485,110 +500,3 @@ nonempty intersection, return an empty set.
 <SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
 
-==== Reserving Names ====
-
-<p>Statically resolved names must keep their meaning at runtime and therefore cannot be shadowed or
-be made ambiguous by the later introduction of names. Therefore we reserve the set of names that 
-would cause such conflicts at runtime.
-
-<p>Given an identifier, a namespace, and a list of sets of open namespaces, this algorithm
-computes a set of names consisting of the identifier and each of the open namespaces with
-an equal or higher priority than the given namespace.
-
-<!--
-==== Helper functions ====
-
-<SEM>
-{{{
-fun head x = hd x (* return the first element of a list *)
-fun tail x = tl x (* return all but the first element of a list *)
-
-fun matchNamespaces (ns1: NAMESPACE list, ns2: NAMESPACE list)
-    : NAMESPACE list =
-    (* compute the intersection of two NAMESPACE lists *)
-    <LDOTS>
-
-fun getNamespaces (bindings : (NAME * 'a) list, identifier: IDENTIFIER)
-    : NAMESPACE list =
-    (* get the namespaces of binding names that have a certain identifier *)
-    <LDOTS>
-
-fun getInstanceBindingNamespaces (class: CLASS, 
-                                  identifier: IDENTIFIER,
-                                  namespaces: NAMESPACE_SET)
-    : NAMESPACE_SET =
-    (* 
-     * get the namespaces of names that have a certain identifier
-     * and any of a certain set of namespaces, and are bound in 
-     * instances of a certain class. 
-     *)
-    <LDOTS>
-
-fun getBindingNamespaces (object: OBJECT, 
-                          identifier: IDENTIFIER,
-                          namespaces: NAMESPACE_SET,
-                          fixedOnly: bool)
-    : NAMESPACE_SET =
-    (* 
-     * get the namespaces of names (optionally, only the names of
-     * fixed properties) that have a certain identifier
-     * and any of a certain set of namespaces, and are bound in a
-     * certain object. 
-     *)
-    <LDOTS>
-
-fun getPrototypeObject (object: OBJECT option)
-    : OBJECT option =
-    (* get the prototype (as in '[[proto]]') object of an object *)
-    <LDOTS>
-
-fun getScopeObject (scope: SCOPE option)
-    : OBJECT option =
-    (* get the first scope object of a scope chain *)
-    <LDOTS>
-
-fun getOuterScope (scope: SCOPE option)
-    : SCOPE option =
-    (* get the next outer scope (as in '[[parent]]') in a scope chain *)
-    <LDOTS>
-
-fun getScope ({scope,...}: ENV)
-    : SCOPE = 
-    (* get the scope chain of an execution environment *)
-    scope
-
-fun getOpenNamespaces (env: ENV, identifier: IDENTIFIER)
-    : NAMESPACE list list =
-    (* get the list of list of namespaces that are open for an identifier *)
-    <LDOTS>
-}}}
--->
-<!--
-<INCLUDE file="mach.sml" name="fun matchNamespaces">
-<INCLUDE file="mach.sml" name="fun getScope">
-<INCLUDE file="mach.sml" name="fun inheritedClassesOf">
-<INCLUDE file="mach.sml" name="fun getScopeObject">
-<INCLUDE file="mach.sml" name="fun getNamespaces">
-<INCLUDE file="mach.sml" name="fun head">
-<INCLUDE file="mach.sml" name="fun tail">
--->
-
-
-<!-- 
-<p>The 4th edition namespace is an opaque namespace. It is also a member of the initial open
-namespace set when running in 4th edition mode. All new bindings introduced by the 4th edition
-built-in library are qualified by the 4th edition namespace (or a namespace that is itself qualified
-by the 4th edition namespace).
-
-<p>The 4th edition namespace is bound to a name formed from the identifier ''__ES4__'' and the 
-public namespace.
-
-<p>The public namespace is bound to a name formed from the identifier ''public'' and the 4th 
-edition namespace.
-
-<p>Therefore in practice, code running in 3rd edition mode will see the 4th edition namespace only
-through the unqualified reference ''__ES4__'', and will not see a binding for the public
-namespace. In contrast, code running in 4th edition mode will see the public namespace as the
-unqualified reference ''public'', and also -- since 4th edition code can by definition contain 
-qualified references -- as the qualified name ''__ES4__::public''.
---> 

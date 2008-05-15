@@ -348,7 +348,23 @@ fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET,
             end
     end
 
-fun resolveUnqualifiedName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
+fun resolveQualifiedName (ribs: Ast.RIBS) (identifier: IDENTIFIER) (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
+    : (Ast.RIBS * NAME * Ast.FIXTURE) =
+    let
+        val ns = resolveNamespaceExpr ribs namespaceExpr
+        val name = { ns = ns, id = identifier }
+        fun search (r::rs) = if hasFixture r (Ast.PropName name)
+                             then (r::rs)
+                             else search rs
+          | search [] = []
+    in
+        case search ribs of 
+            [] => error ["qualified name not present in ribs: ", LogErr.name name]
+          | (rib::ribs) => ((rib::ribs), name, (getFixture rib (Ast.PropName name)))
+    end
+
+
+and resolveUnqualifiedName (ribs: Ast.RIBS) (identifier: IDENTIFIER) (openNamespaces: OPEN_NAMESPACES)
     : (Ast.RIBS * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
@@ -368,16 +384,6 @@ fun resolveUnqualifiedName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespac
             end
     end
 
-fun resolveNamespaceExpr (ribs:Ast.RIBS)
-                         (nse:Ast.NAMESPACE_EXPRESSION)
-    : Ast.NAMESPACE = 
-    case nse of
-        Ast.Namespace ns => ns
-      | Ast.NamespaceName ne => 
-        (case resolveNameExpr ribs ne of
-             (_, _, Ast.NamespaceFixture ns) => ns
-           | _ => error ["namespace expression resolved to non-namespace fixture: ", LogErr.nsExpr nse])
-
 (*
 
     Resolve a static name expression.
@@ -389,21 +395,11 @@ and resolveNameExpr (ribs:Ast.RIBS)
     : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
     case ne of
         Ast.QualifiedName { namespace, identifier } => 
-        let
-            val ns = resolveNamespaceExpr ribs namespace
-            val name = { ns = ns, id = identifier }
-            fun search (r::rs) = if hasFixture r (Ast.PropName name)
-                                 then (r::rs)
-                                 else search rs
-              | search [] = []
-        in
-            case search ribs of 
-                [] => error ["qualified name not present in ribs: ", LogErr.name name]
-              | (rib::ribs) => ((rib::ribs), name, (getFixture rib (Ast.PropName name)))
-        end
-      | Ast.ResolvedName { ns, id } => resolveNameExpr ribs (Ast.QualifiedName { namespace=(Ast.Namespace ns), identifier=id })
+        resolveQualifiedName ribs identifier namespace
+      | Ast.ResolvedName { ns, id } => 
+        resolveNameExpr ribs (Ast.QualifiedName { namespace=(Ast.Namespace ns), identifier=id })
       | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
-        case resolveUnqualifiedName (ribs, identifier, openNamespaces) of
+        case (resolveUnqualifiedName ribs identifier openNamespaces) of
             NONE => error ["unable to resolve unqualified name expression: ", LogErr.nameExpr ne]
           | SOME ([], _) => error ["name expression resolved to reference in empty rib: ", LogErr.nameExpr ne]
           | SOME ((rib::[]), name) => ((reserveNames name openNamespaces); (rib::[], name, (getFixture rib (Ast.PropName name))))
@@ -411,5 +407,15 @@ and resolveNameExpr (ribs:Ast.RIBS)
 
 and reserveNames (name) (openNamespaces) 
     = ()  (* FIXME needs implementation *)
+
+and resolveNamespaceExpr (ribs:Ast.RIBS)
+                         (nse:Ast.NAMESPACE_EXPRESSION)
+    : Ast.NAMESPACE = 
+    case nse of
+        Ast.Namespace ns => ns
+      | Ast.NamespaceName ne => 
+        (case resolveNameExpr ribs ne of
+             (_, _, Ast.NamespaceFixture ns) => ns
+           | _ => error ["namespace expression resolved to non-namespace fixture: ", LogErr.nsExpr nse])
 
 end
