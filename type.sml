@@ -761,14 +761,6 @@ and subTypeNominal extra type1 type2 =
             (fn (type1, type2) => equivType extra type1 type2)
             (typeArgs1, typeArgs2)
 
-      | (Ast.ClassType (Ast.Cls {name=name1, ...}),
-         Ast.ClassType (Ast.Cls {name=name2, ...})) =>
-        nameEq name1 name2
-               
-      | (Ast.InterfaceType (Ast.Iface {name=name1, ...}),
-         Ast.InterfaceType (Ast.Iface {name=name2, ...})) =>
-        nameEq name1 name2
-
       | _ => false
 
 
