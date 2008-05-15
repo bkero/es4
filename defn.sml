@@ -238,20 +238,16 @@ and defNameExpr (env:ENV)
          *)
         fun getName ((Ast.PropName pn),_) = SOME pn
           | getName _ = NONE
-        val globalNames = List.mapPartial getName (List.last (#outerRibs env))
+        val globalNames = List.mapPartial getName (List.last (#outerRibs env)) (* not currently used *)
     in
         case ne of
             Ast.UnqualifiedName { identifier, ... } =>
             Ast.UnqualifiedName { identifier=identifier,
-                                  openNamespaces=openNamespaces,
-                                  globalNames=globalNames }
+                                  openNamespaces=openNamespaces }
             
           | Ast.QualifiedName { namespace, identifier } =>
             Ast.QualifiedName { namespace = defNamespaceExpr env namespace,
                                 identifier = identifier }
-
-          | Ast.ResolvedName name => 
-            Ast.ResolvedName name
     end
 
 fun resolveNamespaceOption (env: ENV)
@@ -1155,7 +1151,7 @@ and fixtureNameFromPropIdent (env:ENV)
                SOME ns => Ast.PropName {ns=ns,id=id}
              | _ =>
                let
-                   val nameExpr = defNameExpr env (Ast.UnqualifiedName {identifier=id, openNamespaces=[], globalNames=[]})
+                   val nameExpr = defNameExpr env (Ast.UnqualifiedName {identifier=id, openNamespaces=[]})
                    val (_, {ns,id}, _) = resolve env nameExpr
                in
                    Ast.PropName {ns=ns,id=id}

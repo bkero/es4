@@ -198,9 +198,6 @@ resolution transforms name expressions into name values.
 <SEM>
 <INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
 
-<FIXME> ResolvedName should not be shown above.
-<FIXME> globalNames should go away above.
-
 <p> A qualified name expression is comprised of a namespace expression
 and an identifier.  The former is either a literal namespace value
 (resulting from using a string as a namespace qualifier) or a name
@@ -276,24 +273,38 @@ object is formed from the string and the **public** namespace.
 
 <p>The evaluation of a name expression depends on where that name occurs. Name expressions that occur
 in namespace expressions and type expressions are resolved statically to namespace and type fixtures,
-respectively. All other name expressions are resolved at runtime to a storage location.
+respectively. All other name expressions are resolved to a storage location during evaluation.
+
+<FIXME> we need to talk about ribs (probably when we introduce scopes above). And we need to talk about
+how static name resolution operates on ribs and dynamic name resolution operates on scope chains.
 
 === Namespace and Type Expressions ===
 
 <p>Namespace and type expressions resolve at compile time to namespace and type values, respectively.
 Name expressions that occur in either form are resolved using the semantics described here.
 
-<IMPL>
+<p>Given a list of ribs and a name expression, this algorithm resolves the name
+expression to a specific name and fixture in the list of ribs:
+
+<SEM>
 <INCLUDE file="fixture.sml" name="and resolveNameExpr">
 
 ==== Qualified Name Expressions ====
 
-<IMPL>
+<p>Given a list of ribs, an identifier, and a namespace expression, this algorithm searches for
+a rib in the ribs list and a name on that rib that matches the identifier and the 
+namespace:
+
+<SEM>
 <INCLUDE file="fixture.sml" name="fun resolveQualifiedName">
 
 ==== Unqualified Name Expressions ====
 
-<IMPL>
+<p>Given a list of ribs, an identifier, and a list of sets of open namespaces, this algorithm searches for
+a rib and a name on that rib that matches the identifier and one of the
+open namespaces:
+
+<SEM>
 <INCLUDE file="fixture.sml" name="and resolveUnqualifiedName">
 
 ==== Reserving Names ====
@@ -302,11 +313,11 @@ Name expressions that occur in either form are resolved using the semantics desc
 be made ambiguous by the later introduction of names. Therefore we reserve the set of names that 
 would cause such conflicts at runtime.
 
-<p>Given an identifier, a namespace, and a list of sets of open namespaces, this algorithm
+<p>Given a name and a list of sets of open namespaces, this algorithm
 computes a set of names consisting of the identifier and each of the open namespaces with
-an equal or higher priority than the given namespace.
+an equal or higher priority than the given namespace:
 
-<IMPL>
+<SEM>
 <INCLUDE file="fixture.sml" name="and reserveNames">
 
 === Lexical References ===
@@ -318,7 +329,7 @@ are two kinds of lexical references, unqualified and qualified.
 dynamic names in inner scopes. For example, a fixed class static name might shadow a dynamic 
 instance name. This is necessary to allow early resolution of names. 
 
-<IMPL>
+<SEM>
 <INCLUDE file="eval.sml" name="and resolveLexicalReference">
 
 ==== Qualified Lexical References ====
@@ -327,12 +338,7 @@ instance name. This is necessary to allow early resolution of names.
 an object in the scope chain and a name on that object that matches the identifier and the 
 namespace:
 
-<li>Evaluate the namespace expression to a namespace
-<li>Invoke ''searchScope'' with the scope chain, identifier and the namespace resulting from the previous step
-<li>If no value results, return the global object and name constructed from computed namespace and the given identifier
-<li>Return the object and name constructed from the computed namespace and the given identifier
-
-<IMPL>
+<SEM>
 <INCLUDE file="eval.sml" name="and resolveQualifiedLexicalReference">
 
 ==== Unqualified Lexical References ====
@@ -341,96 +347,77 @@ namespace:
 the set of names that consist of the open namespaces with priority equal or higher than the
 matched name and the matched names identifier.
 
-<p>Given an execution phase, the scope chain, an identifier, and a list of sets of open namespaces, this algorithm searches for
+<p>Given a scope chain, an identifier, and a list of sets of open namespaces, this algorithm searches for
 an object in the scope chain and a name on that object that matches the identifier and one of the
 open namespaces:
 
-<li>Invoke the abstract procedure ''searchScope'' with the scope chain, identifier and the
-set of all unique open namespaces
-<li>If no value results, return the global object and name constructed from public namespace and the given identifier
-<li>If more than one namespace results, invoke ''selectNamespace'' with the scope object, identifier, matching namespaces
-<li>If more than one namespace results, throw ...
-<li>If the phase is "static" and the found object is the global object, then invoke the abstract procedure 
-''reservedNames'' with the identifier, selected namespace, and the open namespaces
-<li>Return the scope object, a name constructed from the identifier and selected namespace, and
-the set of reserved names.
-
-<IMPL>
+<SEM>
 <INCLUDE file="eval.sml" name="and resolveUnqualifiedLexicalReference">
 
 ==== Searching a Scope Chain ====
 
-<p>Given a scope chain, an identifier, and a set of namespaces, this algorithm searches
-for an object in the scope chain and a name on that object that matches the identifier and the
-open namespaces.
+<p>Here we describe how an identifier and a set of namespaces is used to locate an object
+and a set of namespaces that match the identifier and a subset of the namespaces.
 
-<NOTE>Maintaining the integrity of objects requires that name resolution perform two-pass object
-list search, and that fixed property bindings cannot be shadowed or otherwise made ambiguous by
-expando property bindings.
+<p>Maintaining the integrity of names across phases of execution requires that name resolution 
+perform two-pass object list search, and that fixed property bindings cannot be shadowed or 
+otherwise made ambiguous by dynamic property bindings.
 
-<p>Search each scope object in the scope chain. Perform this search either once or twice with 
-the flattened namespace set, as follows:
+<p>Search each scope object in the scope chain. Perform this search either twice, if necessary.
 
-<li>At first, perform scope chain search with its search restricted to considering only fixed
+<p>At first, perform scope chain search with its search restricted to considering only fixed
 property bindings on immutable scopes and both fixed and dynamic bindings on mutable scopes.
 
 <NOTE>With scopes and function scopes that might be mutated by 'eval' must be searched fully
 during the first pass and ignored during the second pass, to allow shadowing of outer bindings
 as is required for backward compatibility.
 
-<li>If the first scope chain search returns no object or no namespaces, repeat the
-search with its search relaxed to include all property bindings, fixed and dynamic, and ignoring
-mutable scopes.
+<p>If the first scope chain search returns no value, repeat the search with its search relaxed 
+to include all property bindings, fixed and dynamic, and ignoring any mutable scopes.
 
-<li>If no namespaces, or no object, are returned by object list search, return no value. An
-object and a matching namepace set can therefore be assumed and are returned.
+Given a scope chain, an identifier and a set of namespaces, this algorithm searches
+for an object in the scope chain and a name on that object that matches the identifier and the
+open namespaces:
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="fun searchScopeChain">
+
+<p>Given a scope, an identifier, a set of namespaces, and a flag indicating if only fixed
+bindings are to be considered, this algorithm searches for a name in the scope that matches
+the identifier and the set of namespaces:
+
+<SEM>
 <INCLUDE file="mach.sml" name="fun searchScope">
-<INCLUDE file="mach.sml" name="fun searchMutableScopeObject">
 
 === Object References ===
 
 <p>Here we describe how a name is computed from a object reference. There
-are two kinds of object references, qualified and unqualified.
+are two kinds of object references, name and index. Index references are implicitly qualified
+by the public namespace. Name references can be either qualified or unqualified.
 
-<IMPL>
+<SEM>
 <INCLUDE file="eval.sml" name="and resolveObjectReference">
 
 ==== Qualified Object References ====
 
-<p>Given an expression, an identifier, and a namespace expression, this algorithm computes
+<p>Here we describe how an identifier and a namespace expression is resolved to
+a name of a binding on a specfic object.
+
+Given an expression, an identifier, and a namespace expression, this algorithm computes
 an object and the name.
 
-<li>Evaluate the expression
-<li>If the result is not an object, throw
-<li>Evaluate the namespace expression
-<li>Return the object and name constructed from the resulting namespace and the given identifier
-
-<IMPL>
+<SEM>
 <INCLUDE file="eval.sml" name="and resolveQualifiedObjectReference">
 
 ==== Unqualified Object References ====
 
-<p>If a static name (in a namespace or type expression) resolves to a global name, we reserve
-the set of names that consist of the open namespaces with priority equal or higher than the
-matched name and the matched names identifier.
+<p>Here we describe how an identifier and a list of a set of open namespaces
+is resolved to a name on a specific object.
 
-<p>Given an expression, an identifier, and a list of open namespace sets, this algorithm searches 
+Given an expression, an identifier, and a list of open namespace sets, this algorithm searches 
 for a name on the object that matches the identifier and the open namespaces.
 
-<li>Evaluate the expression
-<li>If the result is not an object, throw ...
-<li>Search the resulting object for the set of namespaces corresponding to the names
-that match the identifier
-<li>If the resulting set of namespaces is empty, then use the set containing only the public namespace
-<li>If more than one namespace results, invoke ''selectNamespace'' with the scope object, identifier, matching namespaces
-<li>If the phase is "static" and the computed object is the global object, then invoke the abstract procedure 
-''reservedNames'' with the identifier, selected namespace, and the open namespaces
-<li>If more than one namespace results, throw ...
-<li>Return the object, a name constructed with the identifier and the matching namespace, and the list of reserved names.
-
+<SEM>
 <INCLUDE file="eval.sml" name="and resolveUnqualifiedObjectReference">
 
 === Common Algorithms ===
@@ -440,13 +427,7 @@ that match the identifier
 <p>Given an object, an identifier and a set of namespaces, this algorithm searches for a matching
 property name.
 
-<p>Informal description: search the provided object for property name bindings that are
-named by the provided identifier and any of the namespaces in the provided set. Collect the set of
-matching namespaces used in all such bindings. If the set of matching namespaces is nonempty, return
-it. Otherwise repeat the process on the prototype of the object, and its prototype, and so forth
-along the prototype chain. If the end of the prototype chain is reached without producing a matching
-name, return no value.
-
+<SEM>
 <INCLUDE file="mach.sml" name="fun searchObject">
 
 ==== Namespace Selection ====
@@ -455,14 +436,7 @@ name, return no value.
 filters the set of namespaces accoring to the order that the namespaces appear in bindings in the given
 classes first, and then in the priority given by the list of open namespaces.
 
-<FIXME> need more
-
-<li>Invoke ''selectNamespaceByClass'' with the list of classes, list of namespaces, and identifier.
-<li>If the result set contains more than one namespace, invoke ''selectNamespacesByOpenNamespaces''
-with the resulting set of namespaces and the list of open namespaces.
-<li>If the result set does not contain just one namespace, throw ...
-<li>Return the selected namespace
-
+<SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespaces">
 
 ===== Class Base Namespace Selection =====
@@ -472,15 +446,12 @@ namespaces used on the most generic class of that list. This step is necessary t
 integrity issues that arise when a derived class introduces a binding with the same identifier and a
 different namespace in the open namespaces.
 
-<p>**Informal description**: given the list of classes inherited by an object, ordered from most
-generic to most derived, consider the class that is the head of this list. 
-
-Search this class for any
-instance fixture name bindings that are named by the provided identifier and any of the namespaces
-in the provided set. Collect the set of matching namespaces used in all such bindings. If the set of
-matching namespaces is nonempty, return it. Otherwise repeat the process on the tail of the list,
-and its tail, and so forth down the list. If all the classes in the list are searched and no
-matching namespaces are found, return the empty set.
+<p>**Informal description**: Search this class for any instance fixture name bindings that are 
+named by the provided identifier and any of the namespaces in the provided set. Collect the 
+set of matching namespaces used in all such bindings. If the set of matching namespaces is 
+nonempty, return it. Otherwise repeat the process on the tail of the list, and its tail, 
+and so forth down the list. If all the classes in the list are searched and no matching 
+namespaces are found, return the empty set.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">

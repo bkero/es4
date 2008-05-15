@@ -499,8 +499,7 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
          QualifiedName of { namespace: NAMESPACE_EXPRESSION,
 							identifier: IDENTIFIER }
        | UnqualifiedName of { identifier: IDENTIFIER, 
-                              openNamespaces: OPEN_NAMESPACES, 
-                              globalNames: NAME_SET }
+                              openNamespaces: OPEN_NAMESPACES }
 
      and NAMESPACE_EXPRESSION =
          Namespace of NAMESPACE
@@ -535,8 +534,7 @@ and nameExpression'' (qual:Ast.NAMESPACE_EXPRESSION option)
         val (ts1, nd1) = identifier ts0
         val ne = case qual of 
                      NONE => Ast.UnqualifiedName { identifier = nd1, 
-                                                   openNamespaces = [],
-                                                   globalNames = [] }
+                                                   openNamespaces = [] }
                    | SOME ns => Ast.QualifiedName { namespace = ns,
                                                     identifier = nd1 }
     in
@@ -1387,8 +1385,7 @@ and propertyOperator (ts0: TOKENS, nd0: Ast.EXPRESSION)
                             { object=nd0,
                               name=Ast.UnqualifiedName
                                        { identifier=nd1,
-                                         openNamespaces=[], 
-                                         globalNames=[] },
+                                         openNamespaces=[] },
                               loc=locOf ts0})
                end 
            else

@@ -1175,9 +1175,6 @@ type OBJECT = OBJ
 type NAMESPACE_SET = NAMESPACE list
 type OPEN_NAMESPACES = NAMESPACE_SET list 
 
-fun head x = hd x (* return the first element of a list *)
-fun tail x = tl x (* return all but the first element of a list *)
-
 fun getScopeObjectAndKind ( Scope {object, kind, ...}: SCOPE) = (object, kind)
 
 fun getBindingNamespaces (object: OBJECT, 
@@ -1237,7 +1234,8 @@ fun searchObject (NONE, _, _, _) = NONE
         case matches of
             [] => if fixedOnly
                   then NONE 
-                  else searchObject (getPrototypeObject (object), identifier, namespaces, fixedOnly)
+                  else searchObject (getPrototypeObject (object), identifier, 
+                                     namespaces, fixedOnly)
           | _ => SOME (object, matches)
     end
 
@@ -1248,14 +1246,15 @@ fun objectListSearch ([], _, _, _) = NONE
                       fixedOnly: bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val object = head (objects)
+        val object = hd objects
         val matches = searchObject (SOME object, identifier, namespaces, fixedOnly)
     in
         case matches of
-            NONE => objectListSearch (tail (objects), namespaces, identifier, fixedOnly)
+            NONE => objectListSearch (tl objects, namespaces, identifier, fixedOnly)
           | _ => matches
     end
 
+(*
 fun searchMutableScopeObject (object: OBJECT,
                               namespaces: NAMESPACE_SET,
                               identifier: IDENTIFIER)
@@ -1266,6 +1265,7 @@ fun searchMutableScopeObject (object: OBJECT,
         NONE => searchObject (SOME object, identifier, namespaces, false)
       | _ => result
     end
+*)
 
 fun searchScope (scope: SCOPE,
                  namespaces: NAMESPACE_SET,
@@ -1273,11 +1273,12 @@ fun searchScope (scope: SCOPE,
                  fixedOnly: bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val (object, kind) = getScopeObjectAndKind (scope)  (* FIXME need to handle eval scopes specially too *)
-    in case (kind, fixedOnly) of
-        (WithScope, true) => searchMutableScopeObject (object, namespaces, identifier)
-      | (WithScope, false) => NONE
-      | (_,_) => searchObject (SOME object, identifier, namespaces, fixedOnly)
+        val (object, kind) = getScopeObjectAndKind (scope)
+    in 
+        case (kind, fixedOnly) of (* FIXME need to handle eval scopes specially too *)
+            (WithScope, true) => searchObject (SOME object, identifier, namespaces, false)
+          | (WithScope, false) => NONE
+          | (_,_) => searchObject (SOME object, identifier, namespaces, fixedOnly)
     end
 
 fun searchScopeChain (NONE, _, _) = NONE
@@ -1300,7 +1301,7 @@ fun instanceRibsOf (object: OBJECT)
 
 fun getObjId (Obj { ident, ...}) = ident
 
-fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, globalNames: Ast.NAME_SET)
+fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
     : (OBJECT * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
@@ -1327,15 +1328,7 @@ fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, o
                         case matches''' of
                             namespace :: [] => SOME (object, {ns=namespace, id=identifier})
                           | [] => raise (LogErr.NameError "internal error")
-                          | _ => 
-                            if (getObjId object) = (getObjId globalObj) 
-                            then 
-                                case Fixture.selectNamespacesByGlobalNames (identifier, matches''', globalNames) of
-                                    namespace :: [] => SOME (object, {ns=namespace,id=identifier})
-                                  | [] => raise (LogErr.NameError "internal error")
-                                  | _ => raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
-                            else
-                                raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
+                          | _ =>  raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
                     end
             end
     end

@@ -3770,35 +3770,45 @@ and evalCondExpr (regs:Mach.REGS)
     end
 
 and resolveObjectReference (regs:Mach.REGS)
-                           (Ast.ObjectNameReference { object, name, ... }:Ast.EXPRESSION)
+                           (Ast.ObjectNameReference { object, name, ... }: Ast.EXPRESSION)
                            (errIfNotFound:bool)
     : (Mach.OBJ option * (Mach.OBJ * Ast.NAME)) =
     let
         val v = evalExpr regs object
-        val obj = case v of Mach.Object ob => ob
-                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
-                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+        val obj = case v of 
+                      Mach.Object ob => ob
+                    | Mach.Null => 
+                      throwExn (newRefErr regs ["object reference on null value"])
+                    | Mach.Undef => 
+                      throwExn (newRefErr regs ["object reference on undefined value"])
     in
         case name of
             Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
-            (SOME obj, resolveUnqualifiedObjectReference regs obj identifier openNamespaces)
+            (SOME obj, resolveUnqualifiedObjectReference regs obj identifier 
+                                                         openNamespaces)
           | Ast.QualifiedName { namespace, identifier } => 
             resolveQualifiedObjectReference regs obj identifier namespace
-          | Ast.ResolvedName name => (SOME obj, (obj, name))
     end
-  | resolveObjectReference regs (Ast.ObjectIndexReference {object, index, ...}) errIfNotFound = 
+  | resolveObjectReference regs 
+                           (Ast.ObjectIndexReference {object, index, ...}) 
+                           errIfNotFound = 
     let
         val v = evalExpr regs object
-        val obj = case v of Mach.Object ob => ob
-                          | Mach.Null => throwExn (newRefErr regs ["object reference on null value"])
-                          | Mach.Undef => throwExn (newRefErr regs ["object reference on undefined value"])
+        val obj = case v of 
+                      Mach.Object ob => ob
+                    | Mach.Null => 
+                      throwExn (newRefErr regs ["object reference on null value"])
+                    | Mach.Undef => 
+                      throwExn (newRefErr regs ["object reference on undefined value"])
         val idx = evalExpr regs index
-        val identifier = toUstring regs idx  (* FIXME if its an Name, then don't convert *)
+        val identifier = toUstring regs idx  
+                         (* FIXME if its an Name, then don't convert *)
         val namespace = Ast.Namespace Name.publicNS
     in
         resolveQualifiedObjectReference regs obj identifier namespace
     end
-  | resolveObjectReference  regs  _  _ = error regs ["need object reference expression"]
+  | resolveObjectReference  regs  _  _ = 
+    error regs ["need object reference expression"]
 
 and resolveQualifiedObjectReference (regs: Mach.REGS)
                                     (object: Mach.OBJ)
@@ -3822,14 +3832,15 @@ and resolveUnqualifiedObjectReference (regs: Mach.REGS)
     in case result of
         NONE => (object, {ns=Name.publicNS, id=identifier})
       | SOME (object, namespaces) =>
-            let
-                val instanceRibs = instanceRibsOf (object)
-                val result = Fixture.selectNamespaces (identifier, namespaces, instanceRibs, openNamespaces)
-            in case result of
-                [] => LogErr.internalError ["resolveUnqualifiedObjectReference: empty namespace set"]
-              | namespace :: [] => (object, {ns=namespace, id=identifier})
-              | _ => error regs ["ambiguous reference"]
-            end
+        let
+            val instanceRibs = instanceRibsOf (object)
+            val result = Fixture.selectNamespaces (identifier, namespaces, 
+                                                   instanceRibs, openNamespaces)
+        in case result of
+            [] => LogErr.internalError ["empty namespace set"]
+          | namespace :: [] => (object, {ns=namespace, id=identifier})
+          | _ => error regs ["ambiguous reference"]
+        end
     end
 
 and resolveRefExpr (regs:Mach.REGS)
@@ -3862,7 +3873,7 @@ and evalLetExpr (regs:Mach.REGS)
 and resolveLexicalReference (regs: Mach.REGS)
                             (expr: Ast.EXPRESSION)
                             (errorIfNotFound: bool)
-    : REF =
+    : (Mach.OBJ * Ast.NAME) =
     let
        val {scope, ...} = regs
        val name = case expr of Ast.LexicalReference { name, ... } => name 
@@ -3873,7 +3884,6 @@ and resolveLexicalReference (regs: Mach.REGS)
           resolveQualifiedLexicalReference regs identifier namespace
         | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
           resolveUnqualifiedLexicalReference regs identifier openNamespaces
-        | Ast.ResolvedName {ns, id} => error regs ["internal error"]
     end
 
 and resolveQualifiedLexicalReference (regs: Mach.REGS)
@@ -3921,13 +3931,12 @@ and resolveName (regs:Mach.REGS)
                 (nameExpr:Ast.NAME_EXPRESSION)
     : REF option =
     let
-        val (identifier, openNamespaces, globalNames) = 
+        val (identifier, openNamespaces) = 
             case nameExpr of
-                Ast.QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]], [])
-              | Ast.UnqualifiedName { identifier, openNamespaces, globalNames } => (identifier, openNamespaces, globalNames)
-              | Ast.ResolvedName {ns, id} => (id, [[ns]], [])
+                Ast.QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]])
+              | Ast.UnqualifiedName { identifier, openNamespaces } => (identifier, openNamespaces)
     in
-        Mach.findName ((#global regs), objects, identifier, openNamespaces, globalNames)
+        Mach.findName ((#global regs), objects, identifier, openNamespaces)
     end
 
 (* FIXME: evalNameExpr is mostly for field names; the handling of field names is presently a little confused. *)
@@ -3939,7 +3948,6 @@ and evalNameExpr (regs:Mach.REGS)
         { id = identifier, ns = evalNamespaceExpr regs namespace }
       | Ast.UnqualifiedName { identifier, ... } => 
         Name.public identifier
-      | Ast.ResolvedName name => name
 
 and evalNamespaceExpr (regs:Mach.REGS)
                       (nsExpr:Ast.NAMESPACE_EXPRESSION)

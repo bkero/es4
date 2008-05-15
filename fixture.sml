@@ -235,9 +235,6 @@ type NAME = Ast.NAME
 type NAMESPACE_SET = NAMESPACE list
 type OPEN_NAMESPACES = NAMESPACE_SET list 
 
-fun head x = hd x (* return the first element of a list *)
-fun tail x = tl x (* return all but the first element of a list *)
-
 fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
     case (n1, n2) of
         (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
@@ -265,10 +262,10 @@ fun selectNamespacesByOpenNamespaces ([], _) = []
                                       namespaces: NAMESPACE_SET)
     : NAMESPACE list =
     let
-        val matches = intersectNamespaces (head (namespacesList), namespaces)
+        val matches = intersectNamespaces (hd namespacesList, namespaces)
     in
         case matches of
-            [] => selectNamespacesByOpenNamespaces (tail (namespacesList), namespaces)
+            [] => selectNamespacesByOpenNamespaces (tl namespacesList, namespaces)
           | _ => matches
     end
 
@@ -286,11 +283,11 @@ fun ribListSearch ([], _, _) = NONE
                    identifier: IDENTIFIER)
     : (Ast.RIBS * NAMESPACE_SET) option =
     let
-        val rib = head (ribs)
+        val rib = hd ribs
         val matches = ribSearch (rib, namespaces, identifier)
     in
         case matches of
-            NONE => ribListSearch (tail (ribs), namespaces, identifier)
+            NONE => ribListSearch (tl ribs, namespaces, identifier)
           | SOME (_, m) => SOME (ribs, m)
     end
 
@@ -313,12 +310,13 @@ fun selectNamespacesByClass ([], namespaces, _) = namespaces
                              identifier: IDENTIFIER)
     : NAMESPACE list =
     let
-        val rib = head (instanceRibs)
-        val bindingNamespaces = getInstanceBindingNamespaces (rib, identifier, namespaces)
+        val rib = hd instanceRibs
+        val bindingNamespaces = 
+            getInstanceBindingNamespaces (rib, identifier, namespaces)
         val matches = intersectNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
-            [] => selectNamespacesByClass (tail (instanceRibs), namespaces, identifier)
+            [] => selectNamespacesByClass (tl instanceRibs, namespaces, identifier)
           | _ => matches
     end
 
@@ -332,14 +330,18 @@ fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET,
             _ :: [] => namespaces
           | _ =>
             let
-                val matches' = selectNamespacesByClass (instanceRibs, openNamespaceSet, identifier)
+                val matches' = 
+                    selectNamespacesByClass (instanceRibs, openNamespaceSet, 
+                                             identifier)
             in
                 case matches' of
                     [] => raise (LogErr.NameError "internal error")
                   | _ :: [] => matches'
                   | _ =>
                     let
-                        val matches'' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces)
+                        val matches'' = 
+                            selectNamespacesByOpenNamespaces (openNamespaces, 
+                                                              namespaces)
                     in 
                         case matches'' of
                             [] => raise (LogErr.NameError "internal error")
@@ -348,7 +350,9 @@ fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET,
             end
     end
 
-fun resolveQualifiedName (ribs: Ast.RIBS) (identifier: IDENTIFIER) (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
+fun resolveQualifiedName (ribs: Ast.RIBS) 
+                         (identifier: IDENTIFIER) 
+                         (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
     : (Ast.RIBS * NAME * Ast.FIXTURE) =
     let
         val ns = resolveNamespaceExpr ribs namespaceExpr
@@ -396,14 +400,15 @@ and resolveNameExpr (ribs:Ast.RIBS)
     case ne of
         Ast.QualifiedName { namespace, identifier } => 
         resolveQualifiedName ribs identifier namespace
-      | Ast.ResolvedName { ns, id } => 
-        resolveNameExpr ribs (Ast.QualifiedName { namespace=(Ast.Namespace ns), identifier=id })
       | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
         case (resolveUnqualifiedName ribs identifier openNamespaces) of
-            NONE => error ["unable to resolve unqualified name expression: ", LogErr.nameExpr ne]
-          | SOME ([], _) => error ["name expression resolved to reference in empty rib: ", LogErr.nameExpr ne]
-          | SOME ((rib::[]), name) => ((reserveNames name openNamespaces); (rib::[], name, (getFixture rib (Ast.PropName name))))
-          | SOME ((rib::ribs), name) => (rib::ribs, name, (getFixture rib (Ast.PropName name)))
+            NONE => error ["unresolved name ", LogErr.nameExpr ne]
+          | SOME ([], _) => error ["unresolved name ", LogErr.nameExpr ne]
+          | SOME ((rib::[]), name) => 
+                ((reserveNames name openNamespaces); 
+                (rib::[], name, (getFixture rib (Ast.PropName name))))
+          | SOME ((rib::ribs), name) => 
+                (rib::ribs, name, (getFixture rib (Ast.PropName name)))
 
 and reserveNames (name) (openNamespaces) 
     = ()  (* FIXME needs implementation *)
