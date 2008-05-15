@@ -6609,7 +6609,13 @@ and namespaceDefinition (ts:TOKENS, attrs:ATTRS)
 and namespaceExpression (ts:TOKENS)
     : (TOKENS * Ast.NAMESPACE_EXPRESSION) =
     case ts of 
-        (StringLiteral s, _) :: _ => (tl ts, Ast.Namespace (Ast.TransparentNamespace s))
+        (StringLiteral s, _) :: (DoubleColon, _) :: _ =>
+        let
+            val (ts1, nd1) = nameExpression ts false
+        in
+            (ts1, Ast.NamespaceName nd1)
+        end
+      | (StringLiteral s, _) :: _ => (tl ts, Ast.Namespace (Ast.TransparentNamespace s))
       | _ => 
         let
             val (ts1, nd1) = nameExpression ts false

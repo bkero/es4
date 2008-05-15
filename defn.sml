@@ -220,10 +220,10 @@ fun addNamespace (ns:Ast.NAMESPACE)
 fun defNamespaceExpr (env:ENV)
                      (nse:Ast.NAMESPACE_EXPRESSION)
     : Ast.NAMESPACE_EXPRESSION = 
-    case nse of 
-        Ast.Namespace ns => Ast.Namespace ns
-      | Ast.NamespaceName ne => Ast.NamespaceName (defNameExpr env ne)
-                                
+    case nse of
+        Ast.NamespaceName nameExpr => Ast.NamespaceName (defNameExpr env nameExpr)
+      | _ => nse
+  
 and defNameExpr (env:ENV)
                 (ne:Ast.NAME_EXPRESSION)
     : Ast.NAME_EXPRESSION =
@@ -253,24 +253,24 @@ and defNameExpr (env:ENV)
           | Ast.ResolvedName name => 
             Ast.ResolvedName name
     end
-    
+
+fun resolveNamespaceOption (env: ENV)
+                           (nse:Ast.NAMESPACE_EXPRESSION option)
+    : Ast.NAMESPACE =
+    case nse of
+        NONE => (#defaultNamespace env)
+      | SOME nse => Fixture.resolveNamespaceExpr (getFullRibs env) (defNamespaceExpr env nse)
+
+fun resolveNamespace (env: ENV)
+                     (nse:Ast.NAMESPACE_EXPRESSION)
+    : Ast.NAMESPACE =
+    Fixture.resolveNamespaceExpr (getFullRibs env) (defNamespaceExpr env nse)
+
 fun resolve (env:ENV)
             (nameExpr:Ast.NAME_EXPRESSION)
     : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) =
     Fixture.resolveNameExpr (getFullRibs env) (defNameExpr env nameExpr)
 
-fun resolveNsExprToNamespace (env:ENV)
-                             (nse:Ast.NAMESPACE_EXPRESSION) 
-    : Ast.NAMESPACE = 
-    Fixture.resolveNamespaceExpr (getFullRibs env) (defNamespaceExpr env nse)
-
-fun resolveNsExprOptToNamespace (env: ENV)
-                                (nso:Ast.NAMESPACE_EXPRESSION option)
-    : Ast.NAMESPACE =
-    case nso of
-        NONE => (#defaultNamespace env)
-      | SOME nse => resolveNsExprToNamespace env nse
-                    
 (*
     Create a new context initialised with the provided rib and
     inherited environment
@@ -535,9 +535,10 @@ and defInterface (env: ENV)
     : (Ast.RIB * Ast.INTERFACE_DEFN) =
     let
         val { ident, ns, nonnullable, params, extends, instanceDefns } = idef
+        val namespace = resolveNamespaceOption env ns
 
         (* Make the interface name *)
-        val name = {id = ident, ns = resolveNsExprOptToNamespace env ns} 
+        val name = {id = ident, ns = namespace}
 
         (* Resolve base interface's super interfaces and rib *)
         val (superInterfaces:Ast.TYPE list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
@@ -1030,7 +1031,7 @@ and analyzeClassBody (env:ENV)
          * and an instance block, and then define both blocks.
          *)
 
-        val ns = resolveNsExprOptToNamespace env ns
+        val ns = resolveNamespaceOption env ns
         val name = {id=ident, ns=ns}
         val _ = trace ["defining class ", fmtName name]
         val (staticEnv, localNamespaceRib) = enterClass env privateNS protectedNS []
@@ -1444,7 +1445,7 @@ and defFuncDefn (env:ENV)
     case (#func f) of
         Ast.Func { name, fsig, block, ty, native, ... } =>
         let
-            val qualNs = resolveNsExprOptToNamespace env (#ns f)
+            val qualNs = resolveNamespaceOption env (#ns f)
             val newName = Ast.PropName { id = (#ident name), ns = qualNs }
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
@@ -1547,7 +1548,7 @@ and defPragmas (env:ENV)
                 Ast.UseNamespace nse =>
                     let
                         val env = modifiedEnv()
-                        val ns = resolveNsExprToNamespace env nse
+                        val ns = resolveNamespace env nse
                     in
                         opennss := addNamespace ns (!opennss);
                         Ast.UseNamespace (Ast.Namespace ns)
@@ -1555,7 +1556,7 @@ and defPragmas (env:ENV)
               | Ast.UseDefaultNamespace nse =>
                     let
                         val env = modifiedEnv()
-                        val ns = resolveNsExprToNamespace env nse
+                        val ns = resolveNamespace env nse
                         val _ = trace ["use default namespace ", fmtNs ns]
                     in
                         defaultNamespace := ns;
@@ -1937,7 +1938,7 @@ and defStmt (env:ENV)
 				val (env, _) =
 					enterClass env privateNS protectedNS []
 
-                val namespace = resolveNsExprOptToNamespace env ns
+                val namespace = resolveNamespaceOption env ns
                 val name = {ns=namespace, id=ident}
 
 
@@ -2008,7 +2009,7 @@ and defStmt (env:ENV)
 
           | Ast.InitStmt {ns, temps, inits, prototype, static, kind} =>
             let
-                val ns0 = resolveNsExprOptToNamespace env ns
+                val ns0 = resolveNamespaceOption env ns
 
                 val target = case (kind, prototype, static) of
                                  (_,true,_) => Ast.Prototype
@@ -2183,10 +2184,10 @@ and defNamespaceDefn (env:ENV)
         { ident, ns, init } =>
         let
             val _ = trace [">> defNamespaceDefn"]
-            val qualNs = resolveNsExprOptToNamespace env ns
+            val qualNs = resolveNamespaceOption env ns
             val initNs = case init of
                              NONE => Name.newOpaqueNS ()
-                           | SOME nse => resolveNsExprToNamespace env nse
+                           | SOME nse => resolveNamespace env nse
             val fixtureName = Ast.PropName { ns = qualNs, id = ident }
             val newNd = { ident = ident,
                           ns = SOME (Ast.Namespace qualNs),
@@ -2201,7 +2202,7 @@ and defType (env:ENV)
     : Ast.RIB =
     let
         val { ident, ns, typeParams, init } = td
-        val ns = resolveNsExprOptToNamespace env ns
+        val ns = resolveNamespaceOption env ns
         val n = { id=ident, ns=ns }
     in
         [(Ast.PropName n,
@@ -2225,7 +2226,7 @@ and defDefn (env:ENV)
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
                 val _ = trace ["defVar"]
-                val ns = resolveNsExprOptToNamespace env ns
+                val ns = resolveNamespaceOption env ns
                 val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
               (* hoisted fxtrs *)
@@ -2409,7 +2410,7 @@ and mkTopEnv (prog:Fixture.PROGRAM)
       innerRibs = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
-                        then [[Name.ES4NS], [Name.publicNS ]]
+                        then [[Name.ES4NS], [Name.publicNS]]
                         else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,

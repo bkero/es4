@@ -109,7 +109,7 @@
                 global: global, 
                 extended: extended, 
                 sticky: sticky } = analyzePatternAndFlags(pattern, flags),
-            lastIndex = 0
+            private::lastIndex = 0
         {
         }
 

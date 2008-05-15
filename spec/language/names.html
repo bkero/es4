@@ -415,8 +415,25 @@ expression formed from the evaluated string and qualified by the public namespac
 
 == Name Resolution ==
 
+<p>The evaluation of a name expression depends on where that name occurs. Name expressions that occur
+in namespace expressions and type expressions are resolved statically to namespace and type fixtures,
+respectively. All other name expressions are resolved at runtime to any of the various kinds of static
+and dynamic bindings.
+
 <p>Name resolution evaluates the various combinations of reference expressions and name expressions
 to a pair of object and name values. 
+
+=== Namespace Expressions ===
+
+<IMPL>
+<INCLUDE file="fixture.sml" name="fun resolveNamespaceExpr">
+
+=== Name Expressions ===
+
+<IMPL>
+<INCLUDE file="fixture.sml" name="and resolveNameExpr">
+<INCLUDE file="fixture.sml" name="fun resolveUnqualifiedName">
+<INCLUDE file="fixture.sml" name="and reserveNames">
 
 === Lexical References ===
 
@@ -610,7 +627,8 @@ nonempty intersection, return an empty set.
 ==== Reserving Names ====
 
 <p>Statically resolved names must keep their meaning at runtime and therefore cannot be shadowed or
-become ambiguous.
+be made ambiguous by the later introduction of names. Therefore we reserve the set of names that 
+would cause such conflicts at runtime.
 
 <p>Given an identifier, a namespace, and a list of sets of open namespaces, this algorithm
 computes a set of names consisting of the identifier and each of the open namespaces with

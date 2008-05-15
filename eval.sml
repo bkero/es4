@@ -4046,6 +4046,9 @@ and evalNamespaceExpr (regs:Mach.REGS)
     case nsExpr of 
         Ast.Namespace ns => ns
       | Ast.NamespaceName ne => 
+(*
+error regs ["unresolved namespace ", LogErr.nameExpr ne]
+*)
         let
            val (obj, name) = resolveLexicalReference regs (Ast.LexicalReference {name=ne, loc=NONE}) true
         in

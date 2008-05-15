@@ -45,7 +45,7 @@ fun locToString {file, span, post_newline} =
 val (loc:(Ast.LOC option) ref) = ref NONE
 fun setLoc (p:Ast.LOC option) = loc := p
 
-val doNamespaces = ref false
+val doNamespaces = ref true
 
 val (lastReported:(Ast.LOC option) ref) = ref NONE
 
@@ -122,7 +122,11 @@ fun rib (r:Ast.RIB) =
 fun ribs (rs:Ast.RIBS) = 
     "[ribs: \n    " ^ (join ",\n    " (map rib rs)) ^ "\n]"
 
+fun fmtNss (nss:Ast.NAMESPACE_SET) = 
+   "(" ^ (join ", " (map namespace nss)) ^ ")"
 
+fun fmtNsss (onss:Ast.OPEN_NAMESPACES) = 
+   "{" ^ (join ", " (map fmtNss onss)) ^ "}"
 
 fun nsExpr (nse:Ast.NAMESPACE_EXPRESSION) = 
 	case nse of 
@@ -134,10 +138,6 @@ and nameExpr (ne:Ast.NAME_EXPRESSION) =
 	   fun unqualName (onss:Ast.OPEN_NAMESPACES)
 					  (identifier:Ast.IDENTIFIER) =
 		   let
-			   fun fmtNss (nss:Ast.NAMESPACE_SET) = 
-				   "(" ^ (join ", " (map namespace nss)) ^ ")"
-			   fun fmtNsss (onss:Ast.OPEN_NAMESPACES) = 
-				   "{" ^ (join ", " (map fmtNss onss)) ^ "}"
 		   in
 			   if !doNamespaces
 			   then (fmtNsss onss) ^ "::" ^ (Ustring.toAscii identifier)

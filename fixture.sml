@@ -348,7 +348,7 @@ fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET,
             end
     end
 
-fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES, globalNames: Ast.NAME_SET)
+fun resolveUnqualifiedName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
     : (Ast.RIBS * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
@@ -357,44 +357,32 @@ fun findName (ribs: Ast.RIBS, identifier: IDENTIFIER, openNamespaces: OPEN_NAMES
         case matches of
             NONE => NONE
           | SOME (rib, namespace :: []) => SOME (rib, {ns=namespace, id=identifier})
-          | SOME (rib, namespaces') =>
+          | SOME (rib, namespaces) =>
             let
-                val matches' = selectNamespacesByOpenNamespaces (openNamespaces, namespaces')
+                val matches' = selectNamespaces (identifier, namespaces, [], openNamespaces)
             in
                 case matches' of
                     namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
-                  | [] => NONE
-                  | _ =>
-                    let
-                        (* FIXME: we don't know how to map from a rib back to the declaring class. Bleah. *)
-                        val classList = [] (* inheritedClassesOf (ribs) *)
-                        val matches'' = selectNamespacesByClass (classList, namespaces, identifier)
-                    in 
-                        case matches'' of
-                            namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
-                          | [] => raise (LogErr.NameError "internal error")
-                          | _ => 
-                            if length ribs = 1
-                            then 
-                                case selectNamespacesByGlobalNames (identifier, matches'', globalNames) of
-                                    namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
-                                  | [] => raise (LogErr.NameError "internal error")
-                                  | _ => raise (LogErr.NameError "ambiguous reference")
-                            else
-                                raise (LogErr.NameError "ambiguous reference")
-                    end
+                  | [] => raise (LogErr.NameError "internal error")
+                  | _ => raise (LogErr.NameError ("ambiguous reference:"^LogErr.fmtNss matches'^"::"^(Ustring.toAscii identifier)))
             end
     end
 
 fun resolveNamespaceExpr (ribs:Ast.RIBS)
                          (nse:Ast.NAMESPACE_EXPRESSION)
     : Ast.NAMESPACE = 
-    case nse of 
+    case nse of
         Ast.Namespace ns => ns
       | Ast.NamespaceName ne => 
         (case resolveNameExpr ribs ne of
              (_, _, Ast.NamespaceFixture ns) => ns
            | _ => error ["namespace expression resolved to non-namespace fixture: ", LogErr.nsExpr nse])
+
+(*
+
+    Resolve a static name expression.
+
+*)
 
 and resolveNameExpr (ribs:Ast.RIBS) 
                     (ne:Ast.NAME_EXPRESSION) 
@@ -414,10 +402,14 @@ and resolveNameExpr (ribs:Ast.RIBS)
               | (rib::ribs) => ((rib::ribs), name, (getFixture rib (Ast.PropName name)))
         end
       | Ast.ResolvedName { ns, id } => resolveNameExpr ribs (Ast.QualifiedName { namespace=(Ast.Namespace ns), identifier=id })
-      | Ast.UnqualifiedName { identifier, openNamespaces, globalNames } => 
-        case findName (ribs, identifier, openNamespaces, globalNames) of
+      | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
+        case resolveUnqualifiedName (ribs, identifier, openNamespaces) of
             NONE => error ["unable to resolve unqualified name expression: ", LogErr.nameExpr ne]
-          | SOME ((rib::ribs), name) => (rib::ribs, name, (getFixture rib (Ast.PropName name)))
           | SOME ([], _) => error ["name expression resolved to reference in empty rib: ", LogErr.nameExpr ne]
+          | SOME ((rib::[]), name) => ((reserveNames name openNamespaces); (rib::[], name, (getFixture rib (Ast.PropName name))))
+          | SOME ((rib::ribs), name) => (rib::ribs, name, (getFixture rib (Ast.PropName name)))
+
+and reserveNames (name) (openNamespaces) 
+    = ()  (* FIXME needs implementation *)
 
 end

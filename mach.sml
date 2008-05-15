@@ -1273,7 +1273,7 @@ fun searchScope (scope: SCOPE,
                  fixedOnly: bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val (object, kind) = getScopeObjectAndKind (scope)
+        val (object, kind) = getScopeObjectAndKind (scope)  (* FIXME need to handle eval scopes specially too *)
     in case (kind, fixedOnly) of
         (WithScope, true) => searchMutableScopeObject (object, namespaces, identifier)
       | (WithScope, false) => NONE
