@@ -178,6 +178,7 @@ variables, and virtual properties (defined by getter and setter functions).
 
 
 <IMPL>
+<INCLUDE file="mach.sml" name="datatype WRITABILITY">
 <INCLUDE file="mach.sml" name="type ATTRS">
 
 === Object Prototype === 
@@ -209,7 +210,7 @@ and ''ArrayType'', respectively.
 described in the following section.
 
 <p>The ''InstanceTag'' tag is present on any object that is an instance of a class but does //not//
-have an ''ObjectTag'', ''ArrayTag'' or ''PrimitiveTag''.
+have an ''ObjectTag'', ''ArrayTag'' or ''PrimitiveTag'' tag.
 
 <p>The ''NoTag'' tag is present only on un-named objects that implement scopes.
 
@@ -252,7 +253,7 @@ value held by the primitive tag.
 == Semantic Values ==
 
 <p>Many aspects of the language depend on the semantic values associated with primitive objects. The
-following sections describe the semantic values, and highlights various details of the
+following sections describe the semantic values, and highlight various details of the
 correspondences that exist between particular semantic values and the ECMAScript values they are
 held by.
 
@@ -403,8 +404,8 @@ execution context, and the same namespace identifier is never assigned to more t
 namespace fixture in a single execution context.
 
 <IMPL>
-<INCLUDE file="ast.sml" name="datatype NAMESPACE">
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
+<INCLUDE file="ast.sml" name="datatype NAMESPACE">
 
 === Class Values ===
 
