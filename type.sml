@@ -156,7 +156,8 @@ val cacheSave : (((int -> Ast.TYPE -> unit) option) ref) = ref NONE
 
 fun nameExpressionEqual (name1 : Ast.NAME_EXPRESSION)
                         (name2 : Ast.NAME_EXPRESSION)
-    : bool =
+    : bool 
+  = (* LDOTS *)
     case (name1, name2) of
         (Ast.QualifiedName { namespace=Ast.Namespace n1, identifier = i1 },
          Ast.QualifiedName { namespace=Ast.Namespace n2, identifier = i2 } ) =>
@@ -486,43 +487,30 @@ fun substTypesInternal (s : SUBST list)
       (* FIXME: think about funny name collisions, and alpha-renaming given nonces *)
       | _ => mapTyExpr (substTypesInternal s) ty
 
-(* SPEC
-
 fun substTypes (typeParams : Ast.IDENTIFIER list) 
-               (typeArgs : Ast.TYPE list) 
-               (ty : Ast.TYPE)
-    :  Ast.TYPE 
-    = ...
-
-*)
-
-fun substTypes (typeParams : Ast.IDENTIFIER list) (typeArgs : Ast.TYPE list) 
-    : Ast.TYPE -> Ast.TYPE =
+               (typeArgs   : Ast.TYPE list) 
+               (ty         : Ast.TYPE)
+    : Ast.TYPE 
+  = (* LDOTS *)
     substTypesInternal 
         (ListPair.map 
              (fn (typeParam, typeArg) =>
                  ( (makeNameExpression typeParam, NONE), typeArg ))
              (typeParams, typeArgs))
+        ty
     
-(* SPEC
-
-fun rename (typeParams1 : Ast.IDENTIFIER list) 
-           (typeParams2 : Ast.IDENTIFIER list) 
-           (ty : Ast.TYPE)
-    :  Ast.TYPE 
-    = ...
-
-*)
-
 fun rename (typeParams1 : Ast.IDENTIFIER list)
            (typeParams2 : Ast.IDENTIFIER list)
-    : Ast.TYPE -> Ast.TYPE =
+           (ty : Ast.TYPE)
+    :  Ast.TYPE 
+  = (* LDOTS *)
     substTypesInternal 
         (ListPair.map 
              (fn (typeParam1, typeParam2) =>
                  ( (makeNameExpression typeParam1, NONE),
                    Ast.TypeName (makeNameExpression typeParam2, NONE) ))
              (typeParams1, typeParams2))
+        ty
 (*
 
 and FUNCTION_TYPE =
@@ -720,10 +708,10 @@ fun subType (extra : Ast.TYPE -> Ast.TYPE -> bool)
             (type2 : Ast.TYPE)
     : bool = 
     (type1 = type2)   (* reflexivity *) orelse
-    (subTypeFunction extra type1 type2) orelse
     (subTypeRecord   extra type1 type2) orelse
-    (subTypeUnion    extra type1 type2) orelse
     (subTypeArray    extra type1 type2) orelse
+    (subTypeUnion    extra type1 type2) orelse
+    (subTypeFunction extra type1 type2) orelse
     (subTypeNonNull  extra type1 type2) orelse
     (subTypeNullable extra type1 type2) orelse
     (subTypeNominal  extra type1 type2) orelse
@@ -867,14 +855,14 @@ and subTypeArray extra type1 type2 =
     case (type1, type2) of
 
         (Ast.ArrayType (types1, rest1), 
-         Ast.ArrayType (types2, rest2)) =>  
-
+         Ast.ArrayType (types2, rest2)) 
+        =>  
         let
             val min = Int.min( length types1, length types2 ) 
         in
             ListPair.all (fn (type1, type2) => equivType extra type1 type2)  
-                         ( List.take(types1, min),
-                           List.take(types2, min) )
+                         (List.take(types1, min),
+                          List.take(types2, min))
             andalso
             (case (rest1, rest2) of
                  (NONE,    NONE   ) => length types1 = length types2

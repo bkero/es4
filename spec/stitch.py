@@ -19,6 +19,7 @@
 #  - ''...'' for <code>...</code>
 #  - [[...]] for <code>[[...]]</code>
 #  - **...** for <b>...</b>
+#  - ^^...^^ for <code><b>...</b></code>
 #  - //...// for <i>...</i>
 #  - %%...%% for ..., unprocessed
 #  - {{{ ... }}} for <pre>...</pre>, blank lines removed at the beginning and end,
@@ -82,6 +83,7 @@ wikiformatCode = re.compile(r"''((?:.|\s)*?)''")
 wikiformatLiteralBold = re.compile("\"\"((?:.|\\s)*?)\"\"")
 wikiformatSpecial = re.compile(r"(\[\[(.*?)\]\])")
 wikiformatBold = re.compile(r"\*\*((?:.|\s)*?)\*\*")
+wikiformatES4 = re.compile(r"\^\^((?:.|\s)*?)\^\^")
 wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
@@ -538,6 +540,8 @@ def process(fn, hdrlvl):
     text = re.sub(wikiformatSpecial, r"<code>\1</code>", text)
     trace("wikibold")
     text = re.sub(wikiformatBold, r"<b>\1</b>", text)
+    trace("wikiES4 code")
+    text = re.sub(wikiformatES4, r"<code><b>\1</b></code>", text)
     trace("wikiitalic")
     text = re.sub(wikiformatItalic, r"<i>\1</i>", text)
     trace("wikiliteralrecover")

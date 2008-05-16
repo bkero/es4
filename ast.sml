@@ -231,14 +231,14 @@ datatype PRAGMA =
 (*
 
 datatype TYPE =
-         NullType
+         AnyType
+       | NullType
        | UndefinedType
-       | AnyType
        | RecordType of (NAME_EXPRESSION * TYPE) list
        | ArrayType  of (TYPE list * TYPE option)
        | UnionType  of TYPE list
-       | NonNullType of TYPE
        | FunctionType of FUNCTION_TYPE
+       | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  
        | ClassType of CLS
@@ -453,19 +453,6 @@ withtype
                 list
      and INITS = (FIXTURE_NAME * EXPRESSION) list
 
-(* cf: a class ref of the form C.<int> is represented as
-  AppType
-  { base = LamType
-             { params = ["X"],
-               body = InstanceType
-                        { name = { ns = Public "", id = "C"},
-                          typeParams = ["X"],
-                          typeArgs = [], 
-                          ... }},
-    args = ... }
-
-  In the above AST, typeArgs is implicitly ["X"]
-*)
      and INSTANCE_TYPE =
           {  name : NAME,
              typeArgs : TYPE list,
