@@ -45,7 +45,7 @@ val langEd = 4
 
 fun lookupRoot (prog:Fixture.PROGRAM)
                (n:Ast.NAME)
-    : Ast.CLS =
+    : Ast.CLASS =
     let
         val rib = Fixture.getRootRib prog
         val fix = Fixture.getFixture rib (Ast.PropName n)
@@ -59,18 +59,18 @@ fun lookupRoot (prog:Fixture.PROGRAM)
 fun instantiateRootClass (regs:Mach.REGS) 
                          (fullName:Ast.NAME) 
                          (proto:Mach.OBJ)
-    : (Ast.CLS * Mach.OBJ) =
+    : (Ast.CLASS * Mach.OBJ) =
   let
       val prog = (#prog regs)
       val cls = lookupRoot prog fullName
-      val clsCls = lookupRoot prog Name.intrinsic_Class
+      val clsClass = lookupRoot prog Name.intrinsic_Class
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.Class cls)) (Mach.Object proto)
+      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto)
 
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
-      val Ast.Cls { classRib, ... } = cls
+      val Ast.Class { classRib, ... } = cls
       val _ = trace ["allocating ", Int.toString (length classRib), 
                      " class fixtures on class ", LogErr.name fullName,
                      ", object #", Int.toString (Eval.getObjId (obj))];          
@@ -85,7 +85,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.ClassType clsCls,
+                           { ty = Ast.ClassType clsClass,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { removable = false,
                                        enumerable = false,
@@ -115,19 +115,19 @@ fun completeClassFixtures (regs:Mach.REGS)
          * by name until just now.
          *)
         val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
-        val Ast.Cls { instanceRib, ... } = lookupRoot (#prog regs) Name.intrinsic_Class
+        val Ast.Class { instanceRib, ... } = lookupRoot (#prog regs) Name.intrinsic_Class
     in
         Eval.allocObjRib classRegs classObj (SOME classObj) instanceRib
     end
 
 fun runConstructorOnObject (regs:Mach.REGS)
-                           (class:Ast.CLS) 
+                           (class:Ast.CLASS) 
                            (classObj:Mach.OBJ) 
                            (obj:Mach.OBJ)
     : unit =
     let
         val _ = trace ["allocating deferred ribs and running deferred constructor"];
-        val Ast.Cls { instanceRib, ...} = class
+        val Ast.Class { instanceRib, ...} = class
         val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
         val classRegs = Eval.withThis regs obj
         val _ = Eval.allocObjRib classRegs obj (SOME obj) instanceRib

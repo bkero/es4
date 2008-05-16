@@ -508,7 +508,7 @@ and defClass (env: ENV)
     let
         val class = analyzeClassBody env cdef
         val class = resolveClassInheritance env cdef class
-        val Ast.Cls {name,...} = class
+        val Ast.Class {name,...} = class
     in
         ([(Ast.PropName name, Ast.ClassFixture class)],cdef)
     end
@@ -554,8 +554,8 @@ and defInterface (env: ENV)
         (* Inherit rib and check overrides *)
         val instanceRib:Ast.RIB = inheritRib NONE inheritedRib instanceRib
 
-        val iface:Ast.IFACE = 
-            Ast.Iface { name=name, 
+        val iface:Ast.INTERFACE = 
+            Ast.Interface { name=name, 
                         typeParams=params,
                         nonnullable=nonnullable, 
                         extends=superInterfaces, 
@@ -795,10 +795,10 @@ and implementFixtures (base:Ast.RIB)
 
 and resolveClassInheritance (env:ENV)
                             ({extends,implements,...}: Ast.CLASS_DEFN)
-                            (cls:Ast.CLS)
-    : Ast.CLS =
+                            (cls:Ast.CLASS)
+    : Ast.CLASS =
     let
-        val Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
+        val Ast.Class {name, privateNS, protectedNS, parentProtectedNSs, 
 					 typeParams, nonnullable, dynamic, classRib, 
 					 instanceRib, instanceInits, constructor, classType,...} = cls
                                                                                
@@ -811,7 +811,7 @@ and resolveClassInheritance (env:ENV)
              instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
                                      
     in
-        Ast.Cls {name=name,
+        Ast.Class {name=name,
 				 privateNS=privateNS,
 				 protectedNS=protectedNS,
 				 parentProtectedNSs=parentProtectedNSs,
@@ -898,13 +898,13 @@ and resolveImplements (env: ENV)
 and interfaceMethods (ifxtr:Ast.FIXTURE)
     : Ast.RIB =
     case ifxtr of
-        Ast.InterfaceFixture (Ast.Iface {instanceRib,...}) => instanceRib
+        Ast.InterfaceFixture (Ast.Interface {instanceRib,...}) => instanceRib
       |_ => LogErr.internalError ["interfaceMethods"]
 
 and interfaceExtends (ifxtr:Ast.FIXTURE)
     : Ast.TYPE list =
     case ifxtr of
-        Ast.InterfaceFixture (Ast.Iface {extends,...}) => extends
+        Ast.InterfaceFixture (Ast.Interface {extends,...}) => extends
       |_ => LogErr.internalError ["interfaceExtends"]
 
 and interfaceInstanceType (ifxtr:Ast.FIXTURE)
@@ -916,13 +916,13 @@ and interfaceInstanceType (ifxtr:Ast.FIXTURE)
 and classInstanceRib (cfxtr:Ast.FIXTURE)
     : Ast.RIB =
     case cfxtr of
-        Ast.ClassFixture (Ast.Cls {instanceRib,...}) => instanceRib
+        Ast.ClassFixture (Ast.Class {instanceRib,...}) => instanceRib
       |_ => LogErr.internalError ["classInstanceRib"]
 
 and classPrivateNS (cfxtr:Ast.FIXTURE)
     : Ast.NAMESPACE =
     case cfxtr of
-        Ast.ClassFixture (Ast.Cls {privateNS,...}) => privateNS
+        Ast.ClassFixture (Ast.Class {privateNS,...}) => privateNS
       |_ => LogErr.internalError ["privateNS"]
 
 and classInstanceType (cfxtr:Ast.FIXTURE)
@@ -960,10 +960,10 @@ and resolveInterfaces (env: ENV)
             fun resolveToFix ne = let val (_, _, fix) = resolve env ne in fix end
             val ifaces = map resolveToFix nameExprs
             val ifaceInstanceTypes:Ast.TYPE list = map interfaceInstanceType ifaces
-            val superIfaceTypes:Ast.TYPE list = List.concat (map interfaceExtends ifaces)
+            val superInterfaceTypes:Ast.TYPE list = List.concat (map interfaceExtends ifaces)
             val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
         in
-            (ifaceInstanceTypes @ superIfaceTypes, methodRib)
+            (ifaceInstanceTypes @ superInterfaceTypes, methodRib)
         end
 
 (*
@@ -977,7 +977,7 @@ and resolveInterfaces (env: ENV)
 
 and analyzeClassBody (env:ENV)
                      (cdef:Ast.CLASS_DEFN)
-    : Ast.CLS =
+    : Ast.CLASS =
     let
         val {ns, privateNS, protectedNS, ident, 
 			 nonnullable, dynamic, params, classDefns, instanceDefns, 
@@ -1031,7 +1031,7 @@ and analyzeClassBody (env:ENV)
         val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
         val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
     in
-        Ast.Cls { name=name,
+        Ast.Class { name=name,
 				  privateNS = privateNS,
 				  protectedNS = protectedNS,				  
 				  parentProtectedNSs = [], (* set in resolveClassInheritence *)

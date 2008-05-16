@@ -78,8 +78,8 @@ fun nameExprOf (n:Ast.NAME) =
  * 'private' and 'protected' get bound to *inside* the rib 
  * of a given class. You pass in the private namespace
  *)
-fun private privateClsNs = { ns=privateClsNs, id=Ustring.private_ }
-fun protected privateClsNs = { ns=privateClsNs, id=Ustring.protected_ }
+fun private privateClassNs = { ns=privateClassNs, id=Ustring.private_ }
+fun protected privateClassNs = { ns=privateClassNs, id=Ustring.protected_ }
 
 																		   
 (*
@@ -256,6 +256,9 @@ val helper_genSend = helper Ustring.genSend_
 val helper_genThrow = helper Ustring.genThrow_
 val helper_genClose = helper Ustring.genClose_
 val helper_apply = helper Ustring.apply_
+
+val ES4_DefaultBehavior = ES4 Ustring.DefaultBehavior_
+val ES4_DefaultBehaviorClass = ES4 Ustring.DefaultBehaviorClass_
 
 val helper_toPrimitive = helper Ustring.toPrimitive_
 val helper_isPrimitive = helper Ustring.isPrimitive_

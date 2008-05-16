@@ -151,8 +151,8 @@ datatype PRAGMA =
        | Call
        | Has
          
-     and CLS =
-         Cls of
+     and CLASS =
+         Class of
            { name: NAME,
              privateNS: NAMESPACE,
              protectedNS: NAMESPACE,
@@ -168,8 +168,8 @@ datatype PRAGMA =
              constructor: CTOR option,
              classType: TYPE }
 
-     and IFACE =
-         Iface of
+     and INTERFACE =
+         Interface of
            { name: NAME,
              typeParams: IDENTIFIER list,
              nonnullable: bool,
@@ -241,8 +241,8 @@ datatype TYPE =
        | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  
-       | ClassType of CLS
-       | InterfaceType of IFACE
+       | ClassType of CLASS
+       | InterfaceType of INTERFACE
 
 *)
 
@@ -257,8 +257,8 @@ datatype TYPE =
        | FunctionType of FUNCTION_TYPE
        | AppType of (TYPE * TYPE list)
        | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
-       | ClassType of CLS
-       | InterfaceType of IFACE
+       | ClassType of CLASS
+       | InterfaceType of INTERFACE
 
 (* Following will be removed during defn phase *)
        | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
@@ -410,8 +410,8 @@ datatype STATEMENT =
 (*
 datatype FIXTURE =
          NamespaceFixture of NAMESPACE
-       | ClassFixture of CLS
-       | InterfaceFixture of IFACE
+       | ClassFixture of CLASS
+       | InterfaceFixture of INTERFACE
        | TypeVarFixture of TYPEVAR_FIXTURE
        | TypeFixture of TY
        | MethodFixture of METHOD
@@ -424,8 +424,8 @@ datatype FIXTURE =
  *)
      and FIXTURE =
          NamespaceFixture of NAMESPACE
-       | ClassFixture of CLS
-       | InterfaceFixture of IFACE
+       | ClassFixture of CLASS
+       | InterfaceFixture of INTERFACE
        | TypeVarFixture of NONCE
        | TypeFixture of (IDENTIFIER list * TYPE)
        | MethodFixture of
