@@ -173,15 +173,22 @@ inner scope; name expressions in the inner scope will not be able to
 access the outer binding.
 
 <P> In this Specification, the nesting of scopes is modelled as a
-chain of scope objects, called the //scope chain//.  Each scope object
-holds named properties representing the variables bound in that scope.
-Every time a new scope is entered the scope chain is extended with a
-new scope object, and at every point in the program one particular
-scope chain is in effect.
+list of ribs during compilation and a list of objects during evaluation.
+Both environments are generically called the //scope chain//. Which kind
+of list is being referred to will be clear from the context in which the 
+term is used.
 
-<FIXME> Exhibit the run-time structure for scope chains here.
+<P> Each scope holds a table of named bindings in that scope. Ribs hold
+a table of fixture bindings and objects hold a table of property bindings.
+Every time a new scope is entered the scope chain is extended with a new 
+rib or object, and at every point in the program one particular scope chain
+is in effect.
 
-<P> Some objects that appear on scope chains are dynamically
+<FIXME> What's a fixture? Is it defined somewhere?
+
+<FIXME> Exhibit the compile-time and run-time structure for scope chains here.
+
+<P> Some objects that appear on run-time scope chains are dynamically
 extensible, in effect providing a form of dynamic scope.  For example,
 class objects appear on the scope chain of class and instance methods,
 and properties can be added to and removed from class objects; these
@@ -191,7 +198,6 @@ properties then become visible and invisible to the methods.
 bindings that are textually visible (//lexical bindings//) are
 preferred over dynamically added bindings (//dynamic bindings//)
 during name resolution.
-
 
 == Name Expressions ==
 
@@ -285,7 +291,7 @@ how static name resolution operates on ribs and dynamic name resolution operates
 
 === Namespace and Type Expressions ===
 
-<p>Namespace and type expressions resolve at compile time to namespace and type values, respectively.
+<p>Namespace and type expressions resolve at compile-time to namespace and type fixtures, respectively.
 Name expressions that occur in either form are resolved using the semantics described here.
 
 <p>Given a list of ribs and a name expression, this algorithm resolves the name
@@ -311,6 +317,7 @@ open namespaces:
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and resolveUnqualifiedName">
+<INCLUDE file="fixture.sml" name="fun ribListSearch">
 
 ==== Reserving Names ====
 
