@@ -376,15 +376,17 @@ and resolveUnqualifiedName (ribs: Ast.RIBS) (identifier: IDENTIFIER) (openNamesp
     in
         case matches of
             NONE => NONE
-          | SOME (rib, namespace :: []) => SOME (rib, {ns=namespace, id=identifier})
-          | SOME (rib, namespaces) =>
+          | SOME (ribs, namespace :: []) => SOME (ribs, {ns=namespace, id=identifier})
+          | SOME (ribs, namespaces) =>
             let
                 val matches' = selectNamespaces (identifier, namespaces, [], openNamespaces)
             in
                 case matches' of
-                    namespace :: [] => SOME (rib, {ns=namespace, id=identifier})
+                    namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
                   | [] => raise (LogErr.NameError "internal error")
-                  | _ => raise (LogErr.NameError ("ambiguous reference:"^LogErr.fmtNss matches'^"::"^(Ustring.toAscii identifier)))
+                  | _ => raise (LogErr.NameError ("ambiguous reference:" ^ 
+                                                  LogErr.fmtNss matches' ^ "::" ^ 
+                                                  (Ustring.toAscii identifier)))
             end
     end
 

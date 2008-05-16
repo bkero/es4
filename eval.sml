@@ -1961,7 +1961,7 @@ and evalExpr (regs:Mach.REGS)
         evalListExpr regs es
 
       | Ast.LexicalReference { name, loc } =>
-        evalLexicalReference regs expr
+        evalLexicalReference regs name
 	
       | Ast.ObjectNameReference { object, name, loc } =>
         evalObjectNameReference regs expr
@@ -2038,10 +2038,10 @@ fun evalGetExpr (env: ENV)
 *)
 
 and evalLexicalReference (regs:Mach.REGS)
-                         (expr:Ast.EXPRESSION)
+                         (nameExpr:Ast.NAME_EXPRESSION)
     : Mach.VALUE =
     let
-        val (obj, name) = resolveLexicalReference regs expr true
+        val (obj, name) = resolveLexicalReference regs nameExpr true
     in
         getValue regs obj name
     end
@@ -3109,7 +3109,7 @@ and evalUnaryOp (regs:Mach.REGS)
                     (case expr of
                          Ast.LexicalReference { name, loc } =>
                               let
-                                  val (obj, name) = resolveLexicalReference regs expr true
+                                  val (obj, name) = resolveLexicalReference regs name true
                               in
                                   typeNameOfVal (getValue regs obj name)
                               end
@@ -3850,7 +3850,7 @@ and resolveRefExpr (regs:Mach.REGS)
     let
     in
         case expr of
-            Ast.LexicalReference _ => (NONE, resolveLexicalReference regs expr errIfNotFound)
+            Ast.LexicalReference {name, ...} => (NONE, resolveLexicalReference regs name errIfNotFound)
           | Ast.ObjectNameReference _ => resolveObjectReference regs expr errIfNotFound
           | Ast.ObjectIndexReference _ => resolveObjectReference regs expr errIfNotFound
           | _ => error regs ["need lexical or object-reference expression"]
@@ -3871,15 +3871,12 @@ and evalLetExpr (regs:Mach.REGS)
  *)
 
 and resolveLexicalReference (regs: Mach.REGS)
-                            (expr: Ast.EXPRESSION)
+                            (nameExpression: Ast.NAME_EXPRESSION)
                             (errorIfNotFound: bool)
     : (Mach.OBJ * Ast.NAME) =
     let
        val {scope, ...} = regs
-       val name = case expr of Ast.LexicalReference { name, ... } => name 
-                             | _ => error regs ["need lexical reference"]
-       
-    in case name of
+    in case nameExpression of
           Ast.QualifiedName {identifier, namespace} => 
           resolveQualifiedLexicalReference regs identifier namespace
         | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
@@ -3959,7 +3956,7 @@ and evalNamespaceExpr (regs:Mach.REGS)
 error regs ["unresolved namespace ", LogErr.nameExpr ne]
 *)
         let
-           val (obj, name) = resolveLexicalReference regs (Ast.LexicalReference {name=ne, loc=NONE}) true
+           val (obj, name) = resolveLexicalReference regs ne true
         in
            Mach.needNamespace (getValue regs obj name)
         end
