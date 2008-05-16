@@ -35,6 +35,8 @@
 
 structure Mach = struct
 
+open Ast
+
 (* Local tracing machinery *)
 
 val doTrace = ref false
@@ -47,10 +49,10 @@ fun error0 ss = LogErr.machError ss
 structure StrListKey = struct type ord_key = string list val compare = List.collate String.compare end
 structure StrListMap = SplayMapFn (StrListKey);
 
-structure NsKey = struct type ord_key = Ast.NAMESPACE val compare = NameKey.cmpNS end
+structure NsKey = struct type ord_key = NAMESPACE val compare = NameKey.cmpNS end
 structure NsMap = SplayMapFn (NsKey);
 
-structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmKey = struct type ord_key = NAME val compare = NameKey.compare end
 structure NmMap = SplayMapFn (NmKey);
 
 structure StrKey = struct type ord_key = Ustring.STRING val compare = (fn (a,b) => Ustring.compare a b) end
@@ -62,7 +64,7 @@ structure Real64Map = SplayMapFn (Real64Key);
 structure IntKey = struct type ord_key = Int.int val compare = Int.compare end
 structure IntMap = SplayMapFn (IntKey);
           
-fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
+fun nameEq (a:NAME) (b:NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
 val cachesz = 4096
 
@@ -81,9 +83,9 @@ type ATTRS = { removable: bool,
 
 type IDENTIFIER = Ustring.STRING
 
-type NAMESPACE = Ast.NAMESPACE
+type NAMESPACE = NAMESPACE
 
-datatype VALUE = Undef
+datatype VALUE = Undefined
                | Null
                | Object of OBJ
 
@@ -92,14 +94,14 @@ datatype VALUE = Undef
                   proto: VALUE,
                   ident: OBJ_IDENTIFIER,
                   tag: TAG
-                , rib: Ast.RIB ref     (* INFORMATIVE *)
+                , rib: RIB ref     (* INFORMATIVE *)
                 }
 
      and TAG =
-         ObjectTag of Ast.FIELD_TYPE list
-       | ArrayTag of Ast.TYPE list (* FIXME: need TYPE option too - see ArrayType *)
+         ObjectTag of FIELD_TYPE list
+       | ArrayTag of (TYPE list * TYPE option)
        | PrimitiveTag of PRIMITIVE
-       | InstanceTag of Ast.CLS
+       | InstanceTag of CLASS
        | NoTag
 
      and OBJ_CACHE = 
@@ -109,7 +111,7 @@ datatype VALUE = Undef
           nsCache: (OBJ NsMap.map) ref,
           nmCache: (OBJ NmMap.map) ref,
           strCache: (OBJ StrMap.map) ref,
-          tyCache: (Ast.TYPE IntMap.map) ref (* well, mostly objs *)
+          tyCache: (TYPE IntMap.map) ref (* well, mostly objs *)
          }
 
      and PROFILER =
@@ -157,17 +159,17 @@ datatype VALUE = Undef
  *)
 
      and PRIMITIVE =
-         Boolean of bool
-       | Double of Real64.real
-       | Decimal of Decimal.DEC
-       | String of Ustring.STRING
-       | Namespace of Ast.NAMESPACE
-       | Class of Ast.CLS
-       | Interface of Ast.IFACE
-       | Function of FUN_CLOSURE
-       | Type of Ast.TYPE
-       | NativeFunction of NATIVE_FUNCTION  (* INFORMATIVE *)
-       | Generator of GEN
+         BooleanPrimitive of bool
+       | DoublePrimitive of Real64.real
+       | DecimalPrimitive of Decimal.DEC
+       | StringPrimitive of Ustring.STRING
+       | NamespacePrimitive of NAMESPACE
+       | ClassPrimitive of CLASS
+       | InterfacePrimitive of INTERFACE
+       | FunctionPrimitive of FUN_CLOSURE
+       | TypePrimitive of TYPE
+       | NativeFunctionPrimitive of NATIVE_FUNCTION  (* INFORMATIVE *)
+       | GeneratorPrimitive of GEN
 
      and SCOPE =
          Scope of { object: OBJ,
@@ -191,14 +193,14 @@ datatype VALUE = Undef
      (* 
       * One might imagine that namespaces, methods and the 'arguments'
       * object in a function can all be stored as instances of the
-      * classes Namespace, Function and Array, respectively. This
+      * classes NamespacePrimitive, FunctionPrimitive and Array, respectively. This
       * works in some contexts, but leads to feedback loops when
-      * constructing the classes Function, Namespace and Array
+      * constructing the classes FunctionPrimitive, NamespacePrimitive and Array
       * themselves. So instead of eagerly instantiating such values,
       * we allocate them as the following 3 "lazy" property states. If
-      * anyone performs a "get" on these property states, a Namespace,
-      * Function or Array object (respectively) is constructed. We
-      * then ensure that the Namespace, Function and Array
+      * anyone performs a "get" on these property states, a NamespacePrimitive,
+      * FunctionPrimitive or Array object (respectively) is constructed. We
+      * then ensure that the NamespacePrimitive, FunctionPrimitive and Array
       * constructors, settings and initializers (in the builtins) do
       * *not* cause any "get" operations on properties in these
       * states.
@@ -208,7 +210,7 @@ datatype VALUE = Undef
 
      and PROPERTY_STATE = UninitProp
                         | ValProp of VALUE
-                        | NamespaceProp of Ast.NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
+                        | NamespaceProp of NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
                         | MethodProp of FUN_CLOSURE       (* INFORMATIVE *)
                         | ValListProp of VALUE list       (* INFORMATIVE *)
                         | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
@@ -247,7 +249,7 @@ datatype VALUE = Undef
      and GEN = Gen of GEN_STATE ref
 
 withtype FUN_CLOSURE =
-         { func: Ast.FUNC,
+         { func: FUNC,
            this: OBJ option,
            env: SCOPE }
 
@@ -281,9 +283,9 @@ withtype FUN_CLOSURE =
  * which phase of name lookup the name is found during.
  *)
 
-     and TEMPS = (Ast.TYPE * TEMP_STATE) list ref
+     and TEMPS = (TYPE * TEMP_STATE) list ref
 
-     and PROPERTY = { ty: Ast.TYPE,
+     and PROPERTY = { ty: TYPE,
                       state: PROPERTY_STATE,
                       attrs: ATTRS }
 
@@ -291,7 +293,7 @@ withtype FUN_CLOSURE =
          { max_seq: int,
 		   bindings: { seq: int,
 				       prop: (* PROPERTY *)
-				       { ty: Ast.TYPE,   
+				       { ty: TYPE,   
 					     state: PROPERTY_STATE,
 					     attrs: ATTRS } } NameMap.map } ref 
 			 
@@ -302,34 +304,34 @@ fun isObject (v:VALUE) : bool =
       | _ => false
 
 
-fun isDouble (Object (Obj {tag = PrimitiveTag (Double _), ...})) = true
+fun isDouble (Object (Obj {tag = PrimitiveTag (DoublePrimitive _), ...})) = true
   | isDouble _ = false
 
-fun isDecimal (Object (Obj {tag = PrimitiveTag (Decimal _), ...})) = true
+fun isDecimal (Object (Obj {tag = PrimitiveTag (DecimalPrimitive _), ...})) = true
   | isDecimal _ = false
 
-fun isString (Object (Obj {tag = PrimitiveTag (String _), ...})) = true
+fun isString (Object (Obj {tag = PrimitiveTag (StringPrimitive _), ...})) = true
   | isString _ = false
 
-fun isBoolean (Object (Obj {tag = PrimitiveTag (Boolean _), ...})) = true
+fun isBoolean (Object (Obj {tag = PrimitiveTag (BooleanPrimitive _), ...})) = true
   | isBoolean _ = false
 
-fun isNamespace (Object (Obj {tag = PrimitiveTag (Namespace _), ...})) = true
+fun isNamespace (Object (Obj {tag = PrimitiveTag (NamespacePrimitive _), ...})) = true
   | isNamespace _ = false
 
-fun isClass (Object (Obj {tag = PrimitiveTag (Class _), ...})) = true
+fun isClass (Object (Obj {tag = PrimitiveTag (ClassPrimitive _), ...})) = true
   | isClass _ = false
 
-fun isInterface (Object (Obj {tag = PrimitiveTag (Interface _), ...})) = true
+fun isInterface (Object (Obj {tag = PrimitiveTag (InterfacePrimitive _), ...})) = true
   | isInterface _ = false
 
-fun isFunction (Object (Obj {tag = PrimitiveTag (Function _), ...})) = true
+fun isFunction (Object (Obj {tag = PrimitiveTag (FunctionPrimitive _), ...})) = true
   | isFunction _ = false
                    
-fun isType (Object (Obj {tag = PrimitiveTag (Type _), ...})) = true
+fun isType (Object (Obj {tag = PrimitiveTag (TypePrimitive _), ...})) = true
   | isType _ = false
 
-fun isNativeFunction (Object (Obj {tag = PrimitiveTag (NativeFunction _), ...})) = true
+fun isNativeFunction (Object (Obj {tag = PrimitiveTag (NativeFunctionPrimitive _), ...})) = true
   | isNativeFunction _ = false
                          
 fun isNumeric ob = isDouble ob orelse isDecimal ob
@@ -337,7 +339,7 @@ fun isNumeric ob = isDouble ob orelse isDecimal ob
 fun isNull Null = true
   | isNull _ = false
 
-fun isUndef Undef = true
+fun isUndef Undefined = true
   | isUndef _ = false
 
 (*
@@ -367,7 +369,7 @@ fun newPropBindings _ : PROPERTY_BINDINGS =
     ref { max_seq = 0, bindings = NameMap.empty }
 
 fun addProp (b:PROPERTY_BINDINGS)
-            (n:Ast.NAME)
+            (n:NAME)
             (x:PROPERTY)
     : unit =
     let
@@ -380,7 +382,7 @@ fun addProp (b:PROPERTY_BINDINGS)
     end
 
 fun delProp (b:PROPERTY_BINDINGS)
-            (n:Ast.NAME)
+            (n:NAME)
     : unit =
     let
 	val { max_seq, bindings } = !b	
@@ -390,7 +392,7 @@ fun delProp (b:PROPERTY_BINDINGS)
     end
 
 fun findProp (b:PROPERTY_BINDINGS)
-             (n:Ast.NAME)
+             (n:NAME)
     : PROPERTY option =
     let
 	val { bindings, ... } = !b
@@ -402,9 +404,9 @@ fun findProp (b:PROPERTY_BINDINGS)
 
 fun matchProps (fixedProps:bool)
                (b:PROPERTY_BINDINGS)
-               (searchId:Ast.IDENTIFIER)
-               (nss:Ast.NAMESPACE list)
-    : Ast.NAME list =
+               (searchId:IDENTIFIER)
+               (nss:NAMESPACE list)
+    : NAME list =
     let
         fun tryNS ns =
             let
@@ -419,7 +421,7 @@ fun matchProps (fixedProps:bool)
     end
 
 fun getProp (b:PROPERTY_BINDINGS)
-            (n:Ast.NAME)
+            (n:NAME)
     : PROPERTY =
     case findProp b n of
         SOME p => p
@@ -429,8 +431,8 @@ fun getProp (b:PROPERTY_BINDINGS)
          * with value undefined. Any property not found
          * errors would have been caught by evalRefExpr
          *)
-        {ty=Ast.UndefinedType  ,
-         state=ValProp Undef,
+        {ty=UndefinedType  ,
+         state=ValProp Undefined,
          attrs={removable=true,  (* unused attrs *)
                 enumerable=false,
                 writable=Writable,
@@ -438,17 +440,24 @@ fun getProp (b:PROPERTY_BINDINGS)
 
 
 fun hasProp (b:PROPERTY_BINDINGS)
-            (n:Ast.NAME)
+            (n:NAME)
     : bool =
     case findProp b n of
         NONE => false
       | SOME _ => true
 
+fun hasFixedProp (b:PROPERTY_BINDINGS)
+                 (n:NAME)
+    : bool =
+    case findProp b n of
+        NONE => false
+      | SOME {attrs={fixed, ...}, ...} => fixed
+
 fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
 fun setRib (obj:OBJ)
-           (r:Ast.RIB)
+           (r:RIB)
     : unit =
     let
         val Obj { rib, ... } = obj
@@ -457,7 +466,7 @@ fun setRib (obj:OBJ)
     end
 
 fun getRib (obj:OBJ)
-    : Ast.RIB =
+    : RIB =
     let
         val Obj { rib, ... } = obj
     in
@@ -465,7 +474,7 @@ fun getRib (obj:OBJ)
     end
 
 fun getRibs (scope:SCOPE) 
-    : Ast.RIBS = 
+    : RIBS = 
       let   
           val Scope {object, parent, ...} = scope
           val rib = getRib object
@@ -477,7 +486,7 @@ fun getRibs (scope:SCOPE)
 
 
 fun setPropEnumerable (props:PROPERTY_BINDINGS)
-                    (n:Ast.NAME)
+                    (n:NAME)
                     (enumerable:bool)
     : unit =
     case findProp props n of
@@ -585,19 +594,19 @@ fun isInRange (low:Real64.real)
 fun primitiveToUstring (primitive:PRIMITIVE)
     : Ustring.STRING =
     case primitive of
-        Double n => NumberToString n
-      | Decimal d => Ustring.fromString (Decimal.toString d)
-      | String s => s
-      | Boolean true => Ustring.true_
-      | Boolean false => Ustring.false_
-      | Namespace ns => Ustring.fromString (LogErr.namespace ns)
-      | Class _ => Ustring.fromString "[class Class]"
-      | Interface _ => Ustring.fromString "[interface Interface]"
-      | Function _ => Ustring.fromString "[function Function]"
-      | Type _ => Ustring.fromString "[type Type]"
-      | NativeFunction _ => Ustring.fromString "[function Function]"
+        DoublePrimitive n => NumberToString n
+      | DecimalPrimitive d => Ustring.fromString (Decimal.toString d)
+      | StringPrimitive s => s
+      | BooleanPrimitive true => Ustring.true_
+      | BooleanPrimitive false => Ustring.false_
+      | NamespacePrimitive ns => Ustring.fromString (LogErr.namespace ns)
+      | ClassPrimitive _ => Ustring.fromString "[class ClassPrimitive]"
+      | InterfacePrimitive _ => Ustring.fromString "[interface InterfacePrimitive]"
+      | FunctionPrimitive _ => Ustring.fromString "[function FunctionPrimitive]"
+      | TypePrimitive _ => Ustring.fromString "[type TypePrimitive]"
+      | NativeFunctionPrimitive _ => Ustring.fromString "[function FunctionPrimitive]"
       (* XXX: why does this trump the toString method? *)
-      | Generator _ => Ustring.fromString "[object Generator]"
+      | GeneratorPrimitive _ => Ustring.fromString "[object GeneratorPrimitive]"
 
 
 (*
@@ -692,21 +701,21 @@ fun inspect (v:VALUE)
 
         fun magType t = 
             case t of 
-                Class c => 
+                ClassPrimitive c => 
                 let
-                    val Ast.Cls { classType, ... } = c
+                    val Class { classType, ... } = c
                 in
-                    (" : instanceType=" ^ (typ (Ast.ClassType c)) ^ ", classType=" ^ (typ classType))
+                    (" : instanceType=" ^ (typ (ClassType c)) ^ ", classType=" ^ (typ classType))
                 end
-              | Interface i => (" : instanceType=" ^ (typ (Ast.InterfaceType i)))
-              | Function { func = Ast.Func { ty=ty0, ... }, ... } => 
+              | InterfacePrimitive i => (" : instanceType=" ^ (typ (InterfaceType i)))
+              | FunctionPrimitive { func = Func { ty=ty0, ... }, ... } => 
                 (" : " ^ (typ ty0))
-              | Type t => (" = " ^ (typ t))
+              | TypePrimitive t => (" = " ^ (typ t))
               | _ => ""
 
         (* FIXME: elaborate printing of type expressions. *)
         fun mag m = case m of
-                        String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
+                        StringPrimitive s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
                       | m => Ustring.toAscii (primitiveToUstring m) ^ (magType m)
                 
         fun tag (Obj ob) =
@@ -714,11 +723,11 @@ fun inspect (v:VALUE)
                 (* FIXME: elaborate printing of structural tags. *)
                 ObjectTag _ => "<Object>"
               | ArrayTag _ => "<Arrray>"
-              | InstanceTag t => "<Instance " ^ (typ (Ast.ClassType t)) ^ ">"
+              | InstanceTag t => "<Instance " ^ (typ (ClassType t)) ^ ">"
               | PrimitiveTag m => "<Primitive " ^ (mag m) ^ ">"
               | NoTag => "<NoTag>"
 
-        fun printVal indent _ Undef = TextIO.print "undefined\n"
+        fun printVal indent _ Undefined = TextIO.print "undefined\n"
           | printVal indent _ Null = TextIO.print "null\n"
 
           | printVal indent 0 (Object obj) = TextIO.print ((tag obj) ^ "\n")
@@ -764,29 +773,29 @@ fun inspect (v:VALUE)
 
 
 (*
- * To get from any object to its CLS, you work out the
+ * To get from any object to its CLASS, you work out the
  * "nominal base" of the object's tag. You can then find
- * a fixed prop in the global object that has a "Class"
- * primitive value pointing to the CLS.
+ * a fixed prop in the global object that has a "ClassPrimitive"
+ * primitive value pointing to the CLASS.
  *)
 
 fun nominalBaseOfTag (to:TAG)
-    : Ast.NAME =
+    : NAME =
     case to of
         ObjectTag _ => Name.public_Object
       | ArrayTag _ => Name.public_Array
-      | InstanceTag (Ast.Cls {name, ...}) => name
-      | PrimitiveTag (Boolean _) => Name.ES4_boolean
-      | PrimitiveTag (Double _) => Name.ES4_double
-      | PrimitiveTag (Decimal _) => Name.ES4_decimal
-      | PrimitiveTag (String _) => Name.ES4_string
-      | PrimitiveTag (Namespace _) => Name.ES4_Namespace
-      | PrimitiveTag (Class _) => Name.intrinsic_Class
-      | PrimitiveTag (Interface _) => Name.intrinsic_Interface
-      | PrimitiveTag (Function _) => Name.public_Function
-      | PrimitiveTag (Type _) => Name.intrinsic_Type
-      | PrimitiveTag (NativeFunction _) => Name.public_Function
-      | PrimitiveTag (Generator _) => Name.helper_GeneratorImpl
+      | InstanceTag (Class {name, ...}) => name
+      | PrimitiveTag (BooleanPrimitive _) => Name.ES4_boolean
+      | PrimitiveTag (DoublePrimitive _) => Name.ES4_double
+      | PrimitiveTag (DecimalPrimitive _) => Name.ES4_decimal
+      | PrimitiveTag (StringPrimitive _) => Name.ES4_string
+      | PrimitiveTag (NamespacePrimitive _) => Name.ES4_Namespace
+      | PrimitiveTag (ClassPrimitive _) => Name.intrinsic_Class
+      | PrimitiveTag (InterfacePrimitive _) => Name.intrinsic_Interface
+      | PrimitiveTag (FunctionPrimitive _) => Name.public_Function
+      | PrimitiveTag (TypePrimitive _) => Name.intrinsic_Type
+      | PrimitiveTag (NativeFunctionPrimitive _) => Name.public_Function
+      | PrimitiveTag (GeneratorPrimitive _) => Name.helper_GeneratorImpl
       | NoTag => error ["nominalBaseOfTag on NoTag"]
         
                                   
@@ -799,35 +808,35 @@ fun getPrimitive (Object (Obj { tag = PrimitiveTag m, ... })) = SOME m
 fun needPrimitive (Object (Obj { tag = PrimitiveTag m, ... })) = m
   | needPrimitive _ = error ["require object with primitive"]
 
-fun needClass (Object (Obj {tag = PrimitiveTag (Class c), ...})) = c
+fun needClass (Object (Obj {tag = PrimitiveTag (ClassPrimitive c), ...})) = c
   | needClass _ = error ["require class object"]
 
-fun needInterface (Object (Obj {tag = PrimitiveTag (Interface i), ...})) = i
+fun needInterface (Object (Obj {tag = PrimitiveTag (InterfacePrimitive i), ...})) = i
   | needInterface _ = error ["require interface object"]
 
-fun needFunction (Object (Obj {tag = PrimitiveTag (Function f), ...})) = f
+fun needFunction (Object (Obj {tag = PrimitiveTag (FunctionPrimitive f), ...})) = f
   | needFunction _ = error ["require function object]"]
 
-fun needNamespace (Object (Obj {tag = PrimitiveTag (Namespace n), ...})) = n
+fun needNamespace (Object (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
   | needNamespace _ = error ["require namespace object"]
 
 fun needNamespaceOrNull Null = Name.publicNS
-  | needNamespaceOrNull (Object (Obj {tag = PrimitiveTag (Namespace n), ...})) = n
+  | needNamespaceOrNull (Object (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
   | needNamespaceOrNull _ = error ["require namespace object"]
 
-fun needType (Object (Obj {tag = PrimitiveTag (Type t), ...})) = t
+fun needType (Object (Obj {tag = PrimitiveTag (TypePrimitive t), ...})) = t
   | needType _ = error ["require type object"]
 
-fun needDouble (Object (Obj {tag = PrimitiveTag (Double d), ...})) = d
+fun needDouble (Object (Obj {tag = PrimitiveTag (DoublePrimitive d), ...})) = d
   | needDouble _ = error ["require double object"]
 
-fun needDecimal (Object (Obj {tag = PrimitiveTag (Decimal d), ...})) = d
+fun needDecimal (Object (Obj {tag = PrimitiveTag (DecimalPrimitive d), ...})) = d
   | needDecimal _ = error ["require decimal object"]
 
-fun needBoolean (Object (Obj {tag = PrimitiveTag (Boolean b), ...})) = b
+fun needBoolean (Object (Obj {tag = PrimitiveTag (BooleanPrimitive b), ...})) = b
   | needBoolean _ = error ["require boolean object"]
 
-fun needString (Object (Obj {tag = PrimitiveTag (String s), ...})) = s
+fun needString (Object (Obj {tag = PrimitiveTag (StringPrimitive s), ...})) = s
   | needString _ = error ["require string object"]
 
 
@@ -839,7 +848,7 @@ fun approx (arg:VALUE)
     : string =
     case arg of
         Null => "null"
-      | Undef => "undefined"
+      | Undefined => "undefined"
       | Object ob =>
         if hasPrimitive ob
         then
@@ -1141,16 +1150,16 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
  * not a high priority; they only get set at SML-heap-load time anyways.
  *)
 
-val nativeFunctions: (Ast.NAME * NATIVE_FUNCTION) list ref = ref []
+val nativeFunctions: (NAME * NATIVE_FUNCTION) list ref = ref []
 
-fun registerNativeFunction (name:Ast.NAME)
+fun registerNativeFunction (name:NAME)
                            (func:NATIVE_FUNCTION)
     : unit =
     (trace ["registering native function: ", LogErr.name name];
      nativeFunctions := (name, func) :: (!nativeFunctions))
 
 
-fun getNativeFunction (name:Ast.NAME)
+fun getNativeFunction (name:NAME)
     : NATIVE_FUNCTION =
     let
         fun search [] = LogErr.hostError ["native function not found: ",
@@ -1165,11 +1174,11 @@ fun getNativeFunction (name:Ast.NAME)
 
 (* begin names experiment *)
 
-type IDENTIFIER = Ast.IDENTIFIER
-type NAMESPACE = Ast.NAMESPACE
-type NAME = Ast.NAME
+type IDENTIFIER = IDENTIFIER
+type NAMESPACE = NAMESPACE
+type NAME = NAME
 
-type CLASS = Ast.CLS
+type CLASS = CLASS
 type OBJECT = OBJ
 
 type NAMESPACE_SET = NAMESPACE list
@@ -1261,9 +1270,10 @@ fun searchMutableScopeObject (object: OBJECT,
     : (OBJECT * NAMESPACE_SET) option =
     let
         val result = searchObject (SOME object, identifier, namespaces, true)
-    in case result of
-        NONE => searchObject (SOME object, identifier, namespaces, false)
-      | _ => result
+    in 
+        case result of
+            NONE => searchObject (SOME object, identifier, namespaces, false)
+          | _ => result
     end
 *)
 
@@ -1296,7 +1306,7 @@ fun searchScopeChain (NONE, _, _) = NONE
     end
 
 fun instanceRibsOf (object: OBJECT)
-    : Ast.RIBS =
+    : RIBS =
     []
 
 fun getObjId (Obj { ident, ...}) = ident

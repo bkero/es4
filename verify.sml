@@ -190,7 +190,7 @@ fun typeOfFixture (env:ENV)
 	     * the static-class type, so we can look up static props on them
 	     * correctly. Abusing object types like this is no good.
 	     *)
-	    (Ast.ClassFixture (Ast.Cls {classType, ...})) => classType	
+	    (Ast.ClassFixture (Ast.Class {classType, ...})) => classType	
       | (Ast.ValFixture { ty, ... }) => ty	
       | (Ast.VirtualValFixture { ty, ... }) => ty        
       | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
@@ -938,7 +938,7 @@ and verifyFixture (env:ENV)
     : unit =
     case f of
      
-        Ast.ClassFixture (Ast.Cls {name, privateNS, protectedNS, parentProtectedNSs, 
+        Ast.ClassFixture (Ast.Class {name, privateNS, protectedNS, parentProtectedNSs, 
                                    typeParams, nonnullable, 
                                    dynamic, extends, implements, 
                                    classRib, instanceRib, instanceInits, 

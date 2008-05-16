@@ -92,9 +92,9 @@ fun blockChildren (Ast.Block directives) =
 fun ctorChildren (Ast.Ctor { settings, superArgs, func }) =
     (superArgs@(headExprs settings), [func])
 
-fun classChildren (cls : Ast.CLS) =
+fun classChildren (cls : Ast.CLASS) =
     (case cls of
-         Ast.Cls { constructor=SOME ctor, classRib, instanceRib, instanceInits, ... } =>
+         Ast.Class { constructor=SOME ctor, classRib, instanceRib, instanceInits, ... } =>
          let
              val (es1, ss1, ds1, fs1) = ribChildren classRib
              val (es2, ss2, ds2, fs2) = ribChildren instanceRib
@@ -103,7 +103,7 @@ fun classChildren (cls : Ast.CLS) =
          in
              (es1@es2@es@es', ss1@ss2, ds1@ds2, fs1@fs2@fs)
          end
-       | Ast.Cls { constructor=NONE, classRib, instanceRib, instanceInits, ... } =>
+       | Ast.Class { constructor=NONE, classRib, instanceRib, instanceInits, ... } =>
          let
              val (es1, ss1, ds1, fs1) = ribChildren classRib
              val (es2, ss2, ds2, fs2) = ribChildren instanceRib
@@ -112,7 +112,7 @@ fun classChildren (cls : Ast.CLS) =
              (es1@es2@es, ss1@ss2, ds1@ds2, fs1@fs2)
          end)
 
-and ifaceChildren (Ast.Iface { instanceRib, ... }) =
+and ifaceChildren (Ast.Interface { instanceRib, ... }) =
     ribChildren instanceRib
 
 and fixtureChildren fixture =

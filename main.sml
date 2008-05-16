@@ -332,7 +332,7 @@ fun repl (regs:Mach.REGS)
 						            handle Eval.ThrowException v => (tidyUp (); v)
                             in
                                 case res of
-                                    Mach.Undef => ()
+                                    Mach.Undefined => ()
                                   | _ => 
 						            print (Ustring.toAscii 
                                                (Eval.toUstring (!regsCell) res) ^ "\n")

@@ -111,31 +111,8 @@ a property", as used in the implementations of [[Get]], [[Put]],
 object's prototype map or if the ''meta::has'' catchall claims the
 object to be present.
 
-<FIXME> This protocol must be specified as SML code.
-
-{{{
-fun HasOwnProperty(obj, name)
-  if (name is a property in the property map of obj, denote it obj.name &&
-      the isFixed attribute of obj.name is true)
-    return true
-  end
-
-  if (meta::has is a property in the property map of obj, denote it obj.meta::has && 
-      the isFixed attribute of obj.meta::has is true)
-    try 
-      return obj.meta::has(name)
-    catch DefaultBehaviorClass
-      ; fall through to the next case
-    end
-  end
-  
-  if (name is a property in the property map of obj)
-    return true
-  end
-
-  return false
-end
-}}}
+<IMPL>
+<INCLUDE file="eval.sml" name="and hasOwnProperty">
 
 
 == Reading a property value ==

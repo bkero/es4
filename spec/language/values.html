@@ -42,8 +42,8 @@ formerly called primitive (number, string, boolean) are now represented as objec
 
 == Undefined == 
 
-<p>There is exactly one undefined value, denoted by the semantic value ''Undef'' and stored in the
-global constant property **public::undefined** in ECMAScript.
+<p>There is exactly one undefined value, denoted by the semantic value ''Undefined'' and stored in
+the global constant property **public::undefined** in ECMAScript.
 
 <p>The allocated type of the undefined value is called the undefined type. The undefined value is
 the only value with the undefined type as its allocated type. The undefined type is denoted by the
@@ -417,7 +417,7 @@ word. Suggestions welcome.
 section....
 
 <IMPL>
-<INCLUDE file="ast.sml" name="and CLS">
+<INCLUDE file="ast.sml" name="and CLASS">
 
 ==== Instance Fixtures ====
 
@@ -476,7 +476,7 @@ of the instance fixture.
 interface ''I'', the type ''ClassType C'' is a subtype of ''InterfaceType I''.
 
 <IMPL>
-<INCLUDE file="ast.sml" name="and IFACE">
+<INCLUDE file="ast.sml" name="and INTERFACE">
 
 === Function Closures ===
 
