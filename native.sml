@@ -63,7 +63,7 @@ fun nthAsObj (vals:Mach.VALUE list)
              (n:int)
     : Mach.OBJ =
     let
-        fun f Mach.Undef = error ["Wanted Object, got Undef"]
+        fun f Mach.Undefined = error ["Wanted Object, got Undefined"]
           | f Mach.Null = error ["Wanted Object, got Null"]
           | f (Mach.Object ob) = ob
     in
@@ -71,9 +71,9 @@ fun nthAsObj (vals:Mach.VALUE list)
     end
 
 
-fun nthAsObjAndCls (vals:Mach.VALUE list)
+fun nthAsObjAndClass (vals:Mach.VALUE list)
                    (n:int)
-    : (Mach.OBJ * Ast.CLS) =
+    : (Mach.OBJ * Ast.CLASS) =
     let
         val obj = nthAsObj vals n
         val c = Mach.needClass (Mach.Object obj)
@@ -152,7 +152,7 @@ fun construct (regs:Mach.REGS)
               (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val (obj, cls) = nthAsObjAndCls vals 0
+        val (obj, cls) = nthAsObjAndClass vals 0
         val args = Eval.arrayToList regs (nthAsObj vals 1)
     in
         Eval.constructClassInstance regs obj cls args
@@ -200,7 +200,7 @@ fun getSuperClass (regs:Mach.REGS)
                   (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val (classObj, Ast.Cls { extends, ... }) = nthAsObjAndCls vals 0
+        val (classObj, Ast.Class { extends, ... }) = nthAsObjAndClass vals 0
         val regs = Eval.withScope regs (Eval.getClassScope regs classObj)
     in
         (case extends of 
@@ -222,7 +222,7 @@ fun getImplementedInterface (regs:Mach.REGS)
     let
         val cls = Mach.needClass (rawNth vals 0)
         val k = Word32.toInt (nthAsUInt regs vals 1)
-        val Ast.Cls { implements, ... } = cls
+        val Ast.Class { implements, ... } = cls
     in
         if k >= (List.length implements) then
             Mach.Null
@@ -244,7 +244,7 @@ fun getSuperInterface (regs:Mach.REGS)
                       (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Ast.Iface { extends, ... } = Mach.needInterface (rawNth vals 0)
+        val Ast.Interface { extends, ... } = Mach.needInterface (rawNth vals 0)
         val k = Word32.toInt(nthAsUInt regs vals 1)
     in
         if k >= (List.length extends) then
@@ -269,7 +269,7 @@ fun getEnumerableIds (regs:Mach.REGS)
         val v = rawNth vals 0
     in
         case v of
-            Mach.Undef => Eval.newArray regs []
+            Mach.Undefined => Eval.newArray regs []
           | Mach.Null => Eval.newArray regs []
           | Mach.Object (Mach.Obj { props, ... }) =>
             let
@@ -376,7 +376,7 @@ fun setPropertyIsEnumerable (regs:Mach.REGS)
         val b = nthAsBool vals 2
     in
         Mach.setPropEnumerable props n b;
-        Mach.Undef
+        Mach.Undefined
     end
 
 fun isPrimitive (regs:Mach.REGS)
@@ -432,9 +432,9 @@ fun fnLength (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
         val len = 
             case tag of
-                Mach.PrimitiveTag (Mach.Function ({ func = Ast.Func { ty, ... }, ...}))
+                Mach.PrimitiveTag (Mach.FunctionPrimitive ({ func = Ast.Func { ty, ... }, ...}))
                 => AstQuery.minArgsOfFuncTy ty
-              | Mach.PrimitiveTag (Mach.NativeFunction {length, ...}) => length
+              | Mach.PrimitiveTag (Mach.NativeFunctionPrimitive {length, ...}) => length
               | _ => error ["wrong kind of object to fnLength"]
     in
         Eval.newDouble regs (Real64.fromInt len)
@@ -448,7 +448,7 @@ fun genSend (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.PrimitiveTag (Mach.Generator gen) => Eval.sendToGen regs gen arg
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.sendToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -460,7 +460,7 @@ fun genThrow (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.PrimitiveTag (Mach.Generator gen) => Eval.throwToGen regs gen arg
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.throwToGen regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -471,9 +471,9 @@ fun genClose (regs:Mach.REGS)
         val Mach.Obj { tag, ... } = nthAsObj vals 0
     in
         case tag of
-            Mach.PrimitiveTag (Mach.Generator gen) => Eval.closeGen regs gen
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGen regs gen
           | _ => error ["wrong kind of object to genSend"];
-        Mach.Undef
+        Mach.Undefined
     end
 
 
@@ -559,7 +559,7 @@ fun eval (regs:Mach.REGS)
          (vals:Mach.VALUE list)
     : Mach.VALUE =
     if length vals = 0
-    then Mach.Undef
+    then Mach.Undefined
     else
         let
             val x = rawNth vals 0
@@ -632,7 +632,7 @@ fun get (regs:Mach.REGS)
                     Eval.getValueOrVirtual regs ob name false propNotFound
                   | _ =>
                     if Eval.isDynamic regs obj
-                    then Mach.Undef
+                    then Mach.Undefined
                     else Eval.throwExn
                              (Eval.newTypeErr
                                   regs 
@@ -656,7 +656,7 @@ fun set (regs:Mach.REGS)
          (nthAsName regs vals 1)
          (rawNth vals 2)
          false;
-     Mach.Undef)
+     Mach.Undefined)
 
 (* 
  * informative native function objectHash ( ob:Object! ) : uint;
@@ -825,7 +825,7 @@ fun print (regs:Mach.REGS)
     in
         List.app printOne vals;
         TextIO.print "\n";
-        Mach.Undef
+        Mach.Undefined
     end
 
 fun load (regs:Mach.REGS)
@@ -949,14 +949,14 @@ fun writeFile (regs:Mach.REGS)
     in
         TextIO.output(out, s);
         TextIO.closeOut out;
-        Mach.Undef
+        Mach.Undefined
     end
 
 fun assert (regs:Mach.REGS)
            (vals:Mach.VALUE list)
     : Mach.VALUE =
     if nthAsBool vals 0
-    then Mach.Undef
+    then Mach.Undefined
     else error ["intrinsic::assert() failed"]
 
 fun typename (regs:Mach.REGS)
@@ -964,7 +964,7 @@ fun typename (regs:Mach.REGS)
     : Mach.VALUE =    
     case hd vals of
         Mach.Null => Eval.newString regs Ustring.null_
-      | Mach.Undef => Eval.newString regs Ustring.undefined_
+      | Mach.Undefined => Eval.newString regs Ustring.undefined_
       | Mach.Object (Mach.Obj {tag, ...}) =>
         let 
             val name = Mach.nominalBaseOfTag tag
@@ -981,11 +981,11 @@ fun dumpFunc (regs:Mach.REGS)
         if Mach.isFunction v
         then
             case Mach.needPrimitive v of
-                Mach.Function { func, ... } => Pretty.ppFunc func
+                Mach.FunctionPrimitive { func, ... } => Pretty.ppFunc func
               | _ => ()
         else
             ();
-        Mach.Undef
+        Mach.Undefined
     end
 
 fun inspect (regs:Mach.REGS)
@@ -996,7 +996,7 @@ fun inspect (regs:Mach.REGS)
         val d = if length vals > 1 then nthAsInt regs vals 1 else 1
     in
         Mach.inspect v d;
-        Mach.Undef
+        Mach.Undefined
     end
 
 

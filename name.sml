@@ -78,8 +78,8 @@ fun nameExprOf (n:Ast.NAME) =
  * 'private' and 'protected' get bound to *inside* the rib 
  * of a given class. You pass in the private namespace
  *)
-fun private privateClsNs = { ns=privateClsNs, id=Ustring.private_ }
-fun protected privateClsNs = { ns=privateClsNs, id=Ustring.protected_ }
+fun private privateClassNs = { ns=privateClassNs, id=Ustring.private_ }
+fun protected privateClassNs = { ns=privateClassNs, id=Ustring.protected_ }
 
 																		   
 (*

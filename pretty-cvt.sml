@@ -105,10 +105,10 @@ structure PrettyCvt = struct
      | cvtFUNC_NAME_KIND (Set) = PrettyRep.Ctor ("Set", NONE)
      | cvtFUNC_NAME_KIND (Call) = PrettyRep.Ctor ("Call", NONE)
      | cvtFUNC_NAME_KIND (Has) = PrettyRep.Ctor ("Has", NONE)
-   and cvtCLS (Cls{name=x146, privateNS=x147, protectedNS=x148, parentProtectedNSs=ls150, 
+   and cvtCLASS (Class{name=x146, privateNS=x147, protectedNS=x148, parentProtectedNSs=ls150, 
           typeParams=ls155, nonnullable=b159, dynamic=b160, extends=opt162, 
           implements=ls167, classRib=x171, instanceRib=x172, instanceInits=x173, 
-          constructor=opt175, classType=x179}) = PrettyRep.Ctor ("Cls", SOME (PrettyRep.Rec [("name", 
+          constructor=opt175, classType=x179}) = PrettyRep.Ctor ("Class", SOME (PrettyRep.Rec [("name", 
           cvtNAME x146), ("privateNS", cvtNAMESPACE x147), ("protectedNS", 
           cvtNAMESPACE x148), ("parentProtectedNSs", PrettyRep.List (List.map (fn x149 => 
                                                                                      cvtNAMESPACE x149
@@ -128,8 +128,8 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x174 => PrettyRep.Ctor ("SOME", SOME (cvtCTOR x174))
        )), ("classType", cvtTYPE x179)]))
-   and cvtIFACE (Iface{name=x211, typeParams=ls213, nonnullable=b217, extends=ls219, 
-          instanceRib=x223}) = PrettyRep.Ctor ("Iface", SOME (PrettyRep.Rec [("name", 
+   and cvtINTERFACE (Interface{name=x211, typeParams=ls213, nonnullable=b217, extends=ls219, 
+          instanceRib=x223}) = PrettyRep.Ctor ("Interface", SOME (PrettyRep.Rec [("name", 
           cvtNAME x211), ("typeParams", PrettyRep.List (List.map (fn x212 => 
                                                                         cvtIDENTIFIER x212
                                                                  ) ls213)), 
@@ -233,8 +233,8 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x449 => PrettyRep.Ctor ("SOME", SOME (cvtNONCE x449))
        )]))
-     | cvtTYPE (ClassType x457) = PrettyRep.Ctor ("ClassType", SOME (cvtCLS x457))
-     | cvtTYPE (InterfaceType x460) = PrettyRep.Ctor ("InterfaceType", SOME (cvtIFACE x460))
+     | cvtTYPE (ClassType x457) = PrettyRep.Ctor ("ClassType", SOME (cvtCLASS x457))
+     | cvtTYPE (InterfaceType x460) = PrettyRep.Ctor ("InterfaceType", SOME (cvtINTERFACE x460))
      | cvtTYPE (TypeNameReferenceType(x463, x464)) = PrettyRep.Ctor ("TypeNameReferenceType", 
           SOME (PrettyRep.Tuple [cvtTYPE x463, cvtNAME_EXPRESSION x464]))
      | cvtTYPE (TypeIndexReferenceType(x468, n469)) = PrettyRep.Ctor ("TypeIndexReferenceType", 
@@ -424,9 +424,9 @@ structure PrettyCvt = struct
    and cvtBLOCK (Block x901) = PrettyRep.Ctor ("Block", SOME (cvtDIRECTIVES x901))
    and cvtFIXTURE (NamespaceFixture x904) = PrettyRep.Ctor ("NamespaceFixture", 
           SOME (cvtNAMESPACE x904))
-     | cvtFIXTURE (ClassFixture x907) = PrettyRep.Ctor ("ClassFixture", SOME (cvtCLS x907))
+     | cvtFIXTURE (ClassFixture x907) = PrettyRep.Ctor ("ClassFixture", SOME (cvtCLASS x907))
      | cvtFIXTURE (InterfaceFixture x910) = PrettyRep.Ctor ("InterfaceFixture", 
-          SOME (cvtIFACE x910))
+          SOME (cvtINTERFACE x910))
      | cvtFIXTURE (TypeVarFixture x913) = PrettyRep.Ctor ("TypeVarFixture", 
           SOME (cvtNONCE x913))
      | cvtFIXTURE (TypeFixture(ls917, x921)) = PrettyRep.Ctor ("TypeFixture", 

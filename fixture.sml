@@ -229,7 +229,7 @@ fun getPackageNames (prog:PROGRAM)
 type IDENTIFIER = Ast.IDENTIFIER
 type NAMESPACE = Ast.NAMESPACE
 
-type CLASS = Ast.CLS
+type CLASS = Ast.CLASS
 type NAME = Ast.NAME
 
 type NAMESPACE_SET = NAMESPACE list
