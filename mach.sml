@@ -444,6 +444,13 @@ fun hasProp (b:PROPERTY_BINDINGS)
         NONE => false
       | SOME _ => true
 
+fun hasFixedProp (b:PROPERTY_BINDINGS)
+                 (n:Ast.NAME)
+    : bool =
+    case findProp b n of
+        NONE => false
+      | SOME {attrs={fixed, ...}, ...} => fixed
+
 fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 

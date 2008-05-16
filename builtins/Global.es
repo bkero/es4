@@ -612,3 +612,6 @@
     // The non-virtual property get/set helpers.
     intrinsic native function get(obj:Object!, name:string) : *;
     intrinsic native function set(obj:Object!, name:string, val:*) : void;
+
+    __ES4__ class DefaultBehaviorClass { }
+    __ES4__ const DefaultBehavior = new DefaultBehaviorClass();

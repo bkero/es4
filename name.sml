@@ -257,6 +257,9 @@ val helper_genThrow = helper Ustring.genThrow_
 val helper_genClose = helper Ustring.genClose_
 val helper_apply = helper Ustring.apply_
 
+val ES4_DefaultBehavior = ES4 Ustring.DefaultBehavior_
+val ES4_DefaultBehaviorClass = ES4 Ustring.DefaultBehaviorClass_
+
 val helper_toPrimitive = helper Ustring.toPrimitive_
 val helper_isPrimitive = helper Ustring.isPrimitive_
 val helper_defaultValue = helper Ustring.defaultValue_

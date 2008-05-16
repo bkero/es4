@@ -712,51 +712,53 @@ and asArrayIndex (v:Mach.VALUE)
       | _ => 0wxFFFFFFFF
              
 
-and hasOwnValue (obj:Mach.OBJ)
+and hasOwnProperty (regs:Mach.REGS)
+                   (obj:Mach.OBJ)
+                   (n:Ast.NAME)
+    : bool =
+    let
+        val Mach.Obj { props, ... } = obj
+    in
+        if Mach.hasFixedProp props n
+        then true
+        else 
+            if Mach.hasFixedProp props Name.meta_has
+            then 
+                let 
+                    val v = evalNamedMethodCall 
+                                regs obj Name.meta_has [newName regs n]
+                in
+                    toBoolean v
+                end
+                handle ThrowException e => 
+                       let
+                           val ty = typeOfVal regs e
+                           val defaultBehaviorClassTy = 
+                               instanceType regs Name.ES4_DefaultBehaviorClass []
+                       in
+                           if ty <* defaultBehaviorClassTy
+                           then Mach.hasProp props n
+                           else throwExn e
+                       end
+            else
+                Mach.hasProp props n
+    end
+
+
+and hasProperty (regs:Mach.REGS)
+                (obj:Mach.OBJ)
                 (n:Ast.NAME)
     : bool =
-    let
-        val Mach.Obj { props, ... } = obj
-    in
-        Mach.hasProp props n
-    end
-
-
-and hasOwnInitializedValue (obj:Mach.OBJ)
-                           (n:Ast.NAME)
-    : bool =
-    let
-        val Mach.Obj { props, ... } = obj
-    in
-        case Mach.findProp props n of 
-            NONE => false
-          | SOME { state = Mach.UninitProp, ... } => false
-          | SOME prop => true
-    end
-
-
-and findValue (obj:Mach.OBJ)
-              (n:Ast.NAME)
-    : REF option =
-    if hasOwnValue obj n
-    then SOME (obj, n)
+    if hasOwnProperty regs obj n
+    then true
     else 
         let
             val Mach.Obj { proto, ... } = obj
         in
             case proto of
-                Mach.Object p => findValue p n
-              | _ => NONE
+                Mach.Object p => hasProperty regs p n
+              | _ => false
         end
-
-
-and hasValue (obj:Mach.OBJ)
-             (n:Ast.NAME)
-    : bool =
-    case findValue obj n of
-        NONE => false
-      | _ => true
-
 
 (*
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's
@@ -833,9 +835,9 @@ and getValueOrVirtual (regs:Mach.REGS)
                             "\") catchall on obj #", 
                             Int.toString (getObjId obj)];
                      (evalCallByRef (withThis regs obj) 
-                                          (obj, Name.meta_get) 
-                                          [newString regs (#id name)]
-                                          false))
+                                    (obj, Name.meta_get) 
+                                    [newString regs (#id name)]
+                                    false))
             in
                 if doVirtual
                 then 
@@ -1548,10 +1550,10 @@ and defaultValue (regs:Mach.REGS)
         val (na, nb) = if preferredType = Ustring.String_
                        then (Name.public_toString, Name.public_valueOf)
                        else (Name.public_valueOf, Name.public_toString)
-        val va = if hasValue obj na
+        val va = if hasProperty regs obj na
                  then evalNamedMethodCall regs obj na []
                  else Mach.Undef
-        val vb = if not (isPrimitive va) andalso hasValue obj nb
+        val vb = if not (isPrimitive va) andalso hasProperty regs obj nb
                  then evalNamedMethodCall regs obj nb []
                  else va
     in
@@ -2115,7 +2117,7 @@ and arrayToList (regs:Mach.REGS)
             else
                 let
                     val n = Name.public (Ustring.fromInt32 i)
-                    val curr = if hasValue arr n
+                    val curr = if hasProperty regs arr n
                                then getValue regs arr n
                                else Mach.Undef
                 in
@@ -2910,7 +2912,7 @@ and evalCallByObj (regs:Mach.REGS)
             (trace ["evalCallByObj: entering standard function"];
              invokeFuncClosure regs f (SOME fobj) args)
           | _ =>
-            if hasOwnValue fobj Name.meta_invoke
+            if hasOwnProperty regs fobj Name.meta_invoke
             then
                 (trace ["evalCallByObj: redirecting through meta::invoke"];
                  evalCallByRef regs (fobj, Name.meta_invoke) args true)
@@ -3632,7 +3634,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                     let
                         val name = evalNameExpr regs name 
                     in
-                        if hasOwnValue obj name
+                        if hasOwnProperty regs obj name
                         then 
                             let 
                                 val v2 = getValue regs obj name
@@ -3715,7 +3717,7 @@ and evalOperatorIn (regs:Mach.REGS)
     in
         case b of
             Mach.Object obj =>
-            newBoolean regs (hasValue obj aname)
+            newBoolean regs (hasProperty regs obj aname)
           | _ => throwExn (newTypeErr regs ["operator 'in' applied to non-object"])
     end
 
@@ -5081,7 +5083,7 @@ and get (regs:Mach.REGS)
     : Mach.VALUE =
     let
         fun tryObj ob =
-            if hasOwnValue ob n
+            if hasOwnProperty regs ob n
             then getValue regs ob n
             else
                 case obj of
