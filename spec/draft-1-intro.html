@@ -1,0 +1,293 @@
+<html>
+<head>
+<title>Proposed ECMAScript 4th Edition -- Draft 1</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
+
+DT { font-weight: bold }
+DD { padding: 0.5em; }
+</style>
+</head>
+
+<body>
+
+<center>
+<h1>Proposed ECMAScript 4th Edition<br>Draft 1</h1>
+<div>16 May 2008</div>
+</center>
+
+<P> The Proposed ECMAScript 4th Edition Specification (ES4 for short)
+is divided into roughly four components, as follows:
+
+<DL>
+
+<DT> Syntax
+<DD> Concrete syntax and translation into abstract syntax
+
+<DT> Core semantics
+<DD> Values and storage, types, scopes, name resolution, name lookup
+
+<DT> Computation
+<DD> Loading, definition and binding, expressions, statements
+
+<DT> Libraries
+<DD> Pre-defined data types, functions, and constants
+
+</DL>
+
+<P> The present draft is incomplete.  It includes the grammar for the
+concrete syntax and the entire second component, the core semantics.
+
+<P> As this is the first draft, there are some redundancies among the
+chapters, some background information may be absent, there are some
+rough parts in the formal specifications, and there is a fair amount
+of nonuniformity in the notation used.
+
+<P> The editors anticipate delivering future drafts to TC39 about two
+weeks before every scheduled TC meeting.  In the interval between TC
+meetings drafts of parts of the other components ("speclets") are
+being circulated and debated on the ES4 discussion list [1].
+
+
+<h2>Specification formalism</h2>
+
+<P> The ES4 specification has the following form.
+
+<DL>
+<DT> Syntax
+
+<DD> The surface syntax is specified using a context-free grammar
+formalism similar to the one used by ES3, C, C++, Java, and C#.
+
+<P> The surface syntax is mapped to abstract syntax trees.  Some
+syntactic forms are desugared into more fundamental forms in this
+mapping.  For example, destructuring bindings are desugared into
+simple bindings, temporary variables, and assignment expressions.  The
+abstract syntax trees represent only the core language.
+
+<DT> Core semantics and computation
+
+<DD> The semantics of the core language are expressed in terms of
+operations on the abstract syntax tree and on additional structures
+that represent metadata and values.  The operations as well as all the
+data structures are expressed in the language Standard&nbsp;ML&nbsp;[2].
+
+<DT> Libraries
+
+<DD> The semantics of the pre-defined types, objects, and functions are
+expressed largely in terms of ES4 code operating on ES4 data
+structures.
+
+</DL>
+
+<P> The bulk of the ES4 specification consists of normative prose.
+The Standard&nbsp;ML code and the ES4&nbsp;fragments are used to
+precisely specify certain aspects of the language only, namely all
+those that were described by informal pseudocode in the ES3 spec, some
+that were described only by prose in the ES3 spec, and some that are
+new to ES4 (such as the type system).
+
+<P> There are three significant reasons why we use Standard&nbsp;ML
+and ES4 instead of pseudocode.  First, these are well-defined
+languages with significantly higher expressivity than the low-level
+pseudocode.  Second, as they are real programming languages, they
+enable us to build a testable, complete reference implementation of
+the language.  Finally, with care, code can be exerpted directly from
+the reference implementation into the specification document.
+
+<P> Over the last year, members of the ES4 working group has been
+writing just such a reference implementation, tracking changes to the
+language.  The Standard&nbsp;ML and ES4 code in this specification
+have--with very few exceptions--been excerpted from that reference
+implementation.
+
+<P> A real danger with using a live implementation for specification
+purposes is overspecification.  Some care has been taken to abstract
+the implementation away from those details that we do not wish to go
+into the specification.  In the case of the libraries, this strategy
+has been very successful; in the case of the core language, there is
+probably more work to be done.  But there is no indication at this
+point that it cannot be done.
+
+<P> A final note about the term "semantics" as used in the core
+language specification.  It invariably means "at the level of
+Standard&nbsp;ML".
+
+
+<h2>An overview of the language</h2>
+
+<P> The central themes in the design of ES4 have been the following.
+
+<DL>
+
+<DT> Compatibility with ES3; interoperation between ES3 and ES4
+
+<DD> Compatibility cannot be sacrificed except in situations where
+compatibility does not make a practical difference, where existing
+implementations differ or a <em>de facto</em> standard has evolved, or
+where compatibility would fatally imperil other goals.  Therefore, one
+central goal of the work has been that ES4 implementations should run
+all existing ES3 programs and that ES3 and ES4 code should be able to
+be intermixed in a single global environment.  (The ES4 working group
+has released a paper&nbsp;[4] examining the compatibility between ES3
+and ES4.)
+
+<DT> Programming in the large
+
+<DD> The largest ECMAScript programs are significantly larger in 2008
+than they were in 1999, when the ES3 Specification was released, and
+ES4 must provide better facilities for encapsulation, consistency and
+error checking, and library building.
+
+<DT> Program evolution
+
+<DD> While increasingly being used for large programs, ES is still
+being used for small scripts and for programs that start small but
+evolve over time to become large.  ES4 must provide support for
+program evolution.
+
+<DT> Convenience features
+
+<DD> Conveniences help make a language more pleasant, and the
+conveniences expected by programmers change over time, as new patterns
+and ideas make it into the mainstream or supplant other ideas.  ES4
+should not fight this but should incorporate patterns and ideas from
+other languages if appropriate and possible.
+
+<DT> Bug fixes
+
+<DD> Sometimes, designs do not work out as they were expected to.  For
+example, the stripping of Unicode format control characters specified
+by ES3 annoys programmers who like to embed those characters in
+literal strings and regular expressions, where they are required
+either for proper formatting on output or to properly match input.  If
+an incompatible change to the language that repairs a design bug is
+likely to fix significantly more programs than it breaks, then the
+change should be considered.
+
+<DT> Self-hosting
+
+<DD> On the principle that what is good for the language is good for
+its users, it is a goal that as many as possible of the pre-defined
+libraries (data types, functions, and objects) should be expressible
+in the language.  For example, while ES3 does not provide a class
+abstraction, its pre-defined objects are most easily expressed in
+class terms, and classes and interfaces proliferate in host object
+models for ES3.  For those reasons (and others), classes have been
+added to ES4.
+
+</DL>
+
+<P> In October 2007 the ES4 working group released a paper&nbsp;[5]
+outlining the feature space of ES4.  Since that time a number of
+proposed features have been removed and others have been streamlined
+and generalized.  The most significant facilities remaining in the
+draft language are as follows.
+
+<DL>
+
+<DT> Namespaces
+
+<DD> Namespaces are values that serve as tags on names; they help to
+segregate the names of independently developed subprograms, they aid
+versioning, and they make it possible to control access to properties.
+
+
+<DT> Type definitions and type constraints
+
+<DD> Classes in the style of Java and (non-recursive) structural
+record and array types are provided as alternatives to the ES3
+"constructor function" idea.  The advantage of classes and the
+structural types are that they provide the means to <em>fix</em>
+object properties, thereby giving programs greater integrity against
+accidental or malicious changes.
+
+<P> Bound variables and fixed object properties can be
+<em>annotated</em> with types.  The annotations place constraints on
+the variables and properties: they can only be updated with values of
+the appropriate types.
+
+<P> Crucially, type annotations are always optional; the programmer
+adds type annotations on an as-needed basis.  This results in a type
+system that is <em>gradual</em>.
+
+<P> The type system is complemented with interface types in the style
+of Java and with union types that provide type checks but with greater
+flexibility than interfaces.
+
+<P> Finally, types can be aliased, and both type aliases and class and
+interface definitions can be parameterized.
+
+
+<DT> Creature comforts 
+
+<DD> ES4 adds proper block scoping and constant bindings, new control
+structures such as iterators and generators, and getters and setters
+on objects.
+
+<P> There also is a fair amount of new <em>syntactic sugar</em>,
+including succinct function definitions and function expressions,
+destructuring binding and assignment, and array comprehensions.
+
+
+<DT> Upgraded libraries
+
+<DD> The ES4 libraries adds methods to existing objects, and provides
+new data types (homogenous vectors, maps, decimal floating point
+numbers), new top-level functions (such as object identity hashing),
+and reflection facilities.
+
+</DL>
+
+<h2>Programs, compilation units, and compilation phases</h2>
+
+<P> A complete ES4 program is comprised of a possibly unbounded linear
+sequence of program fragments (each of which conforms to the
+<em>Program</em> nonterminal in the grammar) that is loaded into a
+<em>global environment</em>.  Each program may effect the global
+environment by contributing definitions of new names to it or by
+changing the values stored in it.  There may be multiple global
+environments.  ES4 provides no mechanism by which a program in one
+global environment can gain access to another global environment, but
+implementations of ES4 may provide such mechanisms, and the ES4
+Specification will occasionally address the meaning of programs that
+operate in multiple global environments.
+
+<P> A block of text that matches the <em>Program</em> nonterminal is
+dubbed a <em>compilation unit</em>.  Compilation units pass through
+three phases: parsing, definition, and evaluation.  Parsing and
+definition together transform the program from source form into an
+executable form, in the process checking that the program conforms to
+the grammar as well as to extra-grammatical, syntactic constraints, as
+well as resolving names that denote namespaces and types.  Evaluation
+performs the operations that are specified by the program.
+
+
+<h2>References</h2>
+
+[1] es4-discuss@mozilla.org<br>
+[2] Milner, Tofte, Harper, McQueen, "The Definition of Standard ML - Revised", MIT Press, 1997<br>
+[3] ECMAScript 4 reference implementation, <tt>http://www.ecmascript.org/download.php</tt><br>
+[4] "Compatibility between ES3 and proposed ES4", <tt>http://www.ecmascript.org/es4/spec/incompatibilities.pdf</tt><br>
+[5] "Proposed ECMAScript 4th Edition -- Language overview", <tt>http://www.ecmascript.org/es4/spec/overview.pdf</tt><br>
+
+</body>
+</html>
