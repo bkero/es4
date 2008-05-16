@@ -50,8 +50,8 @@ the only value with the undefined type as its allocated type. The undefined type
 semantic value ''UndefinedType'', which is the denoted in ECMAScript type-expression contexts by the
 identifier **undefined**.
 
-<COMP>As with earlier editions of the language, **undefined** is not a reserved word outside of
-type-expression contexts, and so might be shadowed by a user defined property with the same name.
+<COMP>Inside of type-expression contexts, the token **undefined** is reserved and has a fixed
+meaning. Outside of type-expression contexts the token is interpreted as in earlier editions.
 
 == Null ==
 
@@ -86,6 +86,10 @@ in the object.
 
 <p>Bindings can be added, removed, or replaced within a property binding map. The semantic type of a
 property binding map is unspecified.
+
+<p>A property binding map stores the order in which properties are added to the map. A property's
+position in this order is unchanged when the property is replaced. This order is used in
+enumeration.
 
 <IMPL>
 <INCLUDE file="mach.sml" name="and PROPERTY_BINDINGS">
@@ -143,8 +147,7 @@ variables, and virtual properties (defined by getter and setter functions).
     An attribute that can be one of three values. When the value is ''Writable'', the property can
     be written to an arbitrary number of times. When the value is ''WriteOnce'', the property can be
     written to once, after which the attribute assumes the value ''ReadOnly''. When the value is
-    ''ReadOnly'', attempts to write to the property after initialization will fail, either silently
-    or by throwing an exception, depending on the operating mode.
+    ''ReadOnly'', attempts to write to the property after initialization will fail.
   </td>
 </tr>
 <tr>
@@ -158,17 +161,16 @@ variables, and virtual properties (defined by getter and setter functions).
   <td>''removable''</td>
   <td>
     A boolean attribute. If true, then the property can be removed using the **delete** operator.
-    If false, the **delete** operator either fails silently or throws an exception, depending on 
-    the operating mode.
+    If false, the **delete** operator fails.
   </td>
 </tr>
 <tr>
   <td>''fixed''</td>
   <td>
     <p>A boolean attribute. If true, then the property was defined as part of the object's fixed
-      structure and dominates non-fixed properties during name resolution. If false, then the
-      property is a dynamic addition to the object and is consulted //after// fixed properties
-      during name resolution.</p>
+      structure and dominates most non-fixed properties during name resolution (with some
+      exceptions). If false, then the property is a dynamic addition to the object and is consulted
+      //after// fixed properties during name resolution.</p>
   </td>
 </tr>
 </table>
@@ -279,12 +281,6 @@ class **__ES4__::boolean**. Such objects are called //boolean objects//.
 **true** and **false**: the **__ES4__::boolean** constructor is a special constructor that always
 evaluates to one of the two boolean objects.
 
-<p>A "wrapper class" called **public::Boolean** exists. Instances of **public::Boolean** contain a
-single boolean object, and delegate most of their functionality to this inner "wrapped" object.
-
-<p>The value of **public::Boolean.prototype** is identical to **__ES4__::boolean.prototype**. This
-shared value is called //the boolean prototype//.
-
 === Double Values ===
 
 <FIXME>I cut this section down significantly from ES3, since the corresponding section 8.5 in the
@@ -344,10 +340,6 @@ are indexed with nonnegative integers. The first element (if any) is at position
 (if any) is at position 1, and so on. The length of a string is the number of elements (32-bit
 values) within it. The empty string has length zero and therefore contains no elements.
 
-<p>When a string contains actual textual data, each element is considered to be a single UTF-32 code
-point (or "character"). Whether or not this is the actual storage format of a string, the characters
-within a string are numbered as though they were represented using UTF-32. 
-
 <p>All operations on string (except as otherwise stated) treat them as sequences of undifferentiated
 32-bit unsigned integers. In particular, operations on strings do not ensure the resulting string is
 in normalised form, they do not ensure language-sensitive results, and they do not alter their
@@ -376,12 +368,6 @@ string elements, considered pairwise and in sequence. Inequalities and relationa
 strings are similarly defined in terms of sequence comparisons on string elements. No other forms of
 textual equality or collation are defined.
 
-<p>A "wrapper class" called **public::String** exists. Instances of **public::String** contain a
-single string object, and delegate most of their functionality to this inner "wrapped" object.
-
-<p>The value of **public::String.prototype** is identical to **__ES4__::string.prototype**. This
-shared value is called //the string prototype//.
-
 === Namespace Values ===
 
 <p>Namespaces are defined and discussed in section ...names. Their notable features are recounted
@@ -394,14 +380,11 @@ representation.
 <p>A namespace value can be held in the primitive tag of an instance of the class
 **__ES4__::Namespace**. Such objects are called //namespace objects//.
 
-<p>A namespace value and can be defined as a fixture in a scope using a **namespace** definition.
+<p>A namespace value and can be defined as a fixture in a global or class static scope using a
+**namespace** definition.
 
 <p>Any two transparent namespaces with equal identifying strings are considered equal. Any two
 opaque namespaces with equal unique identifiers are equal. 
-
-<p>Each fixture for an opaque namespace is assigned a new unique namespace identifier by the
-execution context, and the same namespace identifier is never assigned to more than one opaque
-namespace fixture in a single execution context.
 
 <IMPL>
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
@@ -414,7 +397,7 @@ namespace fixture in a single execution context.
 <p>A class value can be held in the primitive tag of an instance of the class
 **__ES4__::Class**. Such objects are called //class objects//.
 
-<p>A class value and can be defined as a fixture in a scope using a **class** definition.
+<p>A class value and can be defined as a fixture in the global scope using a **class** definition.
 
 <p>Each //class definition// corresponds to zero or more class values, and thus zero or
 more class objects. If a class definition is not type-parametric, it corresponds to exactly one
@@ -423,7 +406,9 @@ class object, and that class object is called //the value of// the class definit
 <p>A class value holds //class fixtures// and //instance fixtures//. If **C** is a class object,
 then the class fixtures of the associated class value describe fixed properties found on the
 class object **C**. In this way, the class fixtures effectively describe an implicit anonymous
-subtype of **public::Class** that the class object **C** is an instance of.
+subtype of **__ES4__::Class** that the class object **C** is an instance of.
+
+<FIXME>__ES4__::Class is obsolete, probably. It still exists but we have proper metaobjects for this sort of thing
 
 <FIXME>This tying-knots stuff at the top of the type hierarchy is always a little subtle and hard to
 word. Suggestions welcome.
@@ -463,7 +448,7 @@ of any instance of ''C'' is ''InstanceTag C''.
 
 <p>The //static class type// of a class value ''C'' is the allocated type of the class object
 //holding// ''C''. In such an object, the static class type is stored in a field within ''C'', and
-is an anonymous subtype of the ''ClassType'' of **public::Class**. The tag of such an object is
+is an anonymous subtype of the ''ClassType'' of **__ES4__::Class**. The tag of such an object is
 ''PrimitiveTag (Class C)''.
 
 === Interface Values ===
@@ -473,7 +458,9 @@ is an anonymous subtype of the ''ClassType'' of **public::Class**. The tag of su
 <p>An interface closure value can be held in the primitive tag of an instance of the class
 **__ES4__::Interface**. Such objects are called //interface objects//.
 
-<p>An interface value and can be defined as a fixture in a scope using an **interface** definition.
+<FIXME>__ES4__::Interface is obsolete, probably. It still exists but we have proper metaobjects for this sort of thing
+
+<p>An interface value and can be defined as a fixture in the global scope using an **interface** definition.
 
 <p>Each //interface definition// corresponds to zero or more interface objects. If an
 interface definition is not type-parametric, it corresponds to exactly one interface object, and

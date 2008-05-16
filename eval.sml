@@ -995,6 +995,7 @@ and setValueOrVirtual (regs:Mach.REGS)
                     let
                         val np = newProp ()
                     in
+						(* FIXME: change to "replaceProp" that presrves insert-order. *)
                         Mach.delProp props name;
                         Mach.addProp props name np
                     end

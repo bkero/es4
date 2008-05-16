@@ -133,20 +133,25 @@ property on every object and every lexically bound name is in the
 **public** namespace.
 
 
-== Prototypes ==
+== Prototype chain ==
 
-<p> Every object has an internal property denoted [[Prototype]] whose
-value is either **null** or another object.  When a name is to be
-resolved against an object but resolution fails because the object
-does not contain a property matching the name, then the resolution
-continues with the object in the [[Prototype]] property.
+<p>Every object has a distinguished value called its //prototype//
+(see section Object prototype in Values).
 
-<P> The chain of objects formed by following an object's [[Prototype]] 
-link, the [[Prototype]] link of the object's [[Prototype]], and so on,
-is called the //prototype chain// of the object.
+<p>If the prototype value of an object is another object, then the
+prototype value is called an object's //prototype object//, and 
+the connection between the initial object and its prototype object
+is called a //prototype link//.
 
-<P> Prototypes are described in greater detail in the chapter "Values".
+<p>The //prototype chain// is the list of objects formed by following
+prototype links from an object. The prototype chain of an object
+begins with the object itself, and ends with the first object having a
+null or undefined prototype value.
 
+<p>When a name is to be resolved against an object, if resolution
+initially fails because the object does not contain a property
+matching the name, then resolution continues along the object's
+prototype chain.
 
 == Scopes and visibility ==
 

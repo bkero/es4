@@ -510,7 +510,7 @@ withtype
 
      and CLASS_DEFN =
            { ns: NAMESPACE_EXPRESSION option,
-             privateNS: NAMESPACE,
+             privateNS: NAMESPACE, (* FIXME: do we need to keep this around? *)
              protectedNS: NAMESPACE,
              ident: IDENTIFIER,             
              nonnullable: bool,
@@ -522,7 +522,8 @@ withtype
              classDefns: DEFN list,
              instanceDefns: DEFN list,
              instanceStmts: STATEMENT list,
-             ctorDefn: CTOR option }
+             ctorDefn: CTOR option (* FIXME: does it need to be optional? *)
+           }
 
      and INTERFACE_DEFN =
            { ident: IDENTIFIER,
