@@ -488,12 +488,14 @@ fun resolveTypeNames (env : RIBS)
             case Fixture.resolveNameExpr env nameExpr of 
                 (envOfDefn, _,  TypeFixture (typeParams, typeBody)) => 
                 let in
-                    if length typeArgs = length typeParams
-                    then ()
-                    else error ["Incorrect number of arguments to parametric type defn"];
+                    if length typeArgs = length typeParams then 
+                        ()
+                    else 
+                        error ["Incorrect no of arguments to parametric typedefn"];
                     resolveTypeNames envOfDefn
                                      (substTypes typeParams
-                                                 (map (resolveTypeNames env) typeArgs)
+                                                 (map (resolveTypeNames env) 
+                                                      typeArgs)
                                                  typeBody)
                 end
 
@@ -742,10 +744,14 @@ and subTypeHierarchy extra type1 type2 =
           _ )
         => (case extends of 
                 NONE => false
-              | SOME extends => subType extra (substTypes typeParams typeArgs extends) type2)
+              | SOME extends => subType extra 
+                                        (substTypes typeParams typeArgs extends)
+                                        type2)
            orelse
            List.exists 
-               (fn iface => subType extra (substTypes typeParams typeArgs iface) type2)
+               (fn iface => subType extra 
+                                    (substTypes typeParams typeArgs iface) 
+                                    type2)
                implements
                
       | ( InterfaceType (Interface { typeParams = [], extends, ...}), _ )
@@ -758,7 +764,9 @@ and subTypeHierarchy extra type1 type2 =
                typeArgs),
           _ )
         => List.exists  
-               (fn iface => subType extra (substTypes typeParams typeArgs iface) type2) 
+               (fn iface => subType extra 
+                                    (substTypes typeParams typeArgs iface) 
+                                    type2) 
                extends
 
        | _ => false
@@ -779,7 +787,7 @@ and subTypeNullable extra type1 type2 =
         => true
 
       | (NullType, 
-         AppType (InterfaceType (Interface { nonnullable = false, ... }), typeArgs))
+         AppType (InterfaceType (Interface { nonnullable = false, ...}), typeArgs))
         => true
                
       | _ => false
@@ -851,11 +859,13 @@ and subTypeFunction extra type1 type2 =
     case (type1, type2) of
 
         (FunctionType
-             { typeParams = typeParams1,   params  = params1,     result  = result1,
-               thisType   = thisType1,     hasRest = hasRest1,    minArgs = minArgs1 },
+             { typeParams = typeParams1,  params     = params1,     
+               result     = result1,      thisType   = thisType1,
+               hasRest    = hasRest1,     minArgs    = minArgs1 },
          FunctionType 
-             { typeParams = typeParams2,   params  = params2,     result  = result2,
-               thisType   = thisType2,     hasRest = hasRest2,    minArgs = minArgs2 }) 
+             { typeParams = typeParams2,  params     = params2,
+               result     = result2,      thisType   = thisType2,
+               hasRest    = hasRest2,     minArgs    = minArgs2 }) 
         => 
         (* set up a substitution to alpha-rename typeParams to be identical *)
         let

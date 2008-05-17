@@ -156,14 +156,16 @@ fun GetProperty(obj, name, isStrict)
       if T has a default value
         return that default value
       else
-        throw a ReferenceError, "Cannot read uninitialized property with non-nullable type"
+        throw a ReferenceError
+            "Cannot read uninitialized property with non-nullable type"
       end
     end
     return undefined
   end
 
   if isStrict
-    throw a ReferenceError, "Trying to read undefined property from non-dynamic object"
+    throw a ReferenceError
+        "Trying to read undefined property from non-dynamic object"
   end
 
   return undefined
@@ -182,7 +184,8 @@ fun getPropertyHelper(obj, name, isStrict)
   if (name is a property in the property map of obj, denote it obj.name && 
       the fixed attribute of obj.name is true)
     if obj.name is a method
-      return a closure where obj is bound as this to the method extracted from obj.name
+      return a closure 
+          where obj is bound as this to the method extracted from obj.name
     end
     if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
       return obj.name.[[Getter]](name)
@@ -190,8 +193,8 @@ fun getPropertyHelper(obj, name, isStrict)
     return the value of obj.name
   end
 
-  if (meta::get is a property in the property map of obj, denote it obj.meta::get && 
-      the fixed attribute of obj.meta::get is true)
+  if (meta::get is a property in the property map of obj, denote it obj.meta::get
+      && the fixed attribute of obj.meta::get is true)
     try 
       return obj.meta::get(name)
     catch DefaultBehavior
@@ -242,8 +245,8 @@ fun SetProperty(obj, name, value, isStrict)
     return setPropertyHelper(obj, name, value, isStrict)
   end
 
-  if (meta::set is a property in the property map of obj, denote it obj.meta::set && 
-      the fixed attribute of meta::set is true)
+  if (meta::set is a property in the property map of obj, denote it obj.meta::set
+      && the fixed attribute of meta::set is true)
     try 
       invoke obj.meta::set(name, value)
       return
@@ -258,18 +261,24 @@ fun SetProperty(obj, name, value, isStrict)
 
   if the dynamic attribute on obj is true
     if isStrict && obj is a global object
-      throw a ReferenceError, "illegal to create props on global obj in strict mode"
+      throw a ReferenceError
+          "illegal to create props on global obj in strict mode"
     end
 
-    if (obj has a structural array type with a "rest" type constraint, denote it T &&
+    if (obj has an array type with a "rest" type constraint, denote it T &&
         the type of value is not a compatible subtype of T)
-      throw a TypeError, "allocated type of value is not compatible with storage type of property"
+      throw a TypeError
+          "allocated type of value is not compatible with \
+          \storage type of property"
     end
 
     place a new object into the property map of obj
       property name = name
       property value = value
-      property flags = (writeable=true, enumerable=true, removable=true, fixed=false)
+      property flags = (writable=true, 
+                        enumerable=true, 
+                        removable=true, 
+                        fixed=false)
     return
   end
 
@@ -341,8 +350,9 @@ fun DeleteProperty(obj, name, isStrict)
     return false
   end
 
-  if (meta::delete is a property in the property map of obj, denote it obj.meta::delete && 
-      the fixed attribute of meta::delete is true)
+  if (meta::delete is a property in the property map of obj, 
+             denote it obj.meta::delete
+      && the fixed attribute of meta::delete is true)
     try 
       return obj.meta::delete(name)
     catch DefaultBehavior

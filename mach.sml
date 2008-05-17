@@ -1246,12 +1246,13 @@ fun searchObject (NONE, _, _, _) = NONE
     in
         case matches of
             [] 
-            => if fixedOnly
-               then NONE 
-               else searchObject (getPrototypeObject (object), 
-                                  identifier, 
-                                  namespaces, 
-                                  fixedOnly)
+            => if fixedOnly then 
+                   NONE 
+               else
+                   searchObject (getPrototypeObject (object), 
+                                 identifier, 
+                                 namespaces, 
+                                 fixedOnly)
 
           | _ 
             => SOME (object, matches)

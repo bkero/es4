@@ -385,9 +385,10 @@ fun resolveQualifiedName (ribs          : Ast.RIBS)
     let
         val ns = resolveNamespaceExpr ribs namespaceExpr
         val name = { ns = ns, id = identifier }
-        fun search (r::rs) = if hasFixture r (Ast.PropName name)
-                             then (r::rs)
-                             else search rs
+        fun search (r::rs) = if hasFixture r (Ast.PropName name) then
+                                 (r::rs)
+                             else
+                                 search rs
           | search [] = []
     in
         case (search ribs) of 
