@@ -11,6 +11,7 @@
          Derived forms like { x: 10 } : E boil away in the parser always,
          we don't need to know what E is.  -->
 
+<!--
 <hr>
 <pre>
 FILE:                       spec/language/values.html
@@ -25,15 +26,21 @@ SCOPE:                      The structure and behavior of objects, including the
                             and conversions of primitive object values.
 </pre>
 <hr>
+-->
 
-<p>The execution of a program, described in section ..., entails among its effects the calculation
-and manipulation of values.
+<p>The evaluation of a program, described in section ..., entails
+among its effects the calculation and manipulation of values.
 
-<p>An //ECMAScript value// is either undefined, null, or an object. Every ECMAScript value has an
-associated ECMAScript type, called the value's //allocated type//, which is fixed when the value is
-allocated in memory, and cannot change over the lifetime of the value.
+<FIXME> Draft 1 of the specification does not include a description of
+evaluation.
 
-<IMPL>
+<p>An //ECMAScript value// is either undefined, null, or an
+object. Every ECMAScript value has an associated ECMAScript type,
+called the value's //allocated type//.  The allocated type is fixed
+when the value is allocated in memory, and cannot change over the
+lifetime of the value.
+
+<SEM>
 <INCLUDE file="mach.sml" name="datatype VALUE">
 
 <COMP>In the 3rd edition of the language, several individual //types// were defined. The 3 types
@@ -74,7 +81,7 @@ conventions, and are not enforced by the language semantics.
 <p>An object value consists of a mutable property binding map, an immutable object identifier, an
 immutable tag, and an immutable prototype value.
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and OBJ">
 
 === Property Binding Map === 
@@ -91,7 +98,7 @@ property binding map is unspecified.
 position in this order is unchanged when the property is replaced. This order is used in
 enumeration.
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and PROPERTY_BINDINGS">
 
 ==== Properties ====
@@ -105,13 +112,13 @@ value that the property may contain.
 characteristics of objects are described differently in the 4th edition, using a combination of
 supporting semantic and ECMAScript standard library functionality.
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and PROPERTY">
 
 ==== Property States ====
 
 <p>The //state// of a property encodes either a value associated with the property, or else one of a
-small number of intermediate non-value conditions that a property can assume during execution. 
+small number of intermediate non-value conditions that a property can assume during evaluation. 
 
 <p>When a property is created, it is //allocated// in a state that derives from its storage type.
 
@@ -121,7 +128,7 @@ small number of intermediate non-value conditions that a property can assume dur
 state, with the null value.
 
 <p>Any other property is allocated in the uninitialized state, and must be initialized during the
-initialization phase of object construction, before the object's first constructor begins execution.
+initialization phase of object construction, before the object's first constructor begins evaluation.
 
 <p>If a property is in value state, then the allocated type of the value held in the property is a
 compatible subtype of the storage type of the property.
@@ -129,7 +136,7 @@ compatible subtype of the storage type of the property.
 <p>Additional property states are defined for encoding non-value properties, such as types, type
 variables, and virtual properties (defined by getter and setter functions).
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and PROPERTY_STATE">
 
 ==== Property Attributes ==== 
@@ -179,14 +186,14 @@ variables, and virtual properties (defined by getter and setter functions).
 
 
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="datatype WRITABILITY">
 <INCLUDE file="mach.sml" name="type ATTRS">
 
 === Object Prototype === 
 
 <p>The //prototype// of an object is a means of dynamically delegating behavior from one object to
-another. In various conditions, the language defines the execution of an unsuccessful property
+another. In various conditions, the language defines the evaluation of an unsuccessful property
 access on an object in terms of subsequent property accesses on the object's prototype.
 
 
@@ -197,7 +204,7 @@ identifier is unspecified, and its value cannot be directly observed by ECMAScri
 objects is partially defined in terms of equality of the objects' identifiers, so all identifiers
 must be comparable with one another for equality.
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and OBJ_IDENTIFIER">
 
 === Object Tag === 
@@ -216,7 +223,7 @@ have an ''ObjectTag'', ''ArrayTag'' or ''PrimitiveTag'' tag.
 
 <p>The ''NoTag'' tag is present only on un-named objects that implement scopes.
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and TAG">
 
 ==== Primitive Tag ====
@@ -249,7 +256,7 @@ value held by the primitive tag.
 <li>The primitive tag ''Generator'' corresponds to the class **helper::GeneratorImpl**.
 </ul>
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="and PRIMITIVE">
 
 == Semantic Values ==
@@ -386,7 +393,7 @@ representation.
 <p>Any two transparent namespaces with equal identifying strings are considered equal. Any two
 opaque namespaces with equal unique identifiers are equal. 
 
-<IMPL>
+<SEM>
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
 <INCLUDE file="ast.sml" name="datatype NAMESPACE">
 
@@ -416,7 +423,7 @@ word. Suggestions welcome.
 <p>Class values can be //instantiated// to produce new objects. Instantiation is described in
 section....
 
-<IMPL>
+<SEM>
 <INCLUDE file="ast.sml" name="and CLASS">
 
 ==== Instance Fixtures ====
@@ -475,7 +482,7 @@ of the instance fixture.
 <p>An interface value ''I'' also defines a type ''InterfaceType I''. If a class ''C'' implements
 interface ''I'', the type ''ClassType C'' is a subtype of ''InterfaceType I''.
 
-<IMPL>
+<SEM>
 <INCLUDE file="ast.sml" name="and INTERFACE">
 
 === Function Closures ===
@@ -494,10 +501,10 @@ object, and a function value.
 
 <p>A function value contains set of parameter fixtures and a block of ECMAScript code. 
 
-<p>Function closure values can be //invoked// to execute the ECMAScript code stored in the block of
+<p>Function closure values can be //invoked// to evaluate the ECMAScript code stored in the block of
 the closure's associated function value. Invocation is described in section....
 
-<IMPL>
+<SEM>
 <INCLUDE file="mach.sml" name="withtype FUN_CLOSURE">
 <INCLUDE file="ast.sml" name="and FUNC">
 

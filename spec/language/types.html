@@ -353,7 +353,7 @@ A type name that refers to an interface resolves to an interface type.
 
 === Semantics of the Type Language ===
 
-<IMPL>
+<SEM>
 <INCLUDE file="ast.sml" name="datatype TYPE">
 <INCLUDE file="ast.sml" name="and FUNCTION_TYPE">
 <INCLUDE file="ast.sml" name="type NONCE">
@@ -391,7 +391,7 @@ transitivity is a consequence of the remainder of the algorithm.
 This function dispatches to additional subtype functions
 described in the following subsections.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="fun subType">
 
 === The Type Equivalence Relation ===
@@ -410,7 +410,7 @@ for a specification, but its worst-case time complexity is exponential
 in the height of a type, and so this naive approach would be
 inadequate in an implementation.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and equivType">
 
 === Subtyping Record Types ===
@@ -426,7 +426,7 @@ type.  In particular, this re-arranging may be necessary in order to
 make the above rule applicable. The function ''nameExpressionEqual''
 checks if two field names are equal.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeRecord">
 <INCLUDE file="type.sml" name="fun nameExpressionEqual">
 
@@ -455,7 +455,7 @@ of ^^[T_{1}, .., T_{n}, ... T]^^ if ^^S^^ is equivalent to ^^T^^ and if each
 various combinations. The following code combines all of these rules
 into a single deterministic algorithm for array subtyping.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeArray">
 
 === Subtyping Union Types ===
@@ -466,7 +466,7 @@ into a single deterministic algorithm for array subtyping.
 <p> A type ^^S^^ is a subtype of ^^(T_{1} | .. | T_{n})^^ if
 there exists some i in 1..n such that ^^S^^ is a subtype of ^^T_{i}^^.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeUnion">
 
 
@@ -554,14 +554,15 @@ the subtype relation. For example, within the scope of a binding for a
 type variable ^^X^^, the type ^^[X, X]^^ is a subtype of the type
 ^^[X]^^.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeFunction">
 
-The following function ''rename'' performs the capture-free
+<P> The following function ''rename'' performs the capture-free
 substitution of references to any of the identifiers in
 ''typeParams1'' with references to the corresponding identifier in
 ''typeParams2'' in the type ''ty''.
 
+<SEM>
 <INCLUDE file="type.sml" name="fun rename">
 
 
@@ -575,7 +576,7 @@ if ^^S^^ is a subtype of the union type ^^(T | null)^^.
 if ^^S^^ is a subtype of ^^T^^
 and the type ^^null^^ is //not// a subtype of ^^S^^.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeNonNull">
 
 === Subtyping Nullable Nominal Types ===
@@ -597,7 +598,7 @@ declared as a //non-null// type via any of the following declarations:
 
 <p>The type ^^null^^ is a subtype of any nullable nominal type. 
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeNullable">
 
 === Subtyping Nominal Types ===
@@ -653,7 +654,7 @@ The notation ^^T[x_{1}:=S_{1},..,x_{n}:=S_{n}]^^ denotes the type ^^T^^ with eac
 occurrence of the type variable ^^x_{i}^^ replaced (in a capture-free
 manner) by the corresponding type ^^S_{i}^^.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeNominal">
 <INCLUDE file="type.sml" name="and subTypeHierarchy">
 
@@ -674,12 +675,12 @@ type ^^public::Array^^.
 <p> Any function type  is a subtype of the class
 type ^^public::Function^^.
 
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="and subTypeStructuralNominal">
 
 == Type Normalization ==
 
-At run-time, when a type ^^T^^ is encountered in the source program,
+<P> At run-time, when a type ^^T^^ is encountered in the source program,
 that type is immediately //normalized//. Type normalization consists
 of two phases, //type inlining// followed by //type
 canonicalization//.
@@ -751,7 +752,7 @@ normalization process.
   <LI> type names that refer to type  definitions (which are inlined)
 </UL>
   
-Normalized types may include type names that refer to generic type
+<P> Normalized types may include type names that refer to generic type
 parameters; these references include a nonce.
   
 == Compatible Types ==
@@ -764,7 +765,7 @@ types ^^S^^ and ^^T^^ are compatible if ^^T^^ can be obtained from
 both ^^{x : *}^^ and with ^^*^^, but the type ^^{x : *}^^ is not
 compatible with ^^{x : int}^^.
 
-Also, ^^T.&lt;Number>^^ is compatible with ^^T.&lt;*>^^.
+<P> Also, ^^T.&lt;Number>^^ is compatible with ^^T.&lt;*>^^.
 
 <p>This compatibility relation is reflexive and transitive, but not
 symmetric.
@@ -786,7 +787,7 @@ compatible-subtype of the types ^^{x : *, y : *}^^, ^^{x : int}^^,
 previously-defined ''subType'' predicate and passing in an ''extra''
 parameter that reasons about compatibility, in that every type is
 compatible with ^^*^^.
-<IMPL>
+<SEM>
 <INCLUDE file="type.sml" name="fun compatibleSubtype">
 
 

@@ -243,8 +243,9 @@ namespace **internal** is specific to each compilation unit.
 <INCLUDE file="mach.sml" name="type NAMESPACE_SET">
 <INCLUDE file="mach.sml" name="type OPEN_NAMESPACES">
 
+<!--
 <FIXME> The use of a ''NAMESPACE list'' here to represents namespace sets
-is a spec bug.  Sets should be modelled as set data structures.
+is a spec bug.  Sets should be modelled as set data structures. -->
 
 <P> The first element on an ''OPEN_NAMESPACES'' list is the highest
 priority element.
@@ -252,15 +253,18 @@ priority element.
 
 == Reference Expressions ==
 
-<P> Name expression are incorporated into //reference expressions//
-that provide context to the name expression.  Name expressions that
+<P> Name expressions are incorporated into //reference expressions//
+that provide context to the name expressions.  Name expressions that
 reference names bound in a scope, such as ''encodeURI'' and
 ''intrinsic::substring'', are contained in ''LexicalReference'' nodes.
-Name expressions that reference properties on objects, such as
+
+<P> Name expressions that reference properties on objects, such as
 ''s.intrinsic::substring'', are contained in ''ObjectNameReference''
-nodes, which reference both the object expression (''s'', in the
-example) and the name (''intrinsic::substring'').  Finally, the node
-''ObjectIndexReference'' represents computed lookup, such as ''s[e]''.
+nodes, which contain both the object expression (''s'', in the
+example) and the name (''intrinsic::substring'').
+
+<P> Finally, the node ''ObjectIndexReference'' represents names that
+are computed at evaluatin time, such as ''s[e]''.
 
 <SEM>
 {{{
@@ -276,8 +280,9 @@ datatype EXPRESSION =
 <NOTE> An ''ObjectIndexReference'' is evaluated by evaluating its
 ''index'' operand to a ''Name'' object and then treating that value
 the same as a resolved qualified name.  Index operands that do not
-evaluate to ''Name'' objects are converted to string, and a ''Name''
-object is formed from the string and the **public** namespace.
+evaluate to ''Name'' objects are converted to ''string'', and a
+''Name'' object is formed from the string and the **public**
+namespace.
 
 
 == Name Resolution ==
