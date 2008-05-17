@@ -1316,22 +1316,38 @@ fun searchScope (scope      : SCOPE,
             => searchObject (SOME object, identifier, namespaces, fixedOnly)
     end
 
-fun searchScopeChain (NONE, _, _) = NONE
+and searchScopeChainOnce (NONE, _, _, _) = NONE
 
-  | searchScopeChain (SOME scope : SCOPE option,
-                      identifier : IDENTIFIER,
-                      namespaces : NAMESPACE_SET)
+  | searchScopeChainOnce (SOME scope : SCOPE option,
+                          identifier : IDENTIFIER,
+                          namespaces : NAMESPACE_SET,
+                          fixedOnly  : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = searchScope (scope, namespaces, identifier, true)
+        val matches = searchScope (scope, namespaces, identifier, fixedOnly)
         val Scope { parent, ... } = scope
     in
         case matches of
             NONE 
-            => searchScopeChain (parent, identifier, namespaces)
+            => searchScopeChainOnce (parent, identifier, namespaces, fixedOnly)
 
           | _
             => matches
+    end
+
+fun searchScopeChain (scope      : SCOPE option,
+                      identifier : IDENTIFIER,
+                      namespaces : NAMESPACE_SET)
+    : (OBJECT * NAMESPACE_SET) option =
+    let 
+        val result = searchScopeChainOnce(scope, identifier, namespaces, true)
+    in
+        case result of
+            NONE
+            => searchScopeChainOnce(scope, identifier, namespaces, false)
+
+          | SOME _
+            => result
     end
 
 fun instanceRibsOf (object: OBJECT)

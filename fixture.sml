@@ -281,12 +281,8 @@ fun ribSearch (rib        : Ast.RIB,
     case List.filter (fn ns => 
                          hasFixture rib (Ast.PropName {ns=ns, id=identifier}))
                      namespaces of
-
-        [] 
-        => NONE
-
-      | m 
-        => SOME (rib, m)
+        [] => NONE
+      | m  => SOME (rib, m)
 
 fun ribListSearch ([], _, _) = NONE
 
@@ -294,17 +290,12 @@ fun ribListSearch ([], _, _) = NONE
                    namespaces : NAMESPACE_SET, 
                    identifier : IDENTIFIER)
     : (Ast.RIBS * NAMESPACE_SET) option =
-    let
-        val rib = hd ribs
-        val matches = ribSearch (rib, namespaces, identifier)
-    in
-        case matches of
-            NONE 
-            => ribListSearch (tl ribs, namespaces, identifier)
+    case ribSearch (hd ribs, namespaces, identifier) of
+        NONE 
+        => ribListSearch (tl ribs, namespaces, identifier)
 
-          | SOME (_, m) 
-            => SOME (ribs, m)
-    end
+      | SOME (_, m) 
+        => SOME (ribs, m)
 
 fun getInstanceBindingNamespaces (rib: Ast.RIB, 
                                   identifier: IDENTIFIER,
@@ -420,28 +411,20 @@ and resolveUnqualifiedName (ribs           : Ast.RIBS)
             NONE
             => NONE
 
-          | SOME (ribs, namespace :: []) 
+          | SOME (ribs, [namespace]) 
             => SOME (ribs, {ns=namespace, id=identifier})
 
           | SOME (ribs, namespaces) 
-            => let
-                   val matches' = selectNamespaces (identifier, 
-                                                    namespaces, 
-                                                    [], 
-                                                    openNamespaces)
-               in
-                   case matches' of
-                       namespace :: [] 
-                       => SOME (ribs, {ns=namespace, id=identifier})
+            => case selectNamespaces (identifier, 
+                                      namespaces, 
+                                      [], 
+                                      openNamespaces) of
 
-                     | [] 
-                       => raise (LogErr.NameError "internal error")
+                   [namespace] 
+                   => SOME (ribs, {ns=namespace, id=identifier})
 
-                     | _ =>
-                       raise (LogErr.NameError ("ambiguous reference:" ^ 
-                                                LogErr.fmtNss matches' ^ "::" ^ 
-                                                (Ustring.toAscii identifier)))
-               end
+                 | ns::nss 
+                   => error ["ambiguous reference: ", Ustring.toAscii identifier]
     end
 
 (*
@@ -474,8 +457,10 @@ and resolveNameExpr (ribs : Ast.RIBS)
           | SOME (ribs, name) 
             => (ribs, name, getFixture (hd ribs) (Ast.PropName name))
 
-and reserveNames (name) (openNamespaces) 
-    = ()  (* FIXME needs implementation *)
+and reserveNames (name) 
+                 (openNamespaces) 
+    = (* LDOTS *)
+    ()  (* FIXME needs implementation *)
 
 and resolveNamespaceExpr (ribs:Ast.RIBS)
                          (nse:Ast.NAMESPACE_EXPRESSION)

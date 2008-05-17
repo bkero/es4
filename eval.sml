@@ -2057,7 +2057,7 @@ and evalObjectNameReference (regs:REGS)
                             (expr:EXPRESSION)
     : VALUE =
     let
-        val (this, (obj, name)) = resolveObjectReference regs expr false
+        val (this, (obj, name)) = resolveObjectReference regs expr
     in
         getValue regs obj name
     end
@@ -2066,7 +2066,7 @@ and evalObjectIndexReference (regs:REGS)
                              (expr:EXPRESSION)
     : VALUE =
     let
-        val (this, (obj, name)) = resolveObjectReference regs expr false
+        val (this, (obj, name)) = resolveObjectReference regs expr
     in
         getValue regs obj name
     end
@@ -3775,21 +3775,28 @@ and evalCondExpr (regs:REGS)
         else evalExpr regs els
     end
 
+and evalObjectExpr (regs:REGS)
+                   (object:EXPRESSION)
+    : OBJ =
+    let 
+        val v = evalExpr regs object
+    in
+        case v of 
+            Object ob
+            => ob
+               
+          | Null
+            => throwExn (newRefErr regs ["object reference on null value"])
+
+          | Undefined 
+            => throwExn (newRefErr regs ["object reference on undefined value"])
+    end
+
 and resolveObjectReference (regs:REGS)
                            (ObjectNameReference { object, name, ... }: EXPRESSION)
-                           (errIfNotFound:bool)
     : (OBJ option * (OBJ * NAME)) =
     let
-        val v = evalExpr regs object
-        val obj = case v of 
-                      Object ob
-                      => ob
-
-                    | Null
-                      => throwExn (newRefErr regs ["object reference on null value"])
-
-                    | Undefined 
-                      => throwExn (newRefErr regs ["object reference on undefined value"])
+        val obj = evalObjectExpr regs object
     in
         case name of
             UnqualifiedName { identifier, openNamespaces, ... }
@@ -3804,20 +3811,9 @@ and resolveObjectReference (regs:REGS)
     end
 
   | resolveObjectReference regs 
-                           (ObjectIndexReference {object, index, ...}) 
-                           errIfNotFound = 
+                           (ObjectIndexReference {object, index, ...}) = 
     let
-        val v = evalExpr regs object
-        val obj = case v of 
-                      Object ob 
-                      => ob
-
-                    | Null 
-                      => throwExn (newRefErr regs ["object reference on null value"])
-
-                    | Undefined 
-                      => throwExn (newRefErr regs ["object reference on undefined value"])
-
+        val obj = evalObjectExpr regs object
         val idx = evalExpr regs index
         val identifier = toUstring regs idx  
         (* FIXME if its an Name, then don't convert *)
@@ -3826,8 +3822,8 @@ and resolveObjectReference (regs:REGS)
         resolveQualifiedObjectReference regs obj identifier namespace
     end
 
-  | resolveObjectReference  regs  _  _ = 
-    error regs ["need object reference expression"]
+  | resolveObjectReference  regs  _  =                 (* INFORMATIVE *)
+    error regs ["need object reference expression"]    (* INFORMATIVE *)
 
 and resolveQualifiedObjectReference (regs: REGS)
                                     (object: OBJ)
@@ -3881,8 +3877,8 @@ and resolveRefExpr (regs:REGS)
     in
         case expr of
             Ast.LexicalReference {name, ...} => (NONE, resolveLexicalReference regs name errIfNotFound)
-          | ObjectNameReference _ => resolveObjectReference regs expr errIfNotFound
-          | ObjectIndexReference _ => resolveObjectReference regs expr errIfNotFound
+          | ObjectNameReference _ => resolveObjectReference regs expr
+          | ObjectIndexReference _ => resolveObjectReference regs expr
           | _ => error regs ["need lexical or object-reference expression"]
     end
 

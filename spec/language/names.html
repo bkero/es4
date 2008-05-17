@@ -287,130 +287,249 @@ namespace.
 
 == Name Resolution ==
 
+=== Overview ===
+
+<P> The purpose of name resolution is to take an unresolved name and a
+list of objects and return an unambiguous name (consisting of a
+namespace value and an identifier) and an object that contains a
+property with that name.  The objects are searched in order, and the
+first object to contain a property with the name is selected.
+
+<P> There are three complications.  First, the search is performed
+differently for object chains (an object and its prototypes) and scope
+chains.  An object chain is searched in a single pass and each
+object's fixed and dynamic properties are considered when the object
+is searched.  A scope chain, on the other hand, is searched in two
+passes, with the first pass considering mainly fixed properties and
+the second pass considering also dynamic properties.  (The search ends
+as soon as an object matching the name is found, so the second pass
+may never be run.)  Thus fixed properties in outer scopes shadow
+dynamic properties in inner scopes.  However, for reasons of
+compatibility with ES3, the first pass searches both dynamic and fixed
+properties in scopes that are introduced by the ''with'' statement or
+in scopes that have been extended by the ''eval'' operator evaluating
+a ''function'' or ''var'' directive.
+
+<P>(The motivation for the preference for fixed bindings in scopes is
+to retain the lexically scoped flavor of ECMAScript.  Some of the
+objects on the scope chain--class objects and instance objects--are
+dynamically extensible, and allowing dynamic properties to shadow
+static properties would make programs harder to understand, and it
+would make them slower, as it would be hard to perform early binding.)
+
+<P> The second complication appears with the need for disambiguation.
+When an unqualified name is resolved the resolution is performed in
+the context of the namespaces that were open at the point of
+reference.  Thus the search of any one object may find multiple
+bindings that match the name, up to one binding per open namespace.
+Instead of making this an error, the name resolver disambiguates by
+trying to select the most desirable of those namespaces.  Selection is
+performed by filtering the applicable namespaces until we are left
+with one.  (If we have more than one then the name is deemed
+ambiguous.)
+
+<P> We first select those namespaces among the matching namespaces
+that are in use by the least specific class of the object that
+contains the name.  For example, if ^^C^^ is a subclass of ^^B^^ and
+^^B^^ is a subclass of ^^A^^, and our name ^^n^^ matched ^^ns1::n^^,
+^^ns2::n^^, and ^^ns3::n^^, and ^^ns1::n^^ and ^^ns2::n^^ were defined
+in ^^B^^ and ^^ns3::n^^ was defined in ^^C^^, then we'd be left with just
+^^ns1^^ and ^^ns2^^.
+
+<P> We then filter by namespace priority.  The open namespaces are
+organized in a prioritized list of namespace sets.  If one of the
+matching names has a namespace that is from a set with a higher
+priority than all the other matching names, then that's the namespace
+we want.  So if the referencing context of ^^n^^ opened ^^ns2^^ in a
+scope nested inside the one that opened ^^ns1^^, then we are left with
+just ^^ns2^^ -- and a single binding, ^^ns2::n^^.
+
+<P> (The motivation for disambiguation is simple: disambiguation
+allows more programs to run.)
+
+<P> The third complication is that some names are required to be
+resolved successfully at definition time -- names that denote
+namespaces and types.  (We require that in order to make names and
+types constant, which generally simplifies the language and makes
+programs more easily comprehensible.)  The consequence of that is that
+namespace and type references are illegal inside scopes introduced by
+''with'' or scopes that may be extended by the ''eval'' operator,
+because those scopes make definition time resolution impossible --
+their contents are unknown.  (It is possible to ease that restriction
+in various ways but we have not done so.)  That's not a significant
+problem, it's a simple syntactic check.
+
+<P> However, we also require that type and namespace names that are
+resolved at definition time must resolve to the same bindings that
+they would resolve to if they were to be resolved at evaluation time.
+(We require that because it simplifies the user's model of the
+language: equal names in the same scope have the same meaning,
+provided they resolve at all.)  The consequence of that is that the
+language must provide protection against ambiguities that can be
+introduced at a later time.  If a name is resolved at definition time
+to a global binding then compilation units loaded later may introduce
+new global bindings that will make the resolved binding ambiguous.
+For example, consider the following program.
+
+{{{
+namespace NS1
+namespace NS2
+NS1 type T
+use namespace NS1, namespace NS2
+
+   ... var x: T
+}}}
+
+<P> The reference to ''T'' in the type annotation is resolved uniquely
+at definition time to ''NS1::T''.  Then another compilation unit is
+loaded:
+
+{{{
+NS2 type T
+}}}
+
+<P> Since the global environment is "flat"--code in earlier
+compilation units see bindings introduced by later compilation
+units--the reference to ''T'' from the first program is now ambiguous.
+
+<P> ES4 protects against this eventuality by //reserving// global
+names that are resolved at definition time.  When ''T'' is resolved in
+the first program and found to be in ''NS1'', the name ''NS2::T'' is
+reserved: it is made off-limits to later programs.  As a consequence,
+the second program above would not be loaded, because the introduction
+of ''NS2::T'' would be an error.
+
+<P> Names are reserved in namespaces at the same or higher priority
+level as the namespace that the name was resolved to, so in the
+example above neither ''public::T'' nor ''internal::T'' would become
+reserved, as those namespaces are at lower priority levels than
+''NS1'' and ''NS2''.
+
+<!--
 <p>The evaluation of a name expression depends on where that name occurs. Name expressions that occur
 in namespace expressions and type expressions are resolved statically to namespace and type fixtures,
 respectively. All other name expressions are resolved to a storage location during evaluation.
 
 <FIXME> we need to talk about ribs (probably when we introduce scopes above). And we need to talk about
 how static name resolution operates on ribs and dynamic name resolution operates on scope chains.
+-->
 
-=== Namespace and Type Expressions ===
 
-<p>Namespace and type expressions resolve at compile-time to namespace and type fixtures, respectively.
-Name expressions that occur in either form are resolved using the semantics described here.
+=== Definition-Time Resolution of Namespace and Type Expressions ===
 
-<p>Given a list of ribs and a name expression, this algorithm resolves the name
-expression to a specific name and fixture in the list of ribs:
+<P> The definition time scope chain is modelled as a list of ''RIB''
+data structures, defined elsewhere.  A rib maps names to fixture
+bindings that result from defining and binding forms (''var'',
+''function'', ''type'', ''class'', ''interface'', ''namespace'', and
+others).  Ribs have no dynamic properties.
+
+<P> Definition time resolution resolves name expressions that denote
+namespaces and types, and performs reservation of global names if
+necessary.
+
+<p> The following algorithm resolves a name expression to a specific
+name and fixture in the list of ribs.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and resolveNameExpr">
 
+
 ==== Qualified Name Expressions ====
 
-<p>Given a list of ribs, an identifier, and a namespace expression, this algorithm searches for
-a rib in the ribs list and a name on that rib that matches the identifier and the 
-namespace:
+<p> A qualified name expression is resolved by resolving the namespace
+part and then returning the tail of the list of ribs such that the
+first rib on the tail contains a binding for the name.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="fun resolveQualifiedName">
 
 ==== Unqualified Name Expressions ====
 
-<p>Given a list of ribs, an identifier, and a list of sets of open namespaces, this algorithm searches for
-a rib and a name on that rib that matches the identifier and one of the
-open namespaces:
+<P> An unqualified name expression is resolved according to the full
+algorithm outlined above.  It returns the tail of the list of ribs
+such that the first rib on the tail contains a binding for the name.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and resolveUnqualifiedName">
 <INCLUDE file="fixture.sml" name="fun ribListSearch">
+<INCLUDE file="fixture.sml" name="fun ribSearch">
 
 ==== Reserving Names ====
 
-<p>Statically resolved names must keep their meaning at runtime and therefore cannot be shadowed or
-be made ambiguous by the later introduction of names. Therefore we reserve the set of names that 
+<p> Statically resolved names must keep their meaning at runtime and
+therefore cannot be shadowed or be made ambiguous by the later
+introduction of names.  Therefore we reserve the set of names that
 would cause such conflicts at runtime.
 
-<p>Given a name and a list of sets of open namespaces, this algorithm
-computes a set of names consisting of the identifier and each of the open namespaces with
-an equal or higher priority than the given namespace:
+<p> Given a name and a list of sets of open namespaces, the following
+algorithm computes a set of names consisting of the identifier and
+each of the open namespaces with an equal or higher priority than the
+given namespace.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and reserveNames">
 
-=== Lexical References ===
 
-<p>Here we describe how a target object and a name are computed from a lexical reference. There
-are two kinds of lexical references, unqualified and qualified.
+=== Evaluation-time Resolution of Lexical References ===
 
-<p>Scope objects contain fixed and dynamic bindings. Fixed names in outer scopes may shadow
-dynamic names in inner scopes. For example, a fixed class static name might shadow a dynamic 
-instance name. This is necessary to allow early resolution of names. 
+<P> The evaluation time scope chain is modelled as a list of arbitrary
+objects.  A scope object maps names to properties (both fixtures and
+dynamic properties).  Apart from scope objects introduced by the
+''with'' statement, the evaluation time scope chain mirrors the
+definition time scope chain.
+
+<p> The following algorithm resolves a name expression to an object
+and the name of a property on that object.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveLexicalReference">
 
 ==== Qualified Lexical References ====
 
-<p>Given a scope chain, an identifier, and a namespace expression, this algorithm searches for
-an object in the scope chain and a name on that object that matches the identifier and the 
-namespace:
+<p> To resolve a qualified lexical reference we evaluate its namespace
+expression (it must yield a namespace value) and then look up the name
+comprised of the namespace value and the qualified reference's
+identifier.  If a binding is not found then we return the global
+object, otherwise the object that contained the binding.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveQualifiedLexicalReference">
 
 ==== Unqualified Lexical References ====
 
-<p>If a static name (in a namespace or type expression) resolves to a global name, we reserve
-the set of names that consist of the open namespaces with priority equal or higher than the
-matched name and the matched names identifier.
-
-<p>Given a scope chain, an identifier, and a list of sets of open namespaces, this algorithm searches for
-an object in the scope chain and a name on that object that matches the identifier and one of the
-open namespaces:
+<p> To resolve an unqualified lexical reference we make use of the
+full algorithm outlined above, finding the first object that maches
+the unqualified name in all open namespaces and then disambiguating
+the set of resulting namespaces.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveUnqualifiedLexicalReference">
 
 ==== Searching a Scope Chain ====
 
-<p>Here we describe how an identifier and a set of namespaces is used to locate an object
-and a set of namespaces that match the identifier and a subset of the namespaces.
-
-<p>Maintaining the integrity of names across phases of execution requires that name resolution 
-perform two-pass object list search, and that fixed property bindings cannot be shadowed or 
-otherwise made ambiguous by dynamic property bindings.
-
-<p>Search each scope object in the scope chain. Perform this search either twice, if necessary.
-
-<p>At first, perform scope chain search with its search restricted to considering only fixed
-property bindings on immutable scopes and both fixed and dynamic bindings on mutable scopes.
-
-<NOTE>With scopes and function scopes that might be mutated by 'eval' must be searched fully
-during the first pass and ignored during the second pass, to allow shadowing of outer bindings
-as is required for backward compatibility.
-
-<p>If the first scope chain search returns no value, repeat the search with its search relaxed 
-to include all property bindings, fixed and dynamic, and ignoring any mutable scopes.
-
-Given a scope chain, an identifier and a set of namespaces, this algorithm searches
-for an object in the scope chain and a name on that object that matches the identifier and the
-open namespaces:
+<P> To find an object matching an identifier and a set of namespaces
+in a scope chain, first make a pass over the scope chain looking only
+at fixed properties (except where the scope object is introduced by
+''with'' or is subject to modification by the ''eval'' operator), and
+if none are found, make a second pass looking also for dynamic properties.
 
 <SEM>
 <INCLUDE file="mach.sml" name="fun searchScopeChain">
-
-<p>Given a scope, an identifier, a set of namespaces, and a flag indicating if only fixed
-bindings are to be considered, this algorithm searches for a name in the scope that matches
-the identifier and the set of namespaces:
-
-<SEM>
+<INCLUDE file="mach.sml" name="and searchScopeChainOnce">
 <INCLUDE file="mach.sml" name="fun searchScope">
 
-=== Object References ===
+=== Evaluation-Time Resolution of Object References ===
 
-<p>Here we describe how a name is computed from a object reference. There
-are two kinds of object references, name and index. Index references are implicitly qualified
-by the public namespace. Name references can be either qualified or unqualified.
+<P> Object references are resolved along the prototype chain of the
+object.  Both fixed and dynamic properties are searched in each
+object, in a single pass over the prototype chain.
+
+<p> ''ObjectIndexReference'' expressions represent computed lookup.
+The index expression is computed; if it evaluates to a ''Name'' object
+then it is used as is, otherwise the value is converted to ''string''
+and qualified with the ''public'' namespace.
+
+<FIXME> The following algorithm does not yet handle ''Name'' objects.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveObjectReference">
@@ -420,70 +539,81 @@ by the public namespace. Name references can be either qualified or unqualified.
 <p>Here we describe how an identifier and a namespace expression is resolved to
 a name of a binding on a specfic object.
 
-Given an expression, an identifier, and a namespace expression, this algorithm computes
-an object and the name.
+<p> To resolve a qualified object reference we evaluate its namespace
+expression (it must yield a namespace value) and then simply return
+the object value and the evaluated name.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveQualifiedObjectReference">
 
 ==== Unqualified Object References ====
 
-<p>Here we describe how an identifier and a list of a set of open namespaces
-is resolved to a name on a specific object.
-
-Given an expression, an identifier, and a list of open namespace sets, this algorithm searches 
-for a name on the object that matches the identifier and the open namespaces.
+<p> To resolve an unqualified object reference we make use of the
+full algorithm outlined above, finding the first object that maches
+the unqualified name in all open namespaces and then disambiguating
+the set of resulting namespaces.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveUnqualifiedObjectReference">
 
 === Common Algorithms ===
 
-==== Search an Object  ====
+<P> The following algorithms are common to the preceding resolver
+algorithms.
 
-<p>Given an object, an identifier and a set of namespaces, this algorithm searches for a matching
-property name.
+==== Single Object Search ====
+
+<p> Given an object, an identifier and a set of namespaces, this
+algorithm searches for a matching property name in the object and the
+object's prototype chain.
 
 <SEM>
 <INCLUDE file="mach.sml" name="fun searchObject">
 
-==== Namespace Selection ====
+==== Disambiguation by Filtering ====
 
-<p>Given an identifier, a list of namespaces, a list of classes, a list of open namespaces, this algorithm
-filters the set of namespaces accoring to the order that the namespaces appear in bindings in the given
-classes first, and then in the priority given by the list of open namespaces.
+<p> Given an identifier, a list of namespaces, a list of classes, a
+list of open namespaces, the following algorithm coordinates the
+filtering of the set of namespaces: according to the order that the
+namespaces appear in bindings in the given classes first, and in the
+priority given by the list of open namespaces second.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespaces">
 
-===== Class Base Namespace Selection =====
+===== Class Base Namespace Filtering =====
 
-<p>Given a list of classes, an identifier and a set of namespaces, this algorithm selects the
-namespaces used on the most generic class of that list. This step is necessary to avoid object
-integrity issues that arise when a derived class introduces a binding with the same identifier and a
-different namespace in the open namespaces.
+<p> Given a list of classes, an identifier and a set of namespaces,
+the following algorithm selects the namespaces used on the most
+generic class of that list. This step is necessary to avoid object
+integrity issues that arise when a derived class introduces a binding
+with the same identifier and a different namespace in the open
+namespaces.
 
-<p>**Informal description**: Search this class for any instance fixture name bindings that are 
-named by the provided identifier and any of the namespaces in the provided set. Collect the 
-set of matching namespaces used in all such bindings. If the set of matching namespaces is 
-nonempty, return it. Otherwise repeat the process on the tail of the list, and its tail, 
-and so forth down the list. If all the classes in the list are searched and no matching 
+<p> **Informal description**: Search a class for any instance fixture
+name bindings that are named by the provided identifier and any of the
+namespaces in the provided set. Collect the set of matching namespaces
+used in all such bindings. If the set of matching namespaces is
+nonempty, return it. Otherwise repeat the process on the next instance
+rib.  If all the classes in the list are searched and no matching
 namespaces are found, return the empty set.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByClass">
 
-===== Open Namespace Based Namespace Selection =====
+===== Open Namespace Based Namespace Filtering =====
 
-<p>Given a list of sets of open namespaces (ordered from most recently opened to least recently
-opened) and a set of matching namespaces, this algorithm returns a subset of the matching set that
+<p> Given a list of sets of open namespaces (ordered from most
+recently opened to least recently opened) and a set of matching
+namespaces, this algorithm returns a subset of the matching set that
 occurs entirely within a single open namespace set.
 
-<p>**Informal description**: intersect the head of the provided open namespace list with the
-provided set of namespaces. If that intersection is nonempty, return it. Otherwise repeat the
-process with the tail of the open namespace list, and its tail, and so forth up through the list of
-open namespace sets. If the end of the list of open namespace sets is reached without producing a
-nonempty intersection, return an empty set.
+<p> **Informal description**: intersect the head of the provided open
+namespace list with the provided set of namespaces. If that
+intersection is nonempty, return it. Otherwise repeat the process with
+the tail of the open namespace list. If the end of the list of open
+namespace sets is reached without producing a nonempty intersection,
+return an empty set.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="fun selectNamespacesByOpenNamespaces">
