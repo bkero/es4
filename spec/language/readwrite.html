@@ -1,21 +1,15 @@
 = Reading and Writing Properties =
 
-<!--
-<pre>
-Draft 0.75, 2008-05-13 / lth
-</pre>
--->
-
 <P> This chapter describes the algorithms for //property access//:
 testing objects for the presence of a property, reading from and
 writing to a property, and removing a property.  Property access is
 always by the name of the property.  A property name is represented
-either as an instance of the pre-defined class ''Name'', or as a plain
-string (which represents a name in the ''public'' namespace).
+either as an instance of the pre-defined class ''Name'', or as a
+''string'' (which represents a name in the ''public'' namespace).
 
-<SPECNOTE> This chapter complements the chapter on names, scopes, and name
-resolution.  At this time, there is probably some overlap between the
-two chapters.
+<SPECNOTE> This chapter complements the chapter on names, scopes, and
+name resolution.  At this time, there is some overlap between the two
+chapters.
 
 <P> Property accesses are subject to run-time checks, and property
 access fails (an exception is thrown) if a check does not pass.  The
@@ -27,7 +21,8 @@ must be written (initialized) before it is read; properties created by
 ''const'' cannot be written more than once; and properties that have
 type annotations can be updated with a new value only if the allocated
 type of the new value is a compatible subtype of the storage type of
-the property.
+the property.  A **ReferenceError** is thrown in the first two
+instances, and a **TypeError** is thrown in the last.
 
 <P> A property may be virtual, that is to say, the reading and writing
 of the property may be implemented by //getter// and //setter//
@@ -37,7 +32,7 @@ Virtual dynamic properties may be implemented by //catch-all//
 methods.
 
 
-== Catch-all methods ==
+== Catch-All Methods ==
 
 <P> This section contains a normative overview of the catch-all
 facility.  A more precise, also normative, description is given in
@@ -98,7 +93,7 @@ name.  Any value returned by the method is converted to ''boolean''.
 The default behavior for ''meta::delete'' is to attempt to delete a
 dynamic property from the object's property map.
 
-== Checking for the presence of a property ==
+== Checking for the Presence of a Property ==
 
 <P> The HasOwnProperty protocol is invoked to check whether an object
 //obj// contains a property named by //name//.
@@ -110,11 +105,13 @@ a property", as used in the implementations of [[Get]], [[Put]],
 
 <P> An object is said to contain a property if the property is in the
 object's prototype map or if the ''meta::has'' catchall claims the
-object to be present.
+property to be present.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and hasOwnProperty">
 
+<NOTE> The ''regs'' parameter represents the virtual machine state.  The
+operator ''&lt;*'' tests subtype compatibility.
 
 == Reading a property value ==
 

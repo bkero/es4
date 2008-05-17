@@ -715,36 +715,35 @@ and asArrayIndex (v:VALUE)
       | _ => 0wxFFFFFFFF
              
 
-and hasOwnProperty (regs:REGS)
-                   (obj:OBJ)
-                   (n:NAME)
+and hasOwnProperty (regs : REGS)
+                   (obj  : OBJ)
+                   (n    : NAME)
     : bool =
     let
         val Obj { props, ... } = obj
     in
-        if hasFixedProp props n
-        then true
-        else 
-            if hasFixedProp props meta_has
-            then 
-                let 
-                    val v = evalNamedMethodCall 
-                                regs obj meta_has [newName regs n]
-                in
-                    toBoolean v
-                end
-                handle ThrowException e => 
-                       let
-                           val ty = typeOfVal regs e
-                           val defaultBehaviorClassTy = 
-                               instanceType regs ES4_DefaultBehaviorClass []
-                       in
-                           if ty <* defaultBehaviorClassTy
-                           then hasProp props n
-                           else throwExn e
-                       end
-            else
-                hasProp props n
+        if hasFixedProp props n then 
+            true
+        else if hasFixedProp props meta_has then 
+            let 
+                val v = evalNamedMethodCall 
+                            regs obj meta_has [newName regs n]
+            in
+                toBoolean v
+            end
+            handle ThrowException e => 
+                   let
+                       val ty = typeOfVal regs e
+                       val defaultBehaviorClassTy = 
+                           instanceType regs ES4_DefaultBehaviorClass []
+                   in
+                       if ty <* defaultBehaviorClassTy then
+                           hasProp props n
+                       else 
+                           throwExn e
+                   end
+        else
+            hasProp props n
     end
 
 
