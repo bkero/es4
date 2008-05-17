@@ -171,71 +171,36 @@ fun nameExpressionEqual (name1 : NAME_EXPRESSION)
  * Normalization
  * ----------------------------------------------------------------------------- *)
 
-fun mapFuncTy (f:(TYPE -> TYPE))
-              (fty:FUNCTION_TYPE)
-    : FUNCTION_TYPE = 
-    let
-        val { typeParams, params, result, thisType, hasRest, minArgs } = fty
-    in
-        { typeParams = typeParams,
-          params = map f params,
-          result = Option.map f result,
-          thisType = f thisType,
-          hasRest = hasRest,
-          minArgs = minArgs }    
-    end
-
-fun mapObjTy (f:(TYPE -> TYPE))
-             (fields:FIELD_TYPE list)
-    : FIELD_TYPE list =
-    let
-        fun mapField ( name, ty ) = ( name, f ty )
-    in
-        map mapField fields
-    end
-        
 (* Generic mapping helper. *)
-fun mapTyExpr (f:(TYPE -> TYPE)) 
-              (ty:TYPE)
+
+fun mapType (f : TYPE -> TYPE) 
+            (ty: TYPE)
     : TYPE =
     case ty of 
-        AnyType => ty
-      | NullType => ty
-    (*  | VoidType => ty *)
-      | UndefinedType => ty
-      | TypeName _ => ty
+        RecordType fields => 
+        RecordType (map (fn (name, ty) => (name, f ty)) fields)
+      | UnionType types =>
+        UnionType (map f types)
+      | ArrayType (types, restType) => 
+        ArrayType (map f types, Option.map f restType)
+      | FunctionType { typeParams, params, result, thisType, hasRest, minArgs } => 
+        FunctionType { typeParams = typeParams,
+                       params = map f params,
+                       result = Option.map f result,
+                       thisType = f thisType,
+                       hasRest = hasRest,
+                       minArgs = minArgs } 
+      | NonNullType ty => 
+        NonNullType (f ty)
       | AppType ( base, args ) => 
         AppType ( f base, map f args )
-(*
-      | LamType { params, body } => 
-        LamType { params = params, 
-                      body = f body }
-*)
-      | NonNullType t => 
-        NonNullType (f t)
-      | RecordType fields => 
-        RecordType (mapObjTy f fields)
-      | UnionType tys =>
-        UnionType (map f tys)
-      | ArrayType (tys, to) => 
-        ArrayType (map f tys, Option.map f to)
-      | FunctionType fty => 
-        FunctionType (mapFuncTy f fty)
-      | TypeIndexReferenceType (t, idx) => 
-        TypeIndexReferenceType (f t, idx)
-      | TypeNameReferenceType (t, id) =>
-        TypeNameReferenceType (f t, id)
-      | ClassType cls => 
-        ClassType cls
-      | InterfaceType iface => 
-        InterfaceType iface
-(*      | TypeVarFixtureRef _ => ty *)
-(*      | _ => (error ["Unknown type ", LogErr.ty ty]; anyType)
-*)
+      | TypeIndexReferenceType (t, idx) =>  TypeIndexReferenceType (f t, idx) (* INFORMATIVE *)
+      | TypeNameReferenceType (t, id) =>    TypeNameReferenceType (f t, id)  (* INFORMATIVE *)
+      | _ => ty
 
 fun foreachTyExpr (f:TYPE -> unit) (ty:TYPE) : unit =
     let in
-        mapTyExpr (fn t => let in f t; t end) ty;
+        mapType (fn t => let in f t; t end) ty;
         ()
     end
 
@@ -287,7 +252,7 @@ fun normalizeRefs (env:RIBS)
              NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
            | SOME ( name, ty ) => normalizeRefs env ty)
       | TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
-      | x => mapTyExpr (normalizeRefs env) x
+      | x => mapType (normalizeRefs env) x
                                    
 (* ----------------------------------------------------------------------------- *)
 
@@ -326,7 +291,7 @@ fun normalizeNullsInner (ty:TYPE)
 
 fun normalizeNulls (ty:TYPE)
     : TYPE = 
-    mapTyExpr normalizeNulls (normalizeNullsInner ty)
+    mapType normalizeNulls (normalizeNullsInner ty)
 
 
 (* ----------------------------------------------------------------------------- *)
@@ -348,7 +313,7 @@ fun normalizeUnions (ty:TYPE)
             (case List.concat (map unUnion tys) of 
                  [x] => x
                | tys => UnionType tys)                                     
-          | x => mapTyExpr normalizeUnions x
+          | x => mapType normalizeUnions x
     end
 
 
@@ -356,7 +321,7 @@ fun normalizeArrays (ty:TYPE)
     : TYPE =
     case ty of 
 (*        ArrayType [] => ArrayType [AnyType]
-      | *) x => mapTyExpr normalizeArrays x
+      | *) x => mapType normalizeArrays x
 
 
 (* ----------------------------------------------------------------------------- *)
@@ -383,71 +348,6 @@ fun checkProperType (ty:TYPE) : unit =
     end
     
 (* ----------------------------------------------------------------------------- *)
-(* normalizeNames: replace all references to TypeFixtures by the corresponding type. *)
-
-fun makeNameExpression (id:IDENTIFIER) : NAME_EXPRESSION 
-  = QualifiedName { namespace = Namespace (Name.publicNS),
-                        identifier = id }
-    
-
-fun normalizeNames (useCache:bool)
-                   (env:RIBS)
-                   (ids:NAME_EXPRESSION list)
-                   (ty:TYPE)                    
-  : TYPE = 
-    let
-        fun getType (nameExpr : NAME_EXPRESSION) 
-            : TYPE = 
-            case Fixture.resolveNameExpr env nameExpr of 
-                (env', _,  TypeFixture (ids,ty')) => 
-                let in
-                    if ids = []
-                    then ()
-                    else error ["References to generic typedefs not supported yet!"];
-                    (* Pulling ty out of env', need to normalize first, in the right environment *)
-                    normalizeNames useCache env' [] ty'
-                end
- (*               
-              | (env', n, TypeVarFixture nonce) =>
-                TypeVarFixtureRef nonce
-*)
-                (* FIXME: not sure about the following, and generic classes ... *)
-              | (_, _, ClassFixture c) => ClassType c
-              | (_, _, InterfaceFixture i) => InterfaceType i                         
-              | (_, n, _) => error ["name ", LogErr.name  n, 
-                                    " in type expression ", LogErr.ty ty, 
-                                    " is not a type"]
-
-        fun doResolve _ =         
-            case ty of 
-                TypeName (nameExpr, _) => 
-                     if List.exists (nameExpressionEqual nameExpr) ids
-                     then ty (* local binding, don't replace *)
-                     else getType nameExpr
-(*
-              | LamType { params, body } => 
-                LamType { params = params, 
-                              body = normalizeNames false env (ids@params) body }
-*)
-              | t => mapTyExpr (normalizeNames useCache env ids) t
-    in
-        (* BEGIN SPEED HACK *)
-        case (useCache, !cacheLoad, !cacheSave, ty) of 
-            (true, SOME load, SOME save, TypeName (_, SOME id)) => 
-            (case load id of 
-                 NONE => 
-                 let
-                     val r = doResolve ()
-                 in
-                     save id r;
-                     r
-                 end
-               | SOME r => r)
-        (* END SPEED HACK *)
-
-          | _ => doResolve ()        
-    end
-(* ----------------------------------------------------------------------------- *)
 (* uniqueIdent maps an IDENTIFIER to a unique variant of that IDENTIFIER that has not been used before.
  * This unique-ification is used for alpha-renaming with capture-free substitution.
  *)
@@ -460,6 +360,10 @@ fun uniqueIdent (id:IDENTIFIER) : IDENTIFIER =
         Ustring.stringAppend id (Ustring.fromInt (!uniqueIdentPostfix))
     end
 
+fun makeNameExpression (id:IDENTIFIER) : NAME_EXPRESSION 
+  = QualifiedName { namespace = Namespace (Name.publicNS),
+                        identifier = id }
+    
 fun makeTypeName (id:IDENTIFIER) : TYPE = 
     TypeName (makeNameExpression id, NONE)
 
@@ -487,7 +391,7 @@ fun substTypesInternal (s : SUBST list)
              NONE => ty
            | SOME (_,ty) => ty)
       (* FIXME: think about funny name collisions, and alpha-renaming given nonces *)
-      | _ => mapTyExpr (substTypesInternal s) ty
+      | _ => mapType (substTypesInternal s) ty
 
 fun substTypes (typeParams : IDENTIFIER list) 
                (typeArgs   : TYPE list) 
@@ -553,9 +457,75 @@ fun substTypes (typenames: (NAME_EXPRESSION * NONCE option) list)
         in 
             lookup ids args
         end
-      | _ => mapTyExpr (substTypes ids args) ty
+      | _ => mapType (substTypes ids args) ty
 
 *)
+(* ----------------------------------------------------------------------------- *)
+(* normalizeNames: replace all references to TypeFixtures by the corresponding type. *)
+
+
+fun resolveTypeNames (env : RIBS)
+                     (ty  : TYPE)                    
+    : TYPE = 
+    case ty of 
+
+        TypeName (nameExpr, _) => 
+        let in
+            case (Fixture.resolveNameExpr env nameExpr) of 
+
+                (envOfDefn, _,  TypeFixture ([], typeBody)) => 
+                resolveTypeNames envOfDefn typeBody
+
+              | (_, _, ClassFixture c    ) => ClassType c
+              | (_, _, InterfaceFixture i) => InterfaceType i
+                         
+              | (_, n, _) => error ["name ", LogErr.name  n, " in type expression ", 
+                                    LogErr.ty ty, " is not a proper type"]
+        end
+
+      | AppType (TypeName (nameExpr, _), typeArgs) =>
+        let in
+            case Fixture.resolveNameExpr env nameExpr of 
+                (envOfDefn, _,  TypeFixture (typeParams, typeBody)) => 
+                let in
+                    if length typeArgs = length typeParams
+                    then ()
+                    else error ["Incorrect number of arguments to parametric type defn"];
+                    resolveTypeNames envOfDefn
+                                     (substTypes typeParams
+                                                 (map (resolveTypeNames env) typeArgs)
+                                                 typeBody)
+                end
+
+              | _ => mapType (resolveTypeNames env) ty
+        end
+
+      | _ => mapType (resolveTypeNames env) ty
+
+fun normalizeNames (useCache:bool)
+                   (env:RIBS)
+                   (ty:TYPE)                    
+  : TYPE = 
+    let
+    in
+        (* BEGIN SPEED HACK *)
+        case (useCache, !cacheLoad, !cacheSave, ty) of 
+            (true, SOME load, SOME save, TypeName (_, SOME id)) => 
+            (case load id of 
+                 NONE => 
+                 let
+                     val r = resolveTypeNames env ty
+                 in
+                     save id r;
+                     r
+                 end
+               | SOME r => r)
+        (* END SPEED HACK *)
+
+          | _ => resolveTypeNames env ty        
+    end
+
+
 (* ----------------------------------------------------------------------------- *)
 (* Perform beta-reduction of all AppTypes applied to a LamType.
  *)
@@ -563,7 +533,7 @@ fun substTypes (typenames: (NAME_EXPRESSION * NONCE option) list)
 (* 
 fun normalizeLambdas (ty:TYPE) : TYPE = 
     (* first, normalizeLambdas in subterms *)
-    let val ty = mapTyExpr normalizeLambdas ty
+    let val ty = mapType normalizeLambdas ty
     in
         case ty of
 (*
@@ -603,7 +573,7 @@ fun normalize (ribs:RIB list)
     : TYPE =
     let
         val _ = traceTy "normalize1: " ty
-        val ty = normalizeNames true ribs [] ty     (* inline TypeFixtures and TypeVarFixture nonces *)
+        val ty = normalizeNames true ribs ty     (* inline TypeFixtures and TypeVarFixture nonces *)
 
         val _ = traceTy "normalize2: " ty
         val ty = normalizeRefs ribs ty
@@ -665,21 +635,16 @@ fun findSpecialConversion (tyExpr1:TYPE)
         val srcClass = extract tyExpr1
         val dstClass = extract tyExpr2
         fun isNumericType n = 
-            nameEq n Name.ES4_double
-            orelse 
-            nameEq n Name.ES4_decimal
-            orelse 
-            nameEq n Name.public_Number
-
+            List.exists (nameEq n) [ Name.ES4_double, 
+                                          Name.ES4_decimal,
+                                          Name.public_Number ]
         fun isStringType n = 
-            nameEq n Name.ES4_string
-            orelse 
-            nameEq n Name.public_String
-                   
+            List.exists (nameEq n) [ Name.ES4_string,
+                                          Name.public_String ]
+
         fun isBooleanType n = 
-            nameEq n Name.ES4_boolean
-            orelse 
-            nameEq n Name.public_Boolean
+            List.exists (nameEq n) [ Name.ES4_boolean,
+                                          Name.public_Boolean ]
     in
         case (srcClass, dstClass) of
             ((SOME src), (SOME dst)) => 
@@ -732,17 +697,15 @@ and subTypeStructuralNominal extra type1 type2 =
     case (type1, type2) of
 
         (RecordType _,  ClassType (Class { name, ... })) 
-        => nameEq name Name.public_Object
+        => nameEq name Name.public_Object 
            
       | (ArrayType _, ClassType (Class { name, ... })) 
-        => nameEq name Name.public_Array
-           orelse 
-           nameEq name Name.public_Object
+        => nameEq name Name.public_Array orelse
+           nameEq name Name.public_Object 
            
       | (FunctionType _, ClassType (Class { name, ... })) 
-        => nameEq name Name.public_Function
-           orelse 
-           nameEq name Name.public_Object
+        => nameEq name Name.public_Function orelse
+           nameEq name Name.public_Object 
            
       | _ => false
 
@@ -798,8 +761,8 @@ and subTypeHierarchy extra type1 type2 =
                (fn iface => subType extra (substTypes typeParams typeArgs iface) type2) 
                extends
 
-      | _ => false
-              
+       | _ => false
+
 and subTypeNullable extra type1 type2 =
     case (type1, type2) of
 
@@ -808,8 +771,7 @@ and subTypeNullable extra type1 type2 =
         => true
 
       | (NullType, 
-         AppType (ClassType (Class { nonnullable = false, ... }),
-                      typeArgs))
+         AppType (ClassType (Class { nonnullable = false, ... }), typeArgs))
         => true
 
       | (NullType, 
@@ -817,8 +779,7 @@ and subTypeNullable extra type1 type2 =
         => true
 
       | (NullType, 
-         AppType (InterfaceType (Interface { nonnullable = false, ... }),
-                      typeArgs))
+         AppType (InterfaceType (Interface { nonnullable = false, ... }), typeArgs))
         => true
                
       | _ => false
@@ -852,12 +813,12 @@ and subTypeRecord extra type1 type2 =
 and subTypeUnion extra type1 type2 =
     case (type1, type2) of
 
-        (UnionType types1, type2) => 
-        List.all    (fn type1 => subType extra type1 type2) types1
-        
-      | (type1, UnionType types2) => 
-        List.exists (fn type2 => subType extra type1 type2) types2
-        
+        (UnionType types1, type2) 
+        => List.all    (fn type1 => subType extra type1 type2) types1
+           
+      | (type1, UnionType types2) 
+        => List.exists (fn type2 => subType extra type1 type2) types2
+           
       | _ => false
 
 and subTypeArray extra type1 type2 =
@@ -874,13 +835,13 @@ and subTypeArray extra type1 type2 =
                           List.take(types2, min))
             andalso
             (case (rest1, rest2) of
-                 (NONE,    NONE   ) => length types1 = length types2
+                 (NONE,    NONE   ) => length types1 >= length types2
                | (NONE,    SOME _ ) => false
-               | (SOME t1, NONE   ) => length types1 >= length types2
+               | (SOME _,  NONE   ) => false
                | (SOME t1, SOME t2) =>
                  length types1 >= length types2 andalso            
                  equivType extra t1 t2 andalso
-                 List.all (fn t => equivType extra t t2)
+                 List.all (fn types1 => equivType extra type1 t2)
                           (List.drop(types1, length types2)))
         end
 

@@ -18,9 +18,9 @@ SCOPE:                      The dynamic type system
 <FIXME> Double-check that the specification and implementation of the
 subtype relation are consistent.
 
-<p>ECMAScript includes a gradual type system that supports a range of
-typing disciplines, including dynamically-typed code, statically-typed
-code, and combinations of statically- and dynamically-typed code.
+<p>ECMAScript includes a gradual type system that supports optional
+type annotations on properties (e.g., on variables and fields).  These
+type annotations are currently enforced dynamically.
 
 <p>Every value has an //allocated type//. The allocated type is the
 type given to a value when it is created and which defines its fixed
@@ -51,35 +51,32 @@ that populate them.
 
 == The Type Language ==
 
-=== The External Type Language ===
-
 <p>ES4 includes the following types:
 
-==== The any type ====
+=== The any type ===
 
 <p>The //any type// is the type populated by every possible value. In
 other words, every other type is a compatible subtype of the any type.
 
-<p>The any type is denoted in a type expression as <b>*</b>.
+<p>The any type is denoted in a type expression as ^^*^^.
 
 <p>No value has the any type as its allocated type. The any type
 is only meaningful as the storage type of a property.
 
-==== The null type ====
+=== The null type ===
 
 <p>The //null type// is the type populated only by the ^^null^^ value.
 
 <p>The null type is denoted in a type expression as ^^null^^.
 
-==== The undefined type ====
+=== The undefined type ===
 
 <p>The //undefined type// the type populated only by the value stored in
-the global constant ^^public::undefined^^. **undefined**
-^^undefined^^ ''undefined''
+the global constant ^^public::undefined^^. 
 
 <p>The undefined type is denoted in type expressions as ^^undefined^^.
 
-==== Nominal types ====
+=== Nominal types ===
 
 <p>A //nominal type// is either a class type or an interface type.
 
@@ -93,7 +90,7 @@ the global constant ^^public::undefined^^. **undefined**
 <p>A nominal type is denoted in type expressions by the name of the class or interface that defined
 the type.
 
-==== Record types ====
+=== Record types ===
 
 <p>A //record type// is a subtype of the ^^public::Object^^ class
 type that has additional type constraints on some specific set of
@@ -111,7 +108,7 @@ type with two properties ^^x^^ and ^^y^^, the first constrained to
 type ^^Number^^ and the second to type ^^String^^. The type ^^{ }^^
 denotes the empty record type.
 
-==== Array types ====
+=== Array types ===
 
 <p>An //array type// is a subtype of the ^^public::Array^^ type that
 has type constraints on some prefix of the set of all possible
@@ -121,7 +118,7 @@ integer-indexed properties. An array types may be either
 <p>Array types are arranged implicitly into a subtype relation through
 structural comparison of their property constraints.
 
-===== Fixed-length array types =====
+==== Fixed-length array types ====
 
 <p>A //fixed-length array type// describes an explicit set of initial
 integer-indexed property constraints that must be satisfied by properties
@@ -131,14 +128,14 @@ found at those indices.
 listing the types of the specified properties in a comma-separated
 list enclosed in square brackets.
 
-<p>For example, the type ^^[Number, String]^^ describes arrays of
-length at least 2, where the entry at index 0 has type ^^Number^^ and
-the entry at index 1 has type ^^String^^.
+<p>For example, the type ^^[Number, String]^^ describes fixed-length
+arrays of length at least 2, where the entry at index 0 has type
+^^Number^^ and the entry at index 1 has type ^^String^^.
 
-<p>The type ^^[ ]^^ describes arrays of length at least 0, that is, it
-describes all arrays.
+<p>The type ^^[ ]^^ describes fixed-length arrays of length at least
+0, that is, it describes all fixed-length arrays.
 
-===== Variable-length array types =====
+==== Variable-length array types ====
 
 <p>A //variable-length array type// describes an explicit set of
 initial integer-indexed property constraints and then a //final
@@ -149,13 +146,13 @@ properties (including zero further properties).
 fixed-length array is, but concludes its type list with symbol ^^...^^
 and a trailing type expression.
 
-<p>For example, the type ^^[Number, ...String]^^ describes arrays of
+<p>For example, the type ^^[Number, ... String]^^ describes arrays of
 length at least 1, where the entry at index 0 has type ^^Number^^, and
-any remaining entries have type ^^String^^. The type ^^[...Number]^^
+any remaining entries have type ^^String^^. The type ^^[ ... Number]^^
 describes arrays of zero or more elements, all of which must be of
 type ^^Number^^.
 
-==== Union types ====
+=== Union types ===
 
 <p>A //union type// is a storage type that is populated by all values
 that populate all of the types that make up the union.
@@ -172,7 +169,7 @@ annotated with this type can therefore hold either instances of the
 <p>No value has a union type as its allocated type. Union types
 are only meaningful as the storage types of properties.
 
-==== Function types ====
+=== Function types ===
 
 <p>A //function type// is a subtype of the ^^public::Function^^ type
 that describes additional type constraints on any function populating
@@ -262,12 +259,11 @@ type of a ''substring'' function might be specified as:
 
 **
 {{{
-
     function(str : String, start : double, end : double ) : String
 }}}
 **
 
-==== Nullable types ====
+=== Nullable types ===
 
 <p> A //nullable type// is an abbreviation for a union between some 
 type and the null type.
@@ -281,7 +277,7 @@ the union type ^^(String | null)^^.
 given further special treatment.
 
 
-==== Non-null types ====
+=== Non-null types ===
 
 <FIXME>Cormac recently reformulated the non-null operator such that it does *not* model
 deletion-of-null-from-union but rather persists, as a normal-form of a type term, wrapping a class
@@ -296,7 +292,7 @@ class or interface type.
 <p>For example, the non-null type ^^!String^^ is populated by instances of ^^public::String^^ but
 //excludes// null values.
 
-==== Parametric types ====
+=== Parametric types ===
 
 <p>A //parametric type// is a user-defined //type constructor// -- not
 a proper type -- associated with some fixed definition such as a
@@ -323,7 +319,7 @@ variable ^^X^^. This class therefore also serves as a parametric type
 that can be used in type applications to form proper types.
 
 
-==== Type applications ====
+=== Type applications ===
 
 
 <p>A //type application// is a combination of a parametric type with a
@@ -339,19 +335,19 @@ expressions, and a greater-than character.
 class type that can be used as the allocated type of new objects.
 
 
-==== Type names ====
+=== Type names ===
 
 <p>A //type name// is a symbolic reference to a class, an interface, a
 type definition, or a type variable bound by a parameter in a
 parametric type.
 
 <p>A type name is denoted in a type expression by the same syntax as
-an lexical reference expression. 
+a name expression. 
 
 <p>A type name that refers to a class resolves to a class type.
 A type name that refers to an interface resolves to an interface type.
 
-=== Semantics of the Type Language ===
+== Semantics of the Type Language ==
 
 <IMPL>
 <INCLUDE file="ast.sml" name="datatype TYPE">
@@ -378,7 +374,7 @@ Subtyping is reflexive, so every type is a subtype of itself.
 and ^^T^^ is in turn a subtype of ^^U^^, then ^^S^^ is
 also a subtype of ^^U^^.
 
-==== Implementation of the Subtype Relation ====
+=== Implementation of the Subtype Relation ===
 
 <p> The subtype relation is defined by the following function
 ''subType''.  This function takes an additional argument called
@@ -447,6 +443,10 @@ element in the array than the subtype does.  For example, ^^[Number,
 String, String, ... String]^^ is a subtype of ^^[Number,
 ... String]^^, via transitivity.
 
+<NOTE>Since ^^...^^ denotes concrete syntax, we use the
+ //meta-syntax// ^^S_{1}, .., S_{n}^^ to denote a sequence of
+ zero-or-more comma-separated types.
+
 <p> A variable-length array type ^^[S_{1}, .., S_{n}, ... S]^^ is a subtype
 of ^^[T_{1}, .., T_{n}, ... T]^^ if ^^S^^ is equivalent to ^^T^^ and if each
 ^^S_{i}^^ is equivalent to ^^T_{i}^^ for i in 1..n.
@@ -482,18 +482,18 @@ covariant in the result type.
 <p> This rule generalizes to ^^this^^ arguments, default arguments,
 and rest arguments according to the following rule, where the number
 of default arguments (indicated via the ^^=^^ symbol) in each function
-type may be zero, and where ^^[... ]^^ indicates an optional rest
+type may be zero, and where ^^[...]^^ indicates an optional rest
 argument.  A function type
 
 **
 {{{
-    function(this:S_{1}, S_{2}, .., S_{n}, S_{n+1}=, .., S_{m}=, [... ]) : U
+    function(this:S_{1}, S_{2}, .., S_{n}, S_{n+1}=, .., S_{m}=, [...]) : U
 }}}
 **
 is a subtype of
 **
 {{{
-    function(this:T_{1}, T_{2}, .., T_{p}, T_{p+1}=, .., T_{q}=, [... ]) : R
+    function(this:T_{1}, T_{2}, .., T_{p}, T_{p+1}=, .., T_{q}=, [...]) : R
 }}}
 **
 
@@ -551,8 +551,8 @@ check subtyping on the non-generic versions of the two function types.
 <p> The types in a subtype relation may contain free type variables,
 which are assumed to denote the same unknown type in both arguments to
 the subtype relation. For example, within the scope of a binding for a
-type variable ^^X^^, the type ^^[X, X]^^ is a subtype of the type
-^^[X]^^.
+type variable ^^X^^, the type ^^[X, ... X]^^ is a subtype of the type
+^^[ ... X]^^.
 
 <IMPL>
 <INCLUDE file="type.sml" name="and subTypeFunction">
@@ -586,10 +586,10 @@ declared as a //non-null// type via any of the following declarations:
 
 **
 {{{
-    class !C ..
-    class !C.&lt;X_{1}, .., X_{n}> ..
-    interface !C ..
-    interface !C.&lt;X_{1}, .., X_{n}> ..
+    class C! ..
+    class C.&lt;X_{1}, .., X_{n}>! ..
+    interface C! ..
+    interface C.&lt;X_{1}, .., X_{n}>! ..
 }}}
 **
 
@@ -623,7 +623,7 @@ Given an interface definition
 }}}
 **
 
-we have that the type ^^K^^ is a subtype of ^^Ij^^ for j in 1..m.
+the type ^^K^^ is a subtype of ^^Ij^^ for j in 1..m.
 
 <p>These rules generalize to applications of generic classes and interfaces via
 appropriate renaming of bound variables. For example, given a generic
@@ -681,12 +681,12 @@ type ^^public::Function^^.
 
 At run-time, when a type ^^T^^ is encountered in the source program,
 that type is immediately //normalized//. Type normalization consists
-of two phases, //type inlining// followed by //type
+of two phases: //type resolution// followed by //type
 canonicalization//.
 
-=== Type Inlining ===
+=== Type Resolution ===
 
-<p> Type inlining on a type ^^T^^ proceeds as follows:
+<p> Type resolution on a type ^^T^^ proceeds as follows:
 
 <p>
 In the scope of a type definition
@@ -714,15 +714,54 @@ replaced by the type ^^S[y_{1}:=S_{1}, .., y_{n}:=S_{n}]^^.
   
 <p>
 In the scope of a class definition that associates a class name ^^C^^
-with a class definition ''D'', type inlining
+with a class definition ''D'', type resolution
 replaces any ''TypeName'' that refers to ^^C^^ with ''ClassType D''.
 
 <p> Similarly, in the scope of an interface definition that associates
 an interface name ^^I^^ with an interface definition ''D'', type
-inlining replaces any ''TypeName'' that refers to ^^I^^ with
+resolution replaces any ''TypeName'' that refers to ^^I^^ with
 ''InterfaceType D''.
 
-<p>The type inlining code is not presented here.
+<p>The type resolution code is not presented here.
+
+==== Implementation of Type Resolution ====
+
+<p>The following function ''resolveTypeNames'' performs type
+resolution on a particular type ''ty'' in the context of an
+environment ''ty''.
+
+<p>This function relies on the auxiliary function
+''Fixture.resolveNameExpr'' (described in section ...) to resolve each
+type name. The function ''Fixture.resolveNameExpr'' returns the
+corresponding fixture (as the third component of the result triple),
+plus the environment that fixture was defined in, and the
+fully-resolved name for the given name expression.
+
+<p> If the resulting fixture is for a non-parametric type definition,
+the body of that type definition is resolved in its 
+environment, and then replaces the original type name.
+
+<p> If the resulting fixture is for a class or interface definition,
+the type name is replaced by a class type or an interface type.
+
+<p> A type application that refers to a type-parametric type
+definition is replaced by the body of that type definition, after the
+replacement of each formal parameter name with the corresponding
+resolved type argument.
+
+<p> If none of the above cases apply, then ''resolveTypeNames'' uses
+the helper function ''mapType'' to perform type name resolution on
+each sub-term of the given type.
+
+<p>The function ''error'' reports error messages, and the module
+''LogErr'' contains functions for converting various data structures
+into corresponding Strings.
+
+<IMPL>
+<INCLUDE file="type.sml" name="fun resolveTypeNames">
+
+<INCLUDE file="type.sml" name="fun mapType">
+
 
 === Type Canonicalization ===
 
@@ -741,7 +780,7 @@ support type-parametric classes.
 
 === Normalized Types ===
 
-<p>A //normalized type// is one that is the result of this
+<p>A //normalized type// is one that is the result of the preceeding
 normalization process.
 
 <p>Normalized types do not include:
