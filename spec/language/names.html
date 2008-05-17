@@ -16,17 +16,14 @@ SCOPE:                      The structure and resolution of names
 <hr>
 -->
 
-<SPECNOTE> This introduction is normative but may eventually be moved
-into other parts of the specification.
-
-<P> Names in ECMAScript are constants and are comprised of a namespace
+<P> Names in ECMAScript are constants that are comprised of a namespace
 value and an identifier.
 
-<P> Names denote types, namespaces, and locations.  The denotation of
-a name depends on the context of the name's use: When a name is used
-in a type annotation context it denotes a type; when it is used in a
-qualifier context it denotes a namespace; and in all other contexts it
-denotes a location.
+<P> Names denote types, namespaces, and locations (properties bound in
+objects and scopes).  The denotation of a name depends on the context
+of the name's use: When a name is used in a type annotation context it
+denotes a type; when it is used in a qualifier context it denotes a
+namespace; and in all other contexts it denotes a location.
 
 <P> //Unqualified names// are expressed as simple identifiers, for
 example ''encodeURI''.  //Qualified names// are expressed as pairs of
@@ -58,31 +55,34 @@ the reference ''s.substring'').
 reference to a name //bound// in the //scope// of the reference; each
 entry in the chain formed by active scope objects binds names to which
 the reference may resolve, with resolutions in scopes closer to the
-point of reference preferred over those in scopes further away.
-
-<FIXME> "Close" and "far away" are fuzzy / imprecise.
+point of reference (in "inner scopes") preferred over those in scopes
+further away (in "outer scopes").
 
 <P> In the case of a property reference a name is resolved as a
 reference to a property on a specific object; each entry in the chain
-formed by the object and its prototype objects provides named
+formed by the object and its prototype objects in order provides named
 properties to which the reference may resolve, with resolutions in
-objects closer to the original object preferred over those higher up
+objects closer to the original object preferred over those further out
 in the prototype chain.
 
-<FIXME> "Close" and "high up" are fuzzy / imprecise.
+<P> A reference may be found to be ambiguous.  The resolution
+algorithm incorporates several forms of disambiguation, described
+later, but some references are inherently ambiguous.  Such references
+cause errors to be signalled at definition or evaluation time.
 
 <P> Names that denote types, namespaces, and locations are resolved by
-the same algorithm.  Suppose an unqualified name denoting a type or
-namespace resolves to a particular type or namespace definition in a
-particular scope.  Then the same unqualified name denoting a location
-will resolve unambiguously to an immutable location that holds a value
-that represents the type or namespace, if resolved in the same scope
-as the first name.  A reservation mechanism ensures that names that
-are resolved at definition time cannot become ambiguous at evaluation
-time by the introduction of new bindings.
+the same algorithm.  Suppose an unqualified name that denotes a type
+or namespace is resolved to a particular type or namespace definition
+in a particular scope.  Then the same unqualified name denoting a
+location will be resolved unambiguously to an immutable location that
+holds a value that represents the type or namespace, if resolution
+takes place in the same scope as for the first name.  A //reservation
+mechanism// ensures that names that are resolved at definition time
+cannot become ambiguous at evaluation time by the introduction of new
+bindings.
 
 
-== Name values ==
+== Name Values ==
 
 <p>A name is a constant value comprised of a namespace value and an
 identifier.
@@ -108,11 +108,12 @@ only if their contained identifier values are the same object.
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
 <INCLUDE file="fixture.sml" name="fun compareNamespaces">
 
+<!--
 <FIXME> It appears to me that we could simplify here by saying that
 opaque namespaces are equal iff they represent the same object.  Are
 there SML reasons why that might not work?  Do we not have an
 identifier in each object value to make sure that is already possible?
-
+-->
 
 == The namespace <u>public</u> ==
 
@@ -173,7 +174,7 @@ inner scope; name expressions in the inner scope will not be able to
 access the outer binding.
 
 <P> In this Specification, the nesting of scopes is modelled as a
-list of ribs during compilation and a list of objects during evaluation.
+list of ribs in the definition phase and a list of objects during evaluation.
 Both environments are generically called the //scope chain//. Which kind
 of list is being referred to will be clear from the context in which the 
 term is used.
@@ -186,18 +187,20 @@ is in effect.
 
 <FIXME> What's a fixture? Is it defined somewhere?
 
-<FIXME> Exhibit the compile-time and run-time structure for scope chains here.
+<FIXME> Exhibit the definition-time and evaluation-time structures
+for scope chains here.
 
-<P> Some objects that appear on run-time scope chains are dynamically
-extensible, in effect providing a form of dynamic scope.  For example,
-class objects appear on the scope chain of class and instance methods,
-and properties can be added to and removed from class objects; these
-properties then become visible and invisible to the methods.
+<P> Some objects that appear on evaluation-time scope chains are
+dynamically extensible, in effect providing a form of dynamic scope.
+For example, class objects appear on the scope chain of class and
+instance methods, and properties can be added to and removed from
+class objects; these properties then become visible and invisible to
+the methods.
 
 <P> In order for ECMAScript to have a lexically scoped flavor,
-bindings that are textually visible (//lexical bindings//) are
+bindings that are textually visible (//lexical bindings//) are usually
 preferred over dynamically added bindings (//dynamic bindings//)
-during name resolution.
+during name resolution.  See the section "Name Resolution" below.
 
 == Name Expressions ==
 
@@ -345,7 +348,10 @@ scope nested inside the one that opened ^^ns1^^, then we are left with
 just ^^ns2^^ -- and a single binding, ^^ns2::n^^.
 
 <P> (The motivation for disambiguation is simple: disambiguation
-allows more programs to run.)
+allows more programs to run.  Furthermore, since the priority or
+namespaces during disambiguation is under the control of the
+programmer, the programmer can rely on disambiguation to control which
+names that are found.)
 
 <P> The third complication is that some names are required to be
 resolved successfully at definition time -- names that denote
@@ -355,9 +361,9 @@ programs more easily comprehensible.)  The consequence of that is that
 namespace and type references are illegal inside scopes introduced by
 ''with'' or scopes that may be extended by the ''eval'' operator,
 because those scopes make definition time resolution impossible --
-their contents are unknown.  (It is possible to ease that restriction
-in various ways but we have not done so.)  That's not a significant
-problem, it's a simple syntactic check.
+their contents are unknown.  Such programs result in a syntax error
+being signalled.  (It is possible to ease that restriction
+in various ways but we have not done so.)
 
 <P> However, we also require that type and namespace names that are
 resolved at definition time must resolve to the same bindings that
@@ -405,14 +411,9 @@ example above neither ''public::T'' nor ''internal::T'' would become
 reserved, as those namespaces are at lower priority levels than
 ''NS1'' and ''NS2''.
 
-<!--
-<p>The evaluation of a name expression depends on where that name occurs. Name expressions that occur
-in namespace expressions and type expressions are resolved statically to namespace and type fixtures,
-respectively. All other name expressions are resolved to a storage location during evaluation.
-
-<FIXME> we need to talk about ribs (probably when we introduce scopes above). And we need to talk about
-how static name resolution operates on ribs and dynamic name resolution operates on scope chains.
--->
+<NOTE> Top-level "use&nbsp;namespace" pragmas are given a higher
+priority level than names originating "outside" the compilation unit,
+as is the case for ''public'' and ''internal''.
 
 
 === Definition-Time Resolution of Namespace and Type Expressions ===
