@@ -258,37 +258,52 @@ fun selectNamespacesByGlobalNames (identifier: IDENTIFIER,
     end
 
 fun selectNamespacesByOpenNamespaces ([], _) = []
- |  selectNamespacesByOpenNamespaces (namespacesList: NAMESPACE_SET list,
-                                      namespaces: NAMESPACE_SET)
+
+ |  selectNamespacesByOpenNamespaces (namespacesList : NAMESPACE_SET list,
+                                      namespaces     : NAMESPACE_SET)
     : NAMESPACE list =
     let
         val matches = intersectNamespaces (hd namespacesList, namespaces)
     in
         case matches of
-            [] => selectNamespacesByOpenNamespaces (tl namespacesList, namespaces)
-          | _ => matches
+
+            [] 
+            => selectNamespacesByOpenNamespaces (tl namespacesList, namespaces)
+
+          | _
+            => matches
     end
 
-fun ribSearch (rib: Ast.RIB, 
-               namespaces: NAMESPACE_SET, 
-               identifier: IDENTIFIER)
+fun ribSearch (rib        : Ast.RIB, 
+               namespaces : NAMESPACE_SET, 
+               identifier : IDENTIFIER)
     : (Ast.RIB * NAMESPACE_SET) option =
-    case List.filter (fn ns => hasFixture rib (Ast.PropName {ns=ns,id=identifier})) namespaces of
-        [] => NONE
-      | m => SOME (rib, m)
+    case List.filter (fn ns => 
+                         hasFixture rib (Ast.PropName {ns=ns, id=identifier}))
+                     namespaces of
+
+        [] 
+        => NONE
+
+      | m 
+        => SOME (rib, m)
 
 fun ribListSearch ([], _, _) = NONE
-  | ribListSearch (ribs: Ast.RIBS, 
-                   namespaces: NAMESPACE_SET, 
-                   identifier: IDENTIFIER)
+
+  | ribListSearch (ribs       : Ast.RIBS, 
+                   namespaces : NAMESPACE_SET, 
+                   identifier : IDENTIFIER)
     : (Ast.RIBS * NAMESPACE_SET) option =
     let
         val rib = hd ribs
         val matches = ribSearch (rib, namespaces, identifier)
     in
         case matches of
-            NONE => ribListSearch (tl ribs, namespaces, identifier)
-          | SOME (_, m) => SOME (ribs, m)
+            NONE 
+            => ribListSearch (tl ribs, namespaces, identifier)
+
+          | SOME (_, m) 
+            => SOME (ribs, m)
     end
 
 fun getInstanceBindingNamespaces (rib: Ast.RIB, 
@@ -305,54 +320,76 @@ fun getInstanceBindingNamespaces (rib: Ast.RIB,
     namespaces
 
 fun selectNamespacesByClass ([], namespaces, _) = namespaces
- |  selectNamespacesByClass (instanceRibs: Ast.RIBS,
-                             namespaces: NAMESPACE_SET, 
-                             identifier: IDENTIFIER)
+
+ |  selectNamespacesByClass (instanceRibs : Ast.RIBS,
+                             namespaces   : NAMESPACE_SET, 
+                             identifier   : IDENTIFIER)
     : NAMESPACE list =
     let
         val rib = hd instanceRibs
         val bindingNamespaces = 
             getInstanceBindingNamespaces (rib, identifier, namespaces)
-        val matches = intersectNamespaces (bindingNamespaces, namespaces)
+        val matches = 
+            intersectNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
-            [] => selectNamespacesByClass (tl instanceRibs, namespaces, identifier)
-          | _ => matches
+
+            [] 
+            => selectNamespacesByClass (tl instanceRibs, 
+                                        namespaces, 
+                                        identifier)
+
+          | _ 
+            => matches
     end
 
-fun selectNamespaces (identifier: IDENTIFIER, namespaces: NAMESPACE_SET, 
-                      instanceRibs: Ast.RIBS, openNamespaces: OPEN_NAMESPACES)
+fun selectNamespaces (identifier     : IDENTIFIER, 
+                      namespaces     : NAMESPACE_SET, 
+                      instanceRibs   : Ast.RIBS, 
+                      openNamespaces : OPEN_NAMESPACES)
     : NAMESPACE_SET =
     let
         val openNamespaceSet = List.concat (openNamespaces)
     in
         case namespaces of
-            _ :: [] => namespaces
+
+            _ :: [] 
+            => namespaces
+
           | _ =>
             let
                 val matches' = 
-                    selectNamespacesByClass (instanceRibs, openNamespaceSet, 
+                    selectNamespacesByClass (instanceRibs, 
+                                             openNamespaceSet, 
                                              identifier)
             in
                 case matches' of
-                    [] => raise (LogErr.NameError "internal error")
-                  | _ :: [] => matches'
+                    [] 
+                    => raise (LogErr.NameError "internal error")
+
+                  | [_]
+                    => matches'
+
                   | _ =>
                     let
                         val matches'' = 
-                            selectNamespacesByOpenNamespaces (openNamespaces, 
+                            selectNamespacesByOpenNamespaces (openNamespaces,
                                                               namespaces)
                     in 
                         case matches'' of
-                            [] => raise (LogErr.NameError "internal error")
-                          | _ => matches''
+
+                            [] 
+                            => raise (LogErr.NameError "internal error")
+
+                          | _ 
+                            => matches''
                     end
             end
     end
 
-fun resolveQualifiedName (ribs: Ast.RIBS) 
-                         (identifier: IDENTIFIER) 
-                         (namespaceExpr: Ast.NAMESPACE_EXPRESSION)
+fun resolveQualifiedName (ribs          : Ast.RIBS) 
+                         (identifier    : IDENTIFIER) 
+                         (namespaceExpr : Ast.NAMESPACE_EXPRESSION)
     : (Ast.RIBS * NAME * Ast.FIXTURE) =
     let
         val ns = resolveNamespaceExpr ribs namespaceExpr
@@ -362,32 +399,49 @@ fun resolveQualifiedName (ribs: Ast.RIBS)
                              else search rs
           | search [] = []
     in
-        case search ribs of 
-            [] => error ["qualified name not present in ribs: ", LogErr.name name]
-          | (rib::ribs) => ((rib::ribs), name, (getFixture rib (Ast.PropName name)))
+        case (search ribs) of 
+            [] 
+            => error ["qualified name not present in ribs: ", LogErr.name name]
+
+          | ribs'
+            => (ribs', name, getFixture (hd ribs') (Ast.PropName name))
     end
 
 
-and resolveUnqualifiedName (ribs: Ast.RIBS) (identifier: IDENTIFIER) (openNamespaces: OPEN_NAMESPACES)
+and resolveUnqualifiedName (ribs           : Ast.RIBS) 
+                           (identifier     : IDENTIFIER) 
+                           (openNamespaces : OPEN_NAMESPACES)
     : (Ast.RIBS * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
         val matches = ribListSearch (ribs, namespaces, identifier)
     in
         case matches of
-            NONE => NONE
-          | SOME (ribs, namespace :: []) => SOME (ribs, {ns=namespace, id=identifier})
-          | SOME (ribs, namespaces) =>
-            let
-                val matches' = selectNamespaces (identifier, namespaces, [], openNamespaces)
-            in
-                case matches' of
-                    namespace :: [] => SOME (ribs, {ns=namespace, id=identifier})
-                  | [] => raise (LogErr.NameError "internal error")
-                  | _ => raise (LogErr.NameError ("ambiguous reference:" ^ 
-                                                  LogErr.fmtNss matches' ^ "::" ^ 
-                                                  (Ustring.toAscii identifier)))
-            end
+            NONE
+            => NONE
+
+          | SOME (ribs, namespace :: []) 
+            => SOME (ribs, {ns=namespace, id=identifier})
+
+          | SOME (ribs, namespaces) 
+            => let
+                   val matches' = selectNamespaces (identifier, 
+                                                    namespaces, 
+                                                    [], 
+                                                    openNamespaces)
+               in
+                   case matches' of
+                       namespace :: [] 
+                       => SOME (ribs, {ns=namespace, id=identifier})
+
+                     | [] 
+                       => raise (LogErr.NameError "internal error")
+
+                     | _ =>
+                       raise (LogErr.NameError ("ambiguous reference:" ^ 
+                                                LogErr.fmtNss matches' ^ "::" ^ 
+                                                (Ustring.toAscii identifier)))
+               end
     end
 
 (*
@@ -396,21 +450,29 @@ and resolveUnqualifiedName (ribs: Ast.RIBS) (identifier: IDENTIFIER) (openNamesp
 
 *)
 
-and resolveNameExpr (ribs:Ast.RIBS) 
-                    (ne:Ast.NAME_EXPRESSION) 
+and resolveNameExpr (ribs : Ast.RIBS) 
+                    (ne   : Ast.NAME_EXPRESSION) 
     : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
+
     case ne of
-        Ast.QualifiedName { namespace, identifier } => 
-        resolveQualifiedName ribs identifier namespace
-      | Ast.UnqualifiedName { identifier, openNamespaces, ... } => 
-        case (resolveUnqualifiedName ribs identifier openNamespaces) of
-            NONE => error ["unresolved name ", LogErr.nameExpr ne]
-          | SOME ([], _) => error ["unresolved name ", LogErr.nameExpr ne]
-          | SOME ((rib::[]), name) => 
-                ((reserveNames name openNamespaces); 
-                (rib::[], name, (getFixture rib (Ast.PropName name))))
-          | SOME ((rib::ribs), name) => 
-                (rib::ribs, name, (getFixture rib (Ast.PropName name)))
+        Ast.QualifiedName { namespace, identifier } 
+        => resolveQualifiedName ribs identifier namespace
+
+      | Ast.UnqualifiedName { identifier, openNamespaces, ... } 
+        => case (resolveUnqualifiedName ribs identifier openNamespaces) of
+
+            NONE 
+            => error ["unresolved name ", LogErr.nameExpr ne]
+
+          | SOME ([], _)
+            => error ["unresolved name ", LogErr.nameExpr ne]
+
+          | SOME ([rib], name) 
+            => ( reserveNames name openNamespaces ;
+                 ([rib], name, getFixture rib (Ast.PropName name)) )
+
+          | SOME (ribs, name) 
+            => (ribs, name, getFixture (hd ribs) (Ast.PropName name))
 
 and reserveNames (name) (openNamespaces) 
     = ()  (* FIXME needs implementation *)

@@ -1232,35 +1232,54 @@ fun getPrototypeObject (Obj {proto, ...}: OBJECT)
       | _ => NONE
 
 fun searchObject (NONE, _, _, _) = NONE
-  | searchObject (SOME object: OBJECT option, 
-                  identifier: IDENTIFIER, 
-                  namespaces: NAMESPACE_SET, 
-                  fixedOnly: bool)
+
+  | searchObject (SOME object : OBJECT option, 
+                  identifier  : IDENTIFIER, 
+                  namespaces  : NAMESPACE_SET, 
+                  fixedOnly   : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = getBindingNamespaces (object, identifier, namespaces, fixedOnly)
+        val matches = getBindingNamespaces (object, 
+                                            identifier, 
+                                            namespaces, 
+                                            fixedOnly)
     in
         case matches of
-            [] => if fixedOnly
-                  then NONE 
-                  else searchObject (getPrototypeObject (object), identifier, 
-                                     namespaces, fixedOnly)
-          | _ => SOME (object, matches)
+            [] 
+            => if fixedOnly
+               then NONE 
+               else searchObject (getPrototypeObject (object), 
+                                  identifier, 
+                                  namespaces, 
+                                  fixedOnly)
+
+          | _ 
+            => SOME (object, matches)
     end
 
 fun objectListSearch ([], _, _, _) = NONE
-  | objectListSearch (objects: OBJECT list,
-                      namespaces: NAMESPACE_SET,
-                      identifier: IDENTIFIER,
-                      fixedOnly: bool)
+
+  | objectListSearch (objects    : OBJECT list,
+                      namespaces : NAMESPACE_SET,
+                      identifier : IDENTIFIER,
+                      fixedOnly  : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
         val object = hd objects
-        val matches = searchObject (SOME object, identifier, namespaces, fixedOnly)
+        val matches = searchObject (SOME object, 
+                                    identifier, 
+                                    namespaces, 
+                                    fixedOnly)
     in
         case matches of
-            NONE => objectListSearch (tl objects, namespaces, identifier, fixedOnly)
-          | _ => matches
+            NONE 
+            => objectListSearch (tl objects, 
+                                 namespaces, 
+                                 identifier, 
+                                 fixedOnly)
+
+          | _ 
+            => matches
     end
 
 (*
@@ -1277,32 +1296,42 @@ fun searchMutableScopeObject (object: OBJECT,
     end
 *)
 
-fun searchScope (scope: SCOPE,
-                 namespaces: NAMESPACE_SET,
-                 identifier: IDENTIFIER,
-                 fixedOnly: bool)
+(* FIXME need to handle eval scopes specially too *)
+fun searchScope (scope      : SCOPE,
+                 namespaces : NAMESPACE_SET,
+                 identifier : IDENTIFIER,
+                 fixedOnly  : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
         val (object, kind) = getScopeObjectAndKind (scope)
     in 
-        case (kind, fixedOnly) of (* FIXME need to handle eval scopes specially too *)
-            (WithScope, true) => searchObject (SOME object, identifier, namespaces, false)
-          | (WithScope, false) => NONE
-          | (_,_) => searchObject (SOME object, identifier, namespaces, fixedOnly)
+        case (kind, fixedOnly) of
+            (WithScope, true) 
+            => searchObject (SOME object, identifier, namespaces, false)
+
+          | (WithScope, false) 
+            => NONE
+
+          | (_,_)
+            => searchObject (SOME object, identifier, namespaces, fixedOnly)
     end
 
 fun searchScopeChain (NONE, _, _) = NONE
-  | searchScopeChain (SOME scope: SCOPE option,
-                      identifier: IDENTIFIER,
-                      namespaces: NAMESPACE_SET)
+
+  | searchScopeChain (SOME scope : SCOPE option,
+                      identifier : IDENTIFIER,
+                      namespaces : NAMESPACE_SET)
     : (OBJECT * NAMESPACE_SET) option =
     let
         val matches = searchScope (scope, namespaces, identifier, true)
         val Scope { parent, ... } = scope
     in
         case matches of
-            NONE => searchScopeChain (parent, identifier, namespaces)
-          | _ => matches
+            NONE 
+            => searchScopeChain (parent, identifier, namespaces)
+
+          | _
+            => matches
     end
 
 fun instanceRibsOf (object: OBJECT)

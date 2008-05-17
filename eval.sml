@@ -3782,30 +3782,42 @@ and resolveObjectReference (regs:REGS)
     let
         val v = evalExpr regs object
         val obj = case v of 
-                      Object ob => ob
-                    | Null => 
-                      throwExn (newRefErr regs ["object reference on null value"])
-                    | Undefined => 
-                      throwExn (newRefErr regs ["object reference on undefined value"])
+                      Object ob
+                      => ob
+
+                    | Null
+                      => throwExn (newRefErr regs ["object reference on null value"])
+
+                    | Undefined 
+                      => throwExn (newRefErr regs ["object reference on undefined value"])
     in
         case name of
-            UnqualifiedName { identifier, openNamespaces, ... } => 
-            (SOME obj, resolveUnqualifiedObjectReference regs obj identifier 
-                                                         openNamespaces)
-          | QualifiedName { namespace, identifier } => 
-            resolveQualifiedObjectReference regs obj identifier namespace
+            UnqualifiedName { identifier, openNamespaces, ... }
+            => (SOME obj, 
+                resolveUnqualifiedObjectReference regs 
+                                                  obj 
+                                                  identifier 
+                                                  openNamespaces)
+
+          | QualifiedName { namespace, identifier }
+            => resolveQualifiedObjectReference regs obj identifier namespace
     end
+
   | resolveObjectReference regs 
                            (ObjectIndexReference {object, index, ...}) 
                            errIfNotFound = 
     let
         val v = evalExpr regs object
         val obj = case v of 
-                      Object ob => ob
-                    | Null => 
-                      throwExn (newRefErr regs ["object reference on null value"])
-                    | Undefined => 
-                      throwExn (newRefErr regs ["object reference on undefined value"])
+                      Object ob 
+                      => ob
+
+                    | Null 
+                      => throwExn (newRefErr regs ["object reference on null value"])
+
+                    | Undefined 
+                      => throwExn (newRefErr regs ["object reference on undefined value"])
+
         val idx = evalExpr regs index
         val identifier = toUstring regs idx  
         (* FIXME if its an Name, then don't convert *)
@@ -3813,6 +3825,7 @@ and resolveObjectReference (regs:REGS)
     in
         resolveQualifiedObjectReference regs obj identifier namespace
     end
+
   | resolveObjectReference  regs  _  _ = 
     error regs ["need object reference expression"]
 
@@ -3837,18 +3850,27 @@ and resolveUnqualifiedObjectReference (regs: REGS)
         val result = searchObject (SOME object, identifier, namespaces, false)
     in 
         case result of
-            NONE => (object, {ns=publicNS, id=identifier})
-          | SOME (object, namespaces) =>
-            let
-                val instanceRibs = instanceRibsOf (object)
-                val result = Fixture.selectNamespaces (identifier, namespaces, 
-                                                       instanceRibs, openNamespaces)
-            in 
-                case result of
-                    [] => internalError ["empty namespace set"]
-                  | namespace :: [] => (object, {ns=namespace, id=identifier})
-                  | _ => error regs ["ambiguous reference"]
-            end
+            NONE 
+            => (object, {ns=publicNS, id=identifier})
+
+          | SOME (object, namespaces) 
+            => let
+                   val instanceRibs = instanceRibsOf (object)
+                   val result = Fixture.selectNamespaces (identifier, 
+                                                          namespaces, 
+                                                          instanceRibs, 
+                                                          openNamespaces)
+               in 
+                   case result of
+                       [] 
+                       => internalError ["empty namespace set"]
+
+                      | namespace :: []
+                       => (object, {ns=namespace, id=identifier})
+
+                      | _
+                       => error regs ["ambiguous reference"]
+               end
     end
 
 and resolveRefExpr (regs:REGS)
@@ -3878,23 +3900,25 @@ and evalLetExpr (regs:REGS)
  * ES-262-3 11.2.1: Resolving member expressions to REFs.
  *)
 
-and resolveLexicalReference (regs: REGS)
-                            (nameExpression: NAME_EXPRESSION)
-                            (errorIfNotFound: bool)
+and resolveLexicalReference (regs            : REGS)
+                            (nameExpression  : NAME_EXPRESSION)
+                            (errorIfNotFound : bool)
     : (OBJ * NAME) =
     let
         val {scope, ...} = regs
     in 
         case nameExpression of
-            QualifiedName {identifier, namespace} => 
-            resolveQualifiedLexicalReference regs identifier namespace
-          | UnqualifiedName { identifier, openNamespaces, ... } => 
-            resolveUnqualifiedLexicalReference regs identifier openNamespaces
+
+            QualifiedName {identifier, namespace} 
+            => resolveQualifiedLexicalReference regs identifier namespace
+
+          | UnqualifiedName { identifier, openNamespaces, ... }
+            => resolveUnqualifiedLexicalReference regs identifier openNamespaces
     end
 
-and resolveQualifiedLexicalReference (regs: REGS)
-                                     (identifier: IDENTIFIER)
-                                     (namespaceExpr: NAMESPACE_EXPRESSION)
+and resolveQualifiedLexicalReference (regs          : REGS)
+                                     (identifier    : IDENTIFIER)
+                                     (namespaceExpr : NAMESPACE_EXPRESSION)
     : (OBJ * NAME) =
     let
         val {scope, global, ...} = regs
@@ -3902,13 +3926,16 @@ and resolveQualifiedLexicalReference (regs: REGS)
         val result = searchScopeChain (SOME scope, identifier, [namespace])
     in 
         case result of
-            NONE => (global, {ns=publicNS, id=identifier})
-          | SOME (object, namespaces) => (object, {ns=namespace, id=identifier})
+            NONE
+            => (global, {ns=publicNS, id=identifier})
+
+          | SOME (object, namespaces)
+            => (object, {ns=namespace, id=identifier})
     end
     
-and resolveUnqualifiedLexicalReference (regs: REGS)
-                                       (identifier: IDENTIFIER)
-                                       (openNamespaces: OPEN_NAMESPACES)
+and resolveUnqualifiedLexicalReference (regs           : REGS)
+                                       (identifier     : IDENTIFIER)
+                                       (openNamespaces : OPEN_NAMESPACES)
     : (OBJ * NAME) =
     let
         val {scope, global, ...} = regs
@@ -3916,16 +3943,24 @@ and resolveUnqualifiedLexicalReference (regs: REGS)
         val result = searchScopeChain (SOME scope, identifier, namespaces)
     in 
         case result of
-            NONE => (global, {ns=publicNS, id=identifier})
-          | SOME (object, namespaces) =>
-            let
-                val classRibs = instanceRibsOf (object)
-                val result = Fixture.selectNamespaces (identifier, namespaces, classRibs, openNamespaces)
-            in 
-                case result of
-                    namespace :: [] => (object, {ns=namespace, id=identifier})
-                  | _ => error regs ["ambiguous reference"]
-            end
+            NONE 
+            => (global, {ns=publicNS, id=identifier})
+
+          | SOME (object, namespaces) 
+            => let
+                   val classRibs = instanceRibsOf (object)
+                   val result = Fixture.selectNamespaces (identifier, 
+                                                          namespaces, 
+                                                          classRibs, 
+                                                          openNamespaces)
+               in 
+                   case result of
+                       [namespace] 
+                       => (object, {ns=namespace, id=identifier})
+                          
+                     | _ 
+                       => error regs ["ambiguous reference"]
+               end
     end
 
 and instanceRibsOf (object: OBJ) = []  (* FIXME *)

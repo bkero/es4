@@ -435,7 +435,7 @@ def replaceInclude(m, hdrlvl, fn):
 	return r
     ms = smlInclude.match(m.group(0))
     if ms:
-	return "<PRE>" + extractSML(ms.group(1), ms.group(2)) + "</PRE>"
+	return "<PRE>" + reSML(extractSML(ms.group(1), ms.group(2))) + "</PRE>"
     ms = rulInclude.match(m.group(0))
     if ms:
 	return "<PRE>" + extractRUL(ms.group(1), ms.group(2)) + "\n</PRE>"
@@ -461,6 +461,9 @@ literals = []
 
 def htmlEscape(s):
     return re.sub("<", "&#60;", s)
+
+def reSML(s):
+    return re.sub(r"([^a-zA-Z0-9])(\||=>|abstype|and|andalso|as|case|datatype|do|else|end|exception|fn|fun|handle|if|in|infix|infixr|let|local|nonfix|of|op|open|orelse|raise|rec|then|type|val|with|withtype|while)([^a-zA-Z0-9])", r"\1<b>\2</b>\3", s);
 
 def reEscape(s):
     return re.sub(r"([\(\)\[\]\.\*\+\?\{\}\^\$])", r"\\\1", s)
