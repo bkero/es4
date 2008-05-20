@@ -1,4 +1,84 @@
-<hr>
+<html>
+<head>
+<title>Expressions</title>
+<style>
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
+.section { margin-bottom: -1em; font-family: sans-serif; font-size: smaller }
+.implsection { margin-bottom: -1em; padding-bottom: 0.3em; font-family: sans-serif; font-size: smaller }
+.literal { font-style: normal; font-weight: bold }
+H1,H2,H3,H4,H5,H6 { font-family: sans-serif }
+H1 { font-size: 14pt }
+H2 { font-size: 12pt }
+H3 { font-size: 11pt }
+H4 { font-size: 10pt }
+
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
+
+pre { font-size: 10pt }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-size: 11pt; 
+       margin: 0.75in }
+
+table { font-size: inherit }
+
+.pcounter:before {
+    content: counter(para); 
+}
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    counter-increment: para
+}
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-increment: chapter }
+
+H1 {
+    counter-reset: section para;
+}
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-increment: section }
+
+H2 {
+    counter-reset: subsection para;
+}
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-increment: subsection }
+
+H3 {
+    counter-reset: subsubsection para;
+}
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
+
+H4 {
+    counter-reset: para;
+}
+
+</style>
+</head>
+
+<body><hr>
 = Expressions =
 <hr>
 
@@ -582,7 +662,7 @@ datatype EXPRESSION =
 variable bindings, followed by an expression that uses the variable bindings.
 
 <!-- <pre class="code grammar_start"><em>LetExpression<sup>&alpha;, &beta;</sup></em></pre>
-<pre class="code grammar_end"><em>NonemptyLetBindingList</em></pre> -->
+<pre class="code grammar_end"><em>LetBindingList</em></pre> -->
 
 <P>The list of variable bindings, //LetBindingList//, is a list of zero or
 more //VariableBindings// that is evaluated in order from left to right.
@@ -609,17 +689,16 @@ withtype
 </pre>
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
-<INCLUDE file="eval.sml" name="fun evalLetExpr">
+<INCLUDE file="eval.sml" name="and evalLetExpr">
 
 == Reference Expressions ==
 
-<!-- <pre class="code grammar"><em>LexicalReference<sup>&alpha;, &beta;</sup></em></pre> 
-<pre class="code grammar"><em>SuperExpression</em></pre> 
+<!-- <pre class="code grammar"><em>SuperExpression</em></pre> 
 <pre class="code grammar"><em>MemberExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>CallExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>NewExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>Arguments</em></pre> 
-<pre class="code grammar"><em>ArgumentsList</em></pre> 
+<pre class="code grammar"><em>ArgumentList</em></pre> 
 <pre class="code grammar"><em>PropertyOperator</em></pre> 
 <pre class="code grammar"><em>Brackets</em></pre> 
 <pre class="code grammar"><em>SliceExpression</em></pre> 
@@ -627,15 +706,33 @@ withtype
 <pre class="code grammar"><em>TypeApplication</em></pre> 
 <pre class="code grammar"><em>LeftHandSideExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
-=== Lexical References ===
-===== Semantics =====
-<INCLUDE file="eval.sml" name="and evalLexicalReference">
+=== Super Expressions ===
+
+<P>A super expression can be used to invoke the constructor or a method of a direct superclass.
+To invoke a superclass constructor, the super expression must appear
+in the constructor's initialiser. To invoke a superclass method, the
+super expression must appear in a call expression.
+
+==== Semantics ====
+<INCLUDE file="eval.sml" name="and evalSuperCall">
 
 === Named Property References ===
+
+<P>Properties are accessed by name using dot notation:
+<br/><br/>//MemberExpression . NameExpression//
+<br/>//CallExpression . NameExpression//
+
+
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="and evalObjectNameReference">
 
 === Indexed Property References ===
+
+<P>Indexed properties are accessed by index using bracket notation:
+
+<br/><br/>//MemberExpression// [ //Expression// ]
+<br/>//CallExpression// [ //Expression// ]
+
 ===== Semantics =====
 <INCLUDE file="eval.sml" name="and evalObjectIndexReference">
 
@@ -690,15 +787,15 @@ datatype EXPRESSION =
 
 <INCLUDE file="eval.sml" name="fun evalApplyTypeExpr">
 
-=== Super Expressions ===
+
 
 == Unary Operators ==
 
 <P>A unary expression comprises one operator and an expression that
 serves as the operator's sole operand.
 
-<!-- <pre class="code grammar"><em>PostfixExpression<sup>&alpha;, &beta;</sup></em></pre> -->
-<!-- <pre class="code grammar"><em>UnaryExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+<!-- <pre class="code grammar"><em>PostfixExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>UnaryExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
 ===== Semantics =====
 <P>The abstract representation of a unary expression includes a unary operator
@@ -713,8 +810,38 @@ datatype EXPRESSION =
 
 <INCLUDE file="eval.sml" name="fun evalUnaryExpr">
 
-=== Postfix Increment Operator ===
-=== Postfix Decrement Operator ===
+=== Postfix Increment and Decrement Operators ===
+
+<P>The postfix increment and decrement operators appear to the immediate right-hand side
+of their sole operands:
+
+<br/><br/>//LeftHandSideExpression [no line break]// **++**
+<br/>//LeftHandSideExpression [no line break]// **--**
+
+<P>The postfix increment and decrement operators are similar to the prefix increment
+and decrement operators in that they all change the value of the operand by 1. 
+Unlike the two prefix operators, however, both postfix operators return
+a value equal to that of the operand prior to the change in value.
+
+===== Semantics =====
+<P>The abstract representation of the posfix increment and decrement operators
+includes a unary operator and an expression to which the operator is applied.
+<pre>
+datatype EXPRESSION =
+        UnaryExpr of (UNOP * EXPRESSION)
+      | ...
+
+datatype UNOP =
+        PostIncrement
+      | PostDecrement
+      | ...
+</pre>
+
+<P>This abstract syntax tree is evaluated as if by the following 
+function when its members are passed as arguments:
+
+<INCLUDE file="eval.sml" name="and evalCrement">
+
 === Delete Operator ===
 === Void Operator ===
 === Typeof Operator ===
@@ -742,52 +869,186 @@ datatype EXPRESSION =
 <INCLUDE file="ast.sml" name="datatype BINOP">
 <INCLUDE file="eval.sml" name="and evalBinaryOp">
 
-=== Plus Operator ===
-=== Minus Operator ===
-=== Multiply Operator ===
-=== Divide Operator ===
-=== Remainder Operator ===
-=== Left-Shift Operator ===
-=== Right-Shift Operator ===
-=== Unsigned-Right-Shift Operator ===
-=== Bitwise-And Operator ===
-=== Bitwise-Xor Operator ===
-=== Logical-And Operator ===
-=== Logical-Or Operator ===
-=== InstanceOf Operator ===
-=== In Operator ===
-=== Equals Operator ===
-=== Not-Equals Operator ===
-=== Strict Equals Operator ===
-=== Strict Not-Equals Operator ===
-=== Less-Than Operator ===
-=== Less-Than-Or-Equal Operator ===
-=== Greater-Than Operator ===
-=== Greater-Than-Or-Equal Operator ===
-=== Comma Operator ===
+=== Multiplicative Operators ===
+
+==== Multiply Operator ====
+
+<P>The * operator performs multiplication, producing the product of its operands. Multiplication is commutative.
+Multiplication is not always associative in ECMAScript, because of finite precision.
+<P>The result of a floating-point multiplication is governed by the rules of IEEE 754 double-precision arithmetic:
+<UL>
+  <LI>If either operand is NaN, the result is NaN.
+  <LI>The sign of the result is positive if both operands have the same sign, negative if the operands have different
+signs.
+  <LI>Multiplication of an infinity by a zero results in NaN.
+  <LI>Multiplication of an infinity by an infinity results in an infinity. The sign is determined by the rule already stated
+above.
+  <LI>Multiplication of an infinity by a finite non-zero value results in a signed infinity. The sign is determined by the rule
+already stated above.
+  <LI>In the remaining cases, where neither an infinity or NaN is involved, the product is computed and rounded to the
+nearest representable value using IEEE 754 round-to-nearest mode. If the magnitude is too large to represent,
+the result is then an infinity of appropriate sign. If the magnitude is too small to represent, the result is then a zero of appropriate sign. The ECMAScript language requires support of gradual underflow as defined by IEEE 754.
+</UL>
+==== Divide Operator ====
+
+<P>The / operator performs division, producing the quotient of its operands. 
+The left operand is the dividend and the right operand is the divisor. 
+ECMAScript does not perform integer division. The operands and result of 
+all division operations are double-precision floating-point numbers. 
+The result of division is determined by the specification of
+IEEE 754 arithmetic:
+<UL>
+  <LI>If either operand is NaN, the result is NaN.
+  <LI>The sign of the result is positive if both operands have the same sign, negative if the operands have different
+signs.
+  <LI>Division of an infinity by an infinity results in NaN.
+  <LI>Division of an infinity by a zero results in an infinity. The sign is determined by the rule already stated above.
+  <LI>Division of an infinity by a non-zero finite value results in a signed infinity. 
+The sign is determined by the rule already stated above.
+  <LI>Division of a finite value by an infinity results in zero. The sign is determined by the rule already stated above.
+  <LI>Division of a zero by a zero results in NaN; division of zero by any other finite value results in zero, with the sign
+determined by the rule already stated above.
+  <LI>Division of a non-zero finite value by a zero results in a signed infinity. The sign is determined by the rule already
+stated above.
+  <LI>In the remaining cases, where neither an infinity, nor a zero, nor NaN is involved, the quotient is computed and
+rounded to the nearest representable value using IEEE 754 round-to-nearest mode. If the magnitude is too large
+to represent, the operation overflows; the result is then an infinity of appropriate sign. If the magnitude is too
+small to represent, the operation underflows and the result is a zero of the appropriate sign. The ECMAScript
+language requires support of gradual underflow as defined by IEEE 754.
+</UL>
+==== Remainder Operator ====
+<P>The % operator yields the remainder of its operands from an implied division; 
+the left operand is the dividend and the right operand is the divisor.
+<P>**NOTE** In C and C++, the remainder operator accepts only integral operands; 
+in ECMAScript, it also accepts floating-point operands.
+<P>The result of a floating-point remainder operation as computed by 
+the % operator is not the same as the "remainder" operation defined 
+by IEEE 754. The IEEE 754 "remainder" operation computes the remainder 
+from a rounding division, not a truncating division, and so its 
+behaviour is not analogous to that of the usual integer remainder
+operator. Instead the ECMAScript language defines % on floating-point 
+operations to behave in a manner analogous to that of the Java integer 
+remainder operator; this may be compared with the C library function fmod.
+<P>The result of a ECMAScript floating-point remainder operation is determined by the rules of IEEE arithmetic:
+<UL>
+  <LI>If either operand is NaN, the result is NaN.
+  <LI>The sign of the result equals the sign of the dividend.
+  <LI>If the dividend is an infinity, or the divisor is a zero, or both, the result is NaN.
+  <LI>If the dividend is finite and the divisor is an infinity, the result equals the dividend.
+  <LI>If the dividend is a zero and the divisor is finite, the result is the same as the dividend.
+  <LI>In the remaining cases, where neither an infinity, nor a zero, nor NaN is involved, the floating-point remainder r from a dividend n and a divisor d is defined by the mathematical relation r = n - (d * q) where q is an integer that is negative only if n/d is negative and positive only if n/d is positive, and whose magnitude is as large as possible without exceeding the magnitude of the true mathematical quotient of n and d.
+</UL>
+
+=== Additive Operators ===
+<!--<pre class="code grammar"><em>AdditiveExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+
+==== Plus Operator ====
+<P>The addition operator either performs string concatenation or numeric addition.
+
+==== Minus Operator ====
+
+==== Applying the Plus and Minus operators to number ====
+<P>The + operator performs addition when applied to two operands of numeric type, producing the sum of the
+operands. The - operator performs subtraction, producing the difference of two numeric operands.
+Addition is a commutative operation, but not always associative.
+<P>The result of an addition is determined using the rules of IEEE 754 double-precision arithmetic:
+<UL>
+  <LI>If either operand is NaN, the result is NaN.
+  <LI>The sum of two infinities of opposite sign is NaN.
+  <LI>The sum of two infinities of the same sign is the infinity of that sign.
+  <LI>The sum of an infinity and a finite value is equal to the infinite operand.
+  <LI>The sum of two negative zeros is -0. The sum of two positive zeros, or of two zeros of opposite sign, is +0.
+  <LI>The sum of a zero and a nonzero finite value is equal to the nonzero operand.
+  <LI>The sum of two nonzero finite values of the same magnitude and opposite sign is +0.
+  <LI>In the remaining cases, where neither an infinity, nor a zero, nor NaN is involved, and the operands have the
+same sign or have different magnitudes, the sum is computed and rounded to the nearest representable value
+using IEEE 754 round-to-nearest mode. If the magnitude is too large to represent, the operation overflows and
+the result is then an infinity of appropriate sign. The ECMAScript language requires support of gradual underflow
+as defined by IEEE 754.
+</UL>
+<P>The - operator performs subtraction when applied to two operands of numeric type, 
+producing the difference of its operands; the left operand is the minuend and the 
+right operand is the subtrahend. Given numeric operands a and
+b, it is always the case that a-b produces the same result as a+(-b).
+
+=== Bitwise Shift Operators ===
+<!--<pre class="code grammar"><em>ShiftExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+
+==== Left-Shift Operator ====
+<P>Performs a bitwise left shift operation on the left operand by the amount specified by the right operand.
+==== Right-Shift Operator ====
+<P>Performs a sign-filling bitwise right shift operation on the left operand by the amount specified by the right operand.
+==== Unsigned-Right-Shift Operator ====
+<P>Performs a zero-filling bitwise right shift operation on the left operand by the amount specified by the right operand.
+
+=== Relational Operators ===
+<!--<pre class="code grammar"><em>RelationalExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+<P>**NOTE:** The &beta; symbol signifies that the production has both ''AllowIn'' and ''NoIn'' variants
+unless the production specifically restricts the &beta; symbol to either variant. The ''NoIn'' variants are needed to avoid confusing the ''in'' operator in a relational expression with the ''in'' operator in a ''for'' or ''for-each-in'' statement.
+===== Semantics =====
+<P>The result of evaluating a relational operator is always of type Boolean, 
+reflecting whether the relationship named by the operator holds between its two operands.
+
+<P>The //RelationalExpression// ''NoIn'' productions are evaluated 
+in the same manner as the //RelationalExpression// ''AllowIn''
+productions except that the contained //RelationalExpression// ''NoIn'' 
+is evaluated instead of the contained //RelationalExpression// ''AllowIn'' variant.
+==== Less-Than Operator ====
+==== Less-Than-Or-Equal Operator ====
+==== Greater-Than Operator ====
+==== Greater-Than-Or-Equal Operator ====
+==== The Abstract Relational Comparison Algorithm ====
+<P>The comparison ''x &lt; y'', where ''x'' and ''y'' are values, produces **true**, **false**, or **undefined** (which indicates that at least one operand is **NaN**).
+==== InstanceOf Operator ====
+==== In Operator ====
+
+=== Equality Operators ===
+<!--<pre class="code grammar"><em>EqualityExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+
+===== Semantics =====
+<P>The result of evaluating an equality operator is always of type Boolean, 
+reflecting whether the relationship named by the operator holds between its two operands.
+==== Equals Operator ====
+==== Not-Equals Operator ====
+==== The Abstract Equality Comparison Algorithm ====
+<P>The comparison ''x == y'', where ''x'' and ''y'' are values, produces **true** or **false**.
+
+<P>**NOTE** Given the above definition of equality:
+<P>String comparison can be forced by: &quot;&quot; + a == &quot;&quot; + b.
+<P>Numeric comparison can be forced by: ''a - 0 == b - 0''.
+<P>Boolean comparison can be forced by: ''!a == !b''.
+<P>The equality operators maintain the following invariants:
+<OL>
+  <LI> ''A != B'' is equivalent to ''!(A == B)''.
+  <LI> ''A == B'' is equivalent to ''B == A'', except in the order of evaluation of ''A'' and ''B''.
+</OL>
+<P>The equality operator is not always transitive. For example, there might be two distinct String objects, each representing the same string value; each String object would be considered equal to the string value by the == operator, but the two String objects would not be equal to each other.
+<P>Comparison of strings uses a simple equality test on sequences of code point value values. There is no attempt to use the more complex, semantically oriented definitions of character or string equality and collating order defined in the Unicode 2.0 specification. Therefore strings that are canonically equal according to the Unicode standard could test as unequal. In effect this algorithm assumes that both strings are already in normalised form.
+==== Strict Equals Operator ====
+==== Strict Not-Equals Operator ====
+
+=== Bitwise Operators ===
+<!--<pre class="code grammar"><em>BitwiseAndExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>BitwiseXorExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+
+==== Bitwise-And Operator ====
+==== Bitwise-Xor Operator ====
+
+=== Logical Operators ===
+<!--<pre class="code grammar"><em>LogicalAndExpression<sup>&alpha;, &beta;</sup></em></pre>
+<pre class="code grammar"><em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em></pre> -->
+<SEM>
+<P>**NOTE** The value produced by a &amp;&amp; or || operator is not necessarily of type Boolean. The value produced will always be the value of one of the two operand expressions.
+==== Logical-And Operator ====
+==== Logical-Or Operator ====
+
 
 === Binary Type Operators  ===
 ===== Semantics =====
 <INCLUDE file="ast.sml" name="datatype BINTYPEOP">
 <INCLUDE file="eval.sml" name="fun evalBinaryTypeExpr">
 
-== Yield Expressions ==
-
-===== Semantics =====
-<INCLUDE file="eval.sml" name="fun evalYieldExpr">
-
-== Conditional Operator ==
-
-<p>A conditional expression has the concrete syntax of //ConditionalExpression// 
-or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//. 
- It is evaluated by the function //evalCondExpr// as 
-invoked by the function //evalExpr//.
-
-===== Semantics =====
-<INCLUDE file="eval.sml" name="fun evalConditionalExpr">
-
 == Assignment Operators ==
-
 <!-- <pre class="code grammar"><em>AssignmentExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>CompoundAssignmentOperator</em></pre> -->
 
@@ -813,10 +1074,28 @@ right side.
 <INCLUDE file="ast.sml" name="datatype ASSIGNOP">
 <INCLUDE file="eval.sml" name="fun evalSetExpr">
 
+== Yield Expressions ==
+<!--<pre class="code grammar"><em>YieldExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+
+===== Semantics =====
+<INCLUDE file="eval.sml" name="fun evalYieldExpr">
+
+== Conditional Operator ==
+<!--<pre class="code grammar"><em>ConditionalExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+<p>A conditional expression has the concrete syntax of //ConditionalExpression// 
+or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//. 
+ It is evaluated by the function //evalCondExpr// as 
+invoked by the function //evalExpr//.
+
+===== Semantics =====
+<INCLUDE file="eval.sml" name="fun evalConditionalExpr">
+
+== Comma Operator ==
+<!--<pre class="code grammar"><em>CommaExpression<sup>&alpha;, &beta;</sup></em></pre>-->
+
 == Destructuring Patterns ==
 <!-- ><pre class="code grammar_start"><em>Pattern<sup>&alpha;, &beta;, &gamma;</sup></em></pre>
 <pre class="code grammar_end"><em>LikenedPattern<sup>&beta;</sup></em></pre> -->
-
 
 == Type Expressions ==
 <!-- ><pre class="code grammar_start"><em>TypeExpression</em></pre>
@@ -824,8 +1103,10 @@ right side.
 
 <p>A type expression evaluates to a normalized type value.
 
+
+
 ===== Semantics =====
-<INCLUDE file="ast.sml" name="datatype TYPE">
+<INCLUDE file="ast.sml" name="and TYPE">
 
 === Any Type ===
 === Null Type ===
@@ -835,3 +1116,7 @@ right side.
 === Array Type ===
 === Record Type ===
 === Function Type ===
+
+
+</body>
+</html>
