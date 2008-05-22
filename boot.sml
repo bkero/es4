@@ -64,13 +64,13 @@ fun instantiateRootClass (regs:Mach.REGS)
       val prog = (#prog regs)
       val cls = lookupRoot prog fullName
       val clsClass = lookupRoot prog Name.intrinsic_Class
+      val Ast.Class { classRib, instanceRib, ... } = cls
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto)
+      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto) instanceRib
 
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
-      val Ast.Class { classRib, ... } = cls
       val _ = trace ["allocating ", Int.toString (length classRib), 
                      " class fixtures on class ", LogErr.name fullName,
                      ", object #", Int.toString (Eval.getObjId (obj))];          
@@ -326,10 +326,8 @@ fun boot (baseDir:string) : Mach.REGS =
             let
                 val cls = lookupRoot prog Name.public_Object
             in
-                Mach.newObject (Mach.InstanceTag cls) Mach.Null
+                Mach.newObject (Mach.InstanceTag cls) Mach.Null (Fixture.getRootRib prog)
             end
-
-        val _ = Mach.setRib glob (Fixture.getRootRib prog)
 
         val objFrag = Verify.verifyTopFragment prog (!verifyBuiltins) objFrag 
         val clsFrag = Verify.verifyTopFragment prog (!verifyBuiltins) clsFrag
@@ -351,8 +349,9 @@ fun boot (baseDir:string) : Mach.REGS =
 
         (* Build the Object and Function prototypes as instances of public::Object first. *)
         val objClass = lookupRoot prog Name.public_Object
-        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.Null
-        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.Object objPrototype)
+        val Ast.Class { instanceRib, ... } = objClass
+        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.Null instanceRib
+        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.Object objPrototype) instanceRib
 
         val (objClass, objClassObj) = instantiateRootClass regs Name.public_Object funPrototype
         val (_, classClassObj) = instantiateRootClass regs Name.intrinsic_Class funPrototype

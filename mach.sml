@@ -94,7 +94,7 @@ datatype VALUE = Undefined
                   proto: VALUE,
                   ident: OBJ_IDENTIFIER,
                   tag: TAG
-                , rib: RIB ref     (* INFORMATIVE *)
+                , rib: RIB
                 }
 
      and TAG =
@@ -456,21 +456,12 @@ fun hasFixedProp (b:PROPERTY_BINDINGS)
 fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
-fun setRib (obj:OBJ)
-           (r:RIB)
-    : unit =
-    let
-        val Obj { rib, ... } = obj
-    in
-        rib := r
-    end
-
 fun getRib (obj:OBJ)
     : RIB =
     let
         val Obj { rib, ... } = obj
     in
-        !rib
+        rib
     end
 
 fun getRibs (scope:SCOPE) 
@@ -515,16 +506,18 @@ fun nextIdent _ =
 
 fun newObject (t:TAG)
               (p:VALUE)
+              (rib:RIB)
     : OBJ =
     Obj { ident = nextIdent (),
           tag = t,
           props = newPropBindings (),
           proto = p,
-          rib = ref [] }
+          rib = rib }
 
-fun newObjectNoTag _
+
+fun newObjectNoTag (rib:RIB)
     : OBJ =
-    newObject NoTag Null
+    newObject NoTag Null rib
 
 fun getProto (ob:OBJ)
     : VALUE =

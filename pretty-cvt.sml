@@ -128,11 +128,11 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x174 => PrettyRep.Ctor ("SOME", SOME (cvtCTOR x174))
        )), ("classType", cvtTYPE x179)]))
-   and cvtINTERFACE (Interface{name=x211, typeParams=ls213, nonnullable=b217, extends=ls219, 
-          instanceRib=x223}) = PrettyRep.Ctor ("Interface", SOME (PrettyRep.Rec [("name", 
-          cvtNAME x211), ("typeParams", PrettyRep.List (List.map (fn x212 => 
-                                                                        cvtIDENTIFIER x212
-                                                                 ) ls213)), 
+   and cvtINTERFACE (Interface{name=x211, typeParams=ls213, nonnullable=b217, 
+          extends=ls219, instanceRib=x223}) = PrettyRep.Ctor ("Interface", 
+          SOME (PrettyRep.Rec [("name", cvtNAME x211), ("typeParams", PrettyRep.List (List.map (fn x212 => 
+                                                                                                      cvtIDENTIFIER x212
+                                                                                               ) ls213)), 
           ("nonnullable", PrettyRep.Bool b217), ("extends", PrettyRep.List (List.map (fn x218 => 
                                                                                             cvtTYPE x218
                                                                                      ) ls219)), 
