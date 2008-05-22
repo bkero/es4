@@ -174,55 +174,6 @@ fun printRib (rib:Ast.RIB) =
 
 
 (* -----------------------------------------------------------------------------
- * Operations on PROGRAMs 
- * ----------------------------------------------------------------------------- *)
-                
-type PROGRAM = { rootRib: Ast.RIB,
-                 packageNames: ((Ast.IDENTIFIER list) list) }
-
-               
-fun mkProgram (topRib:Ast.RIB)
-    : PROGRAM =
-    { rootRib = topRib, 
-      packageNames = [] }
-
-
-fun extendRootRib (prog:PROGRAM)
-                  (additions:Ast.RIB)
-                  (tyeq:TYEQ)
-    : PROGRAM = 
-    let
-        val { packageNames, ... } = prog
-        val oldRib = (#rootRib prog)
-        val newRib = mergeRibs tyeq oldRib additions
-    in
-        { rootRib = newRib,
-          packageNames = packageNames }
-    end
-        
-
-fun getRootRib (prog:PROGRAM)
-    : Ast.RIB = 
-    (#rootRib prog)
-
-
-fun addPackageName (prog:PROGRAM)
-                   (packageName:Ast.IDENTIFIER list)
-    : PROGRAM = 
-    let
-        val { rootRib, ... } = prog
-    in
-        { rootRib = rootRib,
-          packageNames = (packageName :: (#packageNames prog)) }
-    end
-
-
-fun getPackageNames (prog:PROGRAM)
-    : Ast.IDENTIFIER list list = 
-    (#packageNames prog)
-
-
-(* -----------------------------------------------------------------------------
  * Static variant of name-resolution algorithm: mirrors Mach.findName
  * ----------------------------------------------------------------------------- *)
 

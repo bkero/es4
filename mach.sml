@@ -260,7 +260,7 @@ withtype FUN_CLOSURE =
           thisFun: OBJ option,
           thisGen: OBJ option,
           global: OBJ,
-          prog: Fixture.PROGRAM          
+          rootRib: RIB
           , aux: AUX                      (* INFORMATIVE *)
          }
 
@@ -270,7 +270,7 @@ withtype FUN_CLOSURE =
                     thisFun: OBJ option,
                     thisGen: OBJ option,
                     global: OBJ, 
-                    prog: Fixture.PROGRAM, 
+                    rootRib: RIB, 
                     aux: AUX } (* REGS *)
                   -> VALUE list -> VALUE),
            length: int }
@@ -1094,7 +1094,7 @@ fun makeGlobalScopeWith (global:OBJ)
             temps = ref [],
             kind = GlobalScope }
 
-fun makeInitialRegs (prog:Fixture.PROGRAM)
+fun makeInitialRegs (rootRib:RIB)
                     (glob:OBJ)                     
     : REGS =
     let 
@@ -1139,7 +1139,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
           thisFun = NONE,
           thisGen = NONE,
           scope = makeGlobalScopeWith glob,
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -1313,7 +1313,7 @@ fun searchScope (scope      : SCOPE,
           | (WithScope, false) 
             => NONE
 
-          | (_,_)
+          | (_,_)            
             => searchObject (SOME object, identifier, namespaces, fixedOnly)
     end
 

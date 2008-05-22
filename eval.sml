@@ -41,13 +41,13 @@ open Mach
 open LogErr
 
 
-fun log (ss:string list) = log ("[eval] " :: ss)
+fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 
 val doTrace = ref false
 val doTraceConstruct = ref false
 
-fun fmtName n = if (!doTrace orelse !doTraceConstruct) then name n else ""
-fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then nameExpr n else ""
+fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
+fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -57,7 +57,7 @@ fun traceConstruct (ss:string list) =
 
 fun error (regs:REGS) 
           (ss:string list) =
-    (log ("[stack] " :: [stackString (stackOf regs)]);
+    (LogErr.log ("[stack] " :: [stackString (stackOf regs)]);
      evalError ss)
 
 
@@ -65,7 +65,7 @@ fun normalize (regs:REGS)
               (ty:TYPE)
     : TYPE = 
     let
-        val { scope, prog, ... } = regs
+        val { scope, rootRib, ... } = regs
         val ribs = getRibs scope
     in
         Type.normalize ribs ty
@@ -136,7 +136,7 @@ fun extendScopeReg (r:REGS)
                    (kind:SCOPE_KIND)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
         val scope = extendScope scope ob kind
     in
         { scope = scope,
@@ -144,7 +144,7 @@ fun extendScopeReg (r:REGS)
           thisFun = thisFun,
           thisGen = thisGen,
           global = global,
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -152,14 +152,14 @@ fun withThis (r:REGS)
              (newThis:OBJ)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = scope, 
           this = newThis, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -167,14 +167,14 @@ fun withThisFun (r:REGS)
                 (newThisFun:OBJ option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = newThisFun,
           thisGen = thisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -182,14 +182,14 @@ fun withThisGen (r:REGS)
                 (newThisGen:OBJ option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
           thisGen = newThisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -197,32 +197,32 @@ fun withScope (r:REGS)
               (newScope:SCOPE)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = newScope, 
           this = this, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
+    
 
-fun withProg (r:REGS)
-             (newProg:Fixture.PROGRAM)
+fun withRootRib (r:REGS)
+                (rootRib:RIB)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, aux, ... } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          prog = newProg,
+          rootRib = rootRib,
           aux = aux }
     end
-    
     
 fun getObjId (obj:OBJ)
     : OBJ_IDENTIFIER =
@@ -2358,7 +2358,7 @@ and instanceType (regs:REGS)
                  (args:TYPE list)
     : TYPE = 
     let
-        val instanceTy = Type.instanceTy (#prog regs) name
+        val instanceTy = Type.instanceTy (#rootRib regs) name
     in
         applyTypes regs instanceTy args
     end
@@ -3975,6 +3975,7 @@ and resolveName (regs:REGS)
                 QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]])
               | UnqualifiedName { identifier, openNamespaces } => (identifier, openNamespaces)
     in
+        trace ["resolveName: ", LogErr.nameExpr nameExpr];
         findName ((#global regs), objects, identifier, openNamespaces)
     end
 
@@ -4616,7 +4617,7 @@ and parseFunctionFromArgs (regs:REGS)
                                 Parser.AllowColon,
                                 Parser.AllowIn)
 
-        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#prog regs) (getLangEd regs)) funcExpr
+        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#rootRib regs) (getLangEd regs)) funcExpr
     in
         (fullStr, funcExpr)
     end
