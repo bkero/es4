@@ -579,14 +579,14 @@ fun eval (regs:Mach.REGS)
                     val frag = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-                    val (prog, frag) = (Defn.defTopFragment (#prog regs) frag (Mach.getLangEd regs)
-                                        handle
-                                        LogErr.DefnError de => raise Eval.ThrowException (str de))
-                    val _ = (Verify.verifyTopFragment prog false frag
+                    val (rootRib, frag) = (Defn.defTopFragment (#rootRib regs) frag (Mach.getLangEd regs)
+                                           handle
+                                           LogErr.DefnError de => raise Eval.ThrowException (str de))
+                    val _ = (Verify.verifyTopFragment rootRib false frag
                              handle
                              LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
-                    val regs = Eval.withProg regs prog
+                    val regs = Eval.withRootRib regs rootRib
                 in
                     (*
                      * FIXME: maybe don't want to permit the full set of
@@ -837,13 +837,13 @@ fun load (regs:Mach.REGS)
         val frag = Parser.parseFile fname
             handle LogErr.LexError le => raise Eval.ThrowException (str le)
                  | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-        val (prog, frag) = (Defn.defTopFragment (#prog regs) frag (Mach.getLangEd regs)
+        val (rootRib, frag) = (Defn.defTopFragment (#rootRib regs) frag (Mach.getLangEd regs)
                             handle
                             LogErr.DefnError de => raise Eval.ThrowException (str de))
-        val _ = (Verify.verifyTopFragment prog false frag
+        val _ = (Verify.verifyTopFragment rootRib false frag
                  handle
                  LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
-        val regs = Eval.withProg regs prog
+        val regs = Eval.withRootRib regs rootRib
     in
         
         Eval.evalTopFragment regs frag
@@ -1090,7 +1090,7 @@ fun registerNatives _ =
         addFn 1 Name.informative_floorDecimal floorDecimal;
         addFn 1 Name.informative_logDouble logDouble;
         addFn 1 Name.informative_logDecimal logDecimal;
-        addFn 2 Name.informative_powDouble powDouble;
+        addFn 2 Name.informative_powDouble pow;
         addFn 2 Name.informative_powDecimal powDecimal;
         addFn 1 Name.informative_roundDouble roundDouble;
         addFn 1 Name.informative_roundDecimal roundDecimal;

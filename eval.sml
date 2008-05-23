@@ -41,13 +41,13 @@ open Mach
 open LogErr
 
 
-fun log (ss:string list) = log ("[eval] " :: ss)
+fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 
 val doTrace = ref false
 val doTraceConstruct = ref false
 
-fun fmtName n = if (!doTrace orelse !doTraceConstruct) then name n else ""
-fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then nameExpr n else ""
+fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
+fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -57,7 +57,7 @@ fun traceConstruct (ss:string list) =
 
 fun error (regs:REGS) 
           (ss:string list) =
-    (log ("[stack] " :: [stackString (stackOf regs)]);
+    (LogErr.log ("[stack] " :: [stackString (stackOf regs)]);
      evalError ss)
 
 
@@ -65,8 +65,8 @@ fun normalize (regs:REGS)
               (ty:TYPE)
     : TYPE = 
     let
-        val { scope, prog, ... } = regs
-        val ribs = getRibs scope
+        val { scope, rootRib, ... } = regs
+        val ribs = getRibs regs scope
     in
         Type.normalize ribs ty
     end
@@ -136,7 +136,7 @@ fun extendScopeReg (r:REGS)
                    (kind:SCOPE_KIND)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
         val scope = extendScope scope ob kind
     in
         { scope = scope,
@@ -144,7 +144,7 @@ fun extendScopeReg (r:REGS)
           thisFun = thisFun,
           thisGen = thisGen,
           global = global,
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -152,14 +152,14 @@ fun withThis (r:REGS)
              (newThis:OBJ)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = scope, 
           this = newThis, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -167,14 +167,14 @@ fun withThisFun (r:REGS)
                 (newThisFun:OBJ option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = newThisFun,
           thisGen = thisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -182,14 +182,14 @@ fun withThisGen (r:REGS)
                 (newThisGen:OBJ option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
           thisGen = newThisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -197,32 +197,32 @@ fun withScope (r:REGS)
               (newScope:SCOPE)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
     in
         { scope = newScope, 
           this = this, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
+    
 
-fun withProg (r:REGS)
-             (newProg:Fixture.PROGRAM)
+fun withRootRib (r:REGS)
+                (rootRib:RIB)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, prog, aux } = r
+        val { scope, this, thisFun, thisGen, global, aux, ... } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          prog = newProg,
+          rootRib = rootRib,
           aux = aux }
     end
-    
     
 fun getObjId (obj:OBJ)
     : OBJ_IDENTIFIER =
@@ -413,9 +413,7 @@ fun allocRib (regs:REGS)
                         in
                             allocProp "value"
                                       { ty = ty,
-                                        state = if writable
-                                                then valAllocState regs ty
-                                                else UninitProp,
+                                        state = valAllocState regs ty,
                                         attrs = { removable = false,
                                                   enumerable = false, 
                                                   writable = if writable 
@@ -450,7 +448,7 @@ fun allocRib (regs:REGS)
                             val classObj = needObj regs (newClass regs cls)
                             val _ = traceConstruct ["allocating class rib on class ", fmtName pn]
                             (* FIXME: 'this' binding in class objects might be wrong here. *)
-                            val _ = allocObjRib regs classObj NONE classRib
+                            (* val _ = allocObjRib regs classObj NONE classRib *)
                         in
                             allocProp "class"
                                       { ty = typename intrinsic_Class,
@@ -642,54 +640,25 @@ and valAllocState (regs:REGS)
         error regs ["allocating fixture of unresolved field type reference"]
         
       | ClassType (Class {name, nonnullable, ...}) =>
-        (* It is possible that we're booting and the class n doesn't even exist yet. *)
-        if (not (isBooting regs)) orelse 
-           isClass (getValue regs (#global regs) name)
-        then            
-            let 
-                val clsid = getObjId (needObj regs (getValue regs (#global regs) name))
-            in
-                case allocSpecial regs clsid of
-                    SOME v => ValProp v
-                  | NONE => if nonnullable 
-                            then UninitProp
-                            else ValProp (Null)
-            end
+        (* We cannot go via the class obj id because we may be booting! *)
+        if nameEq name Name.ES4_double 
+        then ValProp (newDouble regs 0.0)
         else
-            if nonnullable
-            then UninitProp
-            else ValProp (Null)
-
+            if nameEq name Name.ES4_string
+            then ValProp (newString regs Ustring.empty)
+            else
+                if nameEq name Name.ES4_boolean
+                then ValProp (newBoolean regs false)
+                else 
+                    if nameEq name Name.ES4_decimal
+                    then ValProp (newDecimal regs Decimal.zero)
+                    else 
+                        if nonnullable
+                        then UninitProp
+                        else ValProp (Null)
+                             
       | InterfaceType (Interface {name, ...}) => 
         UninitProp
-
-
-and allocSpecial (regs:REGS)
-                 (id:OBJ_IDENTIFIER)
-    : VALUE option =
-    let
-        fun findSpecial [] = NONE
-          | findSpecial ((q,f)::rest) = 
-            let
-                val ident = slotObjId regs q
-            in
-                if ident = id 
-                then 
-                    (traceConstruct ["allocating special builtin"]; SOME (f ()))
-                else 
-                    findSpecial rest
-            end
-    in
-        findSpecial 
-            [
-             (getBooleanClassSlot, (fn _ => newBoolean regs false)),
-
-             (getDoubleClassSlot, (fn _ => newDouble regs 0.0)),
-             (getDecimalClassSlot, (fn _ => newDecimal regs Decimal.zero)),
-
-             (getStringClassSlot, (fn _ => newString regs Ustring.empty))
-            ]
-    end
 
 
 and asArrayIndex (v:VALUE)
@@ -1225,6 +1194,21 @@ fun evalDoubleLiteral (env: ENV)
 and newDouble (regs:REGS) 
               (n:Real64.real)
     : VALUE =
+    (* BEGIN_INFORMATIVE *)
+    if Real64.isNan n 
+    then 
+        let
+            val dn = getDoubleNaNSlot regs
+        in
+            case !dn of
+                NONE => newPrimitive regs (DoublePrimitive n) getDoubleClassSlot
+              | SOME obj => Object obj
+        end
+    else 
+        case findInDoubleCache regs n of
+            SOME obj => Object obj
+          | NONE => 
+    (* END_INFORMATIVE *)
     newPrimitive regs (DoublePrimitive n) getDoubleClassSlot
 
 
@@ -1256,7 +1240,20 @@ fun evalBooleanLiteral (env: ENV)
 and newBoolean (regs:REGS)
                (b:bool)
     : VALUE =
+    (* BEGIN_INFORMATIVE *)
+    let
+        val cell = 
+            if b 
+            then getBooleanTrueSlot regs 
+            else getBooleanFalseSlot regs
+    in
+        case !cell of 
+            SOME obj => Object obj
+          | NONE => 
+    (* END_INFORMATIVE *)
     newPrimitive regs (BooleanPrimitive b) getBooleanClassSlot
+    end (* INFORMATIVE*)
+            
 
 and newNamespace (regs:REGS)
                  (n:NAMESPACE)
@@ -2354,7 +2351,7 @@ and instanceType (regs:REGS)
                  (args:TYPE list)
     : TYPE = 
     let
-        val instanceTy = Type.instanceTy (#prog regs) name
+        val instanceTy = Type.instanceTy (#rootRib regs) name
     in
         applyTypes regs instanceTy args
     end
@@ -3972,6 +3969,7 @@ and resolveName (regs:REGS)
                 QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]])
               | UnqualifiedName { identifier, openNamespaces } => (identifier, openNamespaces)
     in
+        trace ["resolveName: ", LogErr.nameExpr nameExpr];
         findName ((#global regs), objects, identifier, openNamespaces)
     end
 
@@ -4573,7 +4571,8 @@ and constructStandardWithTag (regs:REGS)
     let
         val Class { name, instanceRib, ...} = class
         val instanceObj = newObject tag proto instanceRib
-        (* FIXME: might have 'this' binding wrong in class scope here. *)
+        val _ = bindAnySpecialIdentity regs instanceObj
+    (* FIXME: might have 'this' binding wrong in class scope here. *)
         val classScope = getClassScope regs classObj
         val regs = withThis (withScope regs classScope) instanceObj 
     in
@@ -4613,7 +4612,7 @@ and parseFunctionFromArgs (regs:REGS)
                                 Parser.AllowColon,
                                 Parser.AllowIn)
 
-        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#prog regs) (getLangEd regs)) funcExpr
+        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#rootRib regs) (getLangEd regs)) funcExpr
     in
         (fullStr, funcExpr)
     end
@@ -4685,6 +4684,48 @@ and specialPrimitiveCopyingConstructor (regs:REGS)
         val obj = constructStandardWithTag regs classObj class tag proto []
     in
         obj
+    end
+
+
+and specialClassConstructor (regs:REGS)
+                            (classObj:OBJ)
+                            (class:CLASS)
+                            (args:VALUE list)
+    : OBJ =
+    let
+        (* Here we have class and classObj carrying the class "__ES4__::Class", and 
+         * our *sole argument* carrying the class we're constructing. We cannot just
+         * construct an instance of class/classObj though, because they do not carry
+         * the classrib we want. We need to synthesize a metaclass and 
+         * instantiate *that*.
+         *
+         * FIXME: possibly shift this to defn phase. Unclear.
+         *)
+        val proto = getPrototype regs classObj
+        val Class publicClass = class
+        val Class targetClass = case args of
+                                    (Object (Obj { tag=PrimitiveTag (ClassPrimitive c), ...}) :: _) => c
+                                  | _ => error regs ["called special class constructor without class object"]
+        val metaClass = Class { name = Name.empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
+                                privateNS = (#privateNS targetClass),
+                                protectedNS = (#protectedNS targetClass),
+                                parentProtectedNSs = (#parentProtectedNSs targetClass),
+                                typeParams = (#typeParams targetClass),
+
+                                nonnullable = (#nonnullable publicClass),
+                                dynamic = (#dynamic publicClass),
+                                extends = SOME (ClassType (Class publicClass)),
+                                implements = [],
+                                classRib = [],
+                                instanceRib = Fixture.mergeRibs (Type.matches (#rootRib regs) []) (#instanceRib publicClass) (#classRib targetClass),
+                                instanceInits = Head ([],[]),
+                                constructor = NONE,
+                                classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) }
+                                
+        val metaClassObj = newObject (InstanceTag (Class publicClass)) Null []
+
+    in
+        constructStandardWithTag regs metaClassObj metaClass (PrimitiveTag (ClassPrimitive (Class targetClass))) proto args
     end
 
 and specialObjectConstructor (regs:REGS)
@@ -4853,7 +4894,7 @@ and constructSpecial (regs:REGS)
     in
         findSpecial 
             [
-             (getClassClassSlot, specialPrimitiveCopyingConstructor),
+             (getClassClassSlot, specialClassConstructor),
              (getInterfaceClassSlot, specialPrimitiveCopyingConstructor),
              (getNamespaceClassSlot, specialPrimitiveCopyingConstructor),
 
@@ -4909,7 +4950,6 @@ and bindAnySpecialIdentity (regs:REGS)
                         NONE => ()
                       | SOME (_,func) => 
                         let
-                            (*val _ = TextIO.print ("binding special identity for class " ^ name name ^ "\n")*)
                             val _ = trace ["binding special identity for class ", fmtName name]
                             val cell = func regs
                         in
@@ -5096,7 +5136,6 @@ and constructClassInstance (regs:REGS)
                 SOME ob => ob
               | NONE => constructStandard regs classObj class (getPrototype regs classObj) args
     in
-        bindAnySpecialIdentity regs obj;
         initClassPrototype regs obj;
         (* INFORMATIVE *) pop regs; 
         Object obj

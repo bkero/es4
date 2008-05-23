@@ -119,7 +119,7 @@ type ENV =
        openNamespaces: Ast.NAMESPACE list list,
        labels: LABEL list,
        defaultNamespace: Ast.NAMESPACE,
-       program: Fixture.PROGRAM,
+       rootRib: Ast.RIB,
        func: Ast.FUNC option }    
 
     
@@ -267,30 +267,6 @@ fun resolve (env:ENV)
     : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) =
     Fixture.resolveNameExpr (getFullRibs env) (defNameExpr env nameExpr)
 
-(*
-    Create a new context initialised with the provided rib and
-    inherited environment
-*)
-
-fun enterFragment (env:ENV)
-                  (frag:Ast.FRAGMENT)
-    : ENV =     
-    let
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, program, func } = env                                           
-    
-        val (newProgram, newDefaultNs, newOpenNss) = 
-            (program, defaultNamespace, openNamespaces)
-    in
-        { innerRibs = innerRibs, 
-          outerRibs = outerRibs,
-          tempOffset = tempOffset,
-          openNamespaces = newOpenNss,
-          labels = labels,
-          defaultNamespace = newDefaultNs,
-          program = newProgram,
-          func = func }
-    end
 
     
 fun extendEnvironment (env:ENV)
@@ -299,8 +275,7 @@ fun extendEnvironment (env:ENV)
     : ENV =
     let
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, 
-              defaultNamespace, program, func } = env
+              labels, defaultNamespace, rootRib, func } = env
         val (newInnerRibs, newOuterRibs) = if hoistingPoint
                                            then ([], rib :: (innerRibs @ outerRibs))
                                            else (rib :: innerRibs, outerRibs)
@@ -311,16 +286,16 @@ fun extendEnvironment (env:ENV)
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          program = program,
+          rootRib = rootRib,
           func = func }
     end
 
 
-fun mergeRibs (program:Fixture.PROGRAM)
+fun mergeRibs (rootRib:Ast.RIB)
               (oldRib:Ast.RIB)
               (additions:Ast.RIB)
     : Ast.RIB = 
-    Fixture.mergeRibs (Type.matches program []) oldRib additions    
+    Fixture.mergeRibs (Type.matches rootRib []) oldRib additions
 (* FIXME: calls some pretty-hairy type code - needed? *)
 
 
@@ -336,10 +311,9 @@ fun addToInnerRib (env:ENV)
     : ENV =
     let 
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, 
-              defaultNamespace, program, func } = env
+              labels, defaultNamespace, rootRib, func } = env
         val (innerRib, rest) = headAndTailOfRibs innerRibs
-        val newInnerRib = mergeRibs (#program env) innerRib additions
+        val newInnerRib = mergeRibs (#rootRib env) innerRib additions
         val newInnerRibs = newInnerRib :: rest
     in
         { innerRibs = newInnerRibs, 
@@ -348,7 +322,7 @@ fun addToInnerRib (env:ENV)
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          program = program,
+          rootRib = rootRib,
           func = func }
     end
 
@@ -359,9 +333,9 @@ fun addToOuterRib (env:ENV)
     let 
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, 
-              defaultNamespace, program, func } = env
+              defaultNamespace, rootRib, func } = env
         val (outerRib, rest) = headAndTailOfRibs outerRibs
-        val newOuterRib = mergeRibs (#program env) outerRib additions
+        val newOuterRib = mergeRibs (#rootRib env) outerRib additions
         val newOuterRibs = newOuterRib :: rest
     in
         { innerRibs = innerRibs, 
@@ -370,7 +344,7 @@ fun addToOuterRib (env:ENV)
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          program = program,
+          rootRib = rootRib,
           func = func }
     end
 
@@ -379,7 +353,7 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, program, func } = env
+              labels, defaultNamespace, rootRib, func } = env
     in
         { innerRibs = innerRibs, 
           outerRibs = outerRibs,
@@ -387,7 +361,7 @@ fun updateTempOffset (env:ENV) (newTempOffset:int)
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          program = program,
+          rootRib = rootRib,
           func = func }
     end
 
@@ -404,7 +378,7 @@ fun enterClass (env:ENV)
 								   Ast.NamespaceFixture protectedNS) ]
 		val env = extendEnvironment env localNamespaceRib true
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, program, func } = env
+              labels, defaultNamespace, rootRib, func } = env
 		val openNamespaces = ([privateNS, protectedNS] @ parentProtectedNSs) :: openNamespaces
 	in
 		({ innerRibs = innerRibs, 
@@ -413,7 +387,7 @@ fun enterClass (env:ENV)
            openNamespaces = openNamespaces,
            labels = labels,
            defaultNamespace = defaultNamespace,
-           program = program,
+           rootRib = rootRib,
            func = func }, localNamespaceRib )
 	end
 
@@ -423,7 +397,7 @@ fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
     let
         val { innerRibs, outerRibs, tempOffset, openNamespaces, 
               labels, 
-              defaultNamespace, program, func } = env    
+              defaultNamespace, rootRib, func } = env    
     in
         { innerRibs = innerRibs, 
           outerRibs = outerRibs,
@@ -431,7 +405,7 @@ fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          program = program,
+          rootRib = rootRib,
           func = SOME newFunc }
     end
 
@@ -453,7 +427,7 @@ fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
             val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-                  labels, defaultNamespace, program, func } = env
+                  labels, defaultNamespace, rootRib, func } = env
             val (labelId,labelKnd) = label
         in
             dumpLabels labels;
@@ -469,7 +443,7 @@ fun addLabel ((label:LABEL),(env:ENV))
               openNamespaces = openNamespaces,
               labels = label::labels,
               defaultNamespace = defaultNamespace,
-              program = program,
+              rootRib = rootRib,
               func = func }
         end
 
@@ -538,8 +512,6 @@ and defInterface (env: ENV)
 
         (* Resolve base interface's super interfaces and rib *)
         val (superInterfaces:Ast.TYPE list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
-
-        val prog = (#program env)
 
 (*        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superInterfaces *)
         val groundSuperInterfaceExprs = map (makeTy env) superInterfaces
@@ -993,8 +965,8 @@ and analyzeClassBody (env:ENV)
         val _ = trace ["defining class ", fmtName name]
         val (staticEnv, localNamespaceRib) = enterClass env privateNS protectedNS []
         val (unhoisted,classRib,classInits) = defDefns staticEnv classDefns
-        val classRib = (mergeRibs (#program env) unhoisted classRib)
-        val classRib = (mergeRibs (#program env) classRib localNamespaceRib)
+        val classRib = (mergeRibs (#rootRib env) unhoisted classRib)
+        val classRib = (mergeRibs (#rootRib env) classRib localNamespaceRib)
 
         (* namespace and type definitions aren't normally hoisted *)
 
@@ -1365,7 +1337,7 @@ and defFunc (env:ENV)
                    block = blockOpt,
                    defaults = defaults,
                    ty = newT,
-                   param = Ast.Head (mergeRibs (#program env) paramRib hoisted, 
+                   param = Ast.Head (mergeRibs (#rootRib env) paramRib hoisted, 
                                      paramInits),
                    native=native,
                    generator=generator,
@@ -1469,7 +1441,7 @@ and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
     : (Ast.PRAGMA list * ENV * Ast.RIB) =
     let
-        val program = ref (#program env)
+        val rootRib = ref (#rootRib env)
         val innerRibs  = #innerRibs env
         val outerRibs  = #outerRibs env
         val defaultNamespace = ref (#defaultNamespace env)
@@ -1486,7 +1458,7 @@ and defPragmas (env:ENV)
                                   | _  => !opennss :: (#openNamespaces env)),
               labels = (#labels env),
               defaultNamespace = !defaultNamespace,
-              program = !program,
+              rootRib = !rootRib,
               func = (#func env) }
 
         fun defPragma x =
@@ -1775,7 +1747,7 @@ and defStmt (env:ENV)
                                      body = newBody,
                                      rib = SOME ur1,
                                      next = newNext },
-                     mergeRibs (#program env) hr1 hoisted)
+                     mergeRibs (#rootRib env) hr1 hoisted)
                 end
             end
 
@@ -1808,7 +1780,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (ur,hr,_) = defVarDefnOpt defn
-                val env = extendEnvironment env (mergeRibs (#program env) ur hr) false
+                val env = extendEnvironment env (mergeRibs (#rootRib env) ur hr) false
                 val (newInit,_) = defStmts env init
                 val newCond = defExpr env cond
                 val newUpdate = defExpr env update
@@ -1822,7 +1794,7 @@ and defStmt (env:ENV)
                                 labels = Ustring.empty::labelIds,
                                 body = newBody,
                                 rib = SOME (ur) },
-                  (mergeRibs (#program env) hr hoisted) )
+                  (mergeRibs (#rootRib env) hr hoisted) )
             end
 
         fun reconstructCatch { bindings, rib, inits, block, ty } =
@@ -2047,7 +2019,7 @@ and defStmt (env:ENV)
                 (Ast.IfStmt { cnd = cnd,
                               thn = thn,
                               els = els },
-                 mergeRibs (#program env) thn_hoisted els_hoisted)
+                 mergeRibs (#rootRib env) thn_hoisted els_hoisted)
             end
 
           | Ast.WithStmt { obj, ty, body } =>
@@ -2111,7 +2083,7 @@ and defStmts (env) (stmts:Ast.STATEMENT list)
                 val env = addToOuterRib env f1
                 val (s2, f2) = defStmts env stmts
             in
-                (s1::s2,(mergeRibs (#program env) f1 f2))
+                (s1::s2,(mergeRibs (#rootRib env) f1 f2))
             end
       | [] => ([],[])
 
@@ -2246,14 +2218,14 @@ and defDefns (env:ENV)
                 [] => (unhoisted, hoisted, inits)
               | d::ds => 
                 let
-                    val { program, ... } = env
+                    val { rootRib, ... } = env
                     val (unhoisted', hoisted', inits') = defDefn env d
                     val env = addToOuterRib env hoisted'
                     val env = addToInnerRib env unhoisted'
                     val _ = trace(["defDefns: combining unhoisted ribs"]);                    
-                    val combinedUnHoisted = mergeRibs program unhoisted unhoisted'
+                    val combinedUnHoisted = mergeRibs rootRib unhoisted unhoisted'
                     val _ = trace(["defDefns: combining hoisted ribs"]);        
-                    val combinedHoisted = mergeRibs program hoisted hoisted'
+                    val combinedHoisted = mergeRibs rootRib hoisted hoisted'
                     val _ = trace(["defDefns: combining inits"])
                     val combinedInits = inits @ inits'
                 in
@@ -2307,18 +2279,18 @@ and defBlockFull (env:ENV)
                   else extendEnvironment env [] false
         val (pragmas, env, unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs, hoisted_defn_fxtrs, inits) = defDefns env defns
-        val unhoisted = mergeRibs (#program env) 
+        val unhoisted = mergeRibs (#rootRib env) 
                                   unhoisted_defn_fxtrs 
                                   unhoisted_pragma_fxtrs
         val env = addToOuterRib env hoisted_defn_fxtrs
         val env = addToInnerRib env unhoisted
         val (body, hoisted_body_fxtrs) = defStmts env body
-        val hoisted = mergeRibs (#program env) hoisted_defn_fxtrs hoisted_body_fxtrs
+        val hoisted = mergeRibs (#rootRib env) hoisted_defn_fxtrs hoisted_body_fxtrs
         val contained = if decorative
                         then []
                         else unhoisted
         val escaped = if decorative
-                      then mergeRibs (#program env) hoisted unhoisted 
+                      then mergeRibs (#rootRib env) hoisted unhoisted 
                       else hoisted
     in
         (Ast.Block { pragmas = pragmas,
@@ -2337,22 +2309,18 @@ and defBlockFull (env:ENV)
 and defFragment (env:ENV) 
                 (frag:Ast.FRAGMENT)
     : (Ast.FRAGMENT * Ast.RIB) =
-    let
-        val env = enterFragment env frag
-    in
-        case frag of 
-			Ast.Anon blk => 
-            let 
-                val (blk, escaped) = defDecorativeBlock env blk
-            in
-                (Ast.Anon blk, escaped)
-            end
-    end
-
-and mkTopEnv (prog:Fixture.PROGRAM) 
+    case frag of 
+		Ast.Anon blk => 
+        let 
+            val (blk, escaped) = defDecorativeBlock env blk
+        in
+            (Ast.Anon blk, escaped)
+        end
+        
+and mkTopEnv (rootRib:Ast.RIB) 
              (langEd:int)
     : ENV =
-    { outerRibs = [Fixture.getRootRib prog],
+    { outerRibs = [rootRib],
       innerRibs = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
@@ -2360,23 +2328,23 @@ and mkTopEnv (prog:Fixture.PROGRAM)
                         else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,
-      program = prog,
+      rootRib = rootRib,
       func = NONE }
 
 and summarizeFragment (Ast.Anon (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
     Fixture.printRib rib
 
-and defTopFragment (prog:Fixture.PROGRAM)
+and defTopFragment (rootRib:Ast.RIB)
                    (frag:Ast.FRAGMENT)
                    (langEd:int)
-    : (Fixture.PROGRAM * Ast.FRAGMENT) =
+    : (Ast.RIB * Ast.FRAGMENT) =
     let
-        val topEnv = mkTopEnv prog langEd
+        val topEnv = mkTopEnv rootRib langEd
         val (frag, escaped) = defFragment topEnv frag
 		val Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) = frag
 		val newHead = case head of
 						  SOME (Ast.Head (rib, inits)) => 
-						  SOME (Ast.Head (mergeRibs prog rib escaped, inits))
+						  SOME (Ast.Head (mergeRibs rootRib rib escaped, inits))
 						| NONE => 
 						  SOME (Ast.Head (escaped, []))
     (* 
@@ -2390,7 +2358,7 @@ and defTopFragment (prog:Fixture.PROGRAM)
                                     head = newHead,
                                     body = body,
                                     loc = loc })
-        val prog = Fixture.extendRootRib prog escaped (Type.matches prog [])
+        val rootRib = mergeRibs rootRib rootRib escaped 
     in
         trace ["fragment definition complete"];
         (if !doTraceSummary
@@ -2399,7 +2367,7 @@ and defTopFragment (prog:Fixture.PROGRAM)
         (if !doTrace
          then Pretty.ppFragment frag
          else ());
-        (prog, frag)
+        (rootRib, frag)
     end
 
 end

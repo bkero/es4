@@ -57,26 +57,26 @@ type STD_TYPES = {
 
 type ENV = { returnType: Ast.TYPE option,
              strict: bool,
-             prog: Fixture.PROGRAM,
+             rootRib: Ast.RIB,
              ribs: Ast.RIBS,
              stdTypes: STD_TYPES }
 
-fun withReturnType { returnType=_, strict, prog, ribs, stdTypes } returnType =
-    { returnType=returnType, strict=strict, prog=prog, ribs=ribs, stdTypes=stdTypes }
+fun withReturnType { returnType=_, strict, rootRib, ribs, stdTypes } returnType =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes }
 
-fun withRibs { returnType, strict, prog, ribs=_, stdTypes } ribs =
-    { returnType=returnType, strict=strict, prog=prog, ribs=ribs, stdTypes=stdTypes }
+fun withRibs { returnType, strict, rootRib, ribs=_, stdTypes } ribs =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes }
 
-fun withStrict { returnType, strict=_, prog, ribs, stdTypes } strict =
-    { returnType=returnType, strict=strict, prog=prog, ribs=ribs, stdTypes=stdTypes }
+fun withStrict { returnType, strict=_, rootRib, ribs, stdTypes } strict =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes }
 
-fun withRib { returnType, strict, prog, ribs, stdTypes} extn =
-    { returnType=returnType, strict=strict, prog=prog, ribs=(extn :: ribs), stdTypes=stdTypes }
+fun withRib { returnType, strict, rootRib, ribs, stdTypes} extn =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=(extn :: ribs), stdTypes=stdTypes }
 
-fun withRibOpt { returnType, strict, prog, ribs, stdTypes} extn =
+fun withRibOpt { returnType, strict, rootRib, ribs, stdTypes} extn =
     { returnType=returnType, 
       strict=strict, 
-      prog=prog, 
+      rootRib=rootRib, 
       ribs=case extn of 
                NONE => ribs 
              | SOME e => (e :: ribs), 
@@ -117,32 +117,32 @@ val undefinedType   = Ast.UndefinedType
 val nullType        = Ast.NullType
 val anyType         = Ast.AnyType
                                            
-fun newEnv (prog:Fixture.PROGRAM) 
+fun newEnv (rootRib:Ast.RIB) 
            (strict:bool) 
     : ENV = 
     { 
      returnType = NONE,
      strict = strict,
-     prog = prog, 
-     ribs = [Fixture.getRootRib prog],
+     rootRib = rootRib, 
+     ribs = [rootRib],
      
      stdTypes = 
      {      
-      AnyNumberType = Type.getNamedGroundType prog Name.ES4_AnyNumber,
-      doubleType    = Type.getNamedGroundType prog Name.ES4_double,
-      decimalType   = Type.getNamedGroundType prog Name.ES4_decimal,
+      AnyNumberType = Type.getNamedGroundType rootRib Name.ES4_AnyNumber,
+      doubleType    = Type.getNamedGroundType rootRib Name.ES4_double,
+      decimalType   = Type.getNamedGroundType rootRib Name.ES4_decimal,
 
-      AnyStringType = Type.getNamedGroundType prog Name.ES4_AnyString,
-      stringType    = Type.getNamedGroundType prog Name.ES4_string,
+      AnyStringType = Type.getNamedGroundType rootRib Name.ES4_AnyString,
+      stringType    = Type.getNamedGroundType rootRib Name.ES4_string,
 
-      AnyBooleanType= Type.getNamedGroundType prog Name.ES4_AnyBoolean,
-      booleanType   = Type.getNamedGroundType prog Name.ES4_boolean,
+      AnyBooleanType= Type.getNamedGroundType rootRib Name.ES4_AnyBoolean,
+      booleanType   = Type.getNamedGroundType rootRib Name.ES4_boolean,
 
-      RegExpType    = Type.getNamedGroundType prog Name.public_RegExp,
+      RegExpType    = Type.getNamedGroundType rootRib Name.public_RegExp,
 
-      NamespaceType = Type.getNamedGroundType prog Name.ES4_Namespace,
+      NamespaceType = Type.getNamedGroundType rootRib Name.ES4_Namespace,
 
-      TypeType      = Type.getNamedGroundType prog Name.intrinsic_Type
+      TypeType      = Type.getNamedGroundType rootRib Name.intrinsic_Type
      }
     }
 
@@ -225,7 +225,7 @@ and verifyType (env:ENV)
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
         val norm : Ast.TYPE = 
             (* FIXME: it is *super wrong* to just be using the root rib here. 
-            Type.normalize [Fixture.getRootRib (#prog env)] ty *)
+            Type.normalize [(#rootRib env)] ty *)
             Type.normalize (#ribs env) ty
             handle LogErr.TypeError e => 
                    let in
@@ -318,7 +318,7 @@ and verifyExpr2 (env:ENV)
                (expr:Ast.EXPRESSION)
     : Ast.TYPE =
     let
-        val { prog, 
+        val { rootRib, 
               strict, 
               stdTypes = 
               { AnyNumberType, 
@@ -747,7 +747,7 @@ and verifyStmt (env:ENV)
     : unit =
     let 
         fun verifySub s = verifyStmt env s
-        val { prog, 
+        val { rootRib, 
               strict, 
               returnType,
               stdTypes = 
@@ -1008,25 +1008,25 @@ and verifyFragment (env:ENV)
         Ast.Anon block => verifyBlock env block
 
 
-and verifyTopRib (prog:Fixture.PROGRAM)
+and verifyTopRib (rootRib:Ast.RIB)
                  (strict:bool)
                  (rib:Ast.RIB)
     : unit =
     let
-        val env = newEnv prog strict
+        val env = newEnv rootRib strict
     in
         verifyRib env rib
     end
 
 
-and verifyTopFragment (prog:Fixture.PROGRAM)
+and verifyTopFragment (rootRib:Ast.RIB)
                       (strict:bool) 
                       (frag:Ast.FRAGMENT) 
   : Ast.FRAGMENT =
     if strict 
     then
         let 
-            val env = newEnv prog strict
+            val env = newEnv rootRib strict
         in
             trace ["verifyTopFragment"];
             if !doTraceFrag then

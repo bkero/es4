@@ -954,15 +954,15 @@ fun groundMatches type1 type2
         type1 type2
 *)
 
-fun matches (prog:Fixture.PROGRAM)
+fun matches (rootRib:RIB)
             (locals:RIBS)
             (type1:TYPE)
             (type2:TYPE)
   =
   let
       (* FIXME: it is *super wrong* to just be using the root rib here. *)
-      val norm1 = normalize (locals @ [Fixture.getRootRib prog]) type1
-      val norm2 = normalize (locals @ [Fixture.getRootRib prog]) type2
+      val norm1 = normalize (locals @ [rootRib]) type1
+      val norm2 = normalize (locals @ [rootRib]) type2
   in
       groundMatches norm1 norm2
   end
@@ -972,20 +972,20 @@ fun matches (prog:Fixture.PROGRAM)
  * Small helper for finding instance types by name.
  *)
 
-fun instanceTy (prog:Fixture.PROGRAM)
+fun instanceTy (rootRib:RIB)
                (n:NAME)
     : TYPE =
-    case Fixture.getFixture (Fixture.getRootRib prog) (PropName n) of
+    case Fixture.getFixture rootRib (PropName n) of
         (ClassFixture c) => ClassType c
       | (InterfaceFixture i) => InterfaceType i
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
-fun groundType (prog:Fixture.PROGRAM)
+fun groundType (rootRib:RIB)
                (ty:TYPE) 
     : TYPE = 
     let
         (* FIXME: it is *super wrong* to just be using the root rib here. *)
-        val norm = normalize [Fixture.getRootRib prog] ty
+        val norm = normalize [rootRib] ty
     in
         norm
     end    
@@ -995,10 +995,10 @@ fun isGroundType (ty:TYPE) : bool = true
 fun groundExpr (ty:TYPE)  (* or "groundType" *)
     : TYPE = ty (* FIXME: remove *)
 
-fun getNamedGroundType (prog:Fixture.PROGRAM)
+fun getNamedGroundType (rootRib:RIB)
                        (name:NAME)
    : TYPE = 
-    groundType prog (Name.typename name)
+    groundType rootRib (Name.typename name)
 
 
 end

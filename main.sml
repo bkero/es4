@@ -180,40 +180,40 @@ fun parse argvRest =
     (TextIO.print "parsing ... \n";
      List.map Parser.parseFile argvRest)
 
-fun define prog argvRest =
+fun define rootRib argvRest =
     let
         val frags = parse argvRest
-        fun f prog accum (frag::frags) = 
+        fun f rootRib accum (frag::frags) = 
             let 
-                val (prog', frag') = Defn.defTopFragment prog frag (!langEd)
+                val (rootRib', frag') = Defn.defTopFragment rootRib frag (!langEd)
             in
-                f prog' (frag'::accum) frags
+                f rootRib' (frag'::accum) frags
             end
-          | f prog accum _ = (prog, List.rev accum)
+          | f rootRib accum _ = (rootRib, List.rev accum)
     in
         TextIO.print "defining ... \n";
-        f prog [] frags
+        f rootRib [] frags
     end
 
-fun verify prog argvRest =
+fun verify rootRib argvRest =
     let
-        val (prog, frags) = define prog argvRest
-        fun f prog accum (frag::frags) = 
+        val (rootRib, frags) = define rootRib argvRest
+        fun f rootRib accum (frag::frags) = 
             let 
-                val frag' = Verify.verifyTopFragment prog true frag
+                val frag' = Verify.verifyTopFragment rootRib true frag
             in
-                f prog (frag'::accum) frags
+                f rootRib (frag'::accum) frags
             end
-          | f prog accum _ = (prog, List.rev accum)
+          | f rootRib accum _ = (rootRib, List.rev accum)
     in
         TextIO.print "verifying ... \n";
-        f prog [] frags
+        f rootRib [] frags
     end
 
 fun eval regs argvRest =
     let
-        val (prog, frags) = verify (#prog regs) argvRest
-        val regs = Eval.withProg regs prog
+        val (rootRib, frags) = verify (#rootRib regs) argvRest
+        val regs = Eval.withRootRib regs rootRib
     in
         Mach.setLangEd regs (!langEd);
         Posix.Process.alarm (Time.fromReal 300.0);
@@ -317,10 +317,10 @@ fun repl (regs:Mach.REGS)
                     in
                         if not (!doDefn) then () else
                         let
-                            val (prog, frag) = Defn.defTopFragment (#prog (!regsCell)) frag (!langEd)
-                            val frag = Verify.verifyTopFragment prog true frag
+                            val (rootRib, frag) = Defn.defTopFragment (#rootRib (!regsCell)) frag (!langEd)
+                            val frag = Verify.verifyTopFragment rootRib true frag
                         in
-                            regsCell := Eval.withProg regs prog;
+                            regsCell := Eval.withRootRib regs rootRib;
                             if not (!doEval) then () else
                             let
                                 val regs = !regsCell
@@ -385,8 +385,8 @@ and main (dump:string -> bool)
                     HelpCommand => (usage (); success)
                   | ReplCommand => (repl (getRegs()) dump readLine; success)
                   | ParseCommand files => (parse files; success)
-                  | DefineCommand files => (define (#prog (getRegs())) files; success)
-                  | VerifyCommand files => (verify (#prog (getRegs())) files; success)
+                  | DefineCommand files => (define (#rootRib (getRegs())) files; success)
+                  | VerifyCommand files => (verify (#rootRib (getRegs())) files; success)
                   | EvalCommand files => (eval (getRegs()) files; success)
                   | ResetCommand =>
                     let

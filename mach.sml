@@ -93,8 +93,8 @@ datatype VALUE = Undefined
          Obj of { props: PROPERTY_BINDINGS,                  
                   proto: VALUE,
                   ident: OBJ_IDENTIFIER,
-                  tag: TAG
-                , rib: RIB
+                  tag: TAG,
+                  rib: RIB
                 }
 
      and TAG =
@@ -260,7 +260,7 @@ withtype FUN_CLOSURE =
           thisFun: OBJ option,
           thisGen: OBJ option,
           global: OBJ,
-          prog: Fixture.PROGRAM          
+          rootRib: RIB
           , aux: AUX                      (* INFORMATIVE *)
          }
 
@@ -270,7 +270,7 @@ withtype FUN_CLOSURE =
                     thisFun: OBJ option,
                     thisGen: OBJ option,
                     global: OBJ, 
-                    prog: Fixture.PROGRAM, 
+                    rootRib: RIB, 
                     aux: AUX } (* REGS *)
                   -> VALUE list -> VALUE),
            length: int }
@@ -456,23 +456,29 @@ fun hasFixedProp (b:PROPERTY_BINDINGS)
 fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
-fun getRib (obj:OBJ)
+fun getObjId (Obj { ident, ...}) = ident
+fun getRib (regs:REGS)
+           (obj:OBJ)
     : RIB =
     let
-        val Obj { rib, ... } = obj
+        val { rootRib, global, ... } = regs
+        val Obj { rib, ident, ... } = obj
     in
-        rib
+        if (getObjId global) = ident
+        then rootRib
+        else rib
     end
 
-fun getRibs (scope:SCOPE) 
+fun getRibs (regs:REGS)
+            (scope:SCOPE) 
     : RIBS = 
       let   
           val Scope {object, parent, ...} = scope
-          val rib = getRib object
+          val rib = getRib regs object
       in
           case parent of 
               NONE => [rib]
-            | SOME p => rib :: (getRibs p)
+            | SOME p => rib :: (getRibs regs p)
       end
 
 
@@ -513,7 +519,6 @@ fun newObject (t:TAG)
           props = newPropBindings (),
           proto = p,
           rib = rib }
-
 
 fun newObjectNoTag (rib:RIB)
     : OBJ =
@@ -749,8 +754,8 @@ fun inspect (v:VALUE)
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
-                val Obj { props, proto, ... } = obj
-		val { bindings, ... } = !props
+                val Obj { props, proto, rib, ... } = obj
+		        val { bindings, ... } = !props
             in
                 TextIO.print "Obj {\n";
                 p indent ["    tag = ", (tag obj)]; nl();
@@ -758,7 +763,11 @@ fun inspect (v:VALUE)
                 p indent ["  proto = "]; subVal indent (proto);
                 p indent ["  props = ["]; nl();
                 NameMap.appi prop bindings;
-                p indent ["          ] }"]; nl()
+                p indent ["          ]"]; nl();
+                p indent ["  rib = "]; nl();
+                Fixture.printRib rib;
+                p indent ["}"];
+                nl ()
             end
     in
         printVal 0 d v
@@ -914,7 +923,7 @@ fun push (regs:REGS)
                                profileMap }, 
                     ... }, 
               ... } = regs
-        val _ = if length (!stack) > 128
+        val _ = if length (!stack) > 512
                 then error ["very deep stack, likely infinite recursion"]
                 else ()
         val newStack = (Frame { name = name, args = args }) :: (!stack)
@@ -1099,7 +1108,7 @@ fun makeGlobalScopeWith (global:OBJ)
             temps = ref [],
             kind = GlobalScope }
 
-fun makeInitialRegs (prog:Fixture.PROGRAM)
+fun makeInitialRegs (rootRib:RIB)
                     (glob:OBJ)                     
     : REGS =
     let 
@@ -1144,7 +1153,7 @@ fun makeInitialRegs (prog:Fixture.PROGRAM)
           thisFun = NONE,
           thisGen = NONE,
           scope = makeGlobalScopeWith glob,
-          prog = prog,
+          rootRib = rootRib,
           aux = aux }
     end
 
@@ -1318,7 +1327,7 @@ fun searchScope (scope      : SCOPE,
           | (WithScope, false) 
             => NONE
 
-          | (_,_)
+          | (_,_)            
             => searchObject (SOME object, identifier, namespaces, fixedOnly)
     end
 
@@ -1359,8 +1368,6 @@ fun searchScopeChain (scope      : SCOPE option,
 fun instanceRibsOf (object: OBJECT)
     : RIBS =
     []
-
-fun getObjId (Obj { ident, ...}) = ident
 
 fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
     : (OBJECT * NAME) option =

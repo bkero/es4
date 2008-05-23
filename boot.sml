@@ -43,12 +43,11 @@ fun error ss = LogErr.hostError ss
 val langEd = 4
 
 
-fun lookupRoot (prog:Fixture.PROGRAM)
+fun lookupRoot (rootRib:Ast.RIB)
                (n:Ast.NAME)
     : Ast.CLASS =
     let
-        val rib = Fixture.getRootRib prog
-        val fix = Fixture.getFixture rib (Ast.PropName n)
+        val fix = Fixture.getFixture rootRib (Ast.PropName n)
     in
         case fix of
             Ast.ClassFixture cls => cls
@@ -61,13 +60,13 @@ fun instantiateRootClass (regs:Mach.REGS)
                          (proto:Mach.OBJ)
     : (Ast.CLASS * Mach.OBJ) =
   let
-      val prog = (#prog regs)
-      val cls = lookupRoot prog fullName
-      val clsClass = lookupRoot prog Name.intrinsic_Class
-      val Ast.Class { classRib, instanceRib, ... } = cls
+      val rootRib = (#rootRib regs)
+      val cls = lookupRoot rootRib fullName
+      val Ast.Class { classRib, ... } = cls
+      val clsClass = lookupRoot rootRib Name.intrinsic_Class
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto) instanceRib
+      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto) classRib
 
       val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
 
@@ -115,7 +114,7 @@ fun completeClassFixtures (regs:Mach.REGS)
          * by name until just now.
          *)
         val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
-        val Ast.Class { instanceRib, ... } = lookupRoot (#prog regs) Name.intrinsic_Class
+        val Ast.Class { instanceRib, ... } = lookupRoot (#rootRib regs) Name.intrinsic_Class
     in
         Eval.allocObjRib classRegs classObj (SOME classObj) instanceRib
     end
@@ -135,42 +134,42 @@ fun runConstructorOnObject (regs:Mach.REGS)
         Eval.initializeAndConstruct classRegs class classObj [] obj
     end
 
-fun loadFile (prog:Fixture.PROGRAM)
+fun loadFile (rootRib:Ast.RIB)
              (f:string) 
-    : (Fixture.PROGRAM * Ast.FRAGMENT) =
+    : (Ast.RIB * Ast.FRAGMENT) =
     let
         val _ = trace ["parsing boot file ", f]
         val frag = Parser.parseFile f
         val _ = trace ["defining boot file ", f]
     in
-        Defn.defTopFragment prog frag langEd
+        Defn.defTopFragment rootRib frag langEd
     end
 
-fun loadFiles (prog:Fixture.PROGRAM) 
+fun loadFiles (rootRib:Ast.RIB) 
               (fs:string list)
-    : (Fixture.PROGRAM * ((string * Ast.FRAGMENT) list)) =
+    : (Ast.RIB * ((string * Ast.FRAGMENT) list)) =
     let
-        fun f prog accum (file::files) = 
+        fun f rootRib accum (file::files) = 
             let 
                 val _ = trace ["parsing and defining boot file ", file]
                 val frag = Parser.parseFile file
-                val (prog', frag') = Defn.defTopFragment prog frag langEd
+                val (rootRib', frag') = Defn.defTopFragment rootRib frag langEd
             in
-                f prog' ((file, frag')::accum) files
+                f rootRib' ((file, frag')::accum) files
             end
-          | f prog accum _ = (prog, List.rev accum)
+          | f rootRib accum _ = (rootRib, List.rev accum)
     in
-        f prog [] fs
+        f rootRib [] fs
     end
 
 val verifyBuiltins = ref false (* FIXME *)
 
-fun verifyFiles prog fs =
+fun verifyFiles rootRib fs =
     let
         fun ver (file, frag) =
             (trace ["verifying boot file ", file];
              (file,
-              Verify.verifyTopFragment prog (!verifyBuiltins) frag))
+              Verify.verifyTopFragment rootRib (!verifyBuiltins) frag))
     in
         map ver fs
     end
@@ -210,7 +209,7 @@ fun describeGlobal (regs:Mach.REGS) =
         (trace ["contents of global object:"];
          Mach.inspect (Mach.Object (#global regs)) 1;
          trace ["contents of top rib:"];
-         Fixture.printRib (Fixture.getRootRib (#prog regs)))
+         Fixture.printRib (#rootRib regs))
     else 
         ()
 
@@ -242,7 +241,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val dir = OS.Path.joinDirFile {dir = baseDir, file = "builtins"}
         fun builtin file = OS.Path.joinDirFile {dir = dir, file = file}
         val _ = Native.registerNatives ();
-        val prog = Fixture.mkProgram Defn.initRib
+        val rootRib = Defn.initRib
 
         (*
          * We have to do a small bit of delicate work here because we have to 
@@ -257,13 +256,13 @@ fun boot (baseDir:string) : Mach.REGS =
          * Class and Function.
          *)
 
-        val (prog, objFrag) = loadFile prog (builtin "Object.es")
-        val (prog, clsFrag) = loadFile prog (builtin "Class.es")
-        val (prog, funFrag) = loadFile prog (builtin "Function.es")
-        val (prog, ifaceFrag) = loadFile prog (builtin "Interface.es")
+        val (rootRib, objFrag) = loadFile rootRib (builtin "Object.es")
+        val (rootRib, clsFrag) = loadFile rootRib (builtin "Class.es")
+        val (rootRib, funFrag) = loadFile rootRib (builtin "Function.es")
+        val (rootRib, ifaceFrag) = loadFile rootRib (builtin "Interface.es")
 
-        val (prog, otherFrags) = 
-            loadFiles prog 
+        val (rootRib, otherFrags) = 
+            loadFiles rootRib 
                       [builtin "Namespace.es",
                        builtin "Helper.es",
                        builtin "Conversions.es",
@@ -324,18 +323,18 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val glob = 
             let
-                val cls = lookupRoot prog Name.public_Object
+                val cls = lookupRoot rootRib Name.public_Object
             in
-                Mach.newObject (Mach.InstanceTag cls) Mach.Null (Fixture.getRootRib prog)
+                Mach.newObject (Mach.InstanceTag cls) Mach.Null rootRib
             end
 
-        val objFrag = Verify.verifyTopFragment prog (!verifyBuiltins) objFrag 
-        val clsFrag = Verify.verifyTopFragment prog (!verifyBuiltins) clsFrag
-        val funFrag = Verify.verifyTopFragment prog (!verifyBuiltins) funFrag
-        val ifaceFrag = Verify.verifyTopFragment prog (!verifyBuiltins) ifaceFrag
-        val otherProgs = verifyFiles prog otherFrags
+        val objFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) objFrag 
+        val clsFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) clsFrag
+        val funFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) funFrag
+        val ifaceFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) ifaceFrag
+        val _ = verifyFiles rootRib otherFrags
 
-        val regs = Mach.makeInitialRegs prog glob
+        val regs = Mach.makeInitialRegs rootRib glob
         val _ = Mach.setBooting regs true
 
         (* BEGIN SPEED HACK *)
@@ -348,7 +347,7 @@ fun boot (baseDir:string) : Mach.REGS =
         (* END SPEED HACK *)                
 
         (* Build the Object and Function prototypes as instances of public::Object first. *)
-        val objClass = lookupRoot prog Name.public_Object
+        val objClass = lookupRoot rootRib Name.public_Object
         val Ast.Class { instanceRib, ... } = objClass
         val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.Null instanceRib
         val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.Object objPrototype) instanceRib
