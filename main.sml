@@ -216,7 +216,7 @@ fun eval regs argvRest =
         val regs = Eval.withRootRib regs rootRib
     in
         Mach.setLangEd regs (!langEd);
-        Posix.Process.alarm (Time.fromReal 100.0);
+        Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
         withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
     end

@@ -93,8 +93,8 @@ datatype VALUE = Undefined
          Obj of { props: PROPERTY_BINDINGS,                  
                   proto: VALUE,
                   ident: OBJ_IDENTIFIER,
-                  tag: TAG
-                , rib: RIB ref     (* INFORMATIVE *)
+                  tag: TAG,
+                  rib: RIB
                 }
 
      and TAG =
@@ -456,32 +456,30 @@ fun hasFixedProp (b:PROPERTY_BINDINGS)
 fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
-fun setRib (obj:OBJ)
-           (r:RIB)
-    : unit =
-    let
-        val Obj { rib, ... } = obj
-    in
-        rib := r
-    end
+fun getObjId (Obj { ident, ...}) = ident
 
-fun getRib (obj:OBJ)
+fun getRib (regs:REGS)
+           (obj:OBJ)
     : RIB =
     let
-        val Obj { rib, ... } = obj
+        val { rootRib, global, ... } = regs
+        val Obj { rib, ident, ... } = obj
     in
-        !rib
+        if (getObjId global) = ident
+        then rootRib
+        else rib
     end
 
-fun getRibs (scope:SCOPE) 
+fun getRibs (regs:REGS)
+            (scope:SCOPE) 
     : RIBS = 
       let   
           val Scope {object, parent, ...} = scope
-          val rib = getRib object
+          val rib = getRib regs object
       in
           case parent of 
               NONE => [rib]
-            | SOME p => rib :: (getRibs p)
+            | SOME p => rib :: (getRibs regs p)
       end
 
 
@@ -515,16 +513,17 @@ fun nextIdent _ =
 
 fun newObject (t:TAG)
               (p:VALUE)
+              (rib:RIB)
     : OBJ =
     Obj { ident = nextIdent (),
           tag = t,
           props = newPropBindings (),
           proto = p,
-          rib = ref [] }
+          rib = rib }
 
-fun newObjectNoTag _
+fun newObjectNoTag (rib:RIB)
     : OBJ =
-    newObject NoTag Null
+    newObject NoTag Null rib
 
 fun getProto (ob:OBJ)
     : VALUE =
@@ -1354,8 +1353,6 @@ fun searchScopeChain (scope      : SCOPE option,
 fun instanceRibsOf (object: OBJECT)
     : RIBS =
     []
-
-fun getObjId (Obj { ident, ...}) = ident
 
 fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
     : (OBJECT * NAME) option =

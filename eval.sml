@@ -66,7 +66,7 @@ fun normalize (regs:REGS)
     : TYPE = 
     let
         val { scope, rootRib, ... } = regs
-        val ribs = getRibs scope
+        val ribs = getRibs regs scope
     in
         Type.normalize ribs ty
     end
@@ -339,10 +339,6 @@ fun allocRib (regs:REGS)
         
         val Obj { props, ident, ... } = obj
         val _ = traceConstruct ["allocating rib on object id #", Int.toString ident]
-        val _ = if (isBooting regs andalso 
-                    getObjId (#global regs) = getObjId obj)
-                then ()
-                else setRib obj (f @ (getRib obj))
         val {scope, ...} = regs
         val methodScope = extendScope scope obj ActivationScope                 
         val attrs0 = { removable = false,
@@ -1196,7 +1192,7 @@ and newPrimitive (regs:REGS)
                  (getter: REGS -> (OBJ option) ref)
     : VALUE =
     let
-        val args = [Object (newObject (PrimitiveTag prim) Null)]
+        val args = [Object (newObject (PrimitiveTag prim) Null [])]
         val (class, closure) = getClassObjectAndClass regs getter
     in
         constructClassInstance regs class closure args
@@ -1415,7 +1411,7 @@ and newGenerator (regs:REGS)
                            NONE => error regs ["cannot find helper::GeneratorImpl"]
                          | SOME ob => ob
         val class = needClass (Object classObj)
-        val objRef = ref (newObjectNoTag ())
+        val objRef = ref (newObjectNoTag [])
         val gen = newGen (fn () => execBody (!objRef))
         val tag = PrimitiveTag (GeneratorPrimitive gen)
         val proto = getPrototype regs classObj
@@ -2394,13 +2390,14 @@ and bindTypes (regs:REGS)
             if not (length typeArgs = length typeParams)
             then error regs ["argument length mismatch when binding type args in env"]
             else ()
-        val (scopeObj:OBJ) = newObjectNoTag ()
-        val _ = trace ["binding ", Int.toString (length typeArgs), 
-                       " type args to scope #", Int.toString (getObjId scopeObj)]
-        val env = extendScope env scopeObj TypeArgScope
         val paramFixtureNames = map (fn id => PropName (public id)) typeParams
         val argFixtures = map (fn t => TypeFixture ([], t)) typeArgs
         val typeRib = ListPair.zip (paramFixtureNames, argFixtures)
+
+        val (scopeObj:OBJ) = newObjectNoTag typeRib
+        val _ = trace ["binding ", Int.toString (length typeArgs), 
+                       " type args to scope #", Int.toString (getObjId scopeObj)]
+        val env = extendScope env scopeObj TypeArgScope
         val _ = allocObjRib regs scopeObj NONE typeRib
     in
         env
@@ -4157,7 +4154,7 @@ and invokeFuncClosure (regs:REGS)
 
             val _ = push regs strname args
 
-            val (varObj:OBJ) = newObjectNoTag ()
+            val (varObj:OBJ) = newObjectNoTag paramRib
             val (varRegs:REGS) = extendScopeReg regs varObj ActivationScope
             val (varScope:SCOPE) = (#scope varRegs)
             val (Obj {props, ...}) = varObj
@@ -4521,7 +4518,7 @@ and initializeAndConstruct (regs:REGS)
             let
                 val _ = push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
                 val Func { block, param=Head (paramRib,paramInits), ... } = func
-                val (varObj:OBJ) = newObjectNoTag ()
+                val (varObj:OBJ) = newObjectNoTag paramRib
                 val (varRegs:REGS) = extendScopeReg regs
                                                     varObj
                                                     ActivationScope
@@ -4576,7 +4573,7 @@ and constructStandardWithTag (regs:REGS)
     : OBJ =
     let
         val Class { name, instanceRib, ...} = class
-        val instanceObj = newObject tag proto
+        val instanceObj = newObject tag proto instanceRib
         (* FIXME: might have 'this' binding wrong in class scope here. *)
         val classScope = getClassScope regs classObj
         val regs = withThis (withScope regs classScope) instanceObj
@@ -5154,7 +5151,7 @@ and evalHead (regs:REGS)
     : REGS =
     let
         val (Head (rib,inits)) = head
-        val obj = newObjectNoTag ()
+        val obj = newObjectNoTag rib
         val newRegs = extendScopeReg regs obj BlockScope
         val {scope,...} = newRegs
         val _ = traceConstruct ["built temp scope #",
