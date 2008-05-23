@@ -884,6 +884,15 @@ fun resetProfile (regs:REGS) : unit =
         profileMap := StrListMap.empty
     end
 
+fun setProfile (regs:REGS) (dop:int option) : unit =
+    let
+        val { aux = 
+              Aux { profiler = Profiler { doProfile,  ...}, ...},
+              ... } = regs
+    in
+        doProfile := dop
+    end
+
 fun resetStack (regs:REGS) : unit =
     let
         val { aux = 
@@ -905,6 +914,9 @@ fun push (regs:REGS)
                                profileMap }, 
                     ... }, 
               ... } = regs
+        val _ = if length (!stack) > 128
+                then error ["very deep stack, likely infinite recursion"]
+                else ()
         val newStack = (Frame { name = name, args = args }) :: (!stack)
     in
         stack := newStack;
