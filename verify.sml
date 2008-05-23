@@ -59,28 +59,31 @@ type ENV = { returnType: Ast.TYPE option,
              strict: bool,
              rootRib: Ast.RIB,
              ribs: Ast.RIBS,
-             stdTypes: STD_TYPES }
+             stdTypes: STD_TYPES,
+             thisType: Ast.TYPE
+           }
 
-fun withReturnType { returnType=_, strict, rootRib, ribs, stdTypes } returnType =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes }
+fun withReturnType { returnType=_, strict, rootRib, ribs, stdTypes, thisType } returnType =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes, thisType = thisType }
 
-fun withRibs { returnType, strict, rootRib, ribs=_, stdTypes } ribs =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes }
+fun withRibs { returnType, strict, rootRib, ribs=_, stdTypes, thisType } ribs =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes, thisType = thisType }
 
-fun withStrict { returnType, strict=_, rootRib, ribs, stdTypes } strict =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes }
+fun withStrict { returnType, strict=_, rootRib, ribs, stdTypes, thisType } strict =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes, thisType = thisType }
 
-fun withRib { returnType, strict, rootRib, ribs, stdTypes} extn =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=(extn :: ribs), stdTypes=stdTypes }
+fun withRib { returnType, strict, rootRib, ribs, stdTypes, thisType} extn =
+    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=(extn :: ribs), stdTypes=stdTypes, thisType = thisType }
 
-fun withRibOpt { returnType, strict, rootRib, ribs, stdTypes} extn =
+fun withRibOpt { returnType, strict, rootRib, ribs, stdTypes, thisType } extn =
     { returnType=returnType, 
       strict=strict, 
       rootRib=rootRib, 
       ribs=case extn of 
                NONE => ribs 
              | SOME e => (e :: ribs), 
-      stdTypes=stdTypes }
+      stdTypes=stdTypes,
+      thisType = thisType }
 
 (* Local tracing machinery *)
 
@@ -125,6 +128,7 @@ fun newEnv (rootRib:Ast.RIB)
      strict = strict,
      rootRib = rootRib, 
      ribs = [rootRib],
+     thisType = Ast.AnyType,
      
      stdTypes = 
      {      
@@ -196,12 +200,9 @@ fun typeOfFixture (env:ENV)
       | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
       | _ => anyType
 
-(* Resolves an IDENTIFIER_EXPRESSION in the given RIBS, and returns the type of
- * that IDENTIFIER_EXPRESSION, or NONE. The returned type has been verified.
- *)
-
 (******************** Verification **************************************************)
 
+(*
 fun verifyNameExpr (env:ENV)
                    (ribs:Ast.RIBS)
                    (nameExpr:Ast.NAME_EXPRESSION)
@@ -213,7 +214,7 @@ fun verifyNameExpr (env:ENV)
     in
         ty
     end
-
+*)
 (* Verification (aka normalization) converts a (non-closed) TYPE into a 
  * (closed, aka grounded) TYPE. 
  *)
@@ -224,8 +225,6 @@ and verifyType (env:ENV)
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
         val norm : Ast.TYPE = 
-            (* FIXME: it is *super wrong* to just be using the root rib here. 
-            Type.normalize [(#rootRib env)] ty *)
             Type.normalize (#ribs env) ty
             handle LogErr.TypeError e => 
                    let in
@@ -457,12 +456,7 @@ and verifyExpr2 (env:ENV)
             end
 
           | Ast.ThisExpr k =>
-            (* FIXME: type of current class, if any... also Self type? *)
-            (* FIXME: handle function and generator this *)
-            let
-            in
-                anyType
-            end
+            (#thisType env)
 
           | Ast.YieldExpr eo =>
             let
@@ -501,8 +495,7 @@ and verifyExpr2 (env:ENV)
                     let                        
                     in
                         List.map (verifyExpr env) exprs;
-                        liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE)
-)
+                        liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE))
                     end
 
                   | Ast.LiteralNull        => nullType
