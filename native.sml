@@ -622,26 +622,8 @@ fun get (regs:Mach.REGS)
     let
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
-        fun propNotFound (curr:Mach.OBJ)
-            : Mach.VALUE =
-            let
-                val Mach.Obj { proto, ... } = curr
-            in
-                case proto of
-                    Mach.Object ob => 
-                    Eval.getValueOrVirtual regs ob name false propNotFound
-                  | _ =>
-                    if Eval.isDynamic regs obj
-                    then Mach.Undefined
-                    else Eval.throwExn
-                             (Eval.newTypeErr
-                                  regs 
-                                  ["attempting to get nonexistent property ",
-                                   LogErr.name name,
-                                   "from non-dynamic object"])
-            end
     in
-        Eval.getValueOrVirtual regs obj name false propNotFound
+        Eval.getValueOrVirtual regs obj name false 
     end
 
 (*

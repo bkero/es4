@@ -730,17 +730,32 @@ and hasProperty (regs:REGS)
 (*
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's
  * no Reference type in ES4.
+ *
+ * Note that ES-262-3 8.6.2.1 [[Get]](P) is folded into the 
+ * name resolution algorithm. There is no recursive-get
+ * operation on a single object + prototype chain.
  *)
+and getValue regs obj name = 
+    getValueOrVirtual regs obj name true
+
 and getValueOrVirtual (regs:REGS)
                       (obj:OBJ)
                       (name:NAME)
                       (doVirtual:bool)
-                      (propNotFound:(OBJ -> VALUE))
     : VALUE =
     let
         val _ = trace ["getting property ", fmtName name, 
                        " on obj #", Int.toString (getObjId obj)]
         val Obj { props, ... } = obj
+        fun propNotFound (curr:OBJ)
+            : VALUE =
+            if isDynamic regs obj
+            then Undefined
+            else throwExn (newTypeErr
+                               regs
+                               ["attempting to get nonexistent property ",
+                                LogErr.name name,
+                                " from non-dynamic object"])
         fun upgraded (currProp:PROPERTY) newVal =
             let
                 val { ty, attrs, ... } = currProp
@@ -815,33 +830,6 @@ and getValueOrVirtual (regs:REGS)
                 else 
                     propNotFound obj
             end
-    end
-
-
-and getValue (regs:REGS)
-             (obj:OBJ)
-             (name:NAME)
-    : VALUE =
-    let
-        fun propNotFound (curr:OBJ)
-            : VALUE =
-            let
-                val Obj { proto, ... } = curr
-            in
-                case proto of
-                    Object ob => 
-                    getValueOrVirtual regs ob name true propNotFound
-                  | _ =>
-                    if isDynamic regs obj
-                    then Undefined
-                    else throwExn (newTypeErr
-                                       regs
-                                       ["attempting to get nonexistent property ",
-                                        LogErr.name name,
-                                        " from non-dynamic object"])
-            end
-    in
-        getValueOrVirtual regs obj name true propNotFound
     end
 
 
@@ -5140,33 +5128,6 @@ and constructClassInstance (regs:REGS)
         (* INFORMATIVE *) pop regs; 
         Object obj
     end
-
-
-(*
- * ES-262-3 8.6.2.1 [[Get]](P)
- *
- * FIXME: no idea if this makes the most sense given
- * the ES-262-3 meaning of the operation.
- *)
-
-and get (regs:REGS)
-        (obj:OBJ)
-        (n:NAME)
-    : VALUE =
-    let
-        fun tryObj ob =
-            if hasOwnProperty regs ob n
-            then getValue regs ob n
-            else
-                case obj of
-                    Obj { proto, ... } =>
-                    (case proto of
-                         Object p => tryObj p
-                       | _ => Undefined)
-    in
-        tryObj obj
-    end
-
 
 and evalPragmas (regs:REGS)
                 (pragmas:PRAGMA list)
