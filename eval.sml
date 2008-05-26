@@ -43,11 +43,20 @@ open LogErr
 
 fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 
+fun getObjId (obj:OBJ)
+    : OBJ_IDENTIFIER =
+    let
+        val Obj { ident, ... } = obj
+    in
+        ident
+    end
+
 val doTrace = ref false
 val doTraceConstruct = ref false
 
 fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
 fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
+fun fmtObjId obj = if (!doTrace orelse !doTraceConstruct) then (Int.toString (getObjId obj))else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -224,14 +233,6 @@ fun withRootRib (r:REGS)
           aux = aux }
     end
     
-fun getObjId (obj:OBJ)
-    : OBJ_IDENTIFIER =
-    let
-        val Obj { ident, ... } = obj
-    in
-        ident
-    end
-
 
 fun slotObjId (regs:REGS) 
               (slotFunc:REGS -> (OBJ option) ref) 
@@ -338,7 +339,7 @@ fun allocRib (regs:REGS)
     let
         
         val Obj { props, ident, ... } = obj
-        val _ = traceConstruct ["allocating rib on object id #", Int.toString ident]
+        val _ = traceConstruct ["allocating rib on object id #", fmtObjId obj]
         val {scope, ...} = regs
         val methodScope = extendScope scope obj ActivationScope                 
         val attrs0 = { removable = false,
@@ -745,7 +746,7 @@ and getValueOrVirtual (regs:REGS)
     : VALUE =
     let
         val _ = trace ["getting property ", fmtName name, 
-                       " on obj #", Int.toString (getObjId obj)]
+                       " on obj #", fmtObjId obj]
         val Obj { props, ... } = obj
         fun propNotFound (curr:OBJ)
             : VALUE =
@@ -814,8 +815,7 @@ and getValueOrVirtual (regs:REGS)
                     (* FIXME: need to use builtin es object here, when that file exists. *)
                     (trace ["running meta::get(\"", 
                             (Ustring.toAscii (#id name)), 
-                            "\") catchall on obj #", 
-                            Int.toString (getObjId obj)];
+                            "\") catchall on obj #", fmtObjId obj];
                      (evalCallByRef (withThis regs obj) 
                                     (obj, meta_get) 
                                     [newString regs (#id name)]
@@ -1005,8 +1005,7 @@ and setValueOrVirtual (regs:REGS)
                     (trace ["running meta::set(\"", 
                             (Ustring.toAscii (#id name)), 
                             "\", ", approx v,
-                            ") catchall on obj #", 
-                            Int.toString (getObjId obj)];
+                            ") catchall on obj #", fmtObjId obj];
                      (evalCallByRef (withThis regs obj) 
                                     (obj, meta_set) 
                                     [newString regs (#id name), v]
@@ -2039,6 +2038,10 @@ and evalObjectNameReference (regs:REGS)
     let
         val (this, (obj, name)) = resolveObjectReference regs expr
     in
+        trace ["resolved object-name reference to ", fmtName name, 
+               " on obj #", fmtObjId obj, ", with this=", case this of 
+                                                              NONE => "<none>"
+                                                            | SOME x => "#" ^ fmtObjId x];
         getValue regs obj name
     end
 
@@ -2381,7 +2384,7 @@ and bindTypes (regs:REGS)
 
         val (scopeObj:OBJ) = newObjectNoTag typeRib
         val _ = trace ["binding ", Int.toString (length typeArgs), 
-                       " type args to scope #", Int.toString (getObjId scopeObj)]
+                       " type args to scope #", fmtObjId scopeObj]
         val env = extendScope env scopeObj TypeArgScope
         val _ = allocObjRib regs scopeObj NONE typeRib
     in
@@ -2826,7 +2829,8 @@ and evalCallMethodByExpr (regs:REGS)
         val thisObj = case thisObjOpt of 
                           NONE => (#this regs)
                         | SOME obj => obj
-        val _ = trace ["resolved thisObj=#", (Int.toString (getObjId thisObj)), " for call"]
+        val (obj,name) = r
+        val _ = trace ["resolved call to ", fmtName name, " on obj=#", fmtObjId obj, ", with thisObj=#", fmtObjId thisObj]
         val result = evalCallByRef (withThis regs thisObj) r args true
     in
         trace ["<<< evalCallMethodByExpr"];
@@ -2840,11 +2844,10 @@ and evalNamedMethodCall (regs:REGS)
                         (args:VALUE list)
     : VALUE = 
     let
-        val refOpt = resolveName regs [obj] (nameExprOf name)
+        val {id, ns} = name
+        val r = resolveQualifiedObjectReference regs obj id (Namespace ns)
     in
-        case refOpt of 
-            NONE => error regs ["unable to resolve method: ", LogErr.name name]
-          | SOME r => evalCallByRef (withThis regs obj) r args true
+        evalCallByRef (withThis regs obj) r args true
     end
 
 (* 
@@ -2871,7 +2874,7 @@ and evalCallByRef (regs:REGS)
                                   then SOME (needObj regs (getValue regs obj name))
                                   else NONE
                 in
-                    invokeFuncClosure (withThis regs obj) f thisFun args
+                    invokeFuncClosure regs f thisFun args
                 end
               | _ =>
                 (trace ["evalCallByRef: non-method property ",
@@ -2899,7 +2902,7 @@ and evalCallByObj (regs:REGS)
             if hasOwnProperty regs fobj meta_invoke
             then
                 (trace ["evalCallByObj: redirecting through meta::invoke"];
-                 evalCallByRef regs (fobj, meta_invoke) args true)
+                 evalCallByRef (withThis regs fobj) (fobj, meta_invoke) args true)
             else throwExn (newTypeErr regs ["calling non-callable object"])
 
 (* SPEC
@@ -3781,16 +3784,12 @@ and resolveObjectReference (regs:REGS)
     in
         case name of
             UnqualifiedName { identifier, openNamespaces, ... }
-            => (SOME obj, 
-                resolveUnqualifiedObjectReference regs 
-                                                  obj 
-                                                  identifier 
-                                                  openNamespaces)
-
+            => (SOME obj, resolveUnqualifiedObjectReference regs obj identifier openNamespaces)
+               
           | QualifiedName { namespace, identifier }
-            => resolveQualifiedObjectReference regs obj identifier namespace
+            => (SOME obj, resolveQualifiedObjectReference regs obj identifier namespace)
     end
-
+    
   | resolveObjectReference regs 
                            (ObjectIndexReference {object, index, ...}) = 
     let
@@ -3800,21 +3799,68 @@ and resolveObjectReference (regs:REGS)
         (* FIXME if its an Name, then don't convert *)
         val namespace = Namespace publicNS
     in
-        resolveQualifiedObjectReference regs obj identifier namespace
+        (SOME obj, resolveQualifiedObjectReference regs obj identifier namespace)
     end
 
   | resolveObjectReference  regs  _  =                 (* INFORMATIVE *)
     error regs ["need object reference expression"]    (* INFORMATIVE *)
 
+and selectNamespacesByInstanceRibs (regs:REGS)
+                                   (object:OBJ)
+                                   (identifier:IDENTIFIER)
+                                   (namespaces:NAMESPACE_SET)
+                                   (openNamespaces: OPEN_NAMESPACES)
+    : (OBJ * NAME) = 
+    case namespaces of 
+        [] => internalError ["empty namespace set"]
+      | [namespace] => (object, {ns=namespace, id=identifier})
+      | _ => 
+        let
+            val instanceRibs = instanceRibsOf (object)
+            val result = Fixture.selectNamespaces (identifier, 
+                                                   namespaces, 
+                                                   instanceRibs, 
+                                                   openNamespaces)
+        in 
+            case result of
+                [] => internalError ["empty namespace set"]
+              | [namespace] => (object, {ns=namespace, id=identifier})
+              | _ => error regs ["ambiguous reference"]
+        end
+        
+and resolveOnObject (regs:REGS)
+                    (object:OBJ)
+                    (identifier:IDENTIFIER)
+                    (namespaces:NAMESPACE_SET)
+                    (openNamespaces: OPEN_NAMESPACES) 
+    : (OBJ * NAME) =
+    let
+        val result = searchObject (SOME object, identifier, namespaces, true)
+    in 
+        case result of
+            NONE =>        
+            let
+                val result = searchObject (SOME object, identifier, namespaces, false)
+            in
+                case result of 
+                    NONE => (object, {ns=publicNS, id=identifier})
+                  | SOME (object, namespaces) => 
+                    selectNamespacesByInstanceRibs regs object identifier namespaces openNamespaces
+            end
+          | SOME (object, namespaces) => 
+            selectNamespacesByInstanceRibs regs object identifier namespaces openNamespaces
+    end
+
 and resolveQualifiedObjectReference (regs: REGS)
                                     (object: OBJ)
                                     (identifier: IDENTIFIER)
                                     (namespaceExpr: NAMESPACE_EXPRESSION)
-    : (OBJ option * (OBJ * NAME)) =
+    : (OBJ * NAME) =
     let
-        val namespace = evalNamespaceExpr regs namespaceExpr
+        val namespaces = [evalNamespaceExpr regs namespaceExpr]
+        val openNamespaces = []
     in
-        (SOME object, (object, {ns=namespace, id=identifier}))
+        resolveOnObject regs object identifier namespaces openNamespaces
     end
 
 and resolveUnqualifiedObjectReference (regs: REGS)
@@ -3824,30 +3870,8 @@ and resolveUnqualifiedObjectReference (regs: REGS)
     : (OBJ * NAME) =
     let
         val namespaces = List.concat openNamespaces
-        val result = searchObject (SOME object, identifier, namespaces, false)
-    in 
-        case result of
-            NONE 
-            => (object, {ns=publicNS, id=identifier})
-
-          | SOME (object, namespaces) 
-            => let
-                   val instanceRibs = instanceRibsOf (object)
-                   val result = Fixture.selectNamespaces (identifier, 
-                                                          namespaces, 
-                                                          instanceRibs, 
-                                                          openNamespaces)
-               in 
-                   case result of
-                       [] 
-                       => internalError ["empty namespace set"]
-
-                      | namespace :: []
-                       => (object, {ns=namespace, id=identifier})
-
-                      | _
-                       => error regs ["ambiguous reference"]
-               end
+    in
+        resolveOnObject regs object identifier namespaces openNamespaces
     end
 
 and resolveRefExpr (regs:REGS)
@@ -3942,24 +3966,6 @@ and resolveUnqualifiedLexicalReference (regs           : REGS)
 
 and instanceRibsOf (object: OBJ) = []  (* FIXME *)
 
-(*
- * Scans provided object and prototype chain looking for a slot that
- * matches name (or multiname). Returns a REF to the exact object found.
- *)
-
-and resolveName (regs:REGS)
-                (objects:OBJ list)
-                (nameExpr:NAME_EXPRESSION)
-    : REF option =
-    let
-        val (identifier, openNamespaces) = 
-            case nameExpr of
-                QualifiedName {identifier, namespace} => (identifier, [[evalNamespaceExpr regs namespace]])
-              | UnqualifiedName { identifier, openNamespaces } => (identifier, openNamespaces)
-    in
-        trace ["resolveName: ", LogErr.nameExpr nameExpr];
-        findName ((#global regs), objects, identifier, openNamespaces)
-    end
 
 (* FIXME: evalNameExpr is mostly for field names; the handling of field names is presently a little confused. *)
 and evalNameExpr (regs:REGS)
@@ -4114,14 +4120,12 @@ and invokeFuncClosure (regs:REGS)
     let
         val { func, this, env } = closure
         val _ = trace ["entering func closure in scope #", 
-                       Int.toString (getObjId (getScopeObj env))]
+                       fmtObjId (getScopeObj env)]
         val _ = traceScope env
         val Func { name, block, generator, param=Head (paramRib, paramInits), ty, ... } = func
         val this = case this of
-                       SOME t => (trace ["using bound 'this' #", 
-                                         Int.toString (getObjId t)]; t)
-                     | NONE => (trace ["using caller 'this' #", 
-                                       Int.toString (getObjId (#this regs))]; (#this regs))
+                       SOME t => (trace ["using bound 'this' #", fmtObjId t]; t)
+                     | NONE => (trace ["using caller 'this' #", fmtObjId (#this regs)]; (#this regs))
         val regs = withThis regs this
         val regs = withScope regs env
         (* NB: leave this here, it faults if we have a non-ground type, which is the point. *)
@@ -4371,11 +4375,7 @@ and evalInitsMaybePrototype (regs:REGS)
                 case n of
                     PropName pn =>
                     (traceConstruct ["evalInit assigning to prop ", fmtName pn,
-                                     " on object #", (Int.toString (getObjId obj))];
-                     (*                     if isPrototypeInit then
-                                                log ["Propname: ", fmtName pn]
-                                            else
-                                                () ; *)
+                                     " on object #", fmtObjId obj];
                      if isPrototypeInit
                      then
                          let
@@ -4451,8 +4451,7 @@ and evalScopeInits (regs:REGS)
         val { scope, ... } = regs
         val Scope { temps, ...} = scope
         val obj = findTargetObj regs scope target
-        val Obj { ident, ... } = obj
-        val _ = traceConstruct ["resolved init target to object id #", Int.toString ident]
+        val _ = traceConstruct ["resolved init target to object id #", fmtObjId obj]
     in
         evalInitsMaybePrototype regs obj temps inits (target=Prototype)
     end
@@ -4465,10 +4464,9 @@ and initializeAndConstruct (regs:REGS)
                            (instanceObj:OBJ)
     : unit =
     let
-        fun idStr ob = Int.toString (getObjId ob)
-        val _ = traceConstruct ["initializeAndConstruct: this=#", (idStr (#this regs)),
-                                ", constructee=#", (idStr instanceObj),
-                                ", class=#", (idStr classObj)]
+        val _ = traceConstruct ["initializeAndConstruct: this=#", (fmtObjId (#this regs)),
+                                ", constructee=#", (fmtObjId instanceObj),
+                                ", class=#", (fmtObjId classObj)]
         val _ = if getObjId (#this regs) = getObjId instanceObj
                 then ()
                 else error regs ["constructor running on non-this value"]
@@ -5093,7 +5091,7 @@ and initClassPrototype (regs:REGS)
             in
                 traceConstruct ["initializing proto on (obj #", Int.toString ident, 
                                 "): ", fmtName name, ".prototype = ", 
-                                "(obj #", Int.toString (getObjId newPrototype), ")"];
+                                "(obj #", fmtObjId newPrototype, ")"];
                 setPrototype regs obj (Object newPrototype);
                 if setConstructor
                 then 
@@ -5651,13 +5649,12 @@ and evalFragment (regs:REGS)
                  val { scope, ... } = regs
                  val Scope { temps, ...} = scope
                  val obj = findTargetObj regs scope Hoisted
-                 val Obj { ident, ... } = obj
              in
-                 trace ["resolved anonymous fragment target to obj #", Int.toString ident];
+                 trace ["resolved anonymous fragment target to obj #", fmtObjId obj];
                  setLoc loc;
                  allocObjRib regs obj NONE rib;
                  setLoc loc;
-                 trace ["allocating anonymous fragment inits on obj #", Int.toString ident];
+                 trace ["allocating anonymous fragment inits on obj #", fmtObjId obj];
                  evalInits regs obj temps;
                  setLoc loc;
                  trace ["running anonymous fragment stmts"];

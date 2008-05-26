@@ -1272,31 +1272,6 @@ fun searchObject (NONE, _, _, _) = NONE
             => SOME (object, matches)
     end
 
-fun objectListSearch ([], _, _, _) = NONE
-
-  | objectListSearch (objects    : OBJECT list,
-                      namespaces : NAMESPACE_SET,
-                      identifier : IDENTIFIER,
-                      fixedOnly  : bool)
-    : (OBJECT * NAMESPACE_SET) option =
-    let
-        val object = hd objects
-        val matches = searchObject (SOME object, 
-                                    identifier, 
-                                    namespaces, 
-                                    fixedOnly)
-    in
-        case matches of
-            NONE 
-            => objectListSearch (tl objects, 
-                                 namespaces, 
-                                 identifier, 
-                                 fixedOnly)
-
-          | _ 
-            => matches
-    end
-
 (*
 fun searchMutableScopeObject (object: OBJECT,
                               namespaces: NAMESPACE_SET,
@@ -1368,37 +1343,5 @@ fun searchScopeChain (scope      : SCOPE option,
 fun instanceRibsOf (object: OBJECT)
     : RIBS =
     []
-
-fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
-    : (OBJECT * NAME) option =
-    let
-        val namespaces = List.concat (openNamespaces)
-        val matches = objectListSearch (objects, namespaces, identifier, true)
-        val matches' = case matches of 
-                           NONE => objectListSearch (objects, namespaces, identifier, false)
-                         | _ => matches
-    in
-        case matches' of
-            NONE => NONE
-          | SOME (object, namespace :: []) => SOME (object, {ns=namespace, id=identifier})
-          | SOME (object, namespaces') =>
-            let
-                val matches'' = Fixture.selectNamespacesByOpenNamespaces (openNamespaces, namespaces')
-            in
-                case matches'' of
-                    namespace :: [] => SOME (object, {ns=namespace,id=identifier})
-                  | [] => NONE
-                  | _ =>
-                    let
-                        val instanceRibs = instanceRibsOf (object)
-                        val matches''' = Fixture.selectNamespacesByClass (instanceRibs, namespaces, identifier)
-                    in 
-                        case matches''' of
-                            namespace :: [] => SOME (object, {ns=namespace, id=identifier})
-                          | [] => raise (LogErr.NameError "internal error")
-                          | _ =>  raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
-                    end
-            end
-    end
 
 end
