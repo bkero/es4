@@ -2935,7 +2935,7 @@ and evalCallByRef (regs:REGS)
                     in
                         invokeFuncClosure regs closure thisFun args
                     end
-                  | _ => error regs ["callByRef on unknown name: ", LogErr.name name]
+                  | _ => throwExn (newRefErr regs ["callByRef on unknown name: ", LogErr.name name])
         val _ = trace ["<<< evalCallByRef ", fmtName name]
     in
         res
@@ -4735,7 +4735,7 @@ and specialClassConstructor (regs:REGS)
                             (args:VALUE list)
     : OBJ =
     let
-        (* Here we have class and classObj carrying the class "__ES4__::Class", and 
+        (* Here we have class and classObj carrying the class "intrinsic::Class", and 
          * our *sole argument* carrying the class we're constructing. We cannot just
          * construct an instance of class/classObj though, because they do not carry
          * the classrib we want. We need to synthesize a metaclass and 
@@ -4744,7 +4744,6 @@ and specialClassConstructor (regs:REGS)
          * FIXME: possibly shift this to defn phase. Unclear.
          *)
         val proto = getPrototype regs classObj
-        val Class publicClass = class
         val Class targetClass = case args of
                                     (Object (Obj { tag=PrimitiveTag (ClassPrimitive c), ...}) :: _) => c
                                   | _ => error regs ["called special class constructor without class object"]
@@ -4754,17 +4753,17 @@ and specialClassConstructor (regs:REGS)
                                 parentProtectedNSs = (#parentProtectedNSs targetClass),
                                 typeParams = (#typeParams targetClass),
 
-                                nonnullable = (#nonnullable publicClass),
-                                dynamic = (#dynamic publicClass),
-                                extends = SOME (ClassType (Class publicClass)),
+                                nonnullable = true,
+                                dynamic = false,
+                                extends = NONE,
                                 implements = [],
                                 classRib = [],
-                                instanceRib = Fixture.mergeRibs (Type.matches (#rootRib regs) []) (#instanceRib publicClass) (#classRib targetClass),
+                                instanceRib = (#classRib targetClass),
                                 instanceInits = Head ([],[]),
                                 constructor = NONE,
                                 classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) }
                                 
-        val metaClassObj = newObject (InstanceTag (Class publicClass)) Null []
+        val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) Null []
 
     in
         constructStandardWithTag regs metaClassObj metaClass (PrimitiveTag (ClassPrimitive (Class targetClass))) proto args
