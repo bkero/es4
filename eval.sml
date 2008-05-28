@@ -412,6 +412,8 @@ fun allocRib (regs:REGS)
                                 ()
                         end
 
+
+                      | NamespaceFixture _ => ()
                         
                       | ValFixture { ty, writable, ... } =>
                         let
@@ -461,12 +463,6 @@ fun allocRib (regs:REGS)
                                         state = ValProp (Object classObj),
                                         attrs = attrs0 }
                         end
-
-                      | NamespaceFixture ns =>
-                        allocProp "namespace"
-                                  { ty = typename ES4_Namespace,
-                                    state = NamespaceProp ns,
-                                    attrs = attrs0 }
 
                       | TypeVarFixture _ =>
                         allocProp "type variable"
@@ -779,17 +775,20 @@ and getValueOrVirtual (regs:REGS)
                 newVal
             end
 
-        fun reified ty attrs newVal =
+        fun reifiedFixture ty newVal =
             let
+                val attrs = { removable = false,
+                              enumerable = false,
+                              fixed = true,
+                              writable = ReadOnly }
                 val newProp = { state = ValProp newVal,
                                 ty = ty,
                                 attrs = attrs }
             in
                 addProp props name newProp;
-                trace ["reified property ", fmtName name ];
+                trace ["reified fixture ", fmtName name ];
                 newVal
             end
-
     in
         case findProp props name of
             SOME prop =>
@@ -816,9 +815,6 @@ and getValueOrVirtual (regs:REGS)
                      (* FIXME: possibly throw here? *)
                      Undefined
 
-               | NamespaceProp n =>
-                 upgraded prop (newNamespace regs n)
-
                | NativeFunctionProp nf =>
                  upgraded prop (newNativeFunction regs nf)
 
@@ -835,13 +831,12 @@ and getValueOrVirtual (regs:REGS)
                                     NoTag => (#scope regs)
                                   | _ => instanceScope regs obj
                 in
-                    reified ty 
-                            { removable = false,
-                              enumerable = false,
-                              fixed = true,
-                              writable = ReadOnly }
-                            (newFunctionFromFunc regs scope func)
+                    reifiedFixture ty (newFunctionFromFunc regs scope func)
                 end
+              | SOME (NamespaceFixture ns) => reifiedFixture 
+                                                  (instanceType regs ES4_Namespace []) 
+                                                  (newNamespace regs ns)
+                                              
               | _ =>  
                 let
                     fun catchAll _ =
@@ -946,7 +941,6 @@ and badPropAccess (regs:REGS)
               | TypeProp => "type"
               | UninitProp => "uninitialized"
               | ValProp _ => "value"
-              | NamespaceProp _ => "namespace"
               | ValListProp _ => "value-list"
               | NativeFunctionProp _ => "native function"
               | VirtualValProp _ => "virtual"

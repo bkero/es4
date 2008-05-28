@@ -210,7 +210,6 @@ datatype VALUE = Undefined
 
      and PROPERTY_STATE = UninitProp
                         | ValProp of VALUE
-                        | NamespaceProp of NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
                         | ValListProp of VALUE list       (* INFORMATIVE *)
                         | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
                         | TypeProp
@@ -744,7 +743,6 @@ fun inspect (v:VALUE)
                               | ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
                               | NativeFunctionProp _ => "[native function]"
-                              | NamespaceProp _ => "[namespace]"
                               | ValListProp _ => "[val list]"
                     in
                         p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];

@@ -195,7 +195,6 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
 		   | Mach.ValProp _ => "[val]"
 		   | Mach.VirtualValProp _ => "[virtual val]"
            | Mach.NativeFunctionProp _ => "[native function]"
-           | Mach.NamespaceProp _ => "[namespace]"
            | Mach.ValListProp _ => "[val list]"
     in
 	trace [LogErr.name n, " -> ", ps]
