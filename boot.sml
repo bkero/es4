@@ -194,7 +194,6 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
 		   | Mach.UninitProp => "[uninit]"
 		   | Mach.ValProp _ => "[val]"
 		   | Mach.VirtualValProp _ => "[virtual val]"
-           | Mach.MethodProp _ => "[method]"
            | Mach.NativeFunctionProp _ => "[native function]"
            | Mach.NamespaceProp _ => "[namespace]"
            | Mach.ValListProp _ => "[val list]"

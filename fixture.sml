@@ -43,33 +43,33 @@ fun trace ss = if (!doTrace) then log ss else ()
  * Operations on FIXTUREs and RIBs
  * ----------------------------------------------------------------------------- *)
 
+fun findFixture (b:Ast.RIB) 
+                (n:Ast.FIXTURE_NAME) 
+    : Ast.FIXTURE option = 
+    let 
+        fun search [] = NONE
+          | search ((k,v)::bs) = 
+            if k = n 
+            then SOME v
+            else search bs
+    in
+        search b    
+    end
+
 fun getFixture (b:Ast.RIB) 
                (n:Ast.FIXTURE_NAME) 
     : Ast.FIXTURE = 
-    let 
-        fun search [] = LogErr.fixtureError ["fixture binding not found: ", 
-                                             (LogErr.fname n)]
-          | search ((k,v)::bs) = 
-            if k = n 
-            then v
-            else search bs
-    in
-        search b
-    end
+    case findFixture b n of
+        NONE => LogErr.fixtureError ["fixture binding not found: ", (LogErr.fname n)]
+      | SOME v => v
 
 
 fun hasFixture (b:Ast.RIB) 
                (n:Ast.FIXTURE_NAME) 
     : bool = 
-    let 
-        fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
-            then true
-            else search bs
-    in
-        search b    
-    end
+    case findFixture b n of
+        NONE => false
+      | SOME v => true
 
 
 fun replaceFixture (b:Ast.RIB) 

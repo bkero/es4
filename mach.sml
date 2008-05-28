@@ -211,7 +211,6 @@ datatype VALUE = Undefined
      and PROPERTY_STATE = UninitProp
                         | ValProp of VALUE
                         | NamespaceProp of NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
-                        | MethodProp of FUN_CLOSURE       (* INFORMATIVE *)
                         | ValListProp of VALUE list       (* INFORMATIVE *)
                         | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
                         | TypeProp
@@ -744,7 +743,6 @@ fun inspect (v:VALUE)
                               | UninitProp => "[uninit]"
                               | ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
-                              | MethodProp _ => "[method]"
                               | NativeFunctionProp _ => "[native function]"
                               | NamespaceProp _ => "[namespace]"
                               | ValListProp _ => "[val list]"
@@ -1200,7 +1198,8 @@ type OPEN_NAMESPACES = NAMESPACE_SET list
 
 fun getScopeObjectAndKind ( Scope {object, kind, ...}: SCOPE) = (object, kind)
 
-fun getBindingNamespaces (object: OBJECT, 
+fun getBindingNamespaces (regs: REGS,
+                          object: OBJECT, 
                           identifier: IDENTIFIER,
                           namespaces: NAMESPACE_SET,
                           fixedOnly: bool)
@@ -1214,12 +1213,16 @@ fun getBindingNamespaces (object: OBJECT,
     (* INFORMATIVE *)
     let
         val Obj { props, ... } = object
+        val rib = getRib regs object
         fun tryNS ns = 
             let
                 val name = { id = identifier, ns = ns }
             in
                 case findProp props name of 
-                    NONE => NONE
+                    NONE => 
+                    if Fixture.hasFixture rib (PropName name) 
+                    then SOME ns
+                    else NONE                         
                   | SOME {attrs={fixed, ...}, ...} => 
                     if fixedOnly
                     then if fixed
@@ -1245,15 +1248,17 @@ fun getPrototypeObject (Obj {proto, ...}: OBJECT)
         Object obj => SOME obj
       | _ => NONE
 
-fun searchObject (NONE, _, _, _) = NONE
+fun searchObject (_, NONE, _, _, _) = NONE
 
-  | searchObject (SOME object : OBJECT option, 
+  | searchObject (regs        : REGS,
+                  SOME object : OBJECT option, 
                   identifier  : IDENTIFIER, 
                   namespaces  : NAMESPACE_SET, 
                   fixedOnly   : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = getBindingNamespaces (object, 
+        val matches = getBindingNamespaces (regs, 
+                                            object, 
                                             identifier, 
                                             namespaces, 
                                             fixedOnly)
@@ -1263,7 +1268,8 @@ fun searchObject (NONE, _, _, _) = NONE
             => if fixedOnly then 
                    NONE 
                else
-                   searchObject (getPrototypeObject (object), 
+                   searchObject (regs, 
+                                 getPrototypeObject (object), 
                                  identifier, 
                                  namespaces, 
                                  fixedOnly)
@@ -1287,7 +1293,8 @@ fun searchMutableScopeObject (object: OBJECT,
 *)
 
 (* FIXME need to handle eval scopes specially too *)
-fun searchScope (scope      : SCOPE,
+fun searchScope (regs       : REGS,
+                 scope      : SCOPE,
                  namespaces : NAMESPACE_SET,
                  identifier : IDENTIFIER,
                  fixedOnly  : bool)
@@ -1297,44 +1304,46 @@ fun searchScope (scope      : SCOPE,
     in 
         case (kind, fixedOnly) of
             (WithScope, true) 
-            => searchObject (SOME object, identifier, namespaces, false)
+            => searchObject (regs, SOME object, identifier, namespaces, false)
 
           | (WithScope, false) 
             => NONE
 
           | (_,_)            
-            => searchObject (SOME object, identifier, namespaces, fixedOnly)
+            => searchObject (regs, SOME object, identifier, namespaces, fixedOnly)
     end
 
-and searchScopeChainOnce (NONE, _, _, _) = NONE
+and searchScopeChainOnce (regs, NONE, _, _, _) = NONE
 
-  | searchScopeChainOnce (SOME scope : SCOPE option,
+  | searchScopeChainOnce (regs       : REGS,
+                          SOME scope : SCOPE option,
                           identifier : IDENTIFIER,
                           namespaces : NAMESPACE_SET,
                           fixedOnly  : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = searchScope (scope, namespaces, identifier, fixedOnly)
+        val matches = searchScope (regs, scope, namespaces, identifier, fixedOnly)
         val Scope { parent, ... } = scope
     in
         case matches of
             NONE 
-            => searchScopeChainOnce (parent, identifier, namespaces, fixedOnly)
+            => searchScopeChainOnce (regs, parent, identifier, namespaces, fixedOnly)
 
           | _
             => matches
     end
 
-fun searchScopeChain (scope      : SCOPE option,
+fun searchScopeChain (regs       : REGS,
+                      scope      : SCOPE option,
                       identifier : IDENTIFIER,
                       namespaces : NAMESPACE_SET)
     : (OBJECT * NAMESPACE_SET) option =
     let 
-        val result = searchScopeChainOnce(scope, identifier, namespaces, true)
+        val result = searchScopeChainOnce(regs, scope, identifier, namespaces, true)
     in
         case result of
             NONE
-            => searchScopeChainOnce(scope, identifier, namespaces, false)
+            => searchScopeChainOnce(regs, scope, identifier, namespaces, false)
 
           | SOME _
             => result

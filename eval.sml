@@ -376,7 +376,6 @@ fun allocRib (regs:REGS)
                                 then fail ()
                                 else case state of
                                          ValProp _ => permit ()
-                                       | MethodProp _ => permit ()
                                        | NativeFunctionProp _ => permit ()
                                        | VirtualValProp _ => permit ()
                                        | _ => fail ()
@@ -393,20 +392,26 @@ fun allocRib (regs:REGS)
                       | MethodFixture { func, ty, writable, ... } =>
                         let
                             val Func { native, ... } = func
-                            val p = if native
-                                    then NativeFunctionProp (getNativeFunction pn)
-                                    else MethodProp (newFunClosure methodScope func this)
                         in
-                            allocProp "method"
-                                      { ty = normalize regs ty,
-                                        state = p,
-                                        attrs = { removable = false,
-                                                  enumerable = false,
-                                                  writable = if writable 
-                                                             then Writable
-                                                             else WriteOnce,
-                                                  fixed = true } }
+                            if native
+                            then 
+                                let
+                                    val p = NativeFunctionProp (getNativeFunction pn)
+                                in
+                                    allocProp "method"
+                                              { ty = normalize regs ty,
+                                                state = p,
+                                                attrs = { removable = false,
+                                                          enumerable = false,
+                                                          writable = if writable 
+                                                                     then Writable
+                                                                     else WriteOnce,
+                                                          fixed = true } }
+                                end
+                            else 
+                                ()
                         end
+
                         
                       | ValFixture { ty, writable, ... } =>
                         let
@@ -688,28 +693,32 @@ and hasOwnProperty (regs : REGS)
     let
         val Obj { props, ... } = obj
     in
+        if Fixture.hasFixture (getRib regs obj) (PropName n)
+        then true
+        else            
         if hasFixedProp props n then 
             true
-        else if hasFixedProp props meta_has then 
-            let 
-                val v = evalNamedMethodCall 
-                            regs obj meta_has [newName regs n]
-            in
-                toBoolean v
-            end
-            handle ThrowException e => 
-                   let
-                       val ty = typeOfVal regs e
-                       val defaultBehaviorClassTy = 
-                           instanceType regs ES4_DefaultBehaviorClass []
-                   in
-                       if ty <* defaultBehaviorClassTy then
-                           hasProp props n
-                       else 
-                           throwExn e
-                   end
-        else
-            hasProp props n
+        else 
+            if hasFixedProp props meta_has then 
+                let 
+                    val v = evalNamedMethodCall 
+                                regs obj meta_has [newName regs n]
+                in
+                    toBoolean v
+                end
+                handle ThrowException e => 
+                       let
+                           val ty = typeOfVal regs e
+                           val defaultBehaviorClassTy = 
+                               instanceType regs ES4_DefaultBehaviorClass []
+                       in
+                           if ty <* defaultBehaviorClassTy then
+                               hasProp props n
+                           else 
+                               throwExn e
+                       end
+            else
+                hasProp props n
     end
 
 
@@ -747,7 +756,7 @@ and getValueOrVirtual (regs:REGS)
     let
         val _ = trace ["getting property ", fmtName name, 
                        " on obj #", fmtObjId obj]
-        val Obj { props, ... } = obj
+        val Obj { props, tag, ... } = obj
         fun propNotFound (curr:OBJ)
             : VALUE =
             if isDynamic regs obj
@@ -756,7 +765,7 @@ and getValueOrVirtual (regs:REGS)
                                regs
                                ["attempting to get nonexistent property ",
                                 LogErr.name name,
-                                " from non-dynamic object"])
+                                " from non-dynamic object"])                 
         fun upgraded (currProp:PROPERTY) newVal =
             let
                 val { ty, attrs, ... } = currProp
@@ -769,6 +778,18 @@ and getValueOrVirtual (regs:REGS)
                 trace ["upgraded property ", fmtName name ];
                 newVal
             end
+
+        fun reified ty attrs newVal =
+            let
+                val newProp = { state = ValProp newVal,
+                                ty = ty,
+                                attrs = attrs }
+            in
+                addProp props name newProp;
+                trace ["reified property ", fmtName name ];
+                newVal
+            end
+
     in
         case findProp props name of
             SOME prop =>
@@ -801,35 +822,49 @@ and getValueOrVirtual (regs:REGS)
                | NativeFunctionProp nf =>
                  upgraded prop (newNativeFunction regs nf)
 
-               | MethodProp closure =>
-                 upgraded prop (newFunctionFromClosure regs closure)
-
                | ValListProp vals =>
                  (* FIXME: The 'arguments' object can't be an array. *)
                  upgraded prop (newArray regs vals)
 
                | ValProp v => v)
           | NONE =>
-            let
-                fun catchAll _ =
-                    (* FIXME: need to use builtin es object here, when that file exists. *)
-                    (trace ["running meta::get(\"", 
-                            (Ustring.toAscii (#id name)), 
-                            "\") catchall on obj #", fmtObjId obj];
-                     (evalCallByRef (withThis regs obj) 
-                                    (obj, meta_get) 
-                                    [newString regs (#id name)]
-                                    false))
-            in
-                if doVirtual
-                then 
-                    case findProp props meta_get of
-                        SOME { state = MethodProp _, ... } => catchAll ()
-                      | SOME { state = NativeFunctionProp _, ... } => catchAll ()
-                      | _ => propNotFound obj
-                else 
-                    propNotFound obj
-            end
+            case Fixture.findFixture (getRib regs obj) (PropName name) of 
+                SOME (MethodFixture { func, ty, writable, ... }) => 
+                let
+                    val scope = case tag of 
+                                    NoTag => (#scope regs)
+                                  | _ => instanceScope regs obj
+                in
+                    reified ty 
+                            { removable = false,
+                              enumerable = false,
+                              fixed = true,
+                              writable = ReadOnly }
+                            (newFunctionFromFunc regs scope func)
+                end
+              | _ =>  
+                let
+                    fun catchAll _ =
+                        (* FIXME: need to use builtin es object here, when that file exists. *)
+                        (trace ["running meta::get(\"", 
+                                (Ustring.toAscii (#id name)), 
+                                "\") catchall on obj #", fmtObjId obj];
+                         (evalCallByRef (withThis regs obj) 
+                                        (obj, meta_get) 
+                                        [newString regs (#id name)]
+                                        false))
+                in
+                    if doVirtual
+                    then 
+                        if Fixture.hasFixture (getRib regs obj) (PropName meta_get)
+                        then catchAll ()
+                        else 
+                        case findProp props meta_get of
+                            SOME { state = NativeFunctionProp _, ... } => catchAll ()
+                          | _ => propNotFound obj
+                    else 
+                        propNotFound obj
+                end
     end
 
 
@@ -912,7 +947,6 @@ and badPropAccess (regs:REGS)
               | UninitProp => "uninitialized"
               | ValProp _ => "value"
               | NamespaceProp _ => "namespace"
-              | MethodProp _ => "method"
               | ValListProp _ => "value-list"
               | NativeFunctionProp _ => "native function"
               | VirtualValProp _ => "virtual"
@@ -970,7 +1004,6 @@ and setValueOrVirtual (regs:REGS)
                     
                     (* FIXME: change UninitProp state to another state in the Writability datatype. *)
                     UninitProp => write ()
-                  | MethodProp _ => maybeWrite true
                   | VirtualValProp { setter, ... } =>
                     if doVirtual
                     then 
@@ -1014,10 +1047,12 @@ and setValueOrVirtual (regs:REGS)
             in
                 if doVirtual
                 then
-                    case findProp props meta_set of
-                        SOME { state = MethodProp _, ... } => catchAll ()
-                      | SOME { state = NativeFunctionProp _, ... } => catchAll ()
-                      | _ => newProp ()
+                    if Fixture.hasFixture (getRib regs obj) (PropName meta_set)
+                    then catchAll ()
+                    else 
+                        case findProp props meta_set of
+                            SOME { state = NativeFunctionProp _, ... } => catchAll ()
+                          | _ => newProp ()
                 else
                     newProp ()
             end
@@ -2474,7 +2509,7 @@ and applyTypesToFunction (regs:REGS)
                 newFunctionFromClosure regs newClosure
             end
     end
-
+    
 
 and instanceClass (regs:REGS)
                   (ity:TYPE)
@@ -2489,9 +2524,23 @@ and instanceClass (regs:REGS)
           | AppType (ClassType (Class {name, ... }), types) => 
             needObj regs (applyTypesToClass regs (fetch name) types)
             
-          | _ => error regs ["unexpected type in instanceClass"]
+          | ArrayType _ => needObj regs (fetch public_Array)
+          | RecordType _ => needObj regs (fetch public_Object)
+          | FunctionType _ => needObj regs (fetch public_Function)
+            
+          | _ => error regs ["unexpected type in instanceClass: ", LogErr.ty ity]
     end
 
+and instanceScope (regs:REGS)
+                  (obj:OBJ)
+    : SCOPE = 
+    let
+        val ty = typeOfVal regs (Object obj)
+        val clsObj = instanceClass regs ty
+        val scope = getClassScope regs clsObj
+    in
+        extendScope scope obj InstanceScope
+    end
 
 and instanceInterface (regs:REGS)
                       (ity:TYPE)
@@ -2864,22 +2913,29 @@ and evalCallByRef (regs:REGS)
     let
         val (obj, name) = r
         val _ = trace [">>> evalCallByRef ", fmtName name]
-        val Obj { props, ... } = obj
+        val Obj { tag, props, ... } = obj
         val res = 
-            case (#state (getProp props name)) of
-                NativeFunctionProp { func, ...} => func regs args
-              | MethodProp f => 
-                let 
-                    val thisFun = if useThisFun andalso not (isBooting regs)
-                                  then SOME (needObj regs (getValue regs obj name))
-                                  else NONE
-                in
-                    invokeFuncClosure regs f thisFun args
-                end
-              | _ =>
+            case findProp props name of
+                SOME { state = NativeFunctionProp { func, ...}, ... } => func regs args
+              | SOME _ =>
                 (trace ["evalCallByRef: non-method property ",
                         "referenced, getting and calling"];
                  evalCallByObj regs (needObj regs (getValue regs obj name)) args)
+              | _ => 
+                case Fixture.findFixture (getRib regs obj) (PropName name) of
+                    SOME (MethodFixture { func, ... }) => 
+                    let
+                        val scope = case tag of 
+                                        NoTag => (#scope regs)
+                                      | _ => instanceScope regs obj
+                        val closure = newFunClosure scope func (SOME obj)
+                        val thisFun = if useThisFun andalso not (isBooting regs)
+                                      then SOME (needObj regs (getValue regs obj name))
+                                      else NONE
+                    in
+                        invokeFuncClosure regs closure thisFun args
+                    end
+                  | _ => error regs ["callByRef on unknown name: ", LogErr.name name]
         val _ = trace ["<<< evalCallByRef ", fmtName name]
     in
         res
@@ -3522,7 +3578,7 @@ and typeOfTag (regs:REGS)
           | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType getGeneratorClassSlot
           | PrimitiveTag (FunctionPrimitive {func=Func { ty, ...}, ...}) => ty
                                                                             
-          | NoTag =>
+          | NoTag => 
             (* FIXME: this would be a hard error if we didn't use NoTag values
              * as temporaries. Currently we do, so there are contexts where we
              * want them to have a type in order to pass a runtime type test.
@@ -3835,12 +3891,12 @@ and resolveOnObject (regs:REGS)
                     (openNamespaces: OPEN_NAMESPACES) 
     : (OBJ * NAME) =
     let
-        val result = searchObject (SOME object, identifier, namespaces, true)
+        val result = searchObject (regs, SOME object, identifier, namespaces, true)
     in 
         case result of
             NONE =>        
             let
-                val result = searchObject (SOME object, identifier, namespaces, false)
+                val result = searchObject (regs, SOME object, identifier, namespaces, false)
             in
                 case result of 
                     NONE => (object, {ns=publicNS, id=identifier})
@@ -3924,7 +3980,7 @@ and resolveQualifiedLexicalReference (regs          : REGS)
     let
         val {scope, global, ...} = regs
         val namespace = evalNamespaceExpr regs namespaceExpr
-        val result = searchScopeChain (SOME scope, identifier, [namespace])
+        val result = searchScopeChain (regs, SOME scope, identifier, [namespace])
     in 
         case result of
             NONE
@@ -3941,7 +3997,7 @@ and resolveUnqualifiedLexicalReference (regs           : REGS)
     let
         val {scope, global, ...} = regs
         val namespaces = List.concat openNamespaces
-        val result = searchScopeChain (SOME scope, identifier, namespaces)
+        val result = searchScopeChain (regs, SOME scope, identifier, namespaces)
     in 
         case result of
             NONE 
@@ -4160,7 +4216,7 @@ and invokeFuncClosure (regs:REGS)
             let
                 val blockRegs = withThisFun varRegs thisFun 
                 val res = case block of
-                              NONE => Undefined
+                              NONE => error regs ["evaluating abstract function closure"]
                             | SOME b =>
                               if generator then
                                   let
