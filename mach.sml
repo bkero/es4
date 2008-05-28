@@ -211,7 +211,6 @@ datatype VALUE = Undefined
      and PROPERTY_STATE = UninitProp
                         | ValProp of VALUE
                         | ValListProp of VALUE list       (* INFORMATIVE *)
-                        | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
                         | TypeProp
                         | TypeVarProp
                         | VirtualValProp of
@@ -742,7 +741,6 @@ fun inspect (v:VALUE)
                               | UninitProp => "[uninit]"
                               | ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
-                              | NativeFunctionProp _ => "[native function]"
                               | ValListProp _ => "[val list]"
                     in
                         p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];

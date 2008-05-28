@@ -194,7 +194,6 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
 		   | Mach.UninitProp => "[uninit]"
 		   | Mach.ValProp _ => "[val]"
 		   | Mach.VirtualValProp _ => "[virtual val]"
-           | Mach.NativeFunctionProp _ => "[native function]"
            | Mach.ValListProp _ => "[val list]"
     in
 	trace [LogErr.name n, " -> ", ps]

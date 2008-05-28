@@ -376,7 +376,6 @@ fun allocRib (regs:REGS)
                                 then fail ()
                                 else case state of
                                          ValProp _ => permit ()
-                                       | NativeFunctionProp _ => permit ()
                                        | VirtualValProp _ => permit ()
                                        | _ => fail ()
                             end
@@ -389,30 +388,7 @@ fun allocRib (regs:REGS)
                                     state = TypeProp,
                                     attrs = attrs0 }
                         
-                      | MethodFixture { func, ty, writable, ... } =>
-                        let
-                            val Func { native, ... } = func
-                        in
-                            if native
-                            then 
-                                let
-                                    val p = NativeFunctionProp (getNativeFunction pn)
-                                in
-                                    allocProp "method"
-                                              { ty = normalize regs ty,
-                                                state = p,
-                                                attrs = { removable = false,
-                                                          enumerable = false,
-                                                          writable = if writable 
-                                                                     then Writable
-                                                                     else WriteOnce,
-                                                          fixed = true } }
-                                end
-                            else 
-                                ()
-                        end
-
-
+                      | MethodFixture _ => ()
                       | NamespaceFixture _ => ()
                         
                       | ValFixture { ty, writable, ... } =>
@@ -697,8 +673,7 @@ and hasOwnProperty (regs : REGS)
         else 
             if hasFixedProp props meta_has then 
                 let 
-                    val v = evalNamedMethodCall 
-                                regs obj meta_has [newName regs n]
+                    val v = evalNamedMethodCall regs obj meta_has [newName regs n]
                 in
                     toBoolean v
                 end
@@ -815,51 +790,39 @@ and getValueOrVirtual (regs:REGS)
                      (* FIXME: possibly throw here? *)
                      Undefined
 
-               | NativeFunctionProp nf =>
-                 upgraded prop (newNativeFunction regs nf)
-
                | ValListProp vals =>
                  (* FIXME: The 'arguments' object can't be an array. *)
                  upgraded prop (newArray regs vals)
 
                | ValProp v => v)
+            
           | NONE =>
             case Fixture.findFixture (getRib regs obj) (PropName name) of 
                 SOME (MethodFixture { func, ty, writable, ... }) => 
                 let
-                    val scope = case tag of 
-                                    NoTag => (#scope regs)
-                                  | _ => instanceScope regs obj
+                    val Func { native, ... } = func
+                    fun scope _ = case tag of 
+                                      NoTag => (#scope regs)
+                                    | _ => instanceScope regs obj
+                    val v = if native 
+                            then (newNativeFunction regs (getNativeFunction name))
+                            else (newFunctionFromFunc regs (scope()) func)
                 in
-                    reifiedFixture ty (newFunctionFromFunc regs scope func)
+                    reifiedFixture ty v
                 end
               | SOME (NamespaceFixture ns) => reifiedFixture 
                                                   (instanceType regs ES4_Namespace []) 
                                                   (newNamespace regs ns)
                                               
               | _ =>  
-                let
-                    fun catchAll _ =
-                        (* FIXME: need to use builtin es object here, when that file exists. *)
-                        (trace ["running meta::get(\"", 
-                                (Ustring.toAscii (#id name)), 
-                                "\") catchall on obj #", fmtObjId obj];
-                         (evalCallByRef (withThis regs obj) 
-                                        (obj, meta_get) 
-                                        [newString regs (#id name)]
-                                        false))
-                in
-                    if doVirtual
-                    then 
-                        if Fixture.hasFixture (getRib regs obj) (PropName meta_get)
-                        then catchAll ()
-                        else 
-                        case findProp props meta_get of
-                            SOME { state = NativeFunctionProp _, ... } => catchAll ()
-                          | _ => propNotFound obj
-                    else 
-                        propNotFound obj
-                end
+                if doVirtual andalso 
+                   Fixture.hasFixture (getRib regs obj) (PropName meta_get)
+                then 
+                    (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
+                            "\") catchall on obj #", fmtObjId obj];
+                     evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
+                else 
+                    propNotFound obj
     end
 
 
@@ -895,8 +858,7 @@ and checkAndConvert (regs:REGS)
                 val (classTy:TYPE) = AstQuery.needClassType classType
                 val (classObj:OBJ) = instanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
-                val converted = evalCallByRef (withThis regs classObj) (classObj, meta_invoke) [v]
-                                              true
+                val converted = evalNamedMethodCall regs classObj meta_invoke [v]
             in
                 typeCheck regs converted tyExpr
             end
@@ -942,7 +904,6 @@ and badPropAccess (regs:REGS)
               | UninitProp => "uninitialized"
               | ValProp _ => "value"
               | ValListProp _ => "value-list"
-              | NativeFunctionProp _ => "native function"
               | VirtualValProp _ => "virtual"
     in
         throwExn (newTypeErr regs ["bad property ", accessKind,
@@ -1013,43 +974,29 @@ and setValueOrVirtual (regs:REGS)
                   | _ => badPropAccess regs "setValue" name state
             end
           | NONE =>
-            let
-                fun newProp _ =
-                    let
-                        val prop = { state = ValProp v,
-                                     ty = AnyType,
-                                     attrs = { removable = true,
-                                               enumerable = true,
-                                               writable = Writable,
-                                               fixed = false } }
-                    in
-                        if isDynamic regs obj
-                        then addProp props name prop
-                        else throwExn (newTypeErr regs ["attempting to add property to non-dynamic object"])
-                    end
-                fun catchAll _ =
-                    (* FIXME: need to use builtin es object here, when that file exists. *)
-                    (trace ["running meta::set(\"", 
-                            (Ustring.toAscii (#id name)), 
-                            "\", ", approx v,
-                            ") catchall on obj #", fmtObjId obj];
-                     (evalCallByRef (withThis regs obj) 
-                                    (obj, meta_set) 
-                                    [newString regs (#id name), v]
-                                    false; 
-                      ()))
-            in
-                if doVirtual
-                then
-                    if Fixture.hasFixture (getRib regs obj) (PropName meta_set)
-                    then catchAll ()
-                    else 
-                        case findProp props meta_set of
-                            SOME { state = NativeFunctionProp _, ... } => catchAll ()
-                          | _ => newProp ()
-                else
-                    newProp ()
-            end
+            if doVirtual andalso 
+               Fixture.hasFixture (getRib regs obj) (PropName meta_set)
+            then 
+                let
+                    val _ = trace ["running meta::set(\"", (Ustring.toAscii (#id name)), 
+                                   "\", ", approx v, ") catchall on obj #", fmtObjId obj];
+                in
+                    evalNamedMethodCall regs obj meta_set [newString regs (#id name), v];
+                    ()
+                end
+            else 
+                let
+                    val prop = { state = ValProp v,
+                                 ty = AnyType,
+                                 attrs = { removable = true,
+                                           enumerable = true,
+                                           writable = Writable,
+                                           fixed = false } }
+                in
+                    if isDynamic regs obj
+                    then addProp props name prop
+                    else throwExn (newTypeErr regs ["attempting to add property to non-dynamic object"])
+                end
     end
 
 
@@ -1368,7 +1315,7 @@ and newFunctionFromFunc (regs:REGS)
                         (f:FUNC)
     : VALUE =
     newFunctionFromClosure regs (newFunClosure scope f NONE)
-
+    
 
 and newNativeFunction (regs:REGS)
                       (f:NATIVE_FUNCTION) =
@@ -2862,11 +2809,6 @@ and evalCallMethodByExpr (regs:REGS)
                          (args:VALUE list)
     : VALUE =
     let
-        (*
-         * If we have a method or native function *property*, we can just
-         * call it directly without manufacturing a temporary Function
-         * wrapper object.
-         *)
         val _ = trace [">>> evalCallMethodByExpr"]
         val (thisObjOpt, r) = resolveRefExpr regs func true
         val thisObj = case thisObjOpt of 
@@ -2874,7 +2816,7 @@ and evalCallMethodByExpr (regs:REGS)
                         | SOME obj => obj
         val (obj,name) = r
         val _ = trace ["resolved call to ", fmtName name, " on obj=#", fmtObjId obj, ", with thisObj=#", fmtObjId thisObj]
-        val result = evalCallByRef (withThis regs thisObj) r args true
+        val result = evalCallByRef (withThis regs thisObj) r args
     in
         trace ["<<< evalCallMethodByExpr"];
         result
@@ -2890,7 +2832,7 @@ and evalNamedMethodCall (regs:REGS)
         val {id, ns} = name
         val r = resolveQualifiedObjectReference regs obj id (Namespace ns)
     in
-        evalCallByRef (withThis regs obj) r args true
+        evalCallByRef (withThis regs obj) r args
     end
 
 (* 
@@ -2902,37 +2844,11 @@ and evalNamedMethodCall (regs:REGS)
 and evalCallByRef (regs:REGS)
                   (r:REF)
                   (args:VALUE list)
-                  (useThisFun:bool)
     : VALUE =
     let
         val (obj, name) = r
-        val _ = trace [">>> evalCallByRef ", fmtName name]
-        val Obj { tag, props, ... } = obj
-        val res = 
-            case findProp props name of
-                SOME { state = NativeFunctionProp { func, ...}, ... } => func regs args
-              | SOME _ =>
-                (trace ["evalCallByRef: non-method property ",
-                        "referenced, getting and calling"];
-                 evalCallByObj regs (needObj regs (getValue regs obj name)) args)
-              | _ => 
-                case Fixture.findFixture (getRib regs obj) (PropName name) of
-                    SOME (MethodFixture { func, ... }) => 
-                    let
-                        val scope = case tag of 
-                                        NoTag => (#scope regs)
-                                      | _ => instanceScope regs obj
-                        val closure = newFunClosure scope func (SOME obj)
-                        val thisFun = if useThisFun andalso not (isBooting regs)
-                                      then SOME (needObj regs (getValue regs obj name))
-                                      else NONE
-                    in
-                        invokeFuncClosure regs closure thisFun args
-                    end
-                  | _ => throwExn (newRefErr regs ["callByRef on unknown name: ", LogErr.name name])
-        val _ = trace ["<<< evalCallByRef ", fmtName name]
     in
-        res
+        evalCallByObj regs (needObj regs (getValue regs obj name)) args
     end
 
 and evalCallByObj (regs:REGS)
@@ -2952,7 +2868,7 @@ and evalCallByObj (regs:REGS)
             if hasOwnProperty regs fobj meta_invoke
             then
                 (trace ["evalCallByObj: redirecting through meta::invoke"];
-                 evalCallByRef (withThis regs fobj) (fobj, meta_invoke) args true)
+                 evalCallByRef (withThis regs fobj) (fobj, meta_invoke) args)
             else throwExn (newTypeErr regs ["calling non-callable object"])
 
 (* SPEC
