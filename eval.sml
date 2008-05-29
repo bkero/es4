@@ -382,15 +382,10 @@ fun allocRib (regs:REGS)
                         else addProp props pn p
                 in
                     case f of
-                        TypeFixture (typeParams, ty) =>
-                        allocProp "type"
-                                  { ty = normalize regs ty,   (* FIXME: handle typeParams *)
-                                    state = TypeProp,
-                                    attrs = attrs0 }
-                        
+                        TypeFixture _ => ()
+                      | TypeVarFixture _ => ()
                       | MethodFixture _ => ()
                       | NamespaceFixture _ => ()
-                        
                       | ValFixture { ty, writable, ... } =>
                         let
                             val ty = evalTy regs ty
@@ -440,11 +435,6 @@ fun allocRib (regs:REGS)
                                         attrs = attrs0 }
                         end
 
-                      | TypeVarFixture _ =>
-                        allocProp "type variable"
-                                  { ty = typename intrinsic_Type,
-                                    state = TypeVarProp,
-                                    attrs = attrs0 }
 
                       | InterfaceFixture iface =>  (* FIXME *)
                         let
@@ -768,15 +758,7 @@ and getValueOrVirtual (regs:REGS)
         case findProp props name of
             SOME prop =>
             (case (#state prop) of
-                 TypeProp =>
-                 throwExn (newTypeErr regs ["getValue on a type property: ",
-                                            LogErr.name name])
-
-               | TypeVarProp =>
-                 throwExn (newTypeErr regs ["getValue on a type variable property: ",
-                                            LogErr.name name])
-
-               | UninitProp =>
+                 UninitProp =>
                  throwExn (newTypeErr regs ["getValue on an uninitialized property: ",
                                             LogErr.name name])
 
@@ -810,11 +792,13 @@ and getValueOrVirtual (regs:REGS)
                 in
                     reifiedFixture ty v
                 end
-              | SOME (NamespaceFixture ns) => reifiedFixture 
-                                                  (instanceType regs ES4_Namespace []) 
-                                                  (newNamespace regs ns)
-                                              
-              | _ =>  
+
+              | SOME (NamespaceFixture ns) => 
+                reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
+
+              | SOME _ => 
+                throwExn (newTypeErr regs ["attempting to get non-reified fixture", LogErr.name name])
+              | NONE =>  
                 if doVirtual andalso 
                    Fixture.hasFixture (getRib regs obj) (PropName meta_get)
                 then 
@@ -899,9 +883,7 @@ and badPropAccess (regs:REGS)
     let
         val existingPropKind = 
             case existingPropState of 
-                TypeVarProp => "type variable"
-              | TypeProp => "type"
-              | UninitProp => "uninitialized"
+                UninitProp => "uninitialized"
               | ValProp _ => "value"
               | ValListProp _ => "value-list"
               | VirtualValProp _ => "virtual"

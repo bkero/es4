@@ -211,8 +211,6 @@ datatype VALUE = Undefined
      and PROPERTY_STATE = UninitProp
                         | ValProp of VALUE
                         | ValListProp of VALUE list       (* INFORMATIVE *)
-                        | TypeProp
-                        | TypeVarProp
                         | VirtualValProp of
                           { getter: FUN_CLOSURE option,
                             setter: FUN_CLOSURE option }
@@ -736,9 +734,7 @@ fun inspect (v:VALUE)
                         val indent = indent + 1
                         val stateStr =
                             case state of
-                                TypeVarProp => "[typeVar]"
-                              | TypeProp => "[type]"
-                              | UninitProp => "[uninit]"
+                                UninitProp => "[uninit]"
                               | ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
                               | ValListProp _ => "[val list]"
