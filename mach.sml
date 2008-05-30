@@ -208,8 +208,7 @@ datatype VALUE = Undefined
       * FIXME: The 'arguments' object can't be an array.
       *)
 
-     and PROPERTY_STATE = UninitProp
-                        | ValProp of VALUE
+     and PROPERTY_STATE = ValProp of VALUE
                         | ValListProp of VALUE list       (* INFORMATIVE *)
                         | VirtualValProp of
                           { getter: FUN_CLOSURE option,
@@ -734,8 +733,7 @@ fun inspect (v:VALUE)
                         val indent = indent + 1
                         val stateStr =
                             case state of
-                                UninitProp => "[uninit]"
-                              | ValProp v => "[val]"
+                                ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
                               | ValListProp _ => "[val list]"
                     in
