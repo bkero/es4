@@ -320,8 +320,8 @@ fun normalizeUnions (ty:TYPE)
 fun normalizeArrays (ty:TYPE)
     : TYPE =
     case ty of 
-(*        ArrayType [] => ArrayType [AnyType]
-      | *) x => mapType normalizeArrays x
+        ArrayType ([],NONE) => ArrayType ([], SOME AnyType)
+      | x => mapType normalizeArrays x
 
 
 (* ----------------------------------------------------------------------------- *)
