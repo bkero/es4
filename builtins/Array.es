@@ -698,7 +698,7 @@
     
     informative function sortEngine(v, lo, hi, sortCompare): void {
         if (hi-lo >= 0)
-            sortEngine2(v, lo, hi, sortCompare);
+            informative::sortEngine2(v, lo, hi, sortCompare);
     }
 
     informative function sortEngine2(v, lo: double, hi: double, sortCompare): void {
