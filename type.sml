@@ -583,10 +583,10 @@ fun normalize (ribs:RIB list)
         val _ = traceTy "normalize3: " ty
         val ty = normalizeLambdas ty
 *)
-
+(*
         val _ = traceTy "normalize4: " ty
         val ty = normalizeNulls ty
-
+*)
         val _ = traceTy "normalize5: " ty
         val ty = normalizeUnions ty
 
@@ -795,13 +795,31 @@ and subTypeNullable extra type1 type2 =
 and subTypeNonNull extra type1 type2 =
     case (type1, type2) of
 
-        (NonNullType type1, type2) =>
+        (* 
+         * FIXME, this rule is odd; it's required to let the following code function:
+         *
+         *   var v : Object!
+         *   v = new Array();
+         *
+         * Under the interpretation that the array has allocated type Array!, the latter
+         * two rules here will first check that Array is a subtype of [Object!, null]
+         * -- via the first rule -- and then check that Array is a subtype of Object
+         * and, crucually, that null is not a subtype of Array. Unfortunately for us, 
+         * null -is- a subtype of Array, it is only not-a-subtype of Array!.
+         *
+         * So we add one more rule here. It's possibly going to make matters worse.
+         *)
+        (NonNullType type1, NonNullType type2) => 
+        subType extra type1 type2
+        
+      | (NonNullType type1, type2) =>
         subType extra type1 (UnionType [type2, NullType])
-
+        
       | (type1, NonNullType type2) =>
-        subType extra type1 type2 andalso
-        not (subType extra NullType type1)
-   
+        subType extra type1 type2 
+        andalso not (subType extra NullType type1)
+
+
       | _ => false
 
 and subTypeRecord extra type1 type2 = 

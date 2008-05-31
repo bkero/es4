@@ -2300,7 +2300,7 @@ and instanceType (regs:REGS)
     let
         val instanceTy = Type.instanceTy (#rootRib regs) name
     in
-        applyTypes regs instanceTy args
+        NonNullType (applyTypes regs instanceTy args)
     end
 
 and traceScope (s:SCOPE)
@@ -2448,6 +2448,7 @@ and instanceClass (regs:REGS)
           | ArrayType _ => needObj regs (fetch public_Array)
           | RecordType _ => needObj regs (fetch public_Object)
           | FunctionType _ => needObj regs (fetch public_Function)
+          | NonNullType t => instanceClass regs t
             
           | _ => error regs ["unexpected type in instanceClass: ", LogErr.ty ity]
     end
@@ -3101,7 +3102,8 @@ and numTypeOf (regs:REGS)
         val ty = typeOfVal regs v 
         fun sameItype t2 = 
             case (ty, t2) of
-                (ClassType (Class {name=name1, ...}), ClassType (Class {name=name2, ...})) => 
+                (NonNullType (ClassType (Class {name=name1, ...})), 
+                 NonNullType (ClassType (Class {name=name2, ...}))) => 
                 nameEq name1 name2
               | _ => false
     in
@@ -3491,7 +3493,7 @@ and typeOfVal (regs:REGS)
                      let 
                          val tag = getObjTag obj
                      in
-                         typeOfTag regs tag
+                         NonNullType (typeOfTag regs tag)
                      end
     in
         evalTy regs te
@@ -4038,21 +4040,33 @@ and evalStmt (regs:REGS)
       | _ => error regs ["Shouldn't happen: failed to match in Eval.evalStmt."]
 
 
-and checkAllPropertiesInitialized (regs:REGS)
-                                  (obj:OBJ)
+and checkRibInitialization (regs:REGS)
+                           (obj:OBJ)
+                           (temps:TEMPS option)
     : unit =
     let
-        fun checkOne (n:NAME, {prop, seq}) =
-            let 
-                val { ty, state, attrs} = prop 
-            in
-                case state of
-                    _ => ()
-            end
         val Obj { props, ... } = obj
-        val { bindings, ... } = !props
+        val rib = getRib regs obj
+        fun checkOne (TempName i, _) =
+            (case temps of 
+                 NONE => error regs ["no temp slots in context requiring temp fixtures"]
+               | SOME t => 
+                 if length (!t) <= i
+                 then error regs ["failed to allocate sufficient temps"]
+                 else 
+                     case List.nth ((!t), i) of 
+                         (_, UninitTemp) => error regs ["uninitialized temp"]
+                       | _ => ())
+          | checkOne (PropName n, ValFixture { ty, writable }) =
+            if hasProp props n
+            then ()
+            else 
+                (case defaultValueForType regs ty of 
+                     NONE => throwExn (newTypeErr regs ["failed to initialize property: ", LogErr.name n])
+                   | SOME _ => ())
+          | checkOne (_, _) = ()                 
     in
-        NameMap.appi checkOne bindings
+        List.app checkOne rib
     end
 
 
@@ -4099,7 +4113,7 @@ and invokeFuncClosure (regs:REGS)
             trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
                    Int.toString (getScopeId varScope)];
             evalScopeInits varRegs Local paramInits;
-            checkAllPropertiesInitialized regs varObj;
+            checkRibInitialization regs varObj (SOME (getScopeTemps varScope));
             trace ["invokeFuncClosure: evaluating block"];
             let
                 val blockRegs = withThisFun varRegs thisFun 
@@ -4423,7 +4437,7 @@ and initializeAndConstruct (regs:REGS)
             case extends of
                 NONE =>
                 (traceConstruct ["checking all properties initialized at root class ", fmtName name];
-                 checkAllPropertiesInitialized regs instanceObj)
+                 checkRibInitialization regs instanceObj NONE)
               | SOME parentTy =>
                 let
                     val parentTy = evalTy regs parentTy
