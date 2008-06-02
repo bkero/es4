@@ -42,46 +42,45 @@
  *   class C.<X> {...} and interface I.<X> { ... }
  * 
  * An environment (aka RIBS) that may contain two kinds of bindings for type variable.
- * - TypeFixture, where the environment associated a type variable with a corresponding type,
- *   which are introduced at verify time for defined type variables, 
- *   and also at eval time for all type variables.
- * - TypeVarFixture just contain a type variable, without a corresponding type, 
- *   and are introduced at verify time for generic type variables.
- *   TypeVarFixtures do not exist at run-time
+ *
+ * - TypeFixture, where the environment associates a type variable
+ *   with a corresponding type, which are introduced at verify time
+ *   for defined type variables, and also at eval time for all type
+ *   variables.
+ *
+ * - TypeVarFixture just contain a type variable, without a
+ *   corresponding type, and are introduced at verify time for generic
+ *   type variables.  TypeVarFixtures do not exist at run-time
  *
  * ----------------------------------------------------------------------------- 
  *
- * A "type constructor" is a type that is not quite a proper type, in that it needs some number
- * of type arguments to become a proper type.  
- * Unparameterized references to generic typedefs,  classes, and interfaces are type constructors.
+ * A "type constructor" is a type that is not quite a proper type, in
+ * that it needs some number of type arguments to become a proper
+ * type.  Unparameterized references to generic typedefs, classes, and
+ * interfaces are type constructors.
  *
  * Consider the two type definitions:
  *   type f.<X> = function(X):X
  *   type g = function.<X>(X):X
  * 
- * Traditionally, these are very different; 
+ * These are very different; 
  *   g is a type that describes some kinds of generic functions,
  *   whereas f is a type constructor, and must be applied to a type argument to yield a type,
  *   eg f.<int> yields function(int):int
  *
- * But we only have one ast node (LamType) to describe both kinds,
- * so f and g are identical. That is, f is a types, and it is also a unary type constructor,
- * in that f.<int> is also a type. Ditto for g.
- * Thus function.<X>(X):X is both a type constructor and a proper type.
- *
  * ----------------------------------------------------------------------------- 
  *
- * Normalization converts a TYPE (in the context of given RIBS) 
- * into a normalized TYPE.
- * It is an error if a type cannot be normalized; 
- * that may be a static or dynamic error,
- * since normalization runs both at verify-time and eval-time.
+ * Normalization converts a TYPE (in the context of given RIBS) into a
+ * normalized TYPE.  It is an error if a type cannot be normalized;
+ * that may be a static or dynamic error, since normalization runs
+ * both at verify-time and eval-time.
  * 
  * Normalized types satisfy the following properties:
  *
- * - If two types are equivalent (in that they are both subtypes of each other),
- *   then normalization maps those types to the same type. This property in necessary
- *   to implement C#-style semantics for static fields of generic classes.
+ * - If two types are equivalent (in that they are both subtypes of
+ *   each other), then normalization maps those types to the same
+ *   type. This property in necessary to implement C#-style semantics
+ *   for static fields of generic classes.
  *
  * - Normalized types are closed, no free TypeNames without nonces 
  *   In particular:
@@ -89,12 +88,9 @@
  *     references TypeVarFixtures (which has a nonce) give a TypeName with that nonce.
  *   At evaluation time, all normalized types should be closed, so no TypeNames.
  *
- * - Normalized types are in beta-normal form, in that any applications of LamTypes 
- *   have been reduced. 
- *
- * - Normalized types are proper types, in that they contain no type constructors (see below)
- *   ie no LamTypes, and no references to generic classes or interfaces
- *   without the appropriate number of type parameters.
+ * - Normalized types are proper types, in that they contain no type
+ *   constructors (see below) and no references to generic classes or
+ *   interfaces without the appropriate number of type parameters.
  *
  * ----------------------------------------------------------------------------- 
  * 
@@ -130,10 +126,6 @@ fun traceTy ss ty = if (!doTrace)
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
 
-val undefinedType   = UndefinedType
-val nullType        = NullType
-val anyType         = AnyType
-
 fun assert b s = if b then () else (raise Fail s)
 
 fun fmtName n = if !doTrace
@@ -168,10 +160,8 @@ fun nameExpressionEqual (name1 : NAME_EXPRESSION)
      (* other match cases cannot appear post defn *)
 
 (* -----------------------------------------------------------------------------
- * Normalization
+ * Generic mapping helper
  * ----------------------------------------------------------------------------- *)
-
-(* Generic mapping helper. *)
 
 fun mapType (f : TYPE -> TYPE) 
             (ty: TYPE)
@@ -195,7 +185,7 @@ fun mapType (f : TYPE -> TYPE)
       | AppType ( base, args ) => 
         AppType ( f base, map f args )
       | TypeIndexReferenceType (t, idx) =>  TypeIndexReferenceType (f t, idx) (* INFORMATIVE *)
-      | TypeNameReferenceType (t, id) =>    TypeNameReferenceType (f t, id)  (* INFORMATIVE *)
+      | TypeNameReferenceType  (t, id)  =>  TypeNameReferenceType  (f t, id)  (* INFORMATIVE *)
       | _ => ty
 
 fun foreachTyExpr (f:TYPE -> unit) (ty:TYPE) : unit =
@@ -204,186 +194,25 @@ fun foreachTyExpr (f:TYPE -> unit) (ty:TYPE) : unit =
         ()
     end
 
-(* FIXME: this is dubious: unlike many other contexts, when it comes to fields we 
- * consider an unqualified name to be in public::, not in default-declaration-namespace.
- * Possibly fix/change this. It's subtle.
- * CF: Post-defn, no UnqualifiedName, so a non-issue, I believe.
- *
-fun nameExprToFieldName (env:RIBS) (QualifiedName {namespace, identifier}) = 
-    { ns = Fixture.resolveNamespaceExpr env namespace, id = identifier }
-
-  | nameExprToFieldName (env:RIBS) (UnqualifiedName { identifier, ... }) =
-    { ns = Name.publicNS, id = identifier }
-*)        
-
-(* ----------------------------------------------------------------------------- *)
-
-(* 
- * FIXME: Cormac: sorry, I've made this ref-evaluation thing depend on
- * envs like normalizeNames does, because it has to look up namespace
- * qualifiers on field labels.
- * 
- * Unfortunately I have left it in a broken state of not handling
- * shadowing under lambda binding forms yet. Either re-order it to run
- * after the normalizeLambdas pass, or add in the same
- * shadowing-handling stuff you do in normalizeNames. Up to you. -Graydon
- *)
-fun normalizeRefs (env:RIBS) 
-                  (ty:TYPE)
-    : TYPE =
-    case ty of 
-        TypeIndexReferenceType (ArrayType (arr,to), idx) => 
-        let
-            val t = if idx < length arr 
-                    then List.nth (arr, idx)
-                    else    
-                        if length arr > 0
-                        then List.last arr (* FIXME: use to *)
-                        else AnyType (* FIXME: do we allow 0-length array types? *)
-        in
-            normalizeRefs env t
-        end
-      | TypeIndexReferenceType (t, _) => error ["TypeIndexReferenceType on non-ArrayType: ", LogErr.ty t]
-      | TypeNameReferenceType (RecordType fields, nameExpr) => 
-        (case List.find
-                  (* FIXME: nameExpr is *not* resolved at defn time *)
-                  (fn ( name, ty ) => nameExpressionEqual name nameExpr)
-                  fields of
-             NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
-           | SOME ( name, ty ) => normalizeRefs env ty)
-      | TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
-      | x => mapType (normalizeRefs env) x
-                                   
-(* ----------------------------------------------------------------------------- *)
-
-fun normalizeNullsInner (ty:TYPE)
-    : TYPE =
-    let
-        val nullTy = NullType
-        fun containsNull ty = 
-            case ty of 
-                NullType => true
-              | NonNullType _ => false
-              | UnionType tys => List.exists containsNull tys
-              | _ => false
-
-        fun stripNulls ty = 
-            case ty of 
-               NullType => NONE
-              | NonNullType t => stripNulls t 
-              | UnionType tys => 
-                (case List.mapPartial stripNulls tys of
-                     [] => NONE
-                   | tys1 => SOME (UnionType tys1))
-              | _ => SOME ty
-    in
-        if containsNull ty
-        then 
-            case stripNulls ty of 
-                SOME (UnionType tys) => UnionType (tys @ [nullTy])
-              | SOME t => UnionType [t, nullTy]
-              | NONE => nullTy
-        else 
-            case stripNulls ty of 
-                SOME t => t
-              | NONE => UnionType []
-    end
-
-fun normalizeNulls (ty:TYPE)
-    : TYPE = 
-    mapType normalizeNulls (normalizeNullsInner ty)
-
-
-(* ----------------------------------------------------------------------------- *)
-(* FIXME: also need to normalize (C|D) and (D|C) to the same type.
- * We also need to normalize ...
- *
- * function.<X>(X):X
- * function.<Y>(Y):Y 
- *)
-                                   
-fun normalizeUnions (ty:TYPE)
-    : TYPE =
-    let
-        fun unUnion (UnionType tys) = tys
-          | unUnion t = [t]
-    in
-        case ty of 
-            UnionType tys => 
-            (case List.concat (map unUnion tys) of 
-                 [x] => x
-               | tys => UnionType tys)                                     
-          | x => mapType normalizeUnions x
-    end
-
-
-fun normalizeArrays (ty:TYPE)
-    : TYPE =
-    case ty of 
-(*        ArrayType [] => ArrayType [AnyType]
-      | *) x => mapType normalizeArrays x
-
-
-(* ----------------------------------------------------------------------------- *)
-(* Checks that the given type does not contain any type constructors,
- * unless they are immediately applied to an appropriate number of arguments.
- * Assumes no beta redexes.
- *)
-
-fun checkProperType (ty:TYPE) : unit = 
-    let fun check ty2 = 
-            case ty2 of
-(* a LamType could be a generic function type, which is a type
-                LamType { params, body } => 
-                error ["Improper occurrence of type constructor ", LogErr.ty ty2, 
-                       " in normalized type ", LogErr.ty ty]
-*)
-                AppType ( base, args ) =>
-                error ["Improper occurrence of type application ", LogErr.ty ty2, 
-                       " in normalized type ", LogErr.ty ty]
-
-              | _ => foreachTyExpr check ty2
-    in 
-        check ty
-    end
-    
-(* ----------------------------------------------------------------------------- *)
-(* uniqueIdent maps an IDENTIFIER to a unique variant of that IDENTIFIER that has not been used before.
- * This unique-ification is used for alpha-renaming with capture-free substitution.
- *)
-
-val uniqueIdentPostfix = ref 0
-
-fun uniqueIdent (id:IDENTIFIER) : IDENTIFIER =
-    let in
-        uniqueIdentPostfix := !uniqueIdentPostfix +1;
-        Ustring.stringAppend id (Ustring.fromInt (!uniqueIdentPostfix))
-    end
+(* -----------------------------------------------------------------------------
+ * Substitution and alpha-renaming
+ * ----------------------------------------------------------------------------- *)
 
 fun makeNameExpression (id:IDENTIFIER) : NAME_EXPRESSION 
   = QualifiedName { namespace = Namespace (Name.publicNS),
-                        identifier = id }
+                    identifier = id }
     
-fun makeTypeName (id:IDENTIFIER) : TYPE = 
-    TypeName (makeNameExpression id, NONE)
-
-
 fun nameExpressionNonceEqual (name1, nonce1) (name2, nonce2) =
     nameExpressionEqual name1 name1 andalso nonce1 = nonce2
 
-(* 
- * FIXME: Cormac, I am pretty sure the use of unqualified names here
- * is not quite right; please discuss details with me sometime -Graydon
+(* Perform capture-free substitution of "args" for all free 
+ * occurrences of "params" in ty".
  *)
-
-(* Perform capture-free substitution of "args" for all free occurrences of "params" in ty".
- *)
-
 
 type SUBST = (NAME_EXPRESSION * NONCE option) * TYPE
 
 fun substTypesInternal (s : SUBST list) 
-               (ty: TYPE) 
+                       (ty: TYPE) 
     : TYPE =
     case ty of
         TypeName tn =>
@@ -417,49 +246,122 @@ fun rename (typeParams1 : IDENTIFIER list)
                    TypeName (makeNameExpression typeParam2, NONE) ))
              (typeParams1, typeParams2))
         ty
-(*
 
-and FUNCTION_TYPE =
-    { typeParams : IDENTIFIER list,
-      thisType   : TYPE,
-      params  : TYPE list,
-      minArgs : int,
-      hasRest : bool,
-      result  : TYPE option    (* NONE indicates void return type *)
-    }
-
-
-fun substTypes (typenames: (NAME_EXPRESSION * NONCE option) list) 
-               (args:TYPE list) 
-               (ty:TYPE) 
+(* -----------------------------------------------------------------------------
+ * Normalization
+ * ----------------------------------------------------------------------------- *)
+    
+fun normalizeRefs (ty:TYPE)
     : TYPE =
-    case ty of
-(*
-        LamType { params, body } =>
-        let val uniqParams    = map uniqueIdent  params
-            val refUniqParams = map makeTypeName uniqParams
-            val body'  = substTypes uniqParams refUniqParams body
-            val body'' = substTypes params args body'
+    case ty of 
+        TypeIndexReferenceType (ArrayType (types,rest), idx) => 
+        let
+            val t = if idx < length types 
+                    then List.nth (types, idx)
+                    else case rest of
+                             NONE => error ["TypeIndexReferenceType out of bounds"]
+                           | SOME restType => restType
         in
-            LamType { params=uniqParams, body=body'' }
+            normalizeRefs t
         end
-        *)
-        TypeName tn =>
-        case List.find (nameExpressionEquals tn) 
-        let fun lookup ids args =
-                case (ids, args) of
-                    ([],[]) => ty
-                  | (id::idRest, arg::argRest) =>
-                    if id = id'
-                    then arg
-                    else lookup idRest argRest
-                  | _ => error ["substTypes: parameter / argument length mismatch"]
-        in 
-            lookup ids args
-        end
-      | _ => mapType (substTypes ids args) ty
+      | TypeIndexReferenceType (t, _) => error ["TypeIndexReferenceType on non-ArrayType: ", LogErr.ty t]
+      | TypeNameReferenceType (RecordType fields, nameExpr) => 
+        (case List.find
+                  (* FIXME: nameExpr is *not* resolved at defn time *)
+                  (fn (name, ty) => nameExpressionEqual name nameExpr)
+                  fields of
+             NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
+           | SOME ( name, ty ) => normalizeRefs ty)
+      | TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
+      | x => mapType normalizeRefs x
+                                   
+(* ----------------------------------------------------------------------------- *)
+(* FIXME: Not clear this does the right thing now that TypeNames can implicitly contain null,
+ * but we have much more serious problems with unions and normalization.
+ *)
 
+fun normalizeNullsInner (ty:TYPE)
+    : TYPE =
+    let
+        fun containsNull ty = 
+            case ty of 
+                NullType => true
+              | NonNullType _ => false
+              | UnionType tys => List.exists containsNull tys
+              | _ => false
+
+        fun stripNulls ty = 
+            case ty of 
+                NullType => NONE
+              | NonNullType t => stripNulls t 
+              | UnionType tys => 
+                (case List.mapPartial stripNulls tys of
+                     [] => NONE
+                   | tys1 => SOME (UnionType tys1))
+              | _ => SOME ty
+    in
+        if containsNull ty
+        then 
+            case stripNulls ty of 
+                SOME (UnionType tys) => UnionType (tys @ [NullType])
+              | SOME t => UnionType [t, NullType]
+              | NONE => NullType
+        else 
+            case stripNulls ty of 
+                SOME t => t
+              | NONE => UnionType []
+    end
+
+fun normalizeNulls (ty:TYPE)
+    : TYPE = 
+    mapType normalizeNulls (normalizeNullsInner ty)
+
+
+(* ----------------------------------------------------------------------------- *)
+(* FIXME: also need to normalize (C|D) and (D|C) to the same type.
+ * We also need to normalize ...
+ *
+ * function.<X>(X):X
+ * function.<Y>(Y):Y 
+ *)
+                                   
+fun normalizeUnions (ty:TYPE)
+    : TYPE =
+    let
+        fun unUnion (UnionType tys) = tys
+          | unUnion t = [t]
+    in
+        case ty of 
+            UnionType tys => 
+            (case List.concat (map unUnion tys) of 
+                 [x] => x
+               | tys => UnionType tys)                                     
+          | x => mapType normalizeUnions x
+    end
+
+(* ----------------------------------------------------------------------------- *)
+(* Checks that the given type does not contain any type constructors,
+ * unless they are immediately applied to an appropriate number of arguments.
+ * Assumes no beta redexes.
+ *)
+
+fun checkProperType (ty:TYPE) : unit = 
+    let fun check ty2 = 
+            case ty2 of
+(* a LamType could be a generic function type, which is a type
+                LamType { params, body } => 
+                error ["Improper occurrence of type constructor ", LogErr.ty ty2, 
+                       " in normalized type ", LogErr.ty ty]
 *)
+                AppType ( base, args ) =>
+                error ["Improper occurrence of type application ", LogErr.ty ty2, 
+                       " in normalized type ", LogErr.ty ty]
+
+              | _ => foreachTyExpr check ty2
+    in 
+        check ty
+    end
+  
 (* ----------------------------------------------------------------------------- *)
 (* normalizeNames: replace all references to TypeFixtures by the corresponding type. *)
 
@@ -476,22 +378,33 @@ fun resolveTypeNames (env : RIBS)
                 (envOfDefn, _,  TypeFixture ([], typeBody)) => 
                 resolveTypeNames envOfDefn typeBody
 
-              | (_, _, ClassFixture c    ) => ClassType c
-              | (_, _, InterfaceFixture i) => InterfaceType i
+              | (_, _, ClassFixture (c as Class {nonnullable, typeParams=[], ...})   ) => 
+                if nonnullable then
+                    ClassType c
+                else
+                    UnionType [ClassType c, NullType]
+
+              | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams=[], ...})) => 
+                if nonnullable then
+                    InterfaceType i
+                else
+                    UnionType [InterfaceType i, NullType]
                          
               | (_, n, _) => error ["name ", LogErr.name  n, " in type expression ", 
                                     LogErr.ty ty, " is not a proper type"]
         end
 
       | AppType (TypeName (nameExpr, _), typeArgs) =>
-        let in
+        let fun checkArgs typeParams =
+            if length typeArgs = length typeParams then 
+                ()
+            else 
+                error ["Incorrect no of arguments to parametric typedefn"];
+        in
             case Fixture.resolveNameExpr env nameExpr of 
                 (envOfDefn, _,  TypeFixture (typeParams, typeBody)) => 
                 let in
-                    if length typeArgs = length typeParams then 
-                        ()
-                    else 
-                        error ["Incorrect no of arguments to parametric typedefn"];
+                    checkArgs typeParams;
                     resolveTypeNames envOfDefn
                                      (substTypes typeParams
                                                  (map (resolveTypeNames env) 
@@ -499,6 +412,24 @@ fun resolveTypeNames (env : RIBS)
                                                  typeBody)
                 end
 
+              | (_, _, ClassFixture (c as Class {nonnullable, typeParams, ...})) =>
+                let in
+                    checkArgs typeParams;
+                    if nonnullable then
+                        AppType (ClassType c, typeArgs)
+                    else
+                        UnionType [AppType (ClassType c, typeArgs), NullType]
+                end
+
+              | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams, ...})) => 
+                let in
+                    checkArgs typeParams;
+                    if nonnullable then
+                        AppType (InterfaceType i, typeArgs)
+                    else
+                        UnionType [AppType (InterfaceType i, typeArgs), NullType]
+                end
+                         
               | _ => mapType (resolveTypeNames env) ty
         end
 
@@ -529,46 +460,6 @@ fun normalizeNames (useCache:bool)
 
 
 (* ----------------------------------------------------------------------------- *)
-(* Perform beta-reduction of all AppTypes applied to a LamType.
- *)
-
-(* 
-fun normalizeLambdas (ty:TYPE) : TYPE = 
-    (* first, normalizeLambdas in subterms *)
-    let val ty = mapType normalizeLambdas ty
-    in
-        case ty of
-(*
-            AppType { base=(LamType {params, body}), args } =>
-            (* a beta-redex *)
-            let val _ =
-                    if length params = length args
-                    then ()
-                    else error ["incorrect number of type arguments ", LogErr.ty ty]
-                val ty = substTypes params args body
-            in
-                (* normalizeLambdas already run on body above, 
-                 * but substitution may have exposed more redexes
-                 *)
-                normalizeLambdas ty
-            end
-*)
-            (* cf: fix the rep for typeArgs so substitution will work *)
-            InstanceType { name, typeParams, typeArgs, 
-                               nonnullable, superTypes, ty, dynamic } =>
-            InstanceType { name=name, 
-                               typeParams=typeParams,
-                               typeArgs = if List.null typeArgs
-                                          then map makeTypeName typeParams 
-                                          else typeArgs,
-                               nonnullable=nonnullable, 
-                               superTypes=superTypes, ty=ty, dynamic=dynamic } 
-
-          | _ => ty
-    end
-*)
-
-(* ----------------------------------------------------------------------------- *)
 
 fun normalize (ribs:RIB list)
               (ty:TYPE)               
@@ -578,20 +469,13 @@ fun normalize (ribs:RIB list)
         val ty = normalizeNames true ribs ty     (* inline TypeFixtures and TypeVarFixture nonces *)
 
         val _ = traceTy "normalize2: " ty
-        val ty = normalizeRefs ribs ty
-(*
-        val _ = traceTy "normalize3: " ty
-        val ty = normalizeLambdas ty
-*)
+        val ty = normalizeRefs ty
 
         val _ = traceTy "normalize4: " ty
         val ty = normalizeNulls ty
 
         val _ = traceTy "normalize5: " ty
         val ty = normalizeUnions ty
-
-        val _ = traceTy "normalize6: " ty
-        val ty = normalizeArrays ty
 
         val _ = traceTy "normalize7: " ty
         val _  = checkProperType ty
@@ -601,29 +485,8 @@ fun normalize (ribs:RIB list)
         ty
     end
              
-
 (* -----------------------------------------------------------------------------
- * Matching helpers
- * ----------------------------------------------------------------------------- *)
-
-(* 
- * FIXME: Cormac, as far as I know -- presently! -- we now permit namespace-qualified
- * fields, thus *all* the field-pairwise stuff becomes sensitive to environment, and 
- * needs to have a static env propagated into it. I'll confirm this unfortunate situation
- * before we fix this fully, but for now assume all the reasoning about plain identifiers
- * here is incorrect. Sadly. Remove this comment when we know better. -Graydon
- *)
-
-fun arrayPairWise predicate xs ys = 
-    ((length xs) = (length ys)) andalso
-    ListPair.all (fn (t1,t2) => predicate t1 t2) (xs, ys)
-    
-fun optionWise predicate (SOME a) (SOME b) = predicate a b
-  | optionWise _ NONE NONE = true
-  | optionWise _ _ _ = false
-
-(* -----------------------------------------------------------------------------
- * Generic matching algorithm
+ * Subtype algorithm
  * ----------------------------------------------------------------------------- *)
 
 fun findSpecialConversion (tyExpr1:TYPE)
@@ -638,15 +501,15 @@ fun findSpecialConversion (tyExpr1:TYPE)
         val dstClass = extract tyExpr2
         fun isNumericType n = 
             List.exists (nameEq n) [ Name.ES4_double, 
-                                          Name.ES4_decimal,
-                                          Name.public_Number ]
+                                     Name.ES4_decimal,
+                                     Name.public_Number ]
         fun isStringType n = 
             List.exists (nameEq n) [ Name.ES4_string,
-                                          Name.public_String ]
-
+                                     Name.public_String ]
+            
         fun isBooleanType n = 
             List.exists (nameEq n) [ Name.ES4_boolean,
-                                          Name.public_Boolean ]
+                                     Name.public_Boolean ]
     in
         case (srcClass, dstClass) of
             ((SOME src), (SOME dst)) => 
@@ -692,8 +555,6 @@ fun subType (extra : TYPE -> TYPE -> bool)
     (subTypeHierarchy extra type1 type2) orelse
     (subTypeStructuralNominal extra type1 type2) orelse
     (extra type1 type2) 
-
-(* FIXME: allow for supertypes of Function other than Object *)
 
 and subTypeStructuralNominal extra type1 type2 =
     case (type1, type2) of
@@ -914,22 +775,8 @@ and equivType (extra : TYPE -> TYPE -> bool)
 
 fun compatibleSubtype (type1 : TYPE) (type2 : TYPE) : bool = 
     subType
-        (fn type1 => fn type2 => type2 = anyType)   
+        (fn type1 => fn type2 => type2 = AnyType)   
         type1 type2
-
-(*
-fun compatibleSubtype type1 type2 = 
-    let in
-        traceTy "compatibleSubtype:type1 " type1;
-        traceTy "compatibleSubtype:type2 " type2;
-        compareTypes
-            (fn type1 => fn type2 => type2 = anyType)
-            SubType
-            type1 type2
-    end
-*)
-
-(* val isCompatibleSubtype = normalizingPredicate compatibleSubtype  *)
 
 (* -----------------------------------------------------------------------------
  * Matching: ~<
@@ -938,21 +785,10 @@ fun compatibleSubtype type1 type2 =
 fun groundMatches type1 type2
   = subType 
         (fn type1 => fn type2 =>
-                      type1 = anyType orelse
-                      type2 = anyType orelse
+                      type1 = AnyType orelse
+                      type2 = AnyType orelse
                       findSpecialConversion type1 type2 <> NONE)
         type1 type2
-
-(*
-fun groundMatches type1 type2
-  = compareTypes 
-        (fn type1 => fn type2 =>
-                      type1 = anyType orelse
-                      type2 = anyType orelse
-                      findSpecialConversion type1 type2 <> NONE)
-        SubType
-        type1 type2
-*)
 
 fun matches (rootRib:RIB)
             (locals:RIBS)
@@ -966,6 +802,7 @@ fun matches (rootRib:RIB)
   in
       groundMatches norm1 norm2
   end
+
 
 
 (* 
@@ -990,10 +827,10 @@ fun groundType (rootRib:RIB)
         norm
     end    
 
-fun isGroundType (ty:TYPE) : bool = true
+fun isGroundType (ty:TYPE) : bool = true   (* FIXME: deprecated *)
 
 fun groundExpr (ty:TYPE)  (* or "groundType" *)
-    : TYPE = ty (* FIXME: remove *)
+    : TYPE = ty (* FIXME: deprecated *)
 
 fun getNamedGroundType (rootRib:RIB)
                        (name:NAME)
