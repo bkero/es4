@@ -1,4 +1,4 @@
-dummy: language.html ##library.html
+dummy: language.html ##library.html 
 
 language.html: stitch.py part2.html es4.css language/*.html ../builtins/*.es ../*.sml
 	python stitch.py part2.html language.html
@@ -13,6 +13,11 @@ lib-march-2008.html: stitch.py lib-march-2008-template.html es4.css library/*.ht
 	python stitch.py lib-march-2008-template.html lib-march-2008.html
 
 LIBDEPS=stitch.py es4.css ../builtins/*.es ../*.sml
+LANGDEPS=stitch.py es4.css grammar.xls ../*.sml
+
+output/Expressions.html: Expressions.html language/exprs.html language/exprs2.html $(LANGDEPS) 
+	perl mergeGrammar.pl language/exprs.html language/exprs2.html
+	python stitch.py Expressions.html output/Expressions.html
 
 output/Global.html: Global.html library/global.html $(LIBDEPS) 
 	python stitch.py Global.html output/Global.html
