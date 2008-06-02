@@ -189,15 +189,9 @@ fun evalFiles (regs:Mach.REGS)
 fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
     let
 	val ps = case (#state p) of
-		     Mach.TypeVarProp => "[typeVar]"
-		   | Mach.TypeProp => "[type]"
-		   | Mach.UninitProp => "[uninit]"
-		   | Mach.ValProp _ => "[val]"
-		   | Mach.VirtualValProp _ => "[virtual val]"
-           | Mach.MethodProp _ => "[method]"
-           | Mach.NativeFunctionProp _ => "[native function]"
-           | Mach.NamespaceProp _ => "[namespace]"
-           | Mach.ValListProp _ => "[val list]"
+		         Mach.ValProp _ => "[val]"
+		       | Mach.VirtualValProp _ => "[virtual val]"
+               | Mach.ValListProp _ => "[val list]"
     in
 	trace [LogErr.name n, " -> ", ps]
     end

@@ -587,6 +587,7 @@ fun eval (regs:Mach.REGS)
                              LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
                     val regs = Eval.withRootRib regs rootRib
+                    val regs = Eval.withScope regs (Eval.getGlobalScope regs)
                 in
                     (*
                      * FIXME: maybe don't want to permit the full set of
@@ -622,26 +623,8 @@ fun get (regs:Mach.REGS)
     let
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
-        fun propNotFound (curr:Mach.OBJ)
-            : Mach.VALUE =
-            let
-                val Mach.Obj { proto, ... } = curr
-            in
-                case proto of
-                    Mach.Object ob => 
-                    Eval.getValueOrVirtual regs ob name false propNotFound
-                  | _ =>
-                    if Eval.isDynamic regs obj
-                    then Mach.Undefined
-                    else Eval.throwExn
-                             (Eval.newTypeErr
-                                  regs 
-                                  ["attempting to get nonexistent property ",
-                                   LogErr.name name,
-                                   "from non-dynamic object"])
-            end
     in
-        Eval.getValueOrVirtual regs obj name false propNotFound
+        Eval.getValueOrVirtual regs obj name false 
     end
 
 (*
@@ -1090,7 +1073,7 @@ fun registerNatives _ =
         addFn 1 Name.informative_floorDecimal floorDecimal;
         addFn 1 Name.informative_logDouble logDouble;
         addFn 1 Name.informative_logDecimal logDecimal;
-        addFn 2 Name.informative_powDouble powDouble;
+        addFn 2 Name.informative_powDouble pow;
         addFn 2 Name.informative_powDecimal powDecimal;
         addFn 1 Name.informative_roundDouble roundDouble;
         addFn 1 Name.informative_roundDecimal roundDecimal;

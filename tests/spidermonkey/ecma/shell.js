@@ -85,7 +85,7 @@ function TestCase( n, d, e, a ) {
   this.reason      = "";
   this.bugnumber   = BUGNUMBER;
 
-  //this.passed = getTestCaseResult( this.expect, this.actual );
+  // this.passed = getTestCaseResult( this.expect, this.actual );
   if ( DEBUG ) {
     print( "added " + this.description );
   }
@@ -190,8 +190,8 @@ function getTestCaseResult( expect, actual ) {
   	//check if its a date
   	if ((expect.indexOf('GMT+0000') > -1) && (actual.indexOf('GMT+0000') > -1)) {
   		// let the dates be off by one second
-  		var eSec = int(expect.split(':')[2].split(' ')[0]);
-  		var aSec = int(actual.split(':')[2].split(' ')[0]);
+  		var eSec = Math.floor(Number(expect.split(':')[2].split(' ')[0]));
+  		var aSec = Math.floor(Number(actual.split(':')[2].split(' ')[0]));
   		var diff = Math.abs(eSec-aSec);
   		if ((diff == 1) || (diff == 59)) {
   			passed = true;

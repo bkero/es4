@@ -208,14 +208,8 @@ datatype VALUE = Undefined
       * FIXME: The 'arguments' object can't be an array.
       *)
 
-     and PROPERTY_STATE = UninitProp
-                        | ValProp of VALUE
-                        | NamespaceProp of NAMESPACE  (* INFORMATIVE *)  (* FIXME: Unify these as 'LazyProp' perhaps? *) 
-                        | MethodProp of FUN_CLOSURE       (* INFORMATIVE *)
+     and PROPERTY_STATE = ValProp of VALUE
                         | ValListProp of VALUE list       (* INFORMATIVE *)
-                        | NativeFunctionProp of NATIVE_FUNCTION  (* INFORMATIVE *)
-                        | TypeProp
-                        | TypeVarProp
                         | VirtualValProp of
                           { getter: FUN_CLOSURE option,
                             setter: FUN_CLOSURE option }
@@ -457,7 +451,6 @@ fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
 fun getObjId (Obj { ident, ...}) = ident
-
 fun getRib (regs:REGS)
            (obj:OBJ)
     : RIB =
@@ -740,14 +733,8 @@ fun inspect (v:VALUE)
                         val indent = indent + 1
                         val stateStr =
                             case state of
-                                TypeVarProp => "[typeVar]"
-                              | TypeProp => "[type]"
-                              | UninitProp => "[uninit]"
-                              | ValProp v => "[val]"
+                                ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
-                              | MethodProp _ => "[method]"
-                              | NativeFunctionProp _ => "[native function]"
-                              | NamespaceProp _ => "[namespace]"
                               | ValListProp _ => "[val list]"
                     in
                         p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];
@@ -755,8 +742,8 @@ fun inspect (v:VALUE)
                             ValProp v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
-                val Obj { props, proto, ... } = obj
-		val { bindings, ... } = !props
+                val Obj { props, proto, rib, ... } = obj
+		        val { bindings, ... } = !props
             in
                 TextIO.print "Obj {\n";
                 p indent ["    tag = ", (tag obj)]; nl();
@@ -764,7 +751,11 @@ fun inspect (v:VALUE)
                 p indent ["  proto = "]; subVal indent (proto);
                 p indent ["  props = ["]; nl();
                 NameMap.appi prop bindings;
-                p indent ["          ] }"]; nl()
+                p indent ["          ]"]; nl();
+                p indent ["  rib = "]; nl();
+                Fixture.printRib rib;
+                p indent ["}"];
+                nl ()
             end
     in
         printVal 0 d v
@@ -890,6 +881,15 @@ fun resetProfile (regs:REGS) : unit =
         profileMap := StrListMap.empty
     end
 
+fun setProfile (regs:REGS) (dop:int option) : unit =
+    let
+        val { aux = 
+              Aux { profiler = Profiler { doProfile,  ...}, ...},
+              ... } = regs
+    in
+        doProfile := dop
+    end
+
 fun resetStack (regs:REGS) : unit =
     let
         val { aux = 
@@ -911,6 +911,9 @@ fun push (regs:REGS)
                                profileMap }, 
                     ... }, 
               ... } = regs
+        val _ = if length (!stack) > 512
+                then error ["very deep stack, likely infinite recursion"]
+                else ()
         val newStack = (Frame { name = name, args = args }) :: (!stack)
     in
         stack := newStack;
@@ -1185,7 +1188,8 @@ type OPEN_NAMESPACES = NAMESPACE_SET list
 
 fun getScopeObjectAndKind ( Scope {object, kind, ...}: SCOPE) = (object, kind)
 
-fun getBindingNamespaces (object: OBJECT, 
+fun getBindingNamespaces (regs: REGS,
+                          object: OBJECT, 
                           identifier: IDENTIFIER,
                           namespaces: NAMESPACE_SET,
                           fixedOnly: bool)
@@ -1199,12 +1203,16 @@ fun getBindingNamespaces (object: OBJECT,
     (* INFORMATIVE *)
     let
         val Obj { props, ... } = object
+        val rib = getRib regs object
         fun tryNS ns = 
             let
                 val name = { id = identifier, ns = ns }
             in
                 case findProp props name of 
-                    NONE => NONE
+                    NONE => 
+                    if Fixture.hasFixture rib (PropName name) 
+                    then SOME ns
+                    else NONE                         
                   | SOME {attrs={fixed, ...}, ...} => 
                     if fixedOnly
                     then if fixed
@@ -1230,15 +1238,17 @@ fun getPrototypeObject (Obj {proto, ...}: OBJECT)
         Object obj => SOME obj
       | _ => NONE
 
-fun searchObject (NONE, _, _, _) = NONE
+fun searchObject (_, NONE, _, _, _) = NONE
 
-  | searchObject (SOME object : OBJECT option, 
+  | searchObject (regs        : REGS,
+                  SOME object : OBJECT option, 
                   identifier  : IDENTIFIER, 
                   namespaces  : NAMESPACE_SET, 
                   fixedOnly   : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = getBindingNamespaces (object, 
+        val matches = getBindingNamespaces (regs, 
+                                            object, 
                                             identifier, 
                                             namespaces, 
                                             fixedOnly)
@@ -1248,38 +1258,14 @@ fun searchObject (NONE, _, _, _) = NONE
             => if fixedOnly then 
                    NONE 
                else
-                   searchObject (getPrototypeObject (object), 
+                   searchObject (regs, 
+                                 getPrototypeObject (object), 
                                  identifier, 
                                  namespaces, 
                                  fixedOnly)
 
           | _ 
             => SOME (object, matches)
-    end
-
-fun objectListSearch ([], _, _, _) = NONE
-
-  | objectListSearch (objects    : OBJECT list,
-                      namespaces : NAMESPACE_SET,
-                      identifier : IDENTIFIER,
-                      fixedOnly  : bool)
-    : (OBJECT * NAMESPACE_SET) option =
-    let
-        val object = hd objects
-        val matches = searchObject (SOME object, 
-                                    identifier, 
-                                    namespaces, 
-                                    fixedOnly)
-    in
-        case matches of
-            NONE 
-            => objectListSearch (tl objects, 
-                                 namespaces, 
-                                 identifier, 
-                                 fixedOnly)
-
-          | _ 
-            => matches
     end
 
 (*
@@ -1297,7 +1283,8 @@ fun searchMutableScopeObject (object: OBJECT,
 *)
 
 (* FIXME need to handle eval scopes specially too *)
-fun searchScope (scope      : SCOPE,
+fun searchScope (regs       : REGS,
+                 scope      : SCOPE,
                  namespaces : NAMESPACE_SET,
                  identifier : IDENTIFIER,
                  fixedOnly  : bool)
@@ -1307,44 +1294,46 @@ fun searchScope (scope      : SCOPE,
     in 
         case (kind, fixedOnly) of
             (WithScope, true) 
-            => searchObject (SOME object, identifier, namespaces, false)
+            => searchObject (regs, SOME object, identifier, namespaces, false)
 
           | (WithScope, false) 
             => NONE
 
           | (_,_)            
-            => searchObject (SOME object, identifier, namespaces, fixedOnly)
+            => searchObject (regs, SOME object, identifier, namespaces, fixedOnly)
     end
 
-and searchScopeChainOnce (NONE, _, _, _) = NONE
+and searchScopeChainOnce (regs, NONE, _, _, _) = NONE
 
-  | searchScopeChainOnce (SOME scope : SCOPE option,
+  | searchScopeChainOnce (regs       : REGS,
+                          SOME scope : SCOPE option,
                           identifier : IDENTIFIER,
                           namespaces : NAMESPACE_SET,
                           fixedOnly  : bool)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = searchScope (scope, namespaces, identifier, fixedOnly)
+        val matches = searchScope (regs, scope, namespaces, identifier, fixedOnly)
         val Scope { parent, ... } = scope
     in
         case matches of
             NONE 
-            => searchScopeChainOnce (parent, identifier, namespaces, fixedOnly)
+            => searchScopeChainOnce (regs, parent, identifier, namespaces, fixedOnly)
 
           | _
             => matches
     end
 
-fun searchScopeChain (scope      : SCOPE option,
+fun searchScopeChain (regs       : REGS,
+                      scope      : SCOPE option,
                       identifier : IDENTIFIER,
                       namespaces : NAMESPACE_SET)
     : (OBJECT * NAMESPACE_SET) option =
     let 
-        val result = searchScopeChainOnce(scope, identifier, namespaces, true)
+        val result = searchScopeChainOnce(regs, scope, identifier, namespaces, true)
     in
         case result of
             NONE
-            => searchScopeChainOnce(scope, identifier, namespaces, false)
+            => searchScopeChainOnce(regs, scope, identifier, namespaces, false)
 
           | SOME _
             => result
@@ -1353,37 +1342,5 @@ fun searchScopeChain (scope      : SCOPE option,
 fun instanceRibsOf (object: OBJECT)
     : RIBS =
     []
-
-fun findName (globalObj: OBJECT, objects: OBJECT list, identifier: IDENTIFIER, openNamespaces: OPEN_NAMESPACES)
-    : (OBJECT * NAME) option =
-    let
-        val namespaces = List.concat (openNamespaces)
-        val matches = objectListSearch (objects, namespaces, identifier, true)
-        val matches' = case matches of 
-                           NONE => objectListSearch (objects, namespaces, identifier, false)
-                         | _ => matches
-    in
-        case matches' of
-            NONE => NONE
-          | SOME (object, namespace :: []) => SOME (object, {ns=namespace, id=identifier})
-          | SOME (object, namespaces') =>
-            let
-                val matches'' = Fixture.selectNamespacesByOpenNamespaces (openNamespaces, namespaces')
-            in
-                case matches'' of
-                    namespace :: [] => SOME (object, {ns=namespace,id=identifier})
-                  | [] => NONE
-                  | _ =>
-                    let
-                        val instanceRibs = instanceRibsOf (object)
-                        val matches''' = Fixture.selectNamespacesByClass (instanceRibs, namespaces, identifier)
-                    in 
-                        case matches''' of
-                            namespace :: [] => SOME (object, {ns=namespace, id=identifier})
-                          | [] => raise (LogErr.NameError "internal error")
-                          | _ =>  raise (LogErr.NameError ("ambiguous reference: " ^ Ustring.toAscii identifier))
-                    end
-            end
-    end
 
 end

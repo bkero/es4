@@ -293,13 +293,11 @@ fun repl (regs:Mach.REGS)
                          (print ("unknown trace option " ^ t ^ "\n"))
                        | SOME r => toggleRef ("trace option " ^ t) r)
 
-(*
                   | [":profile", n] =>
                     (case Int.fromString n of
-                         NONE => Eval.doProfile := NONE
-                       | SOME 0 => Eval.doProfile := NONE
-                       | SOME n => Eval.doProfile := SOME n)
-*)
+                         NONE => Mach.setProfile (!regsCell) NONE
+                       | SOME 0 => Mach.setProfile (!regsCell) NONE
+                       | SOME n => Mach.setProfile (!regsCell) (SOME n))
 
                   | [] => ()
                   | _ =>

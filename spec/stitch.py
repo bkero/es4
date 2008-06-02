@@ -244,9 +244,21 @@ def extractSML(fn, name):
     blanks = 0
     prev = ""
     ldots = re.compile("\(\* *LDOTS *\*\)")
+    skipping = False
     for line in f:
 
         # Skip informative lines
+        if skipping:
+            continue
+
+        if re.search("BEGIN_INFORMATIVE", line):
+            skipping = True
+            continue
+
+        if re.search("END_INFORMATIVE", line):
+            skipping = False
+            continue
+
         if re.search("INFORMATIVE", line):
             continue
 
