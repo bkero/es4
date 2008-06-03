@@ -258,6 +258,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val (rootRib, otherFrags) = 
             loadFiles rootRib 
                       [builtin "Namespace.es",
+                       builtin "Arguments.es",
                        builtin "Helper.es",
                        builtin "Conversions.es",
 
@@ -388,6 +389,7 @@ fun boot (baseDir:string) : Mach.REGS =
         Mach.setBooting regs false;
         Mach.resetProfile regs;
         describeGlobal regs;
+
 
         regs
     end

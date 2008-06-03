@@ -539,7 +539,7 @@ and hasOwnProperty (regs : REGS)
                        let
                            val ty = typeOfVal regs e
                            val defaultBehaviorClassTy = 
-                               instanceType regs ES4_DefaultBehaviorClass []
+                               instanceType regs helper_DefaultBehaviorClass []
                        in
                            if ty <* defaultBehaviorClassTy then
                                hasProp props n
@@ -699,10 +699,6 @@ and getValueOrVirtual (regs:REGS)
                      (* FIXME: possibly throw here? *)
                      Undefined
 
-               | ValListProp vals =>
-                 (* FIXME: The 'arguments' object can't be an array. *)
-                 upgraded prop (newArray regs vals)
-
                | ValProp v => v)
             
           | NONE =>
@@ -846,7 +842,6 @@ and badPropAccess (regs:REGS)
         val existingPropKind = 
             case existingPropState of 
                 ValProp _ => "value"
-              | ValListProp _ => "value-list"
               | VirtualValProp _ => "virtual"
     in
         throwExn (newTypeErr regs ["bad property ", accessKind,
@@ -1238,7 +1233,7 @@ and newFunClosure (e:SCOPE)
 and getClassObjectAndClass regs getter = 
     let
         val classObj = case !(getter regs) of 
-                           NONE => error regs ["midding special class"]
+                           NONE => error regs ["missing special class"]
                          | SOME c => c
         val class = needClass (Object classObj)
     in
@@ -3438,48 +3433,46 @@ and doubleEquals (regs:REGS)
         toBoolean b
     end
 
-
+and primitiveClassType regs getter = 
+    let
+        val cell = getter regs 
+    in
+        case !cell of 
+            SOME (Obj { tag = PrimitiveTag (ClassPrimitive c), 
+                        ...}) => 
+            ClassType c
+          | _ => error regs ["error fetching primitive instance type"]
+    end
+    
 and typeOfTag (regs:REGS)
               (tag:TAG)
     : (TYPE) =
-    let
-        fun primitiveClassType getter = 
-            let
-                val cell = getter regs 
-            in
-                case !cell of 
-                    SOME (Obj { tag = PrimitiveTag (ClassPrimitive c), 
-                                ...}) => 
-                    ClassType c
-                  | _ => error regs ["error fetching primitive instance type"]
-            end
-    in
-        case tag of
-            InstanceTag ity => ClassType ity
-          | ObjectTag tys => RecordType tys
-          | ArrayTag (tys,tyo) => ArrayType (tys,tyo)
-          | PrimitiveTag (BooleanPrimitive _) => primitiveClassType getBooleanClassSlot
-          | PrimitiveTag (DoublePrimitive _) => primitiveClassType getDoubleClassSlot
-          | PrimitiveTag (DecimalPrimitive _) => primitiveClassType getDecimalClassSlot
-          | PrimitiveTag (StringPrimitive _) => primitiveClassType getStringClassSlot
-          | PrimitiveTag (NamespacePrimitive _) => primitiveClassType getNamespaceClassSlot
-          | PrimitiveTag (ClassPrimitive _) => primitiveClassType getClassClassSlot
-          | PrimitiveTag (InterfacePrimitive _) => primitiveClassType getInterfaceClassSlot
-          | PrimitiveTag (TypePrimitive _) => primitiveClassType getTypeInterfaceSlot
-          | PrimitiveTag (NativeFunctionPrimitive _) => primitiveClassType getFunctionClassSlot
-          | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType getGeneratorClassSlot
-          | PrimitiveTag (FunctionPrimitive {func=Func { ty, ...}, ...}) => ty
-                                                                            
-          | NoTag => 
-            (* FIXME: this would be a hard error if we didn't use NoTag values
-             * as temporaries. Currently we do, so there are contexts where we
-             * want them to have a type in order to pass a runtime type test.
-             * this is of dubious value to me. -graydon.
-             *
-             * error regs ["typeOfVal on NoTag object"])
-             *)
-            AnyType
-    end
+    case tag of
+        InstanceTag ity => ClassType ity
+      | ObjectTag tys => RecordType tys
+      | ArrayTag (tys,tyo) => ArrayType (tys,tyo)
+      | PrimitiveTag (BooleanPrimitive _) => primitiveClassType regs getBooleanClassSlot
+      | PrimitiveTag (DoublePrimitive _) => primitiveClassType regs getDoubleClassSlot
+      | PrimitiveTag (DecimalPrimitive _) => primitiveClassType regs getDecimalClassSlot
+      | PrimitiveTag (StringPrimitive _) => primitiveClassType regs getStringClassSlot
+      | PrimitiveTag (NamespacePrimitive _) => primitiveClassType regs getNamespaceClassSlot
+      | PrimitiveTag (ClassPrimitive _) => primitiveClassType regs getClassClassSlot
+      | PrimitiveTag (InterfacePrimitive _) => primitiveClassType regs getInterfaceClassSlot
+      | PrimitiveTag (TypePrimitive _) => primitiveClassType regs getTypeInterfaceSlot
+      | PrimitiveTag (NativeFunctionPrimitive _) => primitiveClassType regs getFunctionClassSlot
+      | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType regs getGeneratorClassSlot
+      | PrimitiveTag (ArgumentsPrimitive _) => primitiveClassType regs getArgumentsClassSlot
+      | PrimitiveTag (FunctionPrimitive {func=Func { ty, ...}, ...}) => ty
+                                                                        
+      | NoTag => 
+        (* FIXME: this would be a hard error if we didn't use NoTag values
+         * as temporaries. Currently we do, so there are contexts where we
+         * want them to have a type in order to pass a runtime type test.
+         * this is of dubious value to me. -graydon.
+         *
+         * error regs ["typeOfVal on NoTag object"])
+         *)
+        AnyType
 
     
 and typeOfVal (regs:REGS)
@@ -4265,13 +4258,14 @@ and bindArgs (regs:REGS)
              * FIXME: this is a random guess at the appropriate form
              * of 'arguments'.
              *)
-            (addProp props arguments { state = ValListProp args,  
-                                       (* args is a better approximation than finalArgs *)
-                                       ty = typename public_Object,
-                                       attrs = { removable = false,
-                                                 enumerable = false,
-                                                 writable = Writable,
-                                                 fixed = true } };
+            (addProp props public_arguments
+                     { state = ValProp (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
+                       (* args is a better approximation than finalArgs *)
+                       ty = primitiveClassType regs getArgumentsClassSlot,
+                       attrs = { removable = false,
+                                 enumerable = false,
+                                 writable = Writable,
+                                 fixed = true } };
              bindArg 0 finalArgs)
 
     (*
@@ -4649,7 +4643,7 @@ and specialClassConstructor (regs:REGS)
         val Class targetClass = case args of
                                     (Object (Obj { tag=PrimitiveTag (ClassPrimitive c), ...}) :: _) => c
                                   | _ => error regs ["called special class constructor without class object"]
-        val metaClass = Class { name = Name.empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
+        val metaClass = Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
                                 privateNS = (#privateNS targetClass),
                                 protectedNS = (#protectedNS targetClass),
                                 parentProtectedNSs = (#parentProtectedNSs targetClass),
@@ -4840,6 +4834,7 @@ and constructSpecial (regs:REGS)
              (getClassClassSlot, specialClassConstructor),
              (getInterfaceClassSlot, specialPrimitiveCopyingConstructor),
              (getNamespaceClassSlot, specialPrimitiveCopyingConstructor),
+             (getArgumentsClassSlot, specialPrimitiveCopyingConstructor),
 
              (getObjectClassSlot, specialObjectConstructor),
              (getFunctionClassSlot, specialFunctionConstructor),
@@ -4885,7 +4880,8 @@ and bindAnySpecialIdentity (regs:REGS)
                         (ES4_boolean, getBooleanClassSlot),
                         (public_Boolean, getBooleanWrapperClassSlot),
                         
-                        (helper_GeneratorImpl, getGeneratorClassSlot)
+                        (helper_GeneratorImpl, getGeneratorClassSlot),
+                        (helper_Arguments, getArgumentsClassSlot)
                     ]
                     fun f (n,id) = nameEq name n
                 in
