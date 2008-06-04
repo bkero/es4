@@ -476,6 +476,35 @@ fun genClose (regs:Mach.REGS)
         Mach.Undefined
     end
 
+fun argsLength (regs:Mach.REGS)
+               (vals:Mach.VALUE list)
+    : Mach.VALUE = 
+    let
+        val obj = rawNth vals 0
+        val scope = Mach.needArguments obj
+        val temps = Eval.getScopeTemps scope
+    in
+        Eval.newDouble regs (Real64.fromInt (length (!temps)))
+    end
+
+fun getArg (regs:Mach.REGS)
+           (vals:Mach.VALUE list)
+    : Mach.VALUE = 
+    let
+        val obj = rawNth vals 0
+        val n = Int32.toInt (nthAsInt regs vals 1)
+        val scope = Mach.needArguments obj
+        val temps = Eval.getScopeTemps scope
+    in
+        Mach.getTemp temps n
+    end
+
+fun setArg (regs:Mach.REGS)
+           (vals:Mach.VALUE list)
+    : Mach.VALUE = 
+    (* FIXME: Implement. *)
+    Mach.Undefined
+
 
 (* Given a string and a position in that string, return the
  * numeric value of the character at that position in the
@@ -1030,6 +1059,10 @@ fun registerNatives _ =
         addFn 2 Name.helper_genSend genSend;
         addFn 2 Name.helper_genThrow genThrow;
         addFn 1 Name.helper_genClose genClose;
+
+        addFn 1 Name.helper_argsLength argsLength;
+        addFn 2 Name.helper_getArg getArg;
+        addFn 3 Name.helper_setArg setArg;
 
         addFn 2 Name.informative_charCodeAt charCodeAt;
         addFn 1 Name.informative_fromCharCode fromCharCode;

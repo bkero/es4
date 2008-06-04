@@ -147,6 +147,7 @@ datatype VALUE = Undefined
           booleanFalse : (OBJ option) ref,
           doubleNaN : (OBJ option) ref,
 
+          argumentsClass : (OBJ option) ref,
           generatorClass : (OBJ option) ref
          }
 
@@ -168,6 +169,7 @@ datatype VALUE = Undefined
        | InterfacePrimitive of INTERFACE
        | FunctionPrimitive of FUN_CLOSURE
        | TypePrimitive of TYPE
+       | ArgumentsPrimitive of SCOPE
        | NativeFunctionPrimitive of NATIVE_FUNCTION  (* INFORMATIVE *)
        | GeneratorPrimitive of GEN
 
@@ -598,6 +600,7 @@ fun primitiveToUstring (primitive:PRIMITIVE)
       | TypePrimitive _ => Ustring.fromString "[type TypePrimitive]"
       | NativeFunctionPrimitive _ => Ustring.fromString "[function FunctionPrimitive]"
       (* XXX: why does this trump the toString method? *)
+      | ArgumentsPrimitive _ => Ustring.fromString "[object Arguments]"
       | GeneratorPrimitive _ => Ustring.fromString "[object GeneratorPrimitive]"
 
 
@@ -786,6 +789,7 @@ fun nominalBaseOfTag (to:TAG)
       | PrimitiveTag (TypePrimitive _) => Name.intrinsic_Type
       | PrimitiveTag (NativeFunctionPrimitive _) => Name.public_Function
       | PrimitiveTag (GeneratorPrimitive _) => Name.helper_GeneratorImpl
+      | PrimitiveTag (ArgumentsPrimitive _) => Name.helper_Arguments
       | NoTag => error ["nominalBaseOfTag on NoTag"]
         
                                   
@@ -828,6 +832,9 @@ fun needBoolean (Object (Obj {tag = PrimitiveTag (BooleanPrimitive b), ...})) = 
 
 fun needString (Object (Obj {tag = PrimitiveTag (StringPrimitive s), ...})) = s
   | needString _ = error ["require string object"]
+
+fun needArguments (Object (Obj {tag = PrimitiveTag (ArgumentsPrimitive s), ...})) = s
+  | needArguments _ = error ["require arguments object"]
 
 
 
@@ -1038,6 +1045,7 @@ fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs))
 fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
 fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs)) 
 
+fun getArgumentsClassSlot (regs:REGS) = (#argumentsClass (getSpecials regs))
 fun getGeneratorClassSlot (regs:REGS) = (#generatorClass (getSpecials regs))
 
 fun getCaches (regs:REGS) =
@@ -1128,7 +1136,8 @@ fun makeInitialRegs (rootRib:RIB)
                          booleanTrue = ref NONE,
                          booleanFalse = ref NONE,
                          doubleNaN = ref NONE,
-                         generatorClass = ref NONE }
+                         generatorClass = ref NONE,
+                         argumentsClass = ref NONE}
         val aux = Aux { booting = ref false,
                         langEd = ref 4,
                         specials = specials,

@@ -248,9 +248,6 @@ def extractSML(fn, name):
     for line in f:
 
         # Skip informative lines
-        if skipping:
-            continue
-
         if re.search("BEGIN_INFORMATIVE", line):
             skipping = True
             continue
@@ -260,6 +257,9 @@ def extractSML(fn, name):
             continue
 
         if re.search("INFORMATIVE", line):
+            continue
+
+        if skipping:
             continue
 
 	if outside:

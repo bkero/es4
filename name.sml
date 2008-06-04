@@ -257,8 +257,8 @@ val helper_genThrow = helper Ustring.genThrow_
 val helper_genClose = helper Ustring.genClose_
 val helper_apply = helper Ustring.apply_
 
-val ES4_DefaultBehavior = ES4 Ustring.DefaultBehavior_
-val ES4_DefaultBehaviorClass = ES4 Ustring.DefaultBehaviorClass_
+val helper_DefaultBehavior = helper Ustring.DefaultBehavior_
+val helper_DefaultBehaviorClass = helper Ustring.DefaultBehaviorClass_
 
 val helper_toPrimitive = helper Ustring.toPrimitive_
 val helper_isPrimitive = helper Ustring.isPrimitive_
@@ -294,8 +294,12 @@ val meta_set = meta Ustring.set_
 val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
 
-val arguments = public Ustring.arguments_
-val empty = public Ustring.empty
+val public_arguments = public Ustring.arguments_
+val helper_argsLength = helper Ustring.argsLength_
+val helper_getArg = helper Ustring.getArg_
+val helper_setArg = helper Ustring.setArg_
+
+val public_empty = public Ustring.empty
 
 (* These are the property names that are opaque namespaces themselves are bound under. *)
 val public_ES4 = public Ustring.ES4_
@@ -308,6 +312,8 @@ val ES4_iterator = ES4 Ustring.iterator_
 val ES4_informative = ES4 Ustring.informative_
 val ES4_Unicode = ES4 Ustring.Unicode_
 val ES4_RegExpInternals = ES4 Ustring.RegExpInternals_
+
+val helper_Arguments = helper Ustring.Arguments_
 
 val helper_GeneratorImpl = helper Ustring.GeneratorImpl_
 
