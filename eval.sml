@@ -328,6 +328,40 @@ fun promoteToCommon (regs:REGS)
             (DoubleNum, DecimalNum) => DecimalNum
           | _ => error regs ["unexpected number combination in promoteToCommon"]
 
+
+val specialBindings = [
+    (* NB: there are order constraints on this list.
+     * 
+     * This list dictates the order of reification during booting, which 
+     * interacts with the wiring up of shared prototypes: if X.__proto__ is 
+     * supposed to be initialized form Y.__proto__, then Y needs to precede
+     * X in this list.
+     *)
+
+    (public_Function, getFunctionClassSlot),
+    (public_Object, getObjectClassSlot),
+    (public_Array, getArrayClassSlot),
+
+    (intrinsic_Type, getTypeInterfaceSlot),
+    (intrinsic_Class, getClassClassSlot),
+    (intrinsic_Interface, getInterfaceClassSlot),
+    (ES4_Namespace, getNamespaceClassSlot),
+        
+    (ES4_string, getStringClassSlot),
+    (public_String, getStringWrapperClassSlot),
+    
+    (ES4_double, getDoubleClassSlot),
+    (ES4_decimal, getDecimalClassSlot),
+    (public_Number, getNumberClassSlot),
+    
+    (ES4_boolean, getBooleanClassSlot),
+    (public_Boolean, getBooleanWrapperClassSlot),
+    
+    (helper_GeneratorImpl, getGeneratorClassSlot),
+    (helper_Arguments, getArgumentsClassSlot)
+]
+
+
 (* Fundamental object methods *)
 
 fun allocRib (regs:REGS)
@@ -388,32 +422,8 @@ fun allocRib (regs:REGS)
                       | NamespaceFixture _ => ()
                       | ValFixture _ => ()
                       | VirtualValFixture _ => ()                        
-                      | ClassFixture cls =>
-                        let
-                            val Class {classRib, ...} = cls
-                            val _ = traceConstruct ["allocating class object for class ", fmtName pn]
-                            val classObj = needObj regs (newClass regs cls)
-                            val _ = traceConstruct ["allocating class rib on class ", fmtName pn]
-                            (* FIXME: 'this' binding in class objects might be wrong here. *)
-                            (* val _ = allocObjRib regs classObj NONE classRib *)
-                        in
-                            allocProp "class"
-                                      { ty = typename intrinsic_Class,
-                                        state = ValProp (Object classObj),
-                                        attrs = attrs0 }
-                        end
-
-
-                      | InterfaceFixture iface =>  (* FIXME *)
-                        let
-                            val _ = traceConstruct ["allocating interface object for interface ", fmtName pn]
-                            val ifaceObj = needObj regs (newInterface regs iface)
-                        in
-                            allocProp "interface"
-                                      { ty = typename intrinsic_Type,
-                                        state = ValProp (Object ifaceObj),
-                                        attrs = attrs0 }
-                        end
+                      | ClassFixture cls => ()
+                      | InterfaceFixture iface => ()
 
                 (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
 
@@ -719,6 +729,12 @@ and getValueOrVirtual (regs:REGS)
               | SOME (NamespaceFixture ns) => 
                 reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
 
+              | SOME (ClassFixture c) => 
+                reifiedFixture (instanceType regs intrinsic_Class []) (newClass regs c)
+
+              | SOME (InterfaceFixture i) => 
+                reifiedFixture (instanceType regs intrinsic_Interface []) (newInterface regs i)
+
               | SOME (VirtualValFixture { ty, getter=SOME func, ... }) =>
                 let
                     val scope = instanceScope regs obj
@@ -749,7 +765,7 @@ and getValueOrVirtual (regs:REGS)
                                          attrs = attrs }
                         in
                             addProp props name prop;
-                        trace ["reified fixture ", fmtName name, " with default value"];
+                            trace ["reified fixture ", fmtName name, " with default value"];
                             v
                         end
                 end
@@ -4860,32 +4876,9 @@ and bindAnySpecialIdentity (regs:REGS)
             case tag of 
                 PrimitiveTag (ClassPrimitive (Class { name, ... })) =>
                 let
-                    val bindings = [
-                        (intrinsic_Type, getTypeInterfaceSlot),
-                        (intrinsic_Class, getClassClassSlot),
-                        (intrinsic_Interface, getInterfaceClassSlot),
-                        (ES4_Namespace, getNamespaceClassSlot),
-                        
-                        (public_Object, getObjectClassSlot),
-                        (public_Array, getArrayClassSlot),
-                        (public_Function, getFunctionClassSlot),
-                        
-                        (public_String, getStringWrapperClassSlot),
-                        (ES4_string, getStringClassSlot),
-                        
-                        (public_Number, getNumberClassSlot),
-                        (ES4_double, getDoubleClassSlot),
-                        (ES4_decimal, getDecimalClassSlot),
-                        
-                        (ES4_boolean, getBooleanClassSlot),
-                        (public_Boolean, getBooleanWrapperClassSlot),
-                        
-                        (helper_GeneratorImpl, getGeneratorClassSlot),
-                        (helper_Arguments, getArgumentsClassSlot)
-                    ]
                     fun f (n,id) = nameEq name n
                 in
-                    case List.find f bindings of
+                    case List.find f specialBindings of
                         NONE => ()
                       | SOME (_,func) => 
                         let
@@ -4897,7 +4890,10 @@ and bindAnySpecialIdentity (regs:REGS)
                 end
               | _ => ()
         end
-        
+
+and reifyAllSpecials (regs:REGS) : unit = 
+    List.app (fn (n,_) => (getValue regs (#global regs) n; ())) specialBindings
+    
 
 and setPrototype (regs:REGS)
                  (obj:OBJ)

@@ -360,7 +360,6 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val _ = describeGlobal regs;
     in
-
         trace ["completing class fixtures"];
         completeClassFixtures regs Name.public_Object objClassObj;
         completeClassFixtures regs Name.intrinsic_Class classClassObj;
@@ -373,6 +372,9 @@ fun boot (baseDir:string) : Mach.REGS =
         Eval.initClassPrototype regs objClassObj;
         Eval.initClassPrototype regs classClassObj;
         Eval.initClassPrototype regs ifaceClassObj;
+
+        trace ["reifying and binding all special identities"];
+        Eval.reifyAllSpecials regs;
 
         trace ["evaluating other files"];
         evalFiles regs otherFrags;
