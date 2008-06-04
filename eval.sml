@@ -3014,9 +3014,15 @@ and numTypeOf (regs:REGS)
     let
         val ty = typeOfVal regs v 
         fun sameItype t2 = 
-            case (ty, t2) of
+            case (ty, t2) of (* FIXME: this got ugly *)
                 (NonNullType (ClassType (Class {name=name1, ...})), 
                  NonNullType (ClassType (Class {name=name2, ...}))) => 
+                nameEq name1 name2
+              | ( (ClassType (Class {name=name1, ...})), 
+                 NonNullType (ClassType (Class {name=name2, ...}))) => 
+                nameEq name1 name2
+              | ( (ClassType (Class {name=name1, ...})), 
+                  (ClassType (Class {name=name2, ...}))) => 
                 nameEq name1 name2
               | _ => false
     in

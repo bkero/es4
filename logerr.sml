@@ -174,8 +174,8 @@ fun ty t =
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType (tys,NONE) => "[" ^ (typeList tys) ^ "]"
           | Ast.ArrayType (tys,SOME t) => "[" ^ (typeList tys) ^ "..." ^ (ty t) ^"]"
-          | Ast.TypeName (name, _) => nameExpr name
-		  | Ast.TypeIndexReferenceType _ => "<TypeIndexReferenceType: ...>"
+          | Ast.TypeName (name, _) => "TypeName("^(nameExpr name)^")"
+	  | Ast.TypeIndexReferenceType _ => "<TypeIndexReferenceType: ...>"
           | Ast.TypeNameReferenceType _ => "<TypeNameReferenceType: ...>"
           | Ast.FunctionType {params, result, hasRest, ...} => 
 			"function (" 
@@ -196,7 +196,7 @@ fun ty t =
 			(ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NonNullType t => (ty t) ^ "!"
           | Ast.ClassType (Ast.Class { name=n, ... }) => 
-			name n
+	                "ClassType("^(name n)^")"
           | Ast.InterfaceType (Ast.Interface { name=n, ... }) => 
 			name n
 (*		  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"      *)
