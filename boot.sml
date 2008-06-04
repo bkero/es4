@@ -76,7 +76,6 @@ fun instantiateRootClass (regs:Mach.REGS)
       val _ = if (!doTrace) 
               then Fixture.printRib classRib
               else ()
-      val _ = Eval.allocObjRib classRegs obj NONE classRib
 
       val _ = trace ["binding class ", LogErr.name fullName];
       val Mach.Obj { props, ... } = (#global regs)
@@ -95,30 +94,6 @@ fun instantiateRootClass (regs:Mach.REGS)
       (cls, obj)
   end
 
-fun completeClassFixtures (regs:Mach.REGS)
-                          (name:Ast.NAME)
-                          (classObj:Mach.OBJ) 
-    : unit =
-    let
-        (*
-         * Now the weird / feedbacky part: we go find the class "Class" and allocate
-         * its instance fixtures on the object we just built. For non-root classes
-         * this happens automatically because they're *instances* of class "Class",
-         * but the object we build only *says* it's an instance of class "Class"; it
-         * hasn't actually run through any sort of normal construction protocol for
-         * class "Class".
-         *
-         * Note that we do this *after* we bound the object to a position in the
-         * global object, because we want this tying-the-knot trick to work when
-         * we're defining class "Class" itself, and we won't be able to find it
-         * by name until just now.
-         *)
-        val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
-        val Ast.Class { instanceRib, ... } = lookupRoot (#rootRib regs) Name.intrinsic_Class
-    in
-        Eval.allocObjRib classRegs classObj (SOME classObj) instanceRib
-    end
-
 fun runConstructorOnObject (regs:Mach.REGS)
                            (class:Ast.CLASS) 
                            (classObj:Mach.OBJ) 
@@ -129,7 +104,6 @@ fun runConstructorOnObject (regs:Mach.REGS)
         val Ast.Class { instanceRib, ...} = class
         val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
         val classRegs = Eval.withThis regs obj
-        val _ = Eval.allocObjRib classRegs obj (SOME obj) instanceRib
     in
         Eval.initializeAndConstruct classRegs class classObj [] obj
     end
@@ -352,20 +326,8 @@ fun boot (baseDir:string) : Mach.REGS =
         val (_, funClassObj) = instantiateRootClass regs Name.public_Function funPrototype
         val (_, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface funPrototype            
 
-        (* Allocate runtime representations of anything in the initRib. *)
-        val _ = trace ["allocating ribs for all builtins"]
-                                    
-        val _ = Eval.allocScopeRib regs Defn.initRib
-        val _ = trace ["allocated ribs for initial rib"]
-
         val _ = describeGlobal regs;
     in
-        trace ["completing class fixtures"];
-        completeClassFixtures regs Name.public_Object objClassObj;
-        completeClassFixtures regs Name.intrinsic_Class classClassObj;
-        completeClassFixtures regs Name.public_Function funClassObj;
-        completeClassFixtures regs Name.intrinsic_Interface ifaceClassObj;
-
         (* NB: order matters here. *)
         trace ["initializing class prototypes"];
         Eval.initClassPrototype regs funClassObj;

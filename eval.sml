@@ -364,98 +364,31 @@ val specialBindings = [
 
 (* Fundamental object methods *)
 
-fun allocRib (regs:REGS)
-             (obj:OBJ)
-             (this:OBJ option)
-             (temps:TEMPS)
-             (f:RIB)
+fun allocTemps (regs:REGS)
+               (temps:TEMPS)
+               (f:RIB)
     : unit =
-    let
-        
-        val Obj { props, ident, ... } = obj
-        val _ = traceConstruct ["allocating rib on object id #", fmtObjId obj]
-        val {scope, ...} = regs
-        val methodScope = extendScope scope obj ActivationScope                 
-        val attrs0 = { removable = false,
-                       enumerable = false,
-                       writable = ReadOnly,
-                       fixed = true }
+    let        
         fun allocFixture (n, f) =
             case n of
                 TempName t => allocTemp regs f t temps
-              | PropName pn =>
-                let
-                    val _ = traceConstruct ["allocating fixture for prop ", fmtName pn]
-                    fun allocProp state p =
-                        if hasProp props pn
-                        then
-                            (* FIXME: 
-                             * This is ugly: boot code has no instances of fixture-replacement.
-                             * Some ES3 code -- notably the spidermonkey testsuite -- does in fact
-                             * have instances of fixture-replacing. We need to decide on the exact
-                             * rule here, and its interaction with the fixture-merging code in Fixture.sml
-                             *
-                             * For the time being I'm only permitting replacement of methods and vars,
-                             * in non-boot code, since those are the only things ES3 is supposed to know 
-                             * about.
-                             *)
-                            let
-                                fun fail _ = error regs ["allocating duplicate property name: ", name pn]
-                                fun permit _ = (traceConstruct ["replacing ", state, " property ", fmtName pn];
-                                                delProp props pn; 
-                                                addProp props pn p)
-                                val state = (#state (getProp props pn))
-                            in
-                                if isBooting regs 
-                                then fail ()
-                                else case state of
-                                         ValProp _ => permit ()
-                                       | VirtualValProp _ => permit ()
-                                       | _ => fail ()
-                            end
-                        else addProp props pn p
-                in
-                    case f of
-                        TypeFixture _ => ()
-                      | TypeVarFixture _ => ()
-                      | MethodFixture _ => ()
-                      | NamespaceFixture _ => ()
-                      | ValFixture _ => ()
-                      | VirtualValFixture _ => ()                        
-                      | ClassFixture cls => ()
-                      | InterfaceFixture iface => ()
-
-                (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
-
-                end
+              | PropName pn => ()
     in
         List.app allocFixture f
     end
 
-
-and allocObjRib (regs:REGS)
-                (obj:OBJ)
-                (this:OBJ option)
-                (f:RIB)
-    : unit =
-    let
-        val (temps:TEMPS) = ref []
-    in
-        allocRib regs obj this temps f;
-        if not ((length (!temps)) = 0)
-        then error regs ["allocated temporaries in non-scope object"]
-        else ()
-    end
-
-
-and allocScopeRib (regs:REGS)
-                  (rib:RIB)
+and allocScopeTemps (regs:REGS)
+                    (rib:RIB)
     : unit =
     let
         val { scope, ... } = regs
         val Scope { object, temps, ... } = scope
+        fun allocTempFromFixture (n, f) =
+            case n of
+                TempName t => allocTemp regs f t temps
+              | PropName pn => ()
     in
-        allocRib regs object NONE temps rib
+        List.app allocTempFromFixture rib
     end
 
 
@@ -2224,7 +2157,7 @@ and evalInitExpr (regs:REGS)
         val (Head (tempRib, tempInits)) = tempHead
     in
         (* Allocate and init the temp head in the current scope. *)
-        allocScopeRib regs tempRib;
+        allocScopeTemps regs tempRib;
         evalScopeInits regs Local tempInits;
         
         (* Allocate and init the target props. *)
@@ -2353,7 +2286,6 @@ and bindTypes (regs:REGS)
         val _ = trace ["binding ", Int.toString (length typeArgs), 
                        " type args to scope #", fmtObjId scopeObj]
         val env = extendScope env scopeObj TypeArgScope
-        val _ = allocObjRib regs scopeObj NONE typeRib
     in
         env
     end
@@ -4115,8 +4047,8 @@ and invokeFuncClosure (regs:REGS)
             val (varScope:SCOPE) = (#scope varRegs)
             val (Obj {props, ...}) = varObj
         in
-            trace ["invokeFuncClosure: allocating scope rib"];
-            allocScopeRib varRegs paramRib;
+            trace ["invokeFuncClosure: allocating scope temps"];
+            allocScopeTemps varRegs paramRib;
             trace ["invokeFuncClosure: binding args"];
             bindArgs regs varScope func args;
             trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
@@ -4481,8 +4413,8 @@ and initializeAndConstruct (regs:REGS)
                                                      varObj
                                                      ActivationScope
             in
-                traceConstruct ["allocating scope rib for constructor of ", fmtName name];
-                allocScopeRib varRegs paramRib;
+                traceConstruct ["allocating scope temps for constructor of ", fmtName name];
+                allocScopeTemps varRegs paramRib;
                 traceConstruct ["binding constructor args of ", fmtName name];
                 bindArgs regs varScope func args;
                 traceConstruct ["evaluating inits of ", fmtName name,
@@ -4530,8 +4462,6 @@ and constructStandardWithTag (regs:REGS)
         val classScope = getClassScope regs classObj
         val regs = withThis (withScope regs classScope) instanceObj 
     in
-        traceConstruct ["allocating ", Int.toString (length instanceRib), " instance rib for new ", fmtName name];
-        allocObjRib regs instanceObj (SOME instanceObj) instanceRib;
         traceConstruct ["entering most derived constructor for ", fmtName name];
         initializeAndConstruct regs class classObj args instanceObj;
         traceConstruct ["finished constructing new ", fmtName name];
@@ -4925,7 +4855,7 @@ and getPrototype (regs:REGS)
         (* 
          * NB: Do not refactor this; it has to handle a variety of
          * unwelcome circumstances for the .prototype slot: 
-         * null-valued, unallocated, and uninitialized.
+         * null-valued, un-reified, etc.
          *)
         case findProp props public_prototype of 
             SOME { state = ValProp v, ... } => v
@@ -5086,7 +5016,7 @@ and evalPragmas (regs:REGS)
  * - destructure head into its fixture bindings (rib) and initializers (inits)
  * - create a new object to become the scope object
  * - extend the environment (reg) scope with object (obj) and kind (BlockScope)
- * - allocate property bindings for fixture bindings (rib) in the extended environment (newRegs)
+ * - allocate temps from rib in the extended environment (newRegs)
  * - initialize properties of target object (obj) with initializers (inits) in environment (regs)
  *   with temporaries (getScopeTemps scope)
  * - return the updated environment (newRegs)
@@ -5104,7 +5034,7 @@ and evalHead (regs:REGS)
                                 Int.toString (getScopeId scope),
                                 " for head"]
     in
-        allocScopeRib newRegs rib;
+        allocScopeTemps newRegs rib;
         evalInits regs obj (getScopeTemps scope) inits;
         newRegs
     end
@@ -5132,13 +5062,6 @@ and evalBlock (regs:REGS)
 and evalClassBlock (regs:REGS)
                    (classBlock:CLASS_BLOCK)
     : VALUE =
-
-    (* 
-     * The property that holds the class object was allocated when the
-     * rib of the outer scope were allocated. Still to do is
-     * initialising the properties *of* the class object.
-     *)
-
     let
         val {name, block, ...} = classBlock
         val {scope, ...} = regs
@@ -5564,7 +5487,7 @@ and evalAnonFragment (regs:REGS)
         val Scope { object, temps, ... } = scope
 
         val _ = setLoc loc
-        val _ = allocScopeRib regs rib
+        val _ = allocScopeTemps regs rib
 
         val _ = setLoc loc
         val _ = evalInits regs object temps inits
@@ -5599,11 +5522,8 @@ and evalFragment (regs:REGS)
                  val Scope { temps, ...} = scope
                  val obj = findTargetObj regs scope Hoisted
              in
-                 trace ["resolved anonymous fragment target to obj #", fmtObjId obj];
                  setLoc loc;
-                 allocObjRib regs obj NONE rib;
-                 setLoc loc;
-                 trace ["allocating anonymous fragment inits on obj #", fmtObjId obj];
+                 trace ["running anonymous fragment inits on obj #", fmtObjId obj];
                  evalInits regs obj temps;
                  setLoc loc;
                  trace ["running anonymous fragment stmts"];
