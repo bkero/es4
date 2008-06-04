@@ -481,7 +481,7 @@ fun normalize (ribs:RIB list)
 
         val _ = traceTy "normalize4: " ty
         val ty = normalizeNulls ty
-*)
+
         val _ = traceTy "normalize5: " ty
         val ty = normalizeUnions ty
 
@@ -815,9 +815,8 @@ fun groundMatches type1 type2
                       type1 = AnyType orelse
                       type2 = AnyType orelse
                       findSpecialConversion type1 type2 <> NONE)
-        SubType
         type1 type2
-*)
+
 
 fun matches (rootRib:RIB)
             (locals:RIBS)
