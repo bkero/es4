@@ -56,7 +56,7 @@ val doTraceConstruct = ref false
 
 fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
 fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
-fun fmtObjId obj = if (!doTrace orelse !doTraceConstruct) then (Int.toString (getObjId obj))else ""
+fun fmtObjId obj = if (!doTrace orelse !doTraceConstruct) then (Int.toString (getObjId obj)) else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -307,27 +307,14 @@ fun getClassScope (regs:REGS)
 type REF = (OBJ * NAME)
 
 datatype NUMBER_TYPE = DoubleNum | DecimalNum 
-                                   
-fun numLE (a:NUMBER_TYPE)
-          (b:NUMBER_TYPE) =
-    if a = b
-    then true
-    else 
-        case (a,b) of
-            (DoubleNum, DecimalNum) => true
-          | _ => false
-                 
+
 fun promoteToCommon (regs:REGS) 
                     (a:NUMBER_TYPE) 
                     (b:NUMBER_TYPE)
     : NUMBER_TYPE =
     if a = b
     then a
-    else 
-        case if numLE a b then (a,b) else (b,a) of 
-            (DoubleNum, DecimalNum) => DecimalNum
-          | _ => error regs ["unexpected number combination in promoteToCommon"]
-
+    else DecimalNum
 
 val specialBindings = [
     (* NB: there are order constraints on this list.
@@ -589,31 +576,51 @@ and getValueOrVirtual (regs:REGS)
                       (doVirtual:bool)
     : VALUE =
     let
-        val _ = trace ["getting property ", fmtName name, 
-                       " on obj #", fmtObjId obj]
-        val Obj { props, tag, ... } = obj
-        fun propNotFound (curr:OBJ)
-            : VALUE =
-            if isDynamic regs obj
-            then Undefined
-            else throwExn (newTypeErr
-                               regs
-                               ["attempting to get nonexistent property ",
-                                LogErr.name name,
-                                " from non-dynamic object"])                 
-        fun upgraded (currProp:PROPERTY) newVal =
-            let
-                val { ty, attrs, ... } = currProp
-                val newProp = { state = ValProp newVal,
-                                ty = ty,
-                                attrs = attrs }
-            in
-                delProp props name;
-                addProp props name newProp;
-                trace ["upgraded property ", fmtName name ];
-                newVal
-            end
+        (* INFORMATIVE *) val _ = trace ["getting property ", fmtName name, " on obj #", fmtObjId obj]
+        val Obj { props, ... } = obj
+    in
+        case findProp props name of
+            SOME {state, ...} =>
+            (case state of
+                 ValProp v => v
+               | VirtualValProp { getter, ... } =>
+                 if doVirtual
+                 then
+                     case getter of
+                         SOME g => invokeFuncClosure (withThis regs obj) g NONE []
+                       | _ => Undefined
+                 else
+                     (* FIXME: possibly throw here? *)
+                     Undefined)
+            
+          | NONE =>
+            case Fixture.findFixture (getRib regs obj) (PropName name) of 
+                SOME fixture => reifyFixture regs obj name fixture
+              | NONE =>  
+                if doVirtual andalso 
+                   Fixture.hasFixture (getRib regs obj) (PropName meta_get)
+                then 
+                    (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
+                            "\") catchall on obj #", fmtObjId obj];
+                     evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
+                else 
+                    if isDynamic regs obj
+                    then Undefined
+                    else throwExn (newTypeErr
+                                       regs
+                                       ["attempting to get nonexistent property ",
+                                        LogErr.name name,
+                                        " from non-dynamic object"])
+    end
 
+and reifyFixture (regs:REGS)
+                 (obj:OBJ)
+                 (name:NAME)
+                 (fixture:FIXTURE)
+    : VALUE = 
+    (* LDOTS *)
+    let
+        val Obj { props, tag, ... } = obj
         fun reifiedFixture ty newVal =
             let
                 val attrs = { removable = false,
@@ -629,92 +636,67 @@ and getValueOrVirtual (regs:REGS)
                 newVal
             end
     in
-        case findProp props name of
-            SOME prop =>
-            (case (#state prop) of
-                 VirtualValProp { getter, ... } =>
-                 if doVirtual
-                 then
-                     case getter of
-                         SOME g => invokeFuncClosure (withThis regs obj) g NONE []
-                       | _ => Undefined
-                 else
-                     (* FIXME: possibly throw here? *)
-                     Undefined
-
-               | ValProp v => v)
+        case fixture of
+            (NamespaceFixture ns) => 
+            reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
             
-          | NONE =>
-            case Fixture.findFixture (getRib regs obj) (PropName name) of 
-                SOME (MethodFixture { func, ty, writable, ... }) => 
-                let
-                    val Func { native, ... } = func
-                    fun scope _ = case tag of 
-                                      NoTag => (#scope regs)
-                                    | _ => instanceScope regs obj
-                    val v = if native 
-                            then (newNativeFunction regs (getNativeFunction name))
-                            else (newFunctionFromFunc regs (scope()) func)
-                in
-                    reifiedFixture ty v
-                end
+          | (ClassFixture c) => 
+            reifiedFixture (instanceType regs intrinsic_Class []) (newClass regs c)
+            
+          | (InterfaceFixture i) => 
+            reifiedFixture (instanceType regs intrinsic_Interface []) (newInterface regs i)
 
-              | SOME (NamespaceFixture ns) => 
-                reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
+          | (MethodFixture { func, ty, writable, ... }) => 
+            let
+                val Func { native, ... } = func
+                fun scope _ = case tag of 
+                                  NoTag => (#scope regs)
+                                | _ => instanceScope regs obj
+                val v = if native 
+                        then (newNativeFunction regs (getNativeFunction name))
+                        else (newFunctionFromFunc regs (scope()) func)
+            in
+                reifiedFixture ty v
+            end
 
-              | SOME (ClassFixture c) => 
-                reifiedFixture (instanceType regs intrinsic_Class []) (newClass regs c)
+          | (ValFixture { ty, writable}) => 
+            let
+                val defaultValueOption = defaultValueForType regs ty
+            in
+                case defaultValueOption of
+                    NONE => throwExn (newRefErr regs ["attempting to get uninitialized fixture w/o default value", 
+                                                      LogErr.name name])
+                  | SOME v => 
+                    let
+                        val attrs = { enumerable = false,
+                                      removable = false, 
+                                      fixed = true, 
+                                      writable = if writable
+                                                 then Writable
+                                                 else WriteOnce }
+                        val state = ValProp v
+                        val prop = { ty = ty,
+                                     state = state,
+                                     attrs = attrs }
+                    in
+                        addProp props name prop;
+                        trace ["reified fixture ", fmtName name, " with default value"];
+                        v
+                    end
+            end
+            
+          | (VirtualValFixture { ty, getter=SOME func, ... }) =>
+            let
+                val scope = instanceScope regs obj
+                val closure = newFunClosure scope func (SOME obj)
+                val args = [newName regs name]
+            in
+                invokeFuncClosure regs closure NONE args
+            end
+            
+          | _ => throwExn (newRefErr regs ["attempting to get non-reified fixture", LogErr.name name])
 
-              | SOME (InterfaceFixture i) => 
-                reifiedFixture (instanceType regs intrinsic_Interface []) (newInterface regs i)
-
-              | SOME (VirtualValFixture { ty, getter=SOME func, ... }) =>
-                let
-                    val scope = instanceScope regs obj
-                    val closure = newFunClosure scope func (SOME obj)
-                    val args = [newName regs name]
-                in
-                    invokeFuncClosure regs closure NONE args
-                end
-
-              | SOME (ValFixture { ty, writable}) => 
-                let
-                    val defaultValueOption = defaultValueForType regs ty
-                in
-                    case defaultValueOption of
-                        NONE => throwExn (newRefErr regs ["attempting to get uninitialized fixture w/o default value", 
-                                                          LogErr.name name])
-                      | SOME v => 
-                        let
-                            val attrs = { enumerable = false,
-                                          removable = false, 
-                                          fixed = true, 
-                                          writable = if writable
-                                                     then Writable
-                                                     else WriteOnce }
-                            val state = ValProp v
-                            val prop = { ty = ty,
-                                         state = state,
-                                         attrs = attrs }
-                        in
-                            addProp props name prop;
-                            trace ["reified fixture ", fmtName name, " with default value"];
-                            v
-                        end
-                end
-                
-              | SOME _ => 
-                throwExn (newRefErr regs ["attempting to get non-reified fixture", LogErr.name name])
-              | NONE =>  
-                if doVirtual andalso 
-                   Fixture.hasFixture (getRib regs obj) (PropName meta_get)
-                then 
-                    (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
-                            "\") catchall on obj #", fmtObjId obj];
-                     evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
-                else 
-                    propNotFound obj
-    end
+    end     
     
 
 and newTypeOpFailure (regs:REGS)
@@ -2862,19 +2844,6 @@ and evalSetExpr (regs:REGS)
         v
     end
 
-
-and numberOfSimilarType (regs:REGS)
-                        (v:VALUE)
-                        (d:Real64.real)
-    : VALUE = 
-    let
-        val nt = numTypeOf regs v
-    in
-        case nt of 
-            _ => newDouble regs d
-    end
-
-
 and evalCrement (regs:REGS)
                 (bop:BINOP)
                 (pre:bool)
@@ -2884,7 +2853,9 @@ and evalCrement (regs:REGS)
         val (_, (obj, name)) = resolveRefExpr regs expr false
         val v = getValue regs obj name
         val v' = toNumeric regs v
-        val i = numberOfSimilarType regs v' 1.0
+        val i = case numTypeOf regs v of
+                    DoubleNum => newDouble regs 1.0
+                  | DecimalNum => newDecimal regs Decimal.one
         val v'' = performBinop regs bop v' i
     in
         setValue regs obj name v'';
@@ -3037,7 +3008,6 @@ and doubleToInt (d:Real64.real)
     : Int32.int =
     Int32.fromLarge (Real64.toLargeInt IEEEReal.TO_NEAREST d)
 
-
 and numTypeOf (regs:REGS) 
               (v:VALUE) 
     : NUMBER_TYPE = 
@@ -3051,12 +3021,9 @@ and numTypeOf (regs:REGS)
               | _ => false
     in
         (* Don't use <* here, it is willing to convert numeric types! *)
-        if sameItype (instanceType regs ES4_double [])
-        then DoubleNum
-        else
-            if sameItype (instanceType regs ES4_decimal [])
-            then DecimalNum
-            else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+        if sameItype (instanceType regs ES4_decimal [])
+        then DecimalNum
+        else DoubleNum
     end
 
 
