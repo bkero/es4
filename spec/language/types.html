@@ -281,11 +281,6 @@ given further special treatment.
 
 === Non-null types ===
 
-<FIXME>Cormac recently reformulated the non-null operator such that it does *not* model
-deletion-of-null-from-union but rather persists, as a normal-form of a type term, wrapping a class
-or interface type, and modifies the contained class or interface type to reject null as a
-subtype. It works this way too, but there may be left over text that describes it the older way.
-
 <p> A //non-null type// is a type that excludes the ^^null^^ value from the population of a nullable
 class or interface type.
 
@@ -715,17 +710,18 @@ In the scope of a generic type definition
 a type application ^^X.&lt;S_{1}, .., S_{n}>^^ in ^^T^^ is
 replaced by the type ^^S[y_{1}:=S_{1}, .., y_{n}:=S_{n}]^^.
   
-<p>
-In the scope of a class definition that associates a class name ^^C^^
-with a class definition ''D'', type resolution
-replaces any ''TypeName'' that refers to ^^C^^ with ''ClassType D''.
+<p> In the scope of a class definition that associates a
+non-nullable class name ^^C^^ with a class definition ''D'',
+type resolution replaces any ''TypeName'' that refers to ^^C^^ with
+''ClassType D''. For references to a nullable class, the same
+replacement is made, but the result (or the enclosing ''AppType''
+node, if there is one) is unioned with the ^^null^^ type. 
 
 <p> Similarly, in the scope of an interface definition that associates
 an interface name ^^I^^ with an interface definition ''D'', type
 resolution replaces any ''TypeName'' that refers to ^^I^^ with
-''InterfaceType D''.
-
-<p>The type resolution code is not presented here.
+''InterfaceType D'' (again, unioned with the ^^null^^ type, if ^^I^^
+is a nullable interface).
 
 ==== Implementation of Type Resolution ====
 

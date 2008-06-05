@@ -56,7 +56,7 @@ val doTraceConstruct = ref false
 
 fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
 fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
-fun fmtObjId obj = if (!doTrace orelse !doTraceConstruct) then (Int.toString (getObjId obj))else ""
+fun fmtObjId obj = if (!doTrace orelse !doTraceConstruct) then (Int.toString (getObjId obj)) else ""
 
 fun trace (ss:string list) = 
     if (!doTrace) then log ss else ()
@@ -307,145 +307,75 @@ fun getClassScope (regs:REGS)
 type REF = (OBJ * NAME)
 
 datatype NUMBER_TYPE = DoubleNum | DecimalNum 
-                                   
-fun numLE (a:NUMBER_TYPE)
-          (b:NUMBER_TYPE) =
-    if a = b
-    then true
-    else 
-        case (a,b) of
-            (DoubleNum, DecimalNum) => true
-          | _ => false
-                 
+
 fun promoteToCommon (regs:REGS) 
                     (a:NUMBER_TYPE) 
                     (b:NUMBER_TYPE)
     : NUMBER_TYPE =
     if a = b
     then a
-    else 
-        case if numLE a b then (a,b) else (b,a) of 
-            (DoubleNum, DecimalNum) => DecimalNum
-          | _ => error regs ["unexpected number combination in promoteToCommon"]
+    else DecimalNum
+
+val specialBindings = [
+    (* NB: there are order constraints on this list.
+     * 
+     * This list dictates the order of reification during booting, which 
+     * interacts with the wiring up of shared prototypes: if X.__proto__ is 
+     * supposed to be initialized form Y.__proto__, then Y needs to precede
+     * X in this list.
+     *)
+
+    (public_Function, getFunctionClassSlot),
+    (public_Object, getObjectClassSlot),
+    (public_Array, getArrayClassSlot),
+
+    (intrinsic_Type, getTypeInterfaceSlot),
+    (intrinsic_Class, getClassClassSlot),
+    (intrinsic_Interface, getInterfaceClassSlot),
+    (ES4_Namespace, getNamespaceClassSlot),
+        
+    (ES4_string, getStringClassSlot),
+    (public_String, getStringWrapperClassSlot),
+    
+    (ES4_double, getDoubleClassSlot),
+    (ES4_decimal, getDecimalClassSlot),
+    (public_Number, getNumberClassSlot),
+    
+    (ES4_boolean, getBooleanClassSlot),
+    (public_Boolean, getBooleanWrapperClassSlot),
+    
+    (helper_GeneratorImpl, getGeneratorClassSlot),
+    (helper_Arguments, getArgumentsClassSlot)
+]
+
 
 (* Fundamental object methods *)
 
-fun allocRib (regs:REGS)
-             (obj:OBJ)
-             (this:OBJ option)
-             (temps:TEMPS)
-             (f:RIB)
+fun allocTemps (regs:REGS)
+               (temps:TEMPS)
+               (f:RIB)
     : unit =
-    let
-        
-        val Obj { props, ident, ... } = obj
-        val _ = traceConstruct ["allocating rib on object id #", fmtObjId obj]
-        val {scope, ...} = regs
-        val methodScope = extendScope scope obj ActivationScope                 
-        val attrs0 = { removable = false,
-                       enumerable = false,
-                       writable = ReadOnly,
-                       fixed = true }
+    let        
         fun allocFixture (n, f) =
             case n of
                 TempName t => allocTemp regs f t temps
-              | PropName pn =>
-                let
-                    val _ = traceConstruct ["allocating fixture for prop ", fmtName pn]
-                    fun allocProp state p =
-                        if hasProp props pn
-                        then
-                            (* FIXME: 
-                             * This is ugly: boot code has no instances of fixture-replacement.
-                             * Some ES3 code -- notably the spidermonkey testsuite -- does in fact
-                             * have instances of fixture-replacing. We need to decide on the exact
-                             * rule here, and its interaction with the fixture-merging code in Fixture.sml
-                             *
-                             * For the time being I'm only permitting replacement of methods and vars,
-                             * in non-boot code, since those are the only things ES3 is supposed to know 
-                             * about.
-                             *)
-                            let
-                                fun fail _ = error regs ["allocating duplicate property name: ", name pn]
-                                fun permit _ = (traceConstruct ["replacing ", state, " property ", fmtName pn];
-                                                delProp props pn; 
-                                                addProp props pn p)
-                                val state = (#state (getProp props pn))
-                            in
-                                if isBooting regs 
-                                then fail ()
-                                else case state of
-                                         ValProp _ => permit ()
-                                       | VirtualValProp _ => permit ()
-                                       | _ => fail ()
-                            end
-                        else addProp props pn p
-                in
-                    case f of
-                        TypeFixture _ => ()
-                      | TypeVarFixture _ => ()
-                      | MethodFixture _ => ()
-                      | NamespaceFixture _ => ()
-                      | ValFixture _ => ()
-                      | VirtualValFixture _ => ()                        
-                      | ClassFixture cls =>
-                        let
-                            val Class {classRib, ...} = cls
-                            val _ = traceConstruct ["allocating class object for class ", fmtName pn]
-                            val classObj = needObj regs (newClass regs cls)
-                            val _ = traceConstruct ["allocating class rib on class ", fmtName pn]
-                            (* FIXME: 'this' binding in class objects might be wrong here. *)
-                            (* val _ = allocObjRib regs classObj NONE classRib *)
-                        in
-                            allocProp "class"
-                                      { ty = typename intrinsic_Class,
-                                        state = ValProp (Object classObj),
-                                        attrs = attrs0 }
-                        end
-
-
-                      | InterfaceFixture iface =>  (* FIXME *)
-                        let
-                            val _ = traceConstruct ["allocating interface object for interface ", fmtName pn]
-                            val ifaceObj = needObj regs (newInterface regs iface)
-                        in
-                            allocProp "interface"
-                                      { ty = typename intrinsic_Type,
-                                        state = ValProp (Object ifaceObj),
-                                        attrs = attrs0 }
-                        end
-
-                (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
-
-                end
+              | PropName pn => ()
     in
         List.app allocFixture f
     end
 
-
-and allocObjRib (regs:REGS)
-                (obj:OBJ)
-                (this:OBJ option)
-                (f:RIB)
-    : unit =
-    let
-        val (temps:TEMPS) = ref []
-    in
-        allocRib regs obj this temps f;
-        if not ((length (!temps)) = 0)
-        then error regs ["allocated temporaries in non-scope object"]
-        else ()
-    end
-
-
-and allocScopeRib (regs:REGS)
-                  (rib:RIB)
+and allocScopeTemps (regs:REGS)
+                    (rib:RIB)
     : unit =
     let
         val { scope, ... } = regs
         val Scope { object, temps, ... } = scope
+        fun allocTempFromFixture (n, f) =
+            case n of
+                TempName t => allocTemp regs f t temps
+              | PropName pn => ()
     in
-        allocRib regs object NONE temps rib
+        List.app allocTempFromFixture rib
     end
 
 
@@ -539,7 +469,7 @@ and hasOwnProperty (regs : REGS)
                        let
                            val ty = typeOfVal regs e
                            val defaultBehaviorClassTy = 
-                               instanceType regs ES4_DefaultBehaviorClass []
+                               instanceType regs helper_DefaultBehaviorClass []
                        in
                            if ty <* defaultBehaviorClassTy then
                                hasProp props n
@@ -646,31 +576,51 @@ and getValueOrVirtual (regs:REGS)
                       (doVirtual:bool)
     : VALUE =
     let
-        val _ = trace ["getting property ", fmtName name, 
-                       " on obj #", fmtObjId obj]
-        val Obj { props, tag, ... } = obj
-        fun propNotFound (curr:OBJ)
-            : VALUE =
-            if isDynamic regs obj
-            then Undefined
-            else throwExn (newTypeErr
-                               regs
-                               ["attempting to get nonexistent property ",
-                                LogErr.name name,
-                                " from non-dynamic object"])                 
-        fun upgraded (currProp:PROPERTY) newVal =
-            let
-                val { ty, attrs, ... } = currProp
-                val newProp = { state = ValProp newVal,
-                                ty = ty,
-                                attrs = attrs }
-            in
-                delProp props name;
-                addProp props name newProp;
-                trace ["upgraded property ", fmtName name ];
-                newVal
-            end
+        (* INFORMATIVE *) val _ = trace ["getting property ", fmtName name, " on obj #", fmtObjId obj]
+        val Obj { props, ... } = obj
+    in
+        case findProp props name of
+            SOME {state, ...} =>
+            (case state of
+                 ValProp v => v
+               | VirtualValProp { getter, ... } =>
+                 if doVirtual
+                 then
+                     case getter of
+                         SOME g => invokeFuncClosure (withThis regs obj) g NONE []
+                       | _ => Undefined
+                 else
+                     (* FIXME: possibly throw here? *)
+                     Undefined)
+            
+          | NONE =>
+            case Fixture.findFixture (getRib regs obj) (PropName name) of 
+                SOME fixture => reifyFixture regs obj name fixture
+              | NONE =>  
+                if doVirtual andalso 
+                   Fixture.hasFixture (getRib regs obj) (PropName meta_get)
+                then 
+                    (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
+                            "\") catchall on obj #", fmtObjId obj];
+                     evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
+                else 
+                    if isDynamic regs obj
+                    then Undefined
+                    else throwExn (newTypeErr
+                                       regs
+                                       ["attempting to get nonexistent property ",
+                                        LogErr.name name,
+                                        " from non-dynamic object"])
+    end
 
+and reifyFixture (regs:REGS)
+                 (obj:OBJ)
+                 (name:NAME)
+                 (fixture:FIXTURE)
+    : VALUE = 
+    (* LDOTS *)
+    let
+        val Obj { props, tag, ... } = obj
         fun reifiedFixture ty newVal =
             let
                 val attrs = { removable = false,
@@ -686,90 +636,67 @@ and getValueOrVirtual (regs:REGS)
                 newVal
             end
     in
-        case findProp props name of
-            SOME prop =>
-            (case (#state prop) of
-                 VirtualValProp { getter, ... } =>
-                 if doVirtual
-                 then
-                     case getter of
-                         SOME g => invokeFuncClosure (withThis regs obj) g NONE []
-                       | _ => Undefined
-                 else
-                     (* FIXME: possibly throw here? *)
-                     Undefined
-
-               | ValListProp vals =>
-                 (* FIXME: The 'arguments' object can't be an array. *)
-                 upgraded prop (newArray regs vals)
-
-               | ValProp v => v)
+        case fixture of
+            (NamespaceFixture ns) => 
+            reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
             
-          | NONE =>
-            case Fixture.findFixture (getRib regs obj) (PropName name) of 
-                SOME (MethodFixture { func, ty, writable, ... }) => 
-                let
-                    val Func { native, ... } = func
-                    fun scope _ = case tag of 
-                                      NoTag => (#scope regs)
-                                    | _ => instanceScope regs obj
-                    val v = if native 
-                            then (newNativeFunction regs (getNativeFunction name))
-                            else (newFunctionFromFunc regs (scope()) func)
-                in
-                    reifiedFixture ty v
-                end
+          | (ClassFixture c) => 
+            reifiedFixture (instanceType regs intrinsic_Class []) (newClass regs c)
+            
+          | (InterfaceFixture i) => 
+            reifiedFixture (instanceType regs intrinsic_Interface []) (newInterface regs i)
 
-              | SOME (NamespaceFixture ns) => 
-                reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
+          | (MethodFixture { func, ty, writable, ... }) => 
+            let
+                val Func { native, ... } = func
+                fun scope _ = case tag of 
+                                  NoTag => (#scope regs)
+                                | _ => instanceScope regs obj
+                val v = if native 
+                        then (newNativeFunction regs (getNativeFunction name))
+                        else (newFunctionFromFunc regs (scope()) func)
+            in
+                reifiedFixture ty v
+            end
 
-              | SOME (VirtualValFixture { ty, getter=SOME func, ... }) =>
-                let
-                    val scope = instanceScope regs obj
-                    val closure = newFunClosure scope func (SOME obj)
-                    val args = [newName regs name]
-                in
-                    invokeFuncClosure regs closure NONE args
-                end
-
-              | SOME (ValFixture { ty, writable}) => 
-                let
-                    val defaultValueOption = defaultValueForType regs ty
-                in
-                    case defaultValueOption of
-                        NONE => throwExn (newRefErr regs ["attempting to get uninitialized fixture w/o default value", 
-                                                          LogErr.name name])
-                      | SOME v => 
-                        let
-                            val attrs = { enumerable = false,
-                                          removable = false, 
-                                          fixed = true, 
-                                          writable = if writable
-                                                     then Writable
-                                                     else WriteOnce }
-                            val state = ValProp v
-                            val prop = { ty = ty,
-                                         state = state,
-                                         attrs = attrs }
-                        in
-                            addProp props name prop;
+          | (ValFixture { ty, writable}) => 
+            let
+                val defaultValueOption = defaultValueForType regs ty
+            in
+                case defaultValueOption of
+                    NONE => throwExn (newRefErr regs ["attempting to get uninitialized fixture w/o default value", 
+                                                      LogErr.name name])
+                  | SOME v => 
+                    let
+                        val attrs = { enumerable = false,
+                                      removable = false, 
+                                      fixed = true, 
+                                      writable = if writable
+                                                 then Writable
+                                                 else WriteOnce }
+                        val state = ValProp v
+                        val prop = { ty = ty,
+                                     state = state,
+                                     attrs = attrs }
+                    in
+                        addProp props name prop;
                         trace ["reified fixture ", fmtName name, " with default value"];
-                            v
-                        end
-                end
-                
-              | SOME _ => 
-                throwExn (newRefErr regs ["attempting to get non-reified fixture", LogErr.name name])
-              | NONE =>  
-                if doVirtual andalso 
-                   Fixture.hasFixture (getRib regs obj) (PropName meta_get)
-                then 
-                    (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
-                            "\") catchall on obj #", fmtObjId obj];
-                     evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
-                else 
-                    propNotFound obj
-    end
+                        v
+                    end
+            end
+            
+          | (VirtualValFixture { ty, getter=SOME func, ... }) =>
+            let
+                val scope = instanceScope regs obj
+                val closure = newFunClosure scope func (SOME obj)
+                val args = [newName regs name]
+            in
+                invokeFuncClosure regs closure NONE args
+            end
+            
+          | _ => throwExn (newRefErr regs ["attempting to get non-reified fixture", LogErr.name name])
+
+    end     
     
 
 and newTypeOpFailure (regs:REGS)
@@ -846,7 +773,6 @@ and badPropAccess (regs:REGS)
         val existingPropKind = 
             case existingPropState of 
                 ValProp _ => "value"
-              | ValListProp _ => "value-list"
               | VirtualValProp _ => "virtual"
     in
         throwExn (newTypeErr regs ["bad property ", accessKind,
@@ -912,7 +838,6 @@ and setValueOrVirtual (regs:REGS)
 
                   (* FIXME: predicate throw/ignore on the presence of runtime strict-mode flag. *)
                   | ValProp _ => maybeWrite false                  
-                  | _ => badPropAccess regs "setValue" name state
             end
           | NONE => 
             let
@@ -1221,7 +1146,7 @@ and newFunClosure (e:SCOPE)
 and getClassObjectAndClass regs getter = 
     let
         val classObj = case !(getter regs) of 
-                           NONE => error regs ["midding special class"]
+                           NONE => error regs ["missing special class"]
                          | SOME c => c
         val class = needClass (Object classObj)
     in
@@ -2078,7 +2003,7 @@ and evalInitExpr (regs:REGS)
         val (Head (tempRib, tempInits)) = tempHead
     in
         (* Allocate and init the temp head in the current scope. *)
-        allocScopeRib regs tempRib;
+        allocScopeTemps regs tempRib;
         evalScopeInits regs Local tempInits;
         
         (* Allocate and init the target props. *)
@@ -2207,7 +2132,6 @@ and bindTypes (regs:REGS)
         val _ = trace ["binding ", Int.toString (length typeArgs), 
                        " type args to scope #", fmtObjId scopeObj]
         val env = extendScope env scopeObj TypeArgScope
-        val _ = allocObjRib regs scopeObj NONE typeRib
     in
         env
     end
@@ -2739,19 +2663,6 @@ and evalSetExpr (regs:REGS)
         v
     end
 
-
-and numberOfSimilarType (regs:REGS)
-                        (v:VALUE)
-                        (d:Real64.real)
-    : VALUE = 
-    let
-        val nt = numTypeOf regs v
-    in
-        case nt of 
-            _ => newDouble regs d
-    end
-
-
 and evalCrement (regs:REGS)
                 (bop:BINOP)
                 (pre:bool)
@@ -2761,7 +2672,9 @@ and evalCrement (regs:REGS)
         val (_, (obj, name)) = resolveRefExpr regs expr false
         val v = getValue regs obj name
         val v' = toNumeric regs v
-        val i = numberOfSimilarType regs v' 1.0
+        val i = case numTypeOf regs v of
+                    DoubleNum => newDouble regs 1.0
+                  | DecimalNum => newDecimal regs Decimal.one
         val v'' = performBinop regs bop v' i
     in
         setValue regs obj name v'';
@@ -2893,26 +2806,28 @@ and doubleToInt (d:Real64.real)
     : Int32.int =
     Int32.fromLarge (Real64.toLargeInt IEEEReal.TO_NEAREST d)
 
-
 and numTypeOf (regs:REGS) 
               (v:VALUE) 
     : NUMBER_TYPE = 
     let
         val ty = typeOfVal regs v 
         fun sameItype t2 = 
-            case (ty, t2) of
+            case (ty, t2) of (* FIXME: this got ugly *)
                 (NonNullType (ClassType (Class {name=name1, ...})), 
                  NonNullType (ClassType (Class {name=name2, ...}))) => 
+                nameEq name1 name2
+              | ( (ClassType (Class {name=name1, ...})), 
+                 NonNullType (ClassType (Class {name=name2, ...}))) => 
+                nameEq name1 name2
+              | ( (ClassType (Class {name=name1, ...})), 
+                  (ClassType (Class {name=name2, ...}))) => 
                 nameEq name1 name2
               | _ => false
     in
         (* Don't use <* here, it is willing to convert numeric types! *)
-        if sameItype (instanceType regs ES4_double [])
-        then DoubleNum
-        else
-            if sameItype (instanceType regs ES4_decimal [])
-            then DecimalNum
-            else error regs ["unexpected type in numTypeOf: ", LogErr.ty ty]
+        if sameItype (instanceType regs ES4_decimal [])
+        then DecimalNum
+        else DoubleNum
     end
 
 
@@ -3237,48 +3152,46 @@ and doubleEquals (regs:REGS)
         toBoolean b
     end
 
-
+and primitiveClassType regs getter = 
+    let
+        val cell = getter regs 
+    in
+        case !cell of 
+            SOME (Obj { tag = PrimitiveTag (ClassPrimitive c), 
+                        ...}) => 
+            ClassType c
+          | _ => error regs ["error fetching primitive instance type"]
+    end
+    
 and typeOfTag (regs:REGS)
               (tag:TAG)
     : (TYPE) =
-    let
-        fun primitiveClassType getter = 
-            let
-                val cell = getter regs 
-            in
-                case !cell of 
-                    SOME (Obj { tag = PrimitiveTag (ClassPrimitive c), 
-                                ...}) => 
-                    ClassType c
-                  | _ => error regs ["error fetching primitive instance type"]
-            end
-    in
-        case tag of
-            InstanceTag ity => ClassType ity
-          | ObjectTag tys => RecordType tys
-          | ArrayTag (tys,tyo) => ArrayType (tys,tyo)
-          | PrimitiveTag (BooleanPrimitive _) => primitiveClassType getBooleanClassSlot
-          | PrimitiveTag (DoublePrimitive _) => primitiveClassType getDoubleClassSlot
-          | PrimitiveTag (DecimalPrimitive _) => primitiveClassType getDecimalClassSlot
-          | PrimitiveTag (StringPrimitive _) => primitiveClassType getStringClassSlot
-          | PrimitiveTag (NamespacePrimitive _) => primitiveClassType getNamespaceClassSlot
-          | PrimitiveTag (ClassPrimitive _) => primitiveClassType getClassClassSlot
-          | PrimitiveTag (InterfacePrimitive _) => primitiveClassType getInterfaceClassSlot
-          | PrimitiveTag (TypePrimitive _) => primitiveClassType getTypeInterfaceSlot
-          | PrimitiveTag (NativeFunctionPrimitive _) => primitiveClassType getFunctionClassSlot
-          | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType getGeneratorClassSlot
-          | PrimitiveTag (FunctionPrimitive {func=Func { ty, ...}, ...}) => ty
-                                                                            
-          | NoTag => 
-            (* FIXME: this would be a hard error if we didn't use NoTag values
-             * as temporaries. Currently we do, so there are contexts where we
-             * want them to have a type in order to pass a runtime type test.
-             * this is of dubious value to me. -graydon.
-             *
-             * error regs ["typeOfVal on NoTag object"])
-             *)
-            AnyType
-    end
+    case tag of
+        InstanceTag ity => ClassType ity
+      | ObjectTag tys => RecordType tys
+      | ArrayTag (tys,tyo) => ArrayType (tys,tyo)
+      | PrimitiveTag (BooleanPrimitive _) => primitiveClassType regs getBooleanClassSlot
+      | PrimitiveTag (DoublePrimitive _) => primitiveClassType regs getDoubleClassSlot
+      | PrimitiveTag (DecimalPrimitive _) => primitiveClassType regs getDecimalClassSlot
+      | PrimitiveTag (StringPrimitive _) => primitiveClassType regs getStringClassSlot
+      | PrimitiveTag (NamespacePrimitive _) => primitiveClassType regs getNamespaceClassSlot
+      | PrimitiveTag (ClassPrimitive _) => primitiveClassType regs getClassClassSlot
+      | PrimitiveTag (InterfacePrimitive _) => primitiveClassType regs getInterfaceClassSlot
+      | PrimitiveTag (TypePrimitive _) => primitiveClassType regs getTypeInterfaceSlot
+      | PrimitiveTag (NativeFunctionPrimitive _) => primitiveClassType regs getFunctionClassSlot
+      | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType regs getGeneratorClassSlot
+      | PrimitiveTag (ArgumentsPrimitive _) => primitiveClassType regs getArgumentsClassSlot
+      | PrimitiveTag (FunctionPrimitive {func=Func { ty, ...}, ...}) => ty
+                                                                        
+      | NoTag => 
+        (* FIXME: this would be a hard error if we didn't use NoTag values
+         * as temporaries. Currently we do, so there are contexts where we
+         * want them to have a type in order to pass a runtime type test.
+         * this is of dubious value to me. -graydon.
+         *
+         * error regs ["typeOfVal on NoTag object"])
+         *)
+        AnyType
 
     
 and typeOfVal (regs:REGS)
@@ -3881,8 +3794,8 @@ and invokeFuncClosure (regs:REGS)
             val (varScope:SCOPE) = (#scope varRegs)
             val (Obj {props, ...}) = varObj
         in
-            trace ["invokeFuncClosure: allocating scope rib"];
-            allocScopeRib varRegs paramRib;
+            trace ["invokeFuncClosure: allocating scope temps"];
+            allocScopeTemps varRegs paramRib;
             trace ["invokeFuncClosure: binding args"];
             bindArgs regs varScope func args;
             trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
@@ -4040,13 +3953,14 @@ and bindArgs (regs:REGS)
              * FIXME: this is a random guess at the appropriate form
              * of 'arguments'.
              *)
-            (addProp props arguments { state = ValListProp args,  
-                                       (* args is a better approximation than finalArgs *)
-                                       ty = typename public_Object,
-                                       attrs = { removable = false,
-                                                 enumerable = false,
-                                                 writable = Writable,
-                                                 fixed = true } };
+            (addProp props public_arguments
+                     { state = ValProp (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
+                       (* args is a better approximation than finalArgs *)
+                       ty = primitiveClassType regs getArgumentsClassSlot,
+                       attrs = { removable = false,
+                                 enumerable = false,
+                                 writable = Writable,
+                                 fixed = true } };
              bindArg 0 finalArgs)
 
     (*
@@ -4246,8 +4160,8 @@ and initializeAndConstruct (regs:REGS)
                                                      varObj
                                                      ActivationScope
             in
-                traceConstruct ["allocating scope rib for constructor of ", fmtName name];
-                allocScopeRib varRegs paramRib;
+                traceConstruct ["allocating scope temps for constructor of ", fmtName name];
+                allocScopeTemps varRegs paramRib;
                 traceConstruct ["binding constructor args of ", fmtName name];
                 bindArgs regs varScope func args;
                 traceConstruct ["evaluating inits of ", fmtName name,
@@ -4295,8 +4209,6 @@ and constructStandardWithTag (regs:REGS)
         val classScope = getClassScope regs classObj
         val regs = withThis (withScope regs classScope) instanceObj 
     in
-        traceConstruct ["allocating ", Int.toString (length instanceRib), " instance rib for new ", fmtName name];
-        allocObjRib regs instanceObj (SOME instanceObj) instanceRib;
         traceConstruct ["entering most derived constructor for ", fmtName name];
         initializeAndConstruct regs class classObj args instanceObj;
         traceConstruct ["finished constructing new ", fmtName name];
@@ -4424,7 +4336,7 @@ and specialClassConstructor (regs:REGS)
         val Class targetClass = case args of
                                     (Object (Obj { tag=PrimitiveTag (ClassPrimitive c), ...}) :: _) => c
                                   | _ => error regs ["called special class constructor without class object"]
-        val metaClass = Class { name = Name.empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
+        val metaClass = Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
                                 privateNS = (#privateNS targetClass),
                                 protectedNS = (#protectedNS targetClass),
                                 parentProtectedNSs = (#parentProtectedNSs targetClass),
@@ -4615,6 +4527,7 @@ and constructSpecial (regs:REGS)
              (getClassClassSlot, specialClassConstructor),
              (getInterfaceClassSlot, specialPrimitiveCopyingConstructor),
              (getNamespaceClassSlot, specialPrimitiveCopyingConstructor),
+             (getArgumentsClassSlot, specialPrimitiveCopyingConstructor),
 
              (getObjectClassSlot, specialObjectConstructor),
              (getFunctionClassSlot, specialFunctionConstructor),
@@ -4640,31 +4553,9 @@ and bindAnySpecialIdentity (regs:REGS)
             case tag of 
                 PrimitiveTag (ClassPrimitive (Class { name, ... })) =>
                 let
-                    val bindings = [
-                        (intrinsic_Type, getTypeInterfaceSlot),
-                        (intrinsic_Class, getClassClassSlot),
-                        (intrinsic_Interface, getInterfaceClassSlot),
-                        (ES4_Namespace, getNamespaceClassSlot),
-                        
-                        (public_Object, getObjectClassSlot),
-                        (public_Array, getArrayClassSlot),
-                        (public_Function, getFunctionClassSlot),
-                        
-                        (public_String, getStringWrapperClassSlot),
-                        (ES4_string, getStringClassSlot),
-                        
-                        (public_Number, getNumberClassSlot),
-                        (ES4_double, getDoubleClassSlot),
-                        (ES4_decimal, getDecimalClassSlot),
-                        
-                        (ES4_boolean, getBooleanClassSlot),
-                        (public_Boolean, getBooleanWrapperClassSlot),
-                        
-                        (helper_GeneratorImpl, getGeneratorClassSlot)
-                    ]
                     fun f (n,id) = nameEq name n
                 in
-                    case List.find f bindings of
+                    case List.find f specialBindings of
                         NONE => ()
                       | SOME (_,func) => 
                         let
@@ -4676,7 +4567,10 @@ and bindAnySpecialIdentity (regs:REGS)
                 end
               | _ => ()
         end
-        
+
+and reifyAllSpecials (regs:REGS) : unit = 
+    List.app (fn (n,_) => (getValue regs (#global regs) n; ())) specialBindings
+    
 
 and setPrototype (regs:REGS)
                  (obj:OBJ)
@@ -4708,7 +4602,7 @@ and getPrototype (regs:REGS)
         (* 
          * NB: Do not refactor this; it has to handle a variety of
          * unwelcome circumstances for the .prototype slot: 
-         * null-valued, unallocated, and uninitialized.
+         * null-valued, un-reified, etc.
          *)
         case findProp props public_prototype of 
             SOME { state = ValProp v, ... } => v
@@ -4869,7 +4763,7 @@ and evalPragmas (regs:REGS)
  * - destructure head into its fixture bindings (rib) and initializers (inits)
  * - create a new object to become the scope object
  * - extend the environment (reg) scope with object (obj) and kind (BlockScope)
- * - allocate property bindings for fixture bindings (rib) in the extended environment (newRegs)
+ * - allocate temps from rib in the extended environment (newRegs)
  * - initialize properties of target object (obj) with initializers (inits) in environment (regs)
  *   with temporaries (getScopeTemps scope)
  * - return the updated environment (newRegs)
@@ -4887,7 +4781,7 @@ and evalHead (regs:REGS)
                                 Int.toString (getScopeId scope),
                                 " for head"]
     in
-        allocScopeRib newRegs rib;
+        allocScopeTemps newRegs rib;
         evalInits regs obj (getScopeTemps scope) inits;
         newRegs
     end
@@ -4915,13 +4809,6 @@ and evalBlock (regs:REGS)
 and evalClassBlock (regs:REGS)
                    (classBlock:CLASS_BLOCK)
     : VALUE =
-
-    (* 
-     * The property that holds the class object was allocated when the
-     * rib of the outer scope were allocated. Still to do is
-     * initialising the properties *of* the class object.
-     *)
-
     let
         val {name, block, ...} = classBlock
         val {scope, ...} = regs
@@ -5315,7 +5202,7 @@ and evalAnonFragment (regs:REGS)
         val Scope { object, temps, ... } = scope
 
         val _ = setLoc loc
-        val _ = allocScopeRib regs rib
+        val _ = allocScopeTemps regs rib
 
         val _ = setLoc loc
         val _ = evalInits regs object temps inits
@@ -5350,11 +5237,8 @@ and evalFragment (regs:REGS)
                  val Scope { temps, ...} = scope
                  val obj = findTargetObj regs scope Hoisted
              in
-                 trace ["resolved anonymous fragment target to obj #", fmtObjId obj];
                  setLoc loc;
-                 allocObjRib regs obj NONE rib;
-                 setLoc loc;
-                 trace ["allocating anonymous fragment inits on obj #", fmtObjId obj];
+                 trace ["running anonymous fragment inits on obj #", fmtObjId obj];
                  evalInits regs obj temps;
                  setLoc loc;
                  trace ["running anonymous fragment stmts"];

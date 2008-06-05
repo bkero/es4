@@ -138,3 +138,8 @@
        containing the characters from A followed by the characters
        from B.  */
     informative native function stringAppend(a : string, b : string) : string;
+
+
+    helper native function argsLength(obj:Arguments!) : double;
+    helper native function getArg(obj:Arguments!, idx:double) : *;
+    helper native function setArg(obj:Arguments!, idx:double, val:*) : void;
