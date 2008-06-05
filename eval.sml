@@ -838,7 +838,6 @@ and setValueOrVirtual (regs:REGS)
 
                   (* FIXME: predicate throw/ignore on the presence of runtime strict-mode flag. *)
                   | ValProp _ => maybeWrite false                  
-                  | _ => badPropAccess regs "setValue" name state
             end
           | NONE => 
             let

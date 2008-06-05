@@ -165,7 +165,6 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
 	val ps = case (#state p) of
 		         Mach.ValProp _ => "[val]"
 		       | Mach.VirtualValProp _ => "[virtual val]"
-               | Mach.ValListProp _ => "[val list]"
     in
 	trace [LogErr.name n, " -> ", ps]
     end
