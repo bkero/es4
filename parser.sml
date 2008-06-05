@@ -305,7 +305,7 @@ fun desugarPattern (loc:Ast.LOC option)
                 SOME e => ([bind],[Ast.InitStep (ident,e)])
               | NONE => ([bind],[])
 (*
-                | NONE => ([bind],[Ast.InitStep (ident,Ast.LiteralExpr Ast.LiteralUndefined)])
+                | NONE => ([bind],[Ast.InitStep (ident, Ast.LiteralUndefined)])
 *)
             end
 
@@ -341,7 +341,7 @@ fun desugarPattern (loc:Ast.LOC option)
             in case element_ptrns of
                 p::plist =>
                     let
-                        val num = Ast.LiteralExpr (Ast.LiteralDouble (Real64.fromInt n))
+                        val num = Ast.LiteralDouble (Real64.fromInt n)
                         val e = SOME (Ast.ObjectIndexReference {object=temp, index=num, loc=loc})
                         val t = Ast.TypeIndexReferenceType (element_types,n)
                         val (binds, inits) = desugarPattern loc p t e (nesting+1)
@@ -628,8 +628,7 @@ and functionExpression (ts0: TOKENS, alpha: ALPHA, beta: BETA)
                         val (ts1,nd1) = functionSignature (tl ts0)
                         val (ts2,nd2) = functionExpressionBody (ts1, alpha, beta)
                     in
-                        (ts2,Ast.LiteralExpr
-                            (Ast.LiteralFunction
+                        (ts2, (Ast.LiteralFunction
                                 (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                            fsig=nd1,
                                            block=SOME nd2,
@@ -664,7 +663,7 @@ and functionExpression (ts0: TOKENS, alpha: ALPHA, beta: BETA)
                                                     loc=SOME funcStartLoc}))
                         val bid = Ast.PropIdent ident
                         val bindings = [Ast.Binding { ident = bid, ty = ty }]
-                        val inits = [Ast.InitStep (bid, Ast.LiteralExpr expr)]
+                        val inits = [Ast.InitStep (bid, expr)]
                         val name = Ast.QualifiedName { identifier = ident, 
                                                        namespace = Ast.Namespace Name.publicNS }
                         val res = Ast.LexicalReference { name = name,
@@ -722,7 +721,7 @@ and functionExpressionBody (ts0: TOKENS, alpha: ALPHA, beta: BETA) =
 *)
 
 and objectLiteral (ts0: TOKENS, alpha: ALPHA)
-    : (TOKENS * Ast.LITERAL) =
+    : (TOKENS * Ast.EXPRESSION) =
     let val _ = trace([">> objectLiteral with next=",tokenname(hd(ts0))])
     in case ts0 of
         (LeftBrace, _) :: _ =>
@@ -814,8 +813,7 @@ and literalField (ts:TOKENS)
             in
                 (ts2,{kind=Ast.Var,
                       name=nd1,
-                      init=Ast.LiteralExpr
-                               (Ast.LiteralFunction
+                      init= Ast.LiteralFunction
                                     (Ast.Func {name={kind=Ast.Get, ident=Ustring.empty},
                                                fsig=fsig,
                                                block=SOME block,
@@ -824,7 +822,7 @@ and literalField (ts:TOKENS)
                                                param=Ast.Head ([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig,
-                                               loc=unionLoc (SOME funcStartLoc) blockLoc}))})
+                                               loc=unionLoc (SOME funcStartLoc) blockLoc})})
             end
       | (Set, funcStartLoc) :: _ =>
             let
@@ -834,8 +832,7 @@ and literalField (ts:TOKENS)
             in
                 (ts2,{kind=Ast.Var,
                       name=nd1,
-                      init=Ast.LiteralExpr
-                               (Ast.LiteralFunction
+                      init=Ast.LiteralFunction
                                     (Ast.Func {name={kind=Ast.Set,ident=Ustring.empty},
                                                fsig=fsig,
                                                block=SOME block,
@@ -844,7 +841,7 @@ and literalField (ts:TOKENS)
                                                param=Ast.Head ([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig,
-                                               loc=unionLoc (SOME funcStartLoc) blockLoc}))})
+                                               loc=unionLoc (SOME funcStartLoc) blockLoc})})
             end
             
       | _ =>
@@ -898,7 +895,7 @@ and functionCommon (ts:TOKENS)
 *)
 
 and arrayLiteral (ts0: TOKENS, alpha: ALPHA)
-    : (TOKENS * Ast.LITERAL) =
+    : (TOKENS * Ast.EXPRESSION) =
     let val _ = trace ([">> arrayLiteral with next=", tokenname (hd (ts0))])
     in case ts0 of
         (LeftBracket, _) :: _ =>
@@ -955,7 +952,7 @@ and elements (ts0: TOKENS)
             let
                 val (ts1, nd1) = elementList (tl ts0)
             in
-                (ts1, Ast.ListExpr (Ast.LiteralExpr (Ast.LiteralUndefined) :: nd1))
+                (ts1, Ast.ListExpr (Ast.LiteralUndefined :: nd1))
             end
       | (TripleDot, _) :: _ =>
             let
@@ -1013,7 +1010,7 @@ and elementList (ts0: TOKENS)
             let
                 val (ts1, nd1) = elementList (tl ts0)
             in
-                (ts1, (Ast.LiteralExpr Ast.LiteralUndefined) :: nd1)
+                (ts1, Ast.LiteralUndefined :: nd1)
             end
       | (TripleDot, _) :: _ =>
             spreadExpression ts0
@@ -1136,15 +1133,15 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
   : (TOKENS * Ast.EXPRESSION) =
     let val _ = trace ([">> primaryExpression with next=", tokenname(hd ts0)])
     in case ts0 of
-        (Null, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralNull))
-      | (True, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralBoolean true))
-      | (False, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralBoolean false))
+        (Null, _) :: ts1 => (ts1, Ast.LiteralNull)
+      | (True, _) :: ts1 => (ts1, Ast.LiteralBoolean true)
+      | (False, _) :: ts1 => (ts1, Ast.LiteralBoolean false)
 
-      | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralDecimal n))
-      | (DoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralDouble n))
+      | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralDecimal n)
+      | (DoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralDouble n)
 
       (* FIXME: may wish to allow "string"::foo as a primary expression form? *)
-      | (StringLiteral s,_) :: ts1 => (ts1, Ast.LiteralExpr (Ast.LiteralString s))
+      | (StringLiteral s,_) :: ts1 => (ts1, Ast.LiteralString s)
       | (This, _) :: _ => 
             let
             in case (tl ts0) of
@@ -1157,19 +1154,19 @@ and primaryExpression (ts0:TOKENS, a:ALPHA, b:BETA)
             let
                 val (ts1,nd1) = arrayLiteral (ts0, a)
             in
-                (ts1,Ast.LiteralExpr nd1)
+                (ts1,nd1)
             end
       | (LeftBrace, _) :: _ =>
             let
                 val (ts1,nd1) = objectLiteral (ts0, a)
             in
-                (ts1,Ast.LiteralExpr nd1)
+                (ts1,nd1)
             end
       | (Function, _) :: _ => functionExpression (ts0,a,b)
       | (LexBreakDiv thunks, _) :: _ =>
         (case (#lex_regexp thunks)() of
              (RegexpLiteral str, _) :: rest =>
-             (rest, Ast.LiteralExpr(Ast.LiteralRegExp {str=str}))
+             (rest, Ast.LiteralRegExp {str=str})
            | _ => error ["non-regexp-literal token after '/' lexbreak"])
 
       | (Let, _) :: _ =>
@@ -1404,7 +1401,7 @@ and propertyOperator (ts0: TOKENS, nd0: Ast.EXPRESSION)
         in 
             case ts1 of
                 (* FIXME: what about >> and >>> *)
-                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpr {expr=nd0, actuals=nd1})
+                (GreaterThan, _) :: _ => (tl ts1, Ast.ApplyTypeExpression {expr=nd0, actuals=nd1})
               | _ => error ["unknown final token of parametric type expression"]
         end
         
@@ -1458,7 +1455,7 @@ and bracketsOrSlice (ts0:TOKENS, nd0:Ast.EXPRESSION)
                                                    loc = locOf ts0 },
               actuals = [ a, b, c ] }
 
-        val none = Ast.LiteralExpr (Ast.LiteralDouble (0.0 / 0.0))  (* NaN *)
+        val none = Ast.LiteralDouble (0.0 / 0.0)  (* NaN *)
 
         fun slice2 ts0 nd1 nd2 = 
             case ts0 of 
@@ -2279,7 +2276,7 @@ and conditionalExpression (ts0:TOKENS, alpha: ALPHA, beta:BETA)
                             let
                                 val (ts3, nd3) = assignmentExpression (tl ts2, alpha, beta)
                             in
-                                (ts3, Ast.TernaryExpr (nd1, nd2, nd3))
+                                (ts3, Ast.ConditionalExpression (nd1, nd2, nd3))
                             end
                       | _ => error ["unknown token in conditionalExpression"]
                     end
@@ -2565,8 +2562,8 @@ and patternFromExpr (e:Ast.EXPRESSION)
     : PATTERN =
     let val _ = trace([">> patternFromExpr"])
     in case e of
-        Ast.LiteralExpr (Ast.LiteralObject {...}) => objectPatternFromExpr (e)
-      | Ast.LiteralExpr (Ast.LiteralArray {...}) => arrayPatternFromExpr (e)
+        Ast.LiteralObject {...} => objectPatternFromExpr (e)
+      | Ast.LiteralArray {...} => arrayPatternFromExpr (e)
       | _ => simplePatternFromExpr (e)
     end
 
@@ -2631,7 +2628,7 @@ and objectPatternFromExpr (e:Ast.EXPRESSION)
     : PATTERN =
     let val _ = trace([">> objectPatternFromExpr"])
     in case e of
-        (Ast.LiteralExpr (Ast.LiteralObject {expr,ty})) =>
+        (Ast.LiteralObject {expr,ty}) =>
             let
                 val p = destructuringFieldListFromExpr expr
             in
@@ -2747,7 +2744,7 @@ and arrayPatternFromExpr (e:Ast.EXPRESSION)
     : PATTERN =
     let val _ = trace([">> arrayPatternFromExpr"])
     in case e of
-        Ast.LiteralExpr (Ast.LiteralArray {exprs,ty}) =>
+        Ast.LiteralArray {exprs,ty} =>
             let
                 val el = case exprs of Ast.ListExpr el => el | _ => error ["expecting list expr in Array pattern"]
                 val p = destructuringElementListFromExpr el
@@ -2775,7 +2772,7 @@ and destructuringElementList (ts:TOKENS, g:GAMMA)
             let
                 val (ts1,nd1) = destructuringElementList (tl ts,g)
             in
-                (ts1,SimplePattern(Ast.LiteralExpr(Ast.LiteralUndefined)) :: nd1)
+                (ts1,SimplePattern(Ast.LiteralUndefined) :: nd1)
             end
       | _ =>
             let
@@ -5170,7 +5167,7 @@ and variableBinding (ts:TOKENS, beta:BETA)
           | ((In, _) :: _,_,NoIn) => (* okay, we are in a for-in or for-each-in binding *)
                 let
                     val temp = Ast.Binding {ident=Ast.ParamIdent 0,ty=t}
-                    val init = Ast.InitStep (Ast.ParamIdent 0, Ast.LiteralExpr Ast.LiteralUndefined)  (* for symmetry with above for-in case *)
+                    val init = Ast.InitStep (Ast.ParamIdent 0, Ast.LiteralUndefined)  (* for symmetry with above for-in case *)
                     val (b,i) = desugarPattern (locOf ts) p t (SOME (Ast.GetParam 0)) 1
                 in
                     trace(["<< variableBinding IN with next=", tokenname(hd ts1)]);
@@ -5426,7 +5423,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              native=false,
                                              generator=isGeneratorFunction nd4,
                                              block=SOME nd4}
-                        val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
+                        val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralFunction func)]
                         val initStmts = [Ast.InitStmt {kind=nd1,
                                                        ns=ns,
                                                        prototype=prototype,
@@ -5468,7 +5465,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                     loc=listLoc})}
 *)
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident,
-                                                       Ast.LiteralExpr (Ast.LiteralFunction func))]
+                                                       Ast.LiteralFunction func)]
                         val initStmts = [Ast.InitStmt {kind=nd1,
                                                        ns=ns,
                                                        prototype=prototype,
@@ -5975,7 +5972,7 @@ and parameterInitType (ts)
     in case ts1 of
         (Assign,_) :: _ =>
             let
-                val (ts2,init) = (tl ts1,Ast.LiteralExpr Ast.LiteralUndefined)
+                val (ts2,init) = (tl ts1, Ast.LiteralUndefined)
             in
                 trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
                 (ts2, ([init],[nd1]))
@@ -6045,7 +6042,7 @@ and restParameter (ts) (n): (TOKENS * (Ast.BINDINGS * Ast.EXPRESSION list * Ast.
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
                         val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
                     in
-                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=Ast.ListExpr [],ty=NONE})],[Ast.ArrayType ([Ast.AnyType],NONE)]))
+                        (ts1, ((temp::b,i),[Ast.LiteralArray {exprs=Ast.ListExpr [],ty=NONE}],[Ast.ArrayType ([Ast.AnyType],NONE)]))
                     end
             end
       | _ => error ["unknown token in restParameter"]

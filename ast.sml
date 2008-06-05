@@ -334,44 +334,43 @@ datatype STATEMENT =
              expr: EXPRESSION }
 
      and EXPRESSION =
-         TernaryExpr of (EXPRESSION * EXPRESSION * EXPRESSION)
+         ApplyTypeExpression of { expr: EXPRESSION, actuals: TYPE list }
        | BinaryExpr of (BINOP * EXPRESSION * EXPRESSION)
        | BinaryTypeExpr of (BINTYPEOP * EXPRESSION * TYPE)
-       | UnaryExpr of (UNOP * EXPRESSION)
+       | CallExpr of { func: EXPRESSION, actuals: EXPRESSION list }
+       | Comprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)  (* INFORMATIVE *)
+       | ConditionalExpression of (EXPRESSION * EXPRESSION * EXPRESSION)
+       | GetParam of int                                                         (* INFORMATIVE *)  
+       | GetTemp of int  
+       | InitExpr of (INIT_TARGET * HEAD * INITS)  (* Informative *)
+       | LetExpr of { defs: BINDINGS, body: EXPRESSION, head: HEAD option }
+       | ListExpr of EXPRESSION list                                             (* INFORMATIVE *)
+       | LexicalReference of { name: NAME_EXPRESSION, loc: LOC option }
+       | NewExpr of { obj: EXPRESSION, actuals: EXPRESSION list }
+       | ObjectNameReference of { object: EXPRESSION, name: NAME_EXPRESSION, loc: LOC option }
+       | ObjectIndexReference of { object: EXPRESSION, index: EXPRESSION, loc: LOC option }
+       | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
+       | SuperExpr of EXPRESSION option
        | TypeExpr of TYPE
        | ThisExpr of THIS_KIND option
+       | UnaryExpr of (UNOP * EXPRESSION)
        | YieldExpr of EXPRESSION option
-       | SuperExpr of EXPRESSION option
-       | CallExpr of 
-         { func: EXPRESSION,
-           actuals: EXPRESSION list }
-       | ApplyTypeExpr of 
-         { expr: EXPRESSION,  (* apply expr to type list *)
-           actuals: TYPE list }
-
-       (* defs are rewritten into head by defn phase, and so defs are ignored in verifier and in eval *)
-       | LetExpr of 
-         { defs: BINDINGS,  
-           body: EXPRESSION,
-           head: HEAD option }
-       | NewExpr of 
-         { obj: EXPRESSION,
-           actuals: EXPRESSION list }
-       | SetExpr of (ASSIGNOP * EXPRESSION * EXPRESSION)
-       | ListExpr of EXPRESSION list
-       | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
-       | GetTemp of int
-       | GetParam of int
-       | Comprehension of (EXPRESSION * FOR_ENUM_HEAD list * EXPRESSION option)
-       | LiteralExpr of LITERAL
-       | LexicalReference of { name: NAME_EXPRESSION,
-                               loc: LOC option }
-       | ObjectNameReference of { object: EXPRESSION,
-								  name: NAME_EXPRESSION,
-                                  loc: LOC option }
-	   | ObjectIndexReference of { object: EXPRESSION,
-								   index: EXPRESSION,
-                                   loc: LOC option }
+       | LiteralNull
+       | LiteralUndefined
+       | LiteralDouble of Real64.real
+       | LiteralDecimal of Decimal.DEC
+       | LiteralBoolean of bool
+       | LiteralString of Ustring.STRING
+       | LiteralArray of
+           { exprs: EXPRESSION,  (* FIXME: more specific type here *)
+             ty:TYPE option }
+       | LiteralNamespace of NAMESPACE
+       | LiteralObject of
+           { expr : FIELD list,
+             ty: TYPE option }
+       | LiteralFunction of FUNC
+       | LiteralRegExp of
+           { str: Ustring.STRING }
 
      and INIT_TARGET = Hoisted
                      | Local
@@ -382,25 +381,6 @@ datatype STATEMENT =
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
-
-     and LITERAL =
-         LiteralNull
-       | LiteralUndefined
-       | LiteralDouble of Real64.real
-       | LiteralDecimal of Decimal.DEC
-       | LiteralBoolean of bool
-       | LiteralString of Ustring.STRING
-       | LiteralArray of
-           { exprs: EXPRESSION,  (* FIXME: more specific type here *)
-             ty:TYPE option }
-       | LiteralXML of EXPRESSION list
-       | LiteralNamespace of NAMESPACE
-       | LiteralObject of
-           { expr : FIELD list,
-             ty: TYPE option }
-       | LiteralFunction of FUNC
-       | LiteralRegExp of
-           { str: Ustring.STRING }
 
      and BLOCK = Block of DIRECTIVES
 

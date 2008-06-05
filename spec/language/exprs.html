@@ -93,12 +93,12 @@ a ''ResolvedName'' during the binding phase. All other occurances of name expres
 compute a ''ResolvedName'' during evalutation. Once computed the meaning of a name shall not
 change, nor shall its meaning become ambiguous. This enables early binding of names, as well as increased clarity of meaning.
 
-<!-- ><pre class="code grammar"><em>NameExpression</em></pre> 
-<pre class="code grammar"><em>Identifier</em></pre> 
+<!-- ><pre class="code grammar"><em>Identifier</em></pre> 
 <pre class="code grammar"><em>PropertyIdentifier</em></pre>
+<pre class="code grammar"><em>NameExpression</em></pre> 
 <pre class="code grammar"><em>NamespaceExpression</em></pre> -->
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
 <INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
@@ -114,30 +114,30 @@ change, nor shall its meaning become ambiguous. This enables early binding of na
 === Double Literals ===
 <P>A ''DoubleLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="eval.sml" name="fun evalDoubleLiteral">
 
 === Decimal Literals ===
 <P>A ''DecimalLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="eval.sml" name="fun evalDecimalLiteral">
 
 === Boolean Literals ===
 <P>A ''BooleanLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="eval.sml" name="fun evalBooleanLiteral">
 
 === String Literals ===
 <P>A ''StringLiteral'' is evaluated as described in the Syntax chapter.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="eval.sml" name="fun evalStringLiteral">
 
 === Regular Expression Initialisers ===
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="eval.sml" name="fun evalRegExpInitialiser">
 
 === Object Initialisers ===
@@ -202,6 +202,7 @@ contains any ''FieldName:AssignmentExpression'' fields, values resulting from th
 evaluation of ''AssignmentExpression'' are assigned to the corresponding ''FieldName''.
 For example, given:
 
+
 {{{
    class Point { var x, y }
 }}}
@@ -244,7 +245,7 @@ shall be implemented as:
 they appear.
 
 
-===== Semantics =====
+<SEM>
 
 The abstract representation of an object initialiser includes a list of fields and an optional type expression.
 <pre>
@@ -575,7 +576,7 @@ is syntactic sugar for
 for a fresh variable TMP.
 //end example//]
 
-===== Semantics =====
+<SEM>
 The abstract representation of an array initialiser includes a list of expressions and an optional type expression.
 <pre>
 datatype EXPRESSION =
@@ -642,7 +643,7 @@ This expressions can be modified by an optional keyword: ''generator'' or ''func
 The modifier indicates whether the expression refers to the current this object, 
 generator or function.
 
-===== Semantics =====
+<SEM>
 <P>The abstract representation of a this expression includes an optional modifier.
 <pre>
 datatype EXPRESSION =
@@ -654,7 +655,7 @@ datatype EXPRESSION =
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 
-<INCLUDE file="eval.sml" name="fun evalThisExpression">
+<INCLUDE file="eval.sml" name="and evalThisExpr">
 
 === Let Expressions ===
 
@@ -670,7 +671,7 @@ The variables bound as part of the ''LetBindingList'' have as their scope the ''
 ''LetExpression'' is determined by the evaluation of the ''CommaExpression'',
 using any applicable variable bindings from the ''LetBindingList''. 
 
-===== Semantics =====
+<SEM>
 <P>The abstract representation of let expression includes a list of bindings
 and an expression.
 <pre>
@@ -689,12 +690,12 @@ withtype
 </pre>
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
-<INCLUDE file="eval.sml" name="and evalLetExpr">
+<INCLUDE file="eval.sml" name="and evalLetExpression">
 
-== Reference Expressions ==
+== Left Hand Side Expressions ==
 
-<!-- <pre class="code grammar"><em>SuperExpression</em></pre> 
-<pre class="code grammar"><em>MemberExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<!-- <pre class="code grammar"><em>MemberExpression<sup>&alpha;, &beta;</sup></em></pre> 
+<pre class="code grammar"><em>SuperExpression</em></pre> 
 <pre class="code grammar"><em>CallExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>NewExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>Arguments</em></pre> 
@@ -723,8 +724,7 @@ super expression must appear in a call expression.
 <br/>//CallExpression . NameExpression//
 
 
-===== Semantics =====
-<INCLUDE file="eval.sml" name="and evalObjectNameReference">
+<SEM>
 
 === Indexed Property References ===
 
@@ -733,13 +733,12 @@ super expression must appear in a call expression.
 <br/><br/>//MemberExpression// [ //Expression// ]
 <br/>//CallExpression// [ //Expression// ]
 
-===== Semantics =====
-<INCLUDE file="eval.sml" name="and evalObjectIndexReference">
+<SEM>
 
 === Call Expressions ===
 <P>A call expression can be used to invoke a function.
 
-===== Semantics =====
+<SEM>
 <P>The abstract representation of a call expression includes an expression on which to invoke the call and a list of arguments.
 <pre>
 datatype EXPRESSION =
@@ -749,13 +748,13 @@ datatype EXPRESSION =
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 
-<INCLUDE file="eval.sml" name="fun evalCallExpr">
+<INCLUDE file="eval.sml" name="and evalCallExpr">
 
 === New Expressions ===
 
 <P>A new expression creates an instance of the specified type.
 
-===== Semantics =====
+<SEM>
 <P>The abstract representation of a new expression includes an expression on which to apply the ''new'' operator and a list of arguments.
 <pre>
 datatype EXPRESSION =
@@ -774,7 +773,7 @@ to a language construct that accepts parameterized types.
 
 <!-- <pre class="code grammar"><em>TypeApplication</em></pre> -->
 
-===== Semantics =====
+<SEM>
 
 <P>The abstract representation of an apply type expression includes an expression on which to apply the type and a list of types.
 <pre>
@@ -797,7 +796,7 @@ serves as the operator's sole operand.
 <!-- <pre class="code grammar"><em>PostfixExpression<sup>&alpha;, &beta;</sup></em></pre> 
 <pre class="code grammar"><em>UnaryExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
-===== Semantics =====
+<SEM>
 <P>The abstract representation of a unary expression includes a unary operator
 and an expression to which the operator is applied.
 <pre>
@@ -808,7 +807,7 @@ datatype EXPRESSION =
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 
-<INCLUDE file="eval.sml" name="fun evalUnaryExpr">
+<INCLUDE file="eval.sml" name="and evalUnaryOp">
 
 === Postfix Increment and Decrement Operators ===
 
@@ -823,7 +822,7 @@ and decrement operators in that they all change the value of the operand by 1.
 Unlike the two prefix operators, however, both postfix operators return
 a value equal to that of the operand prior to the change in value.
 
-===== Semantics =====
+<SEM>
 <P>The abstract representation of the posfix increment and decrement operators
 includes a unary operator and an expression to which the operator is applied.
 <pre>
@@ -865,7 +864,7 @@ function when its members are passed as arguments:
 <pre class="code grammar"><em>LogicalAndExpression<sup>&alpha;, &beta;</sup></em></pre>
 <pre class="code grammar"><em>LogicalOrExpression<sup>&alpha;, &beta;</sup></em></pre> -->
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="datatype BINOP">
 <INCLUDE file="eval.sml" name="and evalBinaryOp">
 
@@ -985,7 +984,7 @@ b, it is always the case that a-b produces the same result as a+(-b).
 <!--<pre class="code grammar"><em>RelationalExpression<sup>&alpha;, &beta;</sup></em></pre>-->
 <P>**NOTE:** The &beta; symbol signifies that the production has both ''AllowIn'' and ''NoIn'' variants
 unless the production specifically restricts the &beta; symbol to either variant. The ''NoIn'' variants are needed to avoid confusing the ''in'' operator in a relational expression with the ''in'' operator in a ''for'' or ''for-each-in'' statement.
-===== Semantics =====
+<SEM>
 <P>The result of evaluating a relational operator is always of type Boolean, 
 reflecting whether the relationship named by the operator holds between its two operands.
 
@@ -1005,7 +1004,7 @@ is evaluated instead of the contained //RelationalExpression// ''AllowIn'' varia
 === Equality Operators ===
 <!--<pre class="code grammar"><em>EqualityExpression<sup>&alpha;, &beta;</sup></em></pre>-->
 
-===== Semantics =====
+<SEM>
 <P>The result of evaluating an equality operator is always of type Boolean, 
 reflecting whether the relationship named by the operator holds between its two operands.
 ==== Equals Operator ====
@@ -1044,7 +1043,7 @@ reflecting whether the relationship named by the operator holds between its two 
 
 
 === Binary Type Operators  ===
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="datatype BINTYPEOP">
 <INCLUDE file="eval.sml" name="fun evalBinaryTypeExpr">
 
@@ -1070,14 +1069,14 @@ right side and the binary operation specified. In the case of the simple assignm
 operation, the value of the left side property is replaced with the value on the 
 right side.
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="datatype ASSIGNOP">
 <INCLUDE file="eval.sml" name="fun evalSetExpr">
 
 == Yield Expressions ==
 <!--<pre class="code grammar"><em>YieldExpression<sup>&alpha;, &beta;</sup></em></pre>-->
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="eval.sml" name="fun evalYieldExpr">
 
 == Conditional Operator ==
@@ -1087,8 +1086,8 @@ or //NonAssignmentExpression//, and the abstract form of //TernaryExpr//.
  It is evaluated by the function //evalCondExpr// as 
 invoked by the function //evalExpr//.
 
-===== Semantics =====
-<INCLUDE file="eval.sml" name="fun evalConditionalExpr">
+<SEM>
+<INCLUDE file="eval.sml" name="and evalConditionalExpression">
 
 == Comma Operator ==
 <!--<pre class="code grammar"><em>CommaExpression<sup>&alpha;, &beta;</sup></em></pre>-->
@@ -1105,7 +1104,7 @@ invoked by the function //evalExpr//.
 
 
 
-===== Semantics =====
+<SEM>
 <INCLUDE file="ast.sml" name="and TYPE">
 
 === Any Type ===

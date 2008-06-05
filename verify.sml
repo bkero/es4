@@ -379,7 +379,7 @@ and verifyExpr2 (env:ENV)
             end
     in
         case expr of
-            Ast.TernaryExpr (e1, e2, e3) =>
+            Ast.ConditionalExpression (e1, e2, e3) =>
             let
                 val t1:Ast.TYPE = verifySub e1
                 val t2:Ast.TYPE = verifySub e2
@@ -480,42 +480,37 @@ and verifyExpr2 (env:ENV)
                 anyType
             end
 
-          | Ast.LiteralExpr le =>
+          | Ast.LiteralFunction func => 
+            verifyFunc env func   
+
+          | Ast.LiteralObject { expr, ty } =>
             let
+                fun verifyField { kind, name, init } =
+                    (verifyExpr env init; ())
             in
-                case le of
-                    Ast.LiteralFunction func => 
-                    verifyFunc env func   
+                List.app verifyField expr;
+                liftOption (verifyType env) ty anyType
+            end                    
 
-                  | Ast.LiteralObject { expr, ty } =>
-                    let
-                        fun verifyField { kind, name, init } =
-                            (verifyExpr env init; ())
-                    in
-                        List.app verifyField expr;
-                        liftOption (verifyType env) ty anyType
-                    end                    
-
-                  (* FIXME handle comprehensions *)
-                  | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => 
-                    let                        
-                    in
-                        List.map (verifyExpr env) exprs;
-                        liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE)
+          (* FIXME handle comprehensions *)
+          | Ast.LiteralArray { exprs=Ast.ListExpr exprs, ty } => 
+            let                        
+            in
+                List.map (verifyExpr env) exprs;
+                liftOption (verifyType env) ty (Ast.ArrayType ([anyType],NONE)
 )
-                    end
-
-                  | Ast.LiteralNull        => nullType
-                  | Ast.LiteralUndefined   => undefinedType
-                  | Ast.LiteralDouble _    => 
-                    (trace ["doubleType=", LogErr.ty doubleType]; doubleType)
-                  | Ast.LiteralDecimal _   => decimalType
-                  | Ast.LiteralBoolean _   => booleanType
-                  | Ast.LiteralString _    => stringType
-                  | Ast.LiteralXML _       => anyType
-                  | Ast.LiteralNamespace _ => NamespaceType
-                  | Ast.LiteralRegExp _    => RegExpType
             end
+
+          | Ast.LiteralNull        => nullType
+          | Ast.LiteralUndefined   => undefinedType
+          | Ast.LiteralDouble _    => 
+            (trace ["doubleType=", LogErr.ty doubleType]; doubleType)
+          | Ast.LiteralDecimal _   => decimalType
+          | Ast.LiteralBoolean _   => booleanType
+          | Ast.LiteralString _    => stringType
+          | Ast.LiteralNamespace _ => NamespaceType
+          | Ast.LiteralRegExp _    => RegExpType
+          
           | Ast.CallExpr {func, actuals} => Ast.AnyType
 (* FIXME: get calls working
             let
@@ -552,7 +547,7 @@ and verifyExpr2 (env:ENV)
             end
 *)
             (* FIXME: what is this? *)
-          | Ast.ApplyTypeExpr { expr, actuals } =>
+          | Ast.ApplyTypeExpression { expr, actuals } =>
             let
                 val t = verifySub expr
                 val actuals' = List.map (verifyType env) actuals

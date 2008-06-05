@@ -1081,15 +1081,6 @@ and newArray (regs:REGS)
         a
     end
 
-(* SPEC
-
-fun evalRegExpInitialiser (env: ENV)
-                          (string: Ustring.STRING)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
 and newRegExp (regs:REGS)
               (pattern:Ustring.STRING)
               (flags:Ustring.STRING)
@@ -1111,28 +1102,23 @@ and newPrimitive (regs:REGS)
     end
     
 
-(* SPEC
-
-fun evalDecimalLiteral (env: ENV)
-                       (decimal: Decimal.DEC)
+and evalDecimalLiteral (regs: REGS)
+                       (d: Decimal.DEC)
     : VALUE =
- (* FINISH ME *)
+    newDouble regs d
 
- *)
 
 and newDecimal (regs:REGS) 
                (n:Decimal.DEC)
     : VALUE =
     newPrimitive regs (DecimalPrimitive n) getDecimalClassSlot
 
-(* SPEC
 
-fun evalDoubleLiteral (env: ENV)
-                      (double: Real64.real)
+and evalDoubleLiteral (regs: REGS)
+                      (d: Real64.real)
     : VALUE =
- (* FINISH ME *)
+    newDouble regs d
 
- *)
 
 and newDouble (regs:REGS) 
               (n:Real64.real)
@@ -1155,14 +1141,11 @@ and newDouble (regs:REGS)
     newPrimitive regs (DoublePrimitive n) getDoubleClassSlot
 
 
-(* SPEC
-
-fun evalStringLiteral (env: ENV)
+and evalStringLiteral (regs: REGS)
                       (s: Ustring.STRING)
     : VALUE =
- (* FINISH ME *)
+    newString regs s
 
- *)
 
 
 and newString (regs:REGS)
@@ -1831,90 +1814,65 @@ and typeCheck (regs:REGS)
                      " type=", ty (typeOfVal regs v),
                      " wanted=", ty tyExpr]
 
-(*
-
- fun evalExpression (env: ENV)
-                    (expr: EXPRESSION)
-     : VALUE =
-     case expr of
-         LiteralNull => 
-         Null
-       | LiteralUndefined => 
-         Undefined
-       | LiteralDouble r => 
-         newDouble env r
-       | LiteralDecimal d => 
-         newDecimal env d
-       | LiteralBoolean b => 
-         newBoolean env b
-       | LiteralString s => 
-         newString env s
-       | LiteralFunction f => 
-         newFunctionFromFunc env f
-       | LiteralObject {expr, ty} => 
-         evalObjectInitialiser env expr ty
-       | LiteralArray (ListExpr exprs, typeExpr) =>
-         evalArrayInitialiser env exprs typeExpr
-       | LiteralRegExp regexp => 
-         evalRegExpInitialiser env (#str re)
-       | GetExpr ref =>
-         evalGetExpr env ref
-       | LetExpr {defs, body, head} => 
-         evalLetExpr env (valOf head) body
-       | ConditionalExpr (aexpr, bexpr, cexpr) => 
-         evalCondExpr env aexpr bexpr cexpr
-       | BinaryExpr (bop, aexpr, bexpr) => 
-         evalBinaryOp env bop aexpr bexpr
-       | UnaryExpr (unop, expr) => 
-         evalUnaryOp env unop expr
-       | TypeExpr ty => 
-         evalTypeExpr env (evalTy env ty)
-       | ThisExpr kind => 
-         evalThisExpr env kind
-       | SuperExpr _ => 
-         error env ["super expression in illegal context"]
-       | SetExpr (aop, pat, expr) => 
-         evalSetExpr env aop pat expr
-       | CallExpr { func, actuals } => 
-         evalCallExpr env func actuals
-       | NewExpr { obj, actuals } => 
-         evalNewExpr env obj actuals
-       | GetTemp n => 
-         evalGetTemp env n
-       | InitExpr (target,tempHead,inits) => 
-         evalInitExpr env target tempHead inits
-       | BinaryTypeExpr (typeOp, expr, tyExpr) => 
-         evalBinaryTypeOp env typeOp expr tyExpr
-       | ApplyTypeExpr { expr, actuals } => 
-         evalApplyTypeExpr env expr (map (evalTy env) actuals)
-       | _ => unimplError ["unhandled expression type"]    
-
- *)
-
 and evalExpr (regs:REGS)
              (expr:EXPRESSION)
     : VALUE =
     case expr of
-        LiteralExpr lit =>
-        evalLiteralExpr regs lit
+        LiteralNull 
+        => Null
+
+      | LiteralUndefined 
+        => Undefined
+
+      | LiteralDouble r 
+        => evalDoubleLiteral regs r
+
+      | LiteralDecimal d 
+        => newDecimal regs d
+
+      | LiteralBoolean b 
+        => newBoolean regs b
+
+      | LiteralString s 
+        => newString regs s
+
+      | LiteralArray {exprs=ListExpr exprs, ty} 
+        => evalArrayInitialiser regs exprs ty (* FIXME handle comprehensions *)
+
+      | LiteralArray _ 
+        => unimplError ["unhandled non-ListExpr array literal"]
+
+      | LiteralNamespace n 
+        => newNamespace regs n                
+
+      | LiteralObject {expr, ty} 
+        => evalObjectInitialiser regs expr ty
+
+      | LiteralFunction f  
+        => newFunctionFromFunc regs (#scope regs) f
+
+      | LiteralRegExp re 
+        => evalRegExpInitialiser regs (#str re)
 
       | ListExpr es =>
         evalListExpr regs es
 
-      | LexicalReference { name, loc } =>
-        evalLexicalReference regs name
-        
-      | ObjectNameReference { object, name, loc } =>
-        evalObjectNameReference regs expr
-
-      | ObjectIndexReference { object, index, loc } =>
-        evalObjectIndexReference regs expr
+      | (LexicalReference { ... } | ObjectNameReference { ... } | ObjectIndexReference { ... }) =>
+        let
+            val (this, (obj, name)) = resolveRefExpr regs expr false
+        in
+            trace ["resolved reference to ", fmtName name, 
+               " on obj #", fmtObjId obj, ", with this=", case this of 
+                                                              NONE => "<none>"
+                                                            | SOME x => "#" ^ fmtObjId x];
+            getValue regs obj name
+        end
 
       | LetExpr {defs, body, head} =>
-        evalLetExpr regs (valOf head) body
+        evalLetExpression regs (valOf head) body
 
-      | TernaryExpr (aexpr, bexpr, cexpr) =>
-        evalCondExpr regs aexpr bexpr cexpr
+      | ConditionalExpression (aexpr, bexpr, cexpr) =>
+        evalConditionalExpression regs aexpr bexpr cexpr
 
       | BinaryExpr (bop, aexpr, bexpr) =>
         evalBinaryOp regs bop aexpr bexpr
@@ -1957,74 +1915,13 @@ and evalExpr (regs:REGS)
       | GetParam n =>
         unimplError ["unhandled GetParam expression"]
 
-      | ApplyTypeExpr { expr, actuals } =>
-        evalApplyTypeExpr regs expr (map (evalTy regs) actuals)
+      | ApplyTypeExpression { expr, actuals } =>
+        evalApplyTypeExpression regs expr (map (evalTy regs) actuals)
 
       | YieldExpr expr =>
         evalYieldExpr regs expr
 
       | _ => unimplError ["unhandled expression type"]    
-
-(* SPEC
-
-fun evalGetExpr (env: ENV)
-                (ref: REFERENCE)
-    : VALUE =
-    let
-        val (_, (obj, name)) = evalReference env ident true
-    in
-        getValue env obj name
-    end
-
- *)
-
-and evalLexicalReference (regs:REGS)
-                         (nameExpr:NAME_EXPRESSION)
-    : VALUE =
-    let
-        val (obj, name) = resolveLexicalReference regs nameExpr true
-    in
-        getValue regs obj name
-    end
-
-
-and evalObjectNameReference (regs:REGS)
-                            (expr:EXPRESSION)
-    : VALUE =
-    let
-        val (this, (obj, name)) = resolveObjectReference regs expr
-    in
-        trace ["resolved object-name reference to ", fmtName name, 
-               " on obj #", fmtObjId obj, ", with this=", case this of 
-                                                              NONE => "<none>"
-                                                            | SOME x => "#" ^ fmtObjId x];
-        getValue regs obj name
-    end
-
-and evalObjectIndexReference (regs:REGS)
-                             (expr:EXPRESSION)
-    : VALUE =
-    let
-        val (this, (obj, name)) = resolveObjectReference regs expr
-    in
-        getValue regs obj name
-    end
-
-(*
-
- fun evalThisExpression (env: ENV)
-                        (kind: THIS_KIND option)
-     : VALUE =
-     let
-         val { this, thisFunction, thisGenerator, ... } = env
-     in
-         case kind of
-             FunctionThis => Object thisFunction
-           | GeneratorThis => Object thisGenerator
-           | _ => Object this
-     end
-
- *)
 
 and evalThisExpr (regs:REGS)
                  (kind:THIS_KIND option)
@@ -2099,16 +1996,6 @@ and evalExprsAndSpliceSpreads (regs:REGS)
         List.concat (map f exprs)
     end
 
-(* SPEC
-
-fun evalCallExpr (env: ENV)
-                 (func: EXPRESSION)
-                 (actuals: EXPRESSION list)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
 and evalCallExpr (regs:REGS)
                  (func:EXPRESSION)
                  (actuals:EXPRESSION list)
@@ -2137,16 +2024,6 @@ and evalCallExpr (regs:REGS)
             end
     end
 
-(* SPEC
-
-fun evalNewExpr (env: ENV)
-                (func: EXPRESSION)
-                (actuals: EXPRESSION list)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
 and evalNewExpr (regs:REGS)
                 (obj:EXPRESSION)
                 (actuals:EXPRESSION list)
@@ -2172,18 +2049,6 @@ and evalGetTemp (regs:REGS)
         trace ["GetTemp ", Int.toString n, " on scope #", Int.toString scopeId];
         getTemp temps n
     end
-
-(* SPEC
-
-fun evalInitExpr (env: ENV)
-                 (target: INIT_TARGET)
-                 (head: HEAD)
-                 (inits: INITS)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
 
 and evalInitExpr (regs:REGS)
                  (target:INIT_TARGET) 
@@ -2480,18 +2345,9 @@ and instanceInterface (regs:REGS)
           | _ => error regs ["unexpected type in instanceInterface"]
     end
 
-(* SPEC
-
-fun evalApplyTypeExpr (env: ENV)
-                      (expr: EXPRESSION)
-                      (args: TYPE list)
-    : VALUE =
-
- *)
-
-and evalApplyTypeExpr (regs:REGS)
-                      (expr:EXPRESSION)
-                      (args:TYPE list)
+and evalApplyTypeExpression (regs:REGS)
+                            (expr:EXPRESSION)
+                            (args:TYPE list)
     : VALUE =
     let
         val v = evalExpr regs expr
@@ -2534,17 +2390,7 @@ and evalYieldExpr (regs:REGS)
           | NONE => error regs ["yield expression in a non-generator function context"]
     end
 
-(* SPEC
-
-fun evalArrayInitialiser (env: ENV)
-                         (elements: VALUE list)
-                         (typeExpr: TYPEESSION)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
-and evalLiteralArrayExpr (regs:REGS)
+and evalArrayInitialiser (regs:REGS)
                          (exprs:EXPRESSION list)
                          (ty:TYPE option)
     : VALUE =
@@ -2584,15 +2430,7 @@ and evalLiteralArrayExpr (regs:REGS)
         Object obj
     end
 
-(*
- fun evalObjectInitialiser (env: ENV)
-                           (fields: FIELD list)
-                           (typeExpr: TYPEESSION)
-     : VALUE =
- (* FINISH ME *)
- *)
-
-and evalLiteralObjectExpr (regs:REGS)
+and evalObjectInitialiser (regs:REGS)
                           (fields:FIELD list)
                           (ty:TYPE option)
     : VALUE =
@@ -2702,8 +2540,8 @@ and evalLiteralObjectExpr (regs:REGS)
 
  *)
 
-and evalLiteralRegExp (regs:REGS)
-                      (re:Ustring.STRING)
+and evalRegExpInitialiser (regs:REGS)
+                          (re:Ustring.STRING)
     : VALUE =
     let fun findSplit 0 = 0
           | findSplit n =
@@ -2719,24 +2557,6 @@ and evalLiteralRegExp (regs:REGS)
                   (Ustring.substring re (split + 1) (len - (split + 1)))
     end
 
-
-and evalLiteralExpr (regs:REGS)
-                    (lit:LITERAL)
-    : VALUE =
-    case lit of
-        LiteralNull => Null
-      | LiteralUndefined => Undefined
-      | LiteralDouble r => newDouble regs r
-      | LiteralDecimal d => newDecimal regs d
-      | LiteralBoolean b => newBoolean regs b
-      | LiteralString s => newString regs s
-      | LiteralArray {exprs=ListExpr exprs, ty} => evalLiteralArrayExpr regs exprs ty (* FIXME handle comprehensions *)
-      | LiteralArray _ => unimplError ["unhandled non-ListExpr array literal"]
-      | LiteralXML _ => unimplError ["unhandled literal XML"]
-      | LiteralNamespace n => newNamespace regs n                
-      | LiteralObject {expr, ty} => evalLiteralObjectExpr regs expr ty
-      | LiteralFunction f => newFunctionFromFunc regs (#scope regs) f
-      | LiteralRegExp re => evalLiteralRegExp regs (#str re)
 
 and evalListExpr (regs:REGS)
                  (es:EXPRESSION list)
@@ -2950,17 +2770,6 @@ and evalCrement (regs:REGS)
         else v'
     end        
     
-(* SPEC
-
-fun evalUnaryExpr (env: ENV)
-                  (unaryOp: ASSIGNOP)
-                  (expr: EXPRESSION)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
-
 and evalUnaryOp (regs:REGS)
                 (unop:UNOP)
                 (expr:EXPRESSION)
@@ -2986,7 +2795,7 @@ and evalUnaryOp (regs:REGS)
           | BitwiseNot =>
             newDouble regs (wordToDouble
                                 (Word32.notb
-                                     (doubleToWord 
+                                    (doubleToWord 
                                           (toUInt32 regs
                                                     (evalExpr regs expr)))))
             
@@ -3053,16 +2862,6 @@ and evalUnaryOp (regs:REGS)
                              | _ => typeNameOfVal (evalExpr regs expr))
             end
     end
-
-(* SPEC
-
-fun evalYieldExpr (env: ENV)
-                  (expr: EXPRESSION)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
 
 and evalTypeExpr (regs:REGS)
                  (te:TYPE)
@@ -3535,17 +3334,6 @@ and evalOperatorIs (regs:REGS)
         vt <* te
     end
 
-(* SPEC
-
-fun evalBinaryTypeExpr (env: ENV)
-                       (binaryTypeOp: BINTYPEOP)
-                       (expr: EXPRESSION)
-                       (typeExpr: TYPE)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
 and evalBinaryTypeOp (regs:REGS)
                      (bop:BINTYPEOP)
                      (expr:EXPRESSION)
@@ -3657,7 +3445,7 @@ and evalOperatorIn (regs:REGS)
     end
 
 
-and evalOperatorComma (regs:REGS)
+and evalCommaExpression (regs:REGS)
                       (aexpr:EXPRESSION)
                       (bexpr:EXPRESSION)
     : VALUE = 
@@ -3675,28 +3463,15 @@ and evalBinaryOp (regs:REGS)
       | LogicalOr => evalLogicalOr regs aexpr bexpr
       | InstanceOf => evalInstanceOf regs aexpr bexpr
       | In => evalOperatorIn regs aexpr bexpr
-      | Comma => evalOperatorComma regs aexpr bexpr
+      | Comma => evalCommaExpression regs aexpr bexpr
       | _ => performBinop regs bop
                           (evalExpr regs aexpr)
                           (evalExpr regs bexpr)
 
-(* SPEC
-
-fun evalConditionalExpr (env: ENV)
-                        (condExpr: EXPRESSION)
-                        (thenExpr: EXPRESSION)
-                        (elseExpr: EXPRESSION)
-    : VALUE =
- (* FINISH ME *)
-
- *)
-
-
-
-and evalCondExpr (regs:REGS)
-                 (cond:EXPRESSION)
-                 (thn:EXPRESSION)
-                 (els:EXPRESSION)
+and evalConditionalExpression (regs:REGS)
+                              (cond:EXPRESSION)
+                              (thn:EXPRESSION)
+                              (els:EXPRESSION)
     : VALUE =
     let
         val v = evalExpr regs cond
@@ -3835,9 +3610,9 @@ and resolveRefExpr (regs:REGS)
           | _ => error regs ["need lexical or object-reference expression"]
     end
 
-and evalLetExpr (regs:REGS)
-                (head:HEAD)
-                (body:EXPRESSION)
+and evalLetExpression (regs:REGS)
+                      (head:HEAD)
+                      (body:EXPRESSION)
     : VALUE =
     let
         val letRegs = evalHead regs head
@@ -4572,7 +4347,7 @@ and specialFunctionConstructor (regs:REGS)
         val sname = public_source
         val sval = newString regs source
         val fv = case funcExpr of
-                     LiteralExpr (LiteralFunction f) =>
+                     LiteralFunction f =>
                      newFunctionFromFunc regs (getGlobalScope regs) f
                    | _ => error regs ["function did not parse"];
         val fo = needObj regs fv
@@ -5163,24 +4938,6 @@ and evalClassBlock (regs:REGS)
         evalBlock classRegs block
     end
 
-(* SPEC
-
-fun evalIfStatement (env: ENV)
-                    (conditionExpr: EXPRESSION)
-                    (thenStmt: STATEMENT)
-                    (elseStmt: STATEMENT)
-    : VALUE =
-    let
-        val conditionValue = evalExpr regs conditionExpr
-        val booleanConditionValue = toBoolean conditionValue
-    in
-        if booleanConditionValue
-        then evalStmt env thenStmt
-        else evalStmt env elseStmt
-    end
-
- *)
-
 and evalIfStmt (regs:REGS)
                (cnd:EXPRESSION)
                (thn:STATEMENT)
@@ -5194,20 +4951,6 @@ and evalIfStmt (regs:REGS)
         then evalStmt regs thn
         else evalStmt regs els
     end
-
-(* SPEC
-
-fun evalLabeledStatement (env: ENV)
-                         (label: IDENTIFIER)
-                         (stmt: STATEMENT)
-    : VALUE =
-    evalStmt env stmt
-    handle BreakException exnLabel =>
-           if labelMatch [label] exnLabel
-           then Undefined
-           else raise BreakException exnLabel
-
- *)
 
 and evalLabelStmt (regs:REGS)
                   (lab:IDENTIFIER)

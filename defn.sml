@@ -1489,44 +1489,6 @@ and defPragmas (env:ENV)
     end
 
 
-and defLiteral (env:ENV)
-               (lit:Ast.LITERAL)
-    : Ast.LITERAL =
-    let
-        val _ = trace [">> defLiteral"]
-    in
-        case lit of
-            Ast.LiteralFunction func =>
-            let
-                val (_,_,func) = defFunc env func
-            in
-                Ast.LiteralFunction func
-            end
-
-          | Ast.LiteralArray {exprs, ty} =>
-            Ast.LiteralArray {exprs = defExpr env exprs,
-                              ty = case ty of
-                                       NONE => NONE
-                                     | SOME t => SOME (defTypeExpr env t) }
-          | Ast.LiteralXML exprs =>
-            Ast.LiteralXML (defExprs env exprs)
-
-          | Ast.LiteralObject {expr, ty} =>
-            Ast.LiteralObject {expr = List.map (fn { kind, name, init } =>
-                                                   { kind = kind,
-                                                     name = defNameExpr env name,
-                                                     init = defExpr env init }) expr,
-                               ty = case ty of
-                                        NONE => NONE
-                                      | SOME t => SOME (defTypeExpr env t) }
-
-          | Ast.LiteralNamespace ns =>
-            Ast.LiteralNamespace ns
-
-          | _ => lit   (* FIXME: other cases to handle here *)
-    end
-
-
 and defExpr (env:ENV)
             (expr:Ast.EXPRESSION)
     : Ast.EXPRESSION =
@@ -1534,8 +1496,8 @@ and defExpr (env:ENV)
         fun sub e = defExpr env e
     in
         case expr of
-            Ast.TernaryExpr (e1, e2, e3) =>
-            Ast.TernaryExpr (sub e1, sub e2, sub e3)
+            Ast.ConditionalExpression (e1, e2, e3) =>
+            Ast.ConditionalExpression (sub e1, sub e2, sub e3)
 
           | Ast.BinaryExpr (b, e1, e2) =>
             Ast.BinaryExpr (b, sub e1, sub e2)
@@ -1571,16 +1533,13 @@ and defExpr (env:ENV)
                       NONE => Ast.SuperExpr NONE
                     | SOME e => Ast.SuperExpr (SOME (sub e)))
 
-          | Ast.LiteralExpr le =>
-            Ast.LiteralExpr (defLiteral env le)
-
           | Ast.CallExpr {func, actuals} =>
             Ast.CallExpr {func = sub func,
                           actuals = map sub actuals }
 
-          | Ast.ApplyTypeExpr { expr, actuals } =>
-            Ast.ApplyTypeExpr { expr = sub expr,
-                                actuals = map (defTypeExpr env) actuals }
+          | Ast.ApplyTypeExpression { expr, actuals } =>
+            Ast.ApplyTypeExpression { expr = sub expr,
+                                      actuals = map (defTypeExpr env) actuals }
 
           | Ast.LetExpr { defs, body,... } =>
             let
@@ -1632,6 +1591,33 @@ and defExpr (env:ENV)
 
           | Ast.InitExpr ie =>
             Ast.InitExpr ie
+
+          | Ast.LiteralFunction func =>
+            let
+                val (_,_,func) = defFunc env func
+            in
+                Ast.LiteralFunction func
+            end
+
+          | Ast.LiteralArray {exprs, ty} =>
+            Ast.LiteralArray {exprs = defExpr env exprs,
+                              ty = case ty of
+                                       NONE => NONE
+                                     | SOME t => SOME (defTypeExpr env t) }
+          | Ast.LiteralObject {expr, ty} =>
+            Ast.LiteralObject {expr = List.map (fn { kind, name, init } =>
+                                                   { kind = kind,
+                                                     name = defNameExpr env name,
+                                                     init = defExpr env init }) expr,
+                               ty = case ty of
+                                        NONE => NONE
+                                      | SOME t => SOME (defTypeExpr env t) }
+
+          | Ast.LiteralNamespace ns =>
+            Ast.LiteralNamespace ns
+
+          | _ => expr   (* FIXME: other cases to handle here *)
+
     end
 
 

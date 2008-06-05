@@ -15,7 +15,7 @@ lib-march-2008.html: stitch.py lib-march-2008-template.html es4.css library/*.ht
 LIBDEPS=stitch.py es4.css ../builtins/*.es ../*.sml
 LANGDEPS=stitch.py es4.css grammar.xls ../*.sml
 
-output/Expressions.html: Expressions.html language/exprs.html language/exprs2.html $(LANGDEPS) 
+output/Expressions.html: Expressions.html language/expressions.html $(LANGDEPS) 
 	perl mergeGrammar.pl language/exprs.html language/exprs2.html
 	python stitch.py Expressions.html output/Expressions.html
 
