@@ -211,7 +211,6 @@ datatype VALUE = Undefined
       *)
 
      and PROPERTY_STATE = ValProp of VALUE
-                        | ValListProp of VALUE list       (* INFORMATIVE *)
                         | VirtualValProp of
                           { getter: FUN_CLOSURE option,
                             setter: FUN_CLOSURE option }
@@ -738,7 +737,6 @@ fun inspect (v:VALUE)
                             case state of
                                 ValProp v => "[val]"
                               | VirtualValProp _ => "[virtual val]"
-                              | ValListProp _ => "[val list]"
                     in
                         p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];
                         case state of

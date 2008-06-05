@@ -81,8 +81,8 @@ conventions, and are not enforced by the language semantics.
 
 <p>All values except the null and undefined values are object values.
 
-<p>An object value consists of a mutable property binding map, an immutable object identifier, an
-immutable tag, and an immutable prototype reference.
+<p>An object value consists of a mutable property binding map, an immutable rib, an immutable object
+identifier, an immutable tag, and an immutable prototype reference.
 
 <SEM>
 <INCLUDE file="mach.sml" name="and OBJ">
@@ -120,24 +120,14 @@ supporting semantic and ECMAScript standard library functionality.
 
 ==== Property States ====
 
-<p>The //state// of a property encodes either a value associated with the property, or else one of a
-small number of intermediate non-value conditions that a property can assume during evaluation. 
+<p>The //state// of a property encodes either a value associated with the property, or else a pair
+of functions that describe a "virtual" value.
 
-<p>When a property is created, it is //allocated// in a state that derives from its storage type.
+<p>If a property is in the //value// state, reading the property returns the value and writing the
+property updates the value.
 
-<p>A property with storage type <b>*</b> is allocated in the value state, with the undefined value.
-
-<p>A property with a storage type that has the null type as a subtype is allocated in the value
-state, with the null value.
-
-<p>Any other property is allocated in the uninitialized state, and must be initialized during the
-initialization phase of object construction, before the object's first constructor begins evaluation.
-
-<p>If a property is in value state, then the allocated type of the value held in the property is a
-compatible subtype of the storage type of the property.
-
-<p>Additional property states are defined for encoding non-value properties, such as types, type
-variables, and virtual properties (defined by getter and setter functions).
+<p>If a property is in the //virtual value// state, reading the property executes the associated
+"getter" function, and writing the property executes the associated "setter" function.
 
 <SEM>
 <INCLUDE file="mach.sml" name="and PROPERTY_STATE">
@@ -253,16 +243,17 @@ value held by the primitive tag.
 
 <p>The correspondence between primitive tags and classes is the following:
 <ul>
-<li>The primitive tag ''Boolean'' corresponds to the class **__ES4__::boolean**.
-<li>The primitive tag ''Double'' corresponds to the class **__ES4__::double**.
-<li>The primitive tag ''Decimal'' corresponds to the class **__ES4__::decimal**.
-<li>The primitive tag ''String'' corresponds to the class **__ES4__::string**.
-<li>The primitive tag ''Namespace'' corresponds to the class **__ES4__::Namespace**.
-<li>The primitive tag ''Class'' corresponds to the class **__ES4__::Class**.
-<li>The primitive tag ''Interface'' corresponds to the class **__ES4__::Interface**.
-<li>The primitive tag ''Function'' corresponds to the class **public::Function**.
-<li>The primitive tag ''Type'' corresponds to the class **__ES4__::Type**.
-<li>The primitive tag ''Generator'' corresponds to the class **helper::GeneratorImpl**.
+<li>The primitive tag ''BooleanPrimitive'' corresponds to the class **__ES4__::boolean**.
+<li>The primitive tag ''DoublePrimitive'' corresponds to the class **__ES4__::double**.
+<li>The primitive tag ''DecimalPrimitive'' corresponds to the class **__ES4__::decimal**.
+<li>The primitive tag ''StringPrimitive'' corresponds to the class **__ES4__::string**.
+<li>The primitive tag ''NamespacePrimitive'' corresponds to the class **__ES4__::Namespace**.
+<li>The primitive tag ''ClassPrimitive'' corresponds to the class **__ES4__::Class**.
+<li>The primitive tag ''InterfacePrimitive'' corresponds to the class **__ES4__::Interface**.
+<li>The primitive tag ''FunctionPrimitive'' corresponds to the class **public::Function**.
+<li>The primitive tag ''TypePrimitive'' corresponds to the class **__ES4__::Type**.
+<li>The primitive tag ''GeneratorPrimitive'' corresponds to the class **helper::GeneratorImpl**.
+<li>The primitive tag ''ArgumentsPrimitive'' corresponds to the class **helper::Arguments**.
 </ul>
 
 <SEM>
@@ -273,6 +264,15 @@ point values.  The type ''Decimal.DEC'' represents IEEE 128 bit
 decimal floating point numbers.  The type ''Ustring.STRING''
 represents Unicode strings.  The type ''bool'' represents boolean
 values.
+
+=== Object Rib ===
+
+<p>A rib is a structure that describes, but does not contain, a set of fixed property bindings. The
+properties described by an object's rib are //lazily instantiated// as fixed property bindings on
+the object. Any attempt to access a property binding described by an object's rib but not present in
+the object's property binding map causes the property to be added to the property binding map.
+
+<p>All instances of a class share a single rib.
 
 
 == Semantic Values ==
