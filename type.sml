@@ -259,11 +259,12 @@ fun normalizeRefs (ty:TYPE)
             val t = if idx < length types 
                     then List.nth (types, idx)
                     else case rest of
-                             NONE => error ["TypeIndexReferenceType out of bounds"]
+                             NONE => AnyType  (* was error ["TypeIndexReferenceType out of bounds", LogErr.ty ty] *)
                            | SOME restType => restType
         in
             normalizeRefs t
         end
+      | TypeIndexReferenceType (AnyType, _) => AnyType
       | TypeIndexReferenceType (t, _) => error ["TypeIndexReferenceType on non-ArrayType: ", LogErr.ty t]
       | TypeNameReferenceType (RecordType fields, nameExpr) => 
         (case List.find
@@ -272,6 +273,7 @@ fun normalizeRefs (ty:TYPE)
                   fields of
              NONE => error ["TypeNameReferenceType on unknown field: ", LogErr.nameExpr nameExpr]
            | SOME ( name, ty ) => normalizeRefs ty)
+      | TypeNameReferenceType (AnyType, _) => AnyType
       | TypeNameReferenceType (t, _) => error ["TypeNameReferenceType on non-RecordType: ", LogErr.ty t]
       | x => mapType normalizeRefs x
                                    
