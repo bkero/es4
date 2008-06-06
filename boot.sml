@@ -110,26 +110,26 @@ fun runConstructorOnObject (regs:Mach.REGS)
 
 fun loadFile (rootRib:Ast.RIB)
              (f:string) 
-    : (Ast.RIB * Ast.FRAGMENT) =
+    : (Ast.RIB * Ast.PROGRAM) =
     let
         val _ = trace ["parsing boot file ", f]
-        val frag = Parser.parseFile f
+        val prog = Parser.parseFile f
         val _ = trace ["defining boot file ", f]
     in
-        Defn.defTopFragment rootRib frag langEd
+        Defn.defProgram rootRib prog langEd
     end
 
 fun loadFiles (rootRib:Ast.RIB) 
               (fs:string list)
-    : (Ast.RIB * ((string * Ast.FRAGMENT) list)) =
+    : (Ast.RIB * ((string * Ast.PROGRAM) list)) =
     let
         fun f rootRib accum (file::files) = 
             let 
                 val _ = trace ["parsing and defining boot file ", file]
-                val frag = Parser.parseFile file
-                val (rootRib', frag') = Defn.defTopFragment rootRib frag langEd
+                val prog = Parser.parseFile file
+                val (rootRib', prog') = Defn.defProgram rootRib prog langEd
             in
-                f rootRib' ((file, frag')::accum) files
+                f rootRib' ((file, prog')::accum) files
             end
           | f rootRib accum _ = (rootRib, List.rev accum)
     in
@@ -140,21 +140,21 @@ val verifyBuiltins = ref false (* FIXME *)
 
 fun verifyFiles rootRib fs =
     let
-        fun ver (file, frag) =
+        fun ver (file, prog) =
             (trace ["verifying boot file ", file];
              (file,
-              Verify.verifyTopFragment rootRib (!verifyBuiltins) frag))
+              Verify.verifyProgram rootRib (!verifyBuiltins) prog))
     in
         map ver fs
     end
 
 fun evalFiles (regs:Mach.REGS)
-              (fs:(string * Ast.FRAGMENT) list)
+              (fs:(string * Ast.PROGRAM) list)
     : Mach.VALUE list =
     let
-        fun eval (file, frag) =
+        fun eval (file, prog) =
             (trace ["evaluating boot file ", file];
-             Eval.evalTopFragment regs frag)
+             Eval.evalProgram regs prog)
     in
         map eval fs
     end
@@ -180,7 +180,7 @@ fun describeGlobal (regs:Mach.REGS) =
     else 
         ()
 
-fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
+fun filterOutRootClasses (prog:Ast.PROGRAM) : Ast.PROGRAM =
     let
         fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.public_Object orelse
                                                            n = Name.intrinsic_Class orelse
@@ -194,9 +194,9 @@ fun filterOutRootClasses (frag:Ast.FRAGMENT) : Ast.FRAGMENT =
         fun filterHeadOpt (SOME (Ast.Head (rib, inits))) = SOME (Ast.Head (filterRib rib, inits))
           | filterHeadOpt NONE = NONE
     in
-        case frag of 
-            Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) => 
-            Ast.Anon (Ast.Block { pragmas = pragmas, 
+        case prog of 
+            Ast.Program (Ast.Block { pragmas, defns, head, body, loc }) => 
+            Ast.Program (Ast.Block { pragmas = pragmas, 
                                   defns = defns, 
                                   head = filterHeadOpt head, 
                                   body = body, 
@@ -223,12 +223,12 @@ fun boot (baseDir:string) : Mach.REGS =
          * Class and Function.
          *)
 
-        val (rootRib, objFrag) = loadFile rootRib (builtin "Object.es")
-        val (rootRib, clsFrag) = loadFile rootRib (builtin "Class.es")
-        val (rootRib, funFrag) = loadFile rootRib (builtin "Function.es")
-        val (rootRib, ifaceFrag) = loadFile rootRib (builtin "Interface.es")
+        val (rootRib, objProg) = loadFile rootRib (builtin "Object.es")
+        val (rootRib, clsProg) = loadFile rootRib (builtin "Class.es")
+        val (rootRib, funProg) = loadFile rootRib (builtin "Function.es")
+        val (rootRib, ifaceProg) = loadFile rootRib (builtin "Interface.es")
 
-        val (rootRib, otherFrags) = 
+        val (rootRib, otherProgs) = 
             loadFiles rootRib 
                       [builtin "Namespace.es",
                        builtin "Arguments.es",
@@ -296,11 +296,11 @@ fun boot (baseDir:string) : Mach.REGS =
                 Mach.newObject (Mach.InstanceTag cls) Mach.Null rootRib
             end
 
-        val objFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) objFrag 
-        val clsFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) clsFrag
-        val funFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) funFrag
-        val ifaceFrag = Verify.verifyTopFragment rootRib (!verifyBuiltins) ifaceFrag
-        val _ = verifyFiles rootRib otherFrags
+        val objProg = Verify.verifyProgram rootRib (!verifyBuiltins) objProg 
+        val clsProg = Verify.verifyProgram rootRib (!verifyBuiltins) clsProg
+        val funProg = Verify.verifyProgram rootRib (!verifyBuiltins) funProg
+        val ifaceProg = Verify.verifyProgram rootRib (!verifyBuiltins) ifaceProg
+        val _ = verifyFiles rootRib otherProgs
 
         val regs = Mach.makeInitialRegs rootRib glob
         val _ = Mach.setBooting regs true
@@ -338,21 +338,20 @@ fun boot (baseDir:string) : Mach.REGS =
         Eval.reifyAllSpecials regs;
 
         trace ["evaluating other files"];
-        evalFiles regs otherFrags;
+        evalFiles regs otherProgs;
 
         runConstructorOnObject regs objClass objClassObj glob;
         runConstructorOnObject regs objClass objClassObj objPrototype;        
         runConstructorOnObject regs objClass objClassObj funPrototype;
 
-        Eval.evalTopFragment regs (filterOutRootClasses objFrag);
-        Eval.evalTopFragment regs (filterOutRootClasses clsFrag);
-        Eval.evalTopFragment regs (filterOutRootClasses funFrag);
-        Eval.evalTopFragment regs (filterOutRootClasses ifaceFrag);
+        Eval.evalProgram regs (filterOutRootClasses objProg);
+        Eval.evalProgram regs (filterOutRootClasses clsProg);
+        Eval.evalProgram regs (filterOutRootClasses funProg);
+        Eval.evalProgram regs (filterOutRootClasses ifaceProg);
 
         Mach.setBooting regs false;
         Mach.resetProfile regs;
         describeGlobal regs;
-
 
         regs
     end

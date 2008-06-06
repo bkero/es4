@@ -726,6 +726,6 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1622 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC x1622))
        ))]
-   and cvtFRAGMENT (Anon x1634) = PrettyRep.Ctor ("Anon", SOME (cvtBLOCK x1634))
+   and cvtPROGRAM (Program x1634) = PrettyRep.Ctor ("Program", SOME (cvtBLOCK x1634))
 end
 

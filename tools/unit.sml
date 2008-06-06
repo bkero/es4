@@ -288,7 +288,7 @@ fun parseScript (filename : string) : TEST_CASE list =
         handle e => (closeIn input; raise e)
     end
 
-fun parse (source : INPUT_SOURCE) : Ast.FRAGMENT =
+fun parse (source : INPUT_SOURCE) : Ast.PROGRAM =
     case source of
          Raw s => Parser.parseLines s
        | File f => Parser.parseFile f
@@ -304,7 +304,7 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
 
 	{ name, stage=Parse, arg, source } =>
 	 (let
-	      val frag = parse source
+	      val prog = parse source
 	  in
 	      (test, if arg then true else false)
 	  end
@@ -313,10 +313,10 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
 
        | { name, stage=Verify, arg, source } =>
 	 (let
-	      val frag = parse source
-	      val (rootRib, frag) = Defn.defTopFragment (#rootRib regs) frag 4
+	      val prog = parse source
+	      val (rootRib, prog) = Defn.defProgram (#rootRib regs) prog 4
 	      val _ = (Verify.warningsAreFailures := true )
-	      val frag = Verify.verifyTopFragment rootRib true frag
+	      val prog = Verify.verifyProgram rootRib true prog
 	  in
 	      (test, if arg then true else false)
 	  end
@@ -325,10 +325,10 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
 
        | { name, stage=Eval, arg, source } =>
 	 (let
-	      val frag = parse source
-	      val (rootRib, frag) = Defn.defTopFragment (#rootRib regs) frag 4
-	      val frag = Verify.verifyTopFragment rootRib true frag
-	      val res = Eval.evalTopFragment regs frag
+	      val prog = parse source
+	      val (rootRib, prog) = Defn.defProgram (#rootRib regs) prog 4
+	      val prog = Verify.verifyProgram rootRib true prog
+	      val res = Eval.evalProgram regs prog
 	  in
 	      (test, if arg then true else false)
 	  end

@@ -6842,148 +6842,14 @@ and block (ts:TOKENS, t:TAU)
 (*
     Program
         Directives(global)
-        Packages  Directives(global)
-
-    Packages
-        Packages
-        Package Packages
-
-    Package
-        PackageAttributes  package  PackageNameOpt  PackageBody
-
-    PackageAttributes
-        internal
-        empty
-
-    PackageNameOpt
-        empty
-        PackageName
-
-    PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]
-        Identifier
-        PackageName  .  Identifier
-
-    PackageBody
-        Blockglobal
 *)
 
-(* 
 and program (ts:TOKENS)
-    : (TOKENS * Ast.PROGRAM) =
-    let val _ = trace([">> program with next=",tokenname(hd(ts))])
-        fun withPackages () =
-            let
-                val (ts1,nd1) = packages ts
-                val (ts2,nd2) = directives (ts1,GlobalScope)
-            in
-                (ts2,{block=Ast.Block nd2,fixtures=NONE,packages=nd1})
-            end
-
-    in case ts of
-        (Internal, _) :: (Package, _) :: _ => withPackages ()
-      | (Package, _) :: _ => withPackages ()
-      | _ =>
-            let
-                val (ts1,nd1) = directives (ts,GlobalScope)
-            in
-                (ts1,{block=Ast.Block nd1,fixtures=NONE,packages=[]})
-            end
-    end
-
-and packages (ts:TOKENS)
-    : (TOKENS * Ast.PACKAGE list) =
-    let val _ = trace([">> packages with next=",tokenname(hd(ts))])
-        fun next () =
-            let
-                val (ts1,nd1) = package ts
-                val (ts2,nd2) = packages ts1
-            in
-                trace(["<< packages with next=",tokenname(hd(ts2))]);
-                (ts2,nd1::nd2)
-            end
-    in case ts of
-        (Internal, _) :: (Package, _) :: _ => next ()
-      | (Package, _) :: _ => next ()
-      | _ => (trace(["<< packages with next=",tokenname(hd(ts))]);(ts,[]))
-    end
-*)
-
-(*
-    Package
-        PackageAttributes  package  PackageNameOpt  PackageBody
-
-    PackageAttributes
-        internal
-        empty
-
-    PackageNameOpt
-        empty
-        PackageName
-
-    PackageName
-        Identifier
-        PackageName  .  Identifier
-
-    PackageBody
-        Block(global)
-*)
-(*
-and package (ts:TOKENS)
-    : (TOKENS * Ast.PACKAGE) =
-    let val _ = trace([">> package with next=",tokenname(hd(ts))])
-    in case ts of
-        (Internal, _) :: (Package, _) :: _ =>
-            let
-                val (ts1,nd1) = packageName (tl (tl ts))
-                val (ts2,nd2) = block (ts1,GlobalScope)
-            in
-                (ts2, {name=nd1, block=nd2})
-            end
-      | (Package, _) :: (LeftBrace, _) :: _ =>
-            let
-                val (ts1,nd1) = block (tl ts,GlobalScope)
-            in
-                (ts1, {name=[], block=nd1})
-            end
-      | (Package, _) :: _ =>
-            let
-                val (ts1,nd1) = packageName (tl ts)
-                val (ts2,nd2) = block (ts1,GlobalScope)
-            in
-                (ts2, {name=nd1, block=nd2})
-            end
-      | _ => error ["unknown token in package"]
-    end
-*)
-
-and subFragments (ts:TOKENS) 
-    : (TOKENS * Ast.FRAGMENT list) = 
-    let
-        fun fragments (accum:Ast.FRAGMENT list) 
-                      (ts0:TOKENS) 
-            : (TOKENS * Ast.FRAGMENT list) = 
-            case ts0 of 
-                (RightBrace, _) :: rest => (rest, List.rev accum)
-              | (Eof, _) :: _ => (ts0, List.rev accum)
-              | _ => 
-                let
-                    val (ts1, frag) = fragment ts0
-                in                    
-                    fragments (frag::accum) ts1 
-                end
-    in
-        case ts of 
-            (LeftBrace, _) :: rest => fragments [] rest
-          | _ => error ["expecting left brace in subFragments"]
-    end
-            
-
-and fragment (ts:TOKENS)
-    : (TOKENS * Ast.FRAGMENT) =            
+    : (TOKENS * Ast.PROGRAM) =            
     let
         val (ts1, nd1) = directives (ts, GlobalScope)
     in
-        (ts1, Ast.Anon (Ast.Block nd1))
+        (ts1, Ast.Program (Ast.Block nd1))
     end
 
 
@@ -7025,11 +6891,11 @@ fun lexLines (lines : Ustring.SOURCE list)
 
 fun parse ts = 
     let
-        val (residual, frag) = fragment ts
+        val (residual, prog) = program ts
     in
         case residual of 
-            [(Eof, _)] => frag
-          | [] => frag
+            [(Eof, _)] => prog
+          | [] => prog
           | tok::_ => error ["residual token seen after parsing: ", tokenname tok]
     end
 

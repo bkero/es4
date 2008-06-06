@@ -596,8 +596,8 @@ type VIRTUAL_VAL_FIXTURE =
              getter: FUNC option,
              setter: FUNC option }
 
-datatype FRAGMENT = 
+datatype PROGRAM = 
          
-         Anon of BLOCK
+         Program of BLOCK
 
 end

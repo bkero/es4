@@ -1030,7 +1030,7 @@ and newPrimitive (regs:REGS)
 and evalDecimalLiteral (regs: REGS)
                        (d: Decimal.DEC)
     : VALUE =
-    newDouble regs d
+    newDecimal regs d
 
 
 and newDecimal (regs:REGS) 
@@ -5182,7 +5182,7 @@ and evalContinueStmt (regs:REGS)
     raise (ContinueException lbl)
 
 
-and evalAnonFragment (regs:REGS)
+and evalAnonProgram (regs:REGS)
                      (block:BLOCK)
     : VALUE =
     let
@@ -5214,61 +5214,53 @@ and evalAnonFragment (regs:REGS)
         res
     end
 
-and evalFragment (regs:REGS)
-                 (frag:FRAGMENT)
+and evalProgram (regs:REGS)
+                (prog:PROGRAM)
     : VALUE =
     let
-        fun lastVal [] = Undefined
-          | lastVal x = List.last x
+        val _ = trace ["entering program"]
+        val Program (Block {head, body, loc, ...}) = prog
+        val Head (rib, inits) = 
+            case head of 
+                NONE => error regs ["top-level block with no head"]
+              | SOME h => h
+        val { scope, ... } = regs
+        val Scope { temps, ...} = scope
+        val obj = findTargetObj regs scope Hoisted
     in
-        (case frag of 
-             Anon (Block {head=NONE, ...}) => 
-             error regs ["top-level block with no head"]
-           | Anon (Block {head=SOME (Head (rib, inits)), body, loc, ...}) => 
-             (* 
-              * NB: do *not* do evalBlock here. It's not a "normal" block. The ribs 
-              * and inits are not intended for a temporary scope, but rather the 
-              * scope that you'd search for as a hoisting target (either the activation 
-              * scope enclosing an eval, or the global scope)
-              *)
-             let
-                 val _ = trace ["entering anon unit block"]
-                 val { scope, ... } = regs
-                 val Scope { temps, ...} = scope
-                 val obj = findTargetObj regs scope Hoisted
-             in
-                 setLoc loc;
-                 trace ["running anonymous fragment inits on obj #", fmtObjId obj];
-                 evalInits regs obj temps;
-                 setLoc loc;
-                 trace ["running anonymous fragment stmts"];
-                 evalStmts regs body
-             end)
-        handle ThrowException v =>
-               let
-                   val loc = !loc
-                   val exnStr = Ustring.toAscii (toUstring regs v)
-               in
-                   setLoc loc;
-                   error regs ["uncaught exception: ", exnStr]
-               end
-             | StopIterationException =>
-               let
-                   val loc = !loc
-               in
-                   setLoc loc;
-                   error regs ["uncaught StopIteration exception"]
-               end
+        (* 
+         * NB: do *not* do evalBlock here. It's not a "normal" block. The ribs 
+         * and inits are not intended for a temporary block scope, but rather the 
+         * scope that you'd search for as a hoisting target (either the activation 
+         * scope enclosing an eval, or the global scope)
+         *)
+        setLoc loc;  
+        trace ["running program inits on obj #", fmtObjId obj];
+        evalInits regs obj temps;
+        setLoc loc;
+        trace ["running program stmts"];
+        let 
+            val v = evalStmts regs body;
+        in
+            trace ["program execution complete"];
+            reportProfile regs;
+            v
+        end
     end
-
-and evalTopFragment (regs:REGS)
-                    (frag:FRAGMENT)
-    : VALUE =
-    let
-        val _ = setLoc NONE
-        val res = evalFragment regs frag
-        val _ = reportProfile regs
-    in
-        res
-    end
+    handle ThrowException v =>
+           let
+               val loc = !loc
+               val exnStr = Ustring.toAscii (toUstring regs v)
+           in
+               setLoc loc;
+               error regs ["uncaught exception: ", exnStr]
+           end
+         | StopIterationException =>
+           let
+               val loc = !loc
+           in
+               setLoc loc;
+               error regs ["uncaught StopIteration exception"]
+           end
 end
+                 

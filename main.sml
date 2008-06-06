@@ -92,7 +92,7 @@ fun findTraceOption (tname:string)
       | "defnsum" => SOME (Defn.doTraceSummary)
       | "verify" => SOME (Verify.doTrace) 
       | "verify_warn" => SOME (Verify.traceWarnings) 
-      | "verified" => SOME (Verify.doTraceFrag) 
+      | "verified" => SOME (Verify.doTraceProg) 
       | "eval" => SOME (Eval.doTrace)
       | "mach" => SOME (Mach.doTrace)
       | "decimal" => SOME (DecimalParams.doTrace)
@@ -182,43 +182,43 @@ fun parse argvRest =
 
 fun define rootRib argvRest =
     let
-        val frags = parse argvRest
-        fun f rootRib accum (frag::frags) = 
+        val progs = parse argvRest
+        fun f rootRib accum (prog::progs) = 
             let 
-                val (rootRib', frag') = Defn.defTopFragment rootRib frag (!langEd)
+                val (rootRib', prog') = Defn.defProgram rootRib prog (!langEd)
             in
-                f rootRib' (frag'::accum) frags
+                f rootRib' (prog'::accum) progs
             end
           | f rootRib accum _ = (rootRib, List.rev accum)
     in
         TextIO.print "defining ... \n";
-        f rootRib [] frags
+        f rootRib [] progs
     end
 
 fun verify rootRib argvRest =
     let
-        val (rootRib, frags) = define rootRib argvRest
-        fun f rootRib accum (frag::frags) = 
+        val (rootRib, progs) = define rootRib argvRest
+        fun f rootRib accum (prog::progs) = 
             let 
-                val frag' = Verify.verifyTopFragment rootRib true frag
+                val prog' = Verify.verifyProgram rootRib true prog
             in
-                f rootRib (frag'::accum) frags
+                f rootRib (prog'::accum) progs
             end
           | f rootRib accum _ = (rootRib, List.rev accum)
     in
         TextIO.print "verifying ... \n";
-        f rootRib [] frags
+        f rootRib [] progs
     end
 
 fun eval regs argvRest =
     let
-        val (rootRib, frags) = verify (#rootRib regs) argvRest
+        val (rootRib, progs) = verify (#rootRib regs) argvRest
         val regs = Eval.withRootRib regs rootRib
     in
         Mach.setLangEd regs (!langEd);
         Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
-        withHandlers (fn () => map (Eval.evalTopFragment regs) frags)
+        withHandlers (fn () => map (Eval.evalProgram regs) progs)
     end
 
 fun getProgDir() =
@@ -304,7 +304,7 @@ fun repl (regs:Mach.REGS)
                     if not (!doParse) then () else
                     let
                         val lines = (Ustring.fromSource line) :: accum
-                        val frag = Parser.parseLines (List.rev lines)
+                        val prog = Parser.parseLines (List.rev lines)
                             handle LogErr.EofError => raise continueException lines
 			            fun tidyUp _ = 
 				            let
@@ -317,8 +317,8 @@ fun repl (regs:Mach.REGS)
                     in
                         if not (!doDefn) then () else
                         let
-                            val (rootRib, frag) = Defn.defTopFragment (#rootRib (!regsCell)) frag (!langEd)
-                            val frag = Verify.verifyTopFragment rootRib true frag
+                            val (rootRib, prog) = Defn.defProgram (#rootRib (!regsCell)) prog (!langEd)
+                            val prog = Verify.verifyProgram rootRib true prog
                         in
                             regsCell := Eval.withRootRib regs rootRib;
                             if not (!doEval) then () else
@@ -326,7 +326,7 @@ fun repl (regs:Mach.REGS)
                                 val regs = !regsCell
 					            val _ = Mach.resetStack regs
                                 val _ = Mach.setLangEd regs (!langEd)
-                                val res = (Eval.evalTopFragment regs frag)
+                                val res = (Eval.evalProgram regs prog)
 						            handle Eval.ThrowException v => (tidyUp (); v)
                             in
                                 case res of

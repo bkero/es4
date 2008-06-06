@@ -2287,22 +2287,6 @@ and defBlockFull (env:ENV)
          escaped)
     end
 
-(*
-  FRAGMENT
-*)                          
-
-
-and defFragment (env:ENV) 
-                (frag:Ast.FRAGMENT)
-    : (Ast.FRAGMENT * Ast.RIB) =
-    case frag of 
-		Ast.Anon blk => 
-        let 
-            val (blk, escaped) = defDecorativeBlock env blk
-        in
-            (Ast.Anon blk, escaped)
-        end
-        
 and mkTopEnv (rootRib:Ast.RIB) 
              (langEd:int)
     : ENV =
@@ -2317,28 +2301,36 @@ and mkTopEnv (rootRib:Ast.RIB)
       rootRib = rootRib,
       func = NONE }
 
-and summarizeFragment (Ast.Anon (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
+and summarizeProgram (Ast.Program (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
     Fixture.printRib rib
+  | summarizeProgram _ = ()
 
-and defTopFragment (rootRib:Ast.RIB)
-                   (frag:Ast.FRAGMENT)
-                   (langEd:int)
-    : (Ast.RIB * Ast.FRAGMENT) =
+(*
+  PROGRAM
+*)                          
+
+and defProgram (rootRib:Ast.RIB)
+               (prog:Ast.PROGRAM)
+               (langEd:int)
+    : (Ast.RIB * Ast.PROGRAM) =
     let
-        val topEnv = mkTopEnv rootRib langEd
-        val (frag, escaped) = defFragment topEnv frag
-		val Ast.Anon (Ast.Block { pragmas, defns, head, body, loc }) = frag
+        val env = mkTopEnv rootRib langEd
+		val Ast.Program blk = prog
+        val (blk, escaped) = defDecorativeBlock env blk
+        val (Ast.Block { pragmas, defns, head, body, loc }) = blk
+            
 		val newHead = case head of
-						  SOME (Ast.Head (rib, inits)) => 
-						  SOME (Ast.Head (mergeRibs rootRib rib escaped, inits))
-						| NONE => 
-						  SOME (Ast.Head (escaped, []))
+						  SOME (Ast.Head (rib, inits)) 
+						  => SOME (Ast.Head (mergeRibs rootRib rib escaped, inits))
+
+						| NONE 
+                          => SOME (Ast.Head (escaped, []))
     (* 
      * We stuff the escapees back inside the anon block. This is 
 	 * ugly and needs a little refactoring. It used to be this way
 	 * to handle packages, but is no longer necessary.
      *)
-        val frag = Ast.Anon 
+        val prog = Ast.Program 
                        (Ast.Block { pragmas = pragmas,
                                     defns = [],                                                                       
                                     head = newHead,
@@ -2346,14 +2338,14 @@ and defTopFragment (rootRib:Ast.RIB)
                                     loc = loc })
         val rootRib = mergeRibs rootRib rootRib escaped 
     in
-        trace ["fragment definition complete"];
+        trace ["program definition complete"];
         (if !doTraceSummary
-         then summarizeFragment frag
+         then summarizeProgram prog
          else ());
         (if !doTrace
-         then Pretty.ppFragment frag
+         then Pretty.ppProgram prog
          else ());
-        (rootRib, frag)
+        (rootRib, prog)
     end
 
 end

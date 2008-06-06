@@ -605,13 +605,13 @@ fun eval (regs:Mach.REGS)
                      * user exceptions.
                      *)
                     fun str s = Eval.newString regs (Ustring.fromString s)
-                    val frag = Parser.parseLines lines
+                    val prog = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-                    val (rootRib, frag) = (Defn.defTopFragment (#rootRib regs) frag (Mach.getLangEd regs)
+                    val (rootRib, prog) = (Defn.defProgram (#rootRib regs) prog (Mach.getLangEd regs)
                                            handle
                                            LogErr.DefnError de => raise Eval.ThrowException (str de))
-                    val _ = (Verify.verifyTopFragment rootRib false frag
+                    val _ = (Verify.verifyProgram rootRib false prog
                              handle
                              LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
@@ -625,7 +625,7 @@ fun eval (regs:Mach.REGS)
                      * subset of definitions.
                      *)
                     
-                    Eval.evalTopFragment regs frag
+                    Eval.evalProgram regs prog
                     handle 
                     LogErr.NameError ne => raise Eval.ThrowException (str ne)
                   | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
@@ -846,19 +846,19 @@ fun load (regs:Mach.REGS)
     let
         fun str s = Eval.newString regs (Ustring.fromString s)
         val fname = Ustring.toFilename (nthAsUstr vals 0)
-        val frag = Parser.parseFile fname
+        val prog = Parser.parseFile fname
             handle LogErr.LexError le => raise Eval.ThrowException (str le)
                  | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-        val (rootRib, frag) = (Defn.defTopFragment (#rootRib regs) frag (Mach.getLangEd regs)
+        val (rootRib, prog) = (Defn.defProgram (#rootRib regs) prog (Mach.getLangEd regs)
                             handle
                             LogErr.DefnError de => raise Eval.ThrowException (str de))
-        val _ = (Verify.verifyTopFragment rootRib false frag
+        val _ = (Verify.verifyProgram rootRib false prog
                  handle
                  LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
         val regs = Eval.withRootRib regs rootRib
     in
         
-        Eval.evalTopFragment regs frag
+        Eval.evalProgram regs prog
         handle 
         LogErr.NameError ne => raise Eval.ThrowException (str ne)
       | LogErr.EvalError ee => raise Eval.ThrowException (str ee)

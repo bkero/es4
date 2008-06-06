@@ -90,7 +90,7 @@ fun withRibOpt { returnType, strict, rootRib, ribs, stdTypes, thisType } extn =
 val warningsAreFailures = ref false
 val traceWarnings = ref false
 val doTrace = ref false
-val doTraceFrag = ref false
+val doTraceProg = ref false
 val Any =  Ast.AnyType
 fun log ss = LogErr.log ("[verify] " :: ss)
 fun trace ss = if (!doTrace) then log ("trace: "::ss) else ()
@@ -990,13 +990,6 @@ and verifyRib (env:ENV)
     end
 
 
-and verifyFragment (env:ENV)
-                   (frag:Ast.FRAGMENT) 
-  : unit = 
-    case frag of 
-        Ast.Anon block => verifyBlock env block
-
-
 and verifyTopRib (rootRib:Ast.RIB)
                  (strict:bool)
                  (rib:Ast.RIB)
@@ -1008,30 +1001,31 @@ and verifyTopRib (rootRib:Ast.RIB)
     end
 
 
-and verifyTopFragment (rootRib:Ast.RIB)
-                      (strict:bool) 
-                      (frag:Ast.FRAGMENT) 
-  : Ast.FRAGMENT =
+and verifyProgram (rootRib:Ast.RIB)
+                  (strict:bool) 
+                  (prog:Ast.PROGRAM) 
+  : Ast.PROGRAM =
     if strict 
     then
         let 
             val env = newEnv rootRib strict
+            val Ast.Program block = prog
         in
-            trace ["verifyTopFragment"];
-            if !doTraceFrag then
+            trace ["verifyProgram"];
+            if !doTraceProg then
                 let in
-                    print "verifyTopFragment:printing\n";
-                    Pretty.ppFragment frag;
+                    print "verifyProgram:printing\n";
+                    Pretty.ppProgram prog;
                     TextIO.print "\n"
                 end
             else ();
-            verifyFragment env frag;
+            verifyBlock env block;
             trace ["verification complete ",
                    (if strict then "strict " else "nonstrict ")];
-            frag
+            prog
         end
     else
-        frag
+        prog
 end
 
 
