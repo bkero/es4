@@ -3585,7 +3585,7 @@ and resolveUnqualifiedLexicalReference (regs           : REGS)
 
           | SOME (object, namespaces) 
             => let
-                   val classRibs = instanceRibsOf (object)
+                   val classRibs = [getRib regs object]
                    val result = Fixture.selectNamespaces (identifier, 
                                                           namespaces, 
                                                           classRibs, 
@@ -3599,9 +3599,6 @@ and resolveUnqualifiedLexicalReference (regs           : REGS)
                        => error regs ["ambiguous reference"]
                end
     end
-
-and instanceRibsOf (object: OBJ) = []  (* FIXME *)
-
 
 (* FIXME: evalNameExpr is mostly for field names; the handling of field names is presently a little confused. *)
 and evalNameExpr (regs:REGS)

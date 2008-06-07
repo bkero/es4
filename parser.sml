@@ -3209,6 +3209,14 @@ and arrayType (ts0:TOKENS)
                 val (ts1, nd1) = elementTypeList (tl ts0)
             in case ts1 of
                 (RightBracket, _) :: _ => (tl ts1, Ast.ArrayType (nd1,NONE))
+              | (TripleDot, _) :: _ => 
+                let
+                    val (ts2, nd2) = typeExpression (tl ts1)
+                in
+                    case ts2 of 
+                        (RightBracket, _) :: _ => (tl ts2, Ast.ArrayType (nd1,SOME nd2))
+                      | _ => error ["unknown token after ...type, in arrayType"]                             
+                end
               | _ => error ["unknown token in arrayType"]
             end
       | _ => error ["unknown token in arrayType"]
@@ -3227,6 +3235,7 @@ and elementTypeList (ts0:TOKENS)
     let val _ = trace ([">> elementTypeList with next=", tokenname (hd (ts0))])
     in case ts0 of
         (RightBracket, _) :: _ => (ts0, [])
+      | (TripleDot, _) :: _ => (ts0, [])
       | (Comma, _) :: _ =>
             let
                 val (ts1, nd1) = elementTypeList (tl ts0)

@@ -115,7 +115,7 @@ package
     print("  Unicode var lowerTbl = [];");
 
     print("  Unicode function initUpperTbl() {");
-    print("    let u : [] = Unicode::upperTbl;");
+    print("    let u : [...*] = Unicode::upperTbl;");
     print("    if (u.length > 0) return;");
     for ( i=0 ; i < toupper.length ; i++ ) {
         if (!(i in toupper))

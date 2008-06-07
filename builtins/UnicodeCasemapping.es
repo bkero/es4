@@ -5,7 +5,7 @@
   Unicode var upperTbl = [];
   Unicode var lowerTbl = [];
   Unicode function initUpperTbl() {
-    let u : [] = Unicode::upperTbl;
+    let u : [...*] = Unicode::upperTbl;
     if (u.length > 0) return;
     u[0x61]=0x0041;
     u[0x62]=0x0042;
