@@ -410,10 +410,11 @@ datatype FIXTURE =
        | TypeFixture of (IDENTIFIER list * TYPE)
        | MethodFixture of
            { func: FUNC,
-             ty: TYPE,
+             ty: TYPE,             
              writable: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
-             final: bool }
+             final: bool,
+             inheritedFrom: CLASS option }
        | ValFixture of
            { ty: TYPE,
              writable: bool }

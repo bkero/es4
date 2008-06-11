@@ -524,7 +524,7 @@ and defInterface (env: ENV)
         val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
 
         (* Inherit rib and check overrides *)
-        val instanceRib:Ast.RIB = inheritRib NONE inheritedRib instanceRib
+        val instanceRib:Ast.RIB = inheritRib NONE NONE inheritedRib instanceRib
 
         val iface:Ast.INTERFACE = 
             Ast.Interface { name=name, 
@@ -650,6 +650,7 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
     end
 
 and inheritRib (privateNS:Ast.NAMESPACE option)
+               (baseClass:Ast.CLASS option)
 			   (base:Ast.RIB)
                (derived:Ast.RIB)
     : Ast.RIB =
@@ -702,6 +703,12 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
 						(Ast.PropName name, SOME pns) => not (name = (Name.private pns))
 					  | (Ast.PropName _, _) => true
 					  | (Ast.TempName _, _) => error ["inheriting temp fixture"]
+                val fb = case fb of 
+                             Ast.MethodFixture { func, ty, writable, override, final, inheritedFrom=NONE }
+                             => Ast.MethodFixture { func=func, ty=ty, writable=writable, 
+                                                    override=override, final=final, 
+                                                    inheritedFrom=baseClass }
+                           | _ => fb
             in
 				if canInherit
 				then case targetFixture () of
@@ -715,7 +722,7 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
 
     in case base of
         [] => derived (* done *)
-      | first::follows => inheritRib privateNS follows (inheritFixture first)
+      | first::follows => inheritRib privateNS baseClass follows (inheritFixture first)
     end
 
 (*
@@ -834,10 +841,13 @@ and resolveExtends (env:ENV)
                      baseClassName:Ast.NAME, 
                      baseClassFixture:Ast.FIXTURE) = 
                     resolve env bcm
+                val baseClass = needClassFixture baseClassFixture
+                val Ast.Class { privateNS, instanceRib, ... } = baseClass
             in
-                (SOME (classInstanceType baseClassFixture),
-                 inheritRib (SOME (classPrivateNS baseClassFixture))
-							(classInstanceRib baseClassFixture) 
+                (SOME (Ast.ClassType baseClass),
+                 inheritRib (SOME privateNS)
+                            (SOME baseClass)
+							instanceRib 
 							currInstanceRib)
             end
     end
@@ -885,23 +895,11 @@ and interfaceInstanceType (ifxtr:Ast.FIXTURE)
         Ast.InterfaceFixture i => Ast.InterfaceType i
       |_ => LogErr.internalError ["interfaceInstanceType"]
 
-and classInstanceRib (cfxtr:Ast.FIXTURE)
-    : Ast.RIB =
-    case cfxtr of
-        Ast.ClassFixture (Ast.Class {instanceRib,...}) => instanceRib
-      |_ => LogErr.internalError ["classInstanceRib"]
-
-and classPrivateNS (cfxtr:Ast.FIXTURE)
-    : Ast.NAMESPACE =
-    case cfxtr of
-        Ast.ClassFixture (Ast.Class {privateNS,...}) => privateNS
-      |_ => LogErr.internalError ["privateNS"]
-
-and classInstanceType (cfxtr:Ast.FIXTURE)
-    : Ast.TYPE =
-    case cfxtr of
-        Ast.ClassFixture c => Ast.ClassType c
-      |_ => LogErr.internalError ["classInstanceType"]
+and needClassFixture (cfxtr:Ast.FIXTURE)
+    : Ast.CLASS =
+    case cfxtr of 
+        Ast.ClassFixture cf => cf
+      | _ => error ["need class fixture"]
 
 (*
     resolve a list of interface names to their super interfaces and
@@ -1396,7 +1394,8 @@ and defFuncDefn (env:ENV)
                               ty = ftype,
                               writable = isWritable,
                               final = (#final f),
-                              override = (#override f)}
+                              override = (#override f),
+                              inheritedFrom = NONE }
                     end
                   | Ast.Call =>
                     Ast.MethodFixture
@@ -1404,14 +1403,16 @@ and defFuncDefn (env:ENV)
                           ty = ty,
                           writable = false,
                           final = true,
-                          override = false}
+                          override = false, 
+                          inheritedFrom = NONE }
                   | Ast.Has =>
                     Ast.MethodFixture
                         { func = newFunc,
                           ty = ty,
                           writable = false,
                           final = true,
-                          override = false}
+                          override = false, 
+                          inheritedFrom = NONE }
                   | Ast.Operator =>
                     LogErr.unimplError ["operator function not implemented"]
         in
