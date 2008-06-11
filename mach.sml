@@ -1346,8 +1346,4 @@ fun searchScopeChain (regs       : REGS,
             => result
     end
 
-fun instanceRibsOf (object: OBJECT)
-    : RIBS =
-    []
-
 end

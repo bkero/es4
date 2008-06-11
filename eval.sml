@@ -595,7 +595,12 @@ and getValueOrVirtual (regs:REGS)
             
           | NONE =>
             case Fixture.findFixture (getRib regs obj) (PropName name) of 
-                SOME fixture => reifyFixture regs obj name fixture
+                SOME fixture => 
+
+                (trace ["getValueOrVirtual reifying fixture ", fmtName name];
+                 reifyFixture regs obj name fixture;
+                 getValueOrVirtual regs obj name doVirtual)
+        
               | NONE =>  
                 if doVirtual andalso 
                    Fixture.hasFixture (getRib regs obj) (PropName meta_get)
@@ -617,34 +622,33 @@ and reifyFixture (regs:REGS)
                  (obj:OBJ)
                  (name:NAME)
                  (fixture:FIXTURE)
-    : VALUE = 
+    : unit = 
     (* LDOTS *)
     let
         val Obj { props, tag, ... } = obj
-        fun reifiedFixture ty newVal =
+        fun reifiedFixture ty newPropState writable =
             let
                 val attrs = { removable = false,
                               enumerable = false,
                               fixed = true,
-                              writable = ReadOnly }
-                val newProp = { state = ValProp newVal,
+                              writable = writable }
+                val newProp = { state = newPropState,
                                 ty = ty,
                                 attrs = attrs }
             in
                 addProp props name newProp;
-                trace ["reified fixture ", fmtName name ];
-                newVal
+                trace ["reified fixture ", fmtName name ]
             end
     in
         case fixture of
             (NamespaceFixture ns) => 
-            reifiedFixture (instanceType regs ES4_Namespace []) (newNamespace regs ns)
+            reifiedFixture (instanceType regs ES4_Namespace []) (ValProp (newNamespace regs ns)) ReadOnly
             
           | (ClassFixture c) => 
-            reifiedFixture (instanceType regs intrinsic_Class []) (newClass regs c)
+            reifiedFixture (instanceType regs intrinsic_Class []) (ValProp (newClass regs c)) ReadOnly
             
           | (InterfaceFixture i) => 
-            reifiedFixture (instanceType regs intrinsic_Interface []) (newInterface regs i)
+            reifiedFixture (instanceType regs intrinsic_Interface []) (ValProp (newInterface regs i)) ReadOnly
 
           | (MethodFixture { func, ty, writable, ... }) => 
             let
@@ -656,45 +660,34 @@ and reifyFixture (regs:REGS)
                         then (newNativeFunction regs (getNativeFunction name))
                         else (newFunctionFromFunc regs (scope()) func)
             in
-                reifiedFixture ty v
+                reifiedFixture ty (ValProp v) ReadOnly
             end
 
-          | (ValFixture { ty, writable}) => 
+          | (ValFixture {ty, writable}) => 
             let
                 val defaultValueOption = defaultValueForType regs ty
             in
                 case defaultValueOption of
-                    NONE => throwExn (newRefErr regs ["attempting to get uninitialized fixture w/o default value", 
+                    NONE => throwExn (newRefErr regs ["attempting to get reify fixture w/o default value: ", 
                                                       LogErr.name name])
-                  | SOME v => 
-                    let
-                        val attrs = { enumerable = false,
-                                      removable = false, 
-                                      fixed = true, 
-                                      writable = if writable
-                                                 then Writable
-                                                 else WriteOnce }
-                        val state = ValProp v
-                        val prop = { ty = ty,
-                                     state = state,
-                                     attrs = attrs }
-                    in
-                        addProp props name prop;
-                        trace ["reified fixture ", fmtName name, " with default value"];
-                        v
-                    end
+                  | SOME v => reifiedFixture ty (ValProp v) (if writable 
+                                                             then Writable
+                                                             else WriteOnce)
             end
             
-          | (VirtualValFixture { ty, getter=SOME func, ... }) =>
+          | (VirtualValFixture { ty, getter, setter }) =>
             let
                 val scope = instanceScope regs obj
-                val closure = newFunClosure scope func (SOME obj)
-                val args = [newName regs name]
+                fun makeClosureOption NONE = NONE
+                  | makeClosureOption (SOME f) = SOME (newFunClosure scope f (SOME obj))
             in
-                invokeFuncClosure regs closure NONE args
+                reifiedFixture ty (VirtualValProp { getter = makeClosureOption getter, 
+                                                    setter = makeClosureOption setter })
+                               ReadOnly
             end
             
-          | _ => throwExn (newRefErr regs ["attempting to get non-reified fixture", LogErr.name name])
+          | _ => throwExn (newRefErr regs ["attempting to reify unknown kind of fixture", 
+                                           LogErr.name name])
 
     end     
     
@@ -840,8 +833,40 @@ and setValueOrVirtual (regs:REGS)
                   | ValProp _ => maybeWrite false                  
             end
           | NONE => 
-            let
-                fun addDynamicProp _ = 
+            case Fixture.findFixture (getRib regs obj) (PropName name) of 
+                SOME (ValFixture {ty, writable}) 
+                => 
+                let
+                    val newProp = { state = ValProp (checkAndConvert regs v ty),
+                                    ty = ty,
+                                    attrs = { removable = false,
+                                              enumerable = false,
+                                              fixed = true,
+                                              writable = if writable 
+                                                         then Writable
+                                                         else ReadOnly } }
+                in
+                    addProp props name newProp
+                end
+                    
+              | SOME f 
+                => (trace ["setValueOrVirtual reifying fixture ", fmtName name];
+                    reifyFixture regs obj name f; 
+                    setValueOrVirtual regs obj name v doVirtual)
+                   
+              | NONE 
+                =>
+                if 
+                    doVirtual andalso Fixture.hasFixture (getRib regs obj) (PropName meta_set)
+                then 
+                    let
+                        val _ = trace ["running meta::set(\"", (Ustring.toAscii (#id name)), 
+                                       "\", ", approx v, ") catchall on obj #", fmtObjId obj];
+                    in
+                        evalNamedMethodCall regs obj meta_set [newString regs (#id name), v];
+                        ()
+                    end
+                else 
                     let
                         val prop = { state = ValProp v,
                                      ty = AnyType,
@@ -852,56 +877,8 @@ and setValueOrVirtual (regs:REGS)
                     in
                         if isDynamic regs obj
                         then addProp props name prop
-                        else 
-                            (log ["adding dynamic prop to non-dynamic object. rib follows:"];
-                             Fixture.printRib (getRib regs obj);
-                             throwExn (newTypeErr regs ["attempting to add dynamic property to non-dynamic object"]))
+                        else throwExn (newTypeErr regs ["attempting to add dynamic property to non-dynamic object"])
                     end
-            in
-                case (Fixture.findFixture (getRib regs obj) (PropName name), doVirtual) of 
-                    (SOME (ValFixture { ty, writable }), _) =>
-                    let
-                        val v = checkAndConvert regs v ty
-                        val state = ValProp v
-                        val attrs = { removable = false,
-                                      enumerable = false,
-                                      fixed = true,
-                                      writable = if writable 
-                                                 then Writable 
-                                                 else ReadOnly }
-                        val prop = { state = state, 
-                                     ty = ty,
-                                     attrs = attrs }
-                    in
-                        addProp props name prop
-                    end
-                  | (SOME (VirtualValFixture { ty, setter=SOME func, ... }), true) =>
-                    let
-                        val scope = instanceScope regs obj
-                        val closure = newFunClosure scope func (SOME obj)
-                        val args = [v]
-                    in
-                        invokeFuncClosure regs closure NONE args; 
-                        ()
-                    end
-                  | (SOME _, _) =>  throwExn (newTypeErr regs ["attempting to write to a non-value fixture: ",
-                                                               LogErr.name name])
-                  | (NONE, true) =>
-                    if 
-                        Fixture.hasFixture (getRib regs obj) (PropName meta_set)
-                    then 
-                        let
-                            val _ = trace ["running meta::set(\"", (Ustring.toAscii (#id name)), 
-                                           "\", ", approx v, ") catchall on obj #", fmtObjId obj];
-                        in
-                            evalNamedMethodCall regs obj meta_set [newString regs (#id name), v];
-                            ()
-                        end
-                    else 
-                        addDynamicProp ()
-                        
-                  | (NONE, false) => addDynamicProp ()
-            end
     end
 
 
@@ -2572,8 +2549,10 @@ and evalCallByRef (regs:REGS)
     : VALUE =
     let
         val (obj, name) = r
+        val v = getValue regs obj name
+        val obj = needObj regs v
     in
-        evalCallByObj regs (needObj regs (getValue regs obj name)) args
+        evalCallByObj regs obj args
     end
 
 and evalCallByObj (regs:REGS)
@@ -2594,7 +2573,8 @@ and evalCallByObj (regs:REGS)
             then
                 (trace ["evalCallByObj: redirecting through meta::invoke"];
                  evalCallByRef (withThis regs fobj) (fobj, meta_invoke) args)
-            else throwExn (newTypeErr regs ["calling non-callable object"])
+            else
+                throwExn (newTypeErr regs ["calling non-callable object"])
 
 (* SPEC
 
@@ -3452,7 +3432,7 @@ and selectNamespacesByInstanceRibs (regs:REGS)
       | [namespace] => (object, {ns=namespace, id=identifier})
       | _ => 
         let
-            val instanceRibs = instanceRibsOf (object)
+            val instanceRibs = [getRib regs (object)]
             val result = Fixture.selectNamespaces (identifier, 
                                                    namespaces, 
                                                    instanceRibs, 
