@@ -182,7 +182,7 @@ datatype VALUE = Undefined
      and SCOPE_KIND =
          WithScope
        | GlobalScope
-       | InstanceScope
+       | InstanceScope of CLASS
        | ActivationScope
        | BlockScope
        | TypeArgScope

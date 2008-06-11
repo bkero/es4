@@ -281,22 +281,29 @@ fun getTemps (regs:REGS)
         getScopeTemps scope
     end
 
-(*
- * The global object and scope.
- *)
-
-fun getGlobalScope (regs:REGS) 
-    : SCOPE =
+fun getMetaClass (class:CLASS)
+    : CLASS = 
     let
-        val { global, ... } = regs
+        val Class { privateNS, protectedNS, parentProtectedNSs, 
+                    typeParams, classRib, ... } = class
     in
-        makeGlobalScopeWith global
-    end 
-
-fun getClassScope (regs:REGS)
-                  (classObj:OBJ)
-    : SCOPE = 
-    extendScope (getGlobalScope regs) classObj InstanceScope
+        Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
+                privateNS = privateNS,
+                protectedNS = protectedNS,
+                parentProtectedNSs = parentProtectedNSs,
+                typeParams = typeParams,
+                
+                nonnullable = true,
+                dynamic = false,
+                extends = NONE,
+                implements = [],
+                classRib = [],
+                instanceRib = classRib,
+                instanceInits = Head ([],[]),
+                constructor = NONE,
+                classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) 
+              }
+    end
     
 (*
  * A small number of functions do not fully evaluate to VALUE
@@ -650,12 +657,13 @@ and reifyFixture (regs:REGS)
           | (InterfaceFixture i) => 
             reifiedFixture (instanceType regs intrinsic_Interface []) (ValProp (newInterface regs i)) ReadOnly
 
-          | (MethodFixture { func, ty, writable, ... }) => 
+          | (MethodFixture { func, ty, writable, inheritedFrom, ... }) => 
             let
                 val Func { native, ... } = func
-                fun scope _ = case tag of 
-                                  NoTag => (#scope regs)
-                                | _ => instanceScope regs obj
+                fun scope _ = case (tag, inheritedFrom) of 
+                                  (NoTag, _) => (#scope regs)
+                                | (_, SOME class) => getInstanceScope regs obj (SOME (ClassType class))
+                                | (_, NONE) => getInstanceScope regs obj NONE
                 val v = if native 
                         then (newNativeFunction regs (getNativeFunction name))
                         else (newFunctionFromFunc regs (scope()) func)
@@ -677,7 +685,8 @@ and reifyFixture (regs:REGS)
             
           | (VirtualValFixture { ty, getter, setter }) =>
             let
-                val scope = instanceScope regs obj
+                (* FIXME: inherit scopes like in MethodFixture *)
+                val scope = getInstanceScope regs obj NONE
                 fun makeClosureOption NONE = NONE
                   | makeClosureOption (SOME f) = SOME (newFunClosure scope f (SOME obj))
             in
@@ -722,7 +731,7 @@ and checkAndConvert (regs:REGS)
                         NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
                 val (classTy:TYPE) = AstQuery.needClassType classType
-                val (classObj:OBJ) = instanceClass regs classTy
+                val (classObj:OBJ) = getInstanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
                 val converted = evalNamedMethodCall regs classObj meta_invoke [v]
             in
@@ -2004,7 +2013,7 @@ and evalSuperCall (regs:REGS)
         fun getSuperClassObjs t = 
             case t of 
                 (ClassType (Class {extends, ...})) =>
-                (instanceClass regs t) :: 
+                (getInstanceClass regs t) :: 
                 (case extends of 
                      NONE => []
                    | SOME t' => getSuperClassObjs t')
@@ -2033,7 +2042,7 @@ and evalSuperCall (regs:REGS)
 
         val superClassObj = List.nth (superClassObjs,n)
         val superClassEnv = getClassScope regs superClassObj
-        val env = extendScope superClassEnv (#this regs) InstanceScope
+        val env = extendScope superClassEnv (#this regs) (InstanceScope (needClass (Object superClassObj)))
         val funcClosure = { func = func, env = env, this = SOME (#this regs) }
 
         (* Note: although bound methods defined on an object's own class are memoized,
@@ -2198,8 +2207,8 @@ and applyTypesToFunction (regs:REGS)
     end
     
 
-and instanceClass (regs:REGS)
-                  (ity:TYPE)
+and getInstanceClass (regs:REGS)
+                     (ity:TYPE)
     : OBJ = 
     let 
         fun fetch n = getValue regs (#global regs) n
@@ -2214,24 +2223,47 @@ and instanceClass (regs:REGS)
           | ArrayType _ => needObj regs (fetch public_Array)
           | RecordType _ => needObj regs (fetch public_Object)
           | FunctionType _ => needObj regs (fetch public_Function)
-          | NonNullType t => instanceClass regs t
+          | NonNullType t => getInstanceClass regs t
             
-          | _ => error regs ["unexpected type in instanceClass: ", LogErr.ty ity]
+          | _ => error regs ["unexpected type in getInstanceClass: ", LogErr.ty ity]
     end
 
-and instanceScope (regs:REGS)
-                  (obj:OBJ)
+and getGlobalScope (regs:REGS) 
+    : SCOPE =
+    let
+        val { global, ... } = regs
+    in
+        makeGlobalScopeWith global
+    end 
+    
+and getClassScope (regs:REGS)
+                  (classObj:OBJ)
     : SCOPE = 
     let
-        val ty = typeOfVal regs (Object obj)
-        val clsObj = instanceClass regs ty
-        val scope = getClassScope regs clsObj
+        val class = needClass (Object classObj)
+        val metaClass = getMetaClass class
+        val global = getGlobalScope regs
     in
-        extendScope scope obj InstanceScope
+        extendScope global classObj (InstanceScope metaClass)
     end
 
-and instanceInterface (regs:REGS)
-                      (ity:TYPE)
+and getInstanceScope (regs:REGS)
+                     (obj:OBJ)
+                     (ity:TYPE option)
+    : SCOPE = 
+    let
+        val ity = case ity of 
+                      NONE => typeOfVal regs (Object obj)
+                    | SOME t => t
+        val classObj = getInstanceClass regs ity
+        val scope = getClassScope regs classObj
+        val class = needClass (Object classObj)
+    in
+        extendScope scope obj (InstanceScope class)
+    end
+    
+and getInstanceInterface (regs:REGS)
+                         (ity:TYPE)
     : OBJ = 
     let 
         fun fetch n = getValue regs (#global regs) n
@@ -2307,7 +2339,7 @@ and evalArrayInitialiser (regs:REGS)
                  getValue regs (#global regs) public_Array)
               | SOME ty => 
                 let
-                    val cv = Object (instanceClass regs ty)
+                    val cv = Object (getInstanceClass regs ty)
                 in
                     (InstanceTag (needClass cv), cv)
                 end
@@ -2351,7 +2383,7 @@ and evalObjectInitialiser (regs:REGS)
                 (ObjectTag fields, getObjClassVal(), fields)
               | SOME ty => 
                 let 
-                    val cv = Object (instanceClass regs ty)
+                    val cv = Object (getInstanceClass regs ty)
                 in
                     (InstanceTag (needClass cv), cv, [])
                 end
@@ -4054,16 +4086,18 @@ and findTargetObj (regs:REGS)
           (* if there are no propnames then it is at temp scope *)
                  
           | Hoisted =>
-            if kind = InstanceScope orelse
-               kind = ActivationScope orelse
-               not (Option.isSome parent)
+            if (case (kind, parent) of 
+                    (InstanceScope _, _) => true
+                  | (ActivationScope, _) => true
+                  | (_, NONE) => true
+                  | _ => false)
             then object
             else findTargetObj regs (valOf parent) target
                  
           | Prototype =>
-            if kind = InstanceScope
-            then needObj regs (getPrototype regs object)
-            else findTargetObj regs (valOf parent) target
+            (case kind of 
+                 InstanceScope _ => needObj regs (getPrototype regs object)
+               | _ => findTargetObj regs (valOf parent) target)
     end
 
 
@@ -4108,7 +4142,7 @@ and initializeAndConstruct (regs:REGS)
                 let
                     val parentTy = evalTy regs parentTy
                     val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
-                    val superObj = instanceClass regs (AstQuery.needClassType parentTy)
+                    val superObj = getInstanceClass regs (AstQuery.needClassType parentTy)
                     val superClass = needClass (Object superObj)
                     val superScope = getClassScope regs superObj
                     val superRegs = withThis (withScope regs superScope) instanceObj
@@ -4130,9 +4164,7 @@ and initializeAndConstruct (regs:REGS)
                                                     varObj
                                                     ActivationScope
                 val varScope = (#scope varRegs)
-                val (instanceRegs:REGS) = extendScopeReg regs
-                                                         instanceObj
-                                                         InstanceScope
+                val (instanceRegs:REGS) = withScope regs (getInstanceScope regs instanceObj NONE)
                 val (ctorRegs:REGS) = extendScopeReg instanceRegs
                                                      varObj
                                                      ActivationScope
@@ -4310,29 +4342,14 @@ and specialClassConstructor (regs:REGS)
          * FIXME: possibly shift this to defn phase. Unclear.
          *)
         val proto = getPrototype regs classObj
-        val Class targetClass = case args of
-                                    (Object (Obj { tag=PrimitiveTag (ClassPrimitive c), ...}) :: _) => c
-                                  | _ => error regs ["called special class constructor without class object"]
-        val metaClass = Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
-                                privateNS = (#privateNS targetClass),
-                                protectedNS = (#protectedNS targetClass),
-                                parentProtectedNSs = (#parentProtectedNSs targetClass),
-                                typeParams = (#typeParams targetClass),
-
-                                nonnullable = true,
-                                dynamic = false,
-                                extends = NONE,
-                                implements = [],
-                                classRib = [],
-                                instanceRib = (#classRib targetClass),
-                                instanceInits = Head ([],[]),
-                                constructor = NONE,
-                                classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) }
-                                
+        val c = case args of
+                    [obj] => needClass obj
+                  | _ => error regs ["called special class constructor without class object"]
+        val metaClass = getMetaClass c
         val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) Null []
 
     in
-        constructStandardWithTag regs metaClassObj metaClass (PrimitiveTag (ClassPrimitive (Class targetClass))) proto args
+        constructStandardWithTag regs metaClassObj metaClass (PrimitiveTag (ClassPrimitive c)) proto args
     end
 
 and specialObjectConstructor (regs:REGS)
@@ -4673,7 +4690,7 @@ and initClassPrototype (regs:REGS)
                       | SOME baseClassTy =>
                         let
                             val ty = AstQuery.needClassType (evalTy regs baseClassTy)
-                            val ob = instanceClass regs ty
+                            val ob = getInstanceClass regs ty
                         in 
                             getPrototype regs ob
                         end
@@ -4796,7 +4813,7 @@ and evalClassBlock (regs:REGS)
                        
         (* FIXME: might have 'this' binding wrong in class scope *)
         val _ = trace ["extending scope for class block of ", fmtName (valOf name)]
-        val classRegs = extendScopeReg regs classObj InstanceScope
+        val classRegs = withScope regs (getClassScope regs classObj)
     in
         trace ["evaluating class block of ", fmtName (valOf name)];
         evalBlock classRegs block
@@ -5165,7 +5182,7 @@ and evalAnonProgram (regs:REGS)
     let
         fun findHoistingScopeObj scope = 
             case scope of 
-                Scope { kind = InstanceScope, ... } => scope
+                Scope { kind = InstanceScope _, ... } => scope
               | Scope { kind = ActivationScope, ... } => scope
               | Scope { parent = NONE, ... } => scope
               | Scope { parent = SOME p, ...} => findHoistingScopeObj p

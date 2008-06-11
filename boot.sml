@@ -68,8 +68,6 @@ fun instantiateRootClass (regs:Mach.REGS)
       val _ = trace ["allocating class ", LogErr.name fullName];
       val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto) classRib
 
-      val classRegs = Eval.extendScopeReg regs obj Mach.InstanceScope
-
       val _ = trace ["allocating ", Int.toString (length classRib), 
                      " class fixtures on class ", LogErr.name fullName,
                      ", object #", Int.toString (Eval.getObjId (obj))];          
@@ -102,7 +100,7 @@ fun runConstructorOnObject (regs:Mach.REGS)
     let
         val _ = trace ["allocating deferred ribs and running deferred constructor"];
         val Ast.Class { instanceRib, ...} = class
-        val classRegs = Eval.extendScopeReg regs classObj Mach.InstanceScope
+        val classRegs = Eval.getClassScope regs classObj
         val classRegs = Eval.withThis regs obj
     in
         Eval.initializeAndConstruct classRegs class classObj [] obj
