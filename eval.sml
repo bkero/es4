@@ -3483,12 +3483,12 @@ and resolveOnObject (regs:REGS)
                     (openNamespaces: OPEN_NAMESPACES) 
     : (OBJ * NAME) =
     let
-        val result = searchObject (regs, SOME object, identifier, namespaces, true)
+        val result = searchObject (regs, SOME object, NONE, identifier, namespaces, true)
     in 
         case result of
             NONE =>        
             let
-                val result = searchObject (regs, SOME object, identifier, namespaces, false)
+                val result = searchObject (regs, SOME object, NONE, identifier, namespaces, false)
             in
                 case result of 
                     NONE => (object, {ns=publicNS, id=identifier})

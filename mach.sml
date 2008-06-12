@@ -1197,6 +1197,7 @@ fun getScopeObjectAndKind ( Scope {object, kind, ...}: SCOPE) = (object, kind)
 
 fun getBindingNamespaces (regs: REGS,
                           object: OBJECT, 
+                          class: Ast.CLASS option,
                           identifier: IDENTIFIER,
                           namespaces: NAMESPACE_SET,
                           fixedOnly: bool)
@@ -1210,7 +1211,9 @@ fun getBindingNamespaces (regs: REGS,
     (* INFORMATIVE *)
     let
         val Obj { props, ... } = object
-        val rib = getRib regs object
+        val rib = case class of 
+                      NONE => getRib regs object
+                    | SOME (Class { instanceRib, ...}) => instanceRib
         fun tryNS ns = 
             let
                 val name = { id = identifier, ns = ns }
@@ -1222,7 +1225,7 @@ fun getBindingNamespaces (regs: REGS,
                     else NONE                         
                   | SOME {attrs={fixed, ...}, ...} => 
                     if fixedOnly
-                    then if fixed
+                    then if fixed andalso Fixture.hasFixture rib (PropName name)
                          then SOME ns
                          else NONE
                     else SOME ns
@@ -1245,10 +1248,11 @@ fun getPrototypeObject (Obj {proto, ...}: OBJECT)
         Object obj => SOME obj
       | _ => NONE
 
-fun searchObject (_, NONE, _, _, _) = NONE
+fun searchObject (_, NONE, _, _, _, _) = NONE
 
   | searchObject (regs        : REGS,
                   SOME object : OBJECT option, 
+                  class       : Ast.CLASS option,
                   identifier  : IDENTIFIER, 
                   namespaces  : NAMESPACE_SET, 
                   fixedOnly   : bool)
@@ -1256,6 +1260,7 @@ fun searchObject (_, NONE, _, _, _) = NONE
     let
         val matches = getBindingNamespaces (regs, 
                                             object, 
+                                            class,
                                             identifier, 
                                             namespaces, 
                                             fixedOnly)
@@ -1267,6 +1272,7 @@ fun searchObject (_, NONE, _, _, _) = NONE
                else
                    searchObject (regs, 
                                  getPrototypeObject (object), 
+                                 NONE,
                                  identifier, 
                                  namespaces, 
                                  fixedOnly)
@@ -1301,13 +1307,16 @@ fun searchScope (regs       : REGS,
     in 
         case (kind, fixedOnly) of
             (WithScope, true) 
-            => searchObject (regs, SOME object, identifier, namespaces, false)
+            => searchObject (regs, SOME object, NONE, identifier, namespaces, false)
 
           | (WithScope, false) 
             => NONE
 
+          | (InstanceScope class,_)            
+            => searchObject (regs, SOME object, SOME class, identifier, namespaces, fixedOnly)
+
           | (_,_)            
-            => searchObject (regs, SOME object, identifier, namespaces, fixedOnly)
+            => searchObject (regs, SOME object, NONE, identifier, namespaces, fixedOnly)
     end
 
 and searchScopeChainOnce (regs, NONE, _, _, _) = NONE
