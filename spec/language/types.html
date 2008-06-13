@@ -341,8 +341,8 @@ parametric type.
 <p>A type name is denoted in a type expression by the same syntax as
 a name expression. 
 
-<p>A type name that refers to a class resolves to a class type.
-A type name that refers to an interface resolves to an interface type.
+<p>Type names are resolved during //type resolution//, described in
+Section 3.4.1 below.
 
 == Semantics of the Type Language ==
 
@@ -576,28 +576,6 @@ and the type ^^null^^ is //not// a subtype of ^^S^^.
 <SEM>
 <INCLUDE file="type.sml" name="and subTypeNonNull">
 
-=== Subtyping Nullable Nominal Types ===
-
-
-<p>A nominal type ^^C^^ (or ^^C.&lt;T_{1}, .., T_{n}>^^) can be
-declared as a //non-null// type via any of the following declarations:
-
-**
-{{{
-    class C! ..
-    class C.&lt;X_{1}, .., X_{n}>! ..
-    interface C! ..
-    interface C.&lt;X_{1}, .., X_{n}>! ..
-}}}
-**
-
-<p>A nominal type is //nullable// if it is not a non-null type.
-
-<p>The type ^^null^^ is a subtype of any nullable nominal type. 
-
-<SEM>
-<INCLUDE file="type.sml" name="and subTypeNullable">
-
 === Subtyping Nominal Types ===
 
 <p>
@@ -609,8 +587,9 @@ Given a class definition
 }}}
 **
 
-the type ^^C^^ is a subtype of ^^D^^, and  ^^C^^ is also a subtype of
-^^I_{j}^^ for j in 1..n.
+the class type ^^C^^ is a subtype of class type ^^D^^, and class type ^^C^^ is also a subtype of
+interface type ^^I_{j}^^ for j in 1..n.
+
 
 <p>
 Given an interface definition
@@ -651,9 +630,16 @@ The notation ^^T[x_{1}:=S_{1},..,x_{n}:=S_{n}]^^ denotes the type ^^T^^ with eac
 occurrence of the type variable ^^x_{i}^^ replaced (in a capture-free
 manner) by the corresponding type ^^S_{i}^^.
 
+<NOTE> The above rules also apply if ^^C^^ is declared as a
+non-nullable class.
+
+<NOTE> There is a distinction between the type name ^^C^^ and the
+class type to which it refers, in that the type name ^^C^^  includes
+the type ^^null^^ if ^^C^^ is a nullable type, whereas the class type
+^^C^^ describes only class instances.
+
 <SEM>
 <INCLUDE file="type.sml" name="and subTypeNominal">
-<INCLUDE file="type.sml" name="and subTypeHierarchy">
 
 The following function ''substTypes'' performs the capture-free
 replacement of all occurrences of ''typeParams'' by ''typeArgs''
@@ -723,6 +709,31 @@ resolution replaces any ''TypeName'' that refers to ^^I^^ with
 ''InterfaceType D'' (again, unioned with the ^^null^^ type, if ^^I^^
 is a nullable interface).
 
+
+--- old ---
+=== Subtyping Nullable Nominal Types ===
+
+
+<p>A nominal type ^^C^^ (or ^^C.&lt;T_{1}, .., T_{n}>^^) can be
+declared as a //non-null// type via any of the following declarations:
+
+**
+{{{
+    class C! ..
+    class C.&lt;X_{1}, .., X_{n}>! ..
+    interface C! ..
+    interface C.&lt;X_{1}, .., X_{n}>! ..
+}}}
+**
+
+<p>A nominal type is //nullable// if it is not a non-null type.
+
+<p>The type ^^null^^ is a subtype of any nullable nominal type. 
+
+<SEM>
+<INCLUDE file="type.sml" name="and subTypeNullable">
+
+
 ==== Implementation of Type Resolution ====
 
 <p>The following function ''resolveTypeNames'' performs type
@@ -741,12 +752,18 @@ the body of that type definition is resolved in its
 environment, and then replaces the original type name.
 
 <p> If the resulting fixture is for a class or interface definition,
-the type name is replaced by a class type or an interface type.
+the type name is replaced by a class type or an interface type
+(unioned with the type ^^null^^ if the nominal type is declared as nullable).
 
 <p> A type application that refers to a type-parametric type
 definition is replaced by the body of that type definition, after the
 replacement of each formal parameter name with the corresponding
 resolved type argument.
+
+<p> A type application of a type name that refers to a type-parametric
+class or interface definition is replaced by a type application that
+directly includes that class or interface type (unioned with the type
+^^null^^ if the nominal type is declared as nullable).
 
 <p> If none of the above cases apply, then ''resolveTypeNames'' uses
 the helper function ''mapType'' to perform type name resolution on
@@ -755,6 +772,8 @@ each sub-term of the given type.
 <p>The function ''error'' reports error messages, and the module
 ''LogErr'' contains functions for converting various data structures
 into corresponding Strings.
+
+<FIXME>Is the "LogErr." prefix too verbose on calls to error?
 
 <SEM>
 <INCLUDE file="type.sml" name="fun resolveTypeNames">
