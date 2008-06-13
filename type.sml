@@ -563,7 +563,6 @@ fun subType (extra : TYPE -> TYPE -> bool)
     (subTypeNonNull  extra type1 type2) orelse
     (subTypeNullable extra type1 type2) orelse
     (subTypeNominal  extra type1 type2) orelse
-    (subTypeHierarchy extra type1 type2) orelse
     (subTypeStructuralNominal extra type1 type2) orelse
     (extra type1 type2) 
 
@@ -584,21 +583,6 @@ and subTypeStructuralNominal extra type1 type2 =
       | _ => false
 
 and subTypeNominal extra type1 type2 =
-    case (type1, type2) of
-
-        ( AppType (typeConstructor1, typeArgs1),
-          AppType (typeConstructor2, typeArgs2) )
-        => 
-        typeConstructor1 = typeConstructor2 andalso
-        length typeArgs1 = length typeArgs2 andalso
-        ListPair.all
-            (fn (type1, type2) => equivType extra type1 type2)
-            (typeArgs1, typeArgs2)
-
-      | _ => false
-
-
-and subTypeHierarchy extra type1 type2 =
     case (type1, type2) of
 
         ( ClassType (Class { typeParams = [], extends, implements, ...}), _ )
@@ -641,7 +625,17 @@ and subTypeHierarchy extra type1 type2 =
                                     type2) 
                extends
 
-       | _ => false
+
+      | ( AppType (typeConstructor1, typeArgs1),
+          AppType (typeConstructor2, typeArgs2) )
+        => 
+        typeConstructor1 = typeConstructor2 andalso
+        length typeArgs1 = length typeArgs2 andalso
+        ListPair.all
+            (fn (type1, type2) => equivType extra type1 type2)
+            (typeArgs1, typeArgs2)
+
+      | _ => false
 
 and subTypeNullable extra type1 type2 =
     case (type1, type2) of
