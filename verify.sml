@@ -966,10 +966,11 @@ and verifyFixture (env:ENV)
 
       | Ast.VirtualValFixture { ty, getter, setter} =>
         let
+            fun fst (a,_) = a
         in
             verifyType env ty;
-            Option.map (verifyFunc env) getter;
-            Option.map (verifyFunc env) setter;
+            Option.map ((verifyFunc env) o fst) getter;
+            Option.map ((verifyFunc env) o fst) setter;
             ()
         end
 

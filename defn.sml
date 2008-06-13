@@ -708,6 +708,16 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
                              => Ast.MethodFixture { func=func, ty=ty, writable=writable, 
                                                     override=override, final=final, 
                                                     inheritedFrom=baseClass }
+                           | Ast.VirtualValFixture { ty, getter, setter } 
+                             => 
+                             let
+                                 fun f (SOME (x, NONE)) = SOME (x, baseClass)
+                                   | f x = x
+                             in
+                                 Ast.VirtualValFixture { ty = ty, 
+                                                         getter = f getter, 
+                                                         setter = f setter }
+                             end
                            | _ => fb
             in
 				if canInherit
@@ -1371,13 +1381,13 @@ and defFuncDefn (env:ENV)
                     Ast.Get =>
                     Ast.VirtualValFixture
                         { ty = AstQuery.resultTyOfFuncTy ty,
-                          getter = SOME newFunc,
+                          getter = SOME (newFunc, NONE),
                           setter = NONE }
                   | Ast.Set =>
                     Ast.VirtualValFixture
                         { ty = AstQuery.singleParamTyOfFuncTy ty,
                           getter = NONE,
-                          setter = SOME newFunc }
+                          setter = SOME (newFunc, NONE) }
                   | Ast.Ordinary =>
                     let
                         val (ftype, isWritable) =

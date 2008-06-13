@@ -420,8 +420,8 @@ datatype FIXTURE =
              writable: bool }
        | VirtualValFixture of
          { ty: TYPE, 
-           getter: FUNC option,
-           setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
+           getter: (FUNC * (CLASS option)) option,
+           setter: (FUNC * (CLASS option)) option } (* VIRTUAL_VAL_FIXTURE *)
 
      and HEAD =
          Head of RIB * INITS
@@ -594,8 +594,8 @@ withtype
 
 type VIRTUAL_VAL_FIXTURE =
            { ty: TYPE, 
-             getter: FUNC option,
-             setter: FUNC option }
+             getter: (FUNC * (CLASS option)) option,
+             setter: (FUNC * (CLASS option)) option }
 
 datatype PROGRAM = 
          

@@ -686,9 +686,11 @@ and reifyFixture (regs:REGS)
           | (VirtualValFixture { ty, getter, setter }) =>
             let
                 (* FIXME: inherit scopes like in MethodFixture *)
-                val scope = getInstanceScope regs obj NONE
+                fun scope NONE = getInstanceScope regs obj NONE
+                  | scope (SOME class) = getInstanceScope regs obj (SOME (ClassType class))
                 fun makeClosureOption NONE = NONE
-                  | makeClosureOption (SOME f) = SOME (newFunClosure scope f (SOME obj))
+                  | makeClosureOption (SOME (f, inheritedFrom)) = 
+                    SOME (newFunClosure (scope inheritedFrom) f (SOME obj))
             in
                 reifiedFixture ty (VirtualValProp { getter = makeClosureOption getter, 
                                                     setter = makeClosureOption setter })

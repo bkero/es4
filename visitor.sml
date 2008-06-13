@@ -120,11 +120,11 @@ and fixtureChildren fixture =
          Ast.ClassFixture cls => classChildren cls
        | Ast.InterfaceFixture iface => ifaceChildren iface
        | Ast.MethodFixture { func, ... } => ([], [], [], [func])
-       | Ast.VirtualValFixture { getter=SOME f1, setter=SOME f2, ... } =>
+       | Ast.VirtualValFixture { getter=SOME (f1, _), setter=SOME (f2, _), ... } =>
          ([], [], [], [f1, f2])
-       | Ast.VirtualValFixture { getter=SOME f1, setter=NONE, ... } =>
+       | Ast.VirtualValFixture { getter=SOME (f1, _), setter=NONE, ... } =>
          ([], [], [], [f1])
-       | Ast.VirtualValFixture { getter=NONE, setter=SOME f2, ... } =>
+       | Ast.VirtualValFixture { getter=NONE, setter=SOME (f2, _), ... } =>
          ([], [],[], [f2])
        | _ => ([], [], [], []))
 
