@@ -902,6 +902,14 @@ and verifyBlock (env:ENV)
     end
 
 (* returns the normalized type of this function *)
+
+and paramsToTypeVars (typeParams:Ast.IDENTIFIER list)
+    : Ast.RIB = 
+    
+    map (fn id => (Ast.PropName (Name.public id),
+                   Ast.TypeVarFixture (Parser.nextAstNonce ())))
+        typeParams
+        
 and verifyFunc (env:ENV)
                (func:Ast.FUNC)
     : Ast.TYPE =
@@ -909,9 +917,7 @@ and verifyFunc (env:ENV)
         val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
                        native, generator, block, param, defaults, ty, loc } = func
         (* FIXME: use public as namespace of type variables? *)
-        val rib = map (fn id => (Ast.PropName {ns=Name.publicNS, id=id},
-                                 Ast.TypeVarFixture (Parser.nextAstNonce ())))
-                  typeParams
+        val rib = paramsToTypeVars typeParams
         val env' = withRib env rib
         val blockEnv = verifyHead env' param
     in
@@ -933,7 +939,9 @@ and verifyFixture (env:ENV)
                                    classRib, instanceRib, instanceInits, 
                                    constructor, classType }) =>
          let
-             val classEnv = withRib env classRib
+             val typeVarRib = paramsToTypeVars typeParams
+             val typeEnv = withRib env typeVarRib
+             val classEnv = withRib typeEnv classRib
              val instanceEnv = withRib classEnv instanceRib
          in
              verifyRib env classRib;
