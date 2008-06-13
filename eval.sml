@@ -2102,26 +2102,19 @@ and traceScope (s:SCOPE)
     else
         ()
 
-and bindTypes (regs:REGS)
-              (typeParams:IDENTIFIER list)
-              (typeArgs:TYPE list)
-              (env:SCOPE)
-    : SCOPE = 
-    let 
+and makeTypeRib (regs:REGS)
+                (typeParams:IDENTIFIER list)
+                (typeArgs:TYPE list)
+    : RIB = 
+    let
         val _ = 
             if not (length typeArgs = length typeParams)
-            then error regs ["argument length mismatch when binding type args in env"]
+            then error regs ["argument length mismatch when building type rib"]
             else ()
         val paramFixtureNames = map (fn id => PropName (public id)) typeParams
         val argFixtures = map (fn t => TypeFixture ([], t)) typeArgs
-        val typeRib = ListPair.zip (paramFixtureNames, argFixtures)
-
-        val (scopeObj:OBJ) = newObjectNoTag typeRib
-        val _ = trace ["binding ", Int.toString (length typeArgs), 
-                       " type args to scope #", fmtObjId scopeObj]
-        val env = extendScope env scopeObj TypeArgScope
     in
-        env
+        ListPair.zip (paramFixtureNames, argFixtures)
     end
 
 (* Types of various kinds are have a dual representation: both as TYPEs
@@ -2180,32 +2173,34 @@ and applyTypesToFunction (regs:REGS)
                          (typeArgs:TYPE list)
     : VALUE = 
     let
+        val _ = trace ["applying ", Int.toString (length typeArgs), " type args to function"]
         val funClosure = needFunction functionVal
         val { func, this, env } = funClosure
-        val Func { ty, ... } = func
+        val Func { fsig, name, native, generator, block, param, defaults, ty, loc } = func
+        val FunctionSignature { typeParams, ... } = fsig
+        val typeRib = makeTypeRib regs typeParams typeArgs
+
+        val { scope, ... } = regs
+        val ribs = typeRib :: (getRibs regs scope)
+        val ty = Type.normalize ribs ty 
+
+        val typeScopeObj = newObjectNoTag typeRib
+        val env = extendScope env typeScopeObj TypeArgScope
+
+        val newFunc = Func { name = name, 
+                             fsig = fsig,
+                             native = native,
+                             generator = generator,
+                             block = block,
+                             param = param,
+                             defaults = defaults,
+                             ty = ty,
+                             loc = loc }
+        val newClosure = { func = newFunc,
+                           this = this,
+                           env = env }
     in
-        if Type.isGroundType ty
-        then functionVal
-        else 
-            let
-                fun applyArgs t = applyTypes regs t typeArgs
-                val Func f = func
-                val FunctionSignature { typeParams, ... } = (#fsig f)
-                val newFunc = Func { name = (#name f), 
-                                     fsig = (#fsig f),
-                                     native = (#native f),
-                                     generator = (#generator f),
-                                     block = (#block f),
-                                     param = (#param f),
-                                     defaults = (#defaults f),
-                                     ty = applyArgs (#ty f),
-                                     loc = (#loc f) }
-                val newClosure = { func = newFunc,
-                                   this = this,
-                                   env = bindTypes regs typeParams typeArgs env }
-            in
-                newFunctionFromClosure regs newClosure
-            end
+        newFunctionFromClosure regs newClosure
     end
     
 
