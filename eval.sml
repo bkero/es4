@@ -280,30 +280,6 @@ fun getTemps (regs:REGS)
     in        
         getScopeTemps scope
     end
-
-fun getMetaClass (class:CLASS)
-    : CLASS = 
-    let
-        val Class { privateNS, protectedNS, parentProtectedNSs, 
-                    typeParams, classRib, ... } = class
-    in
-        Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
-                privateNS = privateNS,
-                protectedNS = protectedNS,
-                parentProtectedNSs = parentProtectedNSs,
-                typeParams = typeParams,
-                
-                nonnullable = true,
-                dynamic = false,
-                extends = NONE,
-                implements = [],
-                classRib = [],
-                instanceRib = classRib,
-                instanceInits = Head ([],[]),
-                constructor = NONE,
-                classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) 
-              }
-    end
     
 (*
  * A small number of functions do not fully evaluate to VALUE
@@ -337,8 +313,6 @@ val specialBindings = [
     (public_Array, getArrayClassSlot),
 
     (intrinsic_Type, getTypeInterfaceSlot),
-    (intrinsic_Class, getClassClassSlot),
-    (intrinsic_Interface, getInterfaceClassSlot),
     (ES4_Namespace, getNamespaceClassSlot),
         
     (ES4_string, getStringClassSlot),
@@ -652,10 +626,10 @@ and reifyFixture (regs:REGS)
             reifiedFixture (instanceType regs ES4_Namespace []) (ValProp (newNamespace regs ns)) ReadOnly
             
           | (ClassFixture c) => 
-            reifiedFixture (instanceType regs intrinsic_Class []) (ValProp (newClass regs c)) ReadOnly
+            reifiedFixture (ClassType (getMetaClass regs c)) (ValProp (newClass regs c)) ReadOnly
             
           | (InterfaceFixture i) => 
-            reifiedFixture (instanceType regs intrinsic_Interface []) (ValProp (newInterface regs i)) ReadOnly
+            reifiedFixture (instanceType regs helper_InterfaceTypeImpl []) (ValProp (newInterface regs i)) ReadOnly
 
           | (MethodFixture { func, ty, writable, inheritedFrom, ... }) => 
             let
@@ -1115,15 +1089,65 @@ and newName (regs:REGS)
             Object (updateNmCache regs (n, needObj regs v))
         end
 
+and getMetaClass (regs:REGS) 
+                 (class:CLASS)
+    : CLASS = 
+    let
+        val { rootRib, ... } = regs
+        val objectClass = case Fixture.getFixture rootRib (PropName public_Object) of
+                              ClassFixture c => c
+                            | _ => error regs ["cannot find public Object class"]
+        val Class { instanceRib=objectRib, ...} = objectClass
+        val Class { privateNS, protectedNS, parentProtectedNSs, 
+                    typeParams, classRib, ... } = class
+        val protoBinding = (PropName public_prototype, 
+                            ValFixture { ty = AnyType, writable = false })
+        val merge = Fixture.mergeRibs (Type.matches rootRib [])
+        val instanceRib = merge (merge objectRib classRib) [protoBinding]
+    in
+        Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
+                privateNS = privateNS,
+                protectedNS = protectedNS,
+                parentProtectedNSs = parentProtectedNSs,
+                typeParams = typeParams,
+                
+                nonnullable = true,
+                dynamic = false,
+                extends = SOME (ClassType objectClass),
+                implements = [],
+                classRib = [],
+                instanceRib = instanceRib,
+                instanceInits = Head ([],[]),
+                constructor = NONE,
+                classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) 
+              }
+    end
+    
 and newClass (regs:REGS)
              (class:CLASS)
     : VALUE =
-    newPrimitive regs (ClassPrimitive class) getClassClassSlot 
+    let
+        val (funClassObj, _) = getFunctionClassObjectAndClass (regs) 
+        val proto = getPrototype regs funClassObj
+        val metaClass = getMetaClass regs class
+        val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) Null []
+        val tag = PrimitiveTag (ClassPrimitive class)
+        val classObj = constructStandardWithTag regs metaClassObj metaClass tag proto []
+    in
+        initClassPrototype regs classObj;
+        Object classObj
+    end
 
 and newInterface (regs:REGS)
                  (iface:INTERFACE)
     : VALUE =
-    newPrimitive regs (InterfacePrimitive iface) getInterfaceClassSlot
+    let
+        val { global, ... } = regs
+        val interfaceTypeImpl = needObj regs (getValue regs global helper_InterfaceTypeImpl)
+        val arg = Object (newObject (PrimitiveTag (InterfacePrimitive iface)) Null [])
+    in
+        evalNewObj regs interfaceTypeImpl [arg]
+    end
 
 and newFunClosure (e:SCOPE)
                   (f:FUNC)
@@ -2238,7 +2262,7 @@ and getClassScope (regs:REGS)
     : SCOPE = 
     let
         val class = needClass (Object classObj)
-        val metaClass = getMetaClass class
+        val metaClass = getMetaClass regs class
         val global = getGlobalScope regs
     in
         extendScope global classObj (InstanceScope metaClass)
@@ -2249,12 +2273,23 @@ and getInstanceScope (regs:REGS)
                      (ity:TYPE option)
     : SCOPE = 
     let
-        val ity = case ity of 
-                      NONE => typeOfVal regs (Object obj)
-                    | SOME t => t
-        val classObj = getInstanceClass regs ity
-        val scope = getClassScope regs classObj
-        val class = needClass (Object classObj)
+        val Obj { tag, ... } = obj
+        val (scope, class) = 
+            case tag of 
+
+                PrimitiveTag (ClassPrimitive c) 
+                => (getGlobalScope regs, getMetaClass regs c)
+
+              | _ 
+                => 
+                let
+                    val ity = case ity of 
+                                  NONE => typeOfVal regs (Object obj)
+                                | SOME t => t
+                    val classObj = getInstanceClass regs ity
+                in
+                    (getClassScope regs classObj, needClass (Object classObj))
+                end
     in
         extendScope scope obj (InstanceScope class)
     end
@@ -2284,14 +2319,12 @@ and evalApplyTypeExpression (regs:REGS)
     in
         if isFunction v
         then applyTypesToFunction regs v args
-        (* cf: these are not allowed, I think
         else 
             if isClass v
             then applyTypesToClass regs v args
             else
                 if isInterface v
                 then applyTypesToInterface regs v args
-         *)
         else 
             throwExn (newTypeErr regs ["applying types to unknown base value: ",
                                        approx v])
@@ -2692,6 +2725,25 @@ and evalCrement (regs:REGS)
         else v'
     end        
     
+and typeNameOfVal (v:VALUE) =
+    case v of
+        Null => Ustring.object_
+      | Undefined => Ustring.undefined_
+      | Object (Obj ob) =>
+        if isDouble v orelse
+           isDecimal v
+        then Ustring.number_
+        else
+            if isBoolean v
+            then Ustring.boolean_
+            else 
+                if isFunction v
+                then Ustring.function_
+                else
+                    if isString v
+                    then Ustring.string_
+                    else Ustring.object_
+
 and evalUnaryOp (regs:REGS)
                 (unop:UNOP)
                 (expr:EXPRESSION)
@@ -2749,40 +2801,15 @@ and evalUnaryOp (regs:REGS)
             (*
              * ES-262-3 1.4.3 backward-compatibility operation.
              *)
-            let
-                fun typeNameOfVal (v:VALUE) =
-                    case v of
-                        Null => Ustring.object_
-                      | Undefined => Ustring.undefined_
-                      | Object (Obj ob) =>
-                        let
-                            val n = nominalBaseOfTag (#tag ob)
-                        in
-                            if n = ES4_double orelse
-                               n = ES4_decimal
-                            then Ustring.number_
-                            else
-                                (if n = ES4_boolean
-                                 then Ustring.boolean_
-                                 else
-                                     (if n = public_Function
-                                      then Ustring.function_
-                                      else
-                                          (if n = ES4_string
-                                           then Ustring.string_
-                                           else Ustring.object_)))
-                        end
-            in
-                newString regs
-                          (case expr of
-                               LexicalReference { name, loc } =>
-                               let
-                                  val (obj, name) = resolveLexicalReference regs name true
-                               in
-                                   typeNameOfVal (getValue regs obj name)
-                               end
-                             | _ => typeNameOfVal (evalExpr regs expr))
-            end
+            newString regs
+                      (case expr of
+                           LexicalReference { name, loc } =>
+                           let
+                               val (obj, name) = resolveLexicalReference regs name true
+                           in
+                               typeNameOfVal (getValue regs obj name)
+                           end
+                         | _ => typeNameOfVal (evalExpr regs expr))
     end
 
 and evalTypeExpr (regs:REGS)
@@ -3184,8 +3211,8 @@ and typeOfTag (regs:REGS)
       | PrimitiveTag (DecimalPrimitive _) => primitiveClassType regs getDecimalClassSlot
       | PrimitiveTag (StringPrimitive _) => primitiveClassType regs getStringClassSlot
       | PrimitiveTag (NamespacePrimitive _) => primitiveClassType regs getNamespaceClassSlot
-      | PrimitiveTag (ClassPrimitive _) => primitiveClassType regs getClassClassSlot
-      | PrimitiveTag (InterfacePrimitive _) => primitiveClassType regs getInterfaceClassSlot
+      | PrimitiveTag (ClassPrimitive c) => ClassType (getMetaClass regs c)
+      | PrimitiveTag (InterfacePrimitive _) => instanceType regs helper_InterfaceTypeImpl []
       | PrimitiveTag (TypePrimitive _) => primitiveClassType regs getTypeInterfaceSlot
       | PrimitiveTag (NativeFunctionPrimitive _) => primitiveClassType regs getFunctionClassSlot
       | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType regs getGeneratorClassSlot
@@ -4324,31 +4351,6 @@ and specialPrimitiveCopyingConstructor (regs:REGS)
     end
 
 
-and specialClassConstructor (regs:REGS)
-                            (classObj:OBJ)
-                            (class:CLASS)
-                            (args:VALUE list)
-    : OBJ =
-    let
-        (* Here we have class and classObj carrying the class "intrinsic::Class", and 
-         * our *sole argument* carrying the class we're constructing. We cannot just
-         * construct an instance of class/classObj though, because they do not carry
-         * the classrib we want. We need to synthesize a metaclass and 
-         * instantiate *that*.
-         *
-         * FIXME: possibly shift this to defn phase. Unclear.
-         *)
-        val proto = getPrototype regs classObj
-        val c = case args of
-                    [obj] => needClass obj
-                  | _ => error regs ["called special class constructor without class object"]
-        val metaClass = getMetaClass c
-        val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) Null []
-
-    in
-        constructStandardWithTag regs metaClassObj metaClass (PrimitiveTag (ClassPrimitive c)) proto args
-    end
-
 and specialObjectConstructor (regs:REGS)
                              (classObj:OBJ)
                              (class:CLASS)
@@ -4515,8 +4517,6 @@ and constructSpecial (regs:REGS)
     in
         findSpecial 
             [
-             (getClassClassSlot, specialClassConstructor),
-             (getInterfaceClassSlot, specialPrimitiveCopyingConstructor),
              (getNamespaceClassSlot, specialPrimitiveCopyingConstructor),
              (getArgumentsClassSlot, specialPrimitiveCopyingConstructor),
 
@@ -4559,9 +4559,6 @@ and bindAnySpecialIdentity (regs:REGS)
               | _ => ()
         end
 
-and reifyAllSpecials (regs:REGS) : unit = 
-    List.app (fn (n,_) => (getValue regs (#global regs) n; ())) specialBindings
-    
 
 and setPrototype (regs:REGS)
                  (obj:OBJ)
@@ -4646,11 +4643,6 @@ and getSpecialPrototype (regs:REGS)
                                SOME ob => SOME (getProto ob, true)
                              | NONE => error regs ["Missing function class slot ",
                                                    "when extracting special prototype"])),
-
-                 (getClassClassSlot,
-                  (fn _ => getExistingProto getFunctionClassSlot)),
-                 (getInterfaceClassSlot,
-                  (fn _ => getExistingProto getFunctionClassSlot)),
 
                  (getStringClassSlot, 
                   (fn _ => SOME (newPublicObject regs, true))),
@@ -4739,7 +4731,6 @@ and constructClassInstance (regs:REGS)
                 SOME ob => ob
               | NONE => constructStandard regs classObj class (getPrototype regs classObj) args
     in
-        initClassPrototype regs obj;
         (* INFORMATIVE *) pop regs; 
         Object obj
     end

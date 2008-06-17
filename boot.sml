@@ -63,7 +63,7 @@ fun instantiateRootClass (regs:Mach.REGS)
       val rootRib = (#rootRib regs)
       val cls = lookupRoot rootRib fullName
       val Ast.Class { classRib, ... } = cls
-      val clsClass = lookupRoot rootRib Name.intrinsic_Class
+      val metaClass = Eval.getMetaClass regs cls
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
       val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto) classRib
@@ -81,7 +81,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.ClassType clsClass,
+                           { ty = Ast.ClassType metaClass,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { removable = false,
                                        enumerable = false,
@@ -222,9 +222,7 @@ fun boot (baseDir:string) : Mach.REGS =
          *)
 
         val (rootRib, objProg) = loadFile rootRib (builtin "Object.es")
-        val (rootRib, clsProg) = loadFile rootRib (builtin "Class.es")
         val (rootRib, funProg) = loadFile rootRib (builtin "Function.es")
-        val (rootRib, ifaceProg) = loadFile rootRib (builtin "Interface.es")
 
         val (rootRib, otherProgs) = 
             loadFiles rootRib 
@@ -295,9 +293,7 @@ fun boot (baseDir:string) : Mach.REGS =
             end
 
         val objProg = Verify.verifyProgram rootRib (!verifyBuiltins) objProg 
-        val clsProg = Verify.verifyProgram rootRib (!verifyBuiltins) clsProg
         val funProg = Verify.verifyProgram rootRib (!verifyBuiltins) funProg
-        val ifaceProg = Verify.verifyProgram rootRib (!verifyBuiltins) ifaceProg
         val _ = verifyFiles rootRib otherProgs
 
         val regs = Mach.makeInitialRegs rootRib glob
@@ -319,9 +315,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.Object objPrototype) instanceRib
 
         val (objClass, objClassObj) = instantiateRootClass regs Name.public_Object funPrototype
-        val (_, classClassObj) = instantiateRootClass regs Name.intrinsic_Class funPrototype
         val (_, funClassObj) = instantiateRootClass regs Name.public_Function funPrototype
-        val (_, ifaceClassObj) = instantiateRootClass regs Name.intrinsic_Interface funPrototype            
 
         val _ = describeGlobal regs;
     in
@@ -329,11 +323,6 @@ fun boot (baseDir:string) : Mach.REGS =
         trace ["initializing class prototypes"];
         Eval.initClassPrototype regs funClassObj;
         Eval.initClassPrototype regs objClassObj;
-        Eval.initClassPrototype regs classClassObj;
-        Eval.initClassPrototype regs ifaceClassObj;
-
-        trace ["reifying and binding all special identities"];
-        Eval.reifyAllSpecials regs;
 
         trace ["evaluating other files"];
         evalFiles regs otherProgs;
@@ -343,9 +332,7 @@ fun boot (baseDir:string) : Mach.REGS =
         runConstructorOnObject regs objClass objClassObj funPrototype;
 
         Eval.evalProgram regs (filterOutRootClasses objProg);
-        Eval.evalProgram regs (filterOutRootClasses clsProg);
         Eval.evalProgram regs (filterOutRootClasses funProg);
-        Eval.evalProgram regs (filterOutRootClasses ifaceProg);
 
         Mach.setBooting regs false;
         Mach.resetProfile regs;

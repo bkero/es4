@@ -125,8 +125,6 @@ datatype VALUE = Undefined
          SpecialObjs of 
          { 
           typeInterface : (OBJ option) ref,
-          classClass : (OBJ option) ref,
-          interfaceClass : (OBJ option) ref,
           namespaceClass : (OBJ option) ref,
 
           objectClass : (OBJ option) ref,
@@ -781,16 +779,15 @@ fun nominalBaseOfTag (to:TAG)
       | PrimitiveTag (DecimalPrimitive _) => Name.ES4_decimal
       | PrimitiveTag (StringPrimitive _) => Name.ES4_string
       | PrimitiveTag (NamespacePrimitive _) => Name.ES4_Namespace
-      | PrimitiveTag (ClassPrimitive _) => Name.intrinsic_Class
-      | PrimitiveTag (InterfacePrimitive _) => Name.intrinsic_Interface
+      | PrimitiveTag (ClassPrimitive _) => Name.intrinsic_Type
+      | PrimitiveTag (InterfacePrimitive _) => Name.helper_InterfaceTypeImpl
       | PrimitiveTag (FunctionPrimitive _) => Name.public_Function
       | PrimitiveTag (TypePrimitive _) => Name.intrinsic_Type
       | PrimitiveTag (NativeFunctionPrimitive _) => Name.public_Function
       | PrimitiveTag (GeneratorPrimitive _) => Name.helper_GeneratorImpl
       | PrimitiveTag (ArgumentsPrimitive _) => Name.helper_Arguments
       | NoTag => error ["nominalBaseOfTag on NoTag"]
-        
-                                  
+
 fun getObjPrimitive (Obj { tag = PrimitiveTag m, ... }) = SOME m
   | getObjPrimitive _ = NONE
 
@@ -1022,8 +1019,6 @@ fun getSpecials (regs:REGS) =
     end
 
 fun getTypeInterfaceSlot (regs:REGS) = (#typeInterface (getSpecials regs))
-fun getClassClassSlot (regs:REGS) = (#classClass (getSpecials regs))
-fun getInterfaceClassSlot (regs:REGS) = (#interfaceClass (getSpecials regs))
 fun getNamespaceClassSlot (regs:REGS) = (#namespaceClass (getSpecials regs))
 
 fun getObjectClassSlot (regs:REGS) = (#objectClass (getSpecials regs))
@@ -1117,8 +1112,6 @@ fun makeInitialRegs (rootRib:RIB)
                        tyCache = ref IntMap.empty }
         val specials = SpecialObjs 
                        { typeInterface = ref NONE,
-                         classClass = ref NONE,
-                         interfaceClass = ref NONE,
                          namespaceClass = ref NONE,
                          objectClass = ref NONE,
                          arrayClass = ref NONE,
