@@ -122,7 +122,7 @@ sub ParseGrammar {
    my $maxRow = $ES4Worksheet->{MaxRow};
    my @lexemes = ();  # array to hold list of lexemes
 
-   my $iCol = 8;  # initial value of $iCol is 7 (column I in the spreadsheet)
+   my $iCol = 8;  # initial value of $iCol is 8 (column I in the spreadsheet)
    %grammar = (); # hash to hold contents of grammar (must be global)
    my @noAbstractSyntax = ();  # track entries without Abstract Syntax
    my @missingAbstractSyntax = (); # entries with missing Abstract Syntax
@@ -165,15 +165,15 @@ sub ParseGrammar {
          # Place the Abstract Syntax into a list
          my @abstractSyntax;
          # First line of abstract syntax has two-column offset
-         my $abstractHeaderCell = $ES4Worksheet->{Cells}[$iRow][$iCol+2];
+         my $abstractHeaderCell = $ES4Worksheet->{Cells}[$iRow][$iCol+3];
          if ($abstractHeaderCell && $abstractHeaderCell->Value) {
            push(@abstractSyntax, $abstractHeaderCell->Value);
          }
          # Remainder of abstract syntax has three-column offset
          my $aNum = 0;
-         while ($ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+3] &&
-                $ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+3]->Value) {
-           push(@abstractSyntax, $ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+3]->Value);
+         while ($ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4] &&
+                $ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4]->Value) {
+           push(@abstractSyntax, $ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4]->Value);
            # For some reason, instances of ... in the .xls file get converted to
            # ampersand so we need to convert lone instances of ampersand to ...
            if ($abstractSyntax[$#abstractSyntax] =~ /^&$/) {
