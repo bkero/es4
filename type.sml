@@ -692,12 +692,12 @@ and subTypeRecord extra type1 type2 =
     case (type1, type2) of
 
         (RecordType fields1, RecordType fields2) => 
-        List.all (fn ( name1, type1 ) =>
-                     List.exists (fn ( name2, type2 ) =>
-                                     nameExpressionEqual name1 name2 andalso
-                                     equivType extra type1 type2)
-                                 fields2)
-                 fields1
+        List.all (fn ( name2, type2 ) =>
+                     List.exists (fn ( name1, type1 ) =>
+                                     nameExpressionEqual name2 name1 andalso
+                                     equivType extra type2 type1)
+                                 fields1)
+                 fields2
         
       | _ => false
 
