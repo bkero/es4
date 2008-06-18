@@ -16,8 +16,11 @@ LIBDEPS=stitch.py es4.css ../builtins/*.es ../*.sml
 LANGDEPS=stitch.py es4.css grammar.xls ../*.sml
 
 output/Expressions.html: Expressions.html language/expressions.html $(LANGDEPS) 
-	perl mergeGrammar.pl language/exprs.html language/exprs2.html
 	python stitch.py Expressions.html output/Expressions.html
+
+output/Syntax.html: Syntax.html language/exprs.html $(LANGDEPS) 
+	perl mergeGrammar.pl language/exprs.html language/exprs2.html
+	python stitch.py Syntax.html output/Syntax.html
 
 output/Global.html: Global.html library/global.html $(LIBDEPS) 
 	python stitch.py Global.html output/Global.html

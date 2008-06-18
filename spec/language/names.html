@@ -506,17 +506,15 @@ the set of resulting namespaces.
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveUnqualifiedLexicalReference">
 
-==== Searching a Scope Chain ====
+==== Resolve on a Scope Chain ====
 
 <P> To find an object matching an identifier and a set of namespaces
-in a scope chain, first make a pass over the scope chain looking only
-at fixed properties (except where the scope object is introduced by
-''with'' or is subject to modification by the ''eval'' operator), and
-if none are found, make a second pass looking also for dynamic properties.
+in a scope chain.
+
+[CHANGE] remove second lookup pass
 
 <SEM>
 <INCLUDE file="mach.sml" name="fun searchScopeChain">
-<INCLUDE file="mach.sml" name="and searchScopeChainOnce">
 <INCLUDE file="mach.sml" name="fun searchScope">
 
 === Evaluation-Time Resolution of Object References ===
@@ -557,7 +555,12 @@ the set of resulting namespaces.
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveUnqualifiedObjectReference">
 
-=== Common Algorithms ===
+==== Resolve Name on an Object ====
+
+<SEM>
+<INCLUDE file="eval.sml" name="and resolveOnObject">
+
+=== Common Name Resolution Algorithms  ===
 
 <P> The following algorithms are common to the preceding resolver
 algorithms.

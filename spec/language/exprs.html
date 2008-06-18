@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Expressions</title>
+<title>Syntax</title>
 <style>
 /* -*- indent-tabs-mode: nil -*- */
 .fixme { font-size: smaller; padding-left: 1em; color: red }
@@ -79,7 +79,7 @@ H4 {
 </head>
 
 <body><hr>
-= Expressions =
+= Syntax =
 <hr>
 
 == Name Expressions ==
@@ -115,13 +115,13 @@ change, nor shall its meaning become ambiguous. This enables early binding of na
 <P>A ''DoubleLiteral'' is evaluated as described in the Syntax chapter.
 
 <SEM>
-<INCLUDE file="eval.sml" name="fun evalDoubleLiteral">
+<INCLUDE file="eval.sml" name="and evalDoubleLiteral">
 
 === Decimal Literals ===
 <P>A ''DecimalLiteral'' is evaluated as described in the Syntax chapter.
 
 <SEM>
-<INCLUDE file="eval.sml" name="fun evalDecimalLiteral">
+<INCLUDE file="eval.sml" name="and evalDecimalLiteral">
 
 === Boolean Literals ===
 <P>A ''BooleanLiteral'' is evaluated as described in the Syntax chapter.
@@ -133,7 +133,7 @@ change, nor shall its meaning become ambiguous. This enables early binding of na
 <P>A ''StringLiteral'' is evaluated as described in the Syntax chapter.
 
 <SEM>
-<INCLUDE file="eval.sml" name="fun evalStringLiteral">
+<INCLUDE file="eval.sml" name="and evalStringLiteral">
 
 === Regular Expression Initialisers ===
 
@@ -258,7 +258,7 @@ datatype EXPRESSION =
 
 This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 
-<INCLUDE file="eval.sml" name="fun evalObjectInitialiser">
+<INCLUDE file="eval.sml" name="and evalObjectInitialiser">
 
 ==== Types and fixtures ====
 
@@ -585,7 +585,7 @@ datatype EXPRESSION =
 </pre>
 
 This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
-<INCLUDE file="eval.sml" name="fun evalArrayInitialiser">
+<INCLUDE file="eval.sml" name="and evalArrayInitialiser">
 
 The ''SpreadExpression'' allows for the
 inclusion of an arbitrary number of elements in the array initialiser.
@@ -764,7 +764,7 @@ datatype EXPRESSION =
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 
-<INCLUDE file="eval.sml" name="fun evalNewExpr">
+<INCLUDE file="eval.sml" name="and evalNewExpr">
 
 === Type Application Expressions ===
 
@@ -784,7 +784,7 @@ datatype EXPRESSION =
 
 <P>This abstract syntax tree is evaluated as if by the following function when its members are passed as arguments:
 
-<INCLUDE file="eval.sml" name="fun evalApplyTypeExpr">
+<INCLUDE file="eval.sml" name="and evalApplyTypeExpression">
 
 
 
@@ -1045,7 +1045,7 @@ reflecting whether the relationship named by the operator holds between its two 
 === Binary Type Operators  ===
 <SEM>
 <INCLUDE file="ast.sml" name="datatype BINTYPEOP">
-<INCLUDE file="eval.sml" name="fun evalBinaryTypeExpr">
+<INCLUDE file="eval.sml" name="and evalBinaryTypeOp">
 
 == Assignment Operators ==
 <!-- <pre class="code grammar"><em>AssignmentExpression<sup>&alpha;, &beta;</sup></em></pre> 
@@ -1077,7 +1077,7 @@ right side.
 <!--<pre class="code grammar"><em>YieldExpression<sup>&alpha;, &beta;</sup></em></pre>-->
 
 <SEM>
-<INCLUDE file="eval.sml" name="fun evalYieldExpr">
+<INCLUDE file="eval.sml" name="and evalYieldExpr">
 
 == Conditional Operator ==
 <!--<pre class="code grammar"><em>ConditionalExpression<sup>&alpha;, &beta;</sup></em></pre>-->
