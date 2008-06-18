@@ -592,7 +592,7 @@ and getValueOrVirtual (regs:REGS)
                 else 
                     if isDynamic regs obj
                     then Undefined
-                    else throwExn (newTypeErr
+                    else throwExn (newRefErr
                                        regs
                                        ["attempting to get nonexistent property ",
                                         LogErr.name name,
@@ -2612,7 +2612,11 @@ and evalCallByRef (regs:REGS)
     let
         val (obj, name) = r
         val v = getValue regs obj name
-        val obj = needObj regs v
+        val obj = case v of 
+                      Object ob => ob
+                    | _ => throwExn (newRefErr regs ["attempting to get property ", 
+                                                     LogErr.name name,
+                                                     " from non-Object value"])
     in
         evalCallByObj regs obj args
     end

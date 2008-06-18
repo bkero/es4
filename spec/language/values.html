@@ -248,10 +248,10 @@ value held by the primitive tag.
 <li>The primitive tag ''DecimalPrimitive'' corresponds to the class **__ES4__::decimal**.
 <li>The primitive tag ''StringPrimitive'' corresponds to the class **__ES4__::string**.
 <li>The primitive tag ''NamespacePrimitive'' corresponds to the class **__ES4__::Namespace**.
-<li>The primitive tag ''ClassPrimitive'' corresponds to the class **__ES4__::Class**.
-<li>The primitive tag ''InterfacePrimitive'' corresponds to the class **__ES4__::Interface**.
+<li>The primitive tag ''ClassPrimitive'' corresponds to the class **helper::ClassTypeImpl**.
+<li>The primitive tag ''InterfacePrimitive'' corresponds to the class **helper::InterfaceTypeImpl**.
 <li>The primitive tag ''FunctionPrimitive'' corresponds to the class **public::Function**.
-<li>The primitive tag ''TypePrimitive'' corresponds to the class **__ES4__::Type**.
+<li>The primitive tag ''TypePrimitive'' corresponds to the class **helper::Type**.
 <li>The primitive tag ''GeneratorPrimitive'' corresponds to the class **helper::GeneratorImpl**.
 <li>The primitive tag ''ArgumentsPrimitive'' corresponds to the class **helper::Arguments**.
 </ul>
@@ -432,8 +432,8 @@ equal.  Any two opaque namespaces with equal identifiers are equal.
 
 <p>A //class value// consists of a name and a set of namespaces, fixtures and types.
 
-<p>A class value can be held in the primitive tag of an instance of the class
-**__ES4__::Class**. Such objects are called //class objects//.
+<p>A class value can be held in the tag of an object, in the primitive tag ''ClassPrimitive''. An
+object with a primitive class tag is called a //class object//.
 
 <p>A class value can be defined as a fixture in the global scope using a **class** definition.
 
@@ -443,22 +443,18 @@ class object, and that class object is called //the value of// the class definit
 
 <p>A class value holds //class fixtures// and //instance fixtures//. If **C** is a class object,
 then the class fixtures of the associated class value describe fixed properties found on the
-class object **C**. In this way, the class fixtures effectively describe an implicit anonymous
-subtype of **__ES4__::Class** that the class object **C** is an instance of.
+class object **C**. 
 
-<FIXME>__ES4__::Class is obsolete, probably. It still exists but we have proper metaobjects for this sort of thing.
-
-<FIXME>This tying-knots stuff at the top of the type hierarchy is always a little subtle and hard to
-word. Suggestions welcome.
+<p>Every class object corresponding to a class definition contains a fixture for each static fixture
+in the class definition. If a class definition is type-parametric, each unique set of type-arguments
+applied to the class creates a unique class object, each with its own unique copy of the static
+fixtures of the class definition.
 
 <p>Class values can be //instantiated// to produce new objects. Instantiation is described in
 section....
 
 <SEM>
 <INCLUDE file="ast.sml" name="and CLASS">
-
-<NOTE> A ''RIB'' datum is a map from property names to fixtures:
-types, names, and fixture properties.
 
 ==== Instance Fixtures ====
 
@@ -468,8 +464,8 @@ fixed properties found on //instances of// the class.
 <p>An object is an //instance// of a class value ''C'' if the object's tag is ''InstanceTag'' and
 the class type in the tag is ''ClassType C''.
 
-<p>If an object **X** is an instance of a class value ''C'', then for every 
-//instance fixture// ''F'' in ''C'', a property ''P'' exists on **X** satisfying the following conditions:
+<p>If an object **X** is an instance of a class value ''C'', then for every //instance fixture//
+''F'' in ''C'', a property ''P'' is defined on **X** satisfying the following conditions:
 <ul>
 <li>''P'' is not ''removable''.
 <li>''P'' is not ''enumerable''.
@@ -479,7 +475,7 @@ the class type in the tag is ''ClassType C''.
 <li>The type of ''F'' is the type of ''P''.
 </ul>
 
-==== Class Types and Class-Instance Types ====
+==== Instance Types and Class Types ====
 
 <p>A class corresponds to a pair of types: an instance class type and a static class type.
 
@@ -488,18 +484,17 @@ expression by the name of ''C'' itself, and is the allocated type of any instanc
 of any instance of ''C'' is ''InstanceTag C''.
 
 <p>The //static class type// of a class value ''C'' is the allocated type of the class object
-//holding// ''C''. In such an object, the static class type is stored in a field within ''C'', and
-is an anonymous subtype of the ''ClassType'' of **__ES4__::Class**. The tag of such an object is
-''PrimitiveTag (Class C)''.
+//holding// ''C''. The tag of such an object is ''PrimitiveTag (ClassPrimitive C)''. The static type
+of such an object is an implicit anonymous //metaclass// ''MC'', which is defined as a subtype of
+the ''ClassType'' **helper::ClassTypeImpl**. The class fixtures in the class ''C'' are defined as
+instance fixtures on the metaclass ''MC''.
 
 === Interface Values ===
 
 <p>An //interface value// consists of a name and a set of fixtures and types.
 
 <p>An interface closure value can be held in the primitive tag of an instance of the class
-**__ES4__::Interface**. Such objects are called //interface objects//.
-
-<FIXME>__ES4__::Interface is obsolete, probably. It still exists but we have proper metaobjects for this sort of thing.
+**helper::InterfaceTypeImpl**. Such objects are called //interface objects//.
 
 <p>An interface value can be defined as a fixture in the global scope using an **interface** definition.
 
