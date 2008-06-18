@@ -2024,7 +2024,6 @@ and evalInitExpr (regs:REGS)
     end
     
 
-
 and evalSuperCall (regs:REGS)
                   (object:OBJ)
                   (nameExpr:NAME_EXPRESSION)
@@ -3503,7 +3502,7 @@ and selectNamespacesByInstanceRibs (regs:REGS)
               | [namespace] => (object, {ns=namespace, id=identifier})
               | _ => error regs ["ambiguous reference"]
         end
-        
+
 and resolveOnObject (regs:REGS)
                     (object:OBJ)
                     (identifier:IDENTIFIER)
@@ -3511,18 +3510,10 @@ and resolveOnObject (regs:REGS)
                     (openNamespaces: OPEN_NAMESPACES) 
     : (OBJ * NAME) =
     let
-        val result = searchObject (regs, SOME object, NONE, identifier, namespaces, true)
-    in 
-        case result of
-            NONE =>        
-            let
-                val result = searchObject (regs, SOME object, NONE, identifier, namespaces, false)
-            in
-                case result of 
-                    NONE => (object, {ns=publicNS, id=identifier})
-                  | SOME (object, namespaces) => 
-                    selectNamespacesByInstanceRibs regs object identifier namespaces openNamespaces
-            end
+        val result = searchObject (regs, SOME object, NONE, identifier, namespaces, false)
+    in
+        case result of 
+            NONE => (object, {ns=publicNS, id=identifier})
           | SOME (object, namespaces) => 
             selectNamespacesByInstanceRibs regs object identifier namespaces openNamespaces
     end
@@ -3601,7 +3592,7 @@ and resolveQualifiedLexicalReference (regs          : REGS)
         val {scope, global, ...} = regs
         val namespace = evalNamespaceExpr regs namespaceExpr
         val result = searchScopeChain (regs, SOME scope, identifier, [namespace])
-    in 
+    in
         case result of
             NONE
             => (global, {ns=publicNS, id=identifier})

@@ -184,6 +184,7 @@ datatype VALUE = Undefined
        | ActivationScope
        | BlockScope
        | TypeArgScope
+       | EvalScope  (* mutated by eval *)
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VALUE
@@ -1274,78 +1275,43 @@ fun searchObject (_, NONE, _, _, _, _) = NONE
             => SOME (object, matches)
     end
 
-(*
-fun searchMutableScopeObject (object: OBJECT,
-                              namespaces: NAMESPACE_SET,
-                              identifier: IDENTIFIER)
-    : (OBJECT * NAMESPACE_SET) option =
-    let
-        val result = searchObject (SOME object, identifier, namespaces, true)
-    in 
-        case result of
-            NONE => searchObject (SOME object, identifier, namespaces, false)
-          | _ => result
-    end
-*)
-
 (* FIXME need to handle eval scopes specially too *)
 fun searchScope (regs       : REGS,
                  scope      : SCOPE,
                  namespaces : NAMESPACE_SET,
-                 identifier : IDENTIFIER,
-                 fixedOnly  : bool)
+                 identifier : IDENTIFIER)
     : (OBJECT * NAMESPACE_SET) option =
     let
         val (object, kind) = getScopeObjectAndKind (scope)
     in 
-        case (kind, fixedOnly) of
-            (WithScope, true) 
+        case kind of
+            (WithScope | EvalScope | GlobalScope)  (* FIXME EvalScope is unused *)
             => searchObject (regs, SOME object, NONE, identifier, namespaces, false)
 
-          | (WithScope, false) 
-            => NONE
+          | (InstanceScope class)            
+            => searchObject (regs, SOME object, SOME class, identifier, namespaces, true)
 
-          | (InstanceScope class,_)            
-            => searchObject (regs, SOME object, SOME class, identifier, namespaces, fixedOnly)
-
-          | (_,_)            
-            => searchObject (regs, SOME object, NONE, identifier, namespaces, fixedOnly)
+          | _
+            => searchObject (regs, SOME object, NONE, identifier, namespaces, true)
     end
 
-and searchScopeChainOnce (regs, NONE, _, _, _) = NONE
+and searchScopeChain (regs, NONE, _, _) = NONE
 
-  | searchScopeChainOnce (regs       : REGS,
-                          SOME scope : SCOPE option,
-                          identifier : IDENTIFIER,
-                          namespaces : NAMESPACE_SET,
-                          fixedOnly  : bool)
+  | searchScopeChain (regs       : REGS,
+                      SOME scope : SCOPE option,
+                      identifier : IDENTIFIER,
+                      namespaces : NAMESPACE_SET)
     : (OBJECT * NAMESPACE_SET) option =
     let
-        val matches = searchScope (regs, scope, namespaces, identifier, fixedOnly)
+        val matches = searchScope (regs, scope, namespaces, identifier)
         val Scope { parent, ... } = scope
     in
         case matches of
             NONE 
-            => searchScopeChainOnce (regs, parent, identifier, namespaces, fixedOnly)
+            => searchScopeChain (regs, parent, identifier, namespaces)
 
           | _
             => matches
-    end
-
-fun searchScopeChain (regs       : REGS,
-                      scope      : SCOPE option,
-                      identifier : IDENTIFIER,
-                      namespaces : NAMESPACE_SET)
-    : (OBJECT * NAMESPACE_SET) option =
-    let 
-        val result = searchScopeChainOnce(regs, scope, identifier, namespaces, true)
-    in
-        case result of
-            NONE
-            => searchScopeChainOnce(regs, scope, identifier, namespaces, false)
-
-          | SOME _
-            => result
     end
 
 end

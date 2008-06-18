@@ -1,5 +1,5 @@
 function foo(x) {
-	intrinsic::assert(x == 10);
+  intrinsic::assert(x == 10);
 }
 
 foo(10);
