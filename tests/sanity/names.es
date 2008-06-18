@@ -13,25 +13,42 @@ function n () {
   }
 }
 }
-class B extends A {
+dynamic class B extends A {
   var x = -1
 }
 var a = new A
 a.x = -1
 a.m ()
-print ("out of scope instance expandos: PASSED!")
+print ("lexical lookup with instance expandos: PASSED!")
 var b = new B
 b.m ()
-print ("out of scope instance fixtures: PASSED!")
+print ("lexical lookup with instance fixtures: PASSED!")
+
+// test 'with' lookup
+
 b.n ()
-print ("with scope: PASSED!")
+print ("lexical lookup with 'with': PASSED!")
 
-// test with lookup
+// test scope base namespace selection
 
-// test class disambiguation
-/*
 namespace N1
 namespace N2
+N1 var x = 10
+N2 var x = 20
+{
+use namespace N2
+{
+use namespace N1
+print (x)
+intrinsic::assert (x==10)
+print ("namespace shadowing: PASSED!")
+}
+}
+
+// test class based namespace selection
+
+/* FIXME
+
 class C {
 N1 var x = 10
 }
@@ -47,3 +64,4 @@ print (x)
 print ("class lookup: PASSED!")
 }
 */
+
