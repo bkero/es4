@@ -99,7 +99,7 @@ fun nthAsName (regs:Mach.REGS)
 
 fun nthAsFn (vals:Mach.VALUE list)
             (n:int)
-    : Mach.FUN_CLOSURE =
+    : Mach.CLOSURE =
     Mach.needFunction (rawNth vals n)
 
 

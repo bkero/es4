@@ -1152,7 +1152,7 @@ and newInterface (regs:REGS)
 and newFunClosure (e:SCOPE)
                   (f:FUNC)
                   (this:OBJECT option)
-    : FUN_CLOSURE =
+    : CLOSURE =
     { func = f, this = this, env = e }
 
 and getClassObjectAndClass regs getter = 
@@ -1177,7 +1177,7 @@ and getObjectClassObjectAndClass (regs:REGS)
 
 
 and newFunctionFromClosure (regs:REGS)
-                           (closure:FUN_CLOSURE) =
+                           (closure:CLOSURE) =
     let
         val (funClassObj, funClass) = getFunctionClassObjectAndClass regs
         val funProto = getPrototype regs funClassObj
@@ -2535,7 +2535,7 @@ and evalListExpr (regs:REGS)
 
 and constructObjectViaFunction (regs:REGS)
                                (ctorObj:OBJECT)
-                               (ctor:FUN_CLOSURE)
+                               (ctor:CLOSURE)
                                (args:VALUE list)
     : VALUE =
     let
@@ -3787,7 +3787,7 @@ and checkRibInitialization (regs:REGS)
 
 
 and invokeFuncClosure (regs:REGS)
-                      (closure:FUN_CLOSURE)
+                      (closure:CLOSURE)
                       (thisFun:OBJECT option)
                       (args:VALUE list)
     : VALUE =

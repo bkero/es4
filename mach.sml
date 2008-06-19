@@ -165,7 +165,7 @@ datatype VALUE = UndefinedValue
        | NamespacePrimitive of NAMESPACE
        | ClassPrimitive of CLASS
        | InterfacePrimitive of INTERFACE
-       | FunctionPrimitive of FUN_CLOSURE
+       | FunctionPrimitive of CLOSURE
        | TypePrimitive of TYPE
        | ArgumentsPrimitive of SCOPE
        | NativeFunctionPrimitive of NATIVE_FUNCTION  (* INFORMATIVE *)
@@ -211,8 +211,8 @@ datatype VALUE = UndefinedValue
 
      and PROPERTY_STATE = ValueProperty of VALUE
                         | VirtualProperty of
-                          { getter: FUN_CLOSURE option,
-                            setter: FUN_CLOSURE option }
+                          { getter: CLOSURE option,
+                            setter: CLOSURE option }
 
      and AUX = 
          Aux of 
@@ -242,7 +242,7 @@ datatype VALUE = UndefinedValue
 
      and GEN = Gen of GEN_STATE ref
 
-withtype FUN_CLOSURE =
+withtype CLOSURE =
          { func: FUNC,
            this: OBJECT option,
            env: SCOPE }
