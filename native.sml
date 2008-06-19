@@ -63,9 +63,9 @@ fun nthAsObj (vals:Mach.VALUE list)
              (n:int)
     : Mach.OBJ =
     let
-        fun f Mach.Undefined = error ["Wanted Object, got Undefined"]
-          | f Mach.Null = error ["Wanted Object, got Null"]
-          | f (Mach.Object ob) = ob
+        fun f Mach.UndefinedValue = error ["Wanted ObjectValue, got UndefinedValue"]
+          | f Mach.NullValue = error ["Wanted ObjectValue, got NullValue"]
+          | f (Mach.ObjectValue ob) = ob
     in
         nthAsA f vals n
     end
@@ -76,7 +76,7 @@ fun nthAsObjAndClass (vals:Mach.VALUE list)
     : (Mach.OBJ * Ast.CLASS) =
     let
         val obj = nthAsObj vals n
-        val c = Mach.needClass (Mach.Object obj)
+        val c = Mach.needClass (Mach.ObjectValue obj)
     in
         (obj, c)
     end
@@ -204,9 +204,9 @@ fun getSuperClass (regs:Mach.REGS)
         val regs = Eval.withScope regs (Eval.getClassScope regs classObj)
     in
         (case extends of 
-             SOME ty => Mach.Object 
+             SOME ty => Mach.ObjectValue 
                             (Eval.getInstanceClass regs (Eval.evalTy regs ty))
-           | _ => Mach.Null)
+           | _ => Mach.NullValue)
     end
 
 
@@ -225,9 +225,9 @@ fun getImplementedInterface (regs:Mach.REGS)
         val Ast.Class { implements, ... } = cls
     in
         if k >= (List.length implements) then
-            Mach.Null
+            Mach.NullValue
         else
-            Mach.Object 
+            Mach.ObjectValue 
             (Eval.getInstanceInterface regs 
                                        (Eval.evalTy 
                                             regs (List.nth(implements, k))))
@@ -248,9 +248,9 @@ fun getSuperInterface (regs:Mach.REGS)
         val k = Word32.toInt(nthAsUInt regs vals 1)
     in
         if k >= (List.length extends) then
-            Mach.Null
+            Mach.NullValue
         else
-            Mach.Object
+            Mach.ObjectValue
                 (Eval.getInstanceInterface 
                      regs (Eval.evalTy 
                                regs (List.nth(extends, k))))
@@ -269,9 +269,9 @@ fun getEnumerableIds (regs:Mach.REGS)
         val v = rawNth vals 0
     in
         case v of
-            Mach.Undefined => Eval.newArray regs []
-          | Mach.Null => Eval.newArray regs []
-          | Mach.Object (Mach.Obj { props, ... }) =>
+            Mach.UndefinedValue => Eval.newArray regs []
+          | Mach.NullValue => Eval.newArray regs []
+          | Mach.ObjectValue (Mach.Obj { props, ... }) =>
             let
                 val { bindings, ... } = !props
                 val bindingList = NameMap.listItemsi bindings
@@ -376,7 +376,7 @@ fun setPropertyIsEnumerable (regs:Mach.REGS)
         val b = nthAsBool vals 2
     in
         Mach.setPropEnumerable props n b;
-        Mach.Undefined
+        Mach.UndefinedValue
     end
 
 fun isPrimitive (regs:Mach.REGS)
@@ -473,7 +473,7 @@ fun genClose (regs:Mach.REGS)
         case tag of
             Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGen regs gen
           | _ => error ["wrong kind of object to genSend"];
-        Mach.Undefined
+        Mach.UndefinedValue
     end
 
 fun argsLength (regs:Mach.REGS)
@@ -503,7 +503,7 @@ fun setArg (regs:Mach.REGS)
            (vals:Mach.VALUE list)
     : Mach.VALUE = 
     (* FIXME: Implement. *)
-    Mach.Undefined
+    Mach.UndefinedValue
 
 
 (* Given a string and a position in that string, return the
@@ -588,7 +588,7 @@ fun eval (regs:Mach.REGS)
          (vals:Mach.VALUE list)
     : Mach.VALUE =
     if length vals = 0
-    then Mach.Undefined
+    then Mach.UndefinedValue
     else
         let
             val x = rawNth vals 0
@@ -668,7 +668,7 @@ fun set (regs:Mach.REGS)
          (nthAsName regs vals 1)
          (rawNth vals 2)
          false;
-     Mach.Undefined)
+     Mach.UndefinedValue)
 
 (* 
  * informative native function objectHash ( ob:Object! ) : uint;
@@ -837,7 +837,7 @@ fun print (regs:Mach.REGS)
     in
         List.app printOne vals;
         TextIO.print "\n";
-        Mach.Undefined
+        Mach.UndefinedValue
     end
 
 fun load (regs:Mach.REGS)
@@ -961,23 +961,23 @@ fun writeFile (regs:Mach.REGS)
     in
         TextIO.output(out, s);
         TextIO.closeOut out;
-        Mach.Undefined
+        Mach.UndefinedValue
     end
 
 fun assert (regs:Mach.REGS)
            (vals:Mach.VALUE list)
     : Mach.VALUE =
     if nthAsBool vals 0
-    then Mach.Undefined
+    then Mach.UndefinedValue
     else error ["intrinsic::assert() failed"]
 
 fun typename (regs:Mach.REGS)
              (vals:Mach.VALUE list)
     : Mach.VALUE =    
     case hd vals of
-        Mach.Null => Eval.newString regs Ustring.null_
-      | Mach.Undefined => Eval.newString regs Ustring.undefined_
-      | Mach.Object (Mach.Obj {tag, ...}) =>
+        Mach.NullValue => Eval.newString regs Ustring.null_
+      | Mach.UndefinedValue => Eval.newString regs Ustring.undefined_
+      | Mach.ObjectValue (Mach.Obj {tag, ...}) =>
         let 
             val name = Mach.nominalBaseOfTag tag
         in
@@ -997,7 +997,7 @@ fun dumpFunc (regs:Mach.REGS)
               | _ => ()
         else
             ();
-        Mach.Undefined
+        Mach.UndefinedValue
     end
 
 fun inspect (regs:Mach.REGS)
@@ -1008,7 +1008,7 @@ fun inspect (regs:Mach.REGS)
         val d = if length vals > 1 then nthAsInt regs vals 1 else 1
     in
         Mach.inspect v d;
-        Mach.Undefined
+        Mach.UndefinedValue
     end
 
 

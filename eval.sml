@@ -411,7 +411,7 @@ and allocTemp (regs:REGS)
 and asArrayIndex (v:VALUE)
     : Word32.word =
     case v of
-        Object (Obj { tag, ... }) =>
+        ObjectValue (Obj { tag, ... }) =>
         (case tag of
              PrimitiveTag (DoublePrimitive d) => 
              if isIntegral d 
@@ -473,7 +473,7 @@ and hasProperty (regs:REGS)
             val Obj { proto, ... } = obj
         in
             case proto of
-                Object p => hasProperty regs p n
+                ObjectValue p => hasProperty regs p n
               | _ => false
         end
 
@@ -482,9 +482,9 @@ and defaultValueForType (regs:REGS)
                         (ty:TYPE)
     : VALUE option =       
     case evalTy regs ty of
-        AnyType => SOME Undefined        
-      | NullType => SOME Null        
-      | UndefinedType => SOME Undefined
+        AnyType => SOME UndefinedValue        
+      | NullType => SOME NullValue        
+      | UndefinedType => SOME UndefinedValue
       | UnionType [] => NONE
       | UnionType ts => 
         let
@@ -495,20 +495,20 @@ and defaultValueForType (regs:REGS)
                    | other => other)
                 
             fun firstSimpleType [] = firstType ts
-              | firstSimpleType ((AnyType)::xs) = SOME Undefined
-              | firstSimpleType ((NullType)::xs) = SOME Null
-              | firstSimpleType ((UndefinedType)::xs) = SOME Undefined
-              | firstSimpleType ((ClassType (Class {nonnullable=false, ...}))::xs) = SOME Null
-              | firstSimpleType ((InterfaceType (Interface {nonnullable=false, ...}))::xs) = SOME Null
-              | firstSimpleType ((AppType (ClassType (Class {nonnullable=false, ...}), _))::xs) = SOME Null
-              | firstSimpleType ((AppType (InterfaceType (Interface {nonnullable=false, ...}), _))::xs) = SOME Null
+              | firstSimpleType ((AnyType)::xs) = SOME UndefinedValue
+              | firstSimpleType ((NullType)::xs) = SOME NullValue
+              | firstSimpleType ((UndefinedType)::xs) = SOME UndefinedValue
+              | firstSimpleType ((ClassType (Class {nonnullable=false, ...}))::xs) = SOME NullValue
+              | firstSimpleType ((InterfaceType (Interface {nonnullable=false, ...}))::xs) = SOME NullValue
+              | firstSimpleType ((AppType (ClassType (Class {nonnullable=false, ...}), _))::xs) = SOME NullValue
+              | firstSimpleType ((AppType (InterfaceType (Interface {nonnullable=false, ...}), _))::xs) = SOME NullValue
               | firstSimpleType (x::xs) = firstSimpleType xs
         in
             firstSimpleType ts
         end
         
-      | ArrayType _ => SOME Null        
-      | RecordType _ => SOME Null
+      | ArrayType _ => SOME NullValue        
+      | RecordType _ => SOME NullValue
       | AppType (base, _) => defaultValueForType regs base
 
       | NonNullType expr => NONE        
@@ -533,12 +533,12 @@ and defaultValueForType (regs:REGS)
                     else 
                         if nonnullable
                         then NONE
-                        else SOME (Null)
+                        else SOME (NullValue)
                              
       | InterfaceType (Interface {nonnullable, ...}) => 
         if nonnullable
         then NONE
-        else SOME (Null)
+        else SOME (NullValue)
 
 (*
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's
@@ -569,10 +569,10 @@ and getValueOrVirtual (regs:REGS)
                  then
                      case getter of
                          SOME g => invokeFuncClosure (withThis regs obj) g NONE []
-                       | _ => Undefined
+                       | _ => UndefinedValue
                  else
                      (* FIXME: possibly throw here? *)
-                     Undefined)
+                     UndefinedValue)
             
           | NONE =>
             case Fixture.findFixture (getRib regs obj) (PropName name) of 
@@ -591,7 +591,7 @@ and getValueOrVirtual (regs:REGS)
                      evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
                 else 
                     if isDynamic regs obj
-                    then Undefined
+                    then UndefinedValue
                     else throwExn (newRefErr
                                        regs
                                        ["attempting to get nonexistent property ",
@@ -738,7 +738,7 @@ and isDynamic (regs:REGS)
           | typeIsDynamic (ClassType (Class { dynamic, ... })) = dynamic
           | typeIsDynamic _ = false
     in
-        typeIsDynamic (typeOfVal regs (Object obj))
+        typeIsDynamic (typeOfVal regs (ObjectValue obj))
     end
 
 
@@ -890,7 +890,7 @@ and instantiateGlobalClass (regs:REGS)
         val (cls:VALUE) = getValue regs (#global regs) n
     in
         case cls of
-            Object ob => evalNewObj regs ob args
+            ObjectValue ob => evalNewObj regs ob args
           | _ => error regs ["global class name ", name n,
                              " did not resolve to object"]
     end
@@ -920,7 +920,7 @@ and needNameOrString (regs:REGS)
                      (v:VALUE)
     : NAME =
     case v of
-        Object obj => 
+        ObjectValue obj => 
         if (typeOfVal regs v) <* (instanceType regs ES4_Name [])
         then
             let
@@ -937,7 +937,7 @@ and needObj (regs:REGS)
             (v:VALUE)
     : OBJ =
     case v of
-        Object ob => ob
+        ObjectValue ob => ob
       | _ => throwExn (newTypeErr regs ["need object"])
 
 and newPublicObject (regs:REGS) =
@@ -982,7 +982,7 @@ and newPrimitive (regs:REGS)
                  (getter: REGS -> (OBJ option) ref)
     : VALUE =
     let
-        val args = [Object (newObject (PrimitiveTag prim) Null [])]
+        val args = [ObjectValue (newObject (PrimitiveTag prim) NullValue [])]
         val (class, closure) = getClassObjectAndClass regs getter
     in
         constructClassInstance regs class closure args
@@ -1018,11 +1018,11 @@ and newDouble (regs:REGS)
         in
             case !dn of
                 NONE => newPrimitive regs (DoublePrimitive n) getDoubleClassSlot
-              | SOME obj => Object obj
+              | SOME obj => ObjectValue obj
         end
     else 
         case findInDoubleCache regs n of
-            SOME obj => Object obj
+            SOME obj => ObjectValue obj
           | NONE => 
     (* END_INFORMATIVE *)
     newPrimitive regs (DoublePrimitive n) getDoubleClassSlot
@@ -1061,7 +1061,7 @@ and newBoolean (regs:REGS)
             else getBooleanFalseSlot regs
     in
         case !cell of 
-            SOME obj => Object obj
+            SOME obj => ObjectValue obj
           | NONE => 
     (* END_INFORMATIVE *)
     newPrimitive regs (BooleanPrimitive b) getBooleanClassSlot
@@ -1077,7 +1077,7 @@ and newName (regs:REGS)
             (n:NAME)
     : VALUE =
     case findInNmCache regs n of
-        SOME obj => Object obj
+        SOME obj => ObjectValue obj
       | NONE => 
         let 
             val nsval = newNamespace regs (#ns n)
@@ -1086,7 +1086,7 @@ and newName (regs:REGS)
                         regs ES4_Name 
                         [nsval, idval]
         in 
-            Object (updateNmCache regs (n, needObj regs v))
+            ObjectValue (updateNmCache regs (n, needObj regs v))
         end
 
 and getMetaClass (regs:REGS) 
@@ -1130,12 +1130,12 @@ and newClass (regs:REGS)
         val (funClassObj, _) = getFunctionClassObjectAndClass (regs) 
         val proto = getPrototype regs funClassObj
         val metaClass = getMetaClass regs class
-        val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) Null []
+        val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) NullValue []
         val tag = PrimitiveTag (ClassPrimitive class)
         val classObj = constructStandardWithTag regs metaClassObj metaClass tag proto []
     in
         initClassPrototype regs classObj;
-        Object classObj
+        ObjectValue classObj
     end
 
 and newInterface (regs:REGS)
@@ -1144,7 +1144,7 @@ and newInterface (regs:REGS)
     let
         val { global, ... } = regs
         val interfaceTypeImpl = needObj regs (getValue regs global helper_InterfaceTypeImpl)
-        val arg = Object (newObject (PrimitiveTag (InterfacePrimitive iface)) Null [])
+        val arg = ObjectValue (newObject (PrimitiveTag (InterfacePrimitive iface)) NullValue [])
     in
         evalNewObj regs interfaceTypeImpl [arg]
     end
@@ -1160,7 +1160,7 @@ and getClassObjectAndClass regs getter =
         val classObj = case !(getter regs) of 
                            NONE => error regs ["missing special class"]
                          | SOME c => c
-        val class = needClass (Object classObj)
+        val class = needClass (ObjectValue classObj)
     in
         (classObj, class)
     end
@@ -1196,7 +1196,7 @@ and newFunctionFromClosure (regs:REGS)
 
         val originalObjectProto = getOriginalObjectPrototype regs
         val newProtoObj = constructStandard regs funClassObj funClass originalObjectProto []
-        val newProto = Object newProtoObj
+        val newProto = ObjectValue newProtoObj
         val _ = traceConstruct ["built new prototype chained to Object.prototype"]
 
         val tag = PrimitiveTag (FunctionPrimitive closure)
@@ -1204,9 +1204,9 @@ and newFunctionFromClosure (regs:REGS)
         val Obj { props=newProtoProps, ... } = newProtoObj
     in
         setPrototype regs obj newProto;
-        setValueOrVirtual regs newProtoObj public_constructor (Object obj) false;
+        setValueOrVirtual regs newProtoObj public_constructor (ObjectValue obj) false;
         setPropEnumerable newProtoProps public_constructor false;
-        Object obj
+        ObjectValue obj
     end
 
 
@@ -1225,7 +1225,7 @@ and newNativeFunction (regs:REGS)
         val proto = getPrototype regs classObj
         val obj = constructStandardWithTag regs classObj class tag proto [] 
     in
-        Object obj
+        ObjectValue obj
     end
     
 and getIteratorNamespace (regs:REGS)
@@ -1243,7 +1243,7 @@ and isStopIteration (regs:REGS)
         val stopIteration = needObj regs (getStopIteration regs)
     in
         case v of
-            Object obj => (getObjId obj) = (getObjId stopIteration)
+            ObjectValue obj => (getObjId obj) = (getObjId stopIteration)
           | _ => false
     end
 
@@ -1270,7 +1270,7 @@ and newGenerator (regs:REGS)
         val classObj = case !(getGeneratorClassSlot regs) of 
                            NONE => error regs ["cannot find helper::GeneratorImpl"]
                          | SOME ob => ob
-        val class = needClass (Object classObj)
+        val class = needClass (ObjectValue classObj)
         val objRef = ref (newObjectNoTag [])
         val gen = newGen (fn () => execBody (!objRef))
         val tag = PrimitiveTag (GeneratorPrimitive gen)
@@ -1278,7 +1278,7 @@ and newGenerator (regs:REGS)
         val obj = constructStandardWithTag regs classObj class tag proto [] 
     in
         objRef := obj;
-        Object obj
+        ObjectValue obj
     end
 
 and yieldFromGen (regs:REGS)
@@ -1366,9 +1366,9 @@ and toUstring (regs:REGS)
               (v:VALUE)
     : Ustring.STRING =
     case v of
-        Undefined => Ustring.undefined_
-      | Null => Ustring.null_
-      | Object (Obj { tag = (PrimitiveTag prim), ... }) =>
+        UndefinedValue => Ustring.undefined_
+      | NullValue => Ustring.null_
+      | ObjectValue (Obj { tag = (PrimitiveTag prim), ... }) =>
         primitiveToUstring prim
       | _ => toUstring regs (toPrimitiveWithStringHint regs v)
 
@@ -1378,9 +1378,9 @@ and toUstring (regs:REGS)
 
 and toBoolean (v:VALUE) : bool =
     case v of
-        Undefined => false
-      | Null => false
-      | Object (Obj { tag, ... }) =>
+        UndefinedValue => false
+      | NullValue => false
+      | ObjectValue (Obj { tag, ... }) =>
         (case tag of
              PrimitiveTag (BooleanPrimitive b) => b
            | PrimitiveTag (DoublePrimitive x) => 
@@ -1410,7 +1410,7 @@ and defaultValue (regs:REGS)
                        else (public_valueOf, public_toString)
         val va = if hasProperty regs obj na
                  then evalNamedMethodCall regs obj na []
-                 else Undefined
+                 else UndefinedValue
         val vb = if not (isPrimitive va) andalso hasProperty regs obj nb
                  then evalNamedMethodCall regs obj nb []
                  else va
@@ -1468,9 +1468,9 @@ and toNumeric (regs:REGS)
         fun one _ = newDouble regs (Real64.fromInt 1)
     in
         case v of
-            Undefined => NaN ()
-          | Null => zero ()
-          | Object (Obj { tag, ... }) =>
+            UndefinedValue => NaN ()
+          | NullValue => zero ()
+          | ObjectValue (Obj { tag, ... }) =>
             (case tag of
                  PrimitiveTag (DoublePrimitive _) => v
                | PrimitiveTag (DecimalPrimitive _) => v
@@ -1503,9 +1503,9 @@ and toDecimal (v:VALUE)
                           Decimal.defaultRoundingMode
     in
         case v of
-            Undefined => Decimal.NaN
-          | Null => Decimal.zero
-          | Object (Obj { tag, ... }) =>
+            UndefinedValue => Decimal.NaN
+          | NullValue => Decimal.zero
+          | ObjectValue (Obj { tag, ... }) =>
             (case tag of
                  PrimitiveTag (DoublePrimitive d) =>
                  (* NB: Lossy. *)
@@ -1541,9 +1541,9 @@ and toDouble (v:VALUE)
         fun one _ = (Real64.fromInt 1)
     in
         case v of
-            Undefined => NaN ()
-          | Null => zero ()
-          | Object (Obj {tag, ...}) =>
+            UndefinedValue => NaN ()
+          | NullValue => zero ()
+          | ObjectValue (Obj {tag, ...}) =>
             (case tag of
                  PrimitiveTag (DoublePrimitive d) => d
                | PrimitiveTag (DecimalPrimitive d) =>
@@ -1756,10 +1756,10 @@ and evalExpr (regs:REGS)
     : VALUE =
     case expr of
         LiteralNull 
-        => Null
+        => NullValue
 
       | LiteralUndefined 
-        => Undefined
+        => UndefinedValue
 
       | LiteralDouble r 
         => evalDoubleLiteral regs r
@@ -1869,15 +1869,15 @@ and evalThisExpr (regs:REGS)
         case kind of
             SOME FunctionThis => 
             (case thisFun of
-                 SOME obj => Object obj
+                 SOME obj => ObjectValue obj
                (* this error should never occur, since it will be raised earlier in defn *)
                | _ => error regs ["error: 'this function' used in a non-function context"])
           | SOME GeneratorThis =>
             (case thisGen of
-                 SOME obj => Object obj
+                 SOME obj => ObjectValue obj
                (* DAH: this error should also never occur? *)
                | _ => error regs ["error: 'this generator' used in a non-generator-function context"])
-          | _ => Object this
+          | _ => ObjectValue this
     end
 
 and arrayToList (regs:REGS)
@@ -1895,7 +1895,7 @@ and arrayToList (regs:REGS)
                     val n = public (Ustring.fromInt32 i)
                     val curr = if hasProperty regs arr n
                                then getValue regs arr n
-                               else Undefined
+                               else UndefinedValue
                 in
                     build (i - (1:Int32.int)) (curr::vs)
                 end
@@ -1970,7 +1970,7 @@ and evalNewExpr (regs:REGS)
         val rhs = evalExpr regs obj
     in
         case rhs of
-            Object ob => evalNewObj regs ob (args())
+            ObjectValue ob => evalNewObj regs ob (args())
           | _ => throwExn (newTypeErr regs ["not a constructor"])
     end
 
@@ -2020,7 +2020,7 @@ and evalInitExpr (regs:REGS)
         
         (* Allocate and init the target props. *)
         evalScopeInits regs target inits;
-        Undefined
+        UndefinedValue
     end
     
 
@@ -2050,7 +2050,7 @@ and evalSuperCall (regs:REGS)
 
         val superRibs = map (instanceRibOf 
                              o needClass 
-                             o (Object))
+                             o (ObjectValue))
                             superClassObjs
                             
                             
@@ -2067,7 +2067,7 @@ and evalSuperCall (regs:REGS)
 
         val superClassObj = List.nth (superClassObjs,n)
         val superClassEnv = getClassScope regs superClassObj
-        val env = extendScope superClassEnv (#this regs) (InstanceScope (needClass (Object superClassObj)))
+        val env = extendScope superClassEnv (#this regs) (InstanceScope (needClass (ObjectValue superClassObj)))
         val funcClosure = { func = func, env = env, this = SOME (#this regs) }
 
         (* Note: although bound methods defined on an object's own class are memoized,
@@ -2260,7 +2260,7 @@ and getClassScope (regs:REGS)
                   (classObj:OBJ)
     : SCOPE = 
     let
-        val class = needClass (Object classObj)
+        val class = needClass (ObjectValue classObj)
         val metaClass = getMetaClass regs class
         val global = getGlobalScope regs
     in
@@ -2283,11 +2283,11 @@ and getInstanceScope (regs:REGS)
                 => 
                 let
                     val ity = case ity of 
-                                  NONE => typeOfVal regs (Object obj)
+                                  NONE => typeOfVal regs (ObjectValue obj)
                                 | SOME t => t
                     val classObj = getInstanceClass regs ity
                 in
-                    (getClassScope regs classObj, needClass (Object classObj))
+                    (getClassScope regs classObj, needClass (ObjectValue classObj))
                 end
     in
         extendScope scope obj (InstanceScope class)
@@ -2342,7 +2342,7 @@ and evalYieldExpr (regs:REGS)
                  PrimitiveTag (GeneratorPrimitive gen) =>
                  let
                      val v = case expr of
-                                 NONE => Undefined
+                                 NONE => UndefinedValue
                                | SOME expr => evalExpr regs expr
                  in
                      yieldFromGen regs gen v
@@ -2368,7 +2368,7 @@ and evalArrayInitialiser (regs:REGS)
                  getValue regs (#global regs) public_Array)
               | SOME ty => 
                 let
-                    val cv = Object (getInstanceClass regs ty)
+                    val cv = ObjectValue (getInstanceClass regs ty)
                 in
                     (InstanceTag (needClass cv), cv)
                 end
@@ -2389,7 +2389,7 @@ and evalArrayInitialiser (regs:REGS)
         val numProps = putVal 0 vals
     in
         setValue regs obj public_length (newDouble regs (Real64.fromInt numProps));
-        Object obj
+        ObjectValue obj
     end
 
 and evalObjectInitialiser (regs:REGS)
@@ -2404,7 +2404,7 @@ and evalObjectInitialiser (regs:REGS)
             else searchFieldTypes n ts
         fun getObjClassVal _ = case !(getObjectClassSlot regs) of
                                    NONE => error regs ["missing class public::Object"]
-                                 | SOME ob => Object ob
+                                 | SOME ob => ObjectValue ob
         val (newTag, newClassVal, tyExprs) = 
             case Option.map (evalTy regs) ty of 
                 NONE => ((ObjectTag []), getObjClassVal(), [])
@@ -2412,7 +2412,7 @@ and evalObjectInitialiser (regs:REGS)
                 (ObjectTag fields, getObjClassVal(), fields)
               | SOME ty => 
                 let 
-                    val cv = Object (getInstanceClass regs ty)
+                    val cv = ObjectValue (getInstanceClass regs ty)
                 in
                     (InstanceTag (needClass cv), cv, [])
                 end
@@ -2425,7 +2425,7 @@ and evalObjectInitialiser (regs:REGS)
                                  
         fun getPropState (v:VALUE) : PROPERTY_STATE =
             case v of
-                Object (Obj {tag, ...}) =>
+                ObjectValue (Obj {tag, ...}) =>
                 (case tag of
                      PrimitiveTag (FunctionPrimitive closure) => 
                      let 
@@ -2490,7 +2490,7 @@ and evalObjectInitialiser (regs:REGS)
             end
     in
         List.app processField fields;
-        Object obj
+        ObjectValue obj
     end
 
 (*
@@ -2524,7 +2524,7 @@ and evalListExpr (regs:REGS)
                  (es:EXPRESSION list)
     : VALUE =
     case es of
-        [] => Undefined
+        [] => UndefinedValue
       | [e] => evalExpr regs e
       | (e::ez) => ((evalExpr regs e); (evalListExpr regs ez))
 
@@ -2541,7 +2541,7 @@ and constructObjectViaFunction (regs:REGS)
     let
         val ctorProto = getPrototype regs ctorObj
         val proto = case ctorProto of 
-                        Object ob => ctorProto
+                        ObjectValue ob => ctorProto
                       | _ => getOriginalObjectPrototype regs
 
         val (objClassObj, objClass) = getObjectClassObjectAndClass regs
@@ -2551,7 +2551,7 @@ and constructObjectViaFunction (regs:REGS)
     in
         if isObject constructorResult
         then constructorResult
-        else Object newObject
+        else ObjectValue newObject
     end
     
 
@@ -2612,7 +2612,7 @@ and evalCallByRef (regs:REGS)
         val (obj, name) = r
         val v = getValue regs obj name
         val obj = case v of 
-                      Object ob => ob
+                      ObjectValue ob => ob
                     | _ => throwExn (newRefErr regs ["attempting to get property ", 
                                                      LogErr.name name,
                                                      " from non-Object value"])
@@ -2730,9 +2730,9 @@ and evalCrement (regs:REGS)
     
 and typeNameOfVal (v:VALUE) =
     case v of
-        Null => Ustring.object_
-      | Undefined => Ustring.undefined_
-      | Object (Obj ob) =>
+        NullValue => Ustring.object_
+      | UndefinedValue => Ustring.undefined_
+      | ObjectValue (Obj ob) =>
         if isDouble v orelse
            isDecimal v
         then Ustring.number_
@@ -2789,7 +2789,7 @@ and evalUnaryOp (regs:REGS)
                 performBinop regs Minus (newDouble regs 0.0) v
             end
 
-          | Void => Undefined
+          | Void => UndefinedValue
 
           | Spread => error regs ["spread operator in unexpected context"]
 
@@ -2819,19 +2819,19 @@ and evalTypeExpr (regs:REGS)
                  (te:TYPE)
     : VALUE =
     case te of
-        AnyType => Null (* FIXME *)
-      (*  | VoidType => Null (* FIXME *) *)
-      | NullType => Null (* FIXME *)
-      | UndefinedType => Null (* FIXME *)
-      | UnionType ut => Null (* FIXME *)
-      | ArrayType a => Null (* FIXME *)
+        AnyType => NullValue (* FIXME *)
+      (*  | VoidType => NullValue (* FIXME *) *)
+      | NullType => NullValue (* FIXME *)
+      | UndefinedType => NullValue (* FIXME *)
+      | UnionType ut => NullValue (* FIXME *)
+      | ArrayType a => NullValue (* FIXME *)
       | TypeName (tn, _) => evalExpr regs (LexicalReference { name=tn, loc=NONE })
-      | FunctionType ft => Null (* FIXME *)
-      | RecordType ot => Null (* FIXME *)
-      | NonNullType _ => Null (* FIXME *)
-      | ClassType c => Null (* FIXME *)
-      | InterfaceType t => Null (* FIXME *)
-      | _ => Null (* FIXME *)
+      | FunctionType ft => NullValue (* FIXME *)
+      | RecordType ot => NullValue (* FIXME *)
+      | NonNullType _ => NullValue (* FIXME *)
+      | ClassType c => NullValue (* FIXME *)
+      | InterfaceType t => NullValue (* FIXME *)
+      | _ => NullValue (* FIXME *)
 
 and wordToDouble (x:Word32.word) 
     : Real64.real =
@@ -3238,9 +3238,9 @@ and typeOfVal (regs:REGS)
     : TYPE =
     let
         val te = case v of
-                     Undefined => UndefinedType
-                   | Null => NullType
-                   | Object obj => 
+                     UndefinedValue => UndefinedType
+                   | NullValue => NullType
+                   | ObjectValue obj => 
                      let 
                          val tag = getObjTag obj
                      in
@@ -3303,7 +3303,7 @@ and evalBinaryTypeOp (regs:REGS)
           | Like => 
             let
                 val vt = typeOfVal regs v 
-                fun isLike (Object obj) (RecordType fields) = List.all (objHasLikeField obj) fields
+                fun isLike (ObjectValue obj) (RecordType fields) = List.all (objHasLikeField obj) fields
                   | isLike v lte = (typeOfVal regs v) <* lte
                 and objHasLikeField obj (name, ty) = 
                     let
@@ -3332,13 +3332,13 @@ and hasInstance (regs:REGS)
     let
         val proto = getPrototype regs obj
         val targId = case proto of 
-                         (Object (Obj { ident, ... })) => ident
+                         (ObjectValue (Obj { ident, ... })) => ident
                        | _ => throwExn (newTypeErr regs ["no 'prototype' property found in [[hasInstance]]"])
         fun tryVal v' = 
             case v' of 
-                Null => false
-              | Undefined => false
-              | Object ob =>
+                NullValue => false
+              | UndefinedValue => false
+              | ObjectValue ob =>
                 if getObjId ob = targId
                 then true
                 else 
@@ -3391,7 +3391,7 @@ and evalOperatorIn (regs:REGS)
         val aname = needNameOrString regs a
     in
         case b of
-            Object obj =>
+            ObjectValue obj =>
             newBoolean regs (hasProperty regs obj aname)
           | _ => throwExn (newTypeErr regs ["operator 'in' applied to non-object"])
     end
@@ -3441,13 +3441,13 @@ and evalObjectExpr (regs:REGS)
         val v = evalExpr regs object
     in
         case v of 
-            Object ob
+            ObjectValue ob
             => ob
                
-          | Null
+          | NullValue
             => throwExn (newRefErr regs ["object reference on null value"])
 
-          | Undefined 
+          | UndefinedValue 
             => throwExn (newRefErr regs ["object reference on undefined value"])
     end
 
@@ -3677,7 +3677,7 @@ and evalStmts (regs:REGS)
       | (s::ss) => (evalStmt regs s;
                     evalStmts regs ss)
       (* FIXME: need to keep the last non-empty value and fixup abrupt completions here *)
-      | [] => Undefined
+      | [] => UndefinedValue
 
 (* SPEC
 
@@ -3686,7 +3686,7 @@ fun evalStatement (env: ENV)
     : VALUE =
     case stmt of
         EmptyStmt => 
-        Undefined
+        UndefinedValue
       | ExprStmt e => 
         evalExpr env e
       | IfStmt {cnd,thn,els} => 
@@ -3731,7 +3731,7 @@ and evalStmt (regs:REGS)
              (stmt:STATEMENT)
     : VALUE =
     case stmt of
-        EmptyStmt => Undefined
+        EmptyStmt => UndefinedValue
       | ExprStmt e => evalExpr regs e
       | IfStmt {cnd,thn,els} => evalIfStmt regs cnd thn els
       | WhileStmt w => evalWhileStmt regs w
@@ -3840,7 +3840,7 @@ and invokeFuncClosure (regs:REGS)
                                   let
                                       fun body (thisGen:OBJ) =
                                           (evalBlock (withThisGen blockRegs (SOME thisGen)) b;
-                                           Undefined)
+                                           UndefinedValue)
                                           handle ReturnException v => v
                                   in
                                       (* FIXME: this is the wrong REGS *)
@@ -3848,7 +3848,7 @@ and invokeFuncClosure (regs:REGS)
                                   end
                               else
                                   ((evalBlock (withThisGen blockRegs NONE) b;
-                                    Undefined)
+                                    UndefinedValue)
                                    handle ReturnException v => v)
             in
                 pop regs;
@@ -4013,7 +4013,7 @@ and bindArgs (regs:REGS)
         else
             let
                 val padding = if a < (p-d)
-                              then (List.tabulate (((p-d) - a), (fn _ => Undefined)))
+                              then (List.tabulate (((p-d) - a), (fn _ => UndefinedValue)))
                               else []
                 val defExprs = List.drop (defaults, i)
                 val defVals = List.map (evalExpr regs) defExprs
@@ -4162,7 +4162,7 @@ and initializeAndConstruct (regs:REGS)
                     val parentTy = evalTy regs parentTy
                     val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
                     val superObj = getInstanceClass regs (AstQuery.needClassType parentTy)
-                    val superClass = needClass (Object superObj)
+                    val superClass = needClass (ObjectValue superObj)
                     val superScope = getClassScope regs superObj
                     val superRegs = withThis (withScope regs superScope) instanceObj
                 in
@@ -4201,7 +4201,7 @@ and initializeAndConstruct (regs:REGS)
                 initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
                 traceConstruct ["entering constructor for ", fmtName name];
                 (case block of 
-                     NONE => Undefined
+                     NONE => UndefinedValue
                    | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
                                 handle ReturnException v => v));
                 pop regs;
@@ -4357,9 +4357,9 @@ and specialObjectConstructor (regs:REGS)
     in
         case args of
             [] => instantiate ()
-          | (Null :: _) => instantiate ()
-          | (Undefined :: _) => instantiate ()
-          | (Object (Obj { tag, ...}) :: _) =>
+          | (NullValue :: _) => instantiate ()
+          | (UndefinedValue :: _) => instantiate ()
+          | (ObjectValue (Obj { tag, ...}) :: _) =>
             case tag of 
                 (*
                  * FIXME: This part is dubioius. ES-262-3 says to call ToObject
@@ -4589,14 +4589,14 @@ and getPrototype (regs:REGS)
          *)
         case findProp props public_prototype of 
             SOME { state = ValueProperty v, ... } => v
-          | _ => Null
+          | _ => NullValue
     end
 
 and getOriginalObjectPrototype (regs:REGS)
     : VALUE = 
     case !(getObjectClassSlot regs) of 
         SOME obj => getPrototype regs obj
-      | NONE => Null
+      | NONE => NullValue
                 
 and getSpecialPrototype (regs:REGS)
                         (id:OBJ_IDENTIFIER)
@@ -4670,7 +4670,7 @@ and initClassPrototype (regs:REGS)
             let
                 val baseProtoVal =
                     case extends of
-                        NONE => Null
+                        NONE => NullValue
                       | SOME baseClassTy =>
                         let
                             val ty = AstQuery.needClassType (evalTy regs baseClassTy)
@@ -4696,12 +4696,12 @@ and initClassPrototype (regs:REGS)
                 traceConstruct ["initializing proto on (obj #", Int.toString ident, 
                                 "): ", fmtName name, ".prototype = ", 
                                 "(obj #", fmtObjId newPrototype, ")"];
-                setPrototype regs obj (Object newPrototype);
+                setPrototype regs obj (ObjectValue newPrototype);
                 if setConstructor
                 then 
                     (setValueOrVirtual regs newPrototype 
                                        public_constructor 
-                                       (Object obj) 
+                                       (ObjectValue obj) 
                                        false;
                      setPropEnumerable newProtoProps public_constructor false)
                 else 
@@ -4727,7 +4727,7 @@ and constructClassInstance (regs:REGS)
               | NONE => constructStandard regs classObj class (getPrototype regs classObj) args
     in
         (* INFORMATIVE *) pop regs; 
-        Object obj
+        ObjectValue obj
     end
 
 and evalPragmas (regs:REGS)
@@ -4823,7 +4823,7 @@ and evalLabelStmt (regs:REGS)
     evalStmt regs s
     handle BreakException exnLabel =>
            if labelMatch [lab] exnLabel
-           then Undefined
+           then UndefinedValue
            else raise BreakException exnLabel
 
 
@@ -4833,7 +4833,7 @@ and evalWhileStmt (regs:REGS)
     case whileStmt of
         { cond, body, rib, labels } =>
         let
-            val accum = ref Undefined
+            val accum = ref UndefinedValue
             fun loop _ =
                 if toBoolean (evalExpr regs cond)
                 then
@@ -4862,7 +4862,7 @@ and evalDoWhileStmt (regs:REGS)
     case whileStmt of
         { cond, body, rib, labels } =>
         let
-            val accum = ref Undefined
+            val accum = ref UndefinedValue
             fun loop _ =
                 let
                     fun bottom _ =
@@ -4909,7 +4909,7 @@ and evalSwitchStmt (regs:REGS)
                    (labels:IDENTIFIER list)
     : VALUE =
     let
-        fun tryCases (v:VALUE) [] = Undefined
+        fun tryCases (v:VALUE) [] = UndefinedValue
           | tryCases (v:VALUE) ({label, inits, body}::cs) =
             if (case label of
                     NONE => true
@@ -4938,7 +4938,7 @@ and evalSwitchStmt (regs:REGS)
         tryCases (evalExpr regs cond) cases
         handle BreakException exnLabel =>
                if labelMatch labels exnLabel
-               then Undefined
+               then UndefinedValue
                else raise BreakException exnLabel
     end
 
@@ -4952,7 +4952,7 @@ and evalSwitchTypeStmt (regs:REGS)
         val v = evalExpr regs cond
     in
         case catch regs v cases of
-            NONE => Undefined
+            NONE => UndefinedValue
           | SOME v => v
     end
 
@@ -4969,9 +4969,9 @@ and evalIterable (regs:REGS)
         val v = evalExpr regs obj
         fun finishWith v = 
             case v of
-                Object ob => ob
-              | Undefined => newPublicObj regs
-              | Null => newPublicObj regs            
+                ObjectValue ob => ob
+              | UndefinedValue => newPublicObj regs
+              | NullValue => newPublicObj regs            
     in
         (*
          * Implement the IE JScript quirk where for (i in null) and
@@ -4986,7 +4986,7 @@ and callIteratorGet (regs:REGS)
     : OBJ =
     let
         val iteratorGET = { id = Ustring.GET_, ns = getIteratorNamespace regs }
-        val args = [Object iterable, newBoolean regs true]
+        val args = [ObjectValue iterable, newBoolean regs true]
         val iterator = evalNamedMethodCall regs (#global regs) iteratorGET args
     in
         needObj regs iterator
@@ -5080,7 +5080,7 @@ and evalForInStmt (regs:REGS)
                                  then NONE
                                  else raise BreakException exnLabel
              of
-                NONE => Undefined
+                NONE => UndefinedValue
               | SOME v => v
         end
 
@@ -5127,7 +5127,7 @@ and evalForStmt (regs:REGS)
                                  then NONE
                                  else raise BreakException exnLabel
              of
-                NONE => Undefined
+                NONE => UndefinedValue
               | SOME v => v
         end
 

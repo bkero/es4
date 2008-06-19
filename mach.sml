@@ -85,9 +85,9 @@ type IDENTIFIER = Ustring.STRING
 
 type NAMESPACE = NAMESPACE
 
-datatype VALUE = Undefined
-               | Null
-               | Object of OBJ
+datatype VALUE = UndefinedValue
+               | NullValue
+               | ObjectValue of OBJ
 
      and OBJ =
          Obj of { props: PROPERTY_BINDINGS,                  
@@ -294,46 +294,46 @@ withtype FUN_CLOSURE =
 			 
 fun isObject (v:VALUE) : bool =
     case v of
-        Object _ => true
+        ObjectValue _ => true
       | _ => false
 
 
-fun isDouble (Object (Obj {tag = PrimitiveTag (DoublePrimitive _), ...})) = true
+fun isDouble (ObjectValue (Obj {tag = PrimitiveTag (DoublePrimitive _), ...})) = true
   | isDouble _ = false
 
-fun isDecimal (Object (Obj {tag = PrimitiveTag (DecimalPrimitive _), ...})) = true
+fun isDecimal (ObjectValue (Obj {tag = PrimitiveTag (DecimalPrimitive _), ...})) = true
   | isDecimal _ = false
 
-fun isString (Object (Obj {tag = PrimitiveTag (StringPrimitive _), ...})) = true
+fun isString (ObjectValue (Obj {tag = PrimitiveTag (StringPrimitive _), ...})) = true
   | isString _ = false
 
-fun isBoolean (Object (Obj {tag = PrimitiveTag (BooleanPrimitive _), ...})) = true
+fun isBoolean (ObjectValue (Obj {tag = PrimitiveTag (BooleanPrimitive _), ...})) = true
   | isBoolean _ = false
 
-fun isNamespace (Object (Obj {tag = PrimitiveTag (NamespacePrimitive _), ...})) = true
+fun isNamespace (ObjectValue (Obj {tag = PrimitiveTag (NamespacePrimitive _), ...})) = true
   | isNamespace _ = false
 
-fun isClass (Object (Obj {tag = PrimitiveTag (ClassPrimitive _), ...})) = true
+fun isClass (ObjectValue (Obj {tag = PrimitiveTag (ClassPrimitive _), ...})) = true
   | isClass _ = false
 
-fun isInterface (Object (Obj {tag = PrimitiveTag (InterfacePrimitive _), ...})) = true
+fun isInterface (ObjectValue (Obj {tag = PrimitiveTag (InterfacePrimitive _), ...})) = true
   | isInterface _ = false
 
-fun isFunction (Object (Obj {tag = PrimitiveTag (FunctionPrimitive _), ...})) = true
+fun isFunction (ObjectValue (Obj {tag = PrimitiveTag (FunctionPrimitive _), ...})) = true
   | isFunction _ = false
                    
-fun isType (Object (Obj {tag = PrimitiveTag (TypePrimitive _), ...})) = true
+fun isType (ObjectValue (Obj {tag = PrimitiveTag (TypePrimitive _), ...})) = true
   | isType _ = false
 
-fun isNativeFunction (Object (Obj {tag = PrimitiveTag (NativeFunctionPrimitive _), ...})) = true
+fun isNativeFunction (ObjectValue (Obj {tag = PrimitiveTag (NativeFunctionPrimitive _), ...})) = true
   | isNativeFunction _ = false
                          
 fun isNumeric ob = isDouble ob orelse isDecimal ob
                                       
-fun isNull Null = true
+fun isNull NullValue = true
   | isNull _ = false
 
-fun isUndef Undefined = true
+fun isUndef UndefinedValue = true
   | isUndef _ = false
 
 (*
@@ -426,7 +426,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          * errors would have been caught by evalRefExpr
          *)
         {ty=UndefinedType  ,
-         state=ValueProperty Undefined,
+         state=ValueProperty UndefinedValue,
          attrs={removable=true,  (* unused attrs *)
                 enumerable=false,
                 writable=Writable,
@@ -516,7 +516,7 @@ fun newObject (t:TAG)
 
 fun newObjectNoTag (rib:RIB)
     : OBJ =
-    newObject NoTag Null rib
+    newObject NoTag NullValue rib
 
 fun getProto (ob:OBJ)
     : VALUE =
@@ -720,11 +720,11 @@ fun inspect (v:VALUE)
               | PrimitiveTag m => "<Primitive " ^ (mag m) ^ ">"
               | NoTag => "<NoTag>"
 
-        fun printVal indent _ Undefined = TextIO.print "undefined\n"
-          | printVal indent _ Null = TextIO.print "null\n"
+        fun printVal indent _ UndefinedValue = TextIO.print "undefined\n"
+          | printVal indent _ NullValue = TextIO.print "null\n"
 
-          | printVal indent 0 (Object obj) = TextIO.print ((tag obj) ^ "\n")
-          | printVal indent n (Object obj) =
+          | printVal indent 0 (ObjectValue obj) = TextIO.print ((tag obj) ^ "\n")
+          | printVal indent n (ObjectValue obj) =
             let
                 fun subVal i v = printVal (i+1) (n-1) v
                 fun prop np =
@@ -792,44 +792,44 @@ fun nominalBaseOfTag (to:TAG)
 fun getObjPrimitive (Obj { tag = PrimitiveTag m, ... }) = SOME m
   | getObjPrimitive _ = NONE
 
-fun getPrimitive (Object (Obj { tag = PrimitiveTag m, ... })) = SOME m
+fun getPrimitive (ObjectValue (Obj { tag = PrimitiveTag m, ... })) = SOME m
   | getPrimitive _ = NONE
 
-fun needPrimitive (Object (Obj { tag = PrimitiveTag m, ... })) = m
+fun needPrimitive (ObjectValue (Obj { tag = PrimitiveTag m, ... })) = m
   | needPrimitive _ = error ["require object with primitive"]
 
-fun needClass (Object (Obj {tag = PrimitiveTag (ClassPrimitive c), ...})) = c
+fun needClass (ObjectValue (Obj {tag = PrimitiveTag (ClassPrimitive c), ...})) = c
   | needClass _ = error ["require class object"]
 
-fun needInterface (Object (Obj {tag = PrimitiveTag (InterfacePrimitive i), ...})) = i
+fun needInterface (ObjectValue (Obj {tag = PrimitiveTag (InterfacePrimitive i), ...})) = i
   | needInterface _ = error ["require interface object"]
 
-fun needFunction (Object (Obj {tag = PrimitiveTag (FunctionPrimitive f), ...})) = f
+fun needFunction (ObjectValue (Obj {tag = PrimitiveTag (FunctionPrimitive f), ...})) = f
   | needFunction _ = error ["require function object]"]
 
-fun needNamespace (Object (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
+fun needNamespace (ObjectValue (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
   | needNamespace _ = error ["require namespace object"]
 
-fun needNamespaceOrNull Null = Name.publicNS
-  | needNamespaceOrNull (Object (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
+fun needNamespaceOrNull NullValue = Name.publicNS
+  | needNamespaceOrNull (ObjectValue (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
   | needNamespaceOrNull _ = error ["require namespace object"]
 
-fun needType (Object (Obj {tag = PrimitiveTag (TypePrimitive t), ...})) = t
+fun needType (ObjectValue (Obj {tag = PrimitiveTag (TypePrimitive t), ...})) = t
   | needType _ = error ["require type object"]
 
-fun needDouble (Object (Obj {tag = PrimitiveTag (DoublePrimitive d), ...})) = d
+fun needDouble (ObjectValue (Obj {tag = PrimitiveTag (DoublePrimitive d), ...})) = d
   | needDouble _ = error ["require double object"]
 
-fun needDecimal (Object (Obj {tag = PrimitiveTag (DecimalPrimitive d), ...})) = d
+fun needDecimal (ObjectValue (Obj {tag = PrimitiveTag (DecimalPrimitive d), ...})) = d
   | needDecimal _ = error ["require decimal object"]
 
-fun needBoolean (Object (Obj {tag = PrimitiveTag (BooleanPrimitive b), ...})) = b
+fun needBoolean (ObjectValue (Obj {tag = PrimitiveTag (BooleanPrimitive b), ...})) = b
   | needBoolean _ = error ["require boolean object"]
 
-fun needString (Object (Obj {tag = PrimitiveTag (StringPrimitive s), ...})) = s
+fun needString (ObjectValue (Obj {tag = PrimitiveTag (StringPrimitive s), ...})) = s
   | needString _ = error ["require string object"]
 
-fun needArguments (Object (Obj {tag = PrimitiveTag (ArgumentsPrimitive s), ...})) = s
+fun needArguments (ObjectValue (Obj {tag = PrimitiveTag (ArgumentsPrimitive s), ...})) = s
   | needArguments _ = error ["require arguments object"]
 
 
@@ -840,9 +840,9 @@ fun needArguments (Object (Obj {tag = PrimitiveTag (ArgumentsPrimitive s), ...})
 fun approx (arg:VALUE)
     : string =
     case arg of
-        Null => "null"
-      | Undefined => "undefined"
-      | Object ob =>
+        NullValue => "null"
+      | UndefinedValue => "undefined"
+      | ObjectValue ob =>
         if hasPrimitive ob
         then
             let
@@ -1239,7 +1239,7 @@ fun getPrototypeObject (Obj {proto, ...}: OBJECT)
     : OBJECT option =
     (* get the prototype (as in '[[proto]]') object of an object *)
     case proto of 
-        Object obj => SOME obj
+        ObjectValue obj => SOME obj
       | _ => NONE
 
 fun searchObject (_, NONE, _, _, _, _) = NONE

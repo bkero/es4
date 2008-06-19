@@ -66,7 +66,7 @@ fun instantiateRootClass (regs:Mach.REGS)
       val metaClass = Eval.getMetaClass regs cls
                                         
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.Object proto) classRib
+      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.ObjectValue proto) classRib
 
       val _ = trace ["allocating ", Int.toString (length classRib), 
                      " class fixtures on class ", LogErr.name fullName,
@@ -82,7 +82,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               else ()
       val _ = Mach.addProp props fullName
                            { ty = Ast.ClassType metaClass,
-                             state = Mach.ValueProperty (Mach.Object obj),
+                             state = Mach.ValueProperty (Mach.ObjectValue obj),
                              attrs = { removable = false,
                                        enumerable = false,
                                        writable = Mach.ReadOnly,
@@ -172,7 +172,7 @@ fun describeGlobal (regs:Mach.REGS) =
     if !doTrace
     then
         (trace ["contents of global object:"];
-         Mach.inspect (Mach.Object (#global regs)) 1;
+         Mach.inspect (Mach.ObjectValue (#global regs)) 1;
          trace ["contents of top rib:"];
          Fixture.printRib (#rootRib regs))
     else 
@@ -216,9 +216,9 @@ fun boot (baseDir:string) : Mach.REGS =
          * There is no provision for this in the standard object-construction
          * protocol Eval.constructClassInstance, so we inline it here.
          *
-         * There are also 4 "root" classes that require special processing
-         * during startup to avoid feedback loops in their definition: Object, 
-         * Class and Function.
+         * There are also 2 "root" classes that require special processing
+         * during startup to avoid feedback loops in their definition: Object 
+         * and Function.
          *)
 
         val (rootRib, objProg) = loadFile rootRib (builtin "Object.es")
@@ -289,7 +289,7 @@ fun boot (baseDir:string) : Mach.REGS =
             let
                 val cls = lookupRoot rootRib Name.public_Object
             in
-                Mach.newObject (Mach.InstanceTag cls) Mach.Null rootRib
+                Mach.newObject (Mach.InstanceTag cls) Mach.NullValue rootRib
             end
 
         val objProg = Verify.verifyProgram rootRib (!verifyBuiltins) objProg 
@@ -311,8 +311,8 @@ fun boot (baseDir:string) : Mach.REGS =
         (* Build the Object and Function prototypes as instances of public::Object first. *)
         val objClass = lookupRoot rootRib Name.public_Object
         val Ast.Class { instanceRib, ... } = objClass
-        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.Null instanceRib
-        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.Object objPrototype) instanceRib
+        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.NullValue instanceRib
+        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.ObjectValue objPrototype) instanceRib
 
         val (objClass, objClassObj) = instantiateRootClass regs Name.public_Object funPrototype
         val (_, funClassObj) = instantiateRootClass regs Name.public_Function funPrototype
