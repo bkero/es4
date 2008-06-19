@@ -82,7 +82,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               else ()
       val _ = Mach.addProp props fullName
                            { ty = Ast.ClassType metaClass,
-                             state = Mach.ValProp (Mach.Object obj),
+                             state = Mach.ValueProperty (Mach.Object obj),
                              attrs = { removable = false,
                                        enumerable = false,
                                        writable = Mach.ReadOnly,
@@ -161,8 +161,8 @@ fun evalFiles (regs:Mach.REGS)
 fun printProp ((n:Ast.NAME), (p:Mach.PROPERTY)) =
     let
 	val ps = case (#state p) of
-		         Mach.ValProp _ => "[val]"
-		       | Mach.VirtualValProp _ => "[virtual val]"
+		         Mach.ValueProperty _ => "[val]"
+		       | Mach.VirtualProperty _ => "[virtual val]"
     in
 	trace [LogErr.name n, " -> ", ps]
     end

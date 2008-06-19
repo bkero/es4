@@ -209,8 +209,8 @@ datatype VALUE = Undefined
       * FIXME: The 'arguments' object can't be an array.
       *)
 
-     and PROPERTY_STATE = ValProp of VALUE
-                        | VirtualValProp of
+     and PROPERTY_STATE = ValueProperty of VALUE
+                        | VirtualProperty of
                           { getter: FUN_CLOSURE option,
                             setter: FUN_CLOSURE option }
 
@@ -426,7 +426,7 @@ fun getProp (b:PROPERTY_BINDINGS)
          * errors would have been caught by evalRefExpr
          *)
         {ty=UndefinedType  ,
-         state=ValProp Undefined,
+         state=ValueProperty Undefined,
          attrs={removable=true,  (* unused attrs *)
                 enumerable=false,
                 writable=Writable,
@@ -734,12 +734,12 @@ fun inspect (v:VALUE)
                         val indent = indent + 1
                         val stateStr =
                             case state of
-                                ValProp v => "[val]"
-                              | VirtualValProp _ => "[virtual val]"
+                                ValueProperty v => "[val]"
+                              | VirtualProperty _ => "[virtual val]"
                     in
                         p indent ["   prop = ", LogErr.name n, ": ", typ ty0, att attrs,  " = "];
                         case state of
-                            ValProp v => subVal indent v
+                            ValueProperty v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
                 val Obj { props, proto, rib, ... } = obj

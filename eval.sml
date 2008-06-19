@@ -563,8 +563,8 @@ and getValueOrVirtual (regs:REGS)
         case findProp props name of
             SOME {state, ...} =>
             (case state of
-                 ValProp v => v
-               | VirtualValProp { getter, ... } =>
+                 ValueProperty v => v
+               | VirtualProperty { getter, ... } =>
                  if doVirtual
                  then
                      case getter of
@@ -623,13 +623,13 @@ and reifyFixture (regs:REGS)
     in
         case fixture of
             (NamespaceFixture ns) => 
-            reifiedFixture (instanceType regs ES4_Namespace []) (ValProp (newNamespace regs ns)) ReadOnly
+            reifiedFixture (instanceType regs ES4_Namespace []) (ValueProperty (newNamespace regs ns)) ReadOnly
             
           | (ClassFixture c) => 
-            reifiedFixture (ClassType (getMetaClass regs c)) (ValProp (newClass regs c)) ReadOnly
+            reifiedFixture (ClassType (getMetaClass regs c)) (ValueProperty (newClass regs c)) ReadOnly
             
           | (InterfaceFixture i) => 
-            reifiedFixture (instanceType regs helper_InterfaceTypeImpl []) (ValProp (newInterface regs i)) ReadOnly
+            reifiedFixture (instanceType regs helper_InterfaceTypeImpl []) (ValueProperty (newInterface regs i)) ReadOnly
 
           | (MethodFixture { func, ty, writable, inheritedFrom, ... }) => 
             let
@@ -642,7 +642,7 @@ and reifyFixture (regs:REGS)
                         then (newNativeFunction regs (getNativeFunction name))
                         else (newFunctionFromFunc regs (scope()) func)
             in
-                reifiedFixture ty (ValProp v) ReadOnly
+                reifiedFixture ty (ValueProperty v) ReadOnly
             end
 
           | (ValFixture {ty, writable}) => 
@@ -652,7 +652,7 @@ and reifyFixture (regs:REGS)
                 case defaultValueOption of
                     NONE => throwExn (newRefErr regs ["attempting to get reify fixture w/o default value: ", 
                                                       LogErr.name name])
-                  | SOME v => reifiedFixture ty (ValProp v) (if writable 
+                  | SOME v => reifiedFixture ty (ValueProperty v) (if writable 
                                                              then Writable
                                                              else WriteOnce)
             end
@@ -666,7 +666,7 @@ and reifyFixture (regs:REGS)
                   | makeClosureOption (SOME (f, inheritedFrom)) = 
                     SOME (newFunClosure (scope inheritedFrom) f (SOME obj))
             in
-                reifiedFixture ty (VirtualValProp { getter = makeClosureOption getter, 
+                reifiedFixture ty (VirtualProperty { getter = makeClosureOption getter, 
                                                     setter = makeClosureOption setter })
                                ReadOnly
             end
@@ -750,8 +750,8 @@ and badPropAccess (regs:REGS)
     let
         val existingPropKind = 
             case existingPropState of 
-                ValProp _ => "value"
-              | VirtualValProp _ => "virtual"
+                ValueProperty _ => "value"
+              | VirtualProperty _ => "virtual"
     in
         throwExn (newTypeErr regs ["bad property ", accessKind,
                                    " on ", existingPropKind, 
@@ -774,7 +774,7 @@ and setValueOrVirtual (regs:REGS)
                 val { state, attrs, ty, ... } = existingProp
                 val { removable, enumerable, fixed, writable } = attrs
                 fun newProp _ = 
-                    { state = ValProp (checkAndConvert regs v ty),
+                    { state = ValueProperty (checkAndConvert regs v ty),
                       ty = ty,
                       attrs = { removable = removable,
                                 enumerable = enumerable,
@@ -804,7 +804,7 @@ and setValueOrVirtual (regs:REGS)
             in
                 case state of
                     
-                    VirtualValProp { setter, ... } =>
+                    VirtualProperty { setter, ... } =>
                     if doVirtual
                     then 
                         case setter of 
@@ -815,14 +815,14 @@ and setValueOrVirtual (regs:REGS)
                         maybeWrite true
 
                   (* FIXME: predicate throw/ignore on the presence of runtime strict-mode flag. *)
-                  | ValProp _ => maybeWrite false                  
+                  | ValueProperty _ => maybeWrite false                  
             end
           | NONE => 
             case Fixture.findFixture (getRib regs obj) (PropName name) of 
                 SOME (ValFixture {ty, writable}) 
                 => 
                 let
-                    val newProp = { state = ValProp (checkAndConvert regs v ty),
+                    val newProp = { state = ValueProperty (checkAndConvert regs v ty),
                                     ty = ty,
                                     attrs = { removable = false,
                                               enumerable = false,
@@ -853,7 +853,7 @@ and setValueOrVirtual (regs:REGS)
                     end
                 else 
                     let
-                        val prop = { state = ValProp v,
+                        val prop = { state = ValueProperty v,
                                      ty = AnyType,
                                      attrs = { removable = true,
                                                enumerable = true,
@@ -2433,15 +2433,15 @@ and evalObjectInitialiser (regs:REGS)
                          val kind = (#kind name)
                      in
                          if kind = Get
-                         then VirtualValProp { getter = SOME closure,
+                         then VirtualProperty { getter = SOME closure,
                                                setter = NONE }
                          else if kind = Set
-                         then VirtualValProp { getter = NONE,
+                         then VirtualProperty { getter = NONE,
                                                setter = SOME closure }
-                         else ValProp v
+                         else ValueProperty v
                      end
-                   | _ => ValProp v)
-              | _ => ValProp v
+                   | _ => ValueProperty v)
+              | _ => ValueProperty v
 
         fun mergePropState (existingProp:PROPERTY option) 
                            (newState:PROPERTY_STATE) 
@@ -2453,11 +2453,11 @@ and evalObjectInitialiser (regs:REGS)
                       | NONE => existing
             in
                 case newState of
-                    VirtualValProp { getter = ng, setter = ns } => 
+                    VirtualProperty { getter = ng, setter = ns } => 
                     (case existingProp of
-                         SOME { state = VirtualValProp { getter = eg, 
+                         SOME { state = VirtualProperty { getter = eg, 
                                                          setter = es }, ... } =>
-                         VirtualValProp { getter = merge eg ng,
+                         VirtualProperty { getter = merge eg ng,
                                           setter = merge es ns }
                        | _ => newState)
                   | _ => newState
@@ -3982,7 +3982,7 @@ and bindArgs (regs:REGS)
              * of 'arguments'.
              *)
             (addProp props public_arguments
-                     { state = ValProp (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
+                     { state = ValueProperty (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
                        (* args is a better approximation than finalArgs *)
                        ty = primitiveClassType regs getArgumentsClassSlot,
                        attrs = { removable = false,
@@ -4563,7 +4563,7 @@ and setPrototype (regs:REGS)
         val Obj { props, ... } = obj
         val n = public_prototype
         val prop = { ty = AnyType,
-                     state = ValProp proto,
+                     state = ValueProperty proto,
                      attrs = { removable = false,
                                enumerable = false, (* FIXME: is this wrong? (DAH) *)
                                writable = Writable,
@@ -4588,7 +4588,7 @@ and getPrototype (regs:REGS)
          * null-valued, un-reified, etc.
          *)
         case findProp props public_prototype of 
-            SOME { state = ValProp v, ... } => v
+            SOME { state = ValueProperty v, ... } => v
           | _ => Null
     end
 

@@ -277,7 +277,7 @@ fun getEnumerableIds (regs:Mach.REGS)
                 val bindingList = NameMap.listItemsi bindings
                 fun select (name, { seq, prop }) = 
                     case prop of 
-                        { state = Mach.ValProp _,
+                        { state = Mach.ValueProperty _,
                           attrs = { enumerable = true, removable, writable, fixed },
                           ty } => SOME (name, seq)
                       | _ => NONE
