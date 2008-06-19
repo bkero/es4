@@ -1112,7 +1112,7 @@ and getMetaClass (regs:REGS)
                 typeParams = typeParams,
                 
                 nonnullable = true,
-                dynamic = false,
+                dynamic = true,  (* needs to be dynamic for es3 compat *)
                 extends = SOME (ClassType objectClass),
                 implements = [],
                 classRib = [],

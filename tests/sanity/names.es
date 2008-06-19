@@ -3,6 +3,7 @@
 x = 10
 dynamic class A {
 function m () {
+  print (x)
   intrinsic::assert (x==10)
 }
 
@@ -17,7 +18,8 @@ dynamic class B extends A {
   var x = -1
 }
 var a = new A
-a.x = -1
+A.x = -1
+a.x = -2
 a.m ()
 print ("lexical lookup with instance expandos: PASSED!")
 var b = new B
@@ -65,3 +67,6 @@ print ("class lookup: PASSED!")
 }
 */
 
+// test name reservation
+
+   // requires two compilation units
