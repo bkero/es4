@@ -63,7 +63,7 @@ other words, every other type is a compatible subtype of the any type.
 <p>The any type is denoted in a type expression as ^^*^^.
 
 <p>No value has the any type as its allocated type. The any type
-is only meaningful as the storage type of a property.
+is meaningful only as the storage type of a property.
 
 === The null type ===
 
@@ -114,7 +114,7 @@ denotes the empty record type.
 
 <p>An //array type// is a subtype of the ^^public::Array^^ type that
 has type constraints on some prefix of the set of all possible
-integer-indexed properties. An array type may be either
+unsigned-integer-indexed properties. An array type may be either
 //fixed-length// or //variable-length//.
 
 <p>Array types are arranged implicitly into a subtype relation through
@@ -126,7 +126,7 @@ structural comparison of their property constraints.
 integer-indexed property constraints that must be satisfied by properties
 found at those indices. 
 
-<p>A fixed-lenght array type is denoted in a type expression by
+<p>A fixed-length array type is denoted in a type expression by
 listing the types of the specified properties in a comma-separated
 list enclosed in square brackets.
 
@@ -136,6 +136,8 @@ arrays of length at least 2, where the entry at index 0 has type
 
 <p>The type ^^[ ]^^ describes fixed-length arrays of length at least
 0, that is, it describes all fixed-length arrays.
+
+<FIXME> Do we need to discuss holes here?
 
 ==== Variable-length array types ====
 
@@ -254,8 +256,8 @@ denotes a type of function that takes a ^^String^^ and any number of
 additional arguments (of any type), returning a ^^String^^. Rest
 arguments cannot have type constraints.
 
-<p>Function types can optionally include a parameter name preceeding
-each argument types, and separated from that type by a colon. These
+<p>Function types can optionally include a parameter name preceding
+each argument type, and separated from that type by a colon. These
 parameter names are for documentation purposes only. For example, the
 type of a ''substring'' function might be specified as:
 
@@ -600,7 +602,7 @@ Given an interface definition
 }}}
 **
 
-the type ^^K^^ is a subtype of ^^Ij^^ for j in 1..m.
+the type ^^K^^ is a subtype of ^^I_{j}^^ for j in 1..m.
 
 <p>These rules generalize to applications of generic classes and interfaces via
 appropriate renaming of bound variables. For example, given a generic
@@ -738,7 +740,7 @@ declared as a //non-null// type via any of the following declarations:
 
 <p>The following function ''resolveTypeNames'' performs type
 resolution on a particular type ''ty'' in the context of an
-environment ''ty''.
+environment ''env''.
 
 <p>This function relies on the auxiliary function
 ''Fixture.resolveNameExpr'' (described in section ...) to resolve each
@@ -783,6 +785,9 @@ into corresponding Strings.
 
 === Type Canonicalization ===
 
+<FIXME> If canonicalization results in a normalized type, why is the
+process not called normalization?
+
 <p>Each type ^^T^^ is considered equivalent (under the equivalence
 relation defined above) to some collection of types. The process of
 //type canonicalization// converts a type in the program source code
@@ -798,7 +803,7 @@ support type-parametric classes.
 
 === Normalized Types ===
 
-<p>A //normalized type// is one that is the result of the preceeding
+<p>A //normalized type// is one that is the result of the preceding
 normalization process.
 
 <p>Normalized types do not include:
@@ -817,9 +822,9 @@ parameters; these references include a nonce.
 types ^^S^^ and ^^T^^ are compatible if ^^T^^ can be obtained from
 ^^S^^ by replacing certain portions of ^^S^^ by the any type ^^*^^.
 
-<p>For example, the record type ^^{x : int}^^ is compatible with
+<p>For example, the record type ^^{x : double}^^ is compatible with
 both ^^{x : *}^^ and with ^^*^^, but the type ^^{x : *}^^ is not
-compatible with ^^{x : int}^^.
+compatible with ^^{x : double}^^.
 
 <P> Also, ^^T.&lt;Number>^^ is compatible with ^^T.&lt;*>^^.
 
@@ -833,8 +838,8 @@ type ^^S^^ is a compatible-subtype of a type ^^T^^ if there exists
 some type ^^U^^ such that ^^S^^ is a subtype of ^^U^^ and ^^U^^
 compatible with ^^T^^.
 
-<p>For example, the record type ^^{x : int, y : bool}^^ is a
-compatible-subtype of the types ^^{x : *, y : *}^^, ^^{x : int}^^,
+<p>For example, the record type ^^{x : double, y : boolean}^^ is a
+compatible-subtype of the types ^^{x : *, y : *}^^, ^^{x : double}^^,
 ^^{x : *}^^, and ^^*^^.
 
 <p>The compatible-subtyping relation is reflexive and transitive, but not symmetric.

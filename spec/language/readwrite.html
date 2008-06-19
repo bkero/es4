@@ -31,6 +31,7 @@ reference to the property is in fact an invocation of these methods.
 Virtual dynamic properties may be implemented by //catch-all//
 methods.
 
+<FIXME> We need a definition of "method", this is the first use.
 
 == Catch-All Methods ==
 
@@ -46,6 +47,11 @@ property access.
 These properties always name methods.  Jointly they are known as
 //catch-all methods//.
 
+<NOTE> The requirement that the ''meta'' properties always name
+methods must be checked by the language implementation.  The namespace
+''meta'' is reserved and known to the implementation and may only be
+used in specific circumstances.  See section (...).
+
 <P> If a catch-all method is defined on the object then it is invoked
 when a dynamic property is accessed: ''meta::has'' is invoked to
 determine if the object has the property; ''meta::get'' is invoked to
@@ -54,8 +60,8 @@ a property; and ''meta::delete'' is invoked to delete a property.  A
 catch-all method is invoked even if the dynamic property that is being
 accessed already exists on the object.
 
-<P> A catch-all method operates on the object that contains the
-method, not on that object's prototype objects.
+<P> A catch-all method operates on the receiver object of the method
+call, not on the receiver's prototype objects.
 
 <P> If a catch-all method returns normally then the value it returns
 (if any) becomes the result of the operation, possibly after being
@@ -63,15 +69,15 @@ converted to a canonical type.
 
 <P> If a catch-all method throws an exception, and the exception
 thrown is an instance of the pre-defined class
-''DefaultBehaviorClass'', then the default behavior for the catch-all
+''__ES4__::DefaultBehaviorClass'', then the default behavior for the catch-all
 is triggered.
 
 <P> ''DefaultBehaviorClass'' is a singleton class; its only instance
-is is stored in the global constant ''DefaultBehavior''.
+is is stored in the global constant ''__ES4__::DefaultBehavior''.
 
 <NOTE> The mechanism is analogous to the one defined for iterators,
-where an instance of the singleton ''StopIterationClass'' is stored in
-the global property ''StopIteration''.
+where an instance of the singleton ''__ES4__::iterator::StopIterationClass'' is stored in
+the global property ''__ES4__::iterator::StopIteration''.
 
 <P> The ''meta::get'' method is invoked on one argument, a property
 name.  The value returned is the property value.  The default behavior
@@ -188,7 +194,7 @@ fun getPropertyHelper(obj, name, isStrict)
           where obj is bound as this to the method extracted from obj.name
     end
     if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
-      return obj.name.[[Getter]](name)
+      return obj.name.[[Getter]]()
     end
     return the value of obj.name
   end
@@ -204,7 +210,7 @@ fun getPropertyHelper(obj, name, isStrict)
 
   if name is a property in the property map of obj
     if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
-      return obj.name.[[Getter]](name)
+      return obj.name.[[Getter]]()
     end
     return obj.name
   end
@@ -217,8 +223,9 @@ fun getPropertyHelper(obj, name, isStrict)
 end
 </PRE>
 
-<FIXME> We need to specify whether the bound method is cached or not,
-ie, whether, given that o.m is a method, (o.m === o.m).
+<NOTE> A bound method has identity, so if ''m'' is a method on the
+class of some object ''o'' then the expression ''o.m'' always
+evaluates to the same object value (in terms of ''==='').
 
 
 == Writing a property value ==
@@ -288,6 +295,8 @@ fun SetProperty(obj, name, value, isStrict)
 }
 </PRE>
 
+<FIXME> We must take into account the [[CanPut]] functionality from ES3!
+
 <P> The internal ''setPropertyHelper'' function is invoked when
 //name// is known to name a property in //obj//.
 
@@ -299,7 +308,7 @@ cases here anyway, and that's the code that will eventually be here.
 <PRE>
 fun setPropertyHelper(obj, name, value, isStrict)
   if obj.name is a getter/setter pair, denote the setter obj.name.[[Setter]]
-    return obj.name.[[Setter]](name)
+    return obj.name.[[Setter]](value)
   end
 
   if the writeable attribute of obj.name is false

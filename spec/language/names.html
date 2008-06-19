@@ -42,7 +42,7 @@ to definition-time resolution.
 
 <P> Name resolution makes use of the //open namespaces// that
 implicitly qualify any unqualified name.  In every compilation unit
-the open namespaces starts out being comprised of the **public** and
+the open namespaces consist initially of the **public** and
 **internal** namespaces.  The program can open additional namespaces
 by means of the ''use&nbsp;namespace'' pragma.
 
@@ -115,6 +115,8 @@ there SML reasons why that might not work?  Do we not have an
 identifier in each object value to make sure that is already possible?
 -->
 
+<FIXME> Presentation: Get rid of "Ast." prefixes in the SML code?
+
 == The namespace <u>public</u> ==
 
 <P> The namespace known as **public** is the transparent namespace
@@ -147,7 +149,7 @@ is called a //prototype link//.
 <p>The //prototype chain// is the list of objects formed by following
 prototype links from an object. The prototype chain of an object
 begins with the object itself, and ends with the first object having a
-null or undefined prototype value.
+null prototype value.
 
 <p>When a name is to be resolved against an object, if resolution
 initially fails because the object does not contain a property
@@ -313,7 +315,7 @@ properties in scopes that are introduced by the ''with'' statement or
 in scopes that have been extended by the ''eval'' operator evaluating
 a ''function'' or ''var'' directive.
 
-<P>(The motivation for the preference for fixed bindings in scopes is
+<P>(The motivation for giving priority to fixed bindings in scopes is
 to retain the lexically scoped flavor of ECMAScript.  Some of the
 objects on the scope chain--class objects and instance objects--are
 dynamically extensible, and allowing dynamic properties to shadow
@@ -348,34 +350,34 @@ scope nested inside the one that opened ^^ns1^^, then we are left with
 just ^^ns2^^ -- and a single binding, ^^ns2::n^^.
 
 <P> (The motivation for disambiguation is simple: disambiguation
-allows more programs to run.  Furthermore, since the priority or
+allows more programs to run.  Furthermore, since the priority of
 namespaces during disambiguation is under the control of the
 programmer, the programmer can rely on disambiguation to control which
 names that are found.)
 
 <P> The third complication is that some names are required to be
 resolved successfully at definition time -- names that denote
-namespaces and types.  (We require that in order to make names and
-types constant, which generally simplifies the language and makes
-programs more easily comprehensible.)  The consequence of that is that
-namespace and type references are illegal inside scopes introduced by
-''with'' or scopes that may be extended by the ''eval'' operator,
-because those scopes make definition time resolution impossible --
-their contents are unknown.  Such programs result in a syntax error
-being signalled.  (It is possible to ease that restriction
-in various ways but we have not done so.)
+namespaces and types.  (We require definition-time resolution in order
+to make names and types constant, which generally simplifies the
+language and makes programs more easily comprehensible.)  The
+consequence is that namespace and type references are illegal inside
+scopes introduced by ''with'' or scopes that may be extended by the
+''eval'' operator, because those scopes make definition time
+resolution impossible -- their contents are unknown.  Such programs
+result in a syntax error being signalled.  (It is possible to ease
+that restriction in various ways but we have not done so.)
 
 <P> However, we also require that type and namespace names that are
 resolved at definition time must resolve to the same bindings that
 they would resolve to if they were to be resolved at evaluation time.
 (We require that because it simplifies the user's model of the
 language: equal names in the same scope have the same meaning,
-provided they resolve at all.)  The consequence of that is that the
-language must provide protection against ambiguities that can be
-introduced at a later time.  If a name is resolved at definition time
-to a global binding then compilation units loaded later may introduce
-new global bindings that will make the resolved binding ambiguous.
-For example, consider the following program.
+provided they resolve at all.)  The consequence is that the language
+must provide protection against ambiguities that can be introduced at
+a later time.  If a name is resolved at definition time to a global
+binding then compilation units loaded later may introduce new global
+bindings that will make the resolved binding ambiguous.  For example,
+consider the following program.
 
 {{{
 namespace NS1
@@ -391,11 +393,11 @@ at definition time to ''NS1::T''.  Then another compilation unit is
 loaded:
 
 {{{
-NS2 type T
+NS2 type T = ...
 }}}
 
 <P> Since the global environment is "flat"--code in earlier
-compilation units see bindings introduced by later compilation
+compilation units can see bindings introduced by later compilation
 units--the reference to ''T'' from the first program is now ambiguous.
 
 <P> ES4 protects against this eventuality by //reserving// global
@@ -441,6 +443,8 @@ name and fixture in the list of ribs.
 part and then returning the tail of the list of ribs such that the
 first rib on the tail contains a binding for the name.
 
+<NOTE> The name can't be ambiguous because there is only one namespace.
+
 <SEM>
 <INCLUDE file="fixture.sml" name="fun resolveQualifiedName">
 
@@ -448,7 +452,8 @@ first rib on the tail contains a binding for the name.
 
 <P> An unqualified name expression is resolved according to the full
 algorithm outlined above.  It returns the tail of the list of ribs
-such that the first rib on the tail contains a binding for the name.
+such that the first rib on the tail contains an unambiguous binding
+for the name.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and resolveUnqualifiedName">
@@ -466,6 +471,9 @@ would cause such conflicts at runtime.
 algorithm computes a set of names consisting of the identifier and
 each of the open namespaces with an equal or higher priority than the
 given namespace.
+
+<FIXME> Obviously we need more prose here.  Also we want to be sure
+to note that reservation only happens in the global object.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and reserveNames">
@@ -491,7 +499,7 @@ and the name of a property on that object.
 expression (it must yield a namespace value) and then look up the name
 comprised of the namespace value and the qualified reference's
 identifier.  If a binding is not found then we return the global
-object, otherwise the object that contained the binding.
+object, otherwise the object that contained the binding for the name.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveQualifiedLexicalReference">
