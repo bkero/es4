@@ -61,7 +61,7 @@ fun nthAsA (f:Mach.VALUE -> 'a)
 
 fun nthAsObj (vals:Mach.VALUE list)
              (n:int)
-    : Mach.OBJ =
+    : Mach.OBJECT =
     let
         fun f Mach.UndefinedValue = error ["Wanted ObjectValue, got UndefinedValue"]
           | f Mach.NullValue = error ["Wanted ObjectValue, got NullValue"]
@@ -73,7 +73,7 @@ fun nthAsObj (vals:Mach.VALUE list)
 
 fun nthAsObjAndClass (vals:Mach.VALUE list)
                    (n:int)
-    : (Mach.OBJ * Ast.CLASS) =
+    : (Mach.OBJECT * Ast.CLASS) =
     let
         val obj = nthAsObj vals n
         val c = Mach.needClass (Mach.ObjectValue obj)
@@ -134,7 +134,7 @@ fun propQuery (regs:Mach.REGS)
               (f:(Mach.PROPERTY_BINDINGS -> Ast.NAME -> bool))
     : Mach.VALUE =
     let
-        val Mach.Obj { props, ...} = nthAsObj vals 0
+        val Mach.Object { props, ...} = nthAsObj vals 0
         val n = nthAsName regs vals 1
     in
         Eval.newBoolean regs (f props n)
@@ -168,7 +168,7 @@ fun getClassName (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { tag, ... } = nthAsObj vals 0
+        val Mach.Object { tag, ... } = nthAsObj vals 0
     in
         Eval.newString regs (#id (Mach.nominalBaseOfTag tag))
     end
@@ -184,7 +184,7 @@ fun getClassOfObject (regs:Mach.REGS)
                      (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { tag, ... } = nthAsObj vals 0
+        val Mach.Object { tag, ... } = nthAsObj vals 0
     in
         Eval.getValue regs (#global regs) (Mach.nominalBaseOfTag tag)
     end
@@ -271,7 +271,7 @@ fun getEnumerableIds (regs:Mach.REGS)
         case v of
             Mach.UndefinedValue => Eval.newArray regs []
           | Mach.NullValue => Eval.newArray regs []
-          | Mach.ObjectValue (Mach.Obj { props, ... }) =>
+          | Mach.ObjectValue (Mach.Object { props, ... }) =>
             let
                 val { bindings, ... } = !props
                 val bindingList = NameMap.listItemsi bindings
@@ -305,7 +305,7 @@ fun getPrototype (regs:Mach.REGS)
                  (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { proto, ... } = nthAsObj vals 0
+        val Mach.Object { proto, ... } = nthAsObj vals 0
     in
         proto
     end
@@ -371,7 +371,7 @@ fun setPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { props, ...} = nthAsObj vals 0
+        val Mach.Object { props, ...} = nthAsObj vals 0
         val n = nthAsName regs vals 1
         val b = nthAsBool vals 2
     in
@@ -429,7 +429,7 @@ fun fnLength (regs:Mach.REGS)
              (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { tag, ... } = nthAsObj vals 0
+        val Mach.Object { tag, ... } = nthAsObj vals 0
         val len = 
             case tag of
                 Mach.PrimitiveTag (Mach.FunctionPrimitive ({ func = Ast.Func { ty, ... }, ...}))
@@ -444,7 +444,7 @@ fun genSend (regs:Mach.REGS)
             (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { tag, ... } = nthAsObj vals 0
+        val Mach.Object { tag, ... } = nthAsObj vals 0
         val arg = rawNth vals 1
     in
         case tag of
@@ -456,7 +456,7 @@ fun genThrow (regs:Mach.REGS)
              (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { tag, ... } = nthAsObj vals 0
+        val Mach.Object { tag, ... } = nthAsObj vals 0
         val arg = rawNth vals 1
     in
         case tag of
@@ -468,7 +468,7 @@ fun genClose (regs:Mach.REGS)
              (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { tag, ... } = nthAsObj vals 0
+        val Mach.Object { tag, ... } = nthAsObj vals 0
     in
         case tag of
             Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGen regs gen
@@ -679,7 +679,7 @@ fun objectHash (regs:Mach.REGS)
                (vals:Mach.VALUE list)
     : Mach.VALUE = 
     let
-        val Mach.Obj { ident, ... } = nthAsObj vals 0
+        val Mach.Object { ident, ... } = nthAsObj vals 0
     in
        Eval.newDouble regs (Real64.fromInt ident)
     end
@@ -977,7 +977,7 @@ fun typename (regs:Mach.REGS)
     case hd vals of
         Mach.NullValue => Eval.newString regs Ustring.null_
       | Mach.UndefinedValue => Eval.newString regs Ustring.undefined_
-      | Mach.ObjectValue (Mach.Obj {tag, ...}) =>
+      | Mach.ObjectValue (Mach.Object {tag, ...}) =>
         let 
             val name = Mach.nominalBaseOfTag tag
         in
@@ -1016,7 +1016,7 @@ fun proto (regs:Mach.REGS)
           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { proto, ... } = nthAsObj vals 0
+        val Mach.Object { proto, ... } = nthAsObj vals 0
     in
         proto
     end
@@ -1025,7 +1025,7 @@ fun id (regs:Mach.REGS)
        (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Obj { ident, ... } = nthAsObj vals 0
+        val Mach.Object { ident, ... } = nthAsObj vals 0
     in
         Eval.newDouble regs (Real64.fromInt ident)
     end

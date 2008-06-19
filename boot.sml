@@ -57,8 +57,8 @@ fun lookupRoot (rootRib:Ast.RIB)
 
 fun instantiateRootClass (regs:Mach.REGS) 
                          (fullName:Ast.NAME) 
-                         (proto:Mach.OBJ)
-    : (Ast.CLASS * Mach.OBJ) =
+                         (proto:Mach.OBJECT)
+    : (Ast.CLASS * Mach.OBJECT) =
   let
       val rootRib = (#rootRib regs)
       val cls = lookupRoot rootRib fullName
@@ -76,7 +76,7 @@ fun instantiateRootClass (regs:Mach.REGS)
               else ()
 
       val _ = trace ["binding class ", LogErr.name fullName];
-      val Mach.Obj { props, ... } = (#global regs)
+      val Mach.Object { props, ... } = (#global regs)
       val _ = if Mach.hasProp props fullName
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
@@ -94,8 +94,8 @@ fun instantiateRootClass (regs:Mach.REGS)
 
 fun runConstructorOnObject (regs:Mach.REGS)
                            (class:Ast.CLASS) 
-                           (classObj:Mach.OBJ) 
-                           (obj:Mach.OBJ)
+                           (classObj:Mach.OBJECT) 
+                           (obj:Mach.OBJECT)
     : unit =
     let
         val _ = trace ["allocating deferred ribs and running deferred constructor"];

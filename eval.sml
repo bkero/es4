@@ -43,10 +43,10 @@ open LogErr
 
 fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 
-fun getObjId (obj:OBJ)
-    : OBJ_IDENTIFIER =
+fun getObjId (obj:OBJECT)
+    : OBJECT_IDENTIFIER =
     let
-        val Obj { ident, ... } = obj
+        val Object { ident, ... } = obj
     in
         ident
     end
@@ -123,7 +123,7 @@ fun mathOp (v:VALUE)
  *)
 
 fun extendScope (p:SCOPE)
-                (ob:OBJ)
+                (ob:OBJECT)
                 (kind:SCOPE_KIND)
     : SCOPE =
     let
@@ -141,7 +141,7 @@ fun extendScope (p:SCOPE)
  *)
 
 fun extendScopeReg (r:REGS)
-                   (ob:OBJ)
+                   (ob:OBJECT)
                    (kind:SCOPE_KIND)
     : REGS =
     let
@@ -158,7 +158,7 @@ fun extendScopeReg (r:REGS)
     end
 
 fun withThis (r:REGS)
-             (newThis:OBJ)
+             (newThis:OBJECT)
     : REGS =
     let
         val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
@@ -173,7 +173,7 @@ fun withThis (r:REGS)
     end
 
 fun withThisFun (r:REGS)
-                (newThisFun:OBJ option)
+                (newThisFun:OBJECT option)
     : REGS =
     let
         val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
@@ -188,7 +188,7 @@ fun withThisFun (r:REGS)
     end
 
 fun withThisGen (r:REGS)
-                (newThisGen:OBJ option)
+                (newThisGen:OBJECT option)
     : REGS =
     let
         val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
@@ -235,8 +235,8 @@ fun withRootRib (r:REGS)
     
 
 fun slotObjId (regs:REGS) 
-              (slotFunc:REGS -> (OBJ option) ref) 
-    : OBJ_IDENTIFIER =
+              (slotFunc:REGS -> (OBJECT option) ref) 
+    : OBJECT_IDENTIFIER =
     let
         val slot = slotFunc regs
         val slotVal = !slot
@@ -248,7 +248,7 @@ fun slotObjId (regs:REGS)
 
 
 fun getScopeObj (scope:SCOPE)
-    : OBJ =
+    : OBJECT =
     let
         val Scope { object, ... } = scope
     in
@@ -257,7 +257,7 @@ fun getScopeObj (scope:SCOPE)
 
 
 fun getScopeId (scope:SCOPE)
-    : OBJ_IDENTIFIER = 
+    : OBJECT_IDENTIFIER = 
     let 
         val scopeObj = getScopeObj scope
     in 
@@ -287,7 +287,7 @@ fun getTemps (regs:REGS)
  * evaluation, not first-class values in the language.
  *)
 
-type REF = (OBJ * NAME)
+type REF = (OBJECT * NAME)
 
 datatype NUMBER_TYPE = DoubleNum | DecimalNum 
 
@@ -411,7 +411,7 @@ and allocTemp (regs:REGS)
 and asArrayIndex (v:VALUE)
     : Word32.word =
     case v of
-        ObjectValue (Obj { tag, ... }) =>
+        ObjectValue (Object { tag, ... }) =>
         (case tag of
              PrimitiveTag (DoublePrimitive d) => 
              if isIntegral d 
@@ -428,11 +428,11 @@ and asArrayIndex (v:VALUE)
              
 
 and hasOwnProperty (regs : REGS)
-                   (obj  : OBJ)
+                   (obj  : OBJECT)
                    (n    : NAME)
     : bool =
     let
-        val Obj { props, ... } = obj
+        val Object { props, ... } = obj
     in
         if Fixture.hasFixture (getRib regs obj) (PropName n)
         then true
@@ -463,14 +463,14 @@ and hasOwnProperty (regs : REGS)
 
 
 and hasProperty (regs:REGS)
-                (obj:OBJ)
+                (obj:OBJECT)
                 (n:NAME)
     : bool =
     if hasOwnProperty regs obj n
     then true
     else 
         let
-            val Obj { proto, ... } = obj
+            val Object { proto, ... } = obj
         in
             case proto of
                 ObjectValue p => hasProperty regs p n
@@ -552,13 +552,13 @@ and getValue regs obj name =
     getValueOrVirtual regs obj name true
 
 and getValueOrVirtual (regs:REGS)
-                      (obj:OBJ)
+                      (obj:OBJECT)
                       (name:NAME)
                       (doVirtual:bool)
     : VALUE =
     let
         (* INFORMATIVE *) val _ = trace ["getting property ", fmtName name, " on obj #", fmtObjId obj]
-        val Obj { props, ... } = obj
+        val Object { props, ... } = obj
     in
         case findProp props name of
             SOME {state, ...} =>
@@ -600,13 +600,13 @@ and getValueOrVirtual (regs:REGS)
     end
 
 and reifyFixture (regs:REGS)
-                 (obj:OBJ)
+                 (obj:OBJECT)
                  (name:NAME)
                  (fixture:FIXTURE)
     : unit = 
     (* LDOTS *)
     let
-        val Obj { props, tag, ... } = obj
+        val Object { props, tag, ... } = obj
         fun reifiedFixture ty newPropState writable =
             let
                 val attrs = { removable = false,
@@ -707,7 +707,7 @@ and checkAndConvert (regs:REGS)
                         NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
                 val (classTy:TYPE) = AstQuery.needClassType classType
-                val (classObj:OBJ) = getInstanceClass regs classTy
+                val (classObj:OBJECT) = getInstanceClass regs classTy
                 (* FIXME: this will call back on itself! *)
                 val converted = evalNamedMethodCall regs classObj meta_invoke [v]
             in
@@ -716,17 +716,17 @@ and checkAndConvert (regs:REGS)
     end
 
 
-and getObjTag (obj:OBJ)
+and getObjTag (obj:OBJECT)
     : TAG = 
     let
-        val Obj { tag, ... } = obj
+        val Object { tag, ... } = obj
     in
         tag
     end
 
 
 and isDynamic (regs:REGS)
-              (obj:OBJ)
+              (obj:OBJECT)
     : bool =
     let
         fun typeIsDynamic (UnionType tys) = List.exists typeIsDynamic tys
@@ -760,13 +760,13 @@ and badPropAccess (regs:REGS)
 
 
 and setValueOrVirtual (regs:REGS)
-                      (obj:OBJ)
+                      (obj:OBJECT)
                       (name:NAME)
                       (v:VALUE)
                       (doVirtual:bool)
     : unit =
     let
-        val Obj { props, ... } = obj
+        val Object { props, ... } = obj
     in
         case findProp props name of
             SOME existingProp =>
@@ -868,14 +868,14 @@ and setValueOrVirtual (regs:REGS)
 
 
 and setValue (regs:REGS)
-             (base:OBJ)
+             (base:OBJECT)
              (name:NAME)
              (v:VALUE)
     : unit =
     setValueOrVirtual regs base name v true
 
 and defValue (regs:REGS)
-             (base:OBJ)
+             (base:OBJECT)
              (name:NAME)
              (v:VALUE)
     : unit =
@@ -935,7 +935,7 @@ and needNameOrString (regs:REGS)
 
 and needObj (regs:REGS)
             (v:VALUE)
-    : OBJ =
+    : OBJECT =
     case v of
         ObjectValue ob => ob
       | _ => throwExn (newTypeErr regs ["need object"])
@@ -979,7 +979,7 @@ and newRegExp (regs:REGS)
 
 and newPrimitive (regs:REGS)
                  (prim:PRIMITIVE)
-                 (getter: REGS -> (OBJ option) ref)
+                 (getter: REGS -> (OBJECT option) ref)
     : VALUE =
     let
         val args = [ObjectValue (newObject (PrimitiveTag prim) NullValue [])]
@@ -1151,7 +1151,7 @@ and newInterface (regs:REGS)
 
 and newFunClosure (e:SCOPE)
                   (f:FUNC)
-                  (this:OBJ option)
+                  (this:OBJECT option)
     : FUN_CLOSURE =
     { func = f, this = this, env = e }
 
@@ -1166,12 +1166,12 @@ and getClassObjectAndClass regs getter =
     end
 
 and getFunctionClassObjectAndClass (regs:REGS) 
-    : (OBJ * CLASS) = 
+    : (OBJECT * CLASS) = 
     (* LDOTS *)
     getClassObjectAndClass regs getFunctionClassSlot
 
 and getObjectClassObjectAndClass (regs:REGS) 
-    : (OBJ * CLASS) = 
+    : (OBJECT * CLASS) = 
     (* LDOTS *)
     getClassObjectAndClass regs getObjectClassSlot
 
@@ -1201,7 +1201,7 @@ and newFunctionFromClosure (regs:REGS)
 
         val tag = PrimitiveTag (FunctionPrimitive closure)
         val obj = constructStandardWithTag regs funClassObj funClass tag funProto []                  
-        val Obj { props=newProtoProps, ... } = newProtoObj
+        val Object { props=newProtoProps, ... } = newProtoObj
     in
         setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj public_constructor (ObjectValue obj) false;
@@ -1264,7 +1264,7 @@ and newGen (execBody:unit -> VALUE)
     end
 
 and newGenerator (regs:REGS)
-                 (execBody:OBJ -> VALUE)
+                 (execBody:OBJECT -> VALUE)
     : VALUE =
     let
         val classObj = case !(getGeneratorClassSlot regs) of 
@@ -1368,7 +1368,7 @@ and toUstring (regs:REGS)
     case v of
         UndefinedValue => Ustring.undefined_
       | NullValue => Ustring.null_
-      | ObjectValue (Obj { tag = (PrimitiveTag prim), ... }) =>
+      | ObjectValue (Object { tag = (PrimitiveTag prim), ... }) =>
         primitiveToUstring prim
       | _ => toUstring regs (toPrimitiveWithStringHint regs v)
 
@@ -1380,7 +1380,7 @@ and toBoolean (v:VALUE) : bool =
     case v of
         UndefinedValue => false
       | NullValue => false
-      | ObjectValue (Obj { tag, ... }) =>
+      | ObjectValue (Object { tag, ... }) =>
         (case tag of
              PrimitiveTag (BooleanPrimitive b) => b
            | PrimitiveTag (DoublePrimitive x) => 
@@ -1401,7 +1401,7 @@ and toBoolean (v:VALUE) : bool =
  *)
 
 and defaultValue (regs:REGS)
-                 (obj:OBJ)
+                 (obj:OBJECT)
                  (preferredType:Ustring.STRING)
     : VALUE =
     let
@@ -1470,7 +1470,7 @@ and toNumeric (regs:REGS)
         case v of
             UndefinedValue => NaN ()
           | NullValue => zero ()
-          | ObjectValue (Obj { tag, ... }) =>
+          | ObjectValue (Object { tag, ... }) =>
             (case tag of
                  PrimitiveTag (DoublePrimitive _) => v
                | PrimitiveTag (DecimalPrimitive _) => v
@@ -1505,7 +1505,7 @@ and toDecimal (v:VALUE)
         case v of
             UndefinedValue => Decimal.NaN
           | NullValue => Decimal.zero
-          | ObjectValue (Obj { tag, ... }) =>
+          | ObjectValue (Object { tag, ... }) =>
             (case tag of
                  PrimitiveTag (DoublePrimitive d) =>
                  (* NB: Lossy. *)
@@ -1543,7 +1543,7 @@ and toDouble (v:VALUE)
         case v of
             UndefinedValue => NaN ()
           | NullValue => zero ()
-          | ObjectValue (Obj {tag, ...}) =>
+          | ObjectValue (Object {tag, ...}) =>
             (case tag of
                  PrimitiveTag (DoublePrimitive d) => d
                | PrimitiveTag (DecimalPrimitive d) =>
@@ -1881,7 +1881,7 @@ and evalThisExpr (regs:REGS)
     end
 
 and arrayToList (regs:REGS)
-                (arr:OBJ)
+                (arr:OBJECT)
     : VALUE list =
     let
         val len = doubleToInt
@@ -2025,12 +2025,12 @@ and evalInitExpr (regs:REGS)
     
 
 and evalSuperCall (regs:REGS)
-                  (object:OBJ)
+                  (object:OBJECT)
                   (nameExpr:NAME_EXPRESSION)
                   (args:VALUE list)
     : VALUE = 
     let                                         
-        val Obj { tag, ... } = object
+        val Object { tag, ... } = object
         val thisType = case tag of 
                            InstanceTag c  => ClassType c
                          | _ => error regs ["missing ClassType tag during super call"]
@@ -2110,7 +2110,7 @@ and traceScope (s:SCOPE)
     then 
         let
             val Scope { object, parent, ... } = s
-            val Obj { ident, props, ... } = getScopeObj s
+            val Object { ident, props, ... } = getScopeObj s
             val { bindings, ... } = !props
             val names = map (fn (n,_) => n) (NameMap.listItemsi bindings)
         in    
@@ -2229,7 +2229,7 @@ and applyTypesToFunction (regs:REGS)
 
 and getInstanceClass (regs:REGS)
                      (ity:TYPE)
-    : OBJ = 
+    : OBJECT = 
     let 
         fun fetch n = getValue regs (#global regs) n
     in
@@ -2257,7 +2257,7 @@ and getGlobalScope (regs:REGS)
     end 
     
 and getClassScope (regs:REGS)
-                  (classObj:OBJ)
+                  (classObj:OBJECT)
     : SCOPE = 
     let
         val class = needClass (ObjectValue classObj)
@@ -2268,11 +2268,11 @@ and getClassScope (regs:REGS)
     end
 
 and getInstanceScope (regs:REGS)
-                     (obj:OBJ)
+                     (obj:OBJECT)
                      (ity:TYPE option)
     : SCOPE = 
     let
-        val Obj { tag, ... } = obj
+        val Object { tag, ... } = obj
         val (scope, class) = 
             case tag of 
 
@@ -2295,7 +2295,7 @@ and getInstanceScope (regs:REGS)
     
 and getInstanceInterface (regs:REGS)
                          (ity:TYPE)
-    : OBJ = 
+    : OBJECT = 
     let 
         fun fetch n = getValue regs (#global regs) n
     in
@@ -2337,7 +2337,7 @@ and evalYieldExpr (regs:REGS)
         val { thisGen, ... } = regs
     in
         case thisGen of
-            SOME (Obj { tag, ... }) =>
+            SOME (Object { tag, ... }) =>
             (case tag of
                  PrimitiveTag (GeneratorPrimitive gen) =>
                  let
@@ -2377,7 +2377,7 @@ and evalArrayInitialiser (regs:REGS)
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj 
         val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
-        val (Obj {props, ...}) = obj
+        val (Object {props, ...}) = obj
         fun putVal n [] = n
           | putVal n (v::vs) =
             let
@@ -2421,11 +2421,11 @@ and evalObjectInitialiser (regs:REGS)
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj
         val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
-        val (Obj {props, ...}) = obj
+        val (Object {props, ...}) = obj
                                  
         fun getPropState (v:VALUE) : PROPERTY_STATE =
             case v of
-                ObjectValue (Obj {tag, ...}) =>
+                ObjectValue (Object {tag, ...}) =>
                 (case tag of
                      PrimitiveTag (FunctionPrimitive closure) => 
                      let 
@@ -2534,7 +2534,7 @@ and evalListExpr (regs:REGS)
  *)
 
 and constructObjectViaFunction (regs:REGS)
-                               (ctorObj:OBJ)
+                               (ctorObj:OBJECT)
                                (ctor:FUN_CLOSURE)
                                (args:VALUE list)
     : VALUE =
@@ -2556,11 +2556,11 @@ and constructObjectViaFunction (regs:REGS)
     
 
 and evalNewObj (regs:REGS)
-               (obj:OBJ)
+               (obj:OBJECT)
                (args:VALUE list)
     : VALUE =
     case obj of
-        Obj { tag, ... } =>
+        Object { tag, ... } =>
         case tag of
             PrimitiveTag (ClassPrimitive c) => constructClassInstance regs obj c args
           | PrimitiveTag (FunctionPrimitive f) => constructObjectViaFunction regs obj f args
@@ -2587,7 +2587,7 @@ and evalCallMethodByExpr (regs:REGS)
 
 
 and evalNamedMethodCall (regs:REGS)
-                        (obj:OBJ)
+                        (obj:OBJECT)
                         (name:NAME)
                         (args:VALUE list)
     : VALUE = 
@@ -2621,11 +2621,11 @@ and evalCallByRef (regs:REGS)
     end
 
 and evalCallByObj (regs:REGS)
-                  (fobj:OBJ)
+                  (fobj:OBJECT)
                   (args:VALUE list)
     : VALUE =
     case fobj of
-        Obj { tag, ... } =>
+        Object { tag, ... } =>
         case tag of
             PrimitiveTag (NativeFunctionPrimitive { func, ... }) =>
             (trace ["evalCallByObj: entering native function"];
@@ -2732,7 +2732,7 @@ and typeNameOfVal (v:VALUE) =
     case v of
         NullValue => Ustring.object_
       | UndefinedValue => Ustring.undefined_
-      | ObjectValue (Obj ob) =>
+      | ObjectValue (Object ob) =>
         if isDouble v orelse
            isDecimal v
         then Ustring.number_
@@ -2756,7 +2756,7 @@ and evalUnaryOp (regs:REGS)
         case unop of
             Delete => 
             let
-                val (_, (Obj {props, ...}, name)) = resolveRefExpr regs expr false
+                val (_, (Object {props, ...}, name)) = resolveRefExpr regs expr false
             in
                 if (hasProp props name)
                 then if (#removable (#attrs (getProp props name)))
@@ -3196,7 +3196,7 @@ and primitiveClassType regs getter =
         val cell = getter regs 
     in
         case !cell of 
-            SOME (Obj { tag = PrimitiveTag (ClassPrimitive c), 
+            SOME (Object { tag = PrimitiveTag (ClassPrimitive c), 
                         ...}) => 
             ClassType c
           | _ => error regs ["error fetching primitive instance type"]
@@ -3326,13 +3326,13 @@ and evalBinaryTypeOp (regs:REGS)
 
 
 and hasInstance (regs:REGS)
-                (obj:OBJ)
+                (obj:OBJECT)
                 (v:VALUE)
     : bool = 
     let
         val proto = getPrototype regs obj
         val targId = case proto of 
-                         (ObjectValue (Obj { ident, ... })) => ident
+                         (ObjectValue (Object { ident, ... })) => ident
                        | _ => throwExn (newTypeErr regs ["no 'prototype' property found in [[hasInstance]]"])
         fun tryVal v' = 
             case v' of 
@@ -3343,7 +3343,7 @@ and hasInstance (regs:REGS)
                 then true
                 else 
                     let
-                        val Obj { proto, ... } = ob
+                        val Object { proto, ... } = ob
                     in
                         tryVal (proto)
                     end
@@ -3353,7 +3353,7 @@ and hasInstance (regs:REGS)
 
 
 and objHasInstance (regs:REGS)
-                   (ob:OBJ)
+                   (ob:OBJECT)
                    (a:VALUE)                   
     : VALUE = 
     let
@@ -3436,7 +3436,7 @@ and evalConditionalExpression (regs:REGS)
 
 and evalObjectExpr (regs:REGS)
                    (object:EXPRESSION)
-    : OBJ =
+    : OBJECT =
     let 
         val v = evalExpr regs object
     in
@@ -3453,7 +3453,7 @@ and evalObjectExpr (regs:REGS)
 
 and resolveObjectReference (regs:REGS)
                            (ObjectNameReference { object, name, ... }: EXPRESSION)
-    : (OBJ option * (OBJ * NAME)) =
+    : (OBJECT option * (OBJECT * NAME)) =
     let
         val obj = evalObjectExpr regs object
     in
@@ -3481,11 +3481,11 @@ and resolveObjectReference (regs:REGS)
     error regs ["need object reference expression"]    (* INFORMATIVE *)
 
 and selectNamespacesByInstanceRibs (regs:REGS)
-                                   (object:OBJ)
+                                   (object:OBJECT)
                                    (identifier:IDENTIFIER)
                                    (namespaces:NAMESPACE_SET)
                                    (openNamespaces: OPEN_NAMESPACES)
-    : (OBJ * NAME) = 
+    : (OBJECT * NAME) = 
     case namespaces of 
         [] => internalError ["empty namespace set"]
       | [namespace] => (object, {ns=namespace, id=identifier})
@@ -3504,11 +3504,11 @@ and selectNamespacesByInstanceRibs (regs:REGS)
         end
 
 and resolveOnObject (regs:REGS)
-                    (object:OBJ)
+                    (object:OBJECT)
                     (identifier:IDENTIFIER)
                     (namespaces:NAMESPACE_SET)
                     (openNamespaces: OPEN_NAMESPACES) 
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     let
         val result = searchObject (regs, SOME object, NONE, identifier, namespaces, false)
     in
@@ -3519,10 +3519,10 @@ and resolveOnObject (regs:REGS)
     end
 
 and resolveQualifiedObjectReference (regs: REGS)
-                                    (object: OBJ)
+                                    (object: OBJECT)
                                     (identifier: IDENTIFIER)
                                     (namespaceExpr: NAMESPACE_EXPRESSION)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     let
         val namespaces = [evalNamespaceExpr regs namespaceExpr]
         val openNamespaces = []
@@ -3531,10 +3531,10 @@ and resolveQualifiedObjectReference (regs: REGS)
     end
 
 and resolveUnqualifiedObjectReference (regs: REGS)
-                                      (object: OBJ)
+                                      (object: OBJECT)
                                       (identifier: IDENTIFIER)
                                       (openNamespaces: OPEN_NAMESPACES)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     let
         val namespaces = List.concat openNamespaces
     in
@@ -3544,7 +3544,7 @@ and resolveUnqualifiedObjectReference (regs: REGS)
 and resolveRefExpr (regs:REGS)
                    (expr:EXPRESSION)
                    (errIfNotFound:bool)
-    : (OBJ option * REF) =
+    : (OBJECT option * REF) =
     let
     in
         case expr of
@@ -3571,7 +3571,7 @@ and evalLetExpression (regs:REGS)
 and resolveLexicalReference (regs            : REGS)
                             (nameExpression  : NAME_EXPRESSION)
                             (errorIfNotFound : bool)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     let
         val {scope, ...} = regs
     in 
@@ -3587,7 +3587,7 @@ and resolveLexicalReference (regs            : REGS)
 and resolveQualifiedLexicalReference (regs          : REGS)
                                      (identifier    : IDENTIFIER)
                                      (namespaceExpr : NAMESPACE_EXPRESSION)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     let
         val {scope, global, ...} = regs
         val namespace = evalNamespaceExpr regs namespaceExpr
@@ -3604,7 +3604,7 @@ and resolveQualifiedLexicalReference (regs          : REGS)
 and resolveUnqualifiedLexicalReference (regs           : REGS)
                                        (identifier     : IDENTIFIER)
                                        (openNamespaces : OPEN_NAMESPACES)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     let
         val {scope, global, ...} = regs
         val namespaces = List.concat openNamespaces
@@ -3757,11 +3757,11 @@ and evalStmt (regs:REGS)
 
 
 and checkRibInitialization (regs:REGS)
-                           (obj:OBJ)
+                           (obj:OBJECT)
                            (temps:TEMPS option)
     : unit =
     let
-        val Obj { props, ... } = obj
+        val Object { props, ... } = obj
         val rib = getRib regs obj
         fun checkOne (TempName i, _) =
             (case temps of 
@@ -3788,7 +3788,7 @@ and checkRibInitialization (regs:REGS)
 
 and invokeFuncClosure (regs:REGS)
                       (closure:FUN_CLOSURE)
-                      (thisFun:OBJ option)
+                      (thisFun:OBJECT option)
                       (args:VALUE list)
     : VALUE =
     let
@@ -3817,10 +3817,10 @@ and invokeFuncClosure (regs:REGS)
 
             val _ = push regs strname args
 
-            val (varObj:OBJ) = newObjectNoTag paramRib
+            val (varObj:OBJECT) = newObjectNoTag paramRib
             val (varRegs:REGS) = extendScopeReg regs varObj ActivationScope
             val (varScope:SCOPE) = (#scope varRegs)
-            val (Obj {props, ...}) = varObj
+            val (Object {props, ...}) = varObj
         in
             trace ["invokeFuncClosure: allocating scope temps"];
             allocScopeTemps varRegs paramRib;
@@ -3838,7 +3838,7 @@ and invokeFuncClosure (regs:REGS)
                             | SOME b =>
                               if generator then
                                   let
-                                      fun body (thisGen:OBJ) =
+                                      fun body (thisGen:OBJECT) =
                                           (evalBlock (withThisGen blockRegs (SOME thisGen)) b;
                                            UndefinedValue)
                                           handle ReturnException v => v
@@ -3935,7 +3935,7 @@ and bindArgs (regs:REGS)
              (args:VALUE list)
     : unit =
     let
-        val Scope { object = Obj { props, ... }, ... } = argScope
+        val Scope { object = Object { props, ... }, ... } = argScope
         val Func { defaults, ty, ... } = func
         val hasRest = AstQuery.funcTyHasRest ty
 
@@ -4025,7 +4025,7 @@ and bindArgs (regs:REGS)
 
 
 and evalInits (regs:REGS)
-              (obj:OBJ)
+              (obj:OBJECT)
               (temps:TEMPS)
               (inits:INITS)
     : unit =
@@ -4033,7 +4033,7 @@ and evalInits (regs:REGS)
 
 
 and evalInitsMaybePrototype (regs:REGS)
-                            (obj:OBJ)
+                            (obj:OBJECT)
                             (temps:TEMPS)
                             (inits:INITS)
                             (isPrototypeInit:bool)
@@ -4054,7 +4054,7 @@ and evalInitsMaybePrototype (regs:REGS)
                      if isPrototypeInit
                      then
                          let
-                             val Obj { props, ... } = obj
+                             val Object { props, ... } = obj
                          in
                              setValue regs obj pn v;
                              setPropEnumerable props pn false
@@ -4075,7 +4075,7 @@ and evalInitsMaybePrototype (regs:REGS)
  *)
 
 and evalObjInits (regs:REGS)
-                 (instanceObj:OBJ)
+                 (instanceObj:OBJECT)
                  (head:HEAD)
     : unit =
     let
@@ -4136,9 +4136,9 @@ and evalScopeInits (regs:REGS)
 
 and initializeAndConstruct (regs:REGS)
                            (class:CLASS)
-                           (classObj:OBJ)
+                           (classObj:OBJECT)
                            (args:VALUE list)
-                           (instanceObj:OBJ)
+                           (instanceObj:OBJECT)
     : unit =
     let
         val _ = traceConstruct ["initializeAndConstruct: this=#", (fmtObjId (#this regs)),
@@ -4178,7 +4178,7 @@ and initializeAndConstruct (regs:REGS)
             let
                 val _ = push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
                 val Func { block, param=Head (paramRib,paramInits), ... } = func
-                val (varObj:OBJ) = newObjectNoTag paramRib
+                val (varObj:OBJECT) = newObjectNoTag paramRib
                 val (varRegs:REGS) = extendScopeReg regs
                                                     varObj
                                                     ActivationScope
@@ -4210,11 +4210,11 @@ and initializeAndConstruct (regs:REGS)
     end
 
 and constructStandard (regs:REGS)
-                      (classObj:OBJ)
+                      (classObj:OBJECT)
                       (class:CLASS)
                       (proto:VALUE)
                       (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val regs = withScope regs (getClassScope regs classObj)
         val tag = InstanceTag class
@@ -4223,12 +4223,12 @@ and constructStandard (regs:REGS)
     end
 
 and constructStandardWithTag (regs:REGS)
-                             (classObj:OBJ)
+                             (classObj:OBJECT)
                              (class:CLASS)
                              (tag:TAG)
                              (proto:VALUE)
                              (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val Class { name, instanceRib, ...} = class
         val instanceObj = newObject tag proto instanceRib
@@ -4278,10 +4278,10 @@ and parseFunctionFromArgs (regs:REGS)
 
 
 and specialFunctionConstructor (regs:REGS)
-                               (classObj:OBJ)
+                               (classObj:OBJECT)
                                (class:CLASS)
                                (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val (source, funcExpr) = parseFunctionFromArgs regs args
         val sname = public_source
@@ -4298,14 +4298,14 @@ and specialFunctionConstructor (regs:REGS)
 
 
 and specialArrayConstructor (regs:REGS)
-                            (classObj:OBJ)
+                            (classObj:OBJECT)
                             (class:CLASS)
                             (args:VALUE list) :
-    OBJ =
+    OBJECT =
     let
         val proto = getPrototype regs classObj
         val instanceObj = constructStandard regs classObj class proto args
-        val Obj { props, ... } = instanceObj
+        val Object { props, ... } = instanceObj
         fun bindVal _ [] = ()
           | bindVal n (x::xs) =
             (setValue regs instanceObj (public (Ustring.fromInt n)) x;
@@ -4329,10 +4329,10 @@ and specialArrayConstructor (regs:REGS)
  *)
 
 and specialPrimitiveCopyingConstructor (regs:REGS)
-                                       (classObj:OBJ)
+                                       (classObj:OBJECT)
                                        (class:CLASS)
                                        (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val primitive = 
             case args of 
@@ -4347,10 +4347,10 @@ and specialPrimitiveCopyingConstructor (regs:REGS)
 
 
 and specialObjectConstructor (regs:REGS)
-                             (classObj:OBJ)
+                             (classObj:OBJECT)
                              (class:CLASS)
                              (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val proto = getPrototype regs classObj
         fun instantiate _ = constructStandard regs classObj class proto args
@@ -4359,7 +4359,7 @@ and specialObjectConstructor (regs:REGS)
             [] => instantiate ()
           | (NullValue :: _) => instantiate ()
           | (UndefinedValue :: _) => instantiate ()
-          | (ObjectValue (Obj { tag, ...}) :: _) =>
+          | (ObjectValue (Object { tag, ...}) :: _) =>
             case tag of 
                 (*
                  * FIXME: This part is dubioius. ES-262-3 says to call ToObject
@@ -4373,10 +4373,10 @@ and specialObjectConstructor (regs:REGS)
 
 
 and specialBooleanConstructor (regs:REGS)
-                              (classObj:OBJ)
+                              (classObj:OBJECT)
                               (class:CLASS)
                               (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val b = case args of 
                     [] => false
@@ -4401,10 +4401,10 @@ and specialBooleanConstructor (regs:REGS)
 
 
 and specialDoubleConstructor (regs:REGS)
-                             (classObj:OBJ)
+                             (classObj:OBJECT)
                              (class:CLASS)
                              (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val n = case args of 
                     [] => 0.0
@@ -4447,10 +4447,10 @@ and specialDoubleConstructor (regs:REGS)
 
 
 and specialDecimalConstructor (regs:REGS)
-                              (classObj:OBJ)
+                              (classObj:OBJECT)
                               (class:CLASS)
                               (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let
         val n = case args of 
                     [] => toDecimal (newDouble regs 0.0)
@@ -4464,10 +4464,10 @@ and specialDecimalConstructor (regs:REGS)
     
 
 and specialStringConstructor (regs:REGS)
-                             (classObj:OBJ)
+                             (classObj:OBJECT)
                              (class:CLASS)
                              (args:VALUE list)
-    : OBJ =
+    : OBJECT =
     let 
         val s = case args of 
                     [] => Ustring.empty
@@ -4488,11 +4488,11 @@ and specialStringConstructor (regs:REGS)
     
 
 and constructSpecial (regs:REGS)
-                     (id:OBJ_IDENTIFIER)
-                     (classObj:OBJ)
+                     (id:OBJECT_IDENTIFIER)
+                     (classObj:OBJECT)
                      (class:CLASS)
                      (args:VALUE list) :
-    OBJ option =
+    OBJECT option =
     let
         val Class { name, ... } = class
                                 
@@ -4529,12 +4529,12 @@ and constructSpecial (regs:REGS)
 
 
 and bindAnySpecialIdentity (regs:REGS)
-                           (obj:OBJ) =
+                           (obj:OBJECT) =
     if not (isBooting regs)
     then ()
     else
         let
-            val Obj { ident, tag, ... } = obj
+            val Object { ident, tag, ... } = obj
         in
             case tag of 
                 PrimitiveTag (ClassPrimitive (Class { name, ... })) =>
@@ -4556,11 +4556,11 @@ and bindAnySpecialIdentity (regs:REGS)
 
 
 and setPrototype (regs:REGS)
-                 (obj:OBJ)
+                 (obj:OBJECT)
                  (proto:VALUE)
     : unit = 
     let
-        val Obj { props, ... } = obj
+        val Object { props, ... } = obj
         val n = public_prototype
         val prop = { ty = AnyType,
                      state = ValueProperty proto,
@@ -4577,10 +4577,10 @@ and setPrototype (regs:REGS)
 
 
 and getPrototype (regs:REGS)
-                 (obj:OBJ)
+                 (obj:OBJECT)
     : VALUE = 
     let
-        val Obj { props, ... } = obj
+        val Object { props, ... } = obj
     in
         (* 
          * NB: Do not refactor this; it has to handle a variety of
@@ -4599,13 +4599,13 @@ and getOriginalObjectPrototype (regs:REGS)
       | NONE => NullValue
                 
 and getSpecialPrototype (regs:REGS)
-                        (id:OBJ_IDENTIFIER)
+                        (id:OBJECT_IDENTIFIER)
     : (VALUE * bool) option =
     if not (isBooting regs)
     then NONE
     else 
         let
-            fun getExistingProto (q:REGS -> (OBJ option) ref)
+            fun getExistingProto (q:REGS -> (OBJECT option) ref)
                 : (VALUE * bool) option =
                 let
                     val _ = trace ["fetching existing proto"]
@@ -4660,10 +4660,10 @@ and getSpecialPrototype (regs:REGS)
         end
 
 and initClassPrototype (regs:REGS)
-                       (obj:OBJ)
+                       (obj:OBJECT)
     : unit =
     let
-        val Obj { ident, props, tag, ... } = obj
+        val Object { ident, props, tag, ... } = obj
     in
         case tag of 
             PrimitiveTag (ClassPrimitive (Class {name, extends,...})) => 
@@ -4691,7 +4691,7 @@ and initClassPrototype (regs:REGS)
                             traceConstruct ["(standard chained-to-base-class proto instance of Object)"];
                             (constructStandard regs classObj class baseProtoVal [], true)
                         end
-                val Obj { props=newProtoProps, ... } = newPrototype
+                val Object { props=newProtoProps, ... } = newPrototype
             in
                 traceConstruct ["initializing proto on (obj #", Int.toString ident, 
                                 "): ", fmtName name, ".prototype = ", 
@@ -4712,12 +4712,12 @@ and initClassPrototype (regs:REGS)
     end
     
 and constructClassInstance (regs:REGS)
-                           (classObj:OBJ)
+                           (classObj:OBJECT)
                            (class:CLASS)
                            (args:VALUE list)
     : VALUE =
     let
-        val Obj { ident, ... } = classObj
+        val Object { ident, ... } = classObj
 
         (* INFORMATIVE *) val Class { name, ...} = class 
         (* INFORMATIVE *) val _ = push regs ("new " ^ (Ustring.toAscii (#id name))) args 
@@ -4964,7 +4964,7 @@ and evalSwitchTypeStmt (regs:REGS)
 
 and evalIterable (regs:REGS)
                  (obj:EXPRESSION)
-    : OBJ =
+    : OBJECT =
     let
         val v = evalExpr regs obj
         fun finishWith v = 
@@ -4982,8 +4982,8 @@ and evalIterable (regs:REGS)
     end
 
 and callIteratorGet (regs:REGS)
-                    (iterable:OBJ)
-    : OBJ =
+                    (iterable:OBJECT)
+    : OBJECT =
     let
         val iteratorGET = { id = Ustring.GET_, ns = getIteratorNamespace regs }
         val args = [ObjectValue iterable, newBoolean regs true]
@@ -4993,7 +4993,7 @@ and callIteratorGet (regs:REGS)
     end
 
 and callIteratorNext (regs:REGS)
-                     (iterator:OBJ)
+                     (iterator:OBJECT)
     : VALUE =
     (evalNamedMethodCall regs iterator public_next [])
     handle e as ThrowException v => raise (if isStopIteration regs v

@@ -87,12 +87,12 @@ type NAMESPACE = NAMESPACE
 
 datatype VALUE = UndefinedValue
                | NullValue
-               | ObjectValue of OBJ
+               | ObjectValue of OBJECT
 
-     and OBJ =
-         Obj of { props: PROPERTY_BINDINGS,                  
+     and OBJECT =
+         Object of { props: PROPERTY_BINDINGS,                  
                   proto: VALUE,
-                  ident: OBJ_IDENTIFIER,
+                  ident: OBJECT_IDENTIFIER,
                   tag: TAG,
                   rib: RIB
                 }
@@ -104,13 +104,13 @@ datatype VALUE = UndefinedValue
        | InstanceTag of CLASS
        | NoTag
 
-     and OBJ_CACHE = 
+     and OBJECT_CACHE = 
          ObjCache of 
          {
-          doubleCache: (OBJ Real64Map.map) ref,
-          nsCache: (OBJ NsMap.map) ref,
-          nmCache: (OBJ NmMap.map) ref,
-          strCache: (OBJ StrMap.map) ref,
+          doubleCache: (OBJECT Real64Map.map) ref,
+          nsCache: (OBJECT NsMap.map) ref,
+          nmCache: (OBJECT NmMap.map) ref,
+          strCache: (OBJECT StrMap.map) ref,
           tyCache: (TYPE IntMap.map) ref (* well, mostly objs *)
          }
 
@@ -124,29 +124,29 @@ datatype VALUE = UndefinedValue
      and SPECIAL_OBJS = 
          SpecialObjs of 
          { 
-          typeInterface : (OBJ option) ref,
-          namespaceClass : (OBJ option) ref,
+          typeInterface : (OBJECT option) ref,
+          namespaceClass : (OBJECT option) ref,
 
-          objectClass : (OBJ option) ref,
-          arrayClass : (OBJ option) ref,
-          functionClass : (OBJ option) ref,
+          objectClass : (OBJECT option) ref,
+          arrayClass : (OBJECT option) ref,
+          functionClass : (OBJECT option) ref,
 
-          stringClass : (OBJ option) ref,
-          stringWrapperClass : (OBJ option) ref,
+          stringClass : (OBJECT option) ref,
+          stringWrapperClass : (OBJECT option) ref,
 
-          numberClass : (OBJ option) ref,
-          doubleClass : (OBJ option) ref,
-          decimalClass : (OBJ option) ref,
+          numberClass : (OBJECT option) ref,
+          doubleClass : (OBJECT option) ref,
+          decimalClass : (OBJECT option) ref,
 
-          booleanClass : (OBJ option) ref,
-          booleanWrapperClass : (OBJ option) ref,
+          booleanClass : (OBJECT option) ref,
+          booleanWrapperClass : (OBJECT option) ref,
 
-          booleanTrue : (OBJ option) ref,
-          booleanFalse : (OBJ option) ref,
-          doubleNaN : (OBJ option) ref,
+          booleanTrue : (OBJECT option) ref,
+          booleanFalse : (OBJECT option) ref,
+          doubleNaN : (OBJECT option) ref,
 
-          argumentsClass : (OBJ option) ref,
-          generatorClass : (OBJ option) ref
+          argumentsClass : (OBJECT option) ref,
+          generatorClass : (OBJECT option) ref
          }
 
      and FRAME = 
@@ -172,7 +172,7 @@ datatype VALUE = UndefinedValue
        | GeneratorPrimitive of GEN
 
      and SCOPE =
-         Scope of { object: OBJ,
+         Scope of { object: OBJECT,
                     parent: SCOPE option,
                     temps: TEMPS,
                     kind: SCOPE_KIND }
@@ -225,7 +225,7 @@ datatype VALUE = UndefinedValue
           booting: bool ref,
           specials: SPECIAL_OBJS,
           stack: FRAME list ref,
-          objCache: OBJ_CACHE, 
+          objCache: OBJECT_CACHE, 
           profiler: PROFILER 
          }
 
@@ -244,32 +244,32 @@ datatype VALUE = UndefinedValue
 
 withtype FUN_CLOSURE =
          { func: FUNC,
-           this: OBJ option,
+           this: OBJECT option,
            env: SCOPE }
 
      and REGS = 
          { 
           scope: SCOPE,
-          this: OBJ,
-          thisFun: OBJ option,
-          thisGen: OBJ option,
-          global: OBJ,
+          this: OBJECT,
+          thisFun: OBJECT option,
+          thisGen: OBJECT option,
+          global: OBJECT,
           rootRib: RIB
           , aux: AUX                      (* INFORMATIVE *)
          }
 
      and NATIVE_FUNCTION =                
          { func: ({ scope: SCOPE, 
-                    this: OBJ, 
-                    thisFun: OBJ option,
-                    thisGen: OBJ option,
-                    global: OBJ, 
+                    this: OBJECT, 
+                    thisFun: OBJECT option,
+                    thisGen: OBJECT option,
+                    global: OBJECT, 
                     rootRib: RIB, 
                     aux: AUX } (* REGS *)
                   -> VALUE list -> VALUE),
            length: int }
 
-     and OBJ_IDENTIFIER = (* LDOTS *)
+     and OBJECT_IDENTIFIER = (* LDOTS *)
          int
          
 (* Important to model "fixedness" separately from
@@ -298,34 +298,34 @@ fun isObject (v:VALUE) : bool =
       | _ => false
 
 
-fun isDouble (ObjectValue (Obj {tag = PrimitiveTag (DoublePrimitive _), ...})) = true
+fun isDouble (ObjectValue (Object {tag = PrimitiveTag (DoublePrimitive _), ...})) = true
   | isDouble _ = false
 
-fun isDecimal (ObjectValue (Obj {tag = PrimitiveTag (DecimalPrimitive _), ...})) = true
+fun isDecimal (ObjectValue (Object {tag = PrimitiveTag (DecimalPrimitive _), ...})) = true
   | isDecimal _ = false
 
-fun isString (ObjectValue (Obj {tag = PrimitiveTag (StringPrimitive _), ...})) = true
+fun isString (ObjectValue (Object {tag = PrimitiveTag (StringPrimitive _), ...})) = true
   | isString _ = false
 
-fun isBoolean (ObjectValue (Obj {tag = PrimitiveTag (BooleanPrimitive _), ...})) = true
+fun isBoolean (ObjectValue (Object {tag = PrimitiveTag (BooleanPrimitive _), ...})) = true
   | isBoolean _ = false
 
-fun isNamespace (ObjectValue (Obj {tag = PrimitiveTag (NamespacePrimitive _), ...})) = true
+fun isNamespace (ObjectValue (Object {tag = PrimitiveTag (NamespacePrimitive _), ...})) = true
   | isNamespace _ = false
 
-fun isClass (ObjectValue (Obj {tag = PrimitiveTag (ClassPrimitive _), ...})) = true
+fun isClass (ObjectValue (Object {tag = PrimitiveTag (ClassPrimitive _), ...})) = true
   | isClass _ = false
 
-fun isInterface (ObjectValue (Obj {tag = PrimitiveTag (InterfacePrimitive _), ...})) = true
+fun isInterface (ObjectValue (Object {tag = PrimitiveTag (InterfacePrimitive _), ...})) = true
   | isInterface _ = false
 
-fun isFunction (ObjectValue (Obj {tag = PrimitiveTag (FunctionPrimitive _), ...})) = true
+fun isFunction (ObjectValue (Object {tag = PrimitiveTag (FunctionPrimitive _), ...})) = true
   | isFunction _ = false
                    
-fun isType (ObjectValue (Obj {tag = PrimitiveTag (TypePrimitive _), ...})) = true
+fun isType (ObjectValue (Object {tag = PrimitiveTag (TypePrimitive _), ...})) = true
   | isType _ = false
 
-fun isNativeFunction (ObjectValue (Obj {tag = PrimitiveTag (NativeFunctionPrimitive _), ...})) = true
+fun isNativeFunction (ObjectValue (Object {tag = PrimitiveTag (NativeFunctionPrimitive _), ...})) = true
   | isNativeFunction _ = false
                          
 fun isNumeric ob = isDouble ob orelse isDecimal ob
@@ -447,16 +447,16 @@ fun hasFixedProp (b:PROPERTY_BINDINGS)
         NONE => false
       | SOME {attrs={fixed, ...}, ...} => fixed
 
-fun hasPrimitive (Obj { tag = PrimitiveTag _, ... }) = true
+fun hasPrimitive (Object { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
-fun getObjId (Obj { ident, ...}) = ident
+fun getObjId (Object { ident, ...}) = ident
 fun getRib (regs:REGS)
-           (obj:OBJ)
+           (obj:OBJECT)
     : RIB =
     let
         val { rootRib, global, ... } = regs
-        val Obj { rib, ident, ... } = obj
+        val Object { rib, ident, ... } = obj
     in
         if (getObjId global) = ident
         then rootRib
@@ -507,21 +507,21 @@ fun nextIdent _ =
 fun newObject (t:TAG)
               (p:VALUE)
               (rib:RIB)
-    : OBJ =
-    Obj { ident = nextIdent (),
+    : OBJECT =
+    Object { ident = nextIdent (),
           tag = t,
           props = newPropBindings (),
           proto = p,
           rib = rib }
 
 fun newObjectNoTag (rib:RIB)
-    : OBJ =
+    : OBJECT =
     newObject NoTag NullValue rib
 
-fun getProto (ob:OBJ)
+fun getProto (ob:OBJECT)
     : VALUE =
     let
-         val Obj {proto, ...} = ob
+         val Object {proto, ...} = ob
     in
         proto
     end
@@ -688,7 +688,7 @@ fun inspect (v:VALUE)
                  ^ (if fixed then "F" else "")
                  ^ ") ")
 
-        fun id (Obj ob) = Int.toString (#ident ob)
+        fun id (Object ob) = Int.toString (#ident ob)
 
         fun typ t = LogErr.ty t
 
@@ -711,7 +711,7 @@ fun inspect (v:VALUE)
                         StringPrimitive s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
                       | m => Ustring.toAscii (primitiveToUstring m) ^ (magType m)
                 
-        fun tag (Obj ob) =
+        fun tag (Object ob) =
             case (#tag ob) of
                 (* FIXME: elaborate printing of structural tags. *)
                 ObjectTag _ => "<Object>"
@@ -742,10 +742,10 @@ fun inspect (v:VALUE)
                             ValueProperty v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
-                val Obj { props, proto, rib, ... } = obj
+                val Object { props, proto, rib, ... } = obj
 		        val { bindings, ... } = !props
             in
-                TextIO.print "Obj {\n";
+                TextIO.print "Object {\n";
                 p indent ["    tag = ", (tag obj)]; nl();
                 p indent ["  ident = ", (id obj)]; nl();
                 p indent ["  proto = "]; subVal indent (proto);
@@ -789,47 +789,47 @@ fun nominalBaseOfTag (to:TAG)
       | PrimitiveTag (ArgumentsPrimitive _) => Name.helper_Arguments
       | NoTag => error ["nominalBaseOfTag on NoTag"]
 
-fun getObjPrimitive (Obj { tag = PrimitiveTag m, ... }) = SOME m
+fun getObjPrimitive (Object { tag = PrimitiveTag m, ... }) = SOME m
   | getObjPrimitive _ = NONE
 
-fun getPrimitive (ObjectValue (Obj { tag = PrimitiveTag m, ... })) = SOME m
+fun getPrimitive (ObjectValue (Object { tag = PrimitiveTag m, ... })) = SOME m
   | getPrimitive _ = NONE
 
-fun needPrimitive (ObjectValue (Obj { tag = PrimitiveTag m, ... })) = m
+fun needPrimitive (ObjectValue (Object { tag = PrimitiveTag m, ... })) = m
   | needPrimitive _ = error ["require object with primitive"]
 
-fun needClass (ObjectValue (Obj {tag = PrimitiveTag (ClassPrimitive c), ...})) = c
+fun needClass (ObjectValue (Object {tag = PrimitiveTag (ClassPrimitive c), ...})) = c
   | needClass _ = error ["require class object"]
 
-fun needInterface (ObjectValue (Obj {tag = PrimitiveTag (InterfacePrimitive i), ...})) = i
+fun needInterface (ObjectValue (Object {tag = PrimitiveTag (InterfacePrimitive i), ...})) = i
   | needInterface _ = error ["require interface object"]
 
-fun needFunction (ObjectValue (Obj {tag = PrimitiveTag (FunctionPrimitive f), ...})) = f
+fun needFunction (ObjectValue (Object {tag = PrimitiveTag (FunctionPrimitive f), ...})) = f
   | needFunction _ = error ["require function object]"]
 
-fun needNamespace (ObjectValue (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
+fun needNamespace (ObjectValue (Object {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
   | needNamespace _ = error ["require namespace object"]
 
 fun needNamespaceOrNull NullValue = Name.publicNS
-  | needNamespaceOrNull (ObjectValue (Obj {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
+  | needNamespaceOrNull (ObjectValue (Object {tag = PrimitiveTag (NamespacePrimitive n), ...})) = n
   | needNamespaceOrNull _ = error ["require namespace object"]
 
-fun needType (ObjectValue (Obj {tag = PrimitiveTag (TypePrimitive t), ...})) = t
+fun needType (ObjectValue (Object {tag = PrimitiveTag (TypePrimitive t), ...})) = t
   | needType _ = error ["require type object"]
 
-fun needDouble (ObjectValue (Obj {tag = PrimitiveTag (DoublePrimitive d), ...})) = d
+fun needDouble (ObjectValue (Object {tag = PrimitiveTag (DoublePrimitive d), ...})) = d
   | needDouble _ = error ["require double object"]
 
-fun needDecimal (ObjectValue (Obj {tag = PrimitiveTag (DecimalPrimitive d), ...})) = d
+fun needDecimal (ObjectValue (Object {tag = PrimitiveTag (DecimalPrimitive d), ...})) = d
   | needDecimal _ = error ["require decimal object"]
 
-fun needBoolean (ObjectValue (Obj {tag = PrimitiveTag (BooleanPrimitive b), ...})) = b
+fun needBoolean (ObjectValue (Object {tag = PrimitiveTag (BooleanPrimitive b), ...})) = b
   | needBoolean _ = error ["require boolean object"]
 
-fun needString (ObjectValue (Obj {tag = PrimitiveTag (StringPrimitive s), ...})) = s
+fun needString (ObjectValue (Object {tag = PrimitiveTag (StringPrimitive s), ...})) = s
   | needString _ = error ["require string object"]
 
-fun needArguments (ObjectValue (Obj {tag = PrimitiveTag (ArgumentsPrimitive s), ...})) = s
+fun needArguments (ObjectValue (Object {tag = PrimitiveTag (ArgumentsPrimitive s), ...})) = s
   | needArguments _ = error ["require arguments object"]
 
 
@@ -1091,7 +1091,7 @@ val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
 val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
 val updateTyCache = updateCache getTyCache IntMap.numItems IntMap.insert
 
-fun makeGlobalScopeWith (global:OBJ) 
+fun makeGlobalScopeWith (global:OBJECT) 
     : SCOPE =
     Scope { object = global,
             parent = NONE,
@@ -1099,7 +1099,7 @@ fun makeGlobalScopeWith (global:OBJ)
             kind = GlobalScope }
 
 fun makeInitialRegs (rootRib:RIB)
-                    (glob:OBJ)                     
+                    (glob:OBJECT)                     
     : REGS =
     let 
         val prof = Profiler 
@@ -1177,13 +1177,6 @@ fun getNativeFunction (name:NAME)
 
 (* begin names experiment *)
 
-type IDENTIFIER = IDENTIFIER
-type NAMESPACE = NAMESPACE
-type NAME = NAME
-
-type CLASS = CLASS
-type OBJECT = OBJ
-
 type NAMESPACE_SET = NAMESPACE list
 type OPEN_NAMESPACES = NAMESPACE_SET list 
 
@@ -1204,7 +1197,7 @@ fun getBindingNamespaces (regs: REGS,
      *)
     (* INFORMATIVE *)
     let
-        val Obj { props, ... } = object
+        val Object { props, ... } = object
         val rib = case class of 
                       NONE => getRib regs object
                     | SOME (Class { instanceRib, ...}) => instanceRib
@@ -1235,7 +1228,7 @@ fun getInstanceBindingNames (class: CLASS)
     (* FIXME: implement! *)
     []
 
-fun getPrototypeObject (Obj {proto, ...}: OBJECT)
+fun getPrototypeObject (Object {proto, ...}: OBJECT)
     : OBJECT option =
     (* get the prototype (as in '[[proto]]') object of an object *)
     case proto of 
