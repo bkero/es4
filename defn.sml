@@ -1688,11 +1688,7 @@ and defTypeExpr (env:ENV)
 
       | Ast.AppType ( base, args ) => 
         Ast.AppType ( defTypeExpr env base, map (defTypeExpr env) args )
-(*
-      | Ast.LamType { params, body } => 
-        Ast.LamType { params = params,
-                      body = defTypeExpr env body }
-*)
+
       (* FIXME *)
       | t => t
 
@@ -2298,20 +2294,21 @@ and defBlockFull (env:ENV)
          escaped)
     end
 
-and mkTopEnv (rootRib:Ast.RIB) 
+and mkTopEnv (internalNamespace:Ast.NAMESPACE)
+             (rootRib:Ast.RIB) 
              (langEd:int)
     : ENV =
     { outerRibs = [rootRib],
       innerRibs = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
-                        then [[Name.ES4NS], [Name.publicNS]]
+                        then [[internalNamespace, Name.ES4NS], [Name.publicNS]]
                         else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,
       rootRib = rootRib,
       func = NONE }
-
+        
 and summarizeProgram (Ast.Program (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
     Fixture.printRib rib
   | summarizeProgram _ = ()
@@ -2325,7 +2322,11 @@ and defProgram (rootRib:Ast.RIB)
                (langEd:int)
     : (Ast.RIB * Ast.PROGRAM) =
     let
-        val env = mkTopEnv rootRib langEd
+        val internalNamespace = Name.newOpaqueNS ()
+        val internalBinding = (Ast.PropName Name.ES4_internal, Ast.NamespaceFixture internalNamespace)
+        val rootRib = List.filter (fn (n, _) => n <> Ast.PropName Name.ES4_internal) rootRib
+        val rootRib = internalBinding :: rootRib
+        val env = mkTopEnv internalNamespace rootRib langEd
 		val Ast.Program blk = prog
         val (blk, escaped) = defDecorativeBlock env blk
         val (Ast.Block { pragmas, defns, head, body, loc }) = blk
@@ -2337,7 +2338,7 @@ and defProgram (rootRib:Ast.RIB)
 						| NONE 
                           => SOME (Ast.Head (escaped, []))
     (* 
-     * We stuff the escapees back inside the anon block. This is 
+     * We stuff the escapees back inside the program block. This is 
 	 * ugly and needs a little refactoring. It used to be this way
 	 * to handle packages, but is no longer necessary.
      *)

@@ -418,6 +418,7 @@ val iterator_                = fromString "iterator"
 val Unicode_                 = fromString "Unicode"
 val helper_                  = fromString "helper"
 val RegExpInternals_         = fromString "RegExpInternals"
+val internal_                = fromString "internal"
 
 val emptySource              = []
 

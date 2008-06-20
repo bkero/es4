@@ -91,10 +91,10 @@ datatype VALUE = UndefinedValue
 
      and OBJECT =
          Object of { props: PROPERTY_BINDINGS,                  
-                  proto: VALUE,
-                  ident: OBJECT_IDENTIFIER,
-                  tag: TAG,
-                  rib: RIB
+                     proto: VALUE,
+                     ident: OBJECT_IDENTIFIER,
+                     tag: TAG,
+                     rib: RIB
                 }
 
      and TAG =

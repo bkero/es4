@@ -313,6 +313,7 @@ val ES4_iterator = ES4 Ustring.iterator_
 val ES4_informative = ES4 Ustring.informative_
 val ES4_Unicode = ES4 Ustring.Unicode_
 val ES4_RegExpInternals = ES4 Ustring.RegExpInternals_
+val ES4_internal = ES4 Ustring.internal_
 
 val helper_Arguments = helper Ustring.Arguments_
 

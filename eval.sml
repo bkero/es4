@@ -4271,7 +4271,8 @@ and parseFunctionFromArgs (regs:REGS)
                                 Parser.AllowColon,
                                 Parser.AllowIn)
 
-        val funcExpr = Defn.defExpr (Defn.mkTopEnv (#rootRib regs) (getLangEd regs)) funcExpr
+        val internalNamespace = needNamespace (getValue regs (#global regs) ES4_internal)
+        val funcExpr = Defn.defExpr (Defn.mkTopEnv internalNamespace (#rootRib regs) (getLangEd regs)) funcExpr
     in
         (fullStr, funcExpr)
     end
@@ -5191,6 +5192,17 @@ and evalAnonProgram (regs:REGS)
         res
     end
 
+and deleteInternalNamespaceProp (regs:REGS) 
+    : unit = 
+    let
+        val { global, ... } = regs
+        val Object { props, ... } = global
+    in
+        if hasProp props ES4_internal
+        then delProp props ES4_internal
+        else ()
+    end
+             
 and evalProgram (regs:REGS)
                 (prog:PROGRAM)
     : VALUE =
@@ -5211,6 +5223,7 @@ and evalProgram (regs:REGS)
          * scope that you'd search for as a hoisting target (either the activation 
          * scope enclosing an eval, or the global scope)
          *)
+        deleteInternalNamespaceProp regs;
         setLoc loc;  
         trace ["running program inits on obj #", fmtObjId obj];
         evalInits regs obj temps;
