@@ -193,16 +193,10 @@ is in effect.
 for scope chains here.
 
 <P> Some objects that appear on evaluation-time scope chains are
-dynamically extensible, in effect providing a form of dynamic scope.
-For example, class objects appear on the scope chain of class and
-instance methods, and properties can be added to and removed from
-class objects; these properties then become visible and invisible to
-the methods.
-
-<P> In order for ECMAScript to have a lexically scoped flavor,
-bindings that are textually visible (//lexical bindings//) are usually
-preferred over dynamically added bindings (//dynamic bindings//)
-during name resolution.  See the section "Name Resolution" below.
+dynamically extensible. For example, class objects appear on the 
+scope chain of class and instance methods, and properties can be 
+added to and removed from class objects; however, these properties 
+are not visible to lexical references from the classes methods.
 
 == Name Expressions ==
 
@@ -224,7 +218,7 @@ expression denoting a namespace binding.
 
 <p> An unqualified name expression is comprised of the namespaces that
 are open at the point where the name expression occurs in the source
-text and and identifier.  The open namespaces will be used to resolve
+text and identifier.  The open namespaces will be used to resolve
 the name: an unqualified name matches any binding or property that has
 the same identifier and a namespace value from among the open
 namespaces.
@@ -300,6 +294,7 @@ namespace value and an identifier) and an object that contains a
 property with that name.  The objects are searched in order, and the
 first object to contain a property with the name is selected.
 
+<!--
 <P> There are three complications.  First, the search is performed
 differently for object chains (an object and its prototypes) and scope
 chains.  An object chain is searched in a single pass and each
@@ -321,8 +316,9 @@ objects on the scope chain--class objects and instance objects--are
 dynamically extensible, and allowing dynamic properties to shadow
 static properties would make programs harder to understand, and it
 would make them slower, as it would be hard to perform early binding.)
+-->
 
-<P> The second complication appears with the need for disambiguation.
+<P> There are two complications. The first appears with the need for disambiguation.
 When an unqualified name is resolved the resolution is performed in
 the context of the namespaces that were open at the point of
 reference.  Thus the search of any one object may find multiple
@@ -341,6 +337,12 @@ contains the name.  For example, if ^^C^^ is a subclass of ^^B^^ and
 in ^^B^^ and ^^ns3::n^^ was defined in ^^C^^, then we'd be left with just
 ^^ns1^^ and ^^ns2^^.
 
+<P> (The motivation for using the order in which names are introduced
+in the class hierarchy is to guarantee that the meaning of valid references
+to object properties doesn't change. In other words, if ''o.x'' is ever
+valid, then it shall always refer to the same property ''x'' as long as the type
+of ''o'' doesn't change.)
+
 <P> We then filter by namespace priority.  The open namespaces are
 organized in a prioritized list of namespace sets.  If one of the
 matching names has a namespace that is from a set with a higher
@@ -349,10 +351,10 @@ we want.  So if the referencing context of ^^n^^ opened ^^ns2^^ in a
 scope nested inside the one that opened ^^ns1^^, then we are left with
 just ^^ns2^^ -- and a single binding, ^^ns2::n^^.
 
-<P> (The motivation for disambiguation is simple: disambiguation
-allows more programs to run.  Furthermore, since the priority of
-namespaces during disambiguation is under the control of the
-programmer, the programmer can rely on disambiguation to control which
+<P> (The motivation for disambiguation by the scope in which a namespace
+is opened, is simple: it allows more programs to run.  Furthermore, since 
+the priority of namespaces during disambiguation is under the control of 
+the programmer, the programmer can rely on disambiguation to control which
 names that are found.)
 
 <P> The third complication is that some names are required to be
