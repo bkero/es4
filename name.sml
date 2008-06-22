@@ -274,6 +274,7 @@ val helper_getImplementedInterface = helper Ustring.getImplementedInterface_
 val helper_getEnumerableIds = helper Ustring.getEnumerableIds_
 val helper_getClassOfObject = helper Ustring.getClassOfObject_
 val helper_InterfaceTypeImpl = helper Ustring.InterfaceTypeImpl_						
+val helper_ClassTypeImpl = helper Ustring.ClassTypeImpl_
 val informative_getClassName = informative Ustring.getClassName_
 val helper_construct = helper Ustring.construct_
 

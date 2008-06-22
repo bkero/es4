@@ -390,9 +390,9 @@ fun resolveTypeNames (env : RIBS)
 
               | (_, _, ClassFixture (c as Class {nonnullable, typeParams=[], ...})   ) => 
                 if nonnullable then
-                    ClassType c
+                    InstanceType c
                 else
-                    UnionType [ClassType c, NullType]
+                    UnionType [InstanceType c, NullType]
 
               | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams=[], ...})) => 
                 if nonnullable then
@@ -426,9 +426,9 @@ fun resolveTypeNames (env : RIBS)
                 let in
                     checkArgs typeParams;
                     if nonnullable then
-                        AppType (ClassType c, typeArgs)
+                        AppType (InstanceType c, typeArgs)
                     else
-                        UnionType [AppType (ClassType c, typeArgs), NullType]
+                        UnionType [AppType (InstanceType c, typeArgs), NullType]
                 end
 
               | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams, ...})) => 
@@ -504,9 +504,9 @@ fun findSpecialConversion (tyExpr1:TYPE)
                           (tyExpr2:TYPE) 
     : TYPE option = 
     let
-        fun extract (UnionType [ClassType t, NullType]) = SOME t
-          | extract (UnionType [ClassType t]) = SOME t
-          | extract (ClassType t) = SOME t
+        fun extract (UnionType [InstanceType t, NullType]) = SOME t
+          | extract (UnionType [InstanceType t]) = SOME t
+          | extract (InstanceType t) = SOME t
           | extract _ = NONE
         val srcClass = extract tyExpr1
         val dstClass = extract tyExpr2
@@ -534,7 +534,7 @@ fun findSpecialConversion (tyExpr1:TYPE)
                     (isNumericType srcName andalso isNumericType dstName)
                     orelse
                     (isStringType srcName andalso isStringType dstName)
-                then SOME (ClassType dst)
+                then SOME (InstanceType dst)
                 else NONE
             end
 
@@ -544,7 +544,7 @@ fun findSpecialConversion (tyExpr1:TYPE)
             in
                 if 
                     (isBooleanType dstName)
-                then SOME (ClassType dst)
+                then SOME (InstanceType dst)
                 else NONE
             end
 
@@ -569,14 +569,14 @@ fun subType (extra : TYPE -> TYPE -> bool)
 and subTypeStructuralNominal extra type1 type2 =
     case (type1, type2) of
 
-        (RecordType _,  ClassType (Class { name, ... })) 
+        (RecordType _,  InstanceType (Class { name, ... })) 
         => nameEq name Name.public_Object 
            
-      | (ArrayType _, ClassType (Class { name, ... })) 
+      | (ArrayType _, InstanceType (Class { name, ... })) 
         => nameEq name Name.public_Array orelse
            nameEq name Name.public_Object 
            
-      | (FunctionType _, ClassType (Class { name, ... })) 
+      | (FunctionType _, InstanceType (Class { name, ... })) 
         => nameEq name Name.public_Function orelse
            nameEq name Name.public_Object 
            
@@ -585,7 +585,7 @@ and subTypeStructuralNominal extra type1 type2 =
 and subTypeNominal extra type1 type2 =
     case (type1, type2) of
 
-        ( ClassType (Class { typeParams = [], extends, implements, ...}), _ )
+        ( InstanceType (Class { typeParams = [], extends, implements, ...}), _ )
         => (case extends of 
                 NONE => false 
               | SOME extends => subType extra extends type2)
@@ -595,7 +595,7 @@ and subTypeNominal extra type1 type2 =
                implements
                
       | ( AppType 
-              (ClassType (Class { typeParams, extends, implements, ...}),
+              (InstanceType (Class { typeParams, extends, implements, ...}),
                typeArgs),
           _ )
         => (case extends of 
@@ -641,11 +641,11 @@ and subTypeNullable extra type1 type2 =
     case (type1, type2) of
 
         (NullType, 
-         ClassType (Class { nonnullable = false, ... }))
+         InstanceType (Class { nonnullable = false, ... }))
         => true
 
       | (NullType, 
-         AppType (ClassType (Class { nonnullable = false, ... }), typeArgs))
+         AppType (InstanceType (Class { nonnullable = false, ... }), typeArgs))
         => true
 
       | (NullType, 
@@ -837,7 +837,7 @@ fun instanceTy (rootRib:RIB)
                (n:NAME)
     : TYPE =
     case Fixture.getFixture rootRib (PropName n) of
-        (ClassFixture c) => ClassType c
+        (ClassFixture c) => InstanceType c
       | (InterfaceFixture i) => InterfaceType i
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 

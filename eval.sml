@@ -55,6 +55,7 @@ val doTrace = ref false
 val doTraceConstruct = ref false
 
 fun fmtName n = if (!doTrace orelse !doTraceConstruct) then LogErr.name n else ""
+fun fmtType n = if (!doTrace orelse !doTraceConstruct) then LogErr.ty n else ""
 fun fmtNameExpr n = if (!doTrace orelse !doTraceConstruct) then LogErr.nameExpr n else ""
 fun fmtObjId obj = if (!doTrace orelse !doTraceConstruct) then (Int.toString (getObjId obj)) else ""
 
@@ -498,9 +499,9 @@ and defaultValueForType (regs:REGS)
               | firstSimpleType ((AnyType)::xs) = SOME UndefinedValue
               | firstSimpleType ((NullType)::xs) = SOME NullValue
               | firstSimpleType ((UndefinedType)::xs) = SOME UndefinedValue
-              | firstSimpleType ((ClassType (Class {nonnullable=false, ...}))::xs) = SOME NullValue
+              | firstSimpleType ((InstanceType (Class {nonnullable=false, ...}))::xs) = SOME NullValue
               | firstSimpleType ((InterfaceType (Interface {nonnullable=false, ...}))::xs) = SOME NullValue
-              | firstSimpleType ((AppType (ClassType (Class {nonnullable=false, ...}), _))::xs) = SOME NullValue
+              | firstSimpleType ((AppType (InstanceType (Class {nonnullable=false, ...}), _))::xs) = SOME NullValue
               | firstSimpleType ((AppType (InterfaceType (Interface {nonnullable=false, ...}), _))::xs) = SOME NullValue
               | firstSimpleType (x::xs) = firstSimpleType xs
         in
@@ -516,8 +517,9 @@ and defaultValueForType (regs:REGS)
       | TypeName _ => NONE
       | TypeIndexReferenceType _ => NONE
       | TypeNameReferenceType _ => NONE
-        
-      | ClassType (Class {name, nonnullable, ...}) =>
+      | ClassType _ => NONE
+
+      | InstanceType (Class {name, nonnullable, ...}) =>
         (* We cannot go via the class obj id because we may be booting! *)
         if nameEq name Name.ES4_double 
         then SOME (newDouble regs 0.0)
@@ -626,7 +628,7 @@ and reifyFixture (regs:REGS)
             reifiedFixture (instanceType regs ES4_Namespace []) (ValueProperty (newNamespace regs ns)) ReadOnly
             
           | (ClassFixture c) => 
-            reifiedFixture (ClassType (getMetaClass regs c)) (ValueProperty (newClass regs c)) ReadOnly
+            reifiedFixture (ClassType c) (ValueProperty (newClass regs c)) ReadOnly
             
           | (InterfaceFixture i) => 
             reifiedFixture (instanceType regs helper_InterfaceTypeImpl []) (ValueProperty (newInterface regs i)) ReadOnly
@@ -636,8 +638,8 @@ and reifyFixture (regs:REGS)
                 val Func { native, ... } = func
                 fun scope _ = case (tag, inheritedFrom) of 
                                   (NoTag, _) => (#scope regs)
-                                | (_, SOME class) => getInstanceScope regs obj (SOME (ClassType class))
-                                | (_, NONE) => getInstanceScope regs obj NONE
+                                | (_, SOME class) => getObjectScope regs obj (SOME (InstanceType class))
+                                | (_, NONE) => getObjectScope regs obj NONE
                 val v = if native 
                         then (newNativeFunction regs (getNativeFunction name))
                         else (newFunctionFromFunc regs (scope()) func)
@@ -660,8 +662,8 @@ and reifyFixture (regs:REGS)
           | (VirtualValFixture { ty, getter, setter }) =>
             let
                 (* FIXME: inherit scopes like in MethodFixture *)
-                fun scope NONE = getInstanceScope regs obj NONE
-                  | scope (SOME class) = getInstanceScope regs obj (SOME (ClassType class))
+                fun scope NONE = getObjectScope regs obj NONE
+                  | scope (SOME class) = getObjectScope regs obj (SOME (InstanceType class))
                 fun makeClosureOption NONE = NONE
                   | makeClosureOption (SOME (f, inheritedFrom)) = 
                     SOME (newFunClosure (scope inheritedFrom) f (SOME obj))
@@ -702,12 +704,12 @@ and checkAndConvert (regs:REGS)
         then v
         else
             let
-                val (classType:TYPE) =
+                val (instanceType:TYPE) =
                     case Type.findSpecialConversion (typeOfVal regs v) tyExpr of
                         NONE => throwExn (newTypeOpFailure regs "incompatible types w/o conversion" v tyExpr)
                       | SOME n => n
-                val (classTy:TYPE) = AstQuery.needClassType classType
-                val (classObj:OBJECT) = getInstanceClass regs classTy
+                val (classTy:TYPE) = AstQuery.needInstanceType instanceType
+                val (classObj:OBJECT) = getClassObjOfInstanceType regs classTy
                 (* FIXME: this will call back on itself! *)
                 val converted = evalNamedMethodCall regs classObj meta_invoke [v]
             in
@@ -733,9 +735,9 @@ and isDynamic (regs:REGS)
           | typeIsDynamic (ArrayType _) = true
           | typeIsDynamic (FunctionType _) = true
           | typeIsDynamic (RecordType _) = true
-          (*    | typeIsDynamic (LamType { params, body }) = typeIsDynamic body *)
           | typeIsDynamic (NonNullType t) = typeIsDynamic t
-          | typeIsDynamic (ClassType (Class { dynamic, ... })) = dynamic
+          | typeIsDynamic (ClassType _) = true
+          | typeIsDynamic (InstanceType (Class { dynamic, ... })) = dynamic
           | typeIsDynamic _ = false
     in
         typeIsDynamic (typeOfVal regs (ObjectValue obj))
@@ -1093,19 +1095,25 @@ and getMetaClass (regs:REGS)
                  (class:CLASS)
     : CLASS = 
     let
-        val { rootRib, ... } = regs
-        val objectClass = case Fixture.getFixture rootRib (PropName public_Object) of
-                              ClassFixture c => c
-                            | _ => error regs ["cannot find public Object class"]
-        val Class { instanceRib=objectRib, ...} = objectClass
-        val Class { privateNS, protectedNS, parentProtectedNSs, 
+        val Class { name, privateNS, protectedNS, parentProtectedNSs, 
                     typeParams, classRib, ... } = class
+        val { rootRib, ... } = regs
+        val classTypeImpl = case Fixture.getFixture rootRib (PropName helper_ClassTypeImpl) of
+                                ClassFixture c => c
+                              | _ => error regs ["cannot find public Object class"]
+        val Class { instanceRib=classTypeImplRib, ...} = classTypeImpl
         val protoBinding = (PropName public_prototype, 
                             ValFixture { ty = AnyType, writable = false })
         val merge = Fixture.mergeRibs (Type.matches rootRib [])
-        val instanceRib = merge (merge objectRib classRib) [protoBinding]
+        val (instanceRib, extends) = 
+            if not (nameEq name public_Object) andalso 
+               (InstanceType classTypeImpl) <* (InstanceType class)
+            then ([], NONE)
+            else (merge (merge classTypeImplRib classRib) [protoBinding],
+                  SOME (InstanceType classTypeImpl))                                            
     in
-        Class { name = Name.public_empty, (* FIXME: need to pick a name for the metaclass, sigh. *)
+        trace ["built metaClass for ", fmtName name];
+        Class { name = Name.public_empty, 
                 privateNS = privateNS,
                 protectedNS = protectedNS,
                 parentProtectedNSs = parentProtectedNSs,
@@ -1113,14 +1121,24 @@ and getMetaClass (regs:REGS)
                 
                 nonnullable = true,
                 dynamic = true,  (* needs to be dynamic for es3 compat *)
-                extends = SOME (ClassType objectClass),
+                extends = extends,
                 implements = [],
                 classRib = [],
                 instanceRib = instanceRib,
                 instanceInits = Head ([],[]),
-                constructor = NONE,
-                classType = Ast.RecordType [] (* FIXME: bogus, #classType probably needs to go. *) 
-              }
+                constructor = NONE }
+    end
+
+and getMetaClassAndMetaClassObjectAndTag (regs:REGS)
+                                         (class:CLASS)
+    : (CLASS * OBJECT * TAG) = 
+    let
+        val metaClass = getMetaClass regs class
+        val Class { instanceRib, ... } = metaClass
+        val metaClassObject = newObject (PrimitiveTag (TypePrimitive (InstanceType metaClass))) NullValue instanceRib
+        val tag = PrimitiveTag (TypePrimitive (ClassType class))
+    in
+        (metaClass, metaClassObject, tag)
     end
     
 and newClass (regs:REGS)
@@ -1129,13 +1147,12 @@ and newClass (regs:REGS)
     let
         val (funClassObj, _) = getFunctionClassObjectAndClass (regs) 
         val proto = getPrototype regs funClassObj
-        val metaClass = getMetaClass regs class
-        val metaClassObj = newObject (PrimitiveTag (ClassPrimitive metaClass)) NullValue []
-        val tag = PrimitiveTag (ClassPrimitive class)
-        val classObj = constructStandardWithTag regs metaClassObj metaClass tag proto []
+        val (metaClass, metaClassObject, tag) = getMetaClassAndMetaClassObjectAndTag regs class
+        val obj = constructStandardWithTag regs metaClassObject metaClass tag proto []
     in
-        initClassPrototype regs classObj;
-        ObjectValue classObj
+        bindAnySpecialIdentity regs obj;
+        initClassPrototype regs obj;
+        ObjectValue obj
     end
 
 and newInterface (regs:REGS)
@@ -1144,7 +1161,7 @@ and newInterface (regs:REGS)
     let
         val { global, ... } = regs
         val interfaceTypeImpl = needObj regs (getValue regs global helper_InterfaceTypeImpl)
-        val arg = ObjectValue (newObject (PrimitiveTag (InterfacePrimitive iface)) NullValue [])
+        val arg = ObjectValue (newObject (PrimitiveTag (TypePrimitive (InterfaceType iface))) NullValue [])
     in
         evalNewObj regs interfaceTypeImpl [arg]
     end
@@ -2032,17 +2049,17 @@ and evalSuperCall (regs:REGS)
     let                                         
         val Object { tag, ... } = object
         val thisType = case tag of 
-                           InstanceTag c  => ClassType c
-                         | _ => error regs ["missing ClassType tag during super call"]
+                           InstanceTag c  => InstanceType c
+                         | _ => error regs ["missing InstanceTag during super call"]
                                 
         fun getSuperClassObjs t = 
             case t of 
-                (ClassType (Class {extends, ...})) =>
-                (getInstanceClass regs t) :: 
+                (InstanceType (Class {extends, ...})) =>
+                (getClassObjOfInstanceType regs t) :: 
                 (case extends of 
                      NONE => []
                    | SOME t' => getSuperClassObjs t')
-              | _ => error regs ["non-class type in extends clause during super call"]
+              | _ => error regs ["non-instance type in extends clause during super call"]
 
         fun instanceRibOf (Class { instanceRib, ... }) = instanceRib
 
@@ -2166,8 +2183,7 @@ and applyTypesToClass (regs:REGS)
                              classRib = (#classRib c),
                              instanceRib = (#instanceRib c),
                              instanceInits = (#instanceInits c),
-                             constructor = (#constructor c),
-                             classType = (#classType c)  }
+                             constructor = (#constructor c) }
         val baseClassObj = needObj regs classVal
     in
         newClass regs newCls
@@ -2227,25 +2243,25 @@ and applyTypesToFunction (regs:REGS)
     end
     
 
-and getInstanceClass (regs:REGS)
-                     (ity:TYPE)
+and getClassObjOfInstanceType (regs:REGS)
+                              (ity:TYPE)
     : OBJECT = 
     let 
         fun fetch n = getValue regs (#global regs) n
     in
         case ity of 
-            ClassType (Class { name, ... }) => 
+            InstanceType (Class { name, ... }) => 
             needObj regs (fetch name)
-            
-          | AppType (ClassType (Class {name, ... }), types) => 
+
+          | AppType (InstanceType (Class {name, ... }), types) => 
             needObj regs (applyTypesToClass regs (fetch name) types)
             
           | ArrayType _ => needObj regs (fetch public_Array)
           | RecordType _ => needObj regs (fetch public_Object)
           | FunctionType _ => needObj regs (fetch public_Function)
-          | NonNullType t => getInstanceClass regs t
+          | NonNullType t => getClassObjOfInstanceType regs t
             
-          | _ => error regs ["unexpected type in getInstanceClass: ", LogErr.ty ity]
+          | _ => error regs ["unexpected type in getClassObjOfInstanceType: ", LogErr.ty ity]
     end
 
 and getGlobalScope (regs:REGS) 
@@ -2260,37 +2276,35 @@ and getClassScope (regs:REGS)
                   (classObj:OBJECT)
     : SCOPE = 
     let
-        val class = needClass (ObjectValue classObj)
-        val metaClass = getMetaClass regs class
         val global = getGlobalScope regs
     in
-        extendScope global classObj (InstanceScope metaClass)
+        extendScope global classObj ClassScope
     end
 
-and getInstanceScope (regs:REGS)
-                     (obj:OBJECT)
-                     (ity:TYPE option)
+and getObjectScope (regs:REGS)
+                   (obj:OBJECT)
+                   (ity:TYPE option)
     : SCOPE = 
     let
         val Object { tag, ... } = obj
-        val (scope, class) = 
-            case tag of 
-
-                PrimitiveTag (ClassPrimitive c) 
-                => (getGlobalScope regs, getMetaClass regs c)
-
-              | _ 
-                => 
-                let
-                    val ity = case ity of 
-                                  NONE => typeOfVal regs (ObjectValue obj)
-                                | SOME t => t
-                    val classObj = getInstanceClass regs ity
-                in
-                    (getClassScope regs classObj, needClass (ObjectValue classObj))
-                end
+        fun fetch n = getValue regs (#global regs) n
     in
-        extendScope scope obj (InstanceScope class)
+        case tag of             
+            PrimitiveTag (TypePrimitive (ClassType _))
+            => extendScope (getGlobalScope regs) obj ClassScope
+               
+          | _ 
+            => 
+            let
+                val ity = case ity of 
+                              NONE => typeOfVal regs (ObjectValue obj)
+                            | SOME t => t
+                val classObj = getClassObjOfInstanceType regs ity
+                val scope = getClassScope regs classObj
+                val class = needClass (ObjectValue classObj)
+            in                
+                extendScope scope obj (InstanceScope class)
+            end
     end
     
 and getInstanceInterface (regs:REGS)
@@ -2368,7 +2382,7 @@ and evalArrayInitialiser (regs:REGS)
                  getValue regs (#global regs) public_Array)
               | SOME ty => 
                 let
-                    val cv = ObjectValue (getInstanceClass regs ty)
+                    val cv = ObjectValue (getClassObjOfInstanceType regs ty)
                 in
                     (InstanceTag (needClass cv), cv)
                 end
@@ -2412,7 +2426,7 @@ and evalObjectInitialiser (regs:REGS)
                 (ObjectTag fields, getObjClassVal(), fields)
               | SOME ty => 
                 let 
-                    val cv = ObjectValue (getInstanceClass regs ty)
+                    val cv = ObjectValue (getClassObjOfInstanceType regs ty)
                 in
                     (InstanceTag (needClass cv), cv, [])
                 end
@@ -2562,7 +2576,7 @@ and evalNewObj (regs:REGS)
     case obj of
         Object { tag, ... } =>
         case tag of
-            PrimitiveTag (ClassPrimitive c) => constructClassInstance regs obj c args
+            PrimitiveTag (TypePrimitive (ClassType c)) => constructClassInstance regs obj c args
           | PrimitiveTag (FunctionPrimitive f) => constructObjectViaFunction regs obj f args
           | _ => throwExn (newTypeErr regs ["operator 'new' applied to unexpected object type"])
 
@@ -2581,7 +2595,7 @@ and evalCallMethodByExpr (regs:REGS)
         val _ = trace ["resolved call to ", fmtName name, " on obj=#", fmtObjId obj, ", with thisObj=#", fmtObjId thisObj]
         val result = evalCallByRef (withThis regs thisObj) r args
     in
-        trace ["<<< evalCallMethodByExpr"];
+        trace ["<<< evalCallMethodByExpr ", approx result];
         result
     end
 
@@ -2820,7 +2834,6 @@ and evalTypeExpr (regs:REGS)
     : VALUE =
     case te of
         AnyType => NullValue (* FIXME *)
-      (*  | VoidType => NullValue (* FIXME *) *)
       | NullType => NullValue (* FIXME *)
       | UndefinedType => NullValue (* FIXME *)
       | UnionType ut => NullValue (* FIXME *)
@@ -2829,8 +2842,9 @@ and evalTypeExpr (regs:REGS)
       | FunctionType ft => NullValue (* FIXME *)
       | RecordType ot => NullValue (* FIXME *)
       | NonNullType _ => NullValue (* FIXME *)
-      | ClassType c => NullValue (* FIXME *)
+      | InstanceType c => NullValue (* FIXME *)
       | InterfaceType t => NullValue (* FIXME *)
+      | ClassType t => NullValue  (* FIXME *)
       | _ => NullValue (* FIXME *)
 
 and wordToDouble (x:Word32.word) 
@@ -2851,15 +2865,15 @@ and numTypeOf (regs:REGS)
     let
         val ty = typeOfVal regs v 
         fun sameItype t2 = 
-            case (ty, t2) of (* FIXME: this got ugly *)
-                (NonNullType (ClassType (Class {name=name1, ...})), 
-                 NonNullType (ClassType (Class {name=name2, ...}))) => 
+            case (ty, t2) of (* FIXME: this got ugly. it should really punt to Type.sml *)
+                (NonNullType (InstanceType (Class {name=name1, ...})), 
+                 NonNullType (InstanceType (Class {name=name2, ...}))) => 
                 nameEq name1 name2
-              | ( (ClassType (Class {name=name1, ...})), 
-                 NonNullType (ClassType (Class {name=name2, ...}))) => 
+              | ( (InstanceType (Class {name=name1, ...})), 
+                  NonNullType (InstanceType (Class {name=name2, ...}))) => 
                 nameEq name1 name2
-              | ( (ClassType (Class {name=name1, ...})), 
-                  (ClassType (Class {name=name2, ...}))) => 
+              | ( (InstanceType (Class {name=name1, ...})), 
+                  (InstanceType (Class {name=name2, ...}))) => 
                 nameEq name1 name2
               | _ => false
     in
@@ -3191,14 +3205,14 @@ and doubleEquals (regs:REGS)
         toBoolean b
     end
 
-and primitiveClassType regs getter = 
+and primitiveInstanceType regs getter = 
     let
         val cell = getter regs 
     in
         case !cell of 
-            SOME (Object { tag = PrimitiveTag (ClassPrimitive c), 
+            SOME (Object { tag = PrimitiveTag (TypePrimitive (ClassType c)), 
                         ...}) => 
-            ClassType c
+            InstanceType c
           | _ => error regs ["error fetching primitive instance type"]
     end
     
@@ -3206,20 +3220,18 @@ and typeOfTag (regs:REGS)
               (tag:TAG)
     : (TYPE) =
     case tag of
-        InstanceTag ity => ClassType ity
+        InstanceTag ity => InstanceType ity
       | ObjectTag tys => RecordType tys
       | ArrayTag (tys,tyo) => ArrayType (tys,tyo)
-      | PrimitiveTag (BooleanPrimitive _) => primitiveClassType regs getBooleanClassSlot
-      | PrimitiveTag (DoublePrimitive _) => primitiveClassType regs getDoubleClassSlot
-      | PrimitiveTag (DecimalPrimitive _) => primitiveClassType regs getDecimalClassSlot
-      | PrimitiveTag (StringPrimitive _) => primitiveClassType regs getStringClassSlot
-      | PrimitiveTag (NamespacePrimitive _) => primitiveClassType regs getNamespaceClassSlot
-      | PrimitiveTag (ClassPrimitive c) => ClassType (getMetaClass regs c)
-      | PrimitiveTag (InterfacePrimitive _) => instanceType regs helper_InterfaceTypeImpl []
-      | PrimitiveTag (TypePrimitive _) => primitiveClassType regs getTypeInterfaceSlot
-      | PrimitiveTag (NativeFunctionPrimitive _) => primitiveClassType regs getFunctionClassSlot
-      | PrimitiveTag (GeneratorPrimitive _) => primitiveClassType regs getGeneratorClassSlot
-      | PrimitiveTag (ArgumentsPrimitive _) => primitiveClassType regs getArgumentsClassSlot
+      | PrimitiveTag (TypePrimitive t) => t
+      | PrimitiveTag (BooleanPrimitive _) => primitiveInstanceType regs getBooleanClassSlot
+      | PrimitiveTag (DoublePrimitive _) => primitiveInstanceType regs getDoubleClassSlot
+      | PrimitiveTag (DecimalPrimitive _) => primitiveInstanceType regs getDecimalClassSlot
+      | PrimitiveTag (StringPrimitive _) => primitiveInstanceType regs getStringClassSlot
+      | PrimitiveTag (NamespacePrimitive _) => primitiveInstanceType regs getNamespaceClassSlot
+      | PrimitiveTag (NativeFunctionPrimitive _) => primitiveInstanceType regs getFunctionClassSlot
+      | PrimitiveTag (GeneratorPrimitive _) => primitiveInstanceType regs getGeneratorClassSlot
+      | PrimitiveTag (ArgumentsPrimitive _) => primitiveInstanceType regs getArgumentsClassSlot
       | PrimitiveTag (FunctionPrimitive {func=Func { ty, ...}, ...}) => ty
                                                                         
       | NoTag => 
@@ -3373,8 +3385,8 @@ and evalInstanceOf (regs:REGS)
         val ob = needObj regs b
     in
         case getObjPrimitive ob of 
-            SOME (ClassPrimitive _) => objHasInstance regs ob a
-          | SOME (InterfacePrimitive _) => objHasInstance regs ob a
+            SOME (TypePrimitive (ClassType _)) => objHasInstance regs ob a
+          | SOME (TypePrimitive (InterfaceType _)) => objHasInstance regs ob a
           | SOME (FunctionPrimitive _) => objHasInstance regs ob a
           | SOME (NativeFunctionPrimitive _) => objHasInstance regs ob a
           | _ => throwExn (newTypeErr regs ["operator 'instanceof' applied object with no [[hasInstance]] method"])
@@ -3981,14 +3993,17 @@ and bindArgs (regs:REGS)
              * FIXME: this is a random guess at the appropriate form
              * of 'arguments'.
              *)
-            (addProp props public_arguments
-                     { state = ValueProperty (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
-                       (* args is a better approximation than finalArgs *)
-                       ty = primitiveClassType regs getArgumentsClassSlot,
-                       attrs = { removable = false,
-                                 enumerable = false,
-                                 writable = Writable,
-                                 fixed = true } };
+            (if isBooting regs
+             then ()
+             else
+                 addProp props public_arguments
+                         { state = ValueProperty (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
+                           (* args is a better approximation than finalArgs *)
+                           ty = primitiveInstanceType regs getArgumentsClassSlot,
+                           attrs = { removable = false,
+                                     enumerable = false,
+                                     writable = Writable,
+                                     fixed = true } };
              bindArg 0 finalArgs)
 
     (*
@@ -4095,7 +4110,12 @@ and findTargetObj (regs:REGS)
         fun isPropName ((PropName _), _) = true
           | isPropName _ = false
     in
-        traceConstruct ["considering init target as object #", Int.toString (getScopeId scope)];
+        traceConstruct ["considering ", 
+                        (case target of 
+                             Local => "local"
+                           | Hoisted => "hoisted"
+                           | Prototype => "prototype"),
+                        " init target as object #", Int.toString (getScopeId scope)];
         case target of
             Local =>
             if (List.exists isPropName (getRib regs object)) orelse
@@ -4106,7 +4126,8 @@ and findTargetObj (regs:REGS)
                  
           | Hoisted =>
             if (case (kind, parent) of 
-                    (InstanceScope _, _) => true
+                    (ClassScope, _) => true
+                  | (InstanceScope _, _) => true
                   | (ActivationScope, _) => true
                   | (_, NONE) => true
                   | _ => false)
@@ -4115,7 +4136,8 @@ and findTargetObj (regs:REGS)
                  
           | Prototype =>
             (case kind of 
-                 InstanceScope _ => needObj regs (getPrototype regs object)
+                 ClassScope => needObj regs (getPrototype regs object)
+               | InstanceScope _ => needObj regs (getPrototype regs object)
                | _ => findTargetObj regs (valOf parent) target)
     end
 
@@ -4157,11 +4179,11 @@ and initializeAndConstruct (regs:REGS)
                 NONE =>
                 (traceConstruct ["checking all properties initialized at root class ", fmtName name];
                  checkRibInitialization regs instanceObj NONE)
-              | SOME parentTy =>
+              | SOME parentTy  =>                
                 let
                     val parentTy = evalTy regs parentTy
-                    val _ = traceConstruct ["initializing and constructing superclass ", Type.fmtType parentTy]
-                    val superObj = getInstanceClass regs (AstQuery.needClassType parentTy)
+                    val _ = traceConstruct ["initializing and constructing superclass ", fmtType parentTy]
+                    val superObj = getClassObjOfInstanceType regs (AstQuery.needInstanceType parentTy)
                     val superClass = needClass (ObjectValue superObj)
                     val superScope = getClassScope regs superObj
                     val superRegs = withThis (withScope regs superScope) instanceObj
@@ -4183,7 +4205,7 @@ and initializeAndConstruct (regs:REGS)
                                                     varObj
                                                     ActivationScope
                 val varScope = (#scope varRegs)
-                val (instanceRegs:REGS) = withScope regs (getInstanceScope regs instanceObj NONE)
+                val (instanceRegs:REGS) = withScope regs (getObjectScope regs instanceObj NONE)
                 val (ctorRegs:REGS) = extendScopeReg instanceRegs
                                                      varObj
                                                      ActivationScope
@@ -4233,7 +4255,7 @@ and constructStandardWithTag (regs:REGS)
         val Class { name, instanceRib, ...} = class
         val instanceObj = newObject tag proto instanceRib
         val _ = bindAnySpecialIdentity regs instanceObj
-    (* FIXME: might have 'this' binding wrong in class scope here. *)
+        (* FIXME: might have 'this' binding wrong in class scope here. *)
         val classScope = getClassScope regs classObj
         val regs = withThis (withScope regs classScope) instanceObj 
     in
@@ -4538,7 +4560,7 @@ and bindAnySpecialIdentity (regs:REGS)
             val Object { ident, tag, ... } = obj
         in
             case tag of 
-                PrimitiveTag (ClassPrimitive (Class { name, ... })) =>
+                PrimitiveTag (TypePrimitive (ClassType (Class { name, ... }))) =>
                 let
                     fun f (n,id) = nameEq name n
                 in
@@ -4667,15 +4689,15 @@ and initClassPrototype (regs:REGS)
         val Object { ident, props, tag, ... } = obj
     in
         case tag of 
-            PrimitiveTag (ClassPrimitive (Class {name, extends,...})) => 
+            PrimitiveTag (TypePrimitive (ClassType (Class {name, extends,...}))) => 
             let
                 val baseProtoVal =
                     case extends of
                         NONE => NullValue
-                      | SOME baseClassTy =>
+                      | SOME baseInstanceType =>
                         let
-                            val ty = AstQuery.needClassType (evalTy regs baseClassTy)
-                            val ob = getInstanceClass regs ty
+                            val ty = AstQuery.needInstanceType (evalTy regs baseInstanceType)
+                            val ob = getClassObjOfInstanceType regs ty
                         in 
                             getPrototype regs ob
                         end
@@ -5167,6 +5189,7 @@ and evalAnonProgram (regs:REGS)
         fun findHoistingScopeObj scope = 
             case scope of 
                 Scope { kind = InstanceScope _, ... } => scope
+              | Scope { kind = ClassScope, ... } => scope
               | Scope { kind = ActivationScope, ... } => scope
               | Scope { parent = NONE, ... } => scope
               | Scope { parent = SOME p, ...} => findHoistingScopeObj p

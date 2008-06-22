@@ -789,7 +789,7 @@ and resolveClassInheritance (env:ENV)
     let
         val Ast.Class {name, privateNS, protectedNS, parentProtectedNSs, 
 					 typeParams, nonnullable, dynamic, classRib, 
-					 instanceRib, instanceInits, constructor, classType,...} = cls
+					 instanceRib, instanceInits, constructor, ...} = cls
                                                                                
         val _ = trace ["analyzing inheritance for ", fmtName name]
 
@@ -801,19 +801,18 @@ and resolveClassInheritance (env:ENV)
                                      
     in
         Ast.Class {name=name,
-				 privateNS=privateNS,
-				 protectedNS=protectedNS,
-				 parentProtectedNSs=parentProtectedNSs,
-                 typeParams=typeParams,
-                 nonnullable=nonnullable,
-                 dynamic=dynamic,
-                 extends=extendsTy,
-                 implements=implementsTys,
-                 classRib=classRib,
-                 instanceRib=instanceRib1,
-                 instanceInits=instanceInits,
-                 constructor=constructor,
-                 classType=classType}
+				   privateNS=privateNS,
+				   protectedNS=protectedNS,
+				   parentProtectedNSs=parentProtectedNSs,
+                   typeParams=typeParams,
+                   nonnullable=nonnullable,
+                   dynamic=dynamic,
+                   extends=extendsTy,
+                   implements=implementsTys,
+                   classRib=classRib,
+                   instanceRib=instanceRib1,
+                   instanceInits=instanceInits,
+                   constructor=constructor}
     end
 
 (*
@@ -854,7 +853,7 @@ and resolveExtends (env:ENV)
                 val baseClass = needClassFixture baseClassFixture
                 val Ast.Class { privateNS, instanceRib, ... } = baseClass
             in
-                (SOME (Ast.ClassType baseClass),
+                (SOME (Ast.InstanceType baseClass),
                  inheritRib (SOME privateNS)
                             (SOME baseClass)
 							instanceRib 
@@ -1012,19 +1011,18 @@ and analyzeClassBody (env:ENV)
         val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
     in
         Ast.Class { name=name,
-				  privateNS = privateNS,
-				  protectedNS = protectedNS,				  
-				  parentProtectedNSs = [], (* set in resolveClassInheritence *)
-                  typeParams = params,
-                  nonnullable = nonnullable,
-                  dynamic = dynamic,
-                  extends = NONE,
-                  implements = [],
-                  classRib = classRib,
-                  instanceRib = instanceRib,
-                  instanceInits = instanceInits,
-                  constructor = ctor,
-                  classType = makeTy env (Ast.RecordType []) }
+				    privateNS = privateNS,
+				    protectedNS = protectedNS,				  
+				    parentProtectedNSs = [], (* set in resolveClassInheritence *)
+                    typeParams = params,
+                    nonnullable = nonnullable,
+                    dynamic = dynamic,
+                    extends = NONE,
+                    implements = [],
+                    classRib = classRib,
+                    instanceRib = instanceRib,
+                    instanceInits = instanceInits,
+                    constructor = ctor }
     end
 
 (*

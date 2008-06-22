@@ -58,38 +58,34 @@ fun lookupRoot (rootRib:Ast.RIB)
 fun instantiateRootClass (regs:Mach.REGS) 
                          (fullName:Ast.NAME) 
                          (proto:Mach.OBJECT)
-    : (Ast.CLASS * Mach.OBJECT) =
+    : (Ast.CLASS * Mach.OBJECT * Ast.CLASS * Mach.OBJECT) =
   let
       val rootRib = (#rootRib regs)
-      val cls = lookupRoot rootRib fullName
-      val Ast.Class { classRib, ... } = cls
-      val metaClass = Eval.getMetaClass regs cls
-                                        
+      val class = lookupRoot rootRib fullName
+      val (metaClass, metaClassObject, tag) = Eval.getMetaClassAndMetaClassObjectAndTag regs class
+
+      val Ast.Class { instanceRib, ... } = metaClass
+
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject (Mach.PrimitiveTag (Mach.ClassPrimitive cls)) (Mach.ObjectValue proto) classRib
+      val obj = Mach.newObject tag (Mach.ObjectValue proto) instanceRib
 
-      val _ = trace ["allocating ", Int.toString (length classRib), 
-                     " class fixtures on class ", LogErr.name fullName,
-                     ", object #", Int.toString (Eval.getObjId (obj))];          
-      val _ = if (!doTrace) 
-              then Fixture.printRib classRib
-              else ()
+      val _ = trace ["object identity of  ", LogErr.name fullName];
+      val _ = Eval.bindAnySpecialIdentity regs obj
 
-      val _ = trace ["binding class ", LogErr.name fullName];
+      val _ = trace ["binding class name of  ", LogErr.name fullName];
       val Mach.Object { props, ... } = (#global regs)
       val _ = if Mach.hasProp props fullName
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
       val _ = Mach.addProp props fullName
-                           { ty = Ast.ClassType metaClass,
+                           { ty = Ast.ClassType class,
                              state = Mach.ValueProperty (Mach.ObjectValue obj),
                              attrs = { removable = false,
                                        enumerable = false,
                                        writable = Mach.ReadOnly,
                                        fixed = true } }
-      val _ = Eval.bindAnySpecialIdentity regs obj
   in
-      (cls, obj)
+      (class, obj, metaClass, metaClassObject)
   end
 
 fun runConstructorOnObject (regs:Mach.REGS)
@@ -98,8 +94,7 @@ fun runConstructorOnObject (regs:Mach.REGS)
                            (obj:Mach.OBJECT)
     : unit =
     let
-        val _ = trace ["allocating deferred ribs and running deferred constructor"];
-        val Ast.Class { instanceRib, ...} = class
+        val _ = trace ["running deferred constructor"];
         val classRegs = Eval.getClassScope regs classObj
         val classRegs = Eval.withThis regs obj
     in
@@ -181,9 +176,7 @@ fun describeGlobal (regs:Mach.REGS) =
 fun filterOutRootClasses (prog:Ast.PROGRAM) : Ast.PROGRAM =
     let
         fun nonRootClassFixture ((Ast.PropName n), _) = if n = Name.public_Object orelse
-                                                           n = Name.intrinsic_Class orelse
-                                                           n = Name.public_Function orelse
-                                                           n = Name.intrinsic_Interface
+                                                           n = Name.public_Function
                                                         then false
                                                         else true
           | nonRootClassFixture _ = true
@@ -314,8 +307,11 @@ fun boot (baseDir:string) : Mach.REGS =
         val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.NullValue instanceRib
         val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.ObjectValue objPrototype) instanceRib
 
-        val (objClass, objClassObj) = instantiateRootClass regs Name.public_Object funPrototype
-        val (_, funClassObj) = instantiateRootClass regs Name.public_Function funPrototype
+        val (objClass, objClassObj, objMetaClass, objMetaClassObj) = 
+            instantiateRootClass regs Name.public_Object funPrototype
+
+        val (_, funClassObj, funMetaClass, funMetaClassObj) = 
+            instantiateRootClass regs Name.public_Function funPrototype
 
         val _ = describeGlobal regs;
     in
@@ -328,8 +324,11 @@ fun boot (baseDir:string) : Mach.REGS =
         evalFiles regs otherProgs;
 
         runConstructorOnObject regs objClass objClassObj glob;
-        runConstructorOnObject regs objClass objClassObj objPrototype;        
+        runConstructorOnObject regs objClass objClassObj objPrototype;
         runConstructorOnObject regs objClass objClassObj funPrototype;
+
+        runConstructorOnObject regs objMetaClass objMetaClassObj objClassObj;
+        runConstructorOnObject regs funMetaClass funMetaClassObj funClassObj;
 
         Eval.evalProgram regs (filterOutRootClasses objProg);
         Eval.evalProgram regs (filterOutRootClasses funProg);

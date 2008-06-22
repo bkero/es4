@@ -189,12 +189,7 @@ fun typeOfFixture (env:ENV)
 			      (fixture:Ast.FIXTURE)
     : Ast.TYPE = 
     case fixture of 	
-	    (* 
-	     * FIXME: classtypes should be turned into instancetypes of 
-	     * the static-class type, so we can look up static props on them
-	     * correctly. Abusing object types like this is no good.
-	     *)
-	    (Ast.ClassFixture (Ast.Class {classType, ...})) => classType	
+	    (Ast.ClassFixture c) => Ast.ClassType c
       | (Ast.ValFixture { ty, ... }) => ty	
       | (Ast.VirtualValFixture { ty, ... }) => ty        
       | (Ast.TypeFixture _) => (#TypeType (#stdTypes env))
@@ -934,11 +929,11 @@ and verifyFixture (env:ENV)
     case f of
      
         Ast.ClassFixture (Ast.Class {name, privateNS, protectedNS, parentProtectedNSs, 
-                                   typeParams, nonnullable, 
-                                   dynamic, extends, implements, 
-                                   classRib, instanceRib, instanceInits, 
-                                   constructor, classType }) =>
-         let
+                                     typeParams, nonnullable, 
+                                     dynamic, extends, implements, 
+                                     classRib, instanceRib, instanceInits, 
+                                     constructor }) =>
+        let
              val typeVarRib = paramsToTypeVars typeParams
              val typeEnv = withRib env typeVarRib
              val classEnv = withRib typeEnv classRib

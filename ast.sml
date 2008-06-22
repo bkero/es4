@@ -165,8 +165,7 @@ datatype PRAGMA =
              classRib: RIB,
              instanceRib: RIB,
              instanceInits: HEAD,
-             constructor: CTOR option,
-             classType: TYPE }
+             constructor: CTOR option }
 
      and INTERFACE =
          Interface of
@@ -228,36 +227,19 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENTIFIER * EXPRESSION)
        | AssignStep of (EXPRESSION * EXPRESSION)
 
-(*
-
-datatype TYPE =
+     and TYPE =
          AnyType
        | NullType
        | UndefinedType
-       | RecordType of (NAME_EXPRESSION * TYPE) list
-       | ArrayType  of (TYPE list * TYPE option)
-       | UnionType  of TYPE list
-       | FunctionType of FUNCTION_TYPE
-       | NonNullType of TYPE
-       | AppType of (TYPE * TYPE list)
-       | TypeName of (NAME_EXPRESSION * NONCE option)  
-       | ClassType of CLASS
-       | InterfaceType of INTERFACE
-
-*)
-
-     and TYPE =
-         NullType
-       | UndefinedType
-       | AnyType
        | RecordType of (NAME_EXPRESSION * TYPE) list   
        | ArrayType  of (TYPE list * TYPE option)
        | UnionType of TYPE list
-       | NonNullType of TYPE
        | FunctionType of FUNCTION_TYPE
+       | NonNullType of TYPE
        | AppType of (TYPE * TYPE list)
-       | TypeName of (NAME_EXPRESSION * NONCE option)  (* *)
+       | TypeName of (NAME_EXPRESSION * NONCE option)
        | ClassType of CLASS
+       | InstanceType of CLASS
        | InterfaceType of INTERFACE
 
 (* Following will be removed during defn phase *)

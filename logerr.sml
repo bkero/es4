@@ -170,15 +170,14 @@ fun ty t =
             Ast.AnyType => "*"
           | Ast.NullType => "null"
           | Ast.UndefinedType => "undefined"
-        (*  | Ast.VoidType => "<VoidType>" *)
           | Ast.UnionType tys => "(" ^ (typeOrList tys) ^ ")"
           | Ast.ArrayType (tys,NONE) => "[" ^ (typeList tys) ^ "]"
           | Ast.ArrayType (tys,SOME t) => "[" ^ (typeList tys) ^ "..." ^ (ty t) ^"]"
           | Ast.TypeName (name, _) => "TypeName("^(nameExpr name)^")"
-	  | Ast.TypeIndexReferenceType (t,i) 
-	    => "<TypeIndexReferenceType: "^(ty t)^"."^(Int.toString i)^">"
+		  | Ast.TypeIndexReferenceType (t,i) 
+			=> "<TypeIndexReferenceType: "^(ty t)^"."^(Int.toString i)^">"
           | Ast.TypeNameReferenceType (t,n)
-	    => "<TypeNameReferenceType: ...>"
+			=> "<TypeNameReferenceType: ...>"
           | Ast.FunctionType {params, result, hasRest, ...} => 
 			"function (" 
 			^ (typeList params) 
@@ -198,13 +197,11 @@ fun ty t =
 			(ty base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NonNullType t => (ty t) ^ "!"
           | Ast.ClassType (Ast.Class { name=n, ... }) => 
-	                "ClassType("^(name n)^")"
+	        "ClassType("^(name n)^")"
+          | Ast.InstanceType (Ast.Class { name=n, ... }) => 
+	        "InstanceType("^(name n)^")"
           | Ast.InterfaceType (Ast.Interface { name=n, ... }) => 
-			name n
-(*		  | Ast.TypeVarFixtureRef n => "TypeVarFixtureRef"      *)
-(*	  | Ast.LamType { params, body } => 
-			"lambda.<" ^ (identList params) ^ ">(" ^ (ty body) ^ ")"
-*)
+			"InterfaceType("^(name n)^")"
     end
 
 exception LexError of string

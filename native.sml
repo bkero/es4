@@ -205,7 +205,7 @@ fun getSuperClass (regs:Mach.REGS)
     in
         (case extends of 
              SOME ty => Mach.ObjectValue 
-                            (Eval.getInstanceClass regs (Eval.evalTy regs ty))
+                            (Eval.getClassObjOfInstanceType regs (Eval.evalTy regs ty))
            | _ => Mach.NullValue)
     end
 

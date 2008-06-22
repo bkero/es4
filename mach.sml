@@ -163,8 +163,6 @@ datatype VALUE = UndefinedValue
        | DecimalPrimitive of Decimal.DEC
        | StringPrimitive of Ustring.STRING
        | NamespacePrimitive of NAMESPACE
-       | ClassPrimitive of CLASS
-       | InterfacePrimitive of INTERFACE
        | FunctionPrimitive of CLOSURE
        | TypePrimitive of TYPE
        | ArgumentsPrimitive of SCOPE
@@ -181,6 +179,7 @@ datatype VALUE = UndefinedValue
          WithScope
        | GlobalScope
        | InstanceScope of CLASS
+       | ClassScope
        | ActivationScope
        | BlockScope
        | TypeArgScope
@@ -313,10 +312,10 @@ fun isBoolean (ObjectValue (Object {tag = PrimitiveTag (BooleanPrimitive _), ...
 fun isNamespace (ObjectValue (Object {tag = PrimitiveTag (NamespacePrimitive _), ...})) = true
   | isNamespace _ = false
 
-fun isClass (ObjectValue (Object {tag = PrimitiveTag (ClassPrimitive _), ...})) = true
+fun isClass (ObjectValue (Object {tag = PrimitiveTag (TypePrimitive (ClassType _)), ...})) = true
   | isClass _ = false
 
-fun isInterface (ObjectValue (Object {tag = PrimitiveTag (InterfacePrimitive _), ...})) = true
+fun isInterface (ObjectValue (Object {tag = PrimitiveTag (TypePrimitive (InterfaceType _)), ...})) = true
   | isInterface _ = false
 
 fun isFunction (ObjectValue (Object {tag = PrimitiveTag (FunctionPrimitive _), ...})) = true
@@ -592,8 +591,6 @@ fun primitiveToUstring (primitive:PRIMITIVE)
       | BooleanPrimitive true => Ustring.true_
       | BooleanPrimitive false => Ustring.false_
       | NamespacePrimitive ns => Ustring.fromString (LogErr.namespace ns)
-      | ClassPrimitive _ => Ustring.fromString "[class ClassPrimitive]"
-      | InterfacePrimitive _ => Ustring.fromString "[interface InterfacePrimitive]"
       | FunctionPrimitive _ => Ustring.fromString "[function FunctionPrimitive]"
       | TypePrimitive _ => Ustring.fromString "[type TypePrimitive]"
       | NativeFunctionPrimitive _ => Ustring.fromString "[function FunctionPrimitive]"
@@ -692,32 +689,26 @@ fun inspect (v:VALUE)
 
         fun typ t = LogErr.ty t
 
-        fun magType t = 
+        fun primType t = 
             case t of 
-                ClassPrimitive c => 
-                let
-                    val Class { classType, ... } = c
-                in
-                    (" : instanceType=" ^ (typ (ClassType c)) ^ ", classType=" ^ (typ classType))
-                end
-              | InterfacePrimitive i => (" : instanceType=" ^ (typ (InterfaceType i)))
-              | FunctionPrimitive { func = Func { ty=ty0, ... }, ... } => 
-                (" : " ^ (typ ty0))
-              | TypePrimitive t => (" = " ^ (typ t))
+                FunctionPrimitive { func = Func { ty=ty0, ... }, ... }
+                => (" : " ^ (typ ty0))
+              | TypePrimitive t 
+                => (" = " ^ (typ t))
               | _ => ""
-
+                     
         (* FIXME: elaborate printing of type expressions. *)
-        fun mag m = case m of
-                        StringPrimitive s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
-                      | m => Ustring.toAscii (primitiveToUstring m) ^ (magType m)
-                
+        fun prim m = case m of
+                         StringPrimitive s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
+                       | m => Ustring.toAscii (primitiveToUstring m) ^ (primType m)
+                              
         fun tag (Object ob) =
             case (#tag ob) of
                 (* FIXME: elaborate printing of structural tags. *)
                 ObjectTag _ => "<Object>"
               | ArrayTag _ => "<Arrray>"
-              | InstanceTag t => "<Instance " ^ (typ (ClassType t)) ^ ">"
-              | PrimitiveTag m => "<Primitive " ^ (mag m) ^ ">"
+              | InstanceTag t => "<Instance " ^ (typ (InstanceType t)) ^ ">"
+              | PrimitiveTag p => "<Primitive " ^ (prim p) ^ ">"
               | NoTag => "<NoTag>"
 
         fun printVal indent _ UndefinedValue = TextIO.print "undefined\n"
@@ -780,8 +771,6 @@ fun nominalBaseOfTag (to:TAG)
       | PrimitiveTag (DecimalPrimitive _) => Name.ES4_decimal
       | PrimitiveTag (StringPrimitive _) => Name.ES4_string
       | PrimitiveTag (NamespacePrimitive _) => Name.ES4_Namespace
-      | PrimitiveTag (ClassPrimitive _) => Name.intrinsic_Type
-      | PrimitiveTag (InterfacePrimitive _) => Name.helper_InterfaceTypeImpl
       | PrimitiveTag (FunctionPrimitive _) => Name.public_Function
       | PrimitiveTag (TypePrimitive _) => Name.intrinsic_Type
       | PrimitiveTag (NativeFunctionPrimitive _) => Name.public_Function
@@ -798,10 +787,10 @@ fun getPrimitive (ObjectValue (Object { tag = PrimitiveTag m, ... })) = SOME m
 fun needPrimitive (ObjectValue (Object { tag = PrimitiveTag m, ... })) = m
   | needPrimitive _ = error ["require object with primitive"]
 
-fun needClass (ObjectValue (Object {tag = PrimitiveTag (ClassPrimitive c), ...})) = c
+fun needClass (ObjectValue (Object {tag = PrimitiveTag (TypePrimitive (ClassType c)), ...})) = c
   | needClass _ = error ["require class object"]
 
-fun needInterface (ObjectValue (Object {tag = PrimitiveTag (InterfacePrimitive i), ...})) = i
+fun needInterface (ObjectValue (Object {tag = PrimitiveTag (TypePrimitive (InterfaceType i)), ...})) = i
   | needInterface _ = error ["require interface object"]
 
 fun needFunction (ObjectValue (Object {tag = PrimitiveTag (FunctionPrimitive f), ...})) = f
