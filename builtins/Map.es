@@ -85,15 +85,20 @@
         {
         }
 
-        static meta function invoke(object: Object=null): Map.<EnumerableId,*> {
-            if (object != null && object is Map.<*,*>)
-                return object;
-            let d = new Map.<EnumerableId,*>;
+        /* Marginal utility because of the cruft needed to invoke it (the
+           syntax would be Map.<*,*>(myobj), for example).  Waldemar made
+           the point that a named static method is probably better; I
+           might even say that a named instance method is better.  But
+           using the meta::invoke method is probably wrong.
+
+        static meta function invoke(object: Object=null): Map.<K,V> {
+            let d = new Map.<K,V>;
             for (let n in object)
                 if (object.intrinsic::hasOwnProperty(n))
                     d.put(n, object[n]);
             return d;
         }
+        */
 
         /* Return the number of mappings in the dictionary */
         intrinsic function size() : double

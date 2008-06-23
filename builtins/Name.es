@@ -40,32 +40,23 @@
         // IMPLEMENTATION ARTIFACT: A getter because Name is loaded before int.
         static public function get length() { return 2 }
 
-        // FIXME, "is undefined" would be better than "=== undefined"
-        // but doesn't work, ticket #364 I think.
-
-        static helper function analyzeArgs (a, b) {
-            if (a is Name)
-                return a;
-            if (a is Namespace)
-                return analyzeWithNamespace(a, b);
+        public function Name(a, b=undefined) {
             if (b === undefined) {
-                return analyzeWithNamespace(public, a);
+                if (a is Name)
+                    return a;
+                if (!((a is AnyNumber && isIntegral(a) && a > 0 && a <= 0xFFFFFFFF) || a is AnyString))
+                    throw TypeError();
+                qualifier = public;
+                identifier = string(a);
             }
-            throw new TypeError();                        
-        
-            function analyzeWithNamespace(ns, x) {
-                if ((x is AnyNumber && isIntegral(x) && x > 0 && x <= 0xFFFFFFFF) || x is AnyString)
-                    return { qualifier: ns, identifier: string(x) };
+
+            if (!(a is Namespace))
                 throw TypeError();
-            }
+            if (!((b is AnyNumber && isIntegral(b) && a > 0 && b <= 0xFFFFFFFF) || b is AnyString))
+                throw TypeError;
+            qualifier = a;
+            identifier = string(b);
         }
-
-        // FIXME: use abbreviations here when they are supported
-
-        public function Name(a, b=undefined) 
-            : { qualifier: qualifier, 
-                identifier: identifier } = helper::analyzeArgs(a,b)
-        {}
         
         static meta function invoke(a, b=undefined): Name
             new Name(a, b);
