@@ -55,8 +55,8 @@
     {
         static const length = 1;
 
-        static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
-        static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
+        static const MAX_VALUE: double          = 1.7976931348623157e+308;  /* INFORMATIVE */
+        static const MIN_VALUE: double          = 5e-324;                   /* INFORMATIVE */
         static const NaN : double               = 0.0 / 0.0;
         static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
         static const POSITIVE_INFINITY : double = 1.0 / 0.0;
