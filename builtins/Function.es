@@ -124,8 +124,6 @@
            Function.apply().
         */
         static public function apply(fn/*: Callable*/, thisArg: Object=null, argArray: Object=null) {
-            if (thisArg === null)
-                thisArg = global;
             if (argArray === null)
                 argArray = [];
             return helper::apply(fn, thisArg, argArray);

@@ -170,7 +170,7 @@
             private::__defineProperty__(name, value, enumerable, removable, writable);
 
         private function __defineProperty__(name, value, enumerable, removable, writable) {
-            if (!helper::hasOwnProperty(this, name))
+            if (helper::hasOwnProperty(this, name))
                 throw new TypeError(/* Property exists */);
 
             let obj = helper::getPrototype(this);
