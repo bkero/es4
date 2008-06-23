@@ -22,13 +22,20 @@ H4 { font-size: 10pt }
 P code { font-size: 10pt }
 code { font-style: normal; font-weight: normal }
 
-pre { font-size: 10pt }
+pre { font-size: 9pt }
 
-body { counter-reset: chapter section subsection subsubsection;
-       font-size: 11pt; 
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
        margin: 0.75in }
 
-table { font-size: inherit }
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
 
 .pcounter:before {
     content: counter(para); 
@@ -72,6 +79,15 @@ H4:before {
     counter-increment: subsubsection }
 
 H4 {
+    counter-reset: para;
+}
+
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
     counter-reset: para;
 }
 
@@ -135,11 +151,6 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
     is a Name object and the second parameter is undefined.
 
 
-NOTES
-
-  * Due to an RI bug (#368), the namespace 'Private' is used instead
-    of 'private'.
-
 
 REFERENCES
 
@@ -158,7 +169,8 @@ subclass of <code>Object</code> that reflects a property name as a pair of
 
 <P><span class="pcounter"></span> The class <code>Name</code> provides the following interface:
 
-<PRE><span class="pcounter"></span>__ES4__ final class Name extends Object
+<PRE>
+__ES4__ final class Name extends Object
 {
     public function Name(...args) &#x0085;
     static meta function invoke(...args): Name &#x0085;
@@ -174,7 +186,8 @@ subclass of <code>Object</code> that reflects a property name as a pair of
 
 <P><span class="pcounter"></span> The <code>Name</code> prototype object provides the following direct properties:
 
-<PRE><span class="pcounter"></span>    toString: function (this: Name) &#x0085;
+<PRE>
+    toString: function (this: Name) &#x0085;
 </PRE>
 
 <h2>Operators</h2>
@@ -194,7 +207,8 @@ created from (qualifier,identifier) pairs.
 and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function Name( id ) &#x0085;
+<PRE>
+public function Name( id ) &#x0085;
 </PRE>
 
 <h3>new&nbsp;Name(&nbsp;ns,&nbsp;id&nbsp;)</h3>
@@ -206,7 +220,8 @@ and whose <code>identifier</code> is <i>id</i> converted to <code>string</code>.
 <P><span class="pcounter"></span> <i>ns</i> may be <b>null</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function Name( ns: Namespace?, id ) &#x0085;
+<PRE>
+public function Name( ns: Namespace?, id ) &#x0085;
 </PRE>
 
 <h3>Name&nbsp;(&nbsp;...args&nbsp;)</h3>
@@ -219,7 +234,8 @@ argument(s).
 <code>Name</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static meta function invoke( ...args ): Name!
+<PRE>
+static meta function invoke( ...args ): Name!
     new Name(...args);
 </PRE>
 
@@ -233,11 +249,13 @@ to a string.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns a string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>override intrinsic function toString() : string
-    Private::toString();
+<PRE>
+override intrinsic function toString() : string
+    private::toString();
 </PRE>
-<PRE><span class="pcounter"></span>Private function toString() : string {
-    if (qualifier === null)
+<PRE>
+private function toString() : string {
+    if (qualifier === public)
         return identifier;
     return string(qualifier) + "::" + identifier;
 }
@@ -267,8 +285,9 @@ operations as their corresponding intrinsic methods perform.
 corresponding intrinsic methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public prototype function toString(this : Name)
-    this.Private::toString();
+<PRE>
+public prototype function toString(this : Name)
+    this.private::toString();
 </PRE>
 
 

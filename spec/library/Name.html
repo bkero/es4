@@ -7,7 +7,7 @@ FILE:                       spec/library/Name.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               LAST CALL - 2008-03-20
+DRAFT STATUS:               LAST CALL #2 - 2008-06-23
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -19,6 +19,11 @@ TEST CASE STATUS:           ?
 
 
 CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
+
+  * The description of how == and === work on Name objects has been
+    changed.
+
+  * The description of 'new Name' has been changed.
 
   * Prototype methods are explicitly designated 'public' because the
     language requires it
@@ -53,11 +58,6 @@ CHANGES SINCE DRAFT 1 (2008-03-05)
   * The Name converter is required to return its first argument if it
     is a Name object and the second parameter is undefined.
 
-
-NOTES
-
-  * Due to an RI bug (#368), the namespace 'Private' is used instead
-    of 'private'.
 
 
 REFERENCES
@@ -100,32 +100,37 @@ __ES4__ final class Name extends Object
 
 == Operators ==
 
-<P> The operators ''=='' and ''==='' compare as equal two ''Name''
-objects that are separately created from the same
-(qualifier,identifier) pair; similarly, the operators ''!='' and
-''!=='' compare as not equal two ''Name'' objects that are separately
-created from (qualifier,identifier) pairs.
+<P> Two ''Name'' objects are equal (by ''=='' and ''==='') if and only
+if their ''qualifier'' properties are equal and their ''identifier''
+properties are equal (by the operator used to compare the ''Name''
+objects).
 
 == Methods on the ''Name'' class object ==
 
-=== new Name ( id ) ===
+=== new Name ( x ) ===
 
-<RETN> When the ''Name'' constructor is called with one argument
-//id// it returns a ''Name'' object whose ''qualifier'' is null
-and whose ''identifier'' is //id// converted to ''string''.
+<RETN> When the ''Name'' constructor is called with one argument //x//
+then //x// must be either a ''Name'' object, a ''string'', a
+''String'', or an integer in the range 0 through 2<SUP>32</SUP>-1.  If
+//x// is a ''Name'' object then //x// is returned.  Otherwise //x// is
+converted to a string and a ''Name'' object is returned whose
+''qualifier'' is the public namespace and whose ''identifier'' is the
+converted value of //x//.
 
 <SHORTIMPL>
 {{{
 public function Name( id ) <LDOTS>
 }}}
 
-=== new Name( ns, id ) ===
+=== new Name( x, y ) ===
 
 <RETN> When the ''Name'' constructor is called with two arguments
-//ns// and //id// it returns a ''Name'' object whose ''qualifier'' is
-//ns// and whose ''identifier'' is //id// converted to ''string''.
-
-<P> //ns// may be **null**.
+//x// and //y// it returns a ''Name'' object constructed from its
+arguments.  The value of //x// must be a ''Namespace'' object.  The
+value of //y// must be a ''string'', a ''String'', or an integer in
+the range 0 through 2<SUP>32</SUP>-1.  The ''qualifier'' of the
+returned value is //x//.  The ''identifier'' of the returned value is
+the value of //y// converted to string.
 
 <SHORTIMPL>
 {{{
@@ -158,7 +163,7 @@ to a string.
 
 <SHORTIMPL>
 <INCLUDE file="Name.es" name="override intrinsic function toString">
-<INCLUDE file="Name.es" name="Private function toString">
+<INCLUDE file="Name.es" name="private function toString">
 
 
 == Value properties of ''Name'' instances ==

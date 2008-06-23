@@ -7,7 +7,7 @@ FILE:                       spec/library/Object.html
 CATEGORY:                   Pre-defined classes (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               LAST CALL - 2008-03-20
+DRAFT STATUS:               LAST CALL #2, 2008-06-20
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -17,17 +17,11 @@ IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
 
 
-LAST CALL NOTES
+CHANGES SINCE LAST CALL (2008-03-20)
 
-  * There will eventually be some editorial changes when the RI code
-    is updated.
+  * Removed 'LAST CALL NOTES' (all were implemented)
 
-      - The names of the magic methods manipulating attributes will be
-        'positive' instead of 'negative' (eg, 'magic::getEnumerable'
-        instead of 'magic::getDontEnum')
-
-      - The use of 'Private' below will become uses of 'private'
-        (ticket #368)
+  * Added a FIXME about ''__defineProperty__''
 
 
 CHANGES SINCE DRAFT 4 (LAST CALL - 2008-03-20)
@@ -122,6 +116,13 @@ public dynamic class Object
     __defineProperty__:   function (name, value, enumerable=undefined, removable=undefined, writable=undefined) <LDOTS>
 }}}
 
+<FIXME> It is likely that ''__defineProperty__'' should become a
+static method on the ''Object'' object and that its parameters
+should be passed in some other way, for example as individual
+values fetched from ''Object'' (''Object.WRITABLE'', and so on)
+or as a set of bits or'ed together from bit values fetched
+from ''Object''.
+
 <P> The ''Object'' prototype object is itself an instance of the class
 ''Object'', with the exception that the value of its [[Prototype]]
 property is **null**.
@@ -203,7 +204,7 @@ name of the object, and ''"]"''.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function toString">
-<INCLUDE file="Object.es" name="Private function toString">
+<INCLUDE file="Object.es" name="private function toString">
 
 <P> The helper function ''getClassName'' returns the name for the
 class.  This method is overridden in some of the pre-defined classes
@@ -212,8 +213,8 @@ Standard: It is overridden by the class Error.
 
 <INCLUDE file="Object.es" name="helper function getClassName">
 
-<p> The function ''magic::getClassName'' extracts the class name
-from the object.  See <XREF target="magic:getClassName">.
+<p> The function ''helper::getClassName'' extracts the class name
+from the object.  See <XREF target="helper:getClassName">.
 
 
 === intrinsic::toLocaleString ( ) ===
@@ -234,7 +235,7 @@ implementations do not use this parameter position for anything else.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function toLocaleString">
-<INCLUDE file="Object.es" name="Private function toLocaleString">
+<INCLUDE file="Object.es" name="private function toLocaleString">
 
 
 === intrinsic::valueOf ( ) ===
@@ -251,7 +252,7 @@ constructor.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function valueOf">
-<INCLUDE file="Object.es" name="Private function valueOf">
+<INCLUDE file="Object.es" name="private function valueOf">
 
 
 === intrinsic::hasOwnProperty ( name ) ===
@@ -268,11 +269,11 @@ object contains the property, otherwise it returns ''false''.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function hasOwnProperty">
-<INCLUDE file="Object.es" name="Private function hasOwnProperty">
+<INCLUDE file="Object.es" name="private function hasOwnProperty">
 
-<p> The function ''magic::hasOwnProperty'' tests whether the object
+<p> The function ''helper::hasOwnProperty'' tests whether the object
 contains the named property on its local property list (the prototype
-chain is not considered).  See <XREF target="magic:hasOwnProperty">.
+chain is not considered).  See <XREF target="helper:hasOwnProperty">.
 
 <p> The helper function ''toEnumerableId'' returns its argument if it
 is one of the member types of ''EnumerableId'' (''int'', ''uint'',
@@ -293,10 +294,10 @@ returns ''false''.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function isPrototypeOf">
-<INCLUDE file="Object.es" name="Private function isPrototypeOf">
+<INCLUDE file="Object.es" name="private function isPrototypeOf">
 
-<p> The function ''magic::getPrototype'' extracts the [[Prototype]] property
-from the object.  See <XREF target="magic:getPrototype">.
+<p> The function ''helper::getPrototype'' extracts the [[Prototype]] property
+from the object.  See <XREF target="helper:getPrototype">.
 
 
 === intrinsic::propertyIsEnumerable ( name ) ===
@@ -311,14 +312,14 @@ returns the value of the enumerability flag.
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function propertyIsEnumerable">
-<INCLUDE file="Object.es" name="Private function propertyIsEnumerable">
+<INCLUDE file="Object.es" name="private function propertyIsEnumerable">
 
-<p> The function ''magic::hasOwnProperty'' tests whether the object
+<p> The function ''helper::hasOwnProperty'' tests whether the object
 contains the named property on its local property list.  See <XREF
-target="magic:hasOwnProperty">.
+target="helper:hasOwnProperty">.
 
-<p> The function ''magic::getPropertyIsDontEnum'' gets the DontEnum
-flag of the property.  See <XREF target="magic:getPropertyIsDontEnum">.
+<p> The function ''helper::getPropertyIsDontEnum'' gets the DontEnum
+flag of the property.  See <XREF target="helper:getPropertyIsDontEnum">.
 
 
 === intrinsic::__defineProperty__ ( name, value, enumerable=<LDOTS>, removable=<LDOTS>, writable=<LDOTS>) ===
@@ -346,28 +347,28 @@ of at least enumerability and deletability in a manner compatible with
 
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function __defineProperty__">
-<INCLUDE file="Object.es" name="Private function __defineProperty__">
+<INCLUDE file="Object.es" name="private function __defineProperty__">
 
-<p> The function ''magic::hasOwnProperty'' tests whether the object
+<p> The function ''helper::hasOwnProperty'' tests whether the object
 contains the named property on its local property list.  See <XREF
-target="magic:hasOwnProperty">.
+target="helper:hasOwnProperty">.
 
-<p> The function ''magic::getPrototype'' extracts the [[Prototype]] property
-from the object.  See <XREF target="magic:getPrototype">.
+<p> The function ''helper::getPrototype'' extracts the [[Prototype]] property
+from the object.  See <XREF target="helper:getPrototype">.
 
-<p> The functions ''magic::getPropertyIsDontEnum'',
-''magic::getPropertyIsDontDelete'', and ''magic::getPropertyIsReadOnly''
+<p> The functions ''helper::getPropertyIsDontEnum'',
+''helper::getPropertyIsDontDelete'', and ''helper::getPropertyIsReadOnly''
 retrieve the attribute flags of the property.  See 
-<XREF target="magic:getPropertyIsDontEnum">,
-<XREF target="magic:getPropertyIsDontDelete">, and
-<XREF target="magic:getPropertyIsReadOnly">.
+<XREF target="helper:getPropertyIsDontEnum">,
+<XREF target="helper:getPropertyIsDontDelete">, and
+<XREF target="helper:getPropertyIsReadOnly">.
 
-<p> The functions ''magic::setPropertyIsDontEnum'',
-''magic::setPropertyIsDontDelete'', and ''magic::setPropertyIsReadOnly''
+<p> The functions ''helper::setPropertyIsDontEnum'',
+''helper::setPropertyIsDontDelete'', and ''helper::setPropertyIsReadOnly''
 set the attribute flags of the property.  See 
-<XREF target="magic:setPropertyIsDontEnum">,
-<XREF target="magic:setPropertyIsDontDelete">, and
-<XREF target="magic:setPropertyIsReadOnly">.
+<XREF target="helper:setPropertyIsDontEnum">,
+<XREF target="helper:setPropertyIsDontDelete">, and
+<XREF target="helper:setPropertyIsReadOnly">.
 
 
 == Methods on the ''Object'' prototype object ==

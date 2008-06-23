@@ -22,13 +22,20 @@ H4 { font-size: 10pt }
 P code { font-size: 10pt }
 code { font-style: normal; font-weight: normal }
 
-pre { font-size: 10pt }
+pre { font-size: 9pt }
 
-body { counter-reset: chapter section subsection subsubsection;
-       font-size: 11pt; 
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
        margin: 0.75in }
 
-table { font-size: inherit }
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
 
 .pcounter:before {
     content: counter(para); 
@@ -75,6 +82,15 @@ H4 {
     counter-reset: para;
 }
 
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
 </style>
 </head>
 
@@ -88,7 +104,7 @@ FILE:                       spec/library/global.html
 CATEGORY:                   Pre-defined objects (E262-3 Chapter 15)
 SOURCES:                    See REFERENCES section below
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 2 - 2008-03-21
+DRAFT STATUS:               DRAFT 3 - unreleased, edited 2008-06-20
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -97,6 +113,12 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   NO
 IMPLEMENTATION STATUS:      ?
 TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 2 (2008-03-21)
+
+  * Added an 'open issue' below that the eval discussion should be
+    moved.
 
 
 CHANGES SINCE DRAFT 1 (2008-03-12)
@@ -123,6 +145,8 @@ OPEN ISSUES
     baroque, but it does seem a little bit arbitrary when considered
     as a whole.  Insights appreciated.
 
+  * It is probable that the broad discussion of 'eval' belongs
+    somewhere else in the specification.
 
 NOTES
 
@@ -215,7 +239,8 @@ as a function.
 <P><span class="pcounter"></span>The global object contains the following properties, functions,
 types, and class definitions.
 
-<PRE><span class="pcounter"></span>namespace __ES4__
+<PRE>
+namespace __ES4__
 
 __ES4__ namespace intrinsic = &#x0085;
 __ES4__ namespace iterator = &#x0085;
@@ -381,7 +406,8 @@ Standard that is not in the <code>__ES4__</code> namespace.  (The other is
 <P><span class="pcounter"></span> The value of the constant property <code>NaN</code> is <b>NaN</b> (see <span class="xref">nan-value</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>const NaN : double = &#x0085;
+<PRE>
+const NaN : double = &#x0085;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>NaN</code> was not constant in the 3rd Edition of this Standard.
@@ -391,7 +417,8 @@ Standard that is not in the <code>__ES4__</code> namespace.  (The other is
 <P><span class="pcounter"></span>The value of <code>Infinity</code> is +&#x221E; (see <span class="xref">infinity-value</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>const Infinity : double = &#x0085;
+<PRE>
+const Infinity : double = &#x0085;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>Infinity</code> was not constant in the 3rd Edition of this Standard.
@@ -401,7 +428,8 @@ Standard that is not in the <code>__ES4__</code> namespace.  (The other is
 <P><span class="pcounter"></span>The value of <code>undefined</code> is <b>undefined</b> (see <span class="xref">undefined-value</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>const undefined : undefined = &#x0085;
+<PRE>
+const undefined : undefined = &#x0085;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>undefined</code> was not constant in the 3rd Edition of this Standard.
@@ -411,7 +439,8 @@ Standard that is not in the <code>__ES4__</code> namespace.  (The other is
 <P><span class="pcounter"></span>The value of <code>Math</code> is the Math object (see <span class="xref">math-object</span>). 
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>const Math : helper::MathType = &#x0085;
+<PRE>
+const Math : helper::MathType = &#x0085;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>Math</code> was not constant in the 3rd Edition of this Standard.
@@ -435,7 +464,8 @@ global object has separate mutable state, and a separate value for the
 intrinsic <code>global</code> property.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>const global = &#x0085;
+<PRE>
+const global = &#x0085;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; <code>global</code> is new in the 4th Edition of this Standard.
@@ -491,7 +521,8 @@ introduce new names in the scope.
 Firefox, even though casual inspection of the program would lead one to
 conclude that the <code>x</code> referenced in the body of <code>g</code> is the constant
 binding in the outer scope:
-<PRE><span class="pcounter"></span>   const x = 10;
+<PRE>
+   const x = 10;
    function g(f,s) {
        f(s);
        return x;
@@ -584,7 +615,8 @@ evaluating <i>program</i> as a <i>Program</i> is returned.  Otherwise,
 <i>program</i> is returned unchanged.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>function eval( program, version=3 ) &#x0085;
+<PRE>
+function eval( program, version=3 ) &#x0085;
 </PRE>
 
 <h4>The <code>eval</code> operator</h4>
@@ -652,7 +684,8 @@ detected, <i>M(P, ...)</i> is evaluated as follows.
 pseudo-code because it is not expressible in ECMAScript.  Eventually,
 it may be presented as Standard ML code.)
 
-<PRE><span class="pcounter"></span>  look up M in the environment yielding the value V
+<PRE>
+  look up M in the environment yielding the value V
   if V is the pre-defined eval function and
      the binding object O holding V is an ES global object and
      the global object on the scope chain of V is O then
@@ -717,7 +750,8 @@ pseudo-code because it is not expressible in ECMAScript.  Eventually,
 it may be presented as ECMAScript code with the addition of "magic"
 run-time system hooks.)
 
-<PRE><span class="pcounter"></span>  if the "this" object O is an ES global object and
+<PRE>
+  if the "this" object O is an ES global object and
      the global object on the scope chain of V is O then
        if there are no A values, then 
          return undefined
@@ -764,7 +798,8 @@ number may also optionally begin with the character pairs 0x or 0X.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>parseInt</code> function returns a number.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function parseInt(s: string, r: double=0): AnyNumber {
+<PRE>
+intrinsic const function parseInt(s: string, r: double=0): AnyNumber {
     let i;
 
     for ( i=0 ; i &#60; s.length && helper::isTrimmableSpace(s[i]) ; i++ )
@@ -835,7 +870,8 @@ any such characters were ignored.
 
 <h4 id="helper:isDigitForRadix">isDigitForRadix </h4>
 
-<PRE><span class="pcounter"></span>helper function isDigitForRadix(c, r) {
+<PRE>
+helper function isDigitForRadix(c, r) {
     c = c.intrinsic::toUpperCase();
     if (c >= '0' && c &#60;= '9')
         return (c.intrinsic::charCodeAt(0) - '0'.intrinsic::charCodeAt(0)) &#60; r;
@@ -855,7 +891,8 @@ intrinsic counterpart.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>parseInt</code> function returns a number.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function parseInt(s, r=0)
+<PRE>
+public function parseInt(s, r=0)
     intrinsic::parseInt(string(s), double(r));
 </PRE>
 
@@ -869,7 +906,8 @@ decimal literal.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>parseFloat</code> function returns a number.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function parseFloat(s: string) {
+<PRE>
+intrinsic const function parseFloat(s: string) {
 }
 </PRE>
 
@@ -886,7 +924,8 @@ then calls its intrinsic counterpart.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>parseFloat</code> function returns a number.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function parseFloat(s)
+<PRE>
+public function parseFloat(s)
     intrinsic::parseFloat(string(s));
 </PRE>
 
@@ -900,7 +939,8 @@ IEEE not-a-number value.
 <b>true</b> if <i>n</i> is <b>NaN</b>, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function isNaN(n: AnyNumber): boolean
+<PRE>
+intrinsic const function isNaN(n: AnyNumber): boolean
     (!(n === n));
 </PRE>
 
@@ -913,7 +953,8 @@ calls its intrinsic counterpart.
 number is <b>NaN</b>, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function isNaN(x)
+<PRE>
+public function isNaN(x)
     intrinsic::isNaN(Number(x));
 </PRE>
 
@@ -927,7 +968,8 @@ value <i>n</i> is finite (neither not-a-number nor an infinity).
 finite, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function isFinite(n: AnyNumber): boolean
+<PRE>
+intrinsic const function isFinite(n: AnyNumber): boolean
     (!intrinsic::isNaN(n) && n != -Infinity && n != Infinity);
 </PRE>
 
@@ -941,7 +983,8 @@ then calls its intrinsic counterpart on the converted value.
 a number is finite, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function isFinite(x)
+<PRE>
+public function isFinite(x)
     intrinsic::isFinite(Number(x));
 </PRE>
 
@@ -955,7 +998,8 @@ value <i>n</i> is integral (a finite integer).
 integral, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function isIntegral(v:AnyNumber): boolean
+<PRE>
+intrinsic const function isIntegral(v:AnyNumber): boolean
     intrinsic::isFinite(v) && Math.intrinsic::floor(v) == v;
 </PRE>
 
@@ -968,7 +1012,8 @@ then calls the intrinsic <code>isIntegral</code> function on the converted value
 to a number is integral, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>__ES4__ function isIntegral(v)
+<PRE>
+__ES4__ function isIntegral(v)
     intrinsic::isIntegral(Number(v));
 </PRE>
 
@@ -982,7 +1027,8 @@ to a number is integral, and otherwise returns <b>false</b>.
 is an <code>int</code> value, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function isInt(n:AnyNumber) : boolean
+<PRE>
+intrinsic const function isInt(n:AnyNumber) : boolean
     intrinsic::isIntegral(n) && n >= -0x7FFFFFFF && n &#60;= 0x7FFFFFFF;
 </PRE>
 
@@ -995,7 +1041,8 @@ then calls the intrinsic <code>isInt</code> function on the converted value.
 to a number is an <code>int</code> value, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>__ES4__ function isInt(x)
+<PRE>
+__ES4__ function isInt(x)
     intrinsic::isInt(Number(x));
 </PRE>
 
@@ -1009,7 +1056,8 @@ value <i>n</i> is a <code>uint</code> value (a finite integer in the range 0 to
 is a <code>uint</code> value, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function isUint(n:AnyNumber) : boolean
+<PRE>
+intrinsic const function isUint(n:AnyNumber) : boolean
     intrinsic::isIntegral(n) && n >= 0 && n &#60;= 0xFFFFFFFF;
 </PRE>
 
@@ -1022,7 +1070,8 @@ then calls the intrinsic <code>isUint</code> function on the converted value.
 to a number is a <code>uint</code> value, and otherwise returns <b>false</b>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>__ES4__ function isUint(x)
+<PRE>
+__ES4__ function isUint(x)
     intrinsic::isUint(Number(x));
 </PRE>
 
@@ -1034,7 +1083,8 @@ using the ToInt32 algorithm (see <span class="xref">ToInt32</span>).
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>toInt</code> function returns an <code>int</code> value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function toInt(n:AnyNumber) : double
+<PRE>
+intrinsic const function toInt(n:AnyNumber) : double
     n | 0;
 </PRE>
 
@@ -1046,7 +1096,8 @@ calls the intrinsic <code>toInt</code> function on the converted value.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>toInt</code> function returns an <code>int</code> value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>__ES4__ function toInt(x)
+<PRE>
+__ES4__ function toInt(x)
     intrinsic::toInt(Number(x));
 </PRE>
 
@@ -1058,7 +1109,8 @@ using the ToUint32 algorithm (see <span class="xref">ToUint32</span>).
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span>The intrinsic <code>toUint</code> function returns a <code>uint</code> value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function toUint(n:AnyNumber) : double
+<PRE>
+intrinsic const function toUint(n:AnyNumber) : double
     n >>> 0;
 </PRE>
 
@@ -1070,7 +1122,8 @@ calls the intrinsic <code>toUint</code> function on the converted value.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span>The <code>toUint</code> function returns a <code>uint</code> value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>__ES4__ function toUint(x) : boolean
+<PRE>
+__ES4__ function toUint(x) : boolean
     intrinsic::toUint(Number(x));
 </PRE>
 
@@ -1153,7 +1206,8 @@ each octet represented by an escape sequence of the form "<code>%xx</code>".
 function <code>encode</code> taking two string arguments <code>s</code> and
 <code>unescapedSet</code>.
 
-<PRE><span class="pcounter"></span>helper function encode(s: string, unescapedSet: string): string {
+<PRE>
+helper function encode(s: string, unescapedSet: string): string {
     let R = "";
     let k = 0;
 
@@ -1185,7 +1239,8 @@ function <code>encode</code> taking two string arguments <code>s</code> and
     return R;
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function twoHexDigits(B) {
+<PRE>
+helper function twoHexDigits(B) {
     let s = "0123456789ABCDEF";
     return s[B >> 4] + s[B & 15];
 }
@@ -1195,7 +1250,8 @@ function <code>encode</code> taking two string arguments <code>s</code> and
 function <code>decode</code> taking two string arguments <code>s</code> and
 <code>reservedSet</code>.
 
-<PRE><span class="pcounter"></span>helper function decode(s: string, reservedSet: string): string {
+<PRE>
+helper function decode(s: string, reservedSet: string): string {
     let R = "";
     let k = 0;
     while (k != s.length) {
@@ -1251,7 +1307,8 @@ function <code>decode</code> taking two string arguments <code>s</code> and
     return R;
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function decodeHexEscape(s, k) {
+<PRE>
+helper function decodeHexEscape(s, k) {
     if (k + 2 >= s.length ||
         s[k] != "%" ||
         (!helper::isDigitForRadix(s[k+1], 16) &&
@@ -1314,7 +1371,8 @@ the helper functions <code>toUTF8</code> and <code>fromUTF8</code> to convert co
 points to UTF-8 sequences and to convert UTF-8 sequences to code
 points, respectively.
 
-<PRE><span class="pcounter"></span>helper function toUTF8(v) {
+<PRE>
+helper function toUTF8(v) {
     if (v &#60;= 0x7F)
         return [v];
     if (v &#60;= 0x7FF)
@@ -1332,7 +1390,8 @@ points, respectively.
     throw URIError(/* Unconvertible code */);
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function fromUTF8(octets) {
+<PRE>
+helper function fromUTF8(octets) {
     let B = octets[0];
     let V;
     if ((B & 0x80) == 0)
@@ -1352,15 +1411,20 @@ points, respectively.
 <P><span class="pcounter"></span>Several helper strings are defined based on the grammar shown
 previously:
 
-<PRE><span class="pcounter"></span>helper const uriReserved = ";/?:@&=+$,";
+<PRE>
+helper const uriReserved = ";/?:@&=+$,";
 </PRE>
-<PRE><span class="pcounter"></span>helper const uriAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+<PRE>
+helper const uriAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 </PRE>
-<PRE><span class="pcounter"></span>helper const uriDigit = "0123456789";
+<PRE>
+helper const uriDigit = "0123456789";
 </PRE>
-<PRE><span class="pcounter"></span>helper const uriMark = "-_.!~*'()";
+<PRE>
+helper const uriMark = "-_.!~*'()";
 </PRE>
-<PRE><span class="pcounter"></span>helper const uriUnescaped = helper::uriAlpha + helper::uriDigit + helper::uriMark;
+<PRE>
+helper const uriUnescaped = helper::uriAlpha + helper::uriDigit + helper::uriMark;
 </PRE>
 
 
@@ -1375,7 +1439,8 @@ not have been introduced by <code>encodeURI</code> are not replaced.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>decodeURI</code> function returns a decoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function decodeURI(encodedURI: string)
+<PRE>
+intrinsic const function decodeURI(encodedURI: string)
     helper::decode(encodedURI, helper::uriReserved + "#");
 </PRE>
 
@@ -1390,7 +1455,8 @@ calls its intrinsic counterpart.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>decodeURI</code> function returns a decoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function decodeURI(encodedURI)
+<PRE>
+public function decodeURI(encodedURI)
     intrinsic::decodeURI(string(encodedURI));
 </PRE>
 
@@ -1405,7 +1471,8 @@ function is replaced with the character that it represents.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>decodeURIComponent</code> function returns a decoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function decodeURIComponent(encodedURIComponent)
+<PRE>
+intrinsic const function decodeURIComponent(encodedURIComponent)
     helper::decode(encodedURIComponent, "");
 </PRE>
 
@@ -1417,7 +1484,8 @@ function is replaced with the character that it represents.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>decodeURIComponent</code> function returns a decoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function decodeURIComponent(encodedURIComponent)
+<PRE>
+public function decodeURIComponent(encodedURIComponent)
     intrinsic::decodeURIComponent(string(encodedURIComponent));
 </PRE>
 
@@ -1432,7 +1500,8 @@ character.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>encodeURI</code> function returns a encoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function encodeURI(uri: string): string
+<PRE>
+intrinsic const function encodeURI(uri: string): string
     helper::encode(uri, helper::uriReserved + helper::uriUnescaped + "#")
 </PRE>
 
@@ -1447,7 +1516,8 @@ calls its intrinsic counterpart.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>encodeURI</code> function returns a encoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function encodeURI(uri)
+<PRE>
+public function encodeURI(uri)
     intrinsic::encodeURI(string(uri));
 </PRE>
 
@@ -1462,7 +1532,8 @@ UTF-8 encoding of the character.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>encodeURIComponent</code> function returns a encoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function encodeURIComponent(uriComponent: string): string
+<PRE>
+intrinsic const function encodeURIComponent(uriComponent: string): string
     helper::encode(uri, helper::uriReserved);
 </PRE>
 
@@ -1474,7 +1545,8 @@ argument to string, then calls its intrinsic counterpart.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>encodeURIComponent</code> function returns a encoded string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function encodeURIComponent(uriComponent)
+<PRE>
+public function encodeURIComponent(uriComponent)
     intrinsic::encodeURIComponent(string(uriComponent));
 </PRE>
 
@@ -1497,7 +1569,8 @@ zero.
 below 2<SUP>32</SUP>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic const function hashcode(o): double {
+<PRE>
+intrinsic const function hashcode(o): double {
     switch type (o) {
     case (x: null)       { return 0 }
     case (x: undefined)  { return 0 }
@@ -1568,7 +1641,8 @@ numbers, cookies, or similar.
 that are treated as property names by the iteration protocol and the
 pre-defined objects:
 
-<PRE><span class="pcounter"></span>__ES4__ type EnumerableId = (int|uint|string|Name);
+<PRE>
+__ES4__ type EnumerableId = (int|uint|string|Name);
 </PRE>
 
 <p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Removed <code>int</code> and <code>uint</code> from this type if/when we agree that
@@ -1580,7 +1654,8 @@ that's the right thing.
 <P><span class="pcounter"></span>The type <code>AnyNumber</code> is a union type of all the nominal
 types that are treated as numbers by the language:
 
-<PRE><span class="pcounter"></span>__ES4__ type AnyNumber = (double|decimal|Number);
+<PRE>
+__ES4__ type AnyNumber = (double|decimal|Number);
 </PRE>
 
 <h3>AnyString</h3>
@@ -1588,7 +1663,8 @@ types that are treated as numbers by the language:
 <P><span class="pcounter"></span>The type <code>AnyString</code> is a union type of all the nominal
 types that are treated as strings by the language:
 
-<PRE><span class="pcounter"></span>__ES4__ type AnyString = (string|String);
+<PRE>
+__ES4__ type AnyString = (string|String);
 </PRE>
 
 <h3>AnyBoolean</h3>
@@ -1596,7 +1672,8 @@ types that are treated as strings by the language:
 <P><span class="pcounter"></span>The type <code>AnyBoolean</code> is a union type of all the nominal
 types that are treated as booleans by the language:
 
-<PRE><span class="pcounter"></span>__ES4__ type AnyBoolean = (boolean|Boolean);
+<PRE>
+__ES4__ type AnyBoolean = (boolean|Boolean);
 </PRE>
 
 <h3>Callable</h3>
@@ -1604,7 +1681,8 @@ types that are treated as booleans by the language:
 <P><span class="pcounter"></span> The type <code>Callable</code> is a record type describing any object that
 can be called as a function:
 
-<PRE><span class="pcounter"></span>__ES4__ type Callable = { meta::invoke: * }
+<PRE>
+__ES4__ type Callable = { meta::invoke: * }
 </PRE>
 
 

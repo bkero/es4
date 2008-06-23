@@ -125,7 +125,7 @@ to definition-time resolution.
 
 <P><span class="pcounter"></span> Name resolution makes use of the <i>open namespaces</i> that
 implicitly qualify any unqualified name.  In every compilation unit
-the open namespaces starts out being comprised of the <b>public</b> and
+the open namespaces consist initially of the <b>public</b> and
 <b>internal</b> namespaces.  The program can open additional namespaces
 by means of the <code>use&nbsp;namespace</code> pragma.
 
@@ -209,6 +209,8 @@ only if their contained identifier values are the same object.
 
 
 
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Presentation: Get rid of "Ast." prefixes in the SML code?
+
 <h2>The namespace <u>public</u></h2>
 
 <P><span class="pcounter"></span> The namespace known as <b>public</b> is the transparent namespace
@@ -243,7 +245,7 @@ is called a <i>prototype link</i>.
 <P><span class="pcounter"></span>The <i>prototype chain</i> is the list of objects formed by following
 prototype links from an object. The prototype chain of an object
 begins with the object itself, and ends with the first object having a
-null or undefined prototype value.
+null prototype value.
 
 <P><span class="pcounter"></span>When a name is to be resolved against an object, if resolution
 initially fails because the object does not contain a property
@@ -287,16 +289,10 @@ is in effect.
 for scope chains here.
 
 <P><span class="pcounter"></span> Some objects that appear on evaluation-time scope chains are
-dynamically extensible, in effect providing a form of dynamic scope.
-For example, class objects appear on the scope chain of class and
-instance methods, and properties can be added to and removed from
-class objects; these properties then become visible and invisible to
-the methods.
-
-<P><span class="pcounter"></span> In order for ECMAScript to have a lexically scoped flavor,
-bindings that are textually visible (<i>lexical bindings</i>) are usually
-preferred over dynamically added bindings (<i>dynamic bindings</i>)
-during name resolution.  See the section "Name Resolution" below.
+dynamically extensible. For example, class objects appear on the 
+scope chain of class and instance methods, and properties can be 
+added to and removed from class objects; however, these properties 
+are not visible to lexical references from the classes methods.
 
 <h2>Name Expressions</h2>
 
@@ -328,7 +324,7 @@ expression denoting a namespace binding.
 
 <P><span class="pcounter"></span> An unqualified name expression is comprised of the namespaces that
 are open at the point where the name expression occurs in the source
-text and and identifier.  The open namespaces will be used to resolve
+text and identifier.  The open namespaces will be used to resolve
 the name: an unqualified name matches any binding or property that has
 the same identifier and a namespace value from among the open
 namespaces.
@@ -406,29 +402,9 @@ namespace value and an identifier) and an object that contains a
 property with that name.  The objects are searched in order, and the
 first object to contain a property with the name is selected.
 
-<P><span class="pcounter"></span> There are three complications.  First, the search is performed
-differently for object chains (an object and its prototypes) and scope
-chains.  An object chain is searched in a single pass and each
-object's fixed and dynamic properties are considered when the object
-is searched.  A scope chain, on the other hand, is searched in two
-passes, with the first pass considering mainly fixed properties and
-the second pass considering also dynamic properties.  (The search ends
-as soon as an object matching the name is found, so the second pass
-may never be run.)  Thus fixed properties in outer scopes shadow
-dynamic properties in inner scopes.  However, for reasons of
-compatibility with ES3, the first pass searches both dynamic and fixed
-properties in scopes that are introduced by the <code>with</code> statement or
-in scopes that have been extended by the <code>eval</code> operator evaluating
-a <code>function</code> or <code>var</code> directive.
 
-<P><span class="pcounter"></span>(The motivation for the preference for fixed bindings in scopes is
-to retain the lexically scoped flavor of ECMAScript.  Some of the
-objects on the scope chain--class objects and instance objects--are
-dynamically extensible, and allowing dynamic properties to shadow
-static properties would make programs harder to understand, and it
-would make them slower, as it would be hard to perform early binding.)
 
-<P><span class="pcounter"></span> The second complication appears with the need for disambiguation.
+<P><span class="pcounter"></span> There are two complications. The first appears with the need for disambiguation.
 When an unqualified name is resolved the resolution is performed in
 the context of the namespaces that were open at the point of
 reference.  Thus the search of any one object may find multiple
@@ -447,6 +423,12 @@ contains the name.  For example, if <code><b>C</b></code> is a subclass of <code
 in <code><b>B</b></code> and <code><b>ns3::n</b></code> was defined in <code><b>C</b></code>, then we'd be left with just
 <code><b>ns1</b></code> and <code><b>ns2</b></code>.
 
+<P><span class="pcounter"></span> (The motivation for using the order in which names are introduced
+in the class hierarchy is to guarantee that the meaning of valid references
+to object properties doesn't change. In other words, if <code>o.x</code> is ever
+valid, then it shall always refer to the same property <code>x</code> as long as the type
+of <code>o</code> doesn't change.)
+
 <P><span class="pcounter"></span> We then filter by namespace priority.  The open namespaces are
 organized in a prioritized list of namespace sets.  If one of the
 matching names has a namespace that is from a set with a higher
@@ -455,35 +437,35 @@ we want.  So if the referencing context of <code><b>n</b></code> opened <code><b
 scope nested inside the one that opened <code><b>ns1</b></code>, then we are left with
 just <code><b>ns2</b></code> -- and a single binding, <code><b>ns2::n</b></code>.
 
-<P><span class="pcounter"></span> (The motivation for disambiguation is simple: disambiguation
-allows more programs to run.  Furthermore, since the priority or
-namespaces during disambiguation is under the control of the
-programmer, the programmer can rely on disambiguation to control which
-names that are found.)
+<P><span class="pcounter"></span> (The motivation for disambiguation by the scope in which a namespace
+is opened, is simple: it allows more programs to run.  Furthermore, since 
+the priority of namespaces during disambiguation is under the control of 
+the programmer, the programmer can rely on disambiguation to control which
+names are found.)
 
-<P><span class="pcounter"></span> The third complication is that some names are required to be
+<P><span class="pcounter"></span> The second complication is that some names are required to be
 resolved successfully at definition time -- names that denote
-namespaces and types.  (We require that in order to make names and
-types constant, which generally simplifies the language and makes
-programs more easily comprehensible.)  The consequence of that is that
-namespace and type references are illegal inside scopes introduced by
-<code>with</code> or scopes that may be extended by the <code>eval</code> operator,
-because those scopes make definition time resolution impossible --
-their contents are unknown.  Such programs result in a syntax error
-being signalled.  (It is possible to ease that restriction
-in various ways but we have not done so.)
+namespaces and types.  (We require definition-time resolution in order
+to make names and types constant, which generally simplifies the
+language and makes programs more easily comprehensible.)  The
+consequence is that namespace and type references are illegal inside
+scopes introduced by <code>with</code> or scopes that may be extended by the
+<code>eval</code> operator, because those scopes make definition time
+resolution impossible -- their contents are unknown.  Such programs
+result in a syntax error being signalled.  (It is possible to ease
+that restriction in various ways but we have not done so.)
 
 <P><span class="pcounter"></span> However, we also require that type and namespace names that are
 resolved at definition time must resolve to the same bindings that
 they would resolve to if they were to be resolved at evaluation time.
 (We require that because it simplifies the user's model of the
 language: equal names in the same scope have the same meaning,
-provided they resolve at all.)  The consequence of that is that the
-language must provide protection against ambiguities that can be
-introduced at a later time.  If a name is resolved at definition time
-to a global binding then compilation units loaded later may introduce
-new global bindings that will make the resolved binding ambiguous.
-For example, consider the following program.
+provided they resolve at all.)  The consequence is that the language
+must provide protection against ambiguities that can be introduced at
+a later time.  If a name is resolved at definition time to a global
+binding then compilation units loaded later may introduce new global
+bindings that will make the resolved binding ambiguous.  For example,
+consider the following program.
 
 <PRE>
 namespace NS1
@@ -499,11 +481,11 @@ at definition time to <code>NS1::T</code>.  Then another compilation unit is
 loaded:
 
 <PRE>
-NS2 type T
+NS2 type T = ...
 </PRE>
 
 <P><span class="pcounter"></span> Since the global environment is "flat"--code in earlier
-compilation units see bindings introduced by later compilation
+compilation units can see bindings introduced by later compilation
 units--the reference to <code>T</code> from the first program is now ambiguous.
 
 <P><span class="pcounter"></span> ES4 protects against this eventuality by <i>reserving</i> global
@@ -573,6 +555,8 @@ name and fixture in the list of ribs.
 part and then returning the tail of the list of ribs such that the
 first rib on the tail contains a binding for the name.
 
+<p class="note"><b>NOTE</b>&nbsp;&nbsp;  The name can't be ambiguous because there is only one namespace.
+
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
 <b>fun</b> resolveQualifiedName (ribs          : Ast.RIBS)
@@ -601,7 +585,8 @@ first rib on the tail contains a binding for the name.
 
 <P><span class="pcounter"></span> An unqualified name expression is resolved according to the full
 algorithm outlined above.  It returns the tail of the list of ribs
-such that the first rib on the tail contains a binding for the name.
+such that the first rib on the tail contains an unambiguous binding
+for the name.
 
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
@@ -671,6 +656,9 @@ algorithm computes a set of names consisting of the identifier and
 each of the open namespaces with an equal or higher priority than the
 given namespace.
 
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  Obviously we need more prose here.  Also we want to be sure
+to note that reservation only happens in the global object.
+
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
 <b>and</b> reserveNames (name)
@@ -695,7 +683,7 @@ and the name of a property on that object.
 <b>and</b> resolveLexicalReference (regs            : REGS)
                             (nameExpression  : NAME_EXPRESSION)
                             (errorIfNotFound : bool)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     <b>let</b>
         <b>val</b> {scope, ...} = regs
     <b>in</b>
@@ -715,14 +703,14 @@ and the name of a property on that object.
 expression (it must yield a namespace value) and then look up the name
 comprised of the namespace value and the qualified reference's
 identifier.  If a binding is not found then we return the global
-object, otherwise the object that contained the binding.
+object, otherwise the object that contained the binding for the name.
 
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
 <b>and</b> resolveQualifiedLexicalReference (regs          : REGS)
                                      (identifier    : IDENTIFIER)
                                      (namespaceExpr : NAMESPACE_EXPRESSION)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     <b>let</b>
         <b>val</b> {scope, global, ...} = regs
         <b>val</b> namespace = evalNamespaceExpr regs namespaceExpr
@@ -749,7 +737,7 @@ the set of resulting namespaces.
 <b>and</b> resolveUnqualifiedLexicalReference (regs           : REGS)
                                        (identifier     : IDENTIFIER)
                                        (openNamespaces : OPEN_NAMESPACES)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     <b>let</b>
         <b>val</b> {scope, global, ...} = regs
         <b>val</b> namespaces = List.concat openNamespaces
@@ -843,7 +831,7 @@ and qualified with the <code>public</code> namespace.
 <PRE>
 <b>and</b> resolveObjectReference (regs:REGS)
                            (ObjectNameReference { object, name, ... }: EXPRESSION)
-    : (OBJ option * (OBJ * NAME)) =
+    : (OBJECT option * (OBJECT * NAME)) =
     <b>let</b>
         <b>val</b> obj = evalObjectExpr regs object
     <b>in</b>
@@ -880,10 +868,10 @@ the object value and the evaluated name.
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
 <b>and</b> resolveQualifiedObjectReference (regs: REGS)
-                                    (object: OBJ)
+                                    (object: OBJECT)
                                     (identifier: IDENTIFIER)
                                     (namespaceExpr: NAMESPACE_EXPRESSION)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     <b>let</b>
         <b>val</b> namespaces = [evalNamespaceExpr regs namespaceExpr]
         <b>val</b> openNamespaces = []
@@ -902,10 +890,10 @@ the set of resulting namespaces.
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
 <b>and</b> resolveUnqualifiedObjectReference (regs: REGS)
-                                      (object: OBJ)
+                                      (object: OBJECT)
                                       (identifier: IDENTIFIER)
                                       (openNamespaces: OPEN_NAMESPACES)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     <b>let</b>
         <b>val</b> namespaces = List.concat openNamespaces
     <b>in</b>
@@ -918,11 +906,11 @@ the set of resulting namespaces.
 <P class="implsection"><b>Semantics</b> <P><span class="pcounter"></span>
 <PRE>
 <b>and</b> resolveOnObject (regs:REGS)
-                    (object:OBJ)
+                    (object:OBJECT)
                     (identifier:IDENTIFIER)
                     (namespaces:NAMESPACE_SET)
                     (openNamespaces: OPEN_NAMESPACES)
-    : (OBJ * NAME) =
+    : (OBJECT * NAME) =
     <b>let</b>
         <b>val</b> result = searchObject (regs, SOME object, NONE, identifier, namespaces, false)
     <b>in</b>

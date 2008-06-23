@@ -7,7 +7,7 @@ FILE:                       spec/library/Function.html
 CATEGORY:                   Pre-defined classes  (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2], [3], [5]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               LAST CALL - 2008-03-20
+DRAFT STATUS:               LAST CALL #2 - 2008-06-20
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -19,6 +19,9 @@ TEST CASE STATUS:           ?
 
 
 CHANGES SINCE DRAFT 3 (LAST CALL - 2008-03-20)
+
+  * Added FIXME about 'new Function' needing to accept a version
+    parameter.
 
   * Prototype methods are explicitly designated 'public' because the
     language requires it
@@ -41,12 +44,6 @@ CHANGES SINCE DRAFT 1 (2008-03-10)
 
   * Replaced note about host functions being "anything" with a
     paragraph about the type 'Callable'.
-
-
-NOTES
-
-  * The use of 'Private' instead of 'private' below is a workaround
-    for a bug in the reference implementation (#368).
 
 
 REFERENCES
@@ -143,6 +140,10 @@ grammar in section <XREF target="ECMAScript grammar">).
 
 <P> Regardless of the form of the parameter list, it may include type
 annotations, default parameter values, and rest arguments.
+
+<FIXME> It appears likely that the ''Function'' constructor needs to
+accept a version parameter so that the keyword set can be controlled,
+as is the case for ''eval''.
 
 <RETN> The ''Function'' constructor returns a new ''Function'' instance.
 

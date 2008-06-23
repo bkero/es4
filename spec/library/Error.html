@@ -10,7 +10,7 @@ FILE:                       spec/library/Error.html
 CATEGORY:                   Pre-defined classes
 SOURCES:                    REFERENCE [1]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               DRAFT 1 - 2008-03-06
+DRAFT STATUS:               DRAFT 2 - 2008-06-23
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -29,12 +29,13 @@ CHANGES SINCE DRAFT 1 (2008-03-06)
   * Presentation:
     - improvements to status block above
 
-
 NOTES
 
-  * Due to a bug [2] in the reference implementation, the private
-    methods in the error classes are currently in the namespace
-    "Private", not in "private".  This will be changed eventually.
+  * There has been some discussion on es4-discuss about adding line
+    number / file name / backtrace information to error objects, and
+    about mechanisms for setting those data.  That discussion is not
+    reflected in this present proposal.
+
 
 REFERENCES
 

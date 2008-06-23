@@ -22,13 +22,20 @@ H4 { font-size: 10pt }
 P code { font-size: 10pt }
 code { font-style: normal; font-weight: normal }
 
-pre { font-size: 10pt }
+pre { font-size: 9pt }
 
-body { counter-reset: chapter section subsection subsubsection;
-       font-size: 11pt; 
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
        margin: 0.75in }
 
-table { font-size: inherit }
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
 
 .pcounter:before {
     content: counter(para); 
@@ -75,6 +82,15 @@ H4 {
     counter-reset: para;
 }
 
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
 </style>
 </head>
 
@@ -88,7 +104,7 @@ FILE:                       spec/library/Function.html
 CATEGORY:                   Pre-defined classes  (E262-3 Chapter 15)
 SOURCES:                    REFERENCES [1], [2], [3], [5]
 SPEC AUTHOR:                Lars
-DRAFT STATUS:               LAST CALL - 2008-03-20
+DRAFT STATUS:               LAST CALL #2 - 2008-06-20
 REVIEWED AGAINST ES3:       YES
 REVIEWED AGAINST ERRATA:    YES
 REVIEWED AGAINST BASE DOC:  YES
@@ -97,6 +113,15 @@ REVIEWED AGAINST CODE:      YES
 REVIEWED AGAINST TICKETS:   YES
 IMPLEMENTATION STATUS:      ES4RI
 TEST CASE STATUS:           ?
+
+
+CHANGES SINCE DRAFT 3 (LAST CALL - 2008-03-20)
+
+  * Added FIXME about 'new Function' needing to accept a version
+    parameter.
+
+  * Prototype methods are explicitly designated 'public' because the
+    language requires it
 
 
 CHANGES SINCE DRAFT 2 (2008-03-14)
@@ -116,12 +141,6 @@ CHANGES SINCE DRAFT 1 (2008-03-10)
 
   * Replaced note about host functions being "anything" with a
     paragraph about the type 'Callable'.
-
-
-NOTES
-
-  * The use of 'Private' instead of 'private' below is a workaround
-    for a bug in the reference implementation (#368).
 
 
 REFERENCES
@@ -153,7 +172,8 @@ matches every object that has a <code>meta::invoke</code> property.
 
 <P><span class="pcounter"></span> The class <code>Function</code> provides the following interface:
 
-<PRE><span class="pcounter"></span>dynamic class Function extends Object
+<PRE>
+dynamic class Function extends Object
 {
     public function Function(...args) &#x0085
     static meta function invoke(...args) &#x0085
@@ -179,7 +199,8 @@ matches every object that has a <code>meta::invoke</code> property.
 
 <P><span class="pcounter"></span>The <code>Function</code> prototype object provides these direct properties:
 
-<PRE><span class="pcounter"></span>    meta::invoke: function () &#x0085;
+<PRE>
+    meta::invoke: function () &#x0085;
     length:       0
     toString:     function () &#x0085;
     apply:        function(thisArg, argArray) &#x0085;
@@ -217,13 +238,19 @@ grammar in section <span class="xref">ECMAScript grammar</span>).
 <P><span class="pcounter"></span> Regardless of the form of the parameter list, it may include type
 annotations, default parameter values, and rest arguments.
 
+<p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  It appears likely that the <code>Function</code> constructor needs to
+accept a version parameter so that the keyword set can be controlled,
+as is the case for <code>eval</code>.
+
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Function</code> constructor returns a new <code>Function</code> instance.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>public function Function(...args)
+<PRE>
+public function Function(...args)
     helper::createFunction(args);
 </PRE>
-<PRE><span class="pcounter"></span>helper function createFunction(args) {
+<PRE>
+helper function createFunction(args) {
     let parameters = "";
     let body = "";
     if (args.length > 0) {
@@ -232,7 +259,7 @@ annotations, default parameter values, and rest arguments.
         parameters = args.join(",");
     }
     body = string(body);
-    magic::initializeFunction(this, __ES4__::global, parameters, body);
+    helper::initializeFunction(this, __ES4__::global, parameters, body);
 }
 </PRE>
 
@@ -249,7 +276,8 @@ constructor.
 each formal parameter to be specified. For example, all three of the
 following expressions produce the same result:
 
-<PRE><span class="pcounter"></span>new Function("a", "b", "c", "return a+b+c")
+<PRE>
+new Function("a", "b", "c", "return a+b+c")
 
 new Function("a, b, c", "return a+b+c")
 
@@ -269,7 +297,8 @@ new <code>Function</code> instance.
 
 <P class="implsection"><b>Implementation</b>
 
-<PRE><span class="pcounter"></span>meta static function invoke(...args)
+<PRE>
+meta static function invoke(...args)
     new Function(...args);
 </PRE>
 
@@ -287,12 +316,11 @@ of <i>argArray</i> as the individual argument values.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>apply</code> method returns the value returned by <i>fn</i>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static public function apply(fn: Callable, thisArg: Object=null, argArray: Object=null) {
-    if (thisArg === null)
-        thisArg = global;
+<PRE>
+static public function apply(fn: Callable, thisArg: Object=null, argArray: Object=null) {
     if (argArray === null)
         argArray = [];
-    return magic::apply(fn, thisArg, argArray);
+    return helper::apply(fn, thisArg, argArray);
 }
 </PRE>
 
@@ -313,10 +341,12 @@ the <code>this</code> object and the values of <i>args</i> and <i>moreargs</i> a
 actual arguments.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static public function bind(method: Callable, thisObj: Object, ...args)
+<PRE>
+static public function bind(method: Callable, thisObj: Object, ...args)
     helper::bind(method, thisObj, args);
 </PRE>
-<PRE><span class="pcounter"></span>static helper function bind(method, thisObj, args) {
+<PRE>
+static helper function bind(method, thisObj, args) {
     return function (...moreargs)
                method.apply(thisObj, args.concat(moreargs));
 }
@@ -333,7 +363,8 @@ members of <i>args</i> as the individual argument values.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>call</code> method returns the value returned by <i>fn</i>.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static public function call(fn: Callable, thisObj: Object=null, ...args)
+<PRE>
+static public function call(fn: Callable, thisObj: Object=null, ...args)
     Function.apply(fn, thisObj, args);
 </PRE>
 
@@ -390,8 +421,9 @@ for functions created from unnamed function expressions.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toString</code> method returns a string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>override intrinsic function toString() : string
-    Private::toString();
+<PRE>
+override intrinsic function toString() : string
+    private::toString();
 </PRE>
 
 <P><span class="pcounter"></span> The private function <code>toString</code> is implementation-dependent.
@@ -406,7 +438,8 @@ with the value of <code>this</code> as the first argument.
 <code>apply</code> method.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function apply(thisArg: Object=null, argArray: Object=null)
+<PRE>
+intrinsic function apply(thisArg: Object=null, argArray: Object=null)
     Function.apply(this, thisArg, argArray);
 </PRE>
 
@@ -420,7 +453,8 @@ with the value of <code>this</code> as the first argument.
 <code>bind</code> method.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function bind(thisObj: Object, ...args)
+<PRE>
+intrinsic function bind(thisObj: Object, ...args)
     Function.helper::bind(this, thisObj, args);
 </PRE>
 
@@ -434,7 +468,8 @@ with the value of <code>this</code> as the first argument.
 <code>call</code> method.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function call(thisObj: Object=null, ...args)
+<PRE>
+intrinsic function call(thisObj: Object=null, ...args)
     Function.apply(this, thisObj, args);
 </PRE>
 
@@ -470,7 +505,8 @@ created object.
 <P><span class="pcounter"></span> When the <code>Function</code> prototype object is invoked it accepts any
 arguments and returns <b>undefined</b>:
 
-<PRE><span class="pcounter"></span>public prototype meta function invoke(...args)
+<PRE>
+public prototype meta function invoke(...args)
     undefined;
 </PRE>
 
@@ -481,18 +517,22 @@ arguments and returns <b>undefined</b>:
 type adjustments and then perform the same actions as their intrinsic
 counterparts:
 
-<PRE><span class="pcounter"></span>public prototype function toString(this: Function)
-    this.Private::toString();
+<PRE>
+public prototype function toString(this: Function)
+    this.private::toString();
 </PRE>
-<PRE><span class="pcounter"></span>public prototype function apply(this: Callable, thisArg=undefined, argArray=undefined)
+<PRE>
+public prototype function apply(this: Callable, thisArg=undefined, argArray=undefined)
     Function.apply(this,
                    thisArg === undefined ? null : thisArg,
                    argArray === undefined ? null : argArray);
 </PRE>
-<PRE><span class="pcounter"></span>public prototype function bind(this: Callable, thisObj, ...args)
+<PRE>
+public prototype function bind(this: Callable, thisObj, ...args)
     Function.helper::bind(this, thisObj, args);
 </PRE>
-<PRE><span class="pcounter"></span>public prototype function call(this: Callable, thisObj=undefined, ...args)
+<PRE>
+public prototype function call(this: Callable, thisObj=undefined, ...args)
     Function.apply(this,
                    thisObj === undefined ? null : thisObj,
                    args);
@@ -506,7 +546,8 @@ counterparts:
 <P><span class="pcounter"></span> The initial value of the <code>length</code> prototype property is 0.
 
 <P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
-<PRE><span class="pcounter"></span>public prototype var length : double = 0;
+<PRE>
+public prototype var length : double = 0;
 </PRE>
 
 <p class="note"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp;  The "length" property of the prototype is not obviously
