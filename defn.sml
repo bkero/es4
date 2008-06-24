@@ -1252,6 +1252,9 @@ and defFuncSig (env:ENV)
 
 
             val (paramRib,paramInits) = defBindings env Ast.Var Name.publicNS params
+            val paramRib = mergeRibs (#rootRib env) paramRib [(Ast.PropName Name.public_arguments,
+                                                               Ast.ValFixture { ty = Name.typename (Name.helper_Arguments),
+                                                                                writable = true })]
             val ((settingsRib,settingsInits),superArgs) =
                     case ctorInits of
                         SOME (settings,args) => (defSettings env settings, defExprs env args)

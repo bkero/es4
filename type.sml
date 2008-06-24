@@ -278,172 +278,101 @@ fun normalizeRefs (ty:TYPE)
       | x => mapType normalizeRefs x
                                    
 (* ----------------------------------------------------------------------------- *)
-(* FIXME: Not clear this does the right thing now that TypeNames can implicitly contain null,
- * but we have much more serious problems with unions and normalization.
+(* Normalize the NonNullType type operator, by propagating it down through unions,
+ * and using it to replace null by the empty union type, but leaving it on TypeNames.
+ * No need to leave it on type applications, because post-resolution the type application
+ * only refers to nominal types, which exclude null.
  *)
 
-fun normalizeNullsInner (ty:TYPE)
+fun removeNull (ty:TYPE)
     : TYPE =
-    let
-        fun containsNull ty = 
-            case ty of 
-                NullType => true
-              | NonNullType _ => false
-              | UnionType tys => List.exists containsNull tys
-              | _ => false
+    case ty of
+        UnionType types =>
+        UnionType (map removeNull types)
+      | NonNullType ty => 
+        removeNull ty
+      | NullType =>
+        UnionType []
+      | TypeName _ =>
+        NonNullType ty
+      | _ => ty
 
-        fun stripNulls ty = 
-            case ty of 
-                NullType => NONE
-              | NonNullType t => stripNulls t 
-              | UnionType tys => 
-                (case List.mapPartial stripNulls tys of
-                     [] => NONE
-                   | tys1 => SOME (UnionType tys1))
-              | _ => SOME ty
-    in
-        if containsNull ty
-        then 
-            case stripNulls ty of 
-                SOME (UnionType tys) => UnionType (tys @ [NullType])
-              | SOME t => UnionType [t, NullType]
-              | NONE => NullType
-        else 
-            case stripNulls ty of 
-                SOME t => t
-              | NONE => UnionType []
-    end
-
-fun normalizeNulls (ty:TYPE)
+fun normalizeNonNulls (ty:TYPE)
     : TYPE = 
-    mapType normalizeNulls (normalizeNullsInner ty)
+    case ty of
+        NonNullType ty =>
+        removeNull (normalizeNonNulls ty)
+      | _ => mapType normalizeNonNulls ty
 
-
-(* ----------------------------------------------------------------------------- *)
-(* FIXME: also need to normalize (C|D) and (D|C) to the same type.
- * We also need to normalize ...
- *
- * function.<X>(X):X
- * function.<Y>(Y):Y 
- *)
-                                   
-fun normalizeUnions (ty:TYPE)
-    : TYPE =
-    let
-        fun unUnion (UnionType tys) = tys
-          | unUnion t = [t]
-    in
-        case ty of 
-            UnionType tys => 
-            (case List.concat (map unUnion tys) of 
-                 [x] => x
-               | tys => UnionType tys)                                     
-          | x => mapType normalizeUnions x
-    end
-
-
-fun normalizeArrays (ty:TYPE)
-    : TYPE =
-    case ty of 
-        ArrayType ([],NONE) => ArrayType ([], SOME AnyType)
-      | x => mapType normalizeArrays x
-
-
-(* ----------------------------------------------------------------------------- *)
-(* Checks that the given type does not contain any type constructors,
- * unless they are immediately applied to an appropriate number of arguments.
- * Assumes no beta redexes.
- *)
-
-fun checkProperType (ty:TYPE) : unit = 
-    let fun check ty2 = 
-            case ty2 of
-(* a LamType could be a generic function type, which is a type
-                LamType { params, body } => 
-                error ["Improper occurrence of type constructor ", LogErr.ty ty2, 
-                       " in normalized type ", LogErr.ty ty]
-*)
-                AppType ( base, args ) =>
-                error ["Improper occurrence of type application ", LogErr.ty ty2, 
-                       " in normalized type ", LogErr.ty ty]
-
-              | _ => foreachTyExpr check ty2
-    in 
-        check ty
-    end
-  
 (* ----------------------------------------------------------------------------- *)
 (* normalizeNames: replace all references to TypeFixtures by the corresponding type. *)
+
+
 
 
 fun resolveTypeNames (env : RIBS)
                      (ty  : TYPE)                    
     : TYPE = 
-    case ty of 
-
-        TypeName (nameExpr, _) => 
-        let in
-            case (Fixture.resolveNameExpr env nameExpr) of 
-
-                (envOfDefn, _,  TypeFixture ([], typeBody)) => 
-                resolveTypeNames envOfDefn typeBody
-
-              | (_, _, ClassFixture (c as Class {nonnullable, typeParams=[], ...})   ) => 
-                if nonnullable then
-                    InstanceType c
-                else
-                    UnionType [InstanceType c, NullType]
-
-              | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams=[], ...})) => 
-                if nonnullable then
-                    InterfaceType i
-                else
-                    UnionType [InterfaceType i, NullType]
-                         
-              | (_, n, _) => error ["name ", LogErr.name  n, " in type expression ", 
-                                    LogErr.ty ty, " is not a proper type"]
-        end
-
-      | AppType (TypeName (nameExpr, _), typeArgs) =>
-        let fun checkArgs typeParams =
+    let fun maybeUnionWithNull nonnullable ty =
+            if nonnullable then
+                ty
+            else
+                UnionType [ty, NullType]
+        fun checkArgs typeArgs typeParams =
             if length typeArgs = length typeParams then 
                 ()
             else 
-                error ["Incorrect no of arguments to parametric typedefn"];
-        in
+                error ["Incorrect no of arguments to parametric typedefn"]
+    in
+    case ty of 
+        
+        TypeName (nameExpr, _) => 
+        let in
+            case (Fixture.resolveNameExpr env nameExpr) of 
+                
+                (envOfDefn, _,  TypeFixture ([], typeBody)) => 
+                resolveTypeNames envOfDefn typeBody
+                
+              | (_, _, ClassFixture (c as Class {nonnullable, typeParams=[], ...})   ) => 
+                maybeUnionWithNull nonnullable (InstanceType c) 
+                    
+              | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams=[], ...})) => 
+                maybeUnionWithNull nonnullable (InterfaceType i)
+                    
+              | (_, n, _) => error ["name ", LogErr.name  n, " in type expression ", 
+                                    LogErr.ty ty, " is not a proper type"]
+        end
+        
+      | AppType (TypeName (nameExpr, _), typeArgs) =>
+        let in
             case Fixture.resolveNameExpr env nameExpr of 
                 (envOfDefn, _,  TypeFixture (typeParams, typeBody)) => 
                 let in
-                    checkArgs typeParams;
+                    checkArgs typeArgs typeParams;
                     resolveTypeNames envOfDefn
                                      (substTypes typeParams
                                                  (map (resolveTypeNames env) 
                                                       typeArgs)
                                                  typeBody)
                 end
-
+                
               | (_, _, ClassFixture (c as Class {nonnullable, typeParams, ...})) =>
                 let in
-                    checkArgs typeParams;
-                    if nonnullable then
-                        AppType (InstanceType c, typeArgs)
-                    else
-                        UnionType [AppType (InstanceType c, typeArgs), NullType]
+                    checkArgs typeArgs typeParams;
+                    maybeUnionWithNull nonnullable (AppType (InstanceType c, typeArgs))
                 end
-
+                
               | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams, ...})) => 
                 let in
-                    checkArgs typeParams;
-                    if nonnullable then
-                        AppType (InterfaceType i, typeArgs)
-                    else
-                        UnionType [AppType (InterfaceType i, typeArgs), NullType]
+                    checkArgs typeArgs typeParams;
+                    maybeUnionWithNull nonnullable (AppType (InterfaceType i, typeArgs))
                 end
-                         
+                
               | _ => mapType (resolveTypeNames env) ty
         end
-
+        
       | _ => mapType (resolveTypeNames env) ty
+    end
 
 fun normalizeNames (useCache:bool)
                    (env:RIBS)
@@ -481,16 +410,10 @@ fun normalize (ribs:RIB list)
         val _ = traceTy "normalize2: " ty
         val ty = normalizeRefs ty
 
+        val _ = traceTy "normalize3: " ty
+        val ty = normalizeNonNulls ty
+
         val _ = traceTy "normalize4: " ty
-        val ty = normalizeNulls ty
-
-        val _ = traceTy "normalize5: " ty
-        val ty = normalizeUnions ty
-
-        val _ = traceTy "normalize7: " ty
-        val _  = checkProperType ty
-
-        val _ = traceTy "normalize8: " ty
     in
         ty
     end
@@ -561,7 +484,6 @@ fun subType (extra : TYPE -> TYPE -> bool)
     (subTypeUnion    extra type1 type2) orelse
     (subTypeFunction extra type1 type2) orelse
     (subTypeNonNull  extra type1 type2) orelse
-    (subTypeNullable extra type1 type2) orelse
     (subTypeNominal  extra type1 type2) orelse
     (subTypeStructuralNominal extra type1 type2) orelse
     (extra type1 type2) 
@@ -635,27 +557,6 @@ and subTypeNominal extra type1 type2 =
             (fn (type1, type2) => equivType extra type1 type2)
             (typeArgs1, typeArgs2)
 
-      | _ => false
-
-and subTypeNullable extra type1 type2 =
-    case (type1, type2) of
-
-        (NullType, 
-         InstanceType (Class { nonnullable = false, ... }))
-        => true
-
-      | (NullType, 
-         AppType (InstanceType (Class { nonnullable = false, ... }), typeArgs))
-        => true
-
-      | (NullType, 
-         InterfaceType (Interface { nonnullable = false, ... }))
-        => true
-
-      | (NullType, 
-         AppType (InterfaceType (Interface { nonnullable = false, ...}), typeArgs))
-        => true
-               
       | _ => false
 
 and subTypeNonNull extra type1 type2 =
