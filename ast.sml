@@ -162,8 +162,8 @@ datatype PRAGMA =
              dynamic: bool,
              extends: TYPE option,
              implements: TYPE list,
-             classRib: RIB,
-             instanceRib: RIB,
+             classFixtureMap: FIXTURE_MAP,
+             instanceFixtureMap: FIXTURE_MAP,
              instanceInits: HEAD,
              constructor: CTOR option }
 
@@ -173,7 +173,7 @@ datatype PRAGMA =
              typeParams: IDENTIFIER list,
              nonnullable: bool,
              extends: TYPE list,
-             instanceRib: RIB }
+             instanceFixtureMap: FIXTURE_MAP }
 
      and CTOR =
          Ctor of 
@@ -366,7 +366,7 @@ datatype STATEMENT =
 
      and BLOCK = Block of DIRECTIVES
 
-     (* RIBs are built by the definition phase, not the parser; but they 
+     (* FIXTURE_MAPs are built by the definition phase, not the parser; but they 
       * are patched back into the AST in class-definition and block
       * nodes, so we must define them here. *)
 (*
@@ -406,13 +406,13 @@ datatype FIXTURE =
            setter: (FUNC * (CLASS option)) option } (* VIRTUAL_VAL_FIXTURE *)
 
      and HEAD =
-         Head of RIB * INITS
+         Head of FIXTURE_MAP * INITS
 
 withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
-     and RIB = (FIXTURE_NAME * FIXTURE) list
-     and RIBS = ((FIXTURE_NAME * FIXTURE) list) (* RIB *)
+     and FIXTURE_MAP = (FIXTURE_NAME * FIXTURE) list
+     and FIXTURE_MAPS = ((FIXTURE_NAME * FIXTURE) list) (* FIXTURE_MAP *)
                 list
      and INITS = (FIXTURE_NAME * EXPRESSION) list
 
@@ -525,13 +525,13 @@ withtype
                      bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
                    } option,
              obj: EXPRESSION,
-             rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
+             fixtureMap: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURE_MAP option *)
              next: STATEMENT,
              labels: IDENTIFIER list,
              body: STATEMENT }
 
      and FOR_STATEMENT =
-           { rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)  (* CF: list option seems redundant *)
+           { fixtureMap: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURE_MAP option *)  (* CF: list option seems redundant *)
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
                      ns : NAMESPACE_EXPRESSION option,
@@ -547,7 +547,7 @@ withtype
 
      and WHILE_STATEMENT =
            { cond: EXPRESSION,
-             rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
+             fixtureMap: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURE_MAP option *)
              body: STATEMENT,
              labels: IDENTIFIER list }
 
@@ -566,7 +566,7 @@ withtype
      and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
            ty: TYPE,  (* CF: what is this for? *)
-           rib: ((FIXTURE_NAME * FIXTURE) list) option, (* RIB option *)
+           fixtureMap: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURE_MAP option *)
            inits: ((FIXTURE_NAME * EXPRESSION) list) option, (* INITS option, TODO: replace by INITS?? *)
            block:BLOCK }
 

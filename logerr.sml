@@ -114,13 +114,13 @@ fun fname (n:Ast.FIXTURE_NAME) =
 	Ast.TempName n => "<temp " ^ (Int.toString n) ^ ">"
       | Ast.PropName n => name n
 
-fun rib (r:Ast.RIB) = 
-    "[rib: " ^ (join ", " (map (fn (n,f) => fname n) 
+fun fixtureMap (r:Ast.FIXTURE_MAP) = 
+    "[fixtureMap: " ^ (join ", " (map (fn (n,f) => fname n) 
 			       (List.take(r,(Int.min(length r,10))))))
     ^ (if length r >10 then ", ...]" else "]")
 
-fun ribs (rs:Ast.RIBS) = 
-    "[ribs: \n    " ^ (join ",\n    " (map rib rs)) ^ "\n]"
+fun fixtureMaps (rs:Ast.FIXTURE_MAPS) = 
+    "[fixtureMaps: \n    " ^ (join ",\n    " (map fixtureMap rs)) ^ "\n]"
 
 fun fmtNss (nss:Ast.NAMESPACE_SET) = 
    "(" ^ (join ", " (map namespace nss)) ^ ")"

@@ -90,12 +90,11 @@ datatype VALUE = UndefinedValue
                | ObjectValue of OBJECT
 
      and OBJECT =
-         Object of { props: PROPERTY_BINDINGS,                  
-                     proto: VALUE,
-                     ident: OBJECT_IDENTIFIER,
+         Object of { ident: OBJECT_IDENTIFIER,                     
                      tag: TAG,
-                     rib: RIB
-                }
+                     proto: VALUE,
+                     fixtureMap: FIXTURE_MAP,
+                     propertyMap: PROPERTY_MAP }
 
      and TAG =
          ObjectTag of FIELD_TYPE list
@@ -253,7 +252,7 @@ withtype CLOSURE =
           thisFun: OBJECT option,
           thisGen: OBJECT option,
           global: OBJECT,
-          rootRib: RIB
+          rootFixtureMap: FIXTURE_MAP
           , aux: AUX                      (* INFORMATIVE *)
          }
 
@@ -263,7 +262,7 @@ withtype CLOSURE =
                     thisFun: OBJECT option,
                     thisGen: OBJECT option,
                     global: OBJECT, 
-                    rootRib: RIB, 
+                    rootFixtureMap: FIXTURE_MAP, 
                     aux: AUX } (* REGS *)
                   -> VALUE list -> VALUE),
            length: int }
@@ -282,7 +281,7 @@ withtype CLOSURE =
                       state: PROPERTY_STATE,
                       attrs: ATTRS }
 
-     and PROPERTY_BINDINGS = (* LDOTS *)
+     and PROPERTY_MAP = (* LDOTS *)
          { max_seq: int,
 		   bindings: { seq: int,
 				       prop: (* PROPERTY *)
@@ -358,10 +357,10 @@ fun isSameType (va:VALUE) (vb:VALUE) : bool =
 
 (* Binding operations. *)
 
-fun newPropBindings _ : PROPERTY_BINDINGS =
+fun newPropertyMap _ : PROPERTY_MAP =
     ref { max_seq = 0, bindings = NameMap.empty }
 
-fun addProp (b:PROPERTY_BINDINGS)
+fun addProp (b:PROPERTY_MAP)
             (n:NAME)
             (x:PROPERTY)
     : unit =
@@ -374,7 +373,7 @@ fun addProp (b:PROPERTY_BINDINGS)
 	b := { max_seq = s, bindings = bindings }
     end
 
-fun delProp (b:PROPERTY_BINDINGS)
+fun delProp (b:PROPERTY_MAP)
             (n:NAME)
     : unit =
     let
@@ -384,7 +383,7 @@ fun delProp (b:PROPERTY_BINDINGS)
 	b := { max_seq = max_seq, bindings = bindings }
     end
 
-fun findProp (b:PROPERTY_BINDINGS)
+fun findProp (b:PROPERTY_MAP)
              (n:NAME)
     : PROPERTY option =
     let
@@ -396,7 +395,7 @@ fun findProp (b:PROPERTY_BINDINGS)
     end
 
 fun matchProps (fixedProps:bool)
-               (b:PROPERTY_BINDINGS)
+               (b:PROPERTY_MAP)
                (searchId:IDENTIFIER)
                (nss:NAMESPACE list)
     : NAME list =
@@ -413,7 +412,7 @@ fun matchProps (fixedProps:bool)
         List.mapPartial tryNS nss
     end
 
-fun getProp (b:PROPERTY_BINDINGS)
+fun getProp (b:PROPERTY_MAP)
             (n:NAME)
     : PROPERTY =
     case findProp b n of
@@ -432,14 +431,14 @@ fun getProp (b:PROPERTY_BINDINGS)
                 fixed=false}}
 
 
-fun hasProp (b:PROPERTY_BINDINGS)
+fun hasProp (b:PROPERTY_MAP)
             (n:NAME)
     : bool =
     case findProp b n of
         NONE => false
       | SOME _ => true
 
-fun hasFixedProp (b:PROPERTY_BINDINGS)
+fun hasFixedProp (b:PROPERTY_MAP)
                  (n:NAME)
     : bool =
     case findProp b n of
@@ -450,36 +449,36 @@ fun hasPrimitive (Object { tag = PrimitiveTag _, ... }) = true
   | hasPrimitive _ = false
 
 fun getObjId (Object { ident, ...}) = ident
-fun getRib (regs:REGS)
+fun getFixtureMap (regs:REGS)
            (obj:OBJECT)
-    : RIB =
+    : FIXTURE_MAP =
     let
-        val { rootRib, global, ... } = regs
-        val Object { rib, ident, ... } = obj
+        val { rootFixtureMap, global, ... } = regs
+        val Object { fixtureMap, ident, ... } = obj
     in
         if (getObjId global) = ident
-        then rootRib
-        else rib
+        then rootFixtureMap
+        else fixtureMap
     end
 
-fun getRibs (regs:REGS)
+fun getFixtureMaps (regs:REGS)
             (scope:SCOPE) 
-    : RIBS = 
+    : FIXTURE_MAPS = 
       let   
           val Scope {object, parent, ...} = scope
-          val rib = getRib regs object
+          val fixtureMap = getFixtureMap regs object
       in
           case parent of 
-              NONE => [rib]
-            | SOME p => rib :: (getRibs regs p)
+              NONE => [fixtureMap]
+            | SOME p => fixtureMap :: (getFixtureMaps regs p)
       end
 
 
-fun setPropEnumerable (props:PROPERTY_BINDINGS)
-                    (n:NAME)
-                    (enumerable:bool)
+fun setPropEnumerable (propertyMap:PROPERTY_MAP)
+                      (n:NAME)
+                      (enumerable:bool)
     : unit =
-    case findProp props n of
+    case findProp propertyMap n of
         SOME prop =>
         let
             val attrs = (#attrs prop)
@@ -490,8 +489,8 @@ fun setPropEnumerable (props:PROPERTY_BINDINGS)
                                       writable = (#writable attrs),
                                       fixed = (#fixed attrs) } }
         in
-            delProp props n;
-            addProp props n newProp
+            delProp propertyMap n;
+            addProp propertyMap n newProp
         end
       | NONE => ()
 
@@ -505,17 +504,17 @@ fun nextIdent _ =
 
 fun newObject (t:TAG)
               (p:VALUE)
-              (rib:RIB)
+              (fixtureMap:FIXTURE_MAP)
     : OBJECT =
     Object { ident = nextIdent (),
-          tag = t,
-          props = newPropBindings (),
-          proto = p,
-          rib = rib }
+             tag = t,
+             propertyMap = newPropertyMap (),
+             proto = p,
+             fixtureMap = fixtureMap }
 
-fun newObjectNoTag (rib:RIB)
+fun newObjectNoTag (fixtureMap:FIXTURE_MAP)
     : OBJECT =
-    newObject NoTag NullValue rib
+    newObject NoTag NullValue fixtureMap
 
 fun getProto (ob:OBJECT)
     : VALUE =
@@ -733,18 +732,18 @@ fun inspect (v:VALUE)
                             ValueProperty v => subVal indent v
                           | _ => TextIO.print (stateStr ^ "\n")
                     end
-                val Object { props, proto, rib, ... } = obj
-		        val { bindings, ... } = !props
+                val Object { propertyMap, proto, fixtureMap, ... } = obj
+		        val { bindings, ... } = !propertyMap
             in
                 TextIO.print "Object {\n";
                 p indent ["    tag = ", (tag obj)]; nl();
                 p indent ["  ident = ", (id obj)]; nl();
                 p indent ["  proto = "]; subVal indent (proto);
-                p indent ["  props = ["]; nl();
+                p indent ["  propertyMap = ["]; nl();
                 NameMap.appi prop bindings;
                 p indent ["          ]"]; nl();
-                p indent ["  rib = "]; nl();
-                Fixture.printRib rib;
+                p indent ["  fixtureMap = "]; nl();
+                Fixture.printFixtureMap fixtureMap;
                 p indent ["}"];
                 nl ()
             end
@@ -1087,7 +1086,7 @@ fun makeGlobalScopeWith (global:OBJECT)
             temps = ref [],
             kind = GlobalScope }
 
-fun makeInitialRegs (rootRib:RIB)
+fun makeInitialRegs (rootFixtureMap:FIXTURE_MAP)
                     (glob:OBJECT)                     
     : REGS =
     let 
@@ -1131,7 +1130,7 @@ fun makeInitialRegs (rootRib:RIB)
           thisFun = NONE,
           thisGen = NONE,
           scope = makeGlobalScopeWith glob,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
 
@@ -1186,22 +1185,22 @@ fun getBindingNamespaces (regs: REGS,
      *)
     (* INFORMATIVE *)
     let
-        val Object { props, ... } = object
-        val rib = case class of 
-                      NONE => getRib regs object
-                    | SOME (Class { instanceRib, ...}) => instanceRib
+        val Object { propertyMap, ... } = object
+        val fixtureMap = case class of 
+                      NONE => getFixtureMap regs object
+                    | SOME (Class { instanceFixtureMap, ...}) => instanceFixtureMap
         fun tryNS ns = 
             let
                 val name = { id = identifier, ns = ns }
             in
-                case findProp props name of 
+                case findProp propertyMap name of 
                     NONE => 
-                    if Fixture.hasFixture rib (PropName name) 
+                    if Fixture.hasFixture fixtureMap (PropName name) 
                     then SOME ns
                     else NONE                         
                   | SOME {attrs={fixed, ...}, ...} => 
                     if fixedOnly
-                    then if fixed andalso Fixture.hasFixture rib (PropName name)
+                    then if fixed andalso Fixture.hasFixture fixtureMap (PropName name)
                          then SOME ns
                          else NONE
                     else SOME ns

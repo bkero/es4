@@ -75,10 +75,10 @@ fun normalize (regs:REGS)
               (ty:TYPE)
     : TYPE = 
     let
-        val { scope, rootRib, ... } = regs
-        val ribs = getRibs regs scope
+        val { scope, rootFixtureMap, ... } = regs
+        val fixtureMaps = getFixtureMaps regs scope
     in
-        Type.normalize ribs ty
+        Type.normalize fixtureMaps ty
     end
 
 fun evalTy (regs:REGS)
@@ -146,7 +146,7 @@ fun extendScopeReg (r:REGS)
                    (kind:SCOPE_KIND)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
         val scope = extendScope scope ob kind
     in
         { scope = scope,
@@ -154,7 +154,7 @@ fun extendScopeReg (r:REGS)
           thisFun = thisFun,
           thisGen = thisGen,
           global = global,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
 
@@ -162,14 +162,14 @@ fun withThis (r:REGS)
              (newThis:OBJECT)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
     in
         { scope = scope, 
           this = newThis, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
 
@@ -177,14 +177,14 @@ fun withThisFun (r:REGS)
                 (newThisFun:OBJECT option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = newThisFun,
           thisGen = thisGen,
           global = global, 
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
 
@@ -192,14 +192,14 @@ fun withThisGen (r:REGS)
                 (newThisGen:OBJECT option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
           thisGen = newThisGen,
           global = global, 
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
 
@@ -207,20 +207,20 @@ fun withScope (r:REGS)
               (newScope:SCOPE)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootRib, aux } = r
+        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
     in
         { scope = newScope, 
           this = this, 
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
     
 
-fun withRootRib (r:REGS)
-                (rootRib:RIB)
+fun withRootFixtureMap (r:REGS)
+                (rootFixtureMap:FIXTURE_MAP)
     : REGS =
     let
         val { scope, this, thisFun, thisGen, global, aux, ... } = r
@@ -230,7 +230,7 @@ fun withRootRib (r:REGS)
           thisFun = thisFun,
           thisGen = thisGen,
           global = global, 
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
     
@@ -335,7 +335,7 @@ val specialBindings = [
 
 fun allocTemps (regs:REGS)
                (temps:TEMPS)
-               (f:RIB)
+               (f:FIXTURE_MAP)
     : unit =
     let        
         fun allocFixture (n, f) =
@@ -347,7 +347,7 @@ fun allocTemps (regs:REGS)
     end
 
 and allocScopeTemps (regs:REGS)
-                    (rib:RIB)
+                    (fixtureMap:FIXTURE_MAP)
     : unit =
     let
         val { scope, ... } = regs
@@ -357,7 +357,7 @@ and allocScopeTemps (regs:REGS)
                 TempName t => allocTemp regs f t temps
               | PropName pn => ()
     in
-        List.app allocTempFromFixture rib
+        List.app allocTempFromFixture fixtureMap
     end
 
 
@@ -433,15 +433,15 @@ and hasOwnProperty (regs : REGS)
                    (n    : NAME)
     : bool =
     let
-        val Object { props, ... } = obj
+        val Object { propertyMap, ... } = obj
     in
-        if Fixture.hasFixture (getRib regs obj) (PropName n)
+        if Fixture.hasFixture (getFixtureMap regs obj) (PropName n)
         then true
         else            
-        if hasFixedProp props n then 
+        if hasFixedProp propertyMap n then 
             true
         else 
-            if hasFixedProp props meta_has then 
+            if hasFixedProp propertyMap meta_has then 
                 let 
                     val v = evalNamedMethodCall regs obj meta_has [newName regs n]
                 in
@@ -454,12 +454,12 @@ and hasOwnProperty (regs : REGS)
                                instanceType regs helper_DefaultBehaviorClass []
                        in
                            if ty <* defaultBehaviorClassTy then
-                               hasProp props n
+                               hasProp propertyMap n
                            else 
                                throwExn e
                        end
             else
-                hasProp props n
+                hasProp propertyMap n
     end
 
 
@@ -543,9 +543,9 @@ and getValueOrVirtual (regs:REGS)
     : VALUE =
     let
         (* INFORMATIVE *) val _ = trace ["getting property ", fmtName name, " on obj #", fmtObjId obj]
-        val Object { props, ... } = obj
+        val Object { propertyMap, ... } = obj
     in
-        case findProp props name of
+        case findProp propertyMap name of
             SOME {state, ...} =>
             (case state of
                  ValueProperty v => v
@@ -560,7 +560,7 @@ and getValueOrVirtual (regs:REGS)
                      UndefinedValue)
             
           | NONE =>
-            case Fixture.findFixture (getRib regs obj) (PropName name) of 
+            case Fixture.findFixture (getFixtureMap regs obj) (PropName name) of 
                 SOME fixture => 
 
                 (trace ["getValueOrVirtual reifying fixture ", fmtName name];
@@ -569,7 +569,7 @@ and getValueOrVirtual (regs:REGS)
         
               | NONE =>  
                 if doVirtual andalso 
-                   Fixture.hasFixture (getRib regs obj) (PropName meta_get)
+                   Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_get)
                 then 
                     (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
                             "\") catchall on obj #", fmtObjId obj];
@@ -591,7 +591,7 @@ and reifyFixture (regs:REGS)
     : unit = 
     (* LDOTS *)
     let
-        val Object { props, tag, ... } = obj
+        val Object { propertyMap, tag, ... } = obj
         fun reifiedFixture ty newPropState writable =
             let
                 val attrs = { removable = false,
@@ -602,7 +602,7 @@ and reifyFixture (regs:REGS)
                                 ty = ty,
                                 attrs = attrs }
             in
-                addProp props name newProp;
+                addProp propertyMap name newProp;
                 trace ["reified fixture ", fmtName name ]
             end
     in
@@ -751,9 +751,9 @@ and setValueOrVirtual (regs:REGS)
                       (doVirtual:bool)
     : unit =
     let
-        val Object { props, ... } = obj
+        val Object { propertyMap, ... } = obj
     in
-        case findProp props name of
+        case findProp propertyMap name of
             SOME existingProp =>
             let
                 val { state, attrs, ty, ... } = existingProp
@@ -774,8 +774,8 @@ and setValueOrVirtual (regs:REGS)
                         val np = newProp ()
                     in
                         (* FIXME: change to "replaceProp" that presrves insert-order. *)
-                        delProp props name;
-                        addProp props name np
+                        delProp propertyMap name;
+                        addProp propertyMap name np
                     end
 
                 fun maybeWrite throwIfReadOnly =
@@ -803,7 +803,7 @@ and setValueOrVirtual (regs:REGS)
                   | ValueProperty _ => maybeWrite false                  
             end
           | NONE => 
-            case Fixture.findFixture (getRib regs obj) (PropName name) of 
+            case Fixture.findFixture (getFixtureMap regs obj) (PropName name) of 
                 SOME (ValFixture {ty, writable}) 
                 => 
                 let
@@ -816,7 +816,7 @@ and setValueOrVirtual (regs:REGS)
                                                          then Writable
                                                          else ReadOnly } }
                 in
-                    addProp props name newProp
+                    addProp propertyMap name newProp
                 end
                     
               | SOME f 
@@ -827,7 +827,7 @@ and setValueOrVirtual (regs:REGS)
               | NONE 
                 =>
                 if 
-                    doVirtual andalso Fixture.hasFixture (getRib regs obj) (PropName meta_set)
+                    doVirtual andalso Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_set)
                 then 
                     let
                         val _ = trace ["running meta::set(\"", (Ustring.toAscii (#id name)), 
@@ -846,7 +846,7 @@ and setValueOrVirtual (regs:REGS)
                                                fixed = false } }
                     in
                         if isDynamic regs obj
-                        then addProp props name prop
+                        then addProp propertyMap name prop
                         else throwExn (newTypeErr regs ["attempting to add dynamic property to non-dynamic object"])
                     end
     end
@@ -1079,20 +1079,20 @@ and getMetaClass (regs:REGS)
     : CLASS = 
     let
         val Class { name, privateNS, protectedNS, parentProtectedNSs, 
-                    typeParams, classRib, ... } = class
-        val { rootRib, ... } = regs
-        val classTypeImpl = case Fixture.getFixture rootRib (PropName helper_ClassTypeImpl) of
+                    typeParams, classFixtureMap, ... } = class
+        val { rootFixtureMap, ... } = regs
+        val classTypeImpl = case Fixture.getFixture rootFixtureMap (PropName helper_ClassTypeImpl) of
                                 ClassFixture c => c
                               | _ => error regs ["cannot find public Object class"]
-        val Class { instanceRib=classTypeImplRib, ...} = classTypeImpl
+        val Class { instanceFixtureMap=classTypeImplFixtureMap, ...} = classTypeImpl
         val protoBinding = (PropName public_prototype, 
                             ValFixture { ty = AnyType, writable = false })
-        val merge = Fixture.mergeRibs (Type.matches rootRib [])
-        val (instanceRib, extends) = 
+        val merge = Fixture.mergeFixtureMaps (Type.matches rootFixtureMap [])
+        val (instanceFixtureMap, extends) = 
             if not (nameEq name public_Object) andalso 
                (InstanceType classTypeImpl) <* (InstanceType class)
             then ([], NONE)
-            else (merge (merge classTypeImplRib classRib) [protoBinding],
+            else (merge (merge classTypeImplFixtureMap classFixtureMap) [protoBinding],
                   SOME (InstanceType classTypeImpl))                                            
     in
         trace ["built metaClass for ", fmtName name];
@@ -1106,8 +1106,8 @@ and getMetaClass (regs:REGS)
                 dynamic = true,  (* needs to be dynamic for es3 compat *)
                 extends = extends,
                 implements = [],
-                classRib = [],
-                instanceRib = instanceRib,
+                classFixtureMap = [],
+                instanceFixtureMap = instanceFixtureMap,
                 instanceInits = Head ([],[]),
                 constructor = NONE }
     end
@@ -1117,8 +1117,8 @@ and getMetaClassAndMetaClassObjectAndTag (regs:REGS)
     : (CLASS * OBJECT * TAG) = 
     let
         val metaClass = getMetaClass regs class
-        val Class { instanceRib, ... } = metaClass
-        val metaClassObject = newObject (PrimitiveTag (TypePrimitive (InstanceType metaClass))) NullValue instanceRib
+        val Class { instanceFixtureMap, ... } = metaClass
+        val metaClassObject = newObject (PrimitiveTag (TypePrimitive (InstanceType metaClass))) NullValue instanceFixtureMap
         val tag = PrimitiveTag (TypePrimitive (ClassType class))
     in
         (metaClass, metaClassObject, tag)
@@ -1201,11 +1201,11 @@ and newFunctionFromClosure (regs:REGS)
 
         val tag = PrimitiveTag (FunctionPrimitive closure)
         val obj = constructStandardWithTag regs funClassObj funClass tag funProto []                  
-        val Object { props=newProtoProps, ... } = newProtoObj
+        val Object { propertyMap=newProtoPropertyMap, ... } = newProtoObj
     in
         setPrototype regs obj newProto;
         setValueOrVirtual regs newProtoObj public_constructor (ObjectValue obj) false;
-        setPropEnumerable newProtoProps public_constructor false;
+        setPropEnumerable newProtoPropertyMap public_constructor false;
         ObjectValue obj
     end
 
@@ -2012,13 +2012,13 @@ and evalInitExpr (regs:REGS)
          * deep destructuring.
          *)
 
-        val (Head (tempRib, tempInits)) = tempHead
+        val (Head (tempFixtureMap, tempInits)) = tempHead
     in
         (* Allocate and init the temp head in the current scope. *)
-        allocScopeTemps regs tempRib;
+        allocScopeTemps regs tempFixtureMap;
         evalScopeInits regs Local tempInits;
         
-        (* Allocate and init the target props. *)
+        (* Allocate and init the target propertyMap. *)
         evalScopeInits regs target inits;
         UndefinedValue
     end
@@ -2044,24 +2044,24 @@ and evalSuperCall (regs:REGS)
                    | SOME t' => getSuperClassObjs t')
               | _ => error regs ["non-instance type in extends clause during super call"]
 
-        fun instanceRibOf (Class { instanceRib, ... }) = instanceRib
+        fun instanceFixtureMapOf (Class { instanceFixtureMap, ... }) = instanceFixtureMap
 
         val superClassObjs = getSuperClassObjs thisType 
 
-        val superRibs = map (instanceRibOf 
+        val superFixtureMaps = map (instanceFixtureMapOf 
                              o needClass 
                              o (ObjectValue))
                             superClassObjs
                             
                             
-        val superRibs = case superRibs of 
+        val superFixtureMaps = case superFixtureMaps of 
                             [] => []
                           | x::xs => xs
                                      
-        val (n, superClassInstanceRib, func) =
-            case Fixture.resolveNameExpr superRibs nameExpr of 
-                ((rib::ribs), _, MethodFixture { func, ... }) => 
-                ((length superClassObjs) - (length (rib::ribs)), rib, func)
+        val (n, superClassInstanceFixtureMap, func) =
+            case Fixture.resolveNameExpr superFixtureMaps nameExpr of 
+                ((fixtureMap::fixtureMaps), _, MethodFixture { func, ... }) => 
+                ((length superClassObjs) - (length (fixtureMap::fixtureMaps)), fixtureMap, func)
               | _ => error regs ["non-method fixture in super expression"]
                      
 
@@ -2099,7 +2099,7 @@ and instanceType (regs:REGS)
                  (args:TYPE list)
     : TYPE = 
     let
-        val instanceTy = Type.instanceTy (#rootRib regs) name
+        val instanceTy = Type.instanceTy (#rootFixtureMap regs) name
     in
         NonNullType (applyTypes regs instanceTy args)
     end
@@ -2110,8 +2110,8 @@ and traceScope (s:SCOPE)
     then 
         let
             val Scope { object, parent, ... } = s
-            val Object { ident, props, ... } = getScopeObj s
-            val { bindings, ... } = !props
+            val Object { ident, propertyMap, ... } = getScopeObj s
+            val { bindings, ... } = !propertyMap
             val names = map (fn (n,_) => n) (NameMap.listItemsi bindings)
         in    
             trace ["scope: ", Int.toString ident, " = ",
@@ -2125,14 +2125,14 @@ and traceScope (s:SCOPE)
     else
         ()
 
-and makeTypeRib (regs:REGS)
+and makeTypeFixtureMap (regs:REGS)
                 (typeParams:IDENTIFIER list)
                 (typeArgs:TYPE list)
-    : RIB = 
+    : FIXTURE_MAP = 
     let
         val _ = 
             if not (length typeArgs = length typeParams)
-            then error regs ["argument length mismatch when building type rib"]
+            then error regs ["argument length mismatch when building type fixtureMap"]
             else ()
         val paramFixtureNames = map (fn id => PropName (public id)) typeParams
         val argFixtures = map (fn t => TypeFixture ([], t)) typeArgs
@@ -2163,8 +2163,8 @@ and applyTypesToClass (regs:REGS)
                              (* FIXME: apply to base types when logic for this is present in defn. *)
                              extends = (#extends c),
                              implements = (#implements c),
-                             classRib = (#classRib c),
-                             instanceRib = (#instanceRib c),
+                             classFixtureMap = (#classFixtureMap c),
+                             instanceFixtureMap = (#instanceFixtureMap c),
                              instanceInits = (#instanceInits c),
                              constructor = (#constructor c) }
         val baseClassObj = needObj regs classVal
@@ -2184,7 +2184,7 @@ and applyTypesToInterface (regs:REGS)
                                    typeParams = (#typeParams i),
                                    nonnullable = (#nonnullable i),
                                    extends = (#extends i),
-                                   instanceRib = (#instanceRib i) }
+                                   instanceFixtureMap = (#instanceFixtureMap i) }
     in
         newInterface regs newIface
     end
@@ -2200,13 +2200,13 @@ and applyTypesToFunction (regs:REGS)
         val { func, this, env } = funClosure
         val Func { fsig, name, native, generator, block, param, defaults, ty, loc } = func
         val FunctionSignature { typeParams, ... } = fsig
-        val typeRib = makeTypeRib regs typeParams typeArgs
+        val typeFixtureMap = makeTypeFixtureMap regs typeParams typeArgs
 
         val { scope, ... } = regs
-        val ribs = typeRib :: (getRibs regs scope)
-        val ty = Type.normalize ribs ty 
+        val fixtureMaps = typeFixtureMap :: (getFixtureMaps regs scope)
+        val ty = Type.normalize fixtureMaps ty 
 
-        val typeScopeObj = newObjectNoTag typeRib
+        val typeScopeObj = newObjectNoTag typeFixtureMap
         val env = extendScope env typeScopeObj TypeArgScope
 
         val newFunc = Func { name = name, 
@@ -2374,7 +2374,7 @@ and evalArrayInitialiser (regs:REGS)
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj 
         val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
-        val (Object {props, ...}) = obj
+        val (Object {propertyMap, ...}) = obj
         fun putVal n [] = n
           | putVal n (v::vs) =
             let
@@ -2418,7 +2418,7 @@ and evalObjectInitialiser (regs:REGS)
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj
         val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
-        val (Object {props, ...}) = obj
+        val (Object {propertyMap, ...}) = obj
                                  
         fun getPropState (v:VALUE) : PROPERTY_STATE =
             case v of
@@ -2478,12 +2478,12 @@ and evalObjectInitialiser (regs:REGS)
                               writable = writability,
                               fixed = false }
                 val state = getPropState v
-                val existingProp = findProp props n
+                val existingProp = findProp propertyMap n
                 val prop = { ty = ty,
                              attrs = attrs,
                              state = mergePropState existingProp state }
             in
-                addProp props n prop
+                addProp propertyMap n prop
             end
     in
         List.app processField fields;
@@ -2753,11 +2753,11 @@ and evalUnaryOp (regs:REGS)
         case unop of
             Delete => 
             let
-                val (_, (Object {props, ...}, name)) = resolveRefExpr regs expr false
+                val (_, (Object {propertyMap, ...}, name)) = resolveRefExpr regs expr false
             in
-                if (hasProp props name)
-                then if (#removable (#attrs (getProp props name)))
-                     then (delProp props name; newBoolean regs true)
+                if (hasProp propertyMap name)
+                then if (#removable (#attrs (getProp propertyMap name)))
+                     then (delProp propertyMap name; newBoolean regs true)
                      else newBoolean regs false
                 else newBoolean regs true
             end
@@ -3475,7 +3475,7 @@ and resolveObjectReference (regs:REGS)
   | resolveObjectReference  regs  _  =                 (* INFORMATIVE *)
     error regs ["need object reference expression"]    (* INFORMATIVE *)
 
-and selectNamespacesByInstanceRibs (regs:REGS)
+and selectNamespacesByInstanceFixtureMaps (regs:REGS)
                                    (object:OBJECT)
                                    (identifier:IDENTIFIER)
                                    (namespaces:NAMESPACE_SET)
@@ -3486,10 +3486,10 @@ and selectNamespacesByInstanceRibs (regs:REGS)
       | [namespace] => (object, {ns=namespace, id=identifier})
       | _ => 
         let
-            val instanceRibs = [getRib regs (object)]
+            val instanceFixtureMaps = [getFixtureMap regs (object)]
             val result = Fixture.selectNamespaces (identifier, 
                                                    namespaces, 
-                                                   instanceRibs, 
+                                                   instanceFixtureMaps, 
                                                    openNamespaces)
         in 
             case result of
@@ -3510,7 +3510,7 @@ and resolveOnObject (regs:REGS)
         case result of 
             NONE => (object, {ns=publicNS, id=identifier})
           | SOME (object, namespaces) => 
-            selectNamespacesByInstanceRibs regs object identifier namespaces openNamespaces
+            selectNamespacesByInstanceFixtureMaps regs object identifier namespaces openNamespaces
     end
 
 and resolveQualifiedObjectReference (regs: REGS)
@@ -3612,10 +3612,10 @@ and resolveUnqualifiedLexicalReference (regs           : REGS)
 
           | SOME (object, namespaces) 
             => let
-                   val classRibs = [getRib regs object]
+                   val classFixtureMaps = [getFixtureMap regs object]
                    val result = Fixture.selectNamespaces (identifier, 
                                                           namespaces, 
-                                                          classRibs, 
+                                                          classFixtureMaps, 
                                                           openNamespaces)
                in 
                    case result of
@@ -3752,13 +3752,13 @@ and evalStmt (regs:REGS)
       | _ => error regs ["Shouldn't happen: failed to match in Eval.evalStmt."]
 
 
-and checkRibInitialization (regs:REGS)
+and checkFixtureMapInitialization (regs:REGS)
                            (obj:OBJECT)
                            (temps:TEMPS option)
     : unit =
     let
-        val Object { props, ... } = obj
-        val rib = getRib regs obj
+        val Object { propertyMap, ... } = obj
+        val fixtureMap = getFixtureMap regs obj
         fun checkOne (TempName i, _) =
             (case temps of 
                  NONE => error regs ["no temp slots in context requiring temp fixtures"]
@@ -3770,7 +3770,7 @@ and checkRibInitialization (regs:REGS)
                          (_, UninitTemp) => error regs ["uninitialized temp"]
                        | _ => ())
           | checkOne (PropName n, ValFixture { ty, writable }) =
-            if hasProp props n
+            if hasProp propertyMap n
             then ()
             else 
                 (case defaultValueForType regs ty of 
@@ -3778,7 +3778,7 @@ and checkRibInitialization (regs:REGS)
                    | SOME _ => ())
           | checkOne (_, _) = ()                 
     in
-        List.app checkOne rib
+        List.app checkOne fixtureMap
     end
 
 and checkScopeInitialization (regs:REGS)
@@ -3786,7 +3786,7 @@ and checkScopeInitialization (regs:REGS)
     let
         val { scope = Scope { object, temps, ... }, ... } = regs
     in
-        checkRibInitialization regs object (SOME temps)
+        checkFixtureMapInitialization regs object (SOME temps)
     end
 
 
@@ -3800,7 +3800,7 @@ and invokeFuncClosure (regs:REGS)
         val _ = trace ["entering func closure in scope #", 
                        fmtObjId (getScopeObj env)]
         val _ = traceScope env
-        val Func { name, block, generator, param=Head (paramRib, paramInits), ty, ... } = func
+        val Func { name, block, generator, param=Head (paramFixtureMap, paramInits), ty, ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", fmtObjId t]; t)
                      | NONE => (trace ["using caller 'this' #", fmtObjId (#this regs)]; (#this regs))
@@ -3821,13 +3821,13 @@ and invokeFuncClosure (regs:REGS)
 
             val _ = push regs strname args
 
-            val (varObj:OBJECT) = newObjectNoTag paramRib
+            val (varObj:OBJECT) = newObjectNoTag paramFixtureMap
             val (varRegs:REGS) = extendScopeReg regs varObj ActivationScope
             val (varScope:SCOPE) = (#scope varRegs)
-            val (Object {props, ...}) = varObj
+            val (Object {propertyMap, ...}) = varObj
         in
             trace ["invokeFuncClosure: allocating scope temps"];
-            allocScopeTemps varRegs paramRib;
+            allocScopeTemps varRegs paramFixtureMap;
             trace ["invokeFuncClosure: binding args"];
             bindArgs regs varScope func args;
             trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
@@ -3867,12 +3867,12 @@ and catch (regs:REGS)
     : VALUE option =
     case clauses of
         [] => NONE
-      | {ty, rib, inits, block, ...}::cs =>
+      | {ty, fixtureMap, inits, block, ...}::cs =>
         if evalOperatorIs regs e (evalTy regs ty)
         then
             let
-                val fixs = valOf rib
-                val head = Head (valOf rib, [])
+                val fixs = valOf fixtureMap
+                val head = Head (valOf fixtureMap, [])
                 val regs = evalHead regs head
                 val Scope { temps, ... } = (#scope regs)
             in
@@ -3938,7 +3938,7 @@ and bindArgs (regs:REGS)
              (args:VALUE list)
     : unit =
     let
-        val Scope { object = Object { props, ... }, ... } = argScope
+        val Scope { object = Object { propertyMap, ... }, ... } = argScope
         val Func { defaults, ty, ... } = func
         val hasRest = AstQuery.funcTyHasRest ty
 
@@ -3987,7 +3987,7 @@ and bindArgs (regs:REGS)
             (if isBooting regs
              then ()
              else
-                 addProp props public_arguments
+                 addProp propertyMap public_arguments
                          { state = ValueProperty (newPrimitive regs (ArgumentsPrimitive argScope) getArgumentsClassSlot),
                            (* args is a better approximation than finalArgs *)
                            ty = primitiveInstanceType regs getArgumentsClassSlot,
@@ -4060,10 +4060,10 @@ and evalInitsMaybePrototype (regs:REGS)
                      if isPrototypeInit
                      then
                          let
-                             val Object { props, ... } = obj
+                             val Object { propertyMap, ... } = obj
                          in
                              setValue regs obj pn v;
-                             setPropEnumerable props pn false
+                             setPropEnumerable propertyMap pn false
                          end
                      else defValue regs obj pn v)
                   | TempName tn =>
@@ -4085,8 +4085,8 @@ and evalObjInits (regs:REGS)
                  (head:HEAD)
     : unit =
     let
-        val (Head (rib,inits)) = head
-        val tempRegs = evalHead regs (Head (rib,[]))
+        val (Head (fixtureMap,inits)) = head
+        val tempRegs = evalHead regs (Head (fixtureMap,[]))
         val temps = getScopeTemps (#scope tempRegs)
     in
         evalInits tempRegs instanceObj temps inits
@@ -4109,7 +4109,7 @@ and findTargetObj (regs:REGS)
                         " init target as object #", Int.toString (getScopeId scope)];
         case target of
             Local =>
-            if (List.exists isPropName (getRib regs object)) orelse
+            if (List.exists isPropName (getFixtureMap regs object)) orelse
                not (Option.isSome parent)
             then object
             else findTargetObj regs (valOf parent) target
@@ -4169,7 +4169,7 @@ and initializeAndConstruct (regs:REGS)
             case extends of
                 NONE =>
                 (traceConstruct ["checking all properties initialized at root class ", fmtName name];
-                 checkRibInitialization regs instanceObj NONE)
+                 checkFixtureMapInitialization regs instanceObj NONE)
               | SOME parentTy  =>                
                 let
                     val parentTy = evalTy regs parentTy
@@ -4190,8 +4190,8 @@ and initializeAndConstruct (regs:REGS)
           | SOME (Ctor { settings, superArgs, func }) =>
             let
                 val _ = push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
-                val Func { block, param=Head (paramRib,paramInits), ... } = func
-                val (varObj:OBJECT) = newObjectNoTag paramRib
+                val Func { block, param=Head (paramFixtureMap,paramInits), ... } = func
+                val (varObj:OBJECT) = newObjectNoTag paramFixtureMap
                 val (varRegs:REGS) = extendScopeReg regs
                                                     varObj
                                                     ActivationScope
@@ -4202,7 +4202,7 @@ and initializeAndConstruct (regs:REGS)
                                                      ActivationScope
             in
                 traceConstruct ["allocating scope temps for constructor of ", fmtName name];
-                allocScopeTemps varRegs paramRib;
+                allocScopeTemps varRegs paramFixtureMap;
                 traceConstruct ["binding constructor args of ", fmtName name];
                 bindArgs regs varScope func args;
                 traceConstruct ["evaluating inits of ", fmtName name,
@@ -4244,8 +4244,8 @@ and constructStandardWithTag (regs:REGS)
                              (args:VALUE list)
     : OBJECT =
     let
-        val Class { name, instanceRib, ...} = class
-        val instanceObj = newObject tag proto instanceRib
+        val Class { name, instanceFixtureMap, ...} = class
+        val instanceObj = newObject tag proto instanceFixtureMap
         val _ = bindAnySpecialIdentity regs instanceObj
         (* FIXME: might have 'this' binding wrong in class scope here. *)
         val classScope = getClassScope regs classObj
@@ -4286,7 +4286,7 @@ and parseFunctionFromArgs (regs:REGS)
                                 Parser.AllowIn)
 
         val internalNamespace = needNamespace (getValue regs (#global regs) ES4_internal)
-        val funcExpr = Defn.defExpr (Defn.mkTopEnv internalNamespace (#rootRib regs) (getLangEd regs)) funcExpr
+        val funcExpr = Defn.defExpr (Defn.mkTopEnv internalNamespace (#rootFixtureMap regs) (getLangEd regs)) funcExpr
     in
         (fullStr, funcExpr)
     end
@@ -4320,7 +4320,7 @@ and specialArrayConstructor (regs:REGS)
     let
         val proto = getPrototype regs classObj
         val instanceObj = constructStandard regs classObj class proto args
-        val Object { props, ... } = instanceObj
+        val Object { propertyMap, ... } = instanceObj
         fun bindVal _ [] = ()
           | bindVal n (x::xs) =
             (setValue regs instanceObj (public (Ustring.fromInt n)) x;
@@ -4575,7 +4575,7 @@ and setPrototype (regs:REGS)
                  (proto:VALUE)
     : unit = 
     let
-        val Object { props, ... } = obj
+        val Object { propertyMap, ... } = obj
         val n = public_prototype
         val prop = { ty = AnyType,
                      state = ValueProperty proto,
@@ -4584,10 +4584,10 @@ and setPrototype (regs:REGS)
                                writable = Writable,
                                fixed = true } }
     in
-        if hasProp props n
-        then delProp props n
+        if hasProp propertyMap n
+        then delProp propertyMap n
         else ();
-        addProp props n prop
+        addProp propertyMap n prop
     end
 
 
@@ -4595,14 +4595,14 @@ and getPrototype (regs:REGS)
                  (obj:OBJECT)
     : VALUE = 
     let
-        val Object { props, ... } = obj
+        val Object { propertyMap, ... } = obj
     in
         (* 
          * NB: Do not refactor this; it has to handle a variety of
          * unwelcome circumstances for the .prototype slot: 
          * null-valued, un-reified, etc.
          *)
-        case findProp props public_prototype of 
+        case findProp propertyMap public_prototype of 
             SOME { state = ValueProperty v, ... } => v
           | _ => NullValue
     end
@@ -4678,7 +4678,7 @@ and initClassPrototype (regs:REGS)
                        (obj:OBJECT)
     : unit =
     let
-        val Object { ident, props, tag, ... } = obj
+        val Object { ident, propertyMap, tag, ... } = obj
     in
         case tag of 
             PrimitiveTag (TypePrimitive (ClassType (Class {name, extends,...}))) => 
@@ -4706,7 +4706,7 @@ and initClassPrototype (regs:REGS)
                             traceConstruct ["(standard chained-to-base-class proto instance of Object)"];
                             (constructStandard regs classObj class baseProtoVal [], true)
                         end
-                val Object { props=newProtoProps, ... } = newPrototype
+                val Object { propertyMap=newProtoPropertyMap, ... } = newPrototype
             in
                 traceConstruct ["initializing proto on (obj #", Int.toString ident, 
                                 "): ", fmtName name, ".prototype = ", 
@@ -4718,7 +4718,7 @@ and initClassPrototype (regs:REGS)
                                        public_constructor 
                                        (ObjectValue obj) 
                                        false;
-                     setPropEnumerable newProtoProps public_constructor false)
+                     setPropEnumerable newProtoPropertyMap public_constructor false)
                 else 
                     ();
                 traceConstruct ["finished initialising class prototype"]
@@ -4752,10 +4752,10 @@ and evalPragmas (regs:REGS)
 
 (*
  * Evaluate a block head (head) in the environment (regs).
- * - destructure head into its fixture bindings (rib) and initializers (inits)
+ * - destructure head into its fixture bindings (fixtureMap) and initializers (inits)
  * - create a new object to become the scope object
  * - extend the environment (reg) scope with object (obj) and kind (BlockScope)
- * - allocate temps from rib in the extended environment (newRegs)
+ * - allocate temps from fixtureMap in the extended environment (newRegs)
  * - initialize properties of target object (obj) with initializers (inits) in environment (regs)
  *   with temporaries (getScopeTemps scope)
  * - return the updated environment (newRegs)
@@ -4765,8 +4765,8 @@ and evalHead (regs:REGS)
              (head:HEAD)
     : REGS =
     let
-        val (Head (rib,inits)) = head
-        val obj = newObjectNoTag rib
+        val (Head (fixtureMap,inits)) = head
+        val obj = newObjectNoTag fixtureMap
         val newRegs = extendScopeReg regs obj BlockScope
         val {scope,...} = newRegs
         val _ = traceConstruct ["built temp scope #",
@@ -4774,7 +4774,7 @@ and evalHead (regs:REGS)
                                 " for head"]
         val temps = getScopeTemps scope
     in
-        allocScopeTemps newRegs rib;
+        allocScopeTemps newRegs fixtureMap;
         evalInits regs obj temps inits;        
         newRegs
     end
@@ -4847,7 +4847,7 @@ and evalWhileStmt (regs:REGS)
                   (whileStmt:WHILE_STATEMENT)
     : VALUE =
     case whileStmt of
-        { cond, body, rib, labels } =>
+        { cond, body, fixtureMap, labels } =>
         let
             val accum = ref UndefinedValue
             fun loop _ =
@@ -4876,7 +4876,7 @@ and evalDoWhileStmt (regs:REGS)
                     (whileStmt:WHILE_STATEMENT)
     : VALUE =
     case whileStmt of
-        { cond, body, rib, labels } =>
+        { cond, body, fixtureMap, labels } =>
         let
             val accum = ref UndefinedValue
             fun loop _ =
@@ -5021,11 +5021,11 @@ and evalForInStmt (regs:REGS)
                   (forInStmt:FOR_ENUM_STATEMENT)
     : VALUE =
     case forInStmt of
-        { isEach, defn, obj, rib, next, labels, body, ... } =>
+        { isEach, defn, obj, fixtureMap, next, labels, body, ... } =>
         let
             val iterable = evalIterable regs obj
             val iterator = callIteratorGet regs iterable
-            val forInRegs = evalHead regs (Head (valOf rib, []))            
+            val forInRegs = evalHead regs (Head (valOf fixtureMap, []))            
 
             (*
              * The following code is ugly but it needs to handle the cases
@@ -5106,9 +5106,9 @@ and evalForStmt (regs:REGS)
                 (forStmt:FOR_STATEMENT)
     : VALUE =
     case forStmt of
-        { rib, init, cond, update, labels, body, ... } =>
+        { fixtureMap, init, cond, update, labels, body, ... } =>
         let
-            val forRegs = evalHead regs (Head (valOf rib, []))
+            val forRegs = evalHead regs (Head (valOf fixtureMap, []))
             val _ = checkScopeInitialization forRegs
 
             fun loop (accum:VALUE option) =
@@ -5181,10 +5181,10 @@ and deleteInternalNamespaceProp (regs:REGS)
     : unit = 
     let
         val { global, ... } = regs
-        val Object { props, ... } = global
+        val Object { propertyMap, ... } = global
     in
-        if hasProp props ES4_internal
-        then delProp props ES4_internal
+        if hasProp propertyMap ES4_internal
+        then delProp propertyMap ES4_internal
         else ()
     end
              
@@ -5194,7 +5194,7 @@ and evalProgram (regs:REGS)
     let
         val _ = trace ["entering program"]
         val Program (Block {head, body, loc, ...}) = prog
-        val Head (rib, inits) = 
+        val Head (fixtureMap, inits) = 
             case head of 
                 NONE => error regs ["top-level block with no head"]
               | SOME h => h
@@ -5203,7 +5203,7 @@ and evalProgram (regs:REGS)
         val obj = findTargetObj regs scope Hoisted
     in
         (* 
-         * NB: do *not* do evalBlock here. It's not a "normal" block. The ribs 
+         * NB: do *not* do evalBlock here. It's not a "normal" block. The fixtureMaps 
          * and inits are not intended for a temporary block scope, but rather the 
          * scope that you'd search for as a hoisting target (either the activation 
          * scope enclosing an eval, or the global scope)

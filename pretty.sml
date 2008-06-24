@@ -75,7 +75,7 @@ val ppBinop = ppRep o cvtBINOP
 
 val ppPragma = ppRep o cvtPRAGMA
 
-val ppRib = ppRep o cvtRIB
+val ppFixtureMap = ppRep o cvtFIXTURE_MAP
 
 val ppFixture = ppRep o cvtFIXTURE
 

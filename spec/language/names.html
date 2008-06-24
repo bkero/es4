@@ -176,15 +176,15 @@ inner scope; name expressions in the inner scope will not be able to
 access the outer binding.
 
 <P> In this Specification, the nesting of scopes is modelled as a
-list of ribs in the definition phase and a list of objects during evaluation.
+list of fixture maps in the definition phase and a list of objects during evaluation.
 Both environments are generically called the //scope chain//. Which kind
 of list is being referred to will be clear from the context in which the 
 term is used.
 
-<P> Each scope holds a table of named bindings in that scope. Ribs hold
+<P> Each scope holds a table of named bindings in that scope. Fixture maps hold
 a table of fixture bindings and objects hold a table of property bindings.
 Every time a new scope is entered the scope chain is extended with a new 
-rib or object, and at every point in the program one particular scope chain
+fixture map or object, and at every point in the program one particular scope chain
 is in effect.
 
 <FIXME> What's a fixture? Is it defined somewhere?
@@ -422,18 +422,16 @@ as is the case for ''public'' and ''internal''.
 
 === Definition-Time Resolution of Namespace and Type Expressions ===
 
-<P> The definition time scope chain is modelled as a list of ''RIB''
-data structures, defined elsewhere.  A rib maps names to fixture
-bindings that result from defining and binding forms (''var'',
-''function'', ''type'', ''class'', ''interface'', ''namespace'', and
-others).  Ribs have no dynamic properties.
+<P> The definition time scope chain is modelled as a list of fixture maps, defined elsewhere.  A fixture map
+maps names to fixture bindings that result from defining and binding forms (''var'', ''function'',
+''type'', ''class'', ''interface'', ''namespace'', and others).  Fixture maps have no dynamic properties.
 
 <P> Definition time resolution resolves name expressions that denote
 namespaces and types, and performs reservation of global names if
 necessary.
 
 <p> The following algorithm resolves a name expression to a specific
-name and fixture in the list of ribs.
+name and fixture in the list of fixture maps.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and resolveNameExpr">
@@ -442,8 +440,8 @@ name and fixture in the list of ribs.
 ==== Qualified Name Expressions ====
 
 <p> A qualified name expression is resolved by resolving the namespace
-part and then returning the tail of the list of ribs such that the
-first rib on the tail contains a binding for the name.
+part and then returning the tail of the list of fixture maps such that the
+first fixture map on the tail contains a binding for the name.
 
 <NOTE> The name can't be ambiguous because there is only one namespace.
 
@@ -453,14 +451,14 @@ first rib on the tail contains a binding for the name.
 ==== Unqualified Name Expressions ====
 
 <P> An unqualified name expression is resolved according to the full
-algorithm outlined above.  It returns the tail of the list of ribs
-such that the first rib on the tail contains an unambiguous binding
+algorithm outlined above.  It returns the tail of the list of fixture maps
+such that the first fixture map on the tail contains an unambiguous binding
 for the name.
 
 <SEM>
 <INCLUDE file="fixture.sml" name="and resolveUnqualifiedName">
-<INCLUDE file="fixture.sml" name="fun ribListSearch">
-<INCLUDE file="fixture.sml" name="fun ribSearch">
+<INCLUDE file="fixture.sml" name="fun fixtureMapListSearch">
+<INCLUDE file="fixture.sml" name="fun fixtureMapSearch">
 
 ==== Reserving Names ====
 
@@ -609,7 +607,7 @@ name bindings that are named by the provided identifier and any of the
 namespaces in the provided set. Collect the set of matching namespaces
 used in all such bindings. If the set of matching namespaces is
 nonempty, return it. Otherwise repeat the process on the next instance
-rib.  If all the classes in the list are searched and no matching
+fixture map.  If all the classes in the list are searched and no matching
 namespaces are found, return the empty set.
 
 <SEM>

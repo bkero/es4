@@ -75,7 +75,7 @@ fun nameExprOf (n:Ast.NAME) =
 
 (* 
  * These are the names that the per-class opaque namespaces 
- * 'private' and 'protected' get bound to *inside* the rib 
+ * 'private' and 'protected' get bound to *inside* the fixtureMap 
  * of a given class. You pass in the private namespace
  *)
 fun private privateClassNs = { ns=privateClassNs, id=Ustring.private_ }

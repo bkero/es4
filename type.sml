@@ -41,7 +41,7 @@
  * - Generic type variables are introduced via  function.<X>() {...}, 
  *   class C.<X> {...} and interface I.<X> { ... }
  * 
- * An environment (aka RIBS) that may contain two kinds of bindings for type variable.
+ * An environment (aka FIXTURE_MAPS) that may contain two kinds of bindings for type variable.
  *
  * - TypeFixture, where the environment associates a type variable
  *   with a corresponding type, which are introduced at verify time
@@ -70,7 +70,7 @@
  *
  * ----------------------------------------------------------------------------- 
  *
- * Normalization converts a TYPE (in the context of given RIBS) into a
+ * Normalization converts a TYPE (in the context of given FIXTURE_MAPS) into a
  * normalized TYPE.  It is an error if a type cannot be normalized;
  * that may be a static or dynamic error, since normalization runs
  * both at verify-time and eval-time.
@@ -310,7 +310,7 @@ fun normalizeNonNulls (ty:TYPE)
 
 
 
-fun resolveTypeNames (env : RIBS)
+fun resolveTypeNames (env : FIXTURE_MAPS)
                      (ty  : TYPE)                    
     : TYPE = 
     let fun maybeUnionWithNull nonnullable ty =
@@ -375,7 +375,7 @@ fun resolveTypeNames (env : RIBS)
     end
 
 fun normalizeNames (useCache:bool)
-                   (env:RIBS)
+                   (env:FIXTURE_MAPS)
                    (ty:TYPE)                    
   : TYPE = 
     let
@@ -400,12 +400,12 @@ fun normalizeNames (useCache:bool)
 
 (* ----------------------------------------------------------------------------- *)
 
-fun normalize (ribs:RIB list)
+fun normalize (fixtureMaps:FIXTURE_MAP list)
               (ty:TYPE)               
     : TYPE =
     let
         val _ = traceTy "normalize1: " ty
-        val ty = normalizeNames true ribs ty     (* inline TypeFixtures and TypeVarFixture nonces *)
+        val ty = normalizeNames true fixtureMaps ty     (* inline TypeFixtures and TypeVarFixture nonces *)
 
         val _ = traceTy "normalize2: " ty
         val ty = normalizeRefs ty
@@ -715,15 +715,15 @@ fun groundMatches type1 type2
         type1 type2
 
 
-fun matches (rootRib:RIB)
-            (locals:RIBS)
+fun matches (rootFixtureMap:FIXTURE_MAP)
+            (locals:FIXTURE_MAPS)
             (type1:TYPE)
             (type2:TYPE)
   =
   let
-      (* FIXME: it is *super wrong* to just be using the root rib here. *)
-      val norm1 = normalize (locals @ [rootRib]) type1
-      val norm2 = normalize (locals @ [rootRib]) type2
+      (* FIXME: it is *super wrong* to just be using the root fixtureMap here. *)
+      val norm1 = normalize (locals @ [rootFixtureMap]) type1
+      val norm2 = normalize (locals @ [rootFixtureMap]) type2
   in
       groundMatches norm1 norm2
   end
@@ -734,20 +734,20 @@ fun matches (rootRib:RIB)
  * Small helper for finding instance types by name.
  *)
 
-fun instanceTy (rootRib:RIB)
+fun instanceTy (rootFixtureMap:FIXTURE_MAP)
                (n:NAME)
     : TYPE =
-    case Fixture.getFixture rootRib (PropName n) of
+    case Fixture.getFixture rootFixtureMap (PropName n) of
         (ClassFixture c) => InstanceType c
       | (InterfaceFixture i) => InterfaceType i
       | _ => error [LogErr.name n, " does not resolve to an instance type"]
 
-fun groundType (rootRib:RIB)
+fun groundType (rootFixtureMap:FIXTURE_MAP)
                (ty:TYPE) 
     : TYPE = 
     let
-        (* FIXME: it is *super wrong* to just be using the root rib here. *)
-        val norm = normalize [rootRib] ty
+        (* FIXME: it is *super wrong* to just be using the root fixtureMap here. *)
+        val norm = normalize [rootFixtureMap] ty
     in
         norm
     end    
@@ -757,10 +757,10 @@ fun isGroundType (ty:TYPE) : bool = true   (* FIXME: deprecated *)
 fun groundExpr (ty:TYPE)  (* or "groundType" *)
     : TYPE = ty (* FIXME: deprecated *)
 
-fun getNamedGroundType (rootRib:RIB)
+fun getNamedGroundType (rootFixtureMap:FIXTURE_MAP)
                        (name:NAME)
    : TYPE = 
-    groundType rootRib (Name.typename name)
+    groundType rootFixtureMap (Name.typename name)
 
 
 end

@@ -48,13 +48,13 @@ fun fmtNs n = if (!doTrace) then LogErr.namespace n else ""
 
 (* 
  * We use a globally unique numbering of type variables, assigned once when
- * we walk the AST during definition. They are inserted in any ribs formed
- * under a type binder. This includes the activation rib of any type-parametric
- * function, the instance rib of any type-parametric interface or class, and
+ * we walk the AST during definition. They are inserted in any fixtureMaps formed
+ * under a type binder. This includes the activation fixtureMap of any type-parametric
+ * function, the instance fixtureMap of any type-parametric interface or class, and
  * -- depending on how we resolve the interaction of type parameters and 
- * class objects -- possibly the class rib of any type-parametric class.
+ * class objects -- possibly the class fixtureMap of any type-parametric class.
  * 
- * We do not insetrt them anywhere in type terms, because those have no ribs.
+ * We do not insetrt them anywhere in type terms, because those have no fixtureMaps.
  *)
 
 val typeVarCounter = ref 0
@@ -62,20 +62,20 @@ fun mkTypeVarFixture _ =
     (typeVarCounter := (!typeVarCounter) + 1;
      Ast.TypeVarFixture (!typeVarCounter))
 
-fun mkParamRib (idents:Ast.IDENTIFIER list)
-  : Ast.RIB = 
+fun mkParamFixtureMap (idents:Ast.IDENTIFIER list)
+  : Ast.FIXTURE_MAP = 
     map (fn id => (Ast.PropName (Name.public id), (mkTypeVarFixture()))) idents
 
 (*
- * The goal of the definition phase is to put together the ribs
+ * The goal of the definition phase is to put together the fixtureMaps
  * of the program, as well as insert class, function and interface
  * objects into the global object.
 
     To be specific, the definition phase completes the following tasks:
     - fold type expressions
-    - translate defnitions to rib + initialisers
+    - translate defnitions to fixtureMap + initialisers
     - check for conflicting fixtures
-    - hoist rib
+    - hoist fixtureMap
     - inherit super classes and interfaces
     - evaluate pragmas
     - capture open namespaces in unqualified identifiers
@@ -97,33 +97,33 @@ type LABEL = (Ast.IDENTIFIER * LABEL_KIND)
 
 (* 
  * 
- * The type ENV carrise *two* lists of RIBs, outer and inner. The
- * outer ribs are those including and containing the current hoisting
- * scope. The inner ribs are any lexical scopes defined *inside* the
+ * The type ENV carrise *two* lists of FIXTURE_MAPs, outer and inner. The
+ * outer fixtureMaps are those including and containing the current hoisting
+ * scope. The inner fixtureMaps are any lexical scopes defined *inside* the
  * current hoisting scope.
  * 
  * Any time you add a hoisted definition to an environment, you are
- * extending the head of the outerRibs. Any time you add a non-hoisted
+ * extending the head of the outerFixtureMaps. Any time you add a non-hoisted
  * definition to an environment, you are extending the head of the
- * innerRibs.
+ * innerFixtureMaps.
  * 
- * The concatenation of the inner and outer ribs is the full ribs,
- * which is the combined RIBs you should use to look up any bindings
+ * The concatenation of the inner and outer fixtureMaps is the full fixtureMaps,
+ * which is the combined FIXTURE_MAPs you should use to look up any bindings
  * in.
  *)
 
 type ENV =
-     { innerRibs: Ast.RIB list,
-       outerRibs: Ast.RIB list,
+     { innerFixtureMaps: Ast.FIXTURE_MAP list,
+       outerFixtureMaps: Ast.FIXTURE_MAP list,
        tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list,
        labels: LABEL list,
        defaultNamespace: Ast.NAMESPACE,
-       rootRib: Ast.RIB,
+       rootFixtureMap: Ast.FIXTURE_MAP,
        func: Ast.FUNC option }    
 
     
-val (initRib:Ast.RIB) = 
+val (initFixtureMap:Ast.FIXTURE_MAP) = 
 	[ 
 	 (* This is the new name that non-backward-compatibly pollutes the ES3 unqualified global. *)
 	 (Ast.PropName Name.public_ES4, Ast.NamespaceFixture Name.ES4NS),
@@ -152,12 +152,12 @@ val (initRib:Ast.RIB) =
 	]
 
 
-fun getFullRibs (env:ENV)
-    : Ast.RIBS = 
+fun getFullFixtureMaps (env:ENV)
+    : Ast.FIXTURE_MAPS = 
     let
-        val { innerRibs, outerRibs, ... } = env
+        val { innerFixtureMaps, outerFixtureMaps, ... } = env
     in
-        innerRibs @ outerRibs
+        innerFixtureMaps @ outerFixtureMaps
     end
 
 
@@ -165,9 +165,9 @@ fun dumpEnv (e:ENV) : unit =
     if (!doTrace) 
     then 
         let 
-            val ribs = getFullRibs e
+            val fixtureMaps = getFullFixtureMaps e
         in
-            List.app Fixture.printRib ribs
+            List.app Fixture.printFixtureMap fixtureMaps
         end
     else ()
 
@@ -181,7 +181,7 @@ fun makeTy (e:ENV)
      * our job to try this here; if someone wants early typechecking they can
      * use the verifier.
      *)        
-    Type.normalize (getFullRibs e) tyExpr
+    Type.normalize (getFullFixtureMaps e) tyExpr
     handle LogErr.TypeError _ => tyExpr
 
 
@@ -232,13 +232,13 @@ and defNameExpr (env:ENV)
         (* FIXME: this is a kludge; in the future the goal is to do a first pass
          * and *collect* all the global names defined in a compilation unit, then 
          * run the definer with that collected set. For now we just work with the 
-         * rootRib "up to this point in the file", which serves to disambiguate
+         * rootFixtureMap "up to this point in the file", which serves to disambiguate
          * the same *most* of the time. Sometimes it's a bit too constrictive. 
          * Spec it with the set of all names declared, of course.
          *)
         fun getName ((Ast.PropName pn),_) = SOME pn
           | getName _ = NONE
-        val globalNames = List.mapPartial getName (List.last (#outerRibs env)) (* not currently used *)
+        val globalNames = List.mapPartial getName (List.last (#outerFixtureMaps env)) (* not currently used *)
     in
         case ne of
             Ast.UnqualifiedName { identifier, ... } =>
@@ -255,96 +255,96 @@ fun resolveNamespaceOption (env: ENV)
     : Ast.NAMESPACE =
     case nse of
         NONE => (#defaultNamespace env)
-      | SOME nse => Fixture.resolveNamespaceExpr (getFullRibs env) (defNamespaceExpr env nse)
+      | SOME nse => Fixture.resolveNamespaceExpr (getFullFixtureMaps env) (defNamespaceExpr env nse)
 
 fun resolveNamespace (env: ENV)
                      (nse:Ast.NAMESPACE_EXPRESSION)
     : Ast.NAMESPACE =
-    Fixture.resolveNamespaceExpr (getFullRibs env) (defNamespaceExpr env nse)
+    Fixture.resolveNamespaceExpr (getFullFixtureMaps env) (defNamespaceExpr env nse)
 
 fun resolve (env:ENV)
             (nameExpr:Ast.NAME_EXPRESSION)
-    : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) =
-    Fixture.resolveNameExpr (getFullRibs env) (defNameExpr env nameExpr)
+    : (Ast.FIXTURE_MAPS * Ast.NAME * Ast.FIXTURE) =
+    Fixture.resolveNameExpr (getFullFixtureMaps env) (defNameExpr env nameExpr)
 
 
     
 fun extendEnvironment (env:ENV)
-                      (rib:Ast.RIB)
+                      (fixtureMap:Ast.FIXTURE_MAP)
                       (hoistingPoint:bool)
     : ENV =
     let
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, rootRib, func } = env
-        val (newInnerRibs, newOuterRibs) = if hoistingPoint
-                                           then ([], rib :: (innerRibs @ outerRibs))
-                                           else (rib :: innerRibs, outerRibs)
+        val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
+              labels, defaultNamespace, rootFixtureMap, func } = env
+        val (newInnerFixtureMaps, newOuterFixtureMaps) = if hoistingPoint
+                                           then ([], fixtureMap :: (innerFixtureMaps @ outerFixtureMaps))
+                                           else (fixtureMap :: innerFixtureMaps, outerFixtureMaps)
     in
-        { innerRibs = newInnerRibs,
-          outerRibs = newOuterRibs,
+        { innerFixtureMaps = newInnerFixtureMaps,
+          outerFixtureMaps = newOuterFixtureMaps,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           func = func }
     end
 
 
-fun mergeRibs (rootRib:Ast.RIB)
-              (oldRib:Ast.RIB)
-              (additions:Ast.RIB)
-    : Ast.RIB = 
-    Fixture.mergeRibs (Type.matches rootRib []) oldRib additions
+fun mergeFixtureMaps (rootFixtureMap:Ast.FIXTURE_MAP)
+              (oldFixtureMap:Ast.FIXTURE_MAP)
+              (additions:Ast.FIXTURE_MAP)
+    : Ast.FIXTURE_MAP = 
+    Fixture.mergeFixtureMaps (Type.matches rootFixtureMap []) oldFixtureMap additions
 (* FIXME: calls some pretty-hairy type code - needed? *)
 
 
-fun headAndTailOfRibs (ribs:Ast.RIB list)
-    : (Ast.RIB * Ast.RIB list) = 
-    case ribs of 
+fun headAndTailOfFixtureMaps (fixtureMaps:Ast.FIXTURE_MAP list)
+    : (Ast.FIXTURE_MAP * Ast.FIXTURE_MAP list) = 
+    case fixtureMaps of 
         [] => ([],[])
       | (x::xs) => (x, xs)
 
 
-fun addToInnerRib (env:ENV)
-                  (additions:Ast.RIB)
+fun addToInnerFixtureMap (env:ENV)
+                  (additions:Ast.FIXTURE_MAP)
     : ENV =
     let 
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, rootRib, func } = env
-        val (innerRib, rest) = headAndTailOfRibs innerRibs
-        val newInnerRib = mergeRibs (#rootRib env) innerRib additions
-        val newInnerRibs = newInnerRib :: rest
+        val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
+              labels, defaultNamespace, rootFixtureMap, func } = env
+        val (innerFixtureMap, rest) = headAndTailOfFixtureMaps innerFixtureMaps
+        val newInnerFixtureMap = mergeFixtureMaps (#rootFixtureMap env) innerFixtureMap additions
+        val newInnerFixtureMaps = newInnerFixtureMap :: rest
     in
-        { innerRibs = newInnerRibs, 
-          outerRibs = outerRibs,
+        { innerFixtureMaps = newInnerFixtureMaps, 
+          outerFixtureMaps = outerFixtureMaps,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           func = func }
     end
 
 
-fun addToOuterRib (env:ENV)
-                  (additions:Ast.RIB)
+fun addToOuterFixtureMap (env:ENV)
+                  (additions:Ast.FIXTURE_MAP)
     : ENV =
     let 
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
+        val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
               labels, 
-              defaultNamespace, rootRib, func } = env
-        val (outerRib, rest) = headAndTailOfRibs outerRibs
-        val newOuterRib = mergeRibs (#rootRib env) outerRib additions
-        val newOuterRibs = newOuterRib :: rest
+              defaultNamespace, rootFixtureMap, func } = env
+        val (outerFixtureMap, rest) = headAndTailOfFixtureMaps outerFixtureMaps
+        val newOuterFixtureMap = mergeFixtureMaps (#rootFixtureMap env) outerFixtureMap additions
+        val newOuterFixtureMaps = newOuterFixtureMap :: rest
     in
-        { innerRibs = innerRibs, 
-          outerRibs = newOuterRibs,
+        { innerFixtureMaps = innerFixtureMaps, 
+          outerFixtureMaps = newOuterFixtureMaps,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           func = func }
     end
 
@@ -352,16 +352,16 @@ fun addToOuterRib (env:ENV)
 fun updateTempOffset (env:ENV) (newTempOffset:int)
     : ENV =
     let
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, rootRib, func } = env
+        val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
+              labels, defaultNamespace, rootFixtureMap, func } = env
     in
-        { innerRibs = innerRibs, 
-          outerRibs = outerRibs,
+        { innerFixtureMaps = innerFixtureMaps, 
+          outerFixtureMaps = outerFixtureMaps,
           tempOffset = newTempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           func = func }
     end
 
@@ -370,42 +370,42 @@ fun enterClass (env:ENV)
 			   (privateNS:Ast.NAMESPACE)
 			   (protectedNS:Ast.NAMESPACE)
 			   (parentProtectedNSs:Ast.NAMESPACE list)
-    : (ENV * Ast.RIB) =
+    : (ENV * Ast.FIXTURE_MAP) =
     let
- 		val localNamespaceRib = [ (Ast.PropName (Name.private privateNS), 
+ 		val localNamespaceFixtureMap = [ (Ast.PropName (Name.private privateNS), 
 								   Ast.NamespaceFixture privateNS),
 								  (Ast.PropName (Name.protected privateNS), 
 								   Ast.NamespaceFixture protectedNS) ]
-		val env = extendEnvironment env localNamespaceRib true
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-              labels, defaultNamespace, rootRib, func } = env
+		val env = extendEnvironment env localNamespaceFixtureMap true
+        val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
+              labels, defaultNamespace, rootFixtureMap, func } = env
 		val openNamespaces = ([privateNS, protectedNS] @ parentProtectedNSs) :: openNamespaces
 	in
-		({ innerRibs = innerRibs, 
-           outerRibs = outerRibs,
+		({ innerFixtureMaps = innerFixtureMaps, 
+           outerFixtureMaps = outerFixtureMaps,
            tempOffset = tempOffset,
            openNamespaces = openNamespaces,
            labels = labels,
            defaultNamespace = defaultNamespace,
-           rootRib = rootRib,
-           func = func }, localNamespaceRib )
+           rootFixtureMap = rootFixtureMap,
+           func = func }, localNamespaceFixtureMap )
 	end
 
 
 fun enterFuncBody (env:ENV) (newFunc:Ast.FUNC)
     : ENV = 
     let
-        val { innerRibs, outerRibs, tempOffset, openNamespaces, 
+        val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
               labels, 
-              defaultNamespace, rootRib, func } = env    
+              defaultNamespace, rootFixtureMap, func } = env    
     in
-        { innerRibs = innerRibs, 
-          outerRibs = outerRibs,
+        { innerFixtureMaps = innerFixtureMaps, 
+          outerFixtureMaps = outerFixtureMaps,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           labels = labels,
           defaultNamespace = defaultNamespace,
-          rootRib = rootRib,
+          rootFixtureMap = rootFixtureMap,
           func = SOME newFunc }
     end
 
@@ -426,8 +426,8 @@ fun dumpLabels (labels : LABEL list) =
 fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
-            val { innerRibs, outerRibs, tempOffset, openNamespaces, 
-                  labels, defaultNamespace, rootRib, func } = env
+            val { innerFixtureMaps, outerFixtureMaps, tempOffset, openNamespaces, 
+                  labels, defaultNamespace, rootFixtureMap, func } = env
             val (labelId,labelKnd) = label
         in
             dumpLabels labels;
@@ -437,13 +437,13 @@ fun addLabel ((label:LABEL),(env:ENV))
                                knd = labelKnd) labels            (* and kinds *)
             then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
             else ();
-            { innerRibs = innerRibs, 
-              outerRibs = outerRibs,
+            { innerFixtureMaps = innerFixtureMaps, 
+              outerFixtureMaps = outerFixtureMaps,
               tempOffset = tempOffset,
               openNamespaces = openNamespaces,
               labels = label::labels,
               defaultNamespace = defaultNamespace,
-              rootRib = rootRib,
+              rootFixtureMap = rootFixtureMap,
               func = func }
         end
 
@@ -463,7 +463,7 @@ fun addLabels (env:ENV) (labels:LABEL list)
         extends = ...
         implements = ...
         cblk = {
-            fxtrs = ...  (* static rib *)
+            fxtrs = ...  (* static fixtureMap *)
             inits = ...  (* static inits,  empty? static props are inited by statements *)
             body = ...   (* static initialiser *)
         }
@@ -478,7 +478,7 @@ fun addLabels (env:ENV) (labels:LABEL list)
 
 and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
-    : (Ast.RIB * Ast.CLASS_DEFN) =
+    : (Ast.FIXTURE_MAP * Ast.CLASS_DEFN) =
     let
         val class = analyzeClassBody env cdef
         val class = resolveClassInheritance env cdef class
@@ -494,7 +494,7 @@ and defClass (env: ENV)
     - construct the interface name
     - resolve super interfaces
     - define current interface definitions
-    - inherit base rib
+    - inherit base fixtureMap
     - construct instance type
     - construct interface
     - return interface fixture
@@ -502,7 +502,7 @@ and defClass (env: ENV)
 
 and defInterface (env: ENV)
                  (idef: Ast.INTERFACE_DEFN)
-    : (Ast.RIB * Ast.INTERFACE_DEFN) =
+    : (Ast.FIXTURE_MAP * Ast.INTERFACE_DEFN) =
     let
         val { ident, ns, nonnullable, params, extends, instanceDefns } = idef
         val namespace = resolveNamespaceOption env ns
@@ -510,34 +510,34 @@ and defInterface (env: ENV)
         (* Make the interface name *)
         val name = {id = ident, ns = namespace}
 
-        (* Resolve base interface's super interfaces and rib *)
-        val (superInterfaces:Ast.TYPE list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
+        (* Resolve base interface's super interfaces and fixtureMap *)
+        val (superInterfaces:Ast.TYPE list, inheritedFixtureMap:Ast.FIXTURE_MAP) = resolveInterfaces env extends
 
-(*        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullRibs env) t)) superInterfaces *)
+(*        val groundSuperInterfaceExprs = map (Type.groundExpr o (makeTy env) o (fn t => Type.normalize (getFullFixtureMaps env) t)) superInterfaces *)
         val groundSuperInterfaceExprs = map (makeTy env) superInterfaces
 
         val instanceEnv = extendEnvironment env [] true
-        val (typeParamRib:Ast.RIB) = mkParamRib params
-        val instanceEnv = addToInnerRib instanceEnv typeParamRib
+        val (typeParamFixtureMap:Ast.FIXTURE_MAP) = mkParamFixtureMap params
+        val instanceEnv = addToInnerFixtureMap instanceEnv typeParamFixtureMap
 
-        (* Define the current rib *)
-        val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
+        (* Define the current fixtureMap *)
+        val (unhoisted,instanceFixtureMap,_) = defDefns instanceEnv instanceDefns
 
-        (* Inherit rib and check overrides *)
-        val instanceRib:Ast.RIB = inheritRib NONE NONE inheritedRib instanceRib
+        (* Inherit fixtureMap and check overrides *)
+        val instanceFixtureMap:Ast.FIXTURE_MAP = inheritFixtureMap NONE NONE inheritedFixtureMap instanceFixtureMap
 
         val iface:Ast.INTERFACE = 
             Ast.Interface { name=name, 
                         typeParams=params,
                         nonnullable=nonnullable, 
                         extends=superInterfaces, 
-                        instanceRib=instanceRib }
+                        instanceFixtureMap=instanceFixtureMap }
     in
         ([(Ast.PropName name, Ast.InterfaceFixture iface)],idef)
     end
 
 (*
-    inheritRib
+    inheritFixtureMap
 
     Steps:
 
@@ -649,17 +649,17 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
       | _ => LogErr.unimplError ["checkOverride"]
     end
 
-and inheritRib (privateNS:Ast.NAMESPACE option)
+and inheritFixtureMap (privateNS:Ast.NAMESPACE option)
                (baseClass:Ast.CLASS option)
-			   (base:Ast.RIB)
-               (derived:Ast.RIB)
-    : Ast.RIB =
+			   (base:Ast.FIXTURE_MAP)
+               (derived:Ast.FIXTURE_MAP)
+    : Ast.FIXTURE_MAP =
     let
 
         (*
-           Recurse through the rib of a base class to see if the
+           Recurse through the fixtureMap of a base class to see if the
            given fixture binding is allowed. if so, then add it
-           return the updated rib
+           return the updated fixtureMap
 
            TODO: check for name conflicts:
 
@@ -687,7 +687,7 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
         *)
 
         fun inheritFixture (n:Ast.FIXTURE_NAME, fb:Ast.FIXTURE)
-            : Ast.RIB =
+            : Ast.FIXTURE_MAP =
             let
                 fun targetFixture _ = if (Fixture.hasFixture derived n)
                                       then SOME (Fixture.getFixture derived n)
@@ -732,7 +732,7 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
 
     in case base of
         [] => derived (* done *)
-      | first::follows => inheritRib privateNS baseClass follows (inheritFixture first)
+      | first::follows => inheritFixtureMap privateNS baseClass follows (inheritFixture first)
     end
 
 (*
@@ -748,15 +748,15 @@ and inheritRib (privateNS:Ast.NAMESPACE option)
 
 *)
 
-and implementFixtures (base:Ast.RIB)
-                      (derived:Ast.RIB)
+and implementFixtures (base:Ast.FIXTURE_MAP)
+                      (derived:Ast.FIXTURE_MAP)
     : unit =
     let
         (*
         *)
 
         fun implementFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
-            : Ast.RIB =
+            : Ast.FIXTURE_MAP =
             let
                 fun targetFixture _ = if (Fixture.hasFixture derived n)
                                       then SOME (Fixture.getFixture derived n)
@@ -788,16 +788,16 @@ and resolveClassInheritance (env:ENV)
     : Ast.CLASS =
     let
         val Ast.Class {name, privateNS, protectedNS, parentProtectedNSs, 
-					 typeParams, nonnullable, dynamic, classRib, 
-					 instanceRib, instanceInits, constructor, ...} = cls
+					 typeParams, nonnullable, dynamic, classFixtureMap, 
+					 instanceFixtureMap, instanceInits, constructor, ...} = cls
                                                                                
         val _ = trace ["analyzing inheritance for ", fmtName name]
 
         val (extendsTy:Ast.TYPE option, 
-             instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
+             instanceFixtureMap0:Ast.FIXTURE_MAP) = resolveExtends env instanceFixtureMap extends name
 
         val (implementsTys:Ast.TYPE list, 
-             instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
+             instanceFixtureMap1:Ast.FIXTURE_MAP) = resolveImplements env instanceFixtureMap0 implements
                                      
     in
         Ast.Class {name=name,
@@ -809,8 +809,8 @@ and resolveClassInheritance (env:ENV)
                    dynamic=dynamic,
                    extends=extendsTy,
                    implements=implementsTys,
-                   classRib=classRib,
-                   instanceRib=instanceRib1,
+                   classFixtureMap=classFixtureMap,
+                   instanceFixtureMap=instanceFixtureMap1,
                    instanceInits=instanceInits,
                    constructor=constructor}
     end
@@ -830,10 +830,10 @@ and resolveClassInheritance (env:ENV)
 
 
 and resolveExtends (env:ENV)
-                   (currInstanceRib:Ast.RIB)
+                   (currInstanceFixtureMap:Ast.FIXTURE_MAP)
                    (extends:Ast.TYPE option)
                    (currName:Ast.NAME) 
-    : (Ast.TYPE option * Ast.RIB) =
+    : (Ast.TYPE option * Ast.FIXTURE_MAP) =
     let
         val baseClassNameExpr:Ast.NAME_EXPRESSION option = 
             case extends of 
@@ -843,7 +843,7 @@ and resolveExtends (env:ENV)
               | SOME te => SOME (extractNameExprFromTypeName te)
     in
         case baseClassNameExpr of
-            NONE => (NONE, currInstanceRib)
+            NONE => (NONE, currInstanceFixtureMap)
           | SOME bcm => 
             let
                 val (_, 
@@ -851,35 +851,35 @@ and resolveExtends (env:ENV)
                      baseClassFixture:Ast.FIXTURE) = 
                     resolve env bcm
                 val baseClass = needClassFixture baseClassFixture
-                val Ast.Class { privateNS, instanceRib, ... } = baseClass
+                val Ast.Class { privateNS, instanceFixtureMap, ... } = baseClass
             in
                 (SOME (Ast.InstanceType baseClass),
-                 inheritRib (SOME privateNS)
+                 inheritFixtureMap (SOME privateNS)
                             (SOME baseClass)
-							instanceRib 
-							currInstanceRib)
+							instanceFixtureMap 
+							currInstanceFixtureMap)
             end
     end
 
 and resolveImplements (env: ENV)
-                      (instanceRib: Ast.RIB)
+                      (instanceFixtureMap: Ast.FIXTURE_MAP)
                       (implements: Ast.TYPE list)
-    : (Ast.TYPE list * Ast.RIB) =
+    : (Ast.TYPE list * Ast.FIXTURE_MAP) =
     let
-        val (superInterfaces, abstractRib) = resolveInterfaces env implements
-        val _ = implementFixtures abstractRib instanceRib
+        val (superInterfaces, abstractFixtureMap) = resolveInterfaces env implements
+        val _ = implementFixtures abstractFixtureMap instanceFixtureMap
     in
-        (superInterfaces,instanceRib)
+        (superInterfaces,instanceFixtureMap)
     end
 
 (*
     Resolve each of the expressions in the 'implements' list to an interface
     fixture. check that each of the methods declared by each interface is
-    implemented by the current set of instance ribs.
+    implemented by the current set of instance fixtureMaps.
 
     Steps
     - resolve super interface references to interface fixtures
-    - inherit ribs from the super interfaces
+    - inherit fixtureMaps from the super interfaces
 
     Errors
     - super interface fixture not found
@@ -887,9 +887,9 @@ and resolveImplements (env: ENV)
 *)
 
 and interfaceMethods (ifxtr:Ast.FIXTURE)
-    : Ast.RIB =
+    : Ast.FIXTURE_MAP =
     case ifxtr of
-        Ast.InterfaceFixture (Ast.Interface {instanceRib,...}) => instanceRib
+        Ast.InterfaceFixture (Ast.Interface {instanceFixtureMap,...}) => instanceFixtureMap
       |_ => LogErr.internalError ["interfaceMethods"]
 
 and interfaceExtends (ifxtr:Ast.FIXTURE)
@@ -912,7 +912,7 @@ and needClassFixture (cfxtr:Ast.FIXTURE)
 
 (*
     resolve a list of interface names to their super interfaces and
-    method ribs
+    method fixtureMaps
 
     interface I { function m() }
     interface J extends I { function n() }  // [I],[m]
@@ -930,7 +930,7 @@ and extractNameExprFromTypeName (Ast.TypeName (ne, _)) : Ast.NAME_EXPRESSION = n
 
 and resolveInterfaces (env: ENV)
                       (types: Ast.TYPE list)
-    : (Ast.TYPE list * Ast.RIB) =
+    : (Ast.TYPE list * Ast.FIXTURE_MAP) =
     case types of        
         [] => ([],[])
       | _ =>
@@ -940,9 +940,9 @@ and resolveInterfaces (env: ENV)
             val ifaces = map resolveToFix nameExprs
             val ifaceInstanceTypes:Ast.TYPE list = map interfaceInstanceType ifaces
             val superInterfaceTypes:Ast.TYPE list = List.concat (map interfaceExtends ifaces)
-            val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
+            val methodFixtureMap:Ast.FIXTURE_MAP = List.concat (map interfaceMethods ifaces)
         in
-            (ifaceInstanceTypes @ superInterfaceTypes, methodRib)
+            (ifaceInstanceTypes @ superInterfaceTypes, methodFixtureMap)
         end
 
 (*
@@ -970,23 +970,23 @@ and analyzeClassBody (env:ENV)
         val ns = resolveNamespaceOption env ns
         val name = {id=ident, ns=ns}
         val _ = trace ["defining class ", fmtName name]
-        val (staticEnv, localNamespaceRib) = enterClass env privateNS protectedNS []
-        val (unhoisted,classRib,classInits) = defDefns staticEnv classDefns
-        val classRib = (mergeRibs (#rootRib env) unhoisted classRib)
-        val classRib = (mergeRibs (#rootRib env) classRib localNamespaceRib)
+        val (staticEnv, localNamespaceFixtureMap) = enterClass env privateNS protectedNS []
+        val (unhoisted,classFixtureMap,classInits) = defDefns staticEnv classDefns
+        val classFixtureMap = (mergeFixtureMaps (#rootFixtureMap env) unhoisted classFixtureMap)
+        val classFixtureMap = (mergeFixtureMaps (#rootFixtureMap env) classFixtureMap localNamespaceFixtureMap)
 
         (* namespace and type definitions aren't normally hoisted *)
 
         val instanceEnv = extendEnvironment staticEnv [] true
 
         (* FIXME: there is some debate about whether type parameters live in the 
-         * instance rib or the class rib. This needs to be resolved. 
+         * instance fixtureMap or the class fixtureMap. This needs to be resolved. 
          *)
-        val (typeParamRib:Ast.RIB) = mkParamRib params
-        val instanceEnv = addToInnerRib instanceEnv typeParamRib
+        val (typeParamFixtureMap:Ast.FIXTURE_MAP) = mkParamFixtureMap params
+        val instanceEnv = addToInnerFixtureMap instanceEnv typeParamFixtureMap
 
-        val (unhoisted,instanceRib,_) = defDefns instanceEnv instanceDefns
-        val instanceEnv = addToInnerRib instanceEnv instanceRib
+        val (unhoisted,instanceFixtureMap,_) = defDefns instanceEnv instanceDefns
+        val instanceEnv = addToInnerFixtureMap instanceEnv instanceFixtureMap
 
         val ctor:Ast.CTOR option =
             case ctorDefn of
@@ -1019,8 +1019,8 @@ and analyzeClassBody (env:ENV)
                     dynamic = dynamic,
                     extends = NONE,
                     implements = [],
-                    classRib = classRib,
-                    instanceRib = instanceRib,
+                    classFixtureMap = classFixtureMap,
+                    instanceFixtureMap = instanceFixtureMap,
                     instanceInits = instanceInits,
                     constructor = ctor }
     end
@@ -1096,7 +1096,7 @@ and defVar (env:ENV)
         end
 
 (*
-    (BINDING list * INIT_STEP list) -> (RIB * INITS)
+    (BINDING list * INIT_STEP list) -> (FIXTURE_MAP * INITS)
 
      and INIT_STEP =   (* used to encode init of bindings *)
          InitStep of (BINDING_IDENTIFIER * EXPRESSION)
@@ -1165,9 +1165,9 @@ and defBindings (env:ENV)
                 (kind:Ast.VAR_DEFN_TAG)
                 (ns:Ast.NAMESPACE)
                 ((binds,inits):Ast.BINDINGS)
-    : (Ast.RIB * Ast.INITS) =
+    : (Ast.FIXTURE_MAP * Ast.INITS) =
     let
-        val fxtrs:Ast.RIB = map (defVar env kind ns) binds
+        val fxtrs:Ast.FIXTURE_MAP = map (defVar env kind ns) binds
         val inits:Ast.INITS = map (defInitStep env (SOME ns)) inits
     in
         (fxtrs,inits)
@@ -1175,10 +1175,10 @@ and defBindings (env:ENV)
 
 and defSettings (env:ENV)
                 ((binds,inits):Ast.BINDINGS)
-    : (Ast.RIB * Ast.INITS) =
+    : (Ast.FIXTURE_MAP * Ast.INITS) =
     let
         val _ = trace [">> defSettings"]
-        val fxtrs:Ast.RIB = map (defVar env Ast.Var Name.publicNS) binds
+        val fxtrs:Ast.FIXTURE_MAP = map (defVar env Ast.Var Name.publicNS) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
         val _ = trace ["<< defSettings"]
     in
@@ -1196,7 +1196,7 @@ and defSettings (env:ENV)
 
     Function = {
         fsig = ...  (* structural type *)
-        rib
+        fixtureMap
         inits
         block = {
             fxtrs = [ 't' -> TypeVal,
@@ -1223,7 +1223,7 @@ and defSettings (env:ENV)
 
 and defFuncSig (env:ENV)
                (fsig:Ast.FUNC_SIG)
-    : (Ast.RIB * Ast.INITS * Ast.EXPRESSION list * Ast.RIB * Ast.INITS * Ast.EXPRESSION list * Ast.TYPE) =
+    : (Ast.FIXTURE_MAP * Ast.INITS * Ast.EXPRESSION list * Ast.FIXTURE_MAP * Ast.INITS * Ast.EXPRESSION list * Ast.TYPE) =
 
     case fsig of
         Ast.FunctionSignature { typeParams, params, paramTypes, defaults, ctorInits,
@@ -1251,20 +1251,20 @@ and defFuncSig (env:ENV)
                  | _ => false
 
 
-            val (paramRib,paramInits) = defBindings env Ast.Var Name.publicNS params
-            val paramRib = mergeRibs (#rootRib env) paramRib [(Ast.PropName Name.public_arguments,
+            val (paramFixtureMap,paramInits) = defBindings env Ast.Var Name.publicNS params
+            val paramFixtureMap = mergeFixtureMaps (#rootFixtureMap env) paramFixtureMap [(Ast.PropName Name.public_arguments,
                                                                Ast.ValFixture { ty = Name.typename (Name.helper_Arguments),
                                                                                 writable = true })]
-            val ((settingsRib,settingsInits),superArgs) =
+            val ((settingsFixtureMap,settingsInits),superArgs) =
                     case ctorInits of
                         SOME (settings,args) => (defSettings env settings, defExprs env args)
                       | NONE => (([],[]),[])
-            val settingsRib = List.filter isTempFixture settingsRib
+            val settingsFixtureMap = List.filter isTempFixture settingsFixtureMap
         in
-            (paramRib,
+            (paramFixtureMap,
              paramInits,
              defaults,
-             settingsRib,
+             settingsFixtureMap,
              settingsInits,
              superArgs,
              thisType)
@@ -1273,7 +1273,7 @@ and defFuncSig (env:ENV)
 (*
     FUNC
 
-    The activation frame of a function is described by a BLOCK. The ribs
+    The activation frame of a function is described by a BLOCK. The fixtureMaps
     are the parameters (type and ordinary) and (hoisted) vars. The optional
     arguments are implemented using the inits. The body of the function is
     contained in the statements list.
@@ -1316,7 +1316,7 @@ and defFunc (env:ENV)
         fun findFuncType env e = 
             case e of 
            (*     Ast.LamType { params, body } => 
-                findFuncType (extendEnvironment env (mkParamRib params) true) body 
+                findFuncType (extendEnvironment env (mkParamFixtureMap params) true) body 
             *)
                 Ast.FunctionType fty => (env, fty)
               | _ => error ["unexpected primary type in function: ", LogErr.ty e]
@@ -1325,28 +1325,28 @@ and defFunc (env:ENV)
         val (env, funcType) = findFuncType env newT                     
         val numParams = length (#params funcType)
         val env = updateTempOffset env numParams
-        val (paramRib, paramInits, defaults, settingsRib, settingsInits, superArgs, thisType) = defFuncSig env fsig
+        val (paramFixtureMap, paramInits, defaults, settingsFixtureMap, settingsInits, superArgs, thisType) = defFuncSig env fsig
         val defaults = defExprs env defaults
-        val env = extendEnvironment env paramRib true
+        val env = extendEnvironment env paramFixtureMap true
         val env = enterFuncBody env func
-        val (blockOpt:Ast.BLOCK option, hoisted:Ast.RIB) = 
+        val (blockOpt:Ast.BLOCK option, hoisted:Ast.FIXTURE_MAP) = 
             case block of 
                 NONE => (NONE, [])
               | SOME b => 
                 let 
-                    val (block:Ast.BLOCK, hoisted:Ast.RIB) = defBlock env b
+                    val (block:Ast.BLOCK, hoisted:Ast.FIXTURE_MAP) = defBlock env b
                 in
                     (SOME block, hoisted)
                 end
         val _ = trace ["<< defFunc"]
     in
-        (Ast.Head (settingsRib, settingsInits), superArgs,
+        (Ast.Head (settingsFixtureMap, settingsInits), superArgs,
          Ast.Func {name = name,
                    fsig = fsig,
                    block = blockOpt,
                    defaults = defaults,
                    ty = newT,
-                   param = Ast.Head (mergeRibs (#rootRib env) paramRib hoisted, 
+                   param = Ast.Head (mergeFixtureMaps (#rootFixtureMap env) paramFixtureMap hoisted, 
                                      paramInits),
                    native=native,
                    generator=generator,
@@ -1368,7 +1368,7 @@ and defFunc (env:ENV)
 
 and defFuncDefn (env:ENV) 
                 (f:Ast.FUNC_DEFN)
-    : Ast.RIB =
+    : Ast.FIXTURE_MAP =
     case (#func f) of
         Ast.Func { name, fsig, block, ty, native, ... } =>
         let
@@ -1451,26 +1451,26 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
-    : (Ast.PRAGMA list * ENV * Ast.RIB) =
+    : (Ast.PRAGMA list * ENV * Ast.FIXTURE_MAP) =
     let
-        val rootRib = ref (#rootRib env)
-        val innerRibs  = #innerRibs env
-        val outerRibs  = #outerRibs env
+        val rootFixtureMap = ref (#rootFixtureMap env)
+        val innerFixtureMaps  = #innerFixtureMaps env
+        val outerFixtureMaps  = #outerFixtureMaps env
         val defaultNamespace = ref (#defaultNamespace env)
         val opennss = ref []
-        val rib = ref []
+        val fixtureMap = ref []
         val tempOffset = #tempOffset env
 
         fun modifiedEnv _ = 
-            { innerRibs = innerRibs,
-              outerRibs = outerRibs,
+            { innerFixtureMaps = innerFixtureMaps,
+              outerFixtureMaps = outerFixtureMaps,
               tempOffset = tempOffset,
               openNamespaces = (case !opennss of
                                     [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
                                   | _  => !opennss :: (#openNamespaces env)),
               labels = (#labels env),
               defaultNamespace = !defaultNamespace,
-              rootRib = !rootRib,
+              rootFixtureMap = !rootFixtureMap,
               func = (#func env) }
 
         fun defPragma x =
@@ -1497,7 +1497,7 @@ and defPragmas (env:ENV)
 
         val newPragmas = map defPragma pragmas                         
     in
-        (newPragmas, modifiedEnv (), !rib)
+        (newPragmas, modifiedEnv (), !fixtureMap)
     end
 
 
@@ -1709,13 +1709,13 @@ and defFieldType (env:ENV)
     STATEMENT
 
     Define a statement and return the elaborated statement and a list
-    of hoisted rib.
+    of hoisted fixtureMap.
 *)
 
 and defStmt (env:ENV)
             (labelIds:Ast.IDENTIFIER list)
             (stmt:Ast.STATEMENT)
-    : (Ast.STATEMENT * Ast.RIB) =
+    : (Ast.STATEMENT * Ast.FIXTURE_MAP) =
     let
         fun defForEnumStmt env (fe:Ast.FOR_ENUM_STATEMENT) =
             let
@@ -1739,9 +1739,9 @@ and defStmt (env:ENV)
                                      defn = defn,
                                      labels = Ustring.empty::labelIds,
                                      body = newBody,
-                                     rib = SOME ur1,
+                                     fixtureMap = SOME ur1,
                                      next = newNext },
-                     mergeRibs (#rootRib env) hr1 hoisted)
+                     mergeFixtureMaps (#rootFixtureMap env) hr1 hoisted)
                 end
             end
 
@@ -1751,13 +1751,13 @@ and defStmt (env:ENV)
 
         fun defWhileStmt (env) (w:Ast.WHILE_STATEMENT) =
             case w of
-                { cond, body, labels, rib } => (* FIXME: inits needed *)
+                { cond, body, labels, fixtureMap } => (* FIXME: inits needed *)
                 let
                     val newCond = defExpr env cond
                     val (newBody, hoisted) = defStmt env [] body
                 in
                     ({ cond=newCond,
-                       rib=NONE,
+                       fixtureMap=NONE,
                        body=newBody,
                        labels=Ustring.empty::labelIds}, hoisted)
                 end
@@ -1767,14 +1767,14 @@ and defStmt (env:ENV)
             for ( x=10; x > 0; --x ) ...
         *)
 
-        fun defForStmt env { defn, init, cond, update, labels, body, rib } =
+        fun defForStmt env { defn, init, cond, update, labels, body, fixtureMap } =
             let
                 fun defVarDefnOpt vd =
                     case vd of
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (ur,hr,_) = defVarDefnOpt defn
-                val env = extendEnvironment env (mergeRibs (#rootRib env) ur hr) false
+                val env = extendEnvironment env (mergeFixtureMaps (#rootFixtureMap env) ur hr) false
                 val (newInit,_) = defStmts env init
                 val newCond = defExpr env cond
                 val newUpdate = defExpr env update
@@ -1787,26 +1787,26 @@ and defStmt (env:ENV)
                                 update = newUpdate,
                                 labels = Ustring.empty::labelIds,
                                 body = newBody,
-                                rib = SOME (ur) },
-                  (mergeRibs (#rootRib env) hr hoisted) )
+                                fixtureMap = SOME (ur) },
+                  (mergeFixtureMaps (#rootFixtureMap env) hr hoisted) )
             end
 
-        fun reconstructCatch { bindings, rib, inits, block, ty } =
+        fun reconstructCatch { bindings, fixtureMap, inits, block, ty } =
             let
                 val ty:Ast.TYPE = defTypeExpr env ty
                 val (r0,i0) = defBindings env Ast.Var Name.publicNS bindings
                 val env = extendEnvironment env r0 false
-                val (block:Ast.BLOCK, rib:Ast.RIB) = defBlock env block
+                val (block:Ast.BLOCK, fixtureMap:Ast.FIXTURE_MAP) = defBlock env block
             in
                 ({ bindings = bindings,   (* FIXME: what about inits *)
                   block = block,
-                  rib = SOME r0,
+                  fixtureMap = SOME r0,
                   inits = SOME i0,
-                  ty=ty }, rib)
+                  ty=ty }, fixtureMap)
             end
 
         fun defCase env { label, body, inits }
-            : Ast.CASE * Ast.RIB =
+            : Ast.CASE * Ast.FIXTURE_MAP =
             let
                 val (body:Ast.BLOCK, hoisted) = defBlock env body
                 val label =
@@ -2013,7 +2013,7 @@ and defStmt (env:ENV)
                 (Ast.IfStmt { cnd = cnd,
                               thn = thn,
                               els = els },
-                 mergeRibs (#rootRib env) thn_hoisted els_hoisted)
+                 mergeFixtureMaps (#rootFixtureMap env) thn_hoisted els_hoisted)
             end
 
           | Ast.WithStmt { obj, ty, body } =>
@@ -2065,19 +2065,19 @@ and defStmt (env:ENV)
     end
 
 and defStmts (env) (stmts:Ast.STATEMENT list)
-    : (Ast.STATEMENT list * Ast.RIB) =
+    : (Ast.STATEMENT list * Ast.FIXTURE_MAP) =
     case stmts of
         (stmt::stmts) =>
             let
-                val (s1,f1):(Ast.STATEMENT*Ast.RIB) = defStmt env [] stmt
+                val (s1,f1):(Ast.STATEMENT*Ast.FIXTURE_MAP) = defStmt env [] stmt
 
                 (* Class definitions are embedded in the ClassBlock so we
                    need to update the environment in that case *)
 
-                val env = addToOuterRib env f1
+                val env = addToOuterFixtureMap env f1
                 val (s2, f2) = defStmts env stmts
             in
-                (s1::s2,(mergeRibs (#rootRib env) f1 f2))
+                (s1::s2,(mergeFixtureMaps (#rootFixtureMap env) f1 f2))
             end
       | [] => ([],[])
 
@@ -2091,7 +2091,7 @@ and defStmts (env) (stmts:Ast.STATEMENT list)
 
 and defNamespaceDefn (env:ENV)
                  (nd:Ast.NAMESPACE_DEFN)
-    : (Ast.RIB * Ast.NAMESPACE_DEFN) =
+    : (Ast.FIXTURE_MAP * Ast.NAMESPACE_DEFN) =
     case nd of
         { ident, ns, init } =>
         let
@@ -2111,7 +2111,7 @@ and defNamespaceDefn (env:ENV)
 
 and defType (env:ENV)
             (td:Ast.TYPE_DEFN)
-    : Ast.RIB =
+    : Ast.FIXTURE_MAP =
     let
         val { ident, ns, typeParams, init } = td
         val ns = resolveNamespaceOption env ns
@@ -2126,14 +2126,14 @@ and defType (env:ENV)
 (*
     DEFN
 
-    Translate a definition into two ribs (hoisted and unhoisted) and a
+    Translate a definition into two fixtureMaps (hoisted and unhoisted) and a
     (possibly empty) list of initialisers.
 *)
 
 
 and defDefn (env:ENV)
             (defn:Ast.DEFN)
-    : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
+    : (Ast.FIXTURE_MAP * Ast.FIXTURE_MAP * Ast.INITS) = (* unhoisted, hoisted, inits *)
     case defn of
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
@@ -2200,26 +2200,26 @@ and defDefn (env:ENV)
 
 and defDefns (env:ENV)
              (defns:Ast.DEFN list)
-    : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
+    : (Ast.FIXTURE_MAP * Ast.FIXTURE_MAP * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let
         fun loop (env:ENV)
                  (defns:Ast.DEFN list)
-                 (unhoisted:Ast.RIB)
-                 (hoisted:Ast.RIB)
+                 (unhoisted:Ast.FIXTURE_MAP)
+                 (hoisted:Ast.FIXTURE_MAP)
                  (inits:Ast.INITS)
-            : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
+            : (Ast.FIXTURE_MAP * Ast.FIXTURE_MAP * Ast.INITS) = (* unhoisted, hoisted, inits *)
             case defns of 
                 [] => (unhoisted, hoisted, inits)
               | d::ds => 
                 let
-                    val { rootRib, ... } = env
+                    val { rootFixtureMap, ... } = env
                     val (unhoisted', hoisted', inits') = defDefn env d
-                    val env = addToOuterRib env hoisted'
-                    val env = addToInnerRib env unhoisted'
-                    val _ = trace(["defDefns: combining unhoisted ribs"]);                    
-                    val combinedUnHoisted = mergeRibs rootRib unhoisted unhoisted'
-                    val _ = trace(["defDefns: combining hoisted ribs"]);        
-                    val combinedHoisted = mergeRibs rootRib hoisted hoisted'
+                    val env = addToOuterFixtureMap env hoisted'
+                    val env = addToInnerFixtureMap env unhoisted'
+                    val _ = trace(["defDefns: combining unhoisted fixtureMaps"]);                    
+                    val combinedUnHoisted = mergeFixtureMaps rootFixtureMap unhoisted unhoisted'
+                    val _ = trace(["defDefns: combining hoisted fixtureMaps"]);        
+                    val combinedHoisted = mergeFixtureMaps rootFixtureMap hoisted hoisted'
                     val _ = trace(["defDefns: combining inits"])
                     val combinedInits = inits @ inits'
                 in
@@ -2235,36 +2235,36 @@ and defDefns (env:ENV)
 (*
     BLOCK
 
-    Initialise a Block's rib and initialisers fields. Pragmas and
+    Initialise a Block's fixtureMap and initialisers fields. Pragmas and
     definitions are not used after this definition phase. Traverse the
     statements so that embedded blocks (e.g. block statements, let
     expressions) are initialised.
 
     Class blocks have an outer scope that contain the class (static)
-    rib. When entering a class block, extend the environment with
+    fixtureMap. When entering a class block, extend the environment with
     the class object and its base objects, in reverse order
 
 *)
 
 and defBlock (env:ENV)
              (b:Ast.BLOCK)
-    : (Ast.BLOCK * Ast.RIB) =
+    : (Ast.BLOCK * Ast.FIXTURE_MAP) =
     defBlockFull env b false
 
 and defDecorativeBlock (env:ENV)
                        (b:Ast.BLOCK)
-    : (Ast.BLOCK * Ast.RIB) = 
+    : (Ast.BLOCK * Ast.FIXTURE_MAP) = 
     defBlockFull env b true
     
 and defBlockFull (env:ENV)
                  (b:Ast.BLOCK)
                  (decorative:bool)
     (* 
-     * Returns the re-formed block *and* the rib of "escaping" defns:
+     * Returns the re-formed block *and* the fixtureMap of "escaping" defns:
      * if the block is decorative, that's everything; if the block is 
      * normal, it's only the hoists.
      *)
-    : (Ast.BLOCK * Ast.RIB) =
+    : (Ast.BLOCK * Ast.FIXTURE_MAP) =
     let
         val Ast.Block { pragmas, defns, body, loc, ... } = b
         val _ = LogErr.setLoc loc
@@ -2273,18 +2273,18 @@ and defBlockFull (env:ENV)
                   else extendEnvironment env [] false
         val (pragmas, env, unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs, hoisted_defn_fxtrs, inits) = defDefns env defns
-        val unhoisted = mergeRibs (#rootRib env) 
+        val unhoisted = mergeFixtureMaps (#rootFixtureMap env) 
                                   unhoisted_defn_fxtrs 
                                   unhoisted_pragma_fxtrs
-        val env = addToOuterRib env hoisted_defn_fxtrs
-        val env = addToInnerRib env unhoisted
+        val env = addToOuterFixtureMap env hoisted_defn_fxtrs
+        val env = addToInnerFixtureMap env unhoisted
         val (body, hoisted_body_fxtrs) = defStmts env body
-        val hoisted = mergeRibs (#rootRib env) hoisted_defn_fxtrs hoisted_body_fxtrs
+        val hoisted = mergeFixtureMaps (#rootFixtureMap env) hoisted_defn_fxtrs hoisted_body_fxtrs
         val contained = if decorative
                         then []
                         else unhoisted
         val escaped = if decorative
-                      then mergeRibs (#rootRib env) hoisted unhoisted 
+                      then mergeFixtureMaps (#rootFixtureMap env) hoisted unhoisted 
                       else hoisted
     in
         (Ast.Block { pragmas = pragmas,
@@ -2296,45 +2296,45 @@ and defBlockFull (env:ENV)
     end
 
 and mkTopEnv (internalNamespace:Ast.NAMESPACE)
-             (rootRib:Ast.RIB) 
+             (rootFixtureMap:Ast.FIXTURE_MAP) 
              (langEd:int)
     : ENV =
-    { outerRibs = [rootRib],
-      innerRibs = [],
+    { outerFixtureMaps = [rootFixtureMap],
+      innerFixtureMaps = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
                         then [[internalNamespace, Name.ES4NS], [Name.publicNS]]
                         else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,
-      rootRib = rootRib,
+      rootFixtureMap = rootFixtureMap,
       func = NONE }
         
-and summarizeProgram (Ast.Program (Ast.Block {head=(SOME (Ast.Head (rib, _))), ...})) =
-    Fixture.printRib rib
+and summarizeProgram (Ast.Program (Ast.Block {head=(SOME (Ast.Head (fixtureMap, _))), ...})) =
+    Fixture.printFixtureMap fixtureMap
   | summarizeProgram _ = ()
 
 (*
   PROGRAM
 *)                          
 
-and defProgram (rootRib:Ast.RIB)
+and defProgram (rootFixtureMap:Ast.FIXTURE_MAP)
                (prog:Ast.PROGRAM)
                (langEd:int)
-    : (Ast.RIB * Ast.PROGRAM) =
+    : (Ast.FIXTURE_MAP * Ast.PROGRAM) =
     let
         val internalNamespace = Name.newOpaqueNS ()
         val internalBinding = (Ast.PropName Name.ES4_internal, Ast.NamespaceFixture internalNamespace)
-        val rootRib = List.filter (fn (n, _) => n <> Ast.PropName Name.ES4_internal) rootRib
-        val rootRib = internalBinding :: rootRib
-        val env = mkTopEnv internalNamespace rootRib langEd
+        val rootFixtureMap = List.filter (fn (n, _) => n <> Ast.PropName Name.ES4_internal) rootFixtureMap
+        val rootFixtureMap = internalBinding :: rootFixtureMap
+        val env = mkTopEnv internalNamespace rootFixtureMap langEd
 		val Ast.Program blk = prog
         val (blk, escaped) = defDecorativeBlock env blk
         val (Ast.Block { pragmas, defns, head, body, loc }) = blk
             
 		val newHead = case head of
-						  SOME (Ast.Head (rib, inits)) 
-						  => SOME (Ast.Head (mergeRibs rootRib rib escaped, inits))
+						  SOME (Ast.Head (fixtureMap, inits)) 
+						  => SOME (Ast.Head (mergeFixtureMaps rootFixtureMap fixtureMap escaped, inits))
 
 						| NONE 
                           => SOME (Ast.Head (escaped, []))
@@ -2349,7 +2349,7 @@ and defProgram (rootRib:Ast.RIB)
                                     head = newHead,
                                     body = body,
                                     loc = loc })
-        val rootRib = mergeRibs rootRib rootRib escaped 
+        val rootFixtureMap = mergeFixtureMaps rootFixtureMap rootFixtureMap escaped 
     in
         trace ["program definition complete"];
         (if !doTraceSummary
@@ -2358,7 +2358,7 @@ and defProgram (rootRib:Ast.RIB)
         (if !doTrace
          then Pretty.ppProgram prog
          else ());
-        (rootRib, prog)
+        (rootFixtureMap, prog)
     end
 
 end
