@@ -1,0 +1,10 @@
+syntax: glob
+
+.cm
+config.log
+config.status
+Makefile
+*heap.*
+*.image.*
+*~
+version.sml
