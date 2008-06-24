@@ -39,7 +39,12 @@ type SOURCE_POS = { line: int, col: int }
 
 type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
-type IDENTIFIER = Ustring.STRING
+type BOOLEAN = bool
+type IEEE_754_BINARY_64_BIT = Real64.real
+type IEEE_754R_DECIMAL_128_BIT = Decimal.DEC
+type STRING = Ustring.STRING
+
+type IDENTIFIER = STRING
 
 type NONCE = int
 
@@ -47,7 +52,7 @@ type OPAQUE_NAMESPACE_IDENTIFIER = (* LDOTS *)
      NONCE
 
 datatype NAMESPACE =
-         TransparentNamespace of Ustring.STRING
+         TransparentNamespace of STRING
        | OpaqueNamespace of OPAQUE_NAMESPACE_IDENTIFIER
 
 
@@ -158,8 +163,8 @@ datatype PRAGMA =
              protectedNS: NAMESPACE,
              parentProtectedNSs: NAMESPACE list,
              typeParams: IDENTIFIER list,
-             nonnullable: bool,
-             dynamic: bool,
+             nonnullable: BOOLEAN,
+             dynamic: BOOLEAN,
              extends: TYPE option,
              implements: TYPE list,
              classFixtureMap: FIXTURE_MAP,
@@ -171,7 +176,7 @@ datatype PRAGMA =
          Interface of
            { name: NAME,
              typeParams: IDENTIFIER list,
-             nonnullable: bool,
+             nonnullable: BOOLEAN,
              extends: TYPE list,
              instanceFixtureMap: FIXTURE_MAP }
 
@@ -185,8 +190,8 @@ datatype PRAGMA =
          Func of 
          { name: FUNC_NAME,
            fsig: FUNC_SIG,
-           native: bool,
-           generator: bool,
+           native: BOOLEAN,
+           generator: BOOLEAN,
            block: BLOCK option, (* NONE => abstract *)
            param: HEAD,
            defaults: EXPRESSION list,
@@ -211,7 +216,7 @@ datatype PRAGMA =
            ctorInits: (BINDINGS * EXPRESSION list) option, (* settings + super args *)
            returnType: TYPE option,       (* NONE => void *)
            thisType: TYPE option,
-           hasRest: bool }
+           hasRest: BOOLEAN }
 
      and BINDING =
          Binding of
@@ -275,8 +280,8 @@ datatype STATEMENT =
        | InitStmt of {
              kind: VAR_DEFN_TAG,
              ns: NAMESPACE_EXPRESSION option,
-             prototype: bool,
-             static: bool,
+             prototype: BOOLEAN,
+             static: BOOLEAN,
              temps: BINDINGS,
              inits: INIT_STEP list }
        | ClassBlock of CLASS_BLOCK                           
@@ -339,10 +344,10 @@ datatype STATEMENT =
        | YieldExpr of EXPRESSION option
        | LiteralNull
        | LiteralUndefined
-       | LiteralDouble of Real64.real
-       | LiteralDecimal of Decimal.DEC
-       | LiteralBoolean of bool
-       | LiteralString of Ustring.STRING
+       | LiteralDouble of IEEE_754_BINARY_64_BIT
+       | LiteralDecimal of IEEE_754R_DECIMAL_128_BIT
+       | LiteralBoolean of BOOLEAN
+       | LiteralString of STRING
        | LiteralArray of
            { exprs: EXPRESSION,  (* FIXME: more specific type here *)
              ty:TYPE option }
@@ -352,7 +357,7 @@ datatype STATEMENT =
              ty: TYPE option }
        | LiteralFunction of FUNC
        | LiteralRegExp of
-           { str: Ustring.STRING }
+           { str: STRING }
 
      and INIT_TARGET = Hoisted
                      | Local
@@ -393,13 +398,13 @@ datatype FIXTURE =
        | MethodFixture of
            { func: FUNC,
              ty: TYPE,             
-             writable: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
-             override: bool,
-             final: bool,
+             writable: BOOLEAN,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+             override: BOOLEAN,
+             final: BOOLEAN,
              inheritedFrom: CLASS option }
        | ValFixture of
            { ty: TYPE,
-             writable: bool }
+             writable: BOOLEAN }
        | VirtualValFixture of
          { ty: TYPE, 
            getter: (FUNC * (CLASS option)) option,
@@ -421,11 +426,11 @@ withtype
              typeArgs : TYPE list,
 
              (* following fields cached for fast evaluation *)
-             nonnullable : bool,   
+             nonnullable : BOOLEAN,   
              typeParams : IDENTIFIER list,      
              superTypes : TYPE list,
              ty : TYPE,             
-             dynamic : bool 
+             dynamic : BOOLEAN 
           }       
 
      and FIELD =
@@ -443,17 +448,17 @@ withtype
            thisType   : TYPE,
            params  : TYPE list,
            minArgs : int,          
-           hasRest : bool,          
+           hasRest : BOOLEAN,          
            result  : TYPE option    (* NONE indicates return type is void *)
          }
 
      and FUNC_DEFN =
            { kind : VAR_DEFN_TAG,
              ns:  NAMESPACE_EXPRESSION option,
-             final: bool,
-             override: bool,
-             prototype: bool,
-             static: bool,
+             final: BOOLEAN,
+             override: BOOLEAN,
+             prototype: BOOLEAN,
+             static: BOOLEAN,
              func : FUNC }
 
      and CTOR_DEFN = CTOR
@@ -461,8 +466,8 @@ withtype
      and VAR_DEFN =
            { kind : VAR_DEFN_TAG,
              ns : NAMESPACE_EXPRESSION option,
-             static : bool,
-             prototype : bool,
+             static : BOOLEAN,
+             prototype : BOOLEAN,
              bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
            }
 
@@ -476,9 +481,9 @@ withtype
              privateNS: NAMESPACE, (* FIXME: do we need to keep this around? *)
              protectedNS: NAMESPACE,
              ident: IDENTIFIER,             
-             nonnullable: bool,
-             dynamic: bool,
-             final: bool,
+             nonnullable: BOOLEAN,
+             dynamic: BOOLEAN,
+             final: BOOLEAN,
              params: IDENTIFIER list,
              extends: TYPE option, 
              implements: TYPE list,
@@ -491,7 +496,7 @@ withtype
      and INTERFACE_DEFN =
            { ident: IDENTIFIER,
              ns: NAMESPACE_EXPRESSION option,
-             nonnullable: bool,
+             nonnullable: BOOLEAN,
              params: IDENTIFIER list,
              extends: TYPE list,
              instanceDefns: DEFN list }
@@ -511,17 +516,17 @@ withtype
            block: BLOCK }
 
      and FOR_ENUM_HEAD =  (* FIXME: use this in FOR_ENUM_STATEMENT *)
-           { isEach: bool,
+           { isEach: BOOLEAN,
              bindings: (BINDING list * INIT_STEP list),
              expr: EXPRESSION }
 
      and FOR_ENUM_STATEMENT =
-           { isEach: bool,
+           { isEach: BOOLEAN,
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
                      ns : NAMESPACE_EXPRESSION option,
-                     static : bool,
-                     prototype : bool,
+                     static : BOOLEAN,
+                     prototype : BOOLEAN,
                      bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
                    } option,
              obj: EXPRESSION,
@@ -535,8 +540,8 @@ withtype
              (* VAR_DEFN option *)
              defn: { kind : VAR_DEFN_TAG,
                      ns : NAMESPACE_EXPRESSION option,
-                     static : bool,
-                     prototype : bool,
+                     static : BOOLEAN,
+                     prototype : BOOLEAN,
                      bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
                    } option,
              init: STATEMENT list,

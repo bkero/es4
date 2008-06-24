@@ -16,8 +16,7 @@ SCOPE:                      The structure and resolution of names
 <hr>
 -->
 
-<P> Names in ECMAScript are constants that are comprised of a namespace
-value and an identifier.
+<P> Names in ECMAScript are defined in section ...names.
 
 <P> Names denote types, namespaces, and locations (properties bound in
 objects and scopes).  The denotation of a name depends on the context
@@ -80,61 +79,6 @@ takes place in the same scope as for the first name.  A //reservation
 mechanism// ensures that names that are resolved at definition time
 cannot become ambiguous at evaluation time by the introduction of new
 bindings.
-
-
-== Name Values ==
-
-<p>A name is a constant value comprised of a namespace value and an
-identifier.
-
-<SEM>
-<INCLUDE file="ast.sml" name="type NAME">
-
-<p>An identifier is a character string.
-
-<SEM>
-<INCLUDE file="ast.sml" name="type IDENTIFIER">
-
-<p>A namespace value is an immutable object.  A namespace is
-//transparent// or //opaque//.  A transparent namespace contains a
-character string that identifies the namespace; two transparent
-namespaces are equal if and only if their contained strings are equal.
-An opaque namespace contains an unforgeable system-generated value
-that identifies the namespace; two opaque namespaces are equal if and
-only if their contained identifier values are the same object.
-
-<SEM>
-<INCLUDE file="ast.sml" name="datatype NAMESPACE">
-<INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
-<INCLUDE file="fixture.sml" name="fun compareNamespaces">
-
-<!--
-<FIXME> It appears to me that we could simplify here by saying that
-opaque namespaces are equal iff they represent the same object.  Are
-there SML reasons why that might not work?  Do we not have an
-identifier in each object value to make sure that is already possible?
--->
-
-<FIXME> Presentation: Get rid of "Ast." prefixes in the SML code?
-
-== The namespace <u>public</u> ==
-
-<P> The namespace known as **public** is the transparent namespace
-whose identifying string is the empty string.
-
-<SEM>
-<INCLUDE file="name.sml" name="val publicNS">
-
-<NOTE> The **public** namespace is distinguished in several ways.  The
-names of properties added dynamically to objects are qualified by
-**public** by default, so all properties created by 3rd Edition code
-running on a 4th Edition implementation are **public**, and **public**
-is sometimes called "the compatibility namespace" for that reason.
-The default namespace qualifier that is applied to declarations in
-every scope is **public**, so absent other qualification every
-property on every object and every lexically bound name is in the
-**public** namespace.
-
 
 == Prototype chain ==
 

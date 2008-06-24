@@ -74,20 +74,24 @@ val cachesz = 4096
  * all through the code. Yay.
  *)
 
+type BOOLEAN = bool
+type IEEE_754_BINARY_64_BIT = Real64.real
+type IEEE_754R_DECIMAL_128_BIT = Decimal.DEC
+type STRING = Ustring.STRING
+
 datatype WRITABILITY = ReadOnly | WriteOnce | Writable
 
-type ATTRS = { removable: bool,
-               enumerable: bool,
-               fixed: bool,
+type ATTRS = { removable: BOOLEAN,
+               enumerable: BOOLEAN,
+               fixed: BOOLEAN,
                writable: WRITABILITY }
 
-type IDENTIFIER = Ustring.STRING
 
-type NAMESPACE = NAMESPACE
+type IDENTIFIER = STRING
 
-datatype VALUE = UndefinedValue
+datatype VALUE = ObjectValue of OBJECT
+               | UndefinedValue
                | NullValue
-               | ObjectValue of OBJECT
 
      and OBJECT =
          Object of { ident: OBJECT_IDENTIFIER,                     
@@ -157,16 +161,16 @@ datatype VALUE = UndefinedValue
  *)
 
      and PRIMITIVE =
-         BooleanPrimitive of bool
-       | DoublePrimitive of Real64.real
-       | DecimalPrimitive of Decimal.DEC
-       | StringPrimitive of Ustring.STRING
+         BooleanPrimitive of BOOLEAN
+       | DoublePrimitive of IEEE_754_BINARY_64_BIT
+       | DecimalPrimitive of IEEE_754R_DECIMAL_128_BIT
+       | StringPrimitive of STRING
        | NamespacePrimitive of NAMESPACE
        | FunctionPrimitive of CLOSURE
        | TypePrimitive of TYPE
        | ArgumentsPrimitive of SCOPE
        | NativeFunctionPrimitive of NATIVE_FUNCTION  (* INFORMATIVE *)
-       | GeneratorPrimitive of GEN
+       | GeneratorPrimitive of GENERATOR
 
      and SCOPE =
          Scope of { object: OBJECT,
@@ -182,36 +186,16 @@ datatype VALUE = UndefinedValue
        | ActivationScope
        | BlockScope
        | TypeArgScope
-       | EvalScope  (* mutated by eval *)
+       | EvalScope
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VALUE
-
-
-
-     (* 
-      * One might imagine that namespaces, methods and the 'arguments'
-      * object in a function can all be stored as instances of the
-      * classes NamespacePrimitive, FunctionPrimitive and Array, respectively. This
-      * works in some contexts, but leads to feedback loops when
-      * constructing the classes FunctionPrimitive, NamespacePrimitive and Array
-      * themselves. So instead of eagerly instantiating such values,
-      * we allocate them as the following 3 "lazy" property states. If
-      * anyone performs a "get" on these property states, a NamespacePrimitive,
-      * FunctionPrimitive or Array object (respectively) is constructed. We
-      * then ensure that the NamespacePrimitive, FunctionPrimitive and Array
-      * constructors, settings and initializers (in the builtins) do
-      * *not* cause any "get" operations on properties in these
-      * states.
-      *
-      * FIXME: The 'arguments' object can't be an array.
-      *)
 
      and PROPERTY_STATE = ValueProperty of VALUE
                         | VirtualProperty of
                           { getter: CLOSURE option,
                             setter: CLOSURE option }
-
+                          
      and AUX = 
          Aux of 
          { 
@@ -227,18 +211,18 @@ datatype VALUE = UndefinedValue
           profiler: PROFILER 
          }
 
-     and GEN_STATE = NewbornGen of (unit -> GEN_SIGNAL)
-                   | DormantGen of (GEN_SIGNAL -> GEN_SIGNAL)
-                   | RunningGen
-                   | ClosedGen
+     and GENERATOR_STATE = NewbornGenerator of (unit -> GENERATOR_SIGNAL)
+                         | DormantGenerator of (GENERATOR_SIGNAL -> GENERATOR_SIGNAL)
+                         | RunningGenerator
+                         | ClosedGenerator
 
-     and GEN_SIGNAL = YieldSig of VALUE
-                    | SendSig of VALUE
-                    | ThrowSig of VALUE
-                    | StopSig
-                    | CloseSig
+     and GENERATOR_SIGNAL = YieldSignal of VALUE
+                          | SendSignal of VALUE
+                          | ThrowSignal of VALUE
+                          | StopSignal
+                          | CloseSignal
 
-     and GEN = Gen of GEN_STATE ref
+     and GENERATOR = Generator of GENERATOR_STATE ref
 
 withtype CLOSURE =
          { func: FUNC,
@@ -250,7 +234,7 @@ withtype CLOSURE =
           scope: SCOPE,
           this: OBJECT,
           thisFun: OBJECT option,
-          thisGen: OBJECT option,
+          thisGenerator: OBJECT option,
           global: OBJECT,
           rootFixtureMap: FIXTURE_MAP
           , aux: AUX                      (* INFORMATIVE *)
@@ -260,7 +244,7 @@ withtype CLOSURE =
          { func: ({ scope: SCOPE, 
                     this: OBJECT, 
                     thisFun: OBJECT option,
-                    thisGen: OBJECT option,
+                    thisGenerator: OBJECT option,
                     global: OBJECT, 
                     rootFixtureMap: FIXTURE_MAP, 
                     aux: AUX } (* REGS *)
@@ -1128,7 +1112,7 @@ fun makeInitialRegs (rootFixtureMap:FIXTURE_MAP)
         { this = glob,
           global = glob,          
           thisFun = NONE,
-          thisGen = NONE,
+          thisGenerator = NONE,
           scope = makeGlobalScopeWith glob,
           rootFixtureMap = rootFixtureMap,
           aux = aux }

@@ -448,7 +448,7 @@ fun genSend (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.sendToGen regs gen arg
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.sendToGenerator regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -460,7 +460,7 @@ fun genThrow (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.throwToGen regs gen arg
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.throwToGenerator regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -471,7 +471,7 @@ fun genClose (regs:Mach.REGS)
         val Mach.Object { tag, ... } = nthAsObj vals 0
     in
         case tag of
-            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGen regs gen
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGenerator regs gen
           | _ => error ["wrong kind of object to genSend"];
         Mach.UndefinedValue
     end

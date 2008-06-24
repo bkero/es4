@@ -1,5 +1,5 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
-structure Control = Control (type RESULT = Mach.GEN_SIGNAL);
+structure Control = Control (type RESULT = Mach.GENERATOR_SIGNAL);
 
 structure Eval = struct
 (*
@@ -146,13 +146,13 @@ fun extendScopeReg (r:REGS)
                    (kind:SCOPE_KIND)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
+        val { scope, this, thisFun, thisGenerator, global, rootFixtureMap, aux } = r
         val scope = extendScope scope ob kind
     in
         { scope = scope,
           this = this,
           thisFun = thisFun,
-          thisGen = thisGen,
+          thisGenerator = thisGenerator,
           global = global,
           rootFixtureMap = rootFixtureMap,
           aux = aux }
@@ -162,12 +162,12 @@ fun withThis (r:REGS)
              (newThis:OBJECT)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
+        val { scope, this, thisFun, thisGenerator, global, rootFixtureMap, aux } = r
     in
         { scope = scope, 
           this = newThis, 
           thisFun = thisFun,
-          thisGen = thisGen,
+          thisGenerator = thisGenerator,
           global = global, 
           rootFixtureMap = rootFixtureMap,
           aux = aux }
@@ -177,27 +177,27 @@ fun withThisFun (r:REGS)
                 (newThisFun:OBJECT option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
+        val { scope, this, thisFun, thisGenerator, global, rootFixtureMap, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = newThisFun,
-          thisGen = thisGen,
+          thisGenerator = thisGenerator,
           global = global, 
           rootFixtureMap = rootFixtureMap,
           aux = aux }
     end
 
-fun withThisGen (r:REGS)
-                (newThisGen:OBJECT option)
+fun withThisGenerator (r:REGS)
+                      (newThisGenerator:OBJECT option)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
+        val { scope, this, thisFun, thisGenerator, global, rootFixtureMap, aux } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
-          thisGen = newThisGen,
+          thisGenerator = newThisGenerator,
           global = global, 
           rootFixtureMap = rootFixtureMap,
           aux = aux }
@@ -207,12 +207,12 @@ fun withScope (r:REGS)
               (newScope:SCOPE)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, rootFixtureMap, aux } = r
+        val { scope, this, thisFun, thisGenerator, global, rootFixtureMap, aux } = r
     in
         { scope = newScope, 
           this = this, 
           thisFun = thisFun,
-          thisGen = thisGen,
+          thisGenerator = thisGenerator,
           global = global, 
           rootFixtureMap = rootFixtureMap,
           aux = aux }
@@ -223,12 +223,12 @@ fun withRootFixtureMap (r:REGS)
                 (rootFixtureMap:FIXTURE_MAP)
     : REGS =
     let
-        val { scope, this, thisFun, thisGen, global, aux, ... } = r
+        val { scope, this, thisFun, thisGenerator, global, aux, ... } = r
     in
         { scope = scope, 
           this = this, 
           thisFun = thisFun,
-          thisGen = thisGen,
+          thisGenerator = thisGenerator,
           global = global, 
           rootFixtureMap = rootFixtureMap,
           aux = aux }
@@ -1247,24 +1247,24 @@ and isStopIteration (regs:REGS)
           | _ => false
     end
 
-and newGen (execBody:unit -> VALUE)
-    : GEN =
+and newGenerator (execBody:unit -> VALUE)
+    : GENERATOR =
     let
         (* temporary state, reassigned below *)
-        val state = ref ClosedGen 
+        val state = ref ClosedGenerator 
     in
         (* this must be done via assignment because of the recursive reference to `state' *)
-        state := NewbornGen (fn () =>
+        state := NewbornGenerator (fn () =>
                                 Control.reset (fn () =>
-                                                  ((execBody (); CloseSig)
-                                                   handle ThrowException v => ThrowSig v
-                                                        | StopIterationException => StopSig)
-                                                  before state := ClosedGen));
-        Gen state
+                                                  ((execBody (); CloseSignal)
+                                                   handle ThrowException v => ThrowSignal v
+                                                        | StopIterationException => StopSignal)
+                                                  before state := ClosedGenerator));
+        Generator state
     end
 
-and newGenerator (regs:REGS)
-                 (execBody:OBJECT -> VALUE)
+and newGeneratorValue (regs:REGS)
+                      (execBody:OBJECT -> VALUE)
     : VALUE =
     let
         val classObj = case !(getGeneratorClassSlot regs) of 
@@ -1272,7 +1272,7 @@ and newGenerator (regs:REGS)
                          | SOME ob => ob
         val class = needClass (ObjectValue classObj)
         val objRef = ref (newObjectNoTag [])
-        val gen = newGen (fn () => execBody (!objRef))
+        val gen = newGenerator (fn () => execBody (!objRef))
         val tag = PrimitiveTag (GeneratorPrimitive gen)
         val proto = getPrototype regs classObj
         val obj = constructStandardWithTag regs classObj class tag proto [] 
@@ -1281,34 +1281,34 @@ and newGenerator (regs:REGS)
         ObjectValue obj
     end
 
-and yieldFromGen (regs:REGS)
-                 (Gen state)
+and yieldFromGenerator (regs:REGS)
+                 (Generator state)
                  (v : VALUE)
     : VALUE =
     case !state of
-        RunningGen => (case Control.shift (fn k => (state := DormantGen k;
-                                                    YieldSig v)) of
-                           SendSig v' => v'
-                         | ThrowSig v' => raise (ThrowException v')
-                         | StopSig => raise StopIterationException
+        RunningGenerator => (case Control.shift (fn k => (state := DormantGenerator k;
+                                                    YieldSignal v)) of
+                           SendSignal v' => v'
+                         | ThrowSignal v' => raise (ThrowException v')
+                         | StopSignal => raise StopIterationException
                          | _ => error regs ["generator protocol"])
       | _ => error regs ["yield from dormant or dead generator"]
 
-and sendToGen (regs:REGS)
-              (Gen state)
+and sendToGenerator (regs:REGS)
+              (Generator state)
               (v : VALUE)
     : VALUE =
     case !state of
-        RunningGen => error regs ["already running"]
-      | ClosedGen => raise StopIterationException
-      | NewbornGen f =>
+        RunningGenerator => error regs ["already running"]
+      | ClosedGenerator => raise StopIterationException
+      | NewbornGenerator f =>
         if isUndef v then
-            (state := RunningGen;
+            (state := RunningGenerator;
              case f () of
-                 YieldSig v' => v'
-               | ThrowSig v' => raise (ThrowException v')
-               | StopSig => raise StopIterationException
-               | CloseSig => raise StopIterationException
+                 YieldSignal v' => v'
+               | ThrowSignal v' => raise (ThrowException v')
+               | StopSignal => raise StopIterationException
+               | CloseSignal => raise StopIterationException
                | _ => error regs ["generator protocol"])
         else
             let val s = Ustring.toAscii (toUstring regs v)
@@ -1318,40 +1318,40 @@ and sendToGen (regs:REGS)
             in
                 throwExn (newTypeErr regs ["attempt to send ", s, " to newborn generator"])
             end
-      | DormantGen k =>
-        (state := RunningGen;
-         case k (SendSig v) of
-             YieldSig v' => v'
-           | ThrowSig v' => raise (ThrowException v')
-           | StopSig => raise StopIterationException
-           | CloseSig => raise StopIterationException
+      | DormantGenerator k =>
+        (state := RunningGenerator;
+         case k (SendSignal v) of
+             YieldSignal v' => v'
+           | ThrowSignal v' => raise (ThrowException v')
+           | StopSignal => raise StopIterationException
+           | CloseSignal => raise StopIterationException
            | _ => error regs ["generator protocol"])
 
-and throwToGen (regs:REGS)
-               (Gen state)
+and throwToGenerator (regs:REGS)
+               (Generator state)
                (v : VALUE)
     : VALUE =
     case !state of
-        RunningGen => error regs ["already running"]
-      | ClosedGen => raise (ThrowException v)
-      | NewbornGen f =>
+        RunningGenerator => error regs ["already running"]
+      | ClosedGenerator => raise (ThrowException v)
+      | NewbornGenerator f =>
         (* FIXME: confirm this semantics with be *)
-        (state := ClosedGen; raise (ThrowException v))
-      | DormantGen k =>
-        (state := RunningGen;
-         case k (ThrowSig v) of
-             YieldSig v' => v'
-           | ThrowSig v' => raise (ThrowException v')
-           | StopSig => raise StopIterationException
-           | CloseSig => raise (ThrowException v)
+        (state := ClosedGenerator; raise (ThrowException v))
+      | DormantGenerator k =>
+        (state := RunningGenerator;
+         case k (ThrowSignal v) of
+             YieldSignal v' => v'
+           | ThrowSignal v' => raise (ThrowException v')
+           | StopSignal => raise StopIterationException
+           | CloseSignal => raise (ThrowException v)
            | _ => error regs ["generator protocol"])
 
-and closeGen (regs:REGS)
-             (Gen state)
+and closeGenerator (regs:REGS)
+                   (Generator state)
     : unit =
     case !state of
-        RunningGen => error regs ["already running"]
-      | _ => state := ClosedGen
+        RunningGenerator => error regs ["already running"]
+      | _ => state := ClosedGenerator
 
 
 (*
@@ -1864,7 +1864,7 @@ and evalThisExpr (regs:REGS)
                  (kind:THIS_KIND option)
     : VALUE = 
     let
-        val { this, thisFun, thisGen, ... } = regs
+        val { this, thisFun, thisGenerator, ... } = regs
     in
         case kind of
             SOME FunctionThis => 
@@ -1873,7 +1873,7 @@ and evalThisExpr (regs:REGS)
                (* this error should never occur, since it will be raised earlier in defn *)
                | _ => error regs ["error: 'this function' used in a non-function context"])
           | SOME GeneratorThis =>
-            (case thisGen of
+            (case thisGenerator of
                  SOME obj => ObjectValue obj
                (* DAH: this error should also never occur? *)
                | _ => error regs ["error: 'this generator' used in a non-generator-function context"])
@@ -2331,9 +2331,9 @@ and evalYieldExpr (regs:REGS)
                   (expr:EXPRESSION option)
     : VALUE =
     let
-        val { thisGen, ... } = regs
+        val { thisGenerator, ... } = regs
     in
-        case thisGen of
+        case thisGenerator of
             SOME (Object { tag, ... }) =>
             (case tag of
                  PrimitiveTag (GeneratorPrimitive gen) =>
@@ -2342,7 +2342,7 @@ and evalYieldExpr (regs:REGS)
                                  NONE => UndefinedValue
                                | SOME expr => evalExpr regs expr
                  in
-                     yieldFromGen regs gen v
+                     yieldFromGenerator regs gen v
                  end
                | _ => error regs ["missing Generator tag on object in yield"])
           (* this should never happen *)
@@ -3013,8 +3013,7 @@ and performBinop (regs:REGS)
                             then newBoolean regs (toBoolean va = toBoolean vb)
                             else 
                                 if isNamespace va andalso isNamespace vb
-                                then newBoolean regs (Fixture.compareNamespaces  ((needNamespace va),
-                                                                                  (needNamespace vb)))                                               
+                                then newBoolean regs ((needNamespace va) = (needNamespace vb))
                                 else newBoolean regs ((getObjId (needObj regs va)) = (getObjId (needObj regs vb)))
             else
                 newBoolean regs false
@@ -3842,16 +3841,16 @@ and invokeFuncClosure (regs:REGS)
                             | SOME b =>
                               if generator then
                                   let
-                                      fun body (thisGen:OBJECT) =
-                                          (evalBlock (withThisGen blockRegs (SOME thisGen)) b;
+                                      fun body (thisGenerator:OBJECT) =
+                                          (evalBlock (withThisGenerator blockRegs (SOME thisGenerator)) b;
                                            UndefinedValue)
                                           handle ReturnException v => v
                                   in
                                       (* FIXME: this is the wrong REGS *)
-                                      newGenerator regs body
+                                      newGeneratorValue regs body
                                   end
                               else
-                                  ((evalBlock (withThisGen blockRegs NONE) b;
+                                  ((evalBlock (withThisGenerator blockRegs NONE) b;
                                     UndefinedValue)
                                    handle ReturnException v => v)
             in

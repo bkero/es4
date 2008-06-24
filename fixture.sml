@@ -186,17 +186,11 @@ type NAME = Ast.NAME
 type NAMESPACE_SET = NAMESPACE list
 type OPEN_NAMESPACES = NAMESPACE_SET list 
 
-fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
-    case (n1, n2) of
-        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
-      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
-      | _ => false
-
 fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
     : NAMESPACE_SET =
     (* compute the intersection of two NAMESPACE_SETs *)
     (* INFORMATIVE *)
-    List.filter (fn n1 => List.exists (fn n2 => compareNamespaces (n1, n2)) ns2) ns1
+    List.filter (fn n1 => List.exists (fn n2 => n1 = n2) ns2) ns1
 
 fun selectNamespacesByGlobalNames (identifier: IDENTIFIER,
                                    namespaces: NAMESPACE_SET,
