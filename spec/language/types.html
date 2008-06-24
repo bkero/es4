@@ -16,7 +16,6 @@ SCOPE:                      The dynamic type system
 <hr>
 -->
 
-<FIXME> Cross-check with normative grammer on terminology, etc
 <FIXME> Double-check that the specification and implementation of the
 subtype relation are consistent.
 
@@ -91,6 +90,19 @@ the global constant ^^public::undefined^^.
 
 <p>A nominal type is denoted in type expressions by the name of the class or interface that defined
 the type.
+
+<p>A nominal type ^^C^^ (or ^^C.&lt;T_{1}, .., T_{n}>^^) can be
+declared as a //non-null// type via any of the following declarations:
+
+**
+{{{
+    class C! ..
+    class C.&lt;X_{1}, .., X_{n}>! ..
+    interface C! ..
+    interface C.&lt;X_{1}, .., X_{n}>! ..
+}}}
+**
+<p>A nominal type is //nullable// if it is not a non-null type.
 
 === Record types ===
 
@@ -344,7 +356,7 @@ parametric type.
 a name expression. 
 
 <p>Type names are resolved during //type resolution//, described in
-Section 3.4.1 below.
+Section 3.3 below.
 
 == Semantics of the Type Language ==
 
@@ -357,6 +369,113 @@ To help avoid name collisions, each type variable bound in a type
 parameter list is assigned a unique integer, or //nonce//.
 Any reference to that type variable is then resolved
 into a ''TypeName'' that includes that nonce.
+
+== Type Resolution ==
+
+<P> At run-time, when a type ^^T^^ is encountered in the source program,
+that type is immediately //resolved//. This type resolution process proceeds as follows:
+
+<p>
+In the scope of a type definition
+
+**
+{{{
+    type X = S
+}}}
+**
+
+any reference to a type variable ^^X^^ in ^^T^^
+is replaced by the type ^^S^^.
+
+<p>
+In the scope of a generic type definition
+
+**
+{{{
+    type X.&lt;y_{1}, .., y_{n}> = S
+}}}
+**
+
+a type application ^^X.&lt;S_{1}, .., S_{n}>^^ in ^^T^^ is
+replaced by the type ^^S[y_{1}:=S_{1}, .., y_{n}:=S_{n}]^^.
+  
+<p> In the scope of a class definition that associates a
+non-nullable class name ^^C^^ with a class definition ''D'',
+type resolution replaces any ''TypeName'' that refers to ^^C^^ with
+''ClassType D''. For references to a nullable class, the same
+replacement is made, but the result (or the enclosing ''AppType''
+node, if there is one) is unioned with the ^^null^^ type. 
+
+<p> Similarly, in the scope of an interface definition that associates
+an interface name ^^I^^ with an interface definition ''D'', type
+resolution replaces any ''TypeName'' that refers to ^^I^^ with
+''InterfaceType D'' (again, unioned with the ^^null^^ type, if ^^I^^
+is a nullable interface).
+
+=== Implementation of Type Resolution ===
+
+<p>The following function ''resolveTypeNames'' performs type
+resolution on a particular type ''ty'' in the context of an
+environment ''env''.
+
+<p>This function relies on the auxiliary function
+''Fixture.resolveNameExpr'' (described in section ...) to resolve each
+type name. The function ''Fixture.resolveNameExpr'' finds the
+corresponding fixture,
+and returns a triple containing
+(1) the environment that fixture was defined in;
+(2) the fully-resolved name for the given name expression,
+and (3) the
+corresponding fixture.
+
+<p> If the resulting fixture is for a non-parametric type definition,
+the body of that type definition is resolved in its 
+environment, and then replaces the original type name.
+
+<p> If the resulting fixture is for a class or interface definition,
+the type name is replaced by a class type or an interface type
+(unioned with the type ^^null^^ if the nominal type is declared as nullable).
+
+<p> A type application that refers to a type-parametric type
+definition is replaced by the body of that type definition, after the
+replacement of each formal parameter name with the corresponding
+resolved type argument.
+
+<p> A type application of a type name that refers to a type-parametric
+class or interface definition is replaced by a type application that
+directly includes that class or interface type (unioned with the type
+^^null^^ if the nominal type is declared as nullable).
+
+<p> If none of the above cases apply, then ''resolveTypeNames'' uses
+the helper function ''mapType'' to perform type name resolution on
+each sub-term of the given type.
+
+<p>The function ''error'' reports error messages, and the module
+''LogErr'' contains functions for converting various data structures
+into corresponding Strings.
+
+<FIXME>Is the "LogErr." prefix too verbose on calls to error?
+
+<SEM>
+<INCLUDE file="type.sml" name="fun resolveTypeNames">
+
+<INCLUDE file="type.sml" name="fun mapType">
+
+=== Resolved Types ===
+
+<p>A //resolved type// is one that is the result of the preceding
+type resolution process.
+
+<p>Resolved types do not include:
+
+<UL>
+  <LI> type names that refer to nominal types (''ClassType'' and ''InterfaceType'' are used instead)
+  <LI> type names that refer to type  definitions (which are inlined)
+</UL>
+  
+<P> Resolved types may include type names that refer to generic type
+parameters; these references include a nonce.
+  
 
 == The Subtype and Type Equivalence Relations ==
 
@@ -663,159 +782,6 @@ type ^^public::Function^^.
 <SEM>
 <INCLUDE file="type.sml" name="and subTypeStructuralNominal">
 
-== Type Normalization ==
-
-<P> At run-time, when a type ^^T^^ is encountered in the source program,
-that type is immediately //normalized//. Type normalization consists
-of two phases: //type resolution// followed by //type
-canonicalization//.
-
-=== Type Resolution ===
-
-<p> Type resolution on a type ^^T^^ proceeds as follows:
-
-<p>
-In the scope of a type definition
-
-**
-{{{
-    type X = S
-}}}
-**
-
-any reference to a type variable ^^X^^ in ^^T^^
-is replaced by the type ^^S^^.
-
-<p>
-In the scope of a generic type definition
-
-**
-{{{
-    type X.&lt;y_{1}, .., y_{n}> = S
-}}}
-**
-
-a type application ^^X.&lt;S_{1}, .., S_{n}>^^ in ^^T^^ is
-replaced by the type ^^S[y_{1}:=S_{1}, .., y_{n}:=S_{n}]^^.
-  
-<p> In the scope of a class definition that associates a
-non-nullable class name ^^C^^ with a class definition ''D'',
-type resolution replaces any ''TypeName'' that refers to ^^C^^ with
-''ClassType D''. For references to a nullable class, the same
-replacement is made, but the result (or the enclosing ''AppType''
-node, if there is one) is unioned with the ^^null^^ type. 
-
-<p> Similarly, in the scope of an interface definition that associates
-an interface name ^^I^^ with an interface definition ''D'', type
-resolution replaces any ''TypeName'' that refers to ^^I^^ with
-''InterfaceType D'' (again, unioned with the ^^null^^ type, if ^^I^^
-is a nullable interface).
-
-
---- old ---
-=== Subtyping Nullable Nominal Types ===
-
-
-<p>A nominal type ^^C^^ (or ^^C.&lt;T_{1}, .., T_{n}>^^) can be
-declared as a //non-null// type via any of the following declarations:
-
-**
-{{{
-    class C! ..
-    class C.&lt;X_{1}, .., X_{n}>! ..
-    interface C! ..
-    interface C.&lt;X_{1}, .., X_{n}>! ..
-}}}
-**
-
-<p>A nominal type is //nullable// if it is not a non-null type.
-
-<p>The type ^^null^^ is a subtype of any nullable nominal type. 
-
-<SEM>
-<INCLUDE file="type.sml" name="and subTypeNullable">
-
-
-==== Implementation of Type Resolution ====
-
-<p>The following function ''resolveTypeNames'' performs type
-resolution on a particular type ''ty'' in the context of an
-environment ''env''.
-
-<p>This function relies on the auxiliary function
-''Fixture.resolveNameExpr'' (described in section ...) to resolve each
-type name. The function ''Fixture.resolveNameExpr'' returns the
-corresponding fixture (as the third component of the result triple),
-plus the environment that fixture was defined in, and the
-fully-resolved name for the given name expression.
-
-<p> If the resulting fixture is for a non-parametric type definition,
-the body of that type definition is resolved in its 
-environment, and then replaces the original type name.
-
-<p> If the resulting fixture is for a class or interface definition,
-the type name is replaced by a class type or an interface type
-(unioned with the type ^^null^^ if the nominal type is declared as nullable).
-
-<p> A type application that refers to a type-parametric type
-definition is replaced by the body of that type definition, after the
-replacement of each formal parameter name with the corresponding
-resolved type argument.
-
-<p> A type application of a type name that refers to a type-parametric
-class or interface definition is replaced by a type application that
-directly includes that class or interface type (unioned with the type
-^^null^^ if the nominal type is declared as nullable).
-
-<p> If none of the above cases apply, then ''resolveTypeNames'' uses
-the helper function ''mapType'' to perform type name resolution on
-each sub-term of the given type.
-
-<p>The function ''error'' reports error messages, and the module
-''LogErr'' contains functions for converting various data structures
-into corresponding Strings.
-
-<FIXME>Is the "LogErr." prefix too verbose on calls to error?
-
-<SEM>
-<INCLUDE file="type.sml" name="fun resolveTypeNames">
-
-<INCLUDE file="type.sml" name="fun mapType">
-
-
-=== Type Canonicalization ===
-
-<FIXME> If canonicalization results in a normalized type, why is the
-process not called normalization?
-
-<p>Each type ^^T^^ is considered equivalent (under the equivalence
-relation defined above) to some collection of types. The process of
-//type canonicalization// converts a type in the program source code
-into a canonical or representative element of its equivalence class.
-In particular, if two types ^^T_{1}^^ and ^^T_{2}^^ are equivalent,
-then canonicalization will convert them both into an identical
-normalized type.
-
-<p>This canonicalization process is necessary to efficiently
-support type-parametric classes.
-
-<p>The type canonicalization code is not presented here.
-
-=== Normalized Types ===
-
-<p>A //normalized type// is one that is the result of the preceding
-normalization process.
-
-<p>Normalized types do not include:
-
-<UL>
-  <LI> type names that refer to nominal types (''ClassType'' and ''InterfaceType'' are used instead)
-  <LI> type names that refer to type  definitions (which are inlined)
-</UL>
-  
-<P> Normalized types may include type names that refer to generic type
-parameters; these references include a nonce.
-  
 == Compatible Types ==
 
 <p>The compatibility relation is a binary relation on type values. Two

@@ -499,10 +499,6 @@ and defaultValueForType (regs:REGS)
               | firstSimpleType ((AnyType)::xs) = SOME UndefinedValue
               | firstSimpleType ((NullType)::xs) = SOME NullValue
               | firstSimpleType ((UndefinedType)::xs) = SOME UndefinedValue
-              | firstSimpleType ((InstanceType (Class {nonnullable=false, ...}))::xs) = SOME NullValue
-              | firstSimpleType ((InterfaceType (Interface {nonnullable=false, ...}))::xs) = SOME NullValue
-              | firstSimpleType ((AppType (InstanceType (Class {nonnullable=false, ...}), _))::xs) = SOME NullValue
-              | firstSimpleType ((AppType (InterfaceType (Interface {nonnullable=false, ...}), _))::xs) = SOME NullValue
               | firstSimpleType (x::xs) = firstSimpleType xs
         in
             firstSimpleType ts
@@ -512,14 +508,7 @@ and defaultValueForType (regs:REGS)
       | RecordType _ => SOME NullValue
       | AppType (base, _) => defaultValueForType regs base
 
-      | NonNullType expr => NONE        
-      | FunctionType _ => NONE
-      | TypeName _ => NONE
-      | TypeIndexReferenceType _ => NONE
-      | TypeNameReferenceType _ => NONE
-      | ClassType _ => NONE
-
-      | InstanceType (Class {name, nonnullable, ...}) =>
+      | InstanceType (Class {name, ...}) =>
         (* We cannot go via the class obj id because we may be booting! *)
         if nameEq name Name.ES4_double 
         then SOME (newDouble regs 0.0)
@@ -532,15 +521,9 @@ and defaultValueForType (regs:REGS)
                 else 
                     if nameEq name Name.ES4_decimal
                     then SOME (newDecimal regs Decimal.zero)
-                    else 
-                        if nonnullable
-                        then NONE
-                        else SOME (NullValue)
-                             
-      | InterfaceType (Interface {nonnullable, ...}) => 
-        if nonnullable
-        then NONE
-        else SOME (NullValue)
+                    else NONE
+                           
+      | _ => NONE
 
 (*
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's
@@ -652,7 +635,7 @@ and reifyFixture (regs:REGS)
                 val defaultValueOption = defaultValueForType regs ty
             in
                 case defaultValueOption of
-                    NONE => throwExn (newRefErr regs ["attempting to get reify fixture w/o default value: ", 
+                    NONE => throwExn (newRefErr regs ["attempting to reify fixture w/o default value: ", 
                                                       LogErr.name name])
                   | SOME v => reifiedFixture ty (ValueProperty v) (if writable 
                                                              then Writable
@@ -3573,6 +3556,7 @@ and evalLetExpression (regs:REGS)
     let
         val letRegs = evalHead regs head
     in
+        checkScopeInitialization letRegs;
         evalExpr letRegs body
     end
 
@@ -3797,6 +3781,14 @@ and checkRibInitialization (regs:REGS)
         List.app checkOne rib
     end
 
+and checkScopeInitialization (regs:REGS)
+    : unit = 
+    let
+        val { scope = Scope { object, temps, ... }, ... } = regs
+    in
+        checkRibInitialization regs object (SOME temps)
+    end
+
 
 and invokeFuncClosure (regs:REGS)
                       (closure:CLOSURE)
@@ -3841,7 +3833,7 @@ and invokeFuncClosure (regs:REGS)
             trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
                    Int.toString (getScopeId varScope)];
             evalScopeInits varRegs Local paramInits;
-            checkRibInitialization regs varObj (SOME (getScopeTemps varScope));
+            checkScopeInitialization varRegs;
             trace ["invokeFuncClosure: evaluating block"];
             let
                 val blockRegs = withThisFun varRegs thisFun 
@@ -3882,14 +3874,13 @@ and catch (regs:REGS)
                 val fixs = valOf rib
                 val head = Head (valOf rib, [])
                 val regs = evalHead regs head
-                val scope = (#scope regs)
-                val obj = (#this regs)
-                val temps = getScopeTemps scope
+                val Scope { temps, ... } = (#scope regs)
             in
                 (if List.null fixs
                  then ()
                  else defTemp temps 0 e;
                  evalScopeInits regs Local (valOf inits);
+                 checkScopeInitialization regs;
                  SOME (evalBlock regs block))
             end
         else
@@ -4217,6 +4208,7 @@ and initializeAndConstruct (regs:REGS)
                 traceConstruct ["evaluating inits of ", fmtName name,
                                 " in scope #", Int.toString (getScopeId varScope)];
                 evalScopeInits varRegs Local paramInits;
+                checkScopeInitialization varRegs;
                 traceConstruct ["evaluating settings"];
                 evalObjInits varRegs instanceObj settings;
                 traceConstruct ["initializing and constructing superclass of ", fmtName name];
@@ -4780,9 +4772,10 @@ and evalHead (regs:REGS)
         val _ = traceConstruct ["built temp scope #",
                                 Int.toString (getScopeId scope),
                                 " for head"]
+        val temps = getScopeTemps scope
     in
         allocScopeTemps newRegs rib;
-        evalInits regs obj (getScopeTemps scope) inits;
+        evalInits regs obj temps inits;        
         newRegs
     end
 
@@ -4944,6 +4937,7 @@ and evalSwitchStmt (regs:REGS)
                     val head = Head ([], case inits of NONE => []
                                                      | SOME i => i)
                     val caseRegs = evalHead regs head
+                    val _ = checkScopeInitialization caseRegs
                     val first = evalBlock caseRegs body
                     fun evalRest accum [] = accum
                       | evalRest accum ({label, inits, body}::xs) =
@@ -5031,7 +5025,7 @@ and evalForInStmt (regs:REGS)
         let
             val iterable = evalIterable regs obj
             val iterator = callIteratorGet regs iterable
-            val forInRegs = evalHead regs (Head (valOf rib, []))
+            val forInRegs = evalHead regs (Head (valOf rib, []))            
 
             (*
              * The following code is ugly but it needs to handle the cases
@@ -5078,6 +5072,7 @@ and evalForInStmt (regs:REGS)
                         let
                             val _ = defTemp temps 0 (valOf v)   (* def the iteration value *)
                             val _ = evalScopeInits tempRegs nextTarget nextInits
+                            val _ = checkScopeInitialization tempRegs
                             val _ = Option.map (evalExpr tempRegs) nextExpr
                             val curr = (SOME (evalStmt forInRegs body)
                                         handle ContinueException exnLabel =>
@@ -5114,6 +5109,7 @@ and evalForStmt (regs:REGS)
         { rib, init, cond, update, labels, body, ... } =>
         let
             val forRegs = evalHead regs (Head (valOf rib, []))
+            val _ = checkScopeInitialization forRegs
 
             fun loop (accum:VALUE option) =
                 let
@@ -5181,40 +5177,6 @@ and evalContinueStmt (regs:REGS)
     : VALUE =
     raise (ContinueException lbl)
 
-
-and evalAnonProgram (regs:REGS)
-                     (block:BLOCK)
-    : VALUE =
-    let
-        fun findHoistingScopeObj scope = 
-            case scope of 
-                Scope { kind = InstanceScope _, ... } => scope
-              | Scope { kind = ClassScope, ... } => scope
-              | Scope { kind = ActivationScope, ... } => scope
-              | Scope { parent = NONE, ... } => scope
-              | Scope { parent = SOME p, ...} => findHoistingScopeObj p
-        val scope = findHoistingScopeObj (#scope regs)
-        val regs = withScope regs scope
-                   
-        val Block { pragmas, head, body, loc, ... } = block
-        val (rib, inits) = case head of 
-                               NONE => ([], [])
-                             | SOME (Head (r,i)) => (r,i)
-        val Scope { object, temps, ... } = scope
-
-        val _ = setLoc loc
-        val _ = allocScopeTemps regs rib
-
-        val _ = setLoc loc
-        val _ = evalInits regs object temps inits
-
-        val _ = setLoc loc
-        val res = evalStmts regs body
-        val _ = setLoc loc
-    in
-        res
-    end
-
 and deleteInternalNamespaceProp (regs:REGS) 
     : unit = 
     let
@@ -5249,7 +5211,7 @@ and evalProgram (regs:REGS)
         deleteInternalNamespaceProp regs;
         setLoc loc;  
         trace ["running program inits on obj #", fmtObjId obj];
-        evalInits regs obj temps;
+        evalInits regs obj temps inits;
         setLoc loc;
         trace ["running program stmts"];
         let 
