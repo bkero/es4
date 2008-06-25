@@ -2,7 +2,7 @@
 
 <PRE>
 FILE:                       spec/library/Math.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-25
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST PROPOSALS: NO
@@ -11,7 +11,7 @@ REVIEWED AGAINST CODE:      NO
 
 <P> The global ''Math'' object is a single object that has some named
 properties, some of which are functions.  The ''Math'' object is the
-only instance of a helper class called ''Math''.
+only instance of an internal helper class called ''Math''.
 
 <P> The ''Math'' object acts as a container for built-in
 mathematics-related functions and constants.
@@ -20,31 +20,14 @@ mathematics-related functions and constants.
 == Synopsis ==
 
 <P> For convenience of notation the definition of the Math object uses
-the private type names ''AnyNumber'' and ''FloatNumber''.
+the helper type name ''PrimitiveNumber''.
 
 {{{
-type AnyNumber = (int,uint,double,decimal);
-type FloatNumber = (double,decimal);
-}}}
-
-<!-- used in global.html -->
-{{{
-helper type MathType =
-{
-    intrinsic::abs: function(AnyNumber): AnyNumber,
-    intrinsic::acos: function(AnyNumber): FloatNumber,
-    intrinsic::asin: function(AnyNumber): FloatNumber,
-    intrinsic::atan: function(AnyNumber): FloatNumber,
-    intrinsic::atan2: function(AnyNumber,AnyNumber): FloatNumber,
-    ... and so on
-    E: double,
-    LN10: double,
-    ... and so on
-}
+helper type PrimitiveNumber = (double|decimal);
 }}}
 
 <P> The intrinsic methods on the math object are restricted to
-arguments of the type ''AnyNumber''.
+arguments of the type ''PrimitiveNumber''.
 
 <P> The ''Math'' object provides the following interface:
 
@@ -90,7 +73,8 @@ to obtain values with the best precision for the particular type.
 
 <P> The ''Math'' object additionally provides the following dynamic
 function properties.  These functions are not restricted in the types
-of arguments they accept, but convert all their arguments to number.
+of arguments they accept, but convert all their arguments to a
+primitive number.
 
 {{{
     abs:    function (x) <LDOTS> ,
@@ -125,9 +109,8 @@ accessible through the prototype chain and is ''Object.constructor''.
 == Primitive operations on numbers ==
 
 <FIXME> (Ticket #189.) Describe the following helper and informative
-functions here: copysign, sign, isPositive, isPositiveZero,
-isNegativeZero, isOddInteger, coerceToCommonFloating.  Or describe
-them in the chapter on numbers.  (More info in the bug.)
+functions here: isPositive, isPositiveZero, isNegativeZero,
+isOddInteger.
 
 
 == Intrinsic function properties of the Math object ==
@@ -158,10 +141,7 @@ values that represent boundary cases of interest.
 
 <NOTE> The functions defined in this section preserve the
 representation of the argument(s) in the result where this is
-reasonable.  The functions ''ceil'', ''floor'', ''pow'', and ''sqrt''
-produce ''int'' and ''uint'' results when their arguments are ''int''
-or ''uint'' values and the result is representable as ''int'' or
-''uint''.  All functions map ''double'' and ''decimal'' arguments to
+reasonable.  All functions map ''double'' and ''decimal'' arguments to
 ''double'' and ''decimal'' results, respectively.
 
 
@@ -173,8 +153,7 @@ positive sign.
 
 <RETN>The intrinsic ''abs'' function returns the absolute value of
 //x//.  The representation of the result is the same as the
-representation of //x// except that the absolute value of an ''int''
-may be represented as a ''uint''.
+representation of //x//.
 
 <IMPL>
 <INCLUDE file="Math.es" name="intrinsic function abs">
@@ -430,12 +409,7 @@ implementation-dependent approximation to the result of raising //x//
 to the power //y//.
 
 <P> The intrinsic ''pow'' function produces a result in the
-representation of //x//.  However, ''int'' and ''uint'' are only used
-to represent the result if //x// and //y// are both ''int'' or
-''uint'' and //y// is nonnegative, and //x<SUP>y</SUP>// is
-representable in the representation of //x//.  Following the rules for
-arithmetic, ''int'' results overflow to a ''uint'' or ''double'' as
-appropriate, and ''uint'' overflows to ''double''.
+representation of //x//.  
 
 <RETN> The intrinsic ''pow'' function returns a number.
 
@@ -443,13 +417,10 @@ appropriate, and ''uint'' overflows to ''double''.
 <INCLUDE file="Math.es" name="intrinsic function pow">
 
 
-<P> The informative functions ''powInt'', ''powUInt'', ''powDouble'', and ''powDecimal''
-implement representation-dependent computation of the value //x<SUP>y</SUP>//.  ''powInt'' and
-''powUInt'' preserve the representation of //x// if possible as described above.
+<P> The informative functions ''powDouble'' and ''powDecimal''
+implement representation-dependent computation of the value //x<SUP>y</SUP>//.
 
 {{{
-<SIGNATURE file="Math.es" name="informative function powInt">
-<SIGNATURE file="Math.es" name="informative function powUInt">
 <SIGNATURE file="Math.es" name="informative native function powDouble">
 <SIGNATURE file="Math.es" name="informative native function powDecimal">
 }}}
@@ -534,9 +505,7 @@ number //x//.
 
 <RETN> The intrinsic ''sqrt'' method returns a number.  The
 representation of the result is the same as the representation of
-//x// if possible; in particular, if //x// is of type ''int'' or
-''uint'' and //x <GEQ> 0//, then the result is of type ''int'' or
-''uint'' if //x// is a square.
+//x//.
 
 <SHORTIMPL>
 <INCLUDE file="Math.es" name="intrinsic function sqrt">
@@ -568,7 +537,7 @@ The intrinsic ''tan'' function preserves the sign of //x// if //x// is 0.
 
 == Other function properties of the Math object ==
 
-<P> Every function listed in this section applies the ''toAnyNumber''
+<P> Every function listed in this section applies the ''toPrimitiveNumber''
 function to each of its arguments (in left-to-right order if there is
 more than one) and then performs a computation on the resulting number
 value(s) by invoking the corresponding intrinsic method.

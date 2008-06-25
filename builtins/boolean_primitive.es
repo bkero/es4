@@ -39,45 +39,43 @@
  *
  */
 
-    use default namespace public;
-    use namespace intrinsic;
+use default namespace public;
+use namespace intrinsic;
 
-    /*
-     * The boolean class is final and non-dynamic because most
-     * implementations will in fact represent boolean objects not
-     * using objects, but using some primitive tagged value, of which
-     * there will be only two, one for "true" and the other for
-     * "false".
-     *
-     * The literals true and false denote instances of this class.
-     */
-    __ES4__ final class boolean!
+/*
+ * The boolean class is final and non-dynamic because most
+ * implementations will in fact represent boolean objects not
+ * using objects, but using some primitive tagged value, of which
+ * there will be only two, one for "true" and the other for
+ * "false".
+ *
+ * The literals true and false denote instances of this class.
+ */
+__ES4__ final class boolean!
+{
+    // IMPLEMENTATION ARTIFACT: A getter because boolean is loaded before int.
+    static function get length() { return 1 }
+
+    /* Don't remove or reindent this:
+
+       function boolean(value=false)
+           helper::newBoolean(value)
+    */
+
+    /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
+    meta static function invoke(x=false) : boolean
+        (x is boolean) ? x : new boolean(x);
+
+    /* E262-4 early-binding variant. */
+    override intrinsic function toString() : string
+        this ? "true" : "false";
+
+    /* E262-4 draft ch 19 */
+    override intrinsic function valueOf() : boolean
+        this;
+
+    /* The E262-3 boolean primitive consumes all additional [[set]] operations. */
+    meta function set(n,v) : void
     {
-        // IMPLEMENTATION ARTIFACT: A getter because boolean is loaded before int.
-        static function get length() { return 1 }
-
-        /* Don't remove this
-        function boolean(value=false)
-            helper::newBoolean(value)
-        */
-
-        /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
-        meta static function invoke(x=null) : boolean
-            (x is boolean) ? x : new boolean(x);
-
-        /* E262-4 early-binding variant. */
-        override intrinsic function toString() : string
-            this ? "true" : "false";
-
-        override intrinsic function toJSONString(pretty: boolean=null) : string
-            JSON.formatBoolean(this, pretty);
-
-        /* E262-4 draft ch 19 */
-        override intrinsic function valueOf() : boolean
-            this;
-
-        /* The E262-3 boolean primitive consumes all additional [[set]] operations. */
-        meta function set(n,v) : void
-        {
-        }
     }
+}

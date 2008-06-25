@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/meta.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-24
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
 REVIEWED AGAINST BASE DOC:  N/A
@@ -446,7 +446,7 @@ function type.  Function types cannot be instantiated.
 interface FunctionType extends Type
 {
     function boundThis(): Type
-    function argTypes(): TypeIterator
+    function parameterTypes(): TypeIterator
     function defaultValues(): ValueIterator
     function hasRestType(): boolean
     function returnType(): Type
@@ -460,9 +460,9 @@ interface FunctionType extends Type
 <RETN> The ''boundThis'' method returns a type if the function has a
 bound ''this'' value, otherwise it returns an ''AnyType'' object.
 
-==== argTypes ( ) ====
+==== parameterTypes ( ) ====
 
-<RETN> The ''argTypes'' method returns an iterator that iterates over
+<RETN> The ''parameterTypes'' method returns an iterator that iterates over
 the types of the formal parameters of the function, starting with the
 first argument and iterating in order, including all optional and rest
 arguments.

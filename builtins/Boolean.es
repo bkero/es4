@@ -39,48 +39,43 @@
  *
  */
 
-    use default namespace public;
-    use namespace intrinsic;
+use default namespace public;
+use namespace intrinsic;
 
-    // RI bug: the "this" constraint on methods can't use union types,
-    // but the parser allows type names...
-    __ES4__ type AnyBoolean = (boolean|Boolean!);
+// RI bug: the "this" constraint on methods can't use union types,
+// but the parser allows type names...
 
-    dynamic class Boolean
-    {
-        private var val : boolean;
+__ES4__ type AnyBoolean = (boolean|Boolean!);
 
-        // IMPLEMENTATION ARTIFACT: A getter because Boolean is loaded before int.
-        static function get length() { return 1 }
+dynamic class Boolean
+{
+    private var val : boolean;
 
-        /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        meta static function invoke(x=false) : boolean
-            boolean(x);
+    // IMPLEMENTATION ARTIFACT: A getter because Boolean is loaded before int.
+    static function get length() { return 1 }
 
-        /* E262-3 15.6.2: The Boolean Constructor. */
-        function Boolean(x=false) : val = boolean(x) {}
+    /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
+    meta static function invoke(x=false) : boolean
+        boolean(x);
 
-        /* E262-4 early-binding variant. */
-        override intrinsic function toString() : string
-            intrinsic::valueOf().intrinsic::toString();
+    /* E262-3 15.6.2: The Boolean Constructor. */
+    function Boolean(x=false) : val = boolean(x) {}
 
-        override intrinsic function toJSONString(pretty: boolean=false) : string
-            intrinsic::valueOf().intrinsic::toJSONString();
+    /* E262-4 early-binding variant. */
+    override intrinsic function toString() : string
+        intrinsic::valueOf().intrinsic::toString();
 
-        /* E262-4 early-binding variant. */
-        override intrinsic function valueOf() : boolean
-            val;
+    /* E262-4 early-binding variant. */
+    override intrinsic function valueOf() : boolean
+        val;
 
-        // The boolean class uses the Boolean class's prototype too.
+    // The boolean class uses the Boolean class's prototype too.
 
-        /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-        prototype function toString(this: AnyBoolean)
-            this.intrinsic::toString();
+    /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
+    prototype function toString(this: AnyBoolean)
+        this.intrinsic::toString();
 
-        prototype function toJSONString(this: AnyBoolean, pretty=false)
-            this.intrinsic::toJSONString(pretty);
-
-        /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-        prototype function valueOf(this: AnyBoolean)
-            this.intrinsic::valueOf();
-    }
+    /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
+    prototype function valueOf(this: AnyBoolean)
+        this.intrinsic::valueOf();
+}
