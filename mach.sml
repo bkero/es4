@@ -94,11 +94,11 @@ datatype VALUE = ObjectValue of OBJECT
                | NullValue
 
      and OBJECT =
-         Object of { ident: OBJECT_IDENTIFIER,                     
-                     tag: TAG,
-                     proto: VALUE,
+         Object of { propertyMap: PROPERTY_MAP,
                      fixtureMap: FIXTURE_MAP,
-                     propertyMap: PROPERTY_MAP }
+                     ident: OBJECT_IDENTIFIER,                     
+                     tag: TAG,
+                     proto: VALUE }
 
      and TAG =
          ObjectTag of FIELD_TYPE list
