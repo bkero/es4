@@ -180,40 +180,40 @@ fun parse argvRest =
     (TextIO.print "parsing ... \n";
      List.map Parser.parseFile argvRest)
 
-fun define rootRib argvRest =
+fun define rootFixtureMap argvRest =
     let
         val progs = parse argvRest
-        fun f rootRib accum (prog::progs) = 
+        fun f rootFixtureMap accum (prog::progs) = 
             let 
-                val (rootRib', prog') = Defn.defProgram rootRib prog (!langEd)
+                val (rootFixtureMap', prog') = Defn.defProgram rootFixtureMap prog (!langEd)
             in
-                f rootRib' (prog'::accum) progs
+                f rootFixtureMap' (prog'::accum) progs
             end
-          | f rootRib accum _ = (rootRib, List.rev accum)
+          | f rootFixtureMap accum _ = (rootFixtureMap, List.rev accum)
     in
         TextIO.print "defining ... \n";
-        f rootRib [] progs
+        f rootFixtureMap [] progs
     end
 
-fun verify rootRib argvRest =
+fun verify rootFixtureMap argvRest =
     let
-        val (rootRib, progs) = define rootRib argvRest
-        fun f rootRib accum (prog::progs) = 
+        val (rootFixtureMap, progs) = define rootFixtureMap argvRest
+        fun f rootFixtureMap accum (prog::progs) = 
             let 
-                val prog' = Verify.verifyProgram rootRib true prog
+                val prog' = Verify.verifyProgram rootFixtureMap true prog
             in
-                f rootRib (prog'::accum) progs
+                f rootFixtureMap (prog'::accum) progs
             end
-          | f rootRib accum _ = (rootRib, List.rev accum)
+          | f rootFixtureMap accum _ = (rootFixtureMap, List.rev accum)
     in
         TextIO.print "verifying ... \n";
-        f rootRib [] progs
+        f rootFixtureMap [] progs
     end
 
 fun eval regs argvRest =
     let
-        val (rootRib, progs) = verify (#rootRib regs) argvRest
-        val regs = Eval.withRootRib regs rootRib
+        val (rootFixtureMap, progs) = verify (#rootFixtureMap regs) argvRest
+        val regs = Eval.withRootFixtureMap regs rootFixtureMap
     in
         Mach.setLangEd regs (!langEd);
         Posix.Process.alarm (Time.fromReal 300.0);
@@ -317,10 +317,10 @@ fun repl (regs:Mach.REGS)
                     in
                         if not (!doDefn) then () else
                         let
-                            val (rootRib, prog) = Defn.defProgram (#rootRib (!regsCell)) prog (!langEd)
-                            val prog = Verify.verifyProgram rootRib true prog
+                            val (rootFixtureMap, prog) = Defn.defProgram (#rootFixtureMap (!regsCell)) prog (!langEd)
+                            val prog = Verify.verifyProgram rootFixtureMap true prog
                         in
-                            regsCell := Eval.withRootRib regs rootRib;
+                            regsCell := Eval.withRootFixtureMap regs rootFixtureMap;
                             if not (!doEval) then () else
                             let
                                 val regs = !regsCell
@@ -385,8 +385,8 @@ and main (dump:string -> bool)
                     HelpCommand => (usage (); success)
                   | ReplCommand => (repl (getRegs()) dump readLine; success)
                   | ParseCommand files => (parse files; success)
-                  | DefineCommand files => (define (#rootRib (getRegs())) files; success)
-                  | VerifyCommand files => (verify (#rootRib (getRegs())) files; success)
+                  | DefineCommand files => (define (#rootFixtureMap (getRegs())) files; success)
+                  | VerifyCommand files => (verify (#rootFixtureMap (getRegs())) files; success)
                   | EvalCommand files => (eval (getRegs()) files; success)
                   | ResetCommand =>
                     let

@@ -43,11 +43,11 @@ fun error ss = LogErr.hostError ss
 val langEd = 4
 
 
-fun lookupRoot (rootRib:Ast.RIB)
+fun lookupRoot (rootFixtureMap:Ast.FIXTURE_MAP)
                (n:Ast.NAME)
     : Ast.CLASS =
     let
-        val fix = Fixture.getFixture rootRib (Ast.PropName n)
+        val fix = Fixture.getFixture rootFixtureMap (Ast.PropName n)
     in
         case fix of
             Ast.ClassFixture cls => cls
@@ -60,24 +60,24 @@ fun instantiateRootClass (regs:Mach.REGS)
                          (proto:Mach.OBJECT)
     : (Ast.CLASS * Mach.OBJECT * Ast.CLASS * Mach.OBJECT) =
   let
-      val rootRib = (#rootRib regs)
-      val class = lookupRoot rootRib fullName
+      val rootFixtureMap = (#rootFixtureMap regs)
+      val class = lookupRoot rootFixtureMap fullName
       val (metaClass, metaClassObject, tag) = Eval.getMetaClassAndMetaClassObjectAndTag regs class
 
-      val Ast.Class { instanceRib, ... } = metaClass
+      val Ast.Class { instanceFixtureMap, ... } = metaClass
 
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject tag (Mach.ObjectValue proto) instanceRib
+      val obj = Mach.newObject tag (Mach.ObjectValue proto) instanceFixtureMap
 
       val _ = trace ["object identity of  ", LogErr.name fullName];
       val _ = Eval.bindAnySpecialIdentity regs obj
 
       val _ = trace ["binding class name of  ", LogErr.name fullName];
-      val Mach.Object { props, ... } = (#global regs)
-      val _ = if Mach.hasProp props fullName
+      val Mach.Object { propertyMap, ... } = (#global regs)
+      val _ = if Mach.hasProp propertyMap fullName
               then error ["global object already has a binding for ", LogErr.name fullName]
               else ()
-      val _ = Mach.addProp props fullName
+      val _ = Mach.addProp propertyMap fullName
                            { ty = Ast.ClassType class,
                              state = Mach.ValueProperty (Mach.ObjectValue obj),
                              attrs = { removable = false,
@@ -101,42 +101,42 @@ fun runConstructorOnObject (regs:Mach.REGS)
         Eval.initializeAndConstruct classRegs class classObj [] obj
     end
 
-fun loadFile (rootRib:Ast.RIB)
+fun loadFile (rootFixtureMap:Ast.FIXTURE_MAP)
              (f:string) 
-    : (Ast.RIB * Ast.PROGRAM) =
+    : (Ast.FIXTURE_MAP * Ast.PROGRAM) =
     let
         val _ = trace ["parsing boot file ", f]
         val prog = Parser.parseFile f
         val _ = trace ["defining boot file ", f]
     in
-        Defn.defProgram rootRib prog langEd
+        Defn.defProgram rootFixtureMap prog langEd
     end
 
-fun loadFiles (rootRib:Ast.RIB) 
+fun loadFiles (rootFixtureMap:Ast.FIXTURE_MAP) 
               (fs:string list)
-    : (Ast.RIB * ((string * Ast.PROGRAM) list)) =
+    : (Ast.FIXTURE_MAP * ((string * Ast.PROGRAM) list)) =
     let
-        fun f rootRib accum (file::files) = 
+        fun f rootFixtureMap accum (file::files) = 
             let 
                 val _ = trace ["parsing and defining boot file ", file]
                 val prog = Parser.parseFile file
-                val (rootRib', prog') = Defn.defProgram rootRib prog langEd
+                val (rootFixtureMap', prog') = Defn.defProgram rootFixtureMap prog langEd
             in
-                f rootRib' ((file, prog')::accum) files
+                f rootFixtureMap' ((file, prog')::accum) files
             end
-          | f rootRib accum _ = (rootRib, List.rev accum)
+          | f rootFixtureMap accum _ = (rootFixtureMap, List.rev accum)
     in
-        f rootRib [] fs
+        f rootFixtureMap [] fs
     end
 
 val verifyBuiltins = ref false (* FIXME *)
 
-fun verifyFiles rootRib fs =
+fun verifyFiles rootFixtureMap fs =
     let
         fun ver (file, prog) =
             (trace ["verifying boot file ", file];
              (file,
-              Verify.verifyProgram rootRib (!verifyBuiltins) prog))
+              Verify.verifyProgram rootFixtureMap (!verifyBuiltins) prog))
     in
         map ver fs
     end
@@ -168,8 +168,8 @@ fun describeGlobal (regs:Mach.REGS) =
     then
         (trace ["contents of global object:"];
          Mach.inspect (Mach.ObjectValue (#global regs)) 1;
-         trace ["contents of top rib:"];
-         Fixture.printRib (#rootRib regs))
+         trace ["contents of top fixtureMap:"];
+         Fixture.printFixtureMap (#rootFixtureMap regs))
     else 
         ()
 
@@ -180,9 +180,9 @@ fun filterOutRootClasses (prog:Ast.PROGRAM) : Ast.PROGRAM =
                                                         then false
                                                         else true
           | nonRootClassFixture _ = true
-        fun filterRib rib = 
-            List.filter nonRootClassFixture rib
-        fun filterHeadOpt (SOME (Ast.Head (rib, inits))) = SOME (Ast.Head (filterRib rib, inits))
+        fun filterFixtureMap fixtureMap = 
+            List.filter nonRootClassFixture fixtureMap
+        fun filterHeadOpt (SOME (Ast.Head (fixtureMap, inits))) = SOME (Ast.Head (filterFixtureMap fixtureMap, inits))
           | filterHeadOpt NONE = NONE
     in
         case prog of 
@@ -199,7 +199,7 @@ fun boot (baseDir:string) : Mach.REGS =
         val dir = OS.Path.joinDirFile {dir = baseDir, file = "builtins"}
         fun builtin file = OS.Path.joinDirFile {dir = dir, file = file}
         val _ = Native.registerNatives ();
-        val rootRib = Defn.initRib
+        val rootFixtureMap = Defn.initFixtureMap
 
         (*
          * We have to do a small bit of delicate work here because we have to 
@@ -214,11 +214,11 @@ fun boot (baseDir:string) : Mach.REGS =
          * and Function.
          *)
 
-        val (rootRib, objProg) = loadFile rootRib (builtin "Object.es")
-        val (rootRib, funProg) = loadFile rootRib (builtin "Function.es")
+        val (rootFixtureMap, objProg) = loadFile rootFixtureMap (builtin "Object.es")
+        val (rootFixtureMap, funProg) = loadFile rootFixtureMap (builtin "Function.es")
 
-        val (rootRib, otherProgs) = 
-            loadFiles rootRib 
+        val (rootFixtureMap, otherProgs) = 
+            loadFiles rootFixtureMap 
                       [builtin "Namespace.es",
                        builtin "Arguments.es",
                        builtin "Helper.es",
@@ -280,16 +280,16 @@ fun boot (baseDir:string) : Mach.REGS =
 
         val glob = 
             let
-                val cls = lookupRoot rootRib Name.public_Object
+                val cls = lookupRoot rootFixtureMap Name.public_Object
             in
-                Mach.newObject (Mach.InstanceTag cls) Mach.NullValue rootRib
+                Mach.newObject (Mach.InstanceTag cls) Mach.NullValue rootFixtureMap
             end
 
-        val objProg = Verify.verifyProgram rootRib (!verifyBuiltins) objProg 
-        val funProg = Verify.verifyProgram rootRib (!verifyBuiltins) funProg
-        val _ = verifyFiles rootRib otherProgs
+        val objProg = Verify.verifyProgram rootFixtureMap (!verifyBuiltins) objProg 
+        val funProg = Verify.verifyProgram rootFixtureMap (!verifyBuiltins) funProg
+        val _ = verifyFiles rootFixtureMap otherProgs
 
-        val regs = Mach.makeInitialRegs rootRib glob
+        val regs = Mach.makeInitialRegs rootFixtureMap glob
         val _ = Mach.setBooting regs true
 
         (* BEGIN SPEED HACK *)
@@ -302,10 +302,10 @@ fun boot (baseDir:string) : Mach.REGS =
         (* END SPEED HACK *)                
 
         (* Build the Object and Function prototypes as instances of public::Object first. *)
-        val objClass = lookupRoot rootRib Name.public_Object
-        val Ast.Class { instanceRib, ... } = objClass
-        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.NullValue instanceRib
-        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.ObjectValue objPrototype) instanceRib
+        val objClass = lookupRoot rootFixtureMap Name.public_Object
+        val Ast.Class { instanceFixtureMap, ... } = objClass
+        val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.NullValue instanceFixtureMap
+        val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.ObjectValue objPrototype) instanceFixtureMap
 
         val (objClass, objClassObj, objMetaClass, objMetaClassObj) = 
             instantiateRootClass regs Name.public_Object funPrototype

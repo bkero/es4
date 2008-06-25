@@ -94,26 +94,26 @@ fun ctorChildren (Ast.Ctor { settings, superArgs, func }) =
 
 fun classChildren (cls : Ast.CLASS) =
     (case cls of
-         Ast.Class { constructor=SOME ctor, classRib, instanceRib, instanceInits, ... } =>
+         Ast.Class { constructor=SOME ctor, classFixtureMap, instanceFixtureMap, instanceInits, ... } =>
          let
-             val (es1, ss1, ds1, fs1) = ribChildren classRib
-             val (es2, ss2, ds2, fs2) = ribChildren instanceRib
+             val (es1, ss1, ds1, fs1) = fixtureMapChildren classFixtureMap
+             val (es2, ss2, ds2, fs2) = fixtureMapChildren instanceFixtureMap
              val (es, fs) = ctorChildren ctor
              val es' = headExprs instanceInits
          in
              (es1@es2@es@es', ss1@ss2, ds1@ds2, fs1@fs2@fs)
          end
-       | Ast.Class { constructor=NONE, classRib, instanceRib, instanceInits, ... } =>
+       | Ast.Class { constructor=NONE, classFixtureMap, instanceFixtureMap, instanceInits, ... } =>
          let
-             val (es1, ss1, ds1, fs1) = ribChildren classRib
-             val (es2, ss2, ds2, fs2) = ribChildren instanceRib
+             val (es1, ss1, ds1, fs1) = fixtureMapChildren classFixtureMap
+             val (es2, ss2, ds2, fs2) = fixtureMapChildren instanceFixtureMap
              val es = headExprs instanceInits
          in
              (es1@es2@es, ss1@ss2, ds1@ds2, fs1@fs2)
          end)
 
-and ifaceChildren (Ast.Interface { instanceRib, ... }) =
-    ribChildren instanceRib
+and ifaceChildren (Ast.Interface { instanceFixtureMap, ... }) =
+    fixtureMapChildren instanceFixtureMap
 
 and fixtureChildren fixture =
     (case fixture of
@@ -139,28 +139,28 @@ and fixturesChildren (fixtures : Ast.FIXTURE list) =
              (es@es', ss@ss', ds@ds', fs@fs')
          end)
 
-and ribChildren (pairs : Ast.RIB) = fixturesChildren (map (#2) pairs)
+and fixtureMapChildren (pairs : Ast.FIXTURE_MAP) = fixturesChildren (map (#2) pairs)
 
 and catchChildren (catch : Ast.CATCH_CLAUSE) =
     (case catch of
-         { bindings, rib=SOME rib, inits=SOME inits, block, ... } =>
+         { bindings, fixtureMap=SOME fixtureMap, inits=SOME inits, block, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren rib
+             val (es, ss, ds, fs) = fixtureMapChildren fixtureMap
              val (es', ss', ds', fs') = blockChildren block
              val es'' = bindingsExprs bindings
              val es''' = initsExprs inits
          in
              (es@es'@es''@es''', ss@ss', ds@ds', fs@fs')
          end
-       | { bindings, rib=SOME rib, inits=NONE, block, ... } =>
+       | { bindings, fixtureMap=SOME fixtureMap, inits=NONE, block, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren rib
+             val (es, ss, ds, fs) = fixtureMapChildren fixtureMap
              val (es', ss', ds', fs') = blockChildren block
              val es'' = bindingsExprs bindings
          in
              (es@es'@es'', ss@ss', ds@ds', fs@fs')
          end
-       | { bindings, rib=NONE, inits=SOME inits, block, ... } =>
+       | { bindings, fixtureMap=NONE, inits=SOME inits, block, ... } =>
          let
              val (es, ss, ds, fs) = blockChildren block
              val es' = bindingsExprs bindings
@@ -168,7 +168,7 @@ and catchChildren (catch : Ast.CATCH_CLAUSE) =
          in
              (es@es'@es'', ss, ds, fs)
          end
-       | { bindings, rib=NONE, inits=NONE, block, ... } =>
+       | { bindings, fixtureMap=NONE, inits=NONE, block, ... } =>
          let
              val (es, ss, ds, fs) = blockChildren block
              val es' = bindingsExprs bindings
@@ -228,60 +228,60 @@ fun varDefnExprs (defn : Ast.VAR_DEFN) =
 
 fun forEnumChildren (enum : Ast.FOR_ENUM_STATEMENT) =
     (case enum of
-         { defn=SOME defn, obj, rib=SOME fixtures, next, body, ... } =>
+         { defn=SOME defn, obj, fixtureMap=SOME fixtures, next, body, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren fixtures
+             val (es, ss, ds, fs) = fixtureMapChildren fixtures
              val es' = varDefnExprs defn
          in
              (obj::es@es', next::body::ss, ds, fs)
          end
-       | { defn=SOME defn, obj, rib=NONE, next, body, ... } =>
+       | { defn=SOME defn, obj, fixtureMap=NONE, next, body, ... } =>
          let
              val es = varDefnExprs defn
          in
              (obj::es, [next, body], [], [])
          end
-       | { defn=NONE, obj, rib=SOME fixtures, next, body, ... } =>
+       | { defn=NONE, obj, fixtureMap=SOME fixtures, next, body, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren fixtures
+             val (es, ss, ds, fs) = fixtureMapChildren fixtures
          in
              (obj::es, next::body::ss, ds, fs)
          end
-       | { defn=NONE, obj, rib=NONE, next, body, ... } =>
+       | { defn=NONE, obj, fixtureMap=NONE, next, body, ... } =>
          ([obj], [next, body], [], []))
 
 fun whileChildren (ws : Ast.WHILE_STATEMENT) =
     (case ws of
-         { cond, rib=SOME fixtures, body, ... } =>
+         { cond, fixtureMap=SOME fixtures, body, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren fixtures
+             val (es, ss, ds, fs) = fixtureMapChildren fixtures
          in
              (cond::es, body::ss, ds, fs)
          end
-       | { cond, rib=NONE, body, ... } => ([cond], [body], [], []))
+       | { cond, fixtureMap=NONE, body, ... } => ([cond], [body], [], []))
 
 fun forChildren (fs : Ast.FOR_STATEMENT) =
     (case fs of
-         { rib=SOME fixtures, defn=SOME defn, init, cond, update, body, ... } =>
+         { fixtureMap=SOME fixtures, defn=SOME defn, init, cond, update, body, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren fixtures
+             val (es, ss, ds, fs) = fixtureMapChildren fixtures
              val es' = varDefnExprs defn
          in
              ([cond,update]@es@es', body::init@ss, ds, fs)
          end
-       | { rib=NONE, defn=SOME defn, init, cond, update, body, ... } =>
+       | { fixtureMap=NONE, defn=SOME defn, init, cond, update, body, ... } =>
          let
              val es = varDefnExprs defn
          in
              ([cond,update]@es, body::init, [], [])
          end
-       | { rib=SOME fixtures, defn=NONE, init, cond, update, body, ... } =>
+       | { fixtureMap=SOME fixtures, defn=NONE, init, cond, update, body, ... } =>
          let
-             val (es, ss, ds, fs) = ribChildren fixtures
+             val (es, ss, ds, fs) = fixtureMapChildren fixtures
          in
              ([cond,update]@es, body::init@ss, ds, fs)
          end
-       | { rib=NONE, defn=NONE, init, cond, update, body, ... } =>
+       | { fixtureMap=NONE, defn=NONE, init, cond, update, body, ... } =>
          ([cond,update], body::init, [], []))
 
 fun exprChildren (expr : Ast.EXPRESSION)

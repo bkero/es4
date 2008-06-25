@@ -131,13 +131,13 @@ fun nthAsBool (vals:Mach.VALUE list)
 
 fun propQuery (regs:Mach.REGS)
               (vals:Mach.VALUE list)
-              (f:(Mach.PROPERTY_BINDINGS -> Ast.NAME -> bool))
+              (f:(Mach.PROPERTY_MAP -> Ast.NAME -> bool))
     : Mach.VALUE =
     let
-        val Mach.Object { props, ...} = nthAsObj vals 0
+        val Mach.Object { propertyMap, ...} = nthAsObj vals 0
         val n = nthAsName regs vals 1
     in
-        Eval.newBoolean regs (f props n)
+        Eval.newBoolean regs (f propertyMap n)
     end
 
 
@@ -271,9 +271,9 @@ fun getEnumerableIds (regs:Mach.REGS)
         case v of
             Mach.UndefinedValue => Eval.newArray regs []
           | Mach.NullValue => Eval.newArray regs []
-          | Mach.ObjectValue (Mach.Object { props, ... }) =>
+          | Mach.ObjectValue (Mach.Object { propertyMap, ... }) =>
             let
-                val { bindings, ... } = !props
+                val { bindings, ... } = !propertyMap
                 val bindingList = NameMap.listItemsi bindings
                 fun select (name, { seq, prop }) = 
                     case prop of 
@@ -332,9 +332,9 @@ fun getPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        fun f props n =
-            if Mach.hasProp props n
-            then (#enumerable (#attrs (Mach.getProp props n)))
+        fun f propertyMap n =
+            if Mach.hasProp propertyMap n
+            then (#enumerable (#attrs (Mach.getProp propertyMap n)))
             else false
     in
         propQuery regs vals f
@@ -352,9 +352,9 @@ fun getPropertyIsRemovable (regs:Mach.REGS)
                            (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        fun f props n =
-            if Mach.hasProp props n
-            then (#removable (#attrs (Mach.getProp props n)))
+        fun f propertyMap n =
+            if Mach.hasProp propertyMap n
+            then (#removable (#attrs (Mach.getProp propertyMap n)))
             else false
     in
         propQuery regs vals f
@@ -371,11 +371,11 @@ fun setPropertyIsEnumerable (regs:Mach.REGS)
                           (vals:Mach.VALUE list)
     : Mach.VALUE =
     let
-        val Mach.Object { props, ...} = nthAsObj vals 0
+        val Mach.Object { propertyMap, ...} = nthAsObj vals 0
         val n = nthAsName regs vals 1
         val b = nthAsBool vals 2
     in
-        Mach.setPropEnumerable props n b;
+        Mach.setPropEnumerable propertyMap n b;
         Mach.UndefinedValue
     end
 
@@ -448,7 +448,7 @@ fun genSend (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.sendToGen regs gen arg
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.sendToGenerator regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -460,7 +460,7 @@ fun genThrow (regs:Mach.REGS)
         val arg = rawNth vals 1
     in
         case tag of
-            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.throwToGen regs gen arg
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.throwToGenerator regs gen arg
           | _ => error ["wrong kind of object to genSend"]
     end
 
@@ -471,7 +471,7 @@ fun genClose (regs:Mach.REGS)
         val Mach.Object { tag, ... } = nthAsObj vals 0
     in
         case tag of
-            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGen regs gen
+            Mach.PrimitiveTag (Mach.GeneratorPrimitive gen) => Eval.closeGenerator regs gen
           | _ => error ["wrong kind of object to genSend"];
         Mach.UndefinedValue
     end
@@ -608,14 +608,14 @@ fun eval (regs:Mach.REGS)
                     val prog = Parser.parseLines lines
                         handle LogErr.LexError le => raise Eval.ThrowException (str le)
                              | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-                    val (rootRib, prog) = (Defn.defProgram (#rootRib regs) prog (Mach.getLangEd regs)
+                    val (rootFixtureMap, prog) = (Defn.defProgram (#rootFixtureMap regs) prog (Mach.getLangEd regs)
                                            handle
                                            LogErr.DefnError de => raise Eval.ThrowException (str de))
-                    val _ = (Verify.verifyProgram rootRib false prog
+                    val _ = (Verify.verifyProgram rootFixtureMap false prog
                              handle
                              LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
 
-                    val regs = Eval.withRootRib regs rootRib
+                    val regs = Eval.withRootFixtureMap regs rootFixtureMap
                     val regs = Eval.withScope regs (Eval.getGlobalScope regs)
                 in
                     (*
@@ -849,13 +849,13 @@ fun load (regs:Mach.REGS)
         val prog = Parser.parseFile fname
             handle LogErr.LexError le => raise Eval.ThrowException (str le)
                  | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
-        val (rootRib, prog) = (Defn.defProgram (#rootRib regs) prog (Mach.getLangEd regs)
+        val (rootFixtureMap, prog) = (Defn.defProgram (#rootFixtureMap regs) prog (Mach.getLangEd regs)
                             handle
                             LogErr.DefnError de => raise Eval.ThrowException (str de))
-        val _ = (Verify.verifyProgram rootRib false prog
+        val _ = (Verify.verifyProgram rootFixtureMap false prog
                  handle
                  LogErr.VerifyError ve => raise Eval.ThrowException (str ve))
-        val regs = Eval.withRootRib regs rootRib
+        val regs = Eval.withRootFixtureMap regs rootFixtureMap
     in
         
         Eval.evalProgram regs prog

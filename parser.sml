@@ -33,7 +33,7 @@
  *)
 
 (*
-   The parser is modeled after the design by Peter Sestoft describe here:
+   The parser is modeled after the design by Peter Sestoft described here:
        www.itu.dk/courses/FDP/E2002/parsernotes.pdf
 *)
 
@@ -3861,7 +3861,7 @@ and typeCaseElement (ts:TOKENS, has_default:bool)
                        (ts2,{bindings=((temp::b),i),
                              ty=ty,
                              block=nd2,
-                             rib=NONE,
+                             fixtureMap=NONE,
                              inits=NONE})
                    end
                  | _ => error ["unknown token in typeCaseElement"]
@@ -3874,7 +3874,7 @@ and typeCaseElement (ts:TOKENS, has_default:bool)
                (ts1,{bindings=([],[]),
                      ty=Ast.AnyType,
                      block=nd1,
-                     rib=NONE,
+                     fixtureMap=NONE,
                      inits=NONE})
            end
          | ((Default, _) :: _,true) =>
@@ -3982,7 +3982,7 @@ and doStatement (ts:TOKENS)
                     let
                         val (ts2,nd2) = parenListExpression (tl ts1)
                     in
-                        (ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,rib=NONE,labels=[]})
+                        (ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,fixtureMap=NONE,labels=[]})
                     end
               | _ => error ["unknown token in doStatement"]
             end
@@ -4003,7 +4003,7 @@ and whileStatement (ts:TOKENS, w:OMEGA)
                 val (ts1,nd1) = parenListExpression (tl ts)
                 val (ts2,nd2) = substatement(ts1, w)
             in
-                (ts2,Ast.WhileStmt {cond=nd1,rib=NONE,body=nd2,labels=[]})
+                (ts2,Ast.WhileStmt {cond=nd1,fixtureMap=NONE,body=nd2,labels=[]})
             end
       | _ => error ["unknown token in whileStatement"]
     end
@@ -4055,7 +4055,7 @@ and forStatement (ts:TOKENS, w:OMEGA)
                                     cond=nd2,
                                     update=nd3,
                                     labels=[],
-                                    rib=NONE,
+                                    fixtureMap=NONE,
                                     body=nd4})
                     end
               | _ => error ["unknown token in forStatement"]
@@ -4114,7 +4114,7 @@ and forStatement (ts:TOKENS, w:OMEGA)
                                      defn=defn,
                                      obj=nd2,
                                      labels=[],
-                                     rib=NONE,
+                                     fixtureMap=NONE,
                                      next=next,
                                      body=nd3 })
                     end
@@ -4399,7 +4399,7 @@ and tryStatement (ts:TOKENS)
 and catchClauses (ts:TOKENS)
     : (TOKENS * {bindings:Ast.BINDINGS,
                  ty:Ast.TYPE,
-                 rib:Ast.RIB option,
+                 fixtureMap:Ast.FIXTURE_MAP option,
                  inits:Ast.INITS option,
                  block:Ast.BLOCK} list) =
     let val _ = trace([">> catchClauses with next=", tokenname(hd ts)])
@@ -4421,7 +4421,7 @@ and catchClauses (ts:TOKENS)
 and catchClause (ts:TOKENS)
     : (TOKENS * {bindings:Ast.BINDINGS,
                  ty:Ast.TYPE,
-                 rib:Ast.RIB option,
+                 fixtureMap:Ast.FIXTURE_MAP option,
                  inits:Ast.INITS option,
                  block:Ast.BLOCK}) =
     let val _ = trace([">> catchClause with next=", tokenname(hd ts)])
@@ -4438,7 +4438,7 @@ and catchClause (ts:TOKENS)
                         (ts2,{bindings=((temp::b),i),
                               ty=ty,
                               block=nd2,
-                              rib=NONE,
+                              fixtureMap=NONE,
                               inits=NONE})
                     end
               | _ => error ["unknown token in catchClause"]

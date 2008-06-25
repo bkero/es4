@@ -40,10 +40,10 @@ fun trace ss = if (!doTrace) then log ss else ()
 
 
 (* -----------------------------------------------------------------------------
- * Operations on FIXTUREs and RIBs
+ * Operations on FIXTUREs and FIXTURE_MAPs
  * ----------------------------------------------------------------------------- *)
 
-fun findFixture (b:Ast.RIB) 
+fun findFixture (b:Ast.FIXTURE_MAP) 
                 (n:Ast.FIXTURE_NAME) 
     : Ast.FIXTURE option = 
     let 
@@ -56,7 +56,7 @@ fun findFixture (b:Ast.RIB)
         search b    
     end
 
-fun getFixture (b:Ast.RIB) 
+fun getFixture (b:Ast.FIXTURE_MAP) 
                (n:Ast.FIXTURE_NAME) 
     : Ast.FIXTURE = 
     case findFixture b n of
@@ -64,7 +64,7 @@ fun getFixture (b:Ast.RIB)
       | SOME v => v
 
 
-fun hasFixture (b:Ast.RIB) 
+fun hasFixture (b:Ast.FIXTURE_MAP) 
                (n:Ast.FIXTURE_NAME) 
     : bool = 
     case findFixture b n of
@@ -72,10 +72,10 @@ fun hasFixture (b:Ast.RIB)
       | SOME v => true
 
 
-fun replaceFixture (b:Ast.RIB) 
+fun replaceFixture (b:Ast.FIXTURE_MAP) 
                    (n:Ast.FIXTURE_NAME) 
                    (v:Ast.FIXTURE)
-    : Ast.RIB = 
+    : Ast.FIXTURE_MAP = 
     let 
         fun search [] = LogErr.fixtureError ["fixture binding not found: ", 
                                              (LogErr.fname n)]
@@ -118,37 +118,37 @@ fun mergeVirtuals (tyeq:TYEQ)
 
 
 fun mergeFixtures (tyeq:TYEQ)
-                  ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldRib:Ast.RIB)
-    : Ast.RIB =
-    if hasFixture oldRib newName
+                  ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldFixtureMap:Ast.FIXTURE_MAP)
+    : Ast.FIXTURE_MAP =
+    if hasFixture oldFixtureMap newName
     then
-        case (newFix, getFixture oldRib newName) of
+        case (newFix, getFixture oldFixtureMap newName) of
             (Ast.VirtualValFixture vnew,
              Ast.VirtualValFixture vold) =>
-            replaceFixture oldRib newName
+            replaceFixture oldFixtureMap newName
                            (Ast.VirtualValFixture
                                 (mergeVirtuals tyeq newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
             if (tyeq (#ty new) (#ty old)) 
                andalso (#writable new) = (#writable old)
-            then oldRib
+            then oldFixtureMap
             else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) =>
-            replaceFixture oldRib newName (Ast.MethodFixture new) (* FIXME: types *)
+            replaceFixture oldFixtureMap newName (Ast.MethodFixture new) (* FIXME: types *)
           | (Ast.MethodFixture new, Ast.ValFixture old) =>
-            replaceFixture oldRib newName (Ast.MethodFixture new) (* FIXME: types *)
+            replaceFixture oldFixtureMap newName (Ast.MethodFixture new) (* FIXME: types *)
           | (Ast.ValFixture new, Ast.MethodFixture old) =>
-            replaceFixture oldRib newName (Ast.ValFixture new) (* FIXME: types *)
+            replaceFixture oldFixtureMap newName (Ast.ValFixture new) (* FIXME: types *)
           | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
     else
-        (newName,newFix) :: oldRib
+        (newName,newFix) :: oldFixtureMap
 
 
-fun mergeRibs (tyeq:TYEQ)
-              (oldRib:Ast.RIB)
-              (additions:Ast.RIB)
-    : Ast.RIB = 
-    List.rev (List.foldl (mergeFixtures tyeq) (List.rev oldRib) additions)
+fun mergeFixtureMaps (tyeq:TYEQ)
+              (oldFixtureMap:Ast.FIXTURE_MAP)
+              (additions:Ast.FIXTURE_MAP)
+    : Ast.FIXTURE_MAP = 
+    List.rev (List.foldl (mergeFixtures tyeq) (List.rev oldFixtureMap) additions)
 
 
 fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) = 
@@ -169,8 +169,8 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
     end
 
 
-fun printRib (rib:Ast.RIB) =
-    List.app printFixture rib
+fun printFixtureMap (fixtureMap:Ast.FIXTURE_MAP) =
+    List.app printFixture fixtureMap
 
 
 (* -----------------------------------------------------------------------------
@@ -186,17 +186,11 @@ type NAME = Ast.NAME
 type NAMESPACE_SET = NAMESPACE list
 type OPEN_NAMESPACES = NAMESPACE_SET list 
 
-fun compareNamespaces (n1: NAMESPACE, n2: NAMESPACE) : bool =
-    case (n1, n2) of
-        (Ast.TransparentNamespace s1, Ast.TransparentNamespace s2) => s1 = s2
-      | (Ast.OpaqueNamespace i1, Ast.OpaqueNamespace i2) => i1 = i2
-      | _ => false
-
 fun intersectNamespaces (ns1: NAMESPACE_SET, ns2: NAMESPACE_SET)
     : NAMESPACE_SET =
     (* compute the intersection of two NAMESPACE_SETs *)
     (* INFORMATIVE *)
-    List.filter (fn n1 => List.exists (fn n2 => compareNamespaces (n1, n2)) ns2) ns1
+    List.filter (fn n1 => List.exists (fn n2 => n1 = n2) ns2) ns1
 
 fun selectNamespacesByGlobalNames (identifier: IDENTIFIER,
                                    namespaces: NAMESPACE_SET,
@@ -225,30 +219,30 @@ fun selectNamespacesByOpenNamespaces ([], _) = []
             => matches
     end
 
-fun ribSearch (rib        : Ast.RIB, 
+fun fixtureMapSearch (fixtureMap        : Ast.FIXTURE_MAP, 
                namespaces : NAMESPACE_SET, 
                identifier : IDENTIFIER)
-    : (Ast.RIB * NAMESPACE_SET) option =
+    : (Ast.FIXTURE_MAP * NAMESPACE_SET) option =
     case List.filter (fn ns => 
-                         hasFixture rib (Ast.PropName {ns=ns, id=identifier}))
+                         hasFixture fixtureMap (Ast.PropName {ns=ns, id=identifier}))
                      namespaces of
         [] => NONE
-      | m  => SOME (rib, m)
+      | m  => SOME (fixtureMap, m)
 
-fun ribListSearch ([], _, _) = NONE
+fun fixtureMapListSearch ([], _, _) = NONE
 
-  | ribListSearch (ribs       : Ast.RIBS, 
+  | fixtureMapListSearch (fixtureMaps       : Ast.FIXTURE_MAPS, 
                    namespaces : NAMESPACE_SET, 
                    identifier : IDENTIFIER)
-    : (Ast.RIBS * NAMESPACE_SET) option =
-    case ribSearch (hd ribs, namespaces, identifier) of
+    : (Ast.FIXTURE_MAPS * NAMESPACE_SET) option =
+    case fixtureMapSearch (hd fixtureMaps, namespaces, identifier) of
         NONE 
-        => ribListSearch (tl ribs, namespaces, identifier)
+        => fixtureMapListSearch (tl fixtureMaps, namespaces, identifier)
 
       | SOME (_, m) 
-        => SOME (ribs, m)
+        => SOME (fixtureMaps, m)
 
-fun getInstanceBindingNamespaces (rib: Ast.RIB, 
+fun getInstanceBindingNamespaces (fixtureMap: Ast.FIXTURE_MAP, 
                                   identifier: IDENTIFIER,
                                   namespaces: NAMESPACE_SET)
     : NAMESPACE_SET =
@@ -263,21 +257,21 @@ fun getInstanceBindingNamespaces (rib: Ast.RIB,
 
 fun selectNamespacesByClass ([], namespaces, _) = namespaces
 
- |  selectNamespacesByClass (instanceRibs : Ast.RIBS,
+ |  selectNamespacesByClass (instanceFixtureMaps : Ast.FIXTURE_MAPS,
                              namespaces   : NAMESPACE_SET, 
                              identifier   : IDENTIFIER)
     : NAMESPACE list =
     let
-        val rib = hd instanceRibs
+        val fixtureMap = hd instanceFixtureMaps
         val bindingNamespaces = 
-            getInstanceBindingNamespaces (rib, identifier, namespaces)
+            getInstanceBindingNamespaces (fixtureMap, identifier, namespaces)
         val matches = 
             intersectNamespaces (bindingNamespaces, namespaces)
     in
         case matches of
 
             [] 
-            => selectNamespacesByClass (tl instanceRibs, 
+            => selectNamespacesByClass (tl instanceFixtureMaps, 
                                         namespaces, 
                                         identifier)
 
@@ -287,7 +281,7 @@ fun selectNamespacesByClass ([], namespaces, _) = namespaces
 
 fun selectNamespaces (identifier     : IDENTIFIER, 
                       namespaces     : NAMESPACE_SET, 
-                      instanceRibs   : Ast.RIBS, 
+                      instanceFixtureMaps   : Ast.FIXTURE_MAPS, 
                       openNamespaces : OPEN_NAMESPACES)
     : NAMESPACE_SET =
     let
@@ -301,7 +295,7 @@ fun selectNamespaces (identifier     : IDENTIFIER,
           | _ =>
             let
                 val matches' = 
-                    selectNamespacesByClass (instanceRibs, 
+                    selectNamespacesByClass (instanceFixtureMaps, 
                                              openNamespaceSet, 
                                              identifier)
             in
@@ -329,12 +323,12 @@ fun selectNamespaces (identifier     : IDENTIFIER,
             end
     end
 
-fun resolveQualifiedName (ribs          : Ast.RIBS) 
+fun resolveQualifiedName (fixtureMaps          : Ast.FIXTURE_MAPS) 
                          (identifier    : IDENTIFIER) 
                          (namespaceExpr : Ast.NAMESPACE_EXPRESSION)
-    : (Ast.RIBS * NAME * Ast.FIXTURE) =
+    : (Ast.FIXTURE_MAPS * NAME * Ast.FIXTURE) =
     let
-        val ns = resolveNamespaceExpr ribs namespaceExpr
+        val ns = resolveNamespaceExpr fixtureMaps namespaceExpr
         val name = { ns = ns, id = identifier }
         fun search (r::rs) = if hasFixture r (Ast.PropName name) then
                                  (r::rs)
@@ -342,38 +336,38 @@ fun resolveQualifiedName (ribs          : Ast.RIBS)
                                  search rs
           | search [] = []
     in
-        case (search ribs) of 
+        case (search fixtureMaps) of 
             [] 
-            => error ["qualified name not present in ribs: ", LogErr.name name]
+            => error ["qualified name not present in fixtureMaps: ", LogErr.name name]
 
-          | ribs'
-            => (ribs', name, getFixture (hd ribs') (Ast.PropName name))
+          | fixtureMaps'
+            => (fixtureMaps', name, getFixture (hd fixtureMaps') (Ast.PropName name))
     end
 
 
-and resolveUnqualifiedName (ribs           : Ast.RIBS) 
+and resolveUnqualifiedName (fixtureMaps           : Ast.FIXTURE_MAPS) 
                            (identifier     : IDENTIFIER) 
                            (openNamespaces : OPEN_NAMESPACES)
-    : (Ast.RIBS * NAME) option =
+    : (Ast.FIXTURE_MAPS * NAME) option =
     let
         val namespaces = List.concat (openNamespaces)
-        val matches = ribListSearch (ribs, namespaces, identifier)
+        val matches = fixtureMapListSearch (fixtureMaps, namespaces, identifier)
     in
         case matches of
             NONE
             => NONE
 
-          | SOME (ribs, [namespace]) 
-            => SOME (ribs, {ns=namespace, id=identifier})
+          | SOME (fixtureMaps, [namespace]) 
+            => SOME (fixtureMaps, {ns=namespace, id=identifier})
 
-          | SOME (ribs, namespaces) 
+          | SOME (fixtureMaps, namespaces) 
             => case selectNamespaces (identifier, 
                                       namespaces, 
                                       [], 
                                       openNamespaces) of
 
                    [namespace] 
-                   => SOME (ribs, {ns=namespace, id=identifier})
+                   => SOME (fixtureMaps, {ns=namespace, id=identifier})
 
                  | ns::nss 
                    => error ["ambiguous reference: ", Ustring.toAscii identifier]
@@ -385,16 +379,16 @@ and resolveUnqualifiedName (ribs           : Ast.RIBS)
 
 *)
 
-and resolveNameExpr (ribs : Ast.RIBS) 
+and resolveNameExpr (fixtureMaps : Ast.FIXTURE_MAPS) 
                     (ne   : Ast.NAME_EXPRESSION) 
-    : (Ast.RIBS * Ast.NAME * Ast.FIXTURE) = 
+    : (Ast.FIXTURE_MAPS * Ast.NAME * Ast.FIXTURE) = 
 
     case ne of
         Ast.QualifiedName { namespace, identifier } 
-        => resolveQualifiedName ribs identifier namespace
+        => resolveQualifiedName fixtureMaps identifier namespace
 
       | Ast.UnqualifiedName { identifier, openNamespaces, ... } 
-        => case (resolveUnqualifiedName ribs identifier openNamespaces) of
+        => case (resolveUnqualifiedName fixtureMaps identifier openNamespaces) of
 
             NONE 
             => error ["unresolved name ", LogErr.nameExpr ne]
@@ -402,25 +396,25 @@ and resolveNameExpr (ribs : Ast.RIBS)
           | SOME ([], _)
             => error ["unresolved name ", LogErr.nameExpr ne]
 
-          | SOME ([rib], name) 
+          | SOME ([fixtureMap], name) 
             => ( reserveNames name openNamespaces ;
-                 ([rib], name, getFixture rib (Ast.PropName name)) )
+                 ([fixtureMap], name, getFixture fixtureMap (Ast.PropName name)) )
 
-          | SOME (ribs, name) 
-            => (ribs, name, getFixture (hd ribs) (Ast.PropName name))
+          | SOME (fixtureMaps, name) 
+            => (fixtureMaps, name, getFixture (hd fixtureMaps) (Ast.PropName name))
 
 and reserveNames (name) 
                  (openNamespaces) 
     = (* LDOTS *)
     ()  (* FIXME needs implementation *)
 
-and resolveNamespaceExpr (ribs:Ast.RIBS)
+and resolveNamespaceExpr (fixtureMaps:Ast.FIXTURE_MAPS)
                          (nse:Ast.NAMESPACE_EXPRESSION)
     : Ast.NAMESPACE = 
     case nse of
         Ast.Namespace ns => ns
       | Ast.NamespaceName ne => 
-        (case resolveNameExpr ribs ne of
+        (case resolveNameExpr fixtureMaps ne of
              (_, _, Ast.NamespaceFixture ns) => ns
            | _ => error ["namespace expression resolved to non-namespace fixture: ", LogErr.nsExpr nse])
 

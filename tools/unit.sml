@@ -314,9 +314,9 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Verify, arg, source } =>
 	 (let
 	      val prog = parse source
-	      val (rootRib, prog) = Defn.defProgram (#rootRib regs) prog 4
+	      val (rootFixtureMap, prog) = Defn.defProgram (#rootFixtureMap regs) prog 4
 	      val _ = (Verify.warningsAreFailures := true )
-	      val prog = Verify.verifyProgram rootRib true prog
+	      val prog = Verify.verifyProgram rootFixtureMap true prog
 	  in
 	      (test, if arg then true else false)
 	  end
@@ -326,8 +326,8 @@ fun runTestCase (regs:Mach.REGS) (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Eval, arg, source } =>
 	 (let
 	      val prog = parse source
-	      val (rootRib, prog) = Defn.defProgram (#rootRib regs) prog 4
-	      val prog = Verify.verifyProgram rootRib true prog
+	      val (rootFixtureMap, prog) = Defn.defProgram (#rootFixtureMap regs) prog 4
+	      val prog = Verify.verifyProgram rootFixtureMap true prog
 	      val res = Eval.evalProgram regs prog
 	  in
 	      (test, if arg then true else false)

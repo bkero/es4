@@ -33,7 +33,7 @@
  *)
 structure Verify = struct
 
-(* ENV contains all type checking context, including ribs (variable-type bindings),
+(* ENV contains all type checking context, including fixtureMaps (variable-type bindings),
  * strict vs standard mode, and the expected return type, if any.
  *)
 
@@ -57,31 +57,31 @@ type STD_TYPES = {
 
 type ENV = { returnType: Ast.TYPE option,
              strict: bool,
-             rootRib: Ast.RIB,
-             ribs: Ast.RIBS,
+             rootFixtureMap: Ast.FIXTURE_MAP,
+             fixtureMaps: Ast.FIXTURE_MAPS,
              stdTypes: STD_TYPES,
              thisType: Ast.TYPE
            }
 
-fun withReturnType { returnType=_, strict, rootRib, ribs, stdTypes, thisType } returnType =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes, thisType = thisType }
+fun withReturnType { returnType=_, strict, rootFixtureMap, fixtureMaps, stdTypes, thisType } returnType =
+    { returnType=returnType, strict=strict, rootFixtureMap=rootFixtureMap, fixtureMaps=fixtureMaps, stdTypes=stdTypes, thisType = thisType }
 
-fun withRibs { returnType, strict, rootRib, ribs=_, stdTypes, thisType } ribs =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes, thisType = thisType }
+fun withFixtureMaps { returnType, strict, rootFixtureMap, fixtureMaps=_, stdTypes, thisType } fixtureMaps =
+    { returnType=returnType, strict=strict, rootFixtureMap=rootFixtureMap, fixtureMaps=fixtureMaps, stdTypes=stdTypes, thisType = thisType }
 
-fun withStrict { returnType, strict=_, rootRib, ribs, stdTypes, thisType } strict =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=ribs, stdTypes=stdTypes, thisType = thisType }
+fun withStrict { returnType, strict=_, rootFixtureMap, fixtureMaps, stdTypes, thisType } strict =
+    { returnType=returnType, strict=strict, rootFixtureMap=rootFixtureMap, fixtureMaps=fixtureMaps, stdTypes=stdTypes, thisType = thisType }
 
-fun withRib { returnType, strict, rootRib, ribs, stdTypes, thisType} extn =
-    { returnType=returnType, strict=strict, rootRib=rootRib, ribs=(extn :: ribs), stdTypes=stdTypes, thisType = thisType }
+fun withFixtureMap { returnType, strict, rootFixtureMap, fixtureMaps, stdTypes, thisType} extn =
+    { returnType=returnType, strict=strict, rootFixtureMap=rootFixtureMap, fixtureMaps=(extn :: fixtureMaps), stdTypes=stdTypes, thisType = thisType }
 
-fun withRibOpt { returnType, strict, rootRib, ribs, stdTypes, thisType } extn =
+fun withFixtureMapOpt { returnType, strict, rootFixtureMap, fixtureMaps, stdTypes, thisType } extn =
     { returnType=returnType, 
       strict=strict, 
-      rootRib=rootRib, 
-      ribs=case extn of 
-               NONE => ribs 
-             | SOME e => (e :: ribs), 
+      rootFixtureMap=rootFixtureMap, 
+      fixtureMaps=case extn of 
+               NONE => fixtureMaps 
+             | SOME e => (e :: fixtureMaps), 
       stdTypes=stdTypes,
       thisType = thisType }
 
@@ -120,33 +120,33 @@ val undefinedType   = Ast.UndefinedType
 val nullType        = Ast.NullType
 val anyType         = Ast.AnyType
                                            
-fun newEnv (rootRib:Ast.RIB) 
+fun newEnv (rootFixtureMap:Ast.FIXTURE_MAP) 
            (strict:bool) 
     : ENV = 
     { 
      returnType = NONE,
      strict = strict,
-     rootRib = rootRib, 
-     ribs = [rootRib],
+     rootFixtureMap = rootFixtureMap, 
+     fixtureMaps = [rootFixtureMap],
      thisType = Ast.AnyType,
      
      stdTypes = 
      {      
-      AnyNumberType = Type.getNamedGroundType rootRib Name.ES4_AnyNumber,
-      doubleType    = Type.getNamedGroundType rootRib Name.ES4_double,
-      decimalType   = Type.getNamedGroundType rootRib Name.ES4_decimal,
+      AnyNumberType = Type.getNamedGroundType rootFixtureMap Name.ES4_AnyNumber,
+      doubleType    = Type.getNamedGroundType rootFixtureMap Name.ES4_double,
+      decimalType   = Type.getNamedGroundType rootFixtureMap Name.ES4_decimal,
 
-      AnyStringType = Type.getNamedGroundType rootRib Name.ES4_AnyString,
-      stringType    = Type.getNamedGroundType rootRib Name.ES4_string,
+      AnyStringType = Type.getNamedGroundType rootFixtureMap Name.ES4_AnyString,
+      stringType    = Type.getNamedGroundType rootFixtureMap Name.ES4_string,
 
-      AnyBooleanType= Type.getNamedGroundType rootRib Name.ES4_AnyBoolean,
-      booleanType   = Type.getNamedGroundType rootRib Name.ES4_boolean,
+      AnyBooleanType= Type.getNamedGroundType rootFixtureMap Name.ES4_AnyBoolean,
+      booleanType   = Type.getNamedGroundType rootFixtureMap Name.ES4_boolean,
 
-      RegExpType    = Type.getNamedGroundType rootRib Name.public_RegExp,
+      RegExpType    = Type.getNamedGroundType rootFixtureMap Name.public_RegExp,
 
-      NamespaceType = Type.getNamedGroundType rootRib Name.ES4_Namespace,
+      NamespaceType = Type.getNamedGroundType rootFixtureMap Name.ES4_Namespace,
 
-      TypeType      = Type.getNamedGroundType rootRib Name.intrinsic_Type
+      TypeType      = Type.getNamedGroundType rootFixtureMap Name.intrinsic_Type
      }
     }
 
@@ -199,13 +199,13 @@ fun typeOfFixture (env:ENV)
 
 (*
 fun verifyNameExpr (env:ENV)
-                   (ribs:Ast.RIBS)
+                   (fixtureMaps:Ast.FIXTURE_MAPS)
                    (nameExpr:Ast.NAME_EXPRESSION)
     : Ast.TYPE =
     let
-        val (_, _, fix) = Fixture.resolveNameExpr ribs nameExpr
+        val (_, _, fix) = Fixture.resolveNameExpr fixtureMaps nameExpr
         val ty = typeOfFixture env fix
-        val ty = verifyType (withRibs env ribs) ty
+        val ty = verifyType (withFixtureMaps env fixtureMaps) ty
     in
         ty
     end
@@ -220,7 +220,7 @@ and verifyType (env:ENV)
     let
         val _ = trace ["verifyType: calling normalize ", LogErr.ty ty]
         val norm : Ast.TYPE = 
-            Type.normalize (#ribs env) ty
+            Type.normalize (#fixtureMaps env) ty
             handle LogErr.TypeError e => 
                    let in
                        if (#strict env) 
@@ -235,29 +235,29 @@ and verifyType (env:ENV)
     end
 
 and verifyFixtureName (env:ENV) 
-                      (ribs:Ast.RIBS)
+                      (fixtureMaps:Ast.FIXTURE_MAPS)
                       (fname:Ast.FIXTURE_NAME)
     : Ast.TYPE option =
-    case ribs of
+    case fixtureMaps of
         [] => NONE
-      | rib::ribs' =>
-        if Fixture.hasFixture rib fname 
+      | fixtureMap::fixtureMaps' =>
+        if Fixture.hasFixture fixtureMap fname 
         then
-            let val fixture = Fixture.getFixture rib fname
+            let val fixture = Fixture.getFixture fixtureMap fname
                 val ty = typeOfFixture env fixture
-                val ty = verifyType (withRibs env ribs) ty
+                val ty = verifyType (withFixtureMaps env fixtureMaps) ty
             in
                 SOME ty
             end
         else
-            verifyFixtureName env ribs' fname
+            verifyFixtureName env fixtureMaps' fname
 
 and verifyInits (env:ENV) (inits:Ast.INITS)
     : unit =
     let in
         List.map 
          (fn (fname, expr) => 
-             case (verifyFixtureName env (#ribs env) fname) of
+             case (verifyFixtureName env (#fixtureMaps env) fname) of
                  SOME ty => checkMatch env (verifyExpr env expr) ty
                | NONE => warning ["Unbound fixture name ", LogErr.fname fname, " in inits"])
          inits; 
@@ -270,11 +270,11 @@ and verifyHead (env:ENV)
                (head:Ast.HEAD)
     : ENV =
     let
-        val Ast.Head (rib, inits) = head
-        val env' = withRib env rib
+        val Ast.Head (fixtureMap, inits) = head
+        val env' = withFixtureMap env fixtureMap
     in        
-        trace ["verifying head with rib ", LogErr.rib rib, " in ribs ", LogErr.ribs (#ribs env)];
-        verifyRib env rib;
+        trace ["verifying head with fixtureMap ", LogErr.fixtureMap fixtureMap, " in fixtureMaps ", LogErr.fixtureMaps (#fixtureMaps env)];
+        verifyFixtureMap env fixtureMap;
         verifyInits env' inits;
         trace ["done with verifying head"];
         env'
@@ -312,7 +312,7 @@ and verifyExpr2 (env:ENV)
                (expr:Ast.EXPRESSION)
     : Ast.TYPE =
     let
-        val { rootRib, 
+        val { rootFixtureMap, 
               strict, 
               stdTypes = 
               { AnyNumberType, 
@@ -544,10 +544,10 @@ and verifyExpr2 (env:ENV)
                 anyType
             end
 
-          | Ast.LetExpr { defs=_, head as SOME (Ast.Head (rib, inits)), body } =>
+          | Ast.LetExpr { defs=_, head as SOME (Ast.Head (fixtureMap, inits)), body } =>
             let
-                val _ = verifyRib env rib
-                val env' = withRib env rib
+                val _ = verifyFixtureMap env fixtureMap
+                val env' = withFixtureMap env fixtureMap
             in
                 verifyInits env' inits;
                 verifyExpr env' body
@@ -570,14 +570,14 @@ and verifyExpr2 (env:ENV)
             let
                 val _ = LogErr.setLoc loc
                 val t = verifySub object
-                val refName = Type.nameExprToFieldName (#ribs env) name
+                val refName = Type.nameExprToFieldName (#fixtureMaps env) name
             in
                 case t of
                     Ast.AnyType => anyType
                   | Ast.RecordType fields =>
                     let in
                         case List.find
-                                 (fn {name, ty} => refName = (Type.nameExprToFieldName (#ribs env) name))
+                                 (fn {name, ty} => refName = (Type.nameExprToFieldName (#fixtureMaps env) name))
                                  fields
                          of
                             SOME {name, ty} => ty
@@ -650,7 +650,7 @@ STRICT-MODE WARNING: ObjectRef on non-object type: d
                 trace [ "lexicalref ", if strict then "strict" else "non-strict"];
                 LogErr.setLoc loc;
                 if strict 
-                then Ast.AnyType (* FIXME: verifyNameExpr env (#ribs env) name *)
+                then Ast.AnyType (* FIXME: verifyNameExpr env (#fixtureMaps env) name *)
                 else Ast.AnyType (* try/catch, or reformulate the lookup to have a fail-soft mode. *)
             end
                 
@@ -731,7 +731,7 @@ and verifyStmt (env:ENV)
     : unit =
     let 
         fun verifySub s = verifyStmt env s
-        val { rootRib, 
+        val { rootFixtureMap, 
               strict, 
               returnType,
               stdTypes = 
@@ -758,9 +758,9 @@ and verifyStmt (env:ENV)
 
           | Ast.ExprStmt e => (verifyExpr env e; ())
 
-          | Ast.ForInStmt {isEach, defn, obj, rib, next, labels, body} =>
+          | Ast.ForInStmt {isEach, defn, obj, fixtureMap, next, labels, body} =>
             let
-                val newEnv = withRibOpt env rib
+                val newEnv = withFixtureMapOpt env fixtureMap
             in
                 verifyExpr env obj;
                 verifyStmt newEnv next;
@@ -788,27 +788,27 @@ and verifyStmt (env:ENV)
           | Ast.LabeledStmt (_, s) => verifySub s
           | Ast.LetStmt block => verifyBlock env block
 
-          | Ast.WhileStmt { cond, body, rib, ... } =>
+          | Ast.WhileStmt { cond, body, fixtureMap, ... } =>
             let
-                val newEnv = withRibOpt env rib
+                val newEnv = withFixtureMapOpt env fixtureMap
             in
                 verifyExprAndCheck env cond booleanType;
                 verifyStmt newEnv body
             end
 
-          | Ast.DoWhileStmt { cond, body, rib, ... } =>
+          | Ast.DoWhileStmt { cond, body, fixtureMap, ... } =>
             let
-                val newEnv = withRibOpt env rib
+                val newEnv = withFixtureMapOpt env fixtureMap
             in
                 verifyExprAndCheck env cond booleanType;
                 verifyStmt newEnv body
             end
 
-          | Ast.ForStmt  { rib, init, cond, update, body, ... } =>
+          | Ast.ForStmt  { fixtureMap, init, cond, update, body, ... } =>
             let 
-                val newEnv = withRibOpt env rib
+                val newEnv = withFixtureMapOpt env fixtureMap
             in
-                Option.app (verifyRib env) rib;
+                Option.app (verifyFixtureMap env) fixtureMap;
                 List.app (verifyStmt newEnv) init;
                 verifyExprAndCheck newEnv cond booleanType;
                 verifyExpr newEnv update;
@@ -868,11 +868,11 @@ and verifyCatchClause (env:ENV)
                       (clause:Ast.CATCH_CLAUSE)
     : unit =
     let
-        val {bindings, ty, rib, inits, block} = clause
-        val blockEnv = withRibOpt env rib
+        val {bindings, ty, fixtureMap, inits, block} = clause
+        val blockEnv = withFixtureMapOpt env fixtureMap
     in
         verifyType env ty;
-        Option.app (verifyRib env) rib;
+        Option.app (verifyFixtureMap env) fixtureMap;
         Option.map (verifyInits blockEnv) inits;
         verifyBlock blockEnv block
     end
@@ -899,7 +899,7 @@ and verifyBlock (env:ENV)
 (* returns the normalized type of this function *)
 
 and paramsToTypeVars (typeParams:Ast.IDENTIFIER list)
-    : Ast.RIB = 
+    : Ast.FIXTURE_MAP = 
     
     map (fn id => (Ast.PropName (Name.public id),
                    Ast.TypeVarFixture (Parser.nextAstNonce ())))
@@ -912,8 +912,8 @@ and verifyFunc (env:ENV)
         val Ast.Func { name, fsig=Ast.FunctionSignature { typeParams, ...}, 
                        native, generator, block, param, defaults, ty, loc } = func
         (* FIXME: use public as namespace of type variables? *)
-        val rib = paramsToTypeVars typeParams
-        val env' = withRib env rib
+        val fixtureMap = paramsToTypeVars typeParams
+        val env' = withFixtureMap env fixtureMap
         val blockEnv = verifyHead env' param
     in
         LogErr.setLoc loc;
@@ -931,16 +931,16 @@ and verifyFixture (env:ENV)
         Ast.ClassFixture (Ast.Class {name, privateNS, protectedNS, parentProtectedNSs, 
                                      typeParams, nonnullable, 
                                      dynamic, extends, implements, 
-                                     classRib, instanceRib, instanceInits, 
+                                     classFixtureMap, instanceFixtureMap, instanceInits, 
                                      constructor }) =>
         let
-             val typeVarRib = paramsToTypeVars typeParams
-             val typeEnv = withRib env typeVarRib
-             val classEnv = withRib typeEnv classRib
-             val instanceEnv = withRib classEnv instanceRib
+             val typeVarFixtureMap = paramsToTypeVars typeParams
+             val typeEnv = withFixtureMap env typeVarFixtureMap
+             val classEnv = withFixtureMap typeEnv classFixtureMap
+             val instanceEnv = withFixtureMap classEnv instanceFixtureMap
          in
-             verifyRib env classRib;
-             verifyRib classEnv instanceRib;
+             verifyFixtureMap env classFixtureMap;
+             verifyFixtureMap classEnv instanceFixtureMap;
              verifyHead instanceEnv instanceInits;
              case constructor of
                  NONE => ()
@@ -979,40 +979,40 @@ and verifyFixture (env:ENV)
 
       | _ => ()
 
-(* The env does not yet include this rib *)
-and verifyRib (env:ENV)
-              (rib:Ast.RIB)
+(* The env does not yet include this fixtureMap *)
+and verifyFixtureMap (env:ENV)
+              (fixtureMap:Ast.FIXTURE_MAP)
     : unit =
     let
-        val env = withRib env rib
+        val env = withFixtureMap env fixtureMap
         fun doFixture (name, fixture) =
             (trace ["verifying fixture: ", LogErr.fname name];
              verifyFixture env fixture)
     in
         (* FIXME: should we check for duplicate bindings? *)
-        List.app doFixture rib
+        List.app doFixture fixtureMap
     end
 
 
-and verifyTopRib (rootRib:Ast.RIB)
+and verifyTopFixtureMap (rootFixtureMap:Ast.FIXTURE_MAP)
                  (strict:bool)
-                 (rib:Ast.RIB)
+                 (fixtureMap:Ast.FIXTURE_MAP)
     : unit =
     let
-        val env = newEnv rootRib strict
+        val env = newEnv rootFixtureMap strict
     in
-        verifyRib env rib
+        verifyFixtureMap env fixtureMap
     end
 
 
-and verifyProgram (rootRib:Ast.RIB)
+and verifyProgram (rootFixtureMap:Ast.FIXTURE_MAP)
                   (strict:bool) 
                   (prog:Ast.PROGRAM) 
   : Ast.PROGRAM =
     if strict 
     then
         let 
-            val env = newEnv rootRib strict
+            val env = newEnv rootFixtureMap strict
             val Ast.Program block = prog
         in
             trace ["verifyProgram"];
