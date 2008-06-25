@@ -35,7 +35,7 @@ Edition.
 final class string!
 {
     <SIGNATURE file="string_primitive.es" name="function string">
-    <SIGNATURE file="string_primitive.es" name="meta static function invoke">
+    <SIGNATURE file="string_primitive.es" name="static meta function invoke">
 
     <SIGNATURE file="string_primitive.es" name="static function fromCharCode">
     <SIGNATURE file="string_primitive.es" name="static function charAt">
@@ -106,7 +106,7 @@ string.
 <RETN> The ''string'' class object called as a function returns a ''string''.
 
 <SHORTIMPL>
-<INCLUDE file="string_primitive.es" name="meta static function invoke">
+<INCLUDE file="string_primitive.es" name="static meta function invoke">
 
 <FIXME> (Ticket #176.) The use of ''magic::newString'' is an
 optimization that confuses the spec; ''new string(x)'' would have been

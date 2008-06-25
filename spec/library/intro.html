@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/intro.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-25
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -65,14 +65,18 @@ of built-in classes are encouraged to do so by adding new functions
 and methods rather than adding new parameters to existing functions
 and methods.
 
-<p>Every built-in function has the Function prototype object, which is
+<p>Every built-in function, and every built-in class object with
+a ''meta::invoke'' method, has the Function prototype object, which is
 the initial value of the expression ''Function.prototype'' (<XREF
 target="Function.prototype">), as the value of its internal
 [[Prototype]] property.
 
-<p>Every built-in class has the Object prototype object, which is the initial
+<p>Every built-in class object that does not have a ''meta::invoke'' method
+has the Object prototype object, which is the initial
 value of the expression ''Object.prototype'' (<XREF target="Object.prototype">),
 as the value of its internal [[Prototype]] property.
+
+<!--  the following no longer an issue, I believe
 
 <COMP>In the 3rd Edition of this Standard every constructor
 function that is represented as a class in 4th Edition also had the
@@ -80,6 +84,7 @@ Function prototype object as the value of its internal [[Prototype]]
 property.  This change is observable to programs that attempt to call
 methods defined on the Function prototype object through a class
 object.
+-->
 
 <p>Every built-in prototype object has the Object prototype object,
 which is the initial value of the expression ''Object.prototype''
@@ -98,10 +103,9 @@ otherwise specified, this value is equal to the largest number of
 named arguments shown in the section headings for the function
 description, including optional parameters.
 
-<NOTE>For example, the Function object that is the initial
+<EXAMPLE> The Function object that is the initial
 value of the ''slice'' property of the String prototype object is
-described under the section heading ''String.prototype.slice (start ,
-end)'' which shows the two named arguments start and end; therefore
+described under the section heading ''String.prototype.slice(start,end)'' which shows the two named arguments start and end; therefore
 the value of the length property of that Function object is 2.
 
 <!--
@@ -171,31 +175,8 @@ Standard.
 function, the behavior of built-in objects is unaffected by
 definitions or assignments performed by the user program.
 
-<NOTE> This can be accomplished first by defining all built-in
-objects, classes, functions, and properties inside a package whose
-name is private to the implementation, second by the built-in methods
-always preferring intrinsic methods and functions to prototype methods
-and unqualified functions, and finally by importing the public names
-of the package containing the built-ins into the global environment of
-the user program.
-
-<FIXME> (Ticket #169). Does the above provide us with the correct
-semantics?  If we do it as described, a user program can create a new
-binding for "Object" that shadows our "Object".  This is not a problem
-for the builtins; it may or may not be a benefit to the user program.
-It may or may not be backwards compatible (what happens if the user
-program contains ''var isNaN'' -- does this redundantly state that
-there is a binding for ''isNaN'' or does it create a new binding?)
-
-{{{
-package ...
-{
-    use default namespace public;
-    use namespace intrinsic;
-
-    // All global definitions, see section <XREF target="global-object">
-}
-}}}
+<NOTE> In effect, the ''intrinsic'' namespace is open for all built-in
+code, and this namespace takes precedence over the ''public'' namespace.
 
 <P> In some cases the built-in functions construct new error objects
 that are then thrown as exceptions.  For purposes of documentation an
@@ -230,7 +211,7 @@ reasonable to have a special case for native objects in ES4 (though that
 would be possible).
 
 <P> //Consequence:// It will be assumed that the ''Function'' prototype
-object is on the prototype chain of every class object, and this will not
+object is on the prototype chain of every callable class object, and this will not
 be described explicitly for each object, unlike 3rd Edition.
 
 

@@ -22,13 +22,20 @@ H4 { font-size: 10pt }
 P code { font-size: 10pt }
 code { font-style: normal; font-weight: normal }
 
-pre { font-size: 10pt }
+pre { font-size: 9pt }
 
-body { counter-reset: chapter section subsection subsubsection;
-       font-size: 11pt; 
+body { counter-reset: chapter section subsection subsubsection subsubsubsection;
+       font-size: 10pt; 
        margin: 0.75in }
 
-table { font-size: inherit }
+table { font-size: inherit;
+        width: 70%;
+        margin: 2em; 
+        border: 1px solid lightgrey; }
+
+th { background: lightgrey; }
+
+td { padding: 1em; }
 
 .pcounter:before {
     content: counter(para); 
@@ -75,6 +82,15 @@ H4 {
     counter-reset: para;
 }
 
+H5:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "." counter(subsubsubsection) "  ";
+    counter-increment: subsubsubsection }
+
+H5 {
+    counter-reset: para;
+}
+
 </style>
 </head>
 
@@ -111,7 +127,8 @@ its creation to within a nanosecond.
 <P><span class="pcounter"></span> The <code>Date</code> class provides this interface:
 
 
-<PRE><span class="pcounter"></span>dynamic class Date extends Object
+<PRE>
+dynamic class Date extends Object
 {
     function Date(year=NOARG, month=NOARG, date=NOARG, hours=NOARG, minutes=NOARG, seconds=NOARG, ms=NOARG) &#x0085
     meta static function invoke(...args)   // args are ignored. &#x0085
@@ -155,7 +172,8 @@ its creation to within a nanosecond.
     intrinsic function getUTCMilliseconds() : double &#x0085
     intrinsic function getTimezoneOffset() : double &#x0085
 </PRE>
-<PRE><span class="pcounter"></span>    intrinsic function setTime(t:double) : double &#x0085
+<PRE>
+    intrinsic function setTime(t:double) : double &#x0085
     intrinsic function setYear(this:Date, year:double) &#x0085
     intrinsic function setFullYear(year:double, &#x0085
     intrinsic function setUTCFullYear(year:double, &#x0085
@@ -215,7 +233,8 @@ its creation to within a nanosecond.
 <P><span class="pcounter"></span> The <code>Date</code> prototype object is itself a <code>Date</code> object whose
 time value is NaN.  It provides the following direct properties:
 
-<PRE><span class="pcounter"></span>    toString:           function () &#x0085; ,
+<PRE>
+    toString:           function () &#x0085; ,
     toDateString:       function () &#x0085; ,
     toTimeString:       function () &#x0085; ,
     toLocaleString:     function () &#x0085; ,
@@ -300,43 +319,62 @@ UTC is represented by the value +0.
 <P><span class="pcounter"></span> The following simple constants are used by the helper functions
 defined below.
 
-<PRE><span class="pcounter"></span>helper const hoursPerDay = 24;
+<PRE>
+helper const hoursPerDay = 24;
 </PRE>
-<PRE><span class="pcounter"></span>helper const minutesPerHour = 60;
+<PRE>
+helper const minutesPerHour = 60;
 </PRE>
-<PRE><span class="pcounter"></span>helper const secondsPerMinute = 60;
+<PRE>
+helper const secondsPerMinute = 60;
 </PRE>
-<PRE><span class="pcounter"></span>helper const daysPerYear = 365.2425;
+<PRE>
+helper const daysPerYear = 365.2425;
 </PRE>
-<PRE><span class="pcounter"></span>helper const msPerSecond = 1000;
+<PRE>
+helper const msPerSecond = 1000;
 </PRE>
-<PRE><span class="pcounter"></span>helper const msPerMinute = msPerSecond * secondsPerMinute;
+<PRE>
+helper const msPerMinute = <em>msPerSecond</em> * <em>secondsPerMinute</em>;
 </PRE>
-<PRE><span class="pcounter"></span>helper const msPerHour = msPerMinute * minutesPerHour;
+<PRE>
+helper const msPerHour = <em>msPerMinute</em> * <em>minutesPerHour</em>;
 </PRE>
-<PRE><span class="pcounter"></span>helper const msPerDay = msPerHour * hoursPerDay;
+<PRE>
+helper const msPerDay = <em>msPerHour</em> * <em>hoursPerDay</em>;
 </PRE>
-<PRE><span class="pcounter"></span>helper const msPerYear = msPerDay * daysPerYear;
+<PRE>
+helper const msPerYear = <em>msPerDay</em> * <em>daysPerYear</em>;
 </PRE>
 
 <P><span class="pcounter"></span> The table <code>monthOffsets</code> contains the day offset within a
 non-leap year of the first day of each month:
 
-<PRE><span class="pcounter"></span>helper const monthOffsets = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+<PRE>
+helper const monthOffsets = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 </PRE>
 
 <h3>Day Number and Time within Day</h3>
 
 <P><span class="pcounter"></span>A given time value <i>t</i> belongs to day number <code>Day(<i>t</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function Day(t : double) : double
-    Math.floor(t / msPerDay);
+<PRE>
+helper function Day(t : double) : double
+    Math.floor(t / <em>msPerDay</em>);
 </PRE>
 
 <P><span class="pcounter"></span>The remainder is called the time within the day, <code>TimeWithinDay(<i>t</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function TimeWithinDay(t : double) : double
-    t % msPerDay;
+<PRE>
+helper function TimeWithinDay(t : double) : double
+    t % <em>msPerDay</em>;
+helper function HourFromTime(t : double) : double {
+
+    let v = Math.floor(t / <em>msPerHour</em>) % <em>hoursPerDay</em>;
+    if (v &#60; 0)
+        return v + <em>hoursPerDay</em>;
+    return v;
+}
 </PRE>
 
 
@@ -349,11 +387,11 @@ that year.  In this system, leap years are precisely those which are
 400)). The number of days in year number <i>y</i> is therefore defined by
 <code>DaysInYear(<i>y</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function DaysInYear(y : double) : double {
+<PRE>
+helper function DaysInYear(y : double) : double {
     if (y % 4 !== 0 || y % 100 === 0 && y % 400 !== 0)
         return 365;
-    else
-        return 366;
+    return 366;
 }
 </PRE>
 
@@ -361,14 +399,16 @@ that year.  In this system, leap years are precisely those which are
 month and leap years have an extra day in February.  The day number of
 the first day of year <i>y</i> is given by <code>DayFromYear(<i>y</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function DayFromYear(y : double) : double
+<PRE>
+helper function DayFromYear(y : double) : double
     365 * (y-1970) + Math.floor((y-1969)/4) - Math.floor((y-1901)/100) + Math.floor((y-1601)/400);
 </PRE>
 
 <P><span class="pcounter"></span>The time value of the start of a year <i>y</i> is <code>TimefromYear(<i>y</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function TimeFromYear(y : double) : double
-    msPerDay * DayFromYear(y);
+<PRE>
+helper function TimeFromYear(y : double) : double
+    <em>msPerDay</em> * <em>DayFromYear</em>(y);
 </PRE>
 
 <P><span class="pcounter"></span> A time value <i>t</i> determines a year by <code>YearFromTime(<i>t</i>)</code>,
@@ -376,7 +416,8 @@ which yields the largest integer <i>y</i> (closest to positive infinity)
 such that <code>TimeFromYear(<i>y</i>) &#x2264; <i>t</i></code>.
 
 <P><span class="pcounter"></span> The function <code>YearFromTime</code> is not defined precisely by this Standard.
-<PRE><span class="pcounter"></span>informative static function YearFromTime(t: double): double &#x0085;
+<PRE>
+informative static function YearFromTime(t: double): double &#x0085;
 </PRE>
 
 <p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #190.) Is there any good reason not to define how
@@ -387,8 +428,21 @@ iterative algorithms elsewhere.
 <P><span class="pcounter"></span>The leap-year function <code>InLeapYear</code> is 1 for a time within a leap
 year and otherwise is zero:
 
-<PRE><span class="pcounter"></span>helper function InLeapYear(t : double) : double
-    (DaysInYear(YearFromTime(t)) == 365) ? 0 : 1;
+<PRE>
+helper function InLeapYear(t : double) : double
+    (<em>DaysInYear</em>(<em>YearFromTime</em>(t)) == 365) ? 0 : 1;
+helper function MonthFromTime(t : double) : double {
+
+    let dwy = <em>DayWithinYear</em>(t),
+        ily = <em>InLeapYear</em>(t);
+    for ( let i=<em>monthOffsets</em>.length-1; i >= 0; i-- ) {
+        let firstDayOfMonth = <em>monthOffsets</em>[i];
+        if (i >= 2)
+            firstDayOfMonth += ily;
+        if (dwy >= firstDayOfMonth)
+            return i;
+    }
+}
 </PRE>
 
 
@@ -398,11 +452,12 @@ year and otherwise is zero:
 inclusive.  The mapping from a time value <i>t</i> to a month number is
 defined by <code>MonthFromTime(<i>t</i>)</code> :
 
-<PRE><span class="pcounter"></span>helper function MonthFromTime(t : double) : double {
-    let dwy = DayWithinYear(t),
-        ily = InLeapYear(t);
-    for ( let i=monthOffsets.length-1; i >= 0; i-- ) {
-        let firstDayOfMonth = monthOffsets[i];
+<PRE>
+helper function MonthFromTime(t : double) : double {
+    let dwy = <em>DayWithinYear</em>(t),
+        ily = <em>InLeapYear</em>(t);
+    for ( let i=<em>monthOffsets</em>.length-1; i >= 0; i-- ) {
+        let firstDayOfMonth = <em>monthOffsets</em>[i];
         if (i >= 2)
             firstDayOfMonth += ily;
         if (dwy >= firstDayOfMonth)
@@ -410,8 +465,9 @@ defined by <code>MonthFromTime(<i>t</i>)</code> :
     }
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function DayWithinYear(t : double) : double
-    Day(t) - DayFromYear(YearFromTime(t));
+<PRE>
+helper function DayWithinYear(t : double) : double
+    <em>Day</em>(t) - <em>DayFromYear</em>(<em>YearFromTime</em>(t));
 </PRE>
 
 <P><span class="pcounter"></span> A month value of 0 specifies January; 1 specifies February; 2
@@ -428,11 +484,12 @@ specifies October; 10 specifies November; and 11 specifies December.
 31, inclusive.  The mapping from a time value <i>t</i> to a month number
 is defined by <code>DateFromTime(<i>t</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function DateFromTime(t : double) : double {
-    let dwy = DayWithinYear(t),
-        mft = MonthFromTime(t),
-        ily = InLeapYear(t);
-    return (dwy+1) - (monthOffsets[mft]) - (mft >= 2 ? ily : 0);
+<PRE>
+helper function DateFromTime(t : double) : double {
+    let dwy = <em>DayWithinYear</em>(t),
+        mft = <em>MonthFromTime</em>(t),
+        ily = <em>InLeapYear</em>(t);
+    return (dwy+1) - (<em>monthOffsets</em>[mft]) - (mft >= 2 ? ily : 0);
 }
 </PRE>
 
@@ -441,8 +498,9 @@ is defined by <code>DateFromTime(<i>t</i>)</code>:
 
 <P><span class="pcounter"></span>The weekday for a particular time value <i>t</i> is defined as <code>WeekDay(<i>t</i>)</code>:
 
-<PRE><span class="pcounter"></span>helper function WeekDay(t : double) : double {
-    let v = (Day(t) + 4) % 7;
+<PRE>
+helper function WeekDay(t : double) : double {
+    let v = (<em>Day</em>(t) + 4) % 7;
     if (v &#60; 0)
         return v + 7;
     return v;
@@ -464,7 +522,8 @@ time zone adjustment.  The local time zone adjustment is a value
 represents the local standard time.  Daylight saving time is not
 reflected by <code>LocalTZA</code>.
 
-<PRE><span class="pcounter"></span>informative function LocalTZA(): double &#x0085;
+<PRE>
+informative function LocalTZA(): double &#x0085;
 </PRE>
 
 <P><span class="pcounter"></span> The value <code>LocalTZA</code> does not vary with time but depends only on
@@ -520,13 +579,15 @@ here.  Also see note above for <code>LocalTZA</code>.
 
 <P><span class="pcounter"></span>Conversion from UTC to local time is defined by
 
-<PRE><span class="pcounter"></span>helper function LocalTime(t : double) : double
+<PRE>
+helper function LocalTime(t : double) : double
     t + LocalTZA() + DaylightSavingsTA(t);
 </PRE>
 
 <P><span class="pcounter"></span>Conversion from local time to UTC is defined by
 
-<PRE><span class="pcounter"></span>helper function UTCTime(t : double) : double
+<PRE>
+helper function UTCTime(t : double) : double
     t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
 </PRE>
 
@@ -539,29 +600,39 @@ equal to <i>t</i> because the former expands as
 
 <P><span class="pcounter"></span>The following functions are useful in decomposing time values:
 
-<PRE><span class="pcounter"></span>helper function HourFromTime(t : double) : double {
-    let v = Math.floor(t / msPerHour) % hoursPerDay;
+<PRE>
+helper function HourFromTime(t : double) : double {
+    let v = Math.floor(t / <em>msPerHour</em>) % <em>hoursPerDay</em>;
     if (v &#60; 0)
-        return v + hoursPerDay;
+        return v + <em>hoursPerDay</em>;
     return v;
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function MinFromTime(t : double) : double {
-    let v = Math.floor(t / msPerMinute) % minutesPerHour;
+<PRE>
+helper function MinFromTime(t : double) : double {
+    let v = Math.floor(t / <em>msPerMinute</em>) % <em>minutesPerHour</em>;
     if (v &#60; 0)
-        return v + minutesPerHour;
+        return v + <em>minutesPerHour</em>;
     return v;
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function SecFromTime(t : double) : double {
-    let v = Math.floor(t / msPerSecond) % secondsPerMinute;
+<PRE>
+helper function SecFromTime(t : double) : double {
+    let v = Math.floor(t / msPerSecond) % <em>secondsPerMinute</em>;
     if (v &#60; 0)
-        return v + secondsPerMinute;
+        return v + <em>secondsPerMinute</em>;
     return v;
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function msFromTime(t : double) : double
+<PRE>
+helper function msFromTime(t : double) : double
     t % msPerSecond;
+helper function DaysInYear(y : double) : double {
+
+    if (y % 4 !== 0 || y % 100 === 0 && y % 400 !== 0)
+        return 365;
+    return 366;
+}
 </PRE>
 
 
@@ -571,14 +642,15 @@ equal to <i>t</i> because the former expands as
 four arguments, which must be ECMAScript number values. This operator
 functions as follows:
 
-<PRE><span class="pcounter"></span>helper function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
+<PRE>
+helper function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
     if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
         return NaN;
 
-    return (helper::toInteger(hour) * msPerHour +
-            helper::toInteger(min) * msPerMinute +
-            helper::toInteger(sec) * msPerSecond +
-            helper::toInteger(ms));
+    return (<em>toInteger</em>(hour) * <em>msPerHour</em> +
+            <em>toInteger</em>(min) * <em>msPerMinute</em> +
+            <em>toInteger</em>(sec) * msPerSecond +
+            <em>toInteger</em>(ms));
 }
 </PRE>
 
@@ -587,27 +659,16 @@ functions as follows:
 <P><span class="pcounter"></span>The helper function <code>MakeDay</code> calculates a number of days from
 its three arguments, which must be ECMAScript <code>double</code> values:
 
-<PRE><span class="pcounter"></span>helper function MakeDay(year : double, month : double, date : double) : double {
+<PRE>
+helper function MakeDay(year : double, month : double, date : double) : double {
     if (!isFinite(year) || !isFinite(month) || !isFinite(date))
         return NaN;
 
-    year = helper::toInteger(year);
-    month = helper::toInteger(month);
-    date = helper::toInteger(date);
+    year = <em>toInteger</em>(year);
+    month = <em>toInteger</em>(month);
+    date = <em>toInteger</em>(date);
 
-    /* INFORMATIVE, the spec is non-operational. */
-    year += Math.floor(month / 12);
-
-    month = month % 12;
-    if (month &#60; 0)
-        month += 12;
-
-    let leap = (DaysInYear(year) == 366);
-
-    let yearday = Math.floor(TimeFromYear(year) / msPerDay);
-    let monthday = DayFromMonth(month, leap);
-
-    return yearday + monthday + date - 1;
+    return <em>FindDay</em>(year, month) + date - 1;
 }
 </PRE>
 
@@ -617,11 +678,12 @@ its three arguments, which must be ECMAScript <code>double</code> values:
 milliseconds from its two arguments, which must be ECMAScript
 <code>double</code> values:
 
-<PRE><span class="pcounter"></span>helper function MakeDate(day : double, time : double) : double {
+<PRE>
+helper function MakeDate(day : double, time : double) : double {
     if (!isFinite(day) || !isFinite(time))
         return NaN;
 
-    return day * msPerDay + time;
+    return day * <em>msPerDay</em> + time;
 }
 </PRE>
 
@@ -631,10 +693,13 @@ milliseconds from its two arguments, which must be ECMAScript
 milliseconds from its argument, which must be an ECMAScript <code>double</code>
 value:
 
-<PRE><span class="pcounter"></span>helper function TimeClip(t : double) : double
-    (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : adjustZero(helper::toInteger(t));
+<PRE>
+helper function TimeClip(t : double) : double
+    (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : <em>adjustZero</em>(<em>toInteger</em>(t));
 </PRE>
+<PRE>
 informative function adjustZero(t: double): double &#x0085
+</PRE>
 
 <p class="note"><b>NOTE</b>&nbsp;&nbsp;  The informative function <code>adjustZero(<i>t</i>)</code> can either
 return <i>t</i> unchanged or it can add (+0) to it.  The point of this
@@ -681,25 +746,33 @@ strings produced by the <code>toString</code> and <code>toUTCString</code> metho
 <P><span class="pcounter"></span> The grammar for ISO date strings is defined by the following
 regular expression:
 
-<PRE><span class="pcounter"></span>helper const isoTimestamp =
-    /^
-     # Date, optional
-     (?: (?P&#60;year> - [0-9]+ | [0-9]{4} [0-9]* )
-      (?: - (?P&#60;month> [0-9]{2} )
-       (?: - (?P&#60;day> [0-9]{2} ) )? )? )?
-     T
-     # Time, optional
-     (?: (?P&#60;hour> [0-9]{2} )
-      (?: : (?P&#60;minutes> [0-9]{2} )
-       (?: : (?P&#60;seconds> [0-9]{2} )
-        (?: \. (?P&#60;fraction> [0-9]+ ) )? )? )? )?
-     # Timezone, optional
-     (?: (?P&#60;zulu> Z )
-      | (?P&#60;offs>
-         (?P&#60;tzdir> \+ | - )
-         (?P&#60;tzhr> [0-9]{2} )
-         (?: : (?P&#60;tzmin> [0-9]{2} ) )? ) )?
-     $/x;
+<PRE>
+helper const isoTimestamp =
+    /^                                             \
+     (?: (?P&#60;year> - [0-9]+ | [0-9]{4} [0-9]* )    \
+      (?: - (?P&#60;month> [0-9]{2} )                  \
+       (?: - (?P&#60;day> [0-9]{2} ) )? )? )?          \
+     T                                             \
+     (?: (?P&#60;hour> [0-9]{2} )                      \
+      (?: : (?P&#60;minutes> [0-9]{2} )                \
+       (?: : (?P&#60;seconds> [0-9]{2} )               \
+        (?: \. (?P&#60;fraction> [0-9]+ ) )? )? )? )?  \
+     (?: (?P&#60;zulu> Z )                             \
+      | (?P&#60;offs>                                  \
+         (?P&#60;tzdir> \+ | - )                       \
+         (?P&#60;tzhr> [0-9]{2} )                      \
+         (?: : (?P&#60;tzmin> [0-9]{2} ) )? ) )?       \
+    $/x;
+helper function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
+
+    if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
+        return NaN;
+
+    return (<em>toInteger</em>(hour) * <em>msPerHour</em> +
+            <em>toInteger</em>(min) * <em>msPerMinute</em> +
+            <em>toInteger</em>(sec) * msPerSecond +
+            <em>toInteger</em>(ms));
+}
 </PRE>
 
 <p class="fixme"><b>FIXME</b>&nbsp;&nbsp;  (Ticket #192.) Replace the regexp by a proper grammar, eventually.
@@ -716,8 +789,9 @@ the newly created object by setting its private <code>timeval</code> property.
 and sets <code>timeval</code> in different ways depending on how it is called.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>function Date(year=NOARG, month=NOARG, date=NOARG, hours=NOARG, minutes=NOARG, seconds=NOARG, ms=NOARG) {
-    informative::setupNanoAge();
+<PRE>
+function Date(year=NOARG, month=NOARG, date=NOARG, hours=NOARG, minutes=NOARG, seconds=NOARG, ms=NOARG) {
+    <em>setupNanoAge</em>();
 
     switch (NOARG) {
     case year:
@@ -729,7 +803,7 @@ and sets <code>timeval</code> in different ways depending on how it is called.
         if (v is string)
             return parse(v);
 
-        timeval = TimeClip(double(v));
+        timeval = <em>TimeClip</em>(double(v));
         return;
     }
 
@@ -752,11 +826,11 @@ and sets <code>timeval</code> in different ways depending on how it is called.
         year = double(year);
         month = double(month);
 
-        let intYear : int = helper::toInteger(year);
+        let intYear : double = <em>toInteger</em>(year);
         if (!isNaN(year) && 0 &#60;= intYear && intYear &#60;= 99)
             intYear += 1900;
-        timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date),
-                                            MakeTime(hours, minutes, seconds, ms))));
+        timeval = <em>TimeClip</em>(<em>UTCTime</em>(<em>MakeDate</em>(<em>MakeDay</em>(intYear, month, date),
+                                            <em>MakeTime</em>(hours, minutes, seconds, ms))));
     }
 }
 </PRE>
@@ -782,7 +856,8 @@ arguments.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The <code>Date</code> class called as a function returns a <code>string</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>meta static function invoke(...args)   // args are ignored.
+<PRE>
+meta static function invoke(...args)   // args are ignored.
     (new Date()).public::toString();
 </PRE>
 
@@ -804,7 +879,8 @@ following expressions should produce the same numeric value in that
 implementation, if all the properties referenced have their initial
 values:
 
-<PRE><span class="pcounter"></span>x.valueOf()
+<PRE>
+x.valueOf()
 Date.parse(x.toString())
 Date.parse(x.toUTCString())
 </PRE>
@@ -822,12 +898,9 @@ value corresponding to the date represented by the string.
 the ISO grammar as an ISO date string.  Otherwise, the parsing is
 implementation-dependent.
 
-<PRE><span class="pcounter"></span>static intrinsic function parse(s:string, reference:double=0.0) : double {
-
-    function fractionToMilliseconds(frac: string): double
-        Math.floor(1000 * (parseInt(frac) / Math.pow(10, frac.length)));
-
-    let isoRes = isoTimestamp.exec(s);
+<PRE>
+static intrinsic function parse(s:string, reference:double=0.0) : double {
+    let isoRes = <em>isoTimestamp</em>.exec(s);
     let defaults = new Date(reference);
     if (isoRes) {
         let year = isoRes.year !== undefined ? parseInt(isoRes.year) : defaults.UTCYear;
@@ -852,7 +925,10 @@ implementation-dependent.
         return new Date.UTC(year, month, day, hour, mins, secs, millisecs) - tzo;
     }
     else
-        return informative::fromDateString(s, reference);
+        return <em>fromDateString</em>(s, reference);
+
+    function fractionToMilliseconds(frac: string): double
+        Math.floor(1000 * (parseInt(frac) / Math.pow(10, frac.length)));
 }
 </PRE>
 
@@ -868,9 +944,10 @@ its argument <i>s</i> and the <code>double</code> function to its argument
 value corresponding to the date represented by the string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static var parse = function parse(str, reference:double=0.0) {
+<PRE>
+static var parse = function parse(str, reference:double=0.0) {
     return Date.parse(string(str), reference);
-}
+};
 </PRE>
 
 
@@ -888,7 +965,8 @@ local time.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The static intrinsic <code>UTC</code> method returns a time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static intrinsic function UTC(year: double,
+<PRE>
+static intrinsic function UTC(year: double,
                               month: double,
                               date: double=1,
                               hours: double=0,
@@ -896,11 +974,11 @@ local time.
                               seconds: double=0,
                               ms: double=0) : double
 {
-    let intYear = helper::toInteger(year);
+    let intYear = <em>toInteger</em>(year);
     if (!isNaN(year) && 0 &#60;= intYear && intYear &#60;= 99)
         intYear += 1900;
-    return TimeClip(MakeDate(MakeDay(intYear, month, date),
-                             MakeTime(hours, minutes, seconds, ms)));
+    return <em>TimeClip</em>(<em>MakeDate</em>(<em>MakeDay</em>(intYear, month, date),
+                             <em>MakeTime</em>(hours, minutes, seconds, ms)));
 }
 </PRE>
 
@@ -917,7 +995,8 @@ arguments to <code>double</code> values and calling the static intrinsic
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The static <code>UTC</code> method returns a time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>static var UTC =
+<PRE>
+static var UTC =
     function UTC(year, month, date=NOARG, hours=NOARG, minutes=NOARG, seconds=NOARG, ms=NOARG) {
         switch (NOARG) {
         case date:    date = 1;
@@ -926,6 +1005,7 @@ arguments to <code>double</code> values and calling the static intrinsic
         case seconds: seconds = 0;
         case ms:      ms = 0;
         }
+
         return Date.UTC(double(year),
                         double(month),
                         double(date),
@@ -1064,23 +1144,24 @@ UTC, denoted by a suffix <code>Z</code>.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A <code>string</code> value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function toISOString() : string {
-    return (formatYears(UTCFullYear) + "-" +
-            zeroFill(UTCMonth+1, 2) + "-" +
-            zeroFill(UTCDate, 2) +
+<PRE>
+intrinsic function toISOString() : string {
+    return (<em>formatYears</em>(UTCFullYear) + "-" +
+            <em>zeroFill</em>(UTCMonth+1, 2) + "-" +
+            <em>zeroFill</em>(UTCDate, 2) +
             "T" +
-            zeroFill(UTCHours, 2) + ":" +
-            zeroFill(UTCMinutes, 2) + ":" +
-            zeroFill(UTCSeconds, 2) + "." +
-            removeTrailingZeroes(int(UTCMilliseconds)) +
+            <em>zeroFill</em>(UTCHours, 2) + ":" +
+            <em>zeroFill</em>(UTCMinutes, 2) + ":" +
+            <em>zeroFill</em>(UTCSeconds, 2) + "." +
+            <em>removeTrailingZeroes</em>(int(UTCMilliseconds)) +
             "Z");
 }
 </PRE>
-<PRE><span class="pcounter"></span>helper function formatYears(n: double): string {
+<PRE>
+helper function formatYears(n: double): string {
     if (n >= 0 && n &#60;= 9999)
-        return zeroFill(int(n), 4);
-    else
-        return string(n);
+        return <em>zeroFill</em>(int(n), 4);
+    return string(n);
 }
 </PRE>
 
@@ -1095,7 +1176,8 @@ to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The intrinsic <code>toJSONString</code> method returns a string.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>override intrinsic function toJSONString(pretty: boolean=false)
+<PRE>
+override intrinsic function toJSONString(pretty: boolean=false)
     JSON.formatDate(this, pretty);
 </PRE>
 
@@ -1130,7 +1212,8 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A <code>double</code> object.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>override intrinsic function valueOf() : Object
+<PRE>
+override intrinsic function valueOf() : Object
     getTime();
 </PRE>
 
@@ -1142,7 +1225,8 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> This time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getTime() : double
+<PRE>
+intrinsic function getTime() : double
     timeval;
 </PRE>
 
@@ -1153,9 +1237,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A year number (<span class="xref">year number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getFullYear() : double
+<PRE>
+intrinsic function getFullYear() : double
     let (t = timeval)
-        isNaN(t) ? t : YearFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>YearFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCFullYear&nbsp;(&nbsp;)</h3>
@@ -1167,9 +1252,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A year number (<span class="xref">year number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCFullYear() : double
+<PRE>
+intrinsic function getUTCFullYear() : double
     let (t = timeval)
-        isNaN(t) ? t : YearFromTime(t);
+        isNaN(t) ? t : <em>YearFromTime</em>(t);
 </PRE>
 
 
@@ -1180,9 +1266,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A month number (<span class="xref">month number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getMonth() : double
+<PRE>
+intrinsic function getMonth() : double
     let (t = timeval)
-        isNaN(t) ? t : MonthFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>MonthFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCMonth&nbsp;(&nbsp;)</h3>
@@ -1192,9 +1279,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A month number (<span class="xref">month number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCMonth() : double
+<PRE>
+intrinsic function getUTCMonth() : double
     let (t = timeval)
-        isNaN(t) ? t : MonthFromTime(t);
+        isNaN(t) ? t : <em>MonthFromTime</em>(t);
 </PRE>
 
 <h3>intrinisic::getDate&nbsp;(&nbsp;)</h3>
@@ -1204,9 +1292,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A date number (<span class="xref">date number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getDate() : double
+<PRE>
+intrinsic function getDate() : double
     let (t = timeval)
-        isNaN(t) ? t : DateFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>DateFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCDate&nbsp;(&nbsp;)</h3>
@@ -1216,9 +1305,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A date number (<span class="xref">date number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCDate() : double
+<PRE>
+intrinsic function getUTCDate() : double
     let (t = timeval)
-        isNaN(t) ? t : DateFromTime(t);
+        isNaN(t) ? t : <em>DateFromTime</em>(t);
 </PRE>
 
 <h3>intrinisic::getDay&nbsp;(&nbsp;)</h3>
@@ -1228,9 +1318,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A day number (<span class="xref">day number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getDay() : double
+<PRE>
+intrinsic function getDay() : double
     let (t = timeval)
-        isNaN(t) ? t : WeekDay(LocalTime(t));
+        isNaN(t) ? t : <em>WeekDay</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCDay&nbsp;(&nbsp;)</h3>
@@ -1240,9 +1331,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A day number (<span class="xref">day number</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCDay() : double
+<PRE>
+intrinsic function getUTCDay() : double
     let (t = timeval)
-        isNaN(t) ? t : WeekDay(t);
+        isNaN(t) ? t : <em>WeekDay</em>(t);
 </PRE>
 
 <h3>intrinisic::getHours&nbsp;(&nbsp;)</h3>
@@ -1252,9 +1344,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> An hours value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getHours() : double
+<PRE>
+intrinsic function getHours() : double
     let (t = timeval)
-        isNaN(t) ? t : HourFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>HourFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCHours&nbsp;(&nbsp;)</h3>
@@ -1264,9 +1357,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> An hours value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCHours() : double
+<PRE>
+intrinsic function getUTCHours() : double
     let (t = timeval)
-        isNaN(t) ? t : HourFromTime(t);
+        isNaN(t) ? t : <em>HourFromTime</em>(t);
 </PRE>
 
 <h3>intrinisic::getMinutes&nbsp;(&nbsp;)</h3>
@@ -1276,9 +1370,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A minutes value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getMinutes() : double
+<PRE>
+intrinsic function getMinutes() : double
     let (t = timeval)
-        isNaN(t) ? t : MinFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>MinFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCMinutes&nbsp;(&nbsp;)</h3>
@@ -1288,9 +1383,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A minutes value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCMinutes() : double
+<PRE>
+intrinsic function getUTCMinutes() : double
     let (t = timeval)
-        isNaN(t) ? t : MinFromTime(t);
+        isNaN(t) ? t : <em>MinFromTime</em>(t);
 </PRE>
 
 <h3>intrinisic::getSeconds&nbsp;(&nbsp;)</h3>
@@ -1300,9 +1396,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A seconds value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getSeconds() : double
+<PRE>
+intrinsic function getSeconds() : double
     let (t = timeval)
-        isNaN(t) ? t : SecFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>SecFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCSeconds&nbsp;(&nbsp;)</h3>
@@ -1312,9 +1409,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A seconds value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCSeconds() : double
+<PRE>
+intrinsic function getUTCSeconds() : double
     let (t = timeval)
-        isNaN(t) ? t : SecFromTime(t);
+        isNaN(t) ? t : <em>SecFromTime</em>(t);
 </PRE>
 
 <h3>intrinisic::getMilliseconds&nbsp;(&nbsp;)</h3>
@@ -1324,9 +1422,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A milliseconds value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getMilliseconds() : double
+<PRE>
+intrinsic function getMilliseconds() : double
     let (t = timeval)
-        isNaN(t) ? t : msFromTime(LocalTime(t));
+        isNaN(t) ? t : <em>msFromTime</em>(<em>LocalTime</em>(t));
 </PRE>
 
 <h3>intrinisic::getUTCMilliseconds&nbsp;(&nbsp;)</h3>
@@ -1336,9 +1435,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A milliseconds value (<span class="xref">hours, minutes, seconds, and milliseconds</span>).
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getUTCMilliseconds() : double
+<PRE>
+intrinsic function getUTCMilliseconds() : double
     let (t = timeval)
-        isNaN(t) ? t : msFromTime(t);
+        isNaN(t) ? t : <em>msFromTime</em>(t);
 </PRE>
 
 <h3>intrinisic::getTimezoneOffset&nbsp;(&nbsp;)</h3>
@@ -1348,9 +1448,10 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> A possibly non-integer number of minutes.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function getTimezoneOffset() : double
+<PRE>
+intrinsic function getTimezoneOffset() : double
     let (t = timeval)
-        isNaN(t) ? t : (t - LocalTime(t)) / msPerMinute;
+        isNaN(t) ? t : (t - <em>LocalTime</em>(t)) / <em>msPerMinute</em>;
 </PRE>
 
 <h3>intrinisic::setTime&nbsp;(time)</h3>
@@ -1360,8 +1461,9 @@ days, or accept the gradual loss of precision.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setTime(t:double) : double
-    timeval = TimeClip(t);
+<PRE>
+intrinsic function setTime(t:double) : double
+    timeval = <em>TimeClip</em>(t);
 </PRE>
 
 <h3>intrinisic::setMilliseconds&nbsp;(ms)</h3>
@@ -1372,11 +1474,12 @@ a value in the local time zone.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setMilliseconds(ms:double) : double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t),
-                                                    MinFromTime(t),
-                                                    SecFromTime(t),
+<PRE>
+intrinsic function setMilliseconds(ms:double) : double
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(<em>HourFromTime</em>(t),
+                                                    <em>MinFromTime</em>(t),
+                                                    <em>SecFromTime</em>(t),
                                                     ms)));
 </PRE>
 
@@ -1389,11 +1492,12 @@ a value in UTC.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCMilliseconds(ms:double) : double
+<PRE>
+intrinsic function setUTCMilliseconds(ms:double) : double
     timeval = let (t = timeval)
-                  MakeDate(Day(t), MakeTime(HourFromTime(t),
-                                            MinFromTime(t),
-                                            SecFromTime(t),
+                  <em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(<em>HourFromTime</em>(t),
+                                            <em>MinFromTime</em>(t),
+                                            <em>SecFromTime</em>(t),
                                             ms));
 </PRE>
 
@@ -1407,10 +1511,11 @@ and <i>ms</i> to be values in the local time zone.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setSeconds(sec:double, ms:double = getMilliseconds()) : double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t),
-                                                    MinFromTime(t),
+<PRE>
+intrinsic function setSeconds(sec:double, ms:double = getMilliseconds()) : double
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(<em>HourFromTime</em>(t),
+                                                    <em>MinFromTime</em>(t),
                                                     sec,
                                                     ms)));
 </PRE>
@@ -1441,10 +1546,11 @@ milliseconds value) of the Date object,  taking <i>sec</i> and <i>ms</i> to be v
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCSeconds(sec:double, ms:double = getUTCMilliseconds()) : double
+<PRE>
+intrinsic function setUTCSeconds(sec:double, ms:double = getUTCMilliseconds()) : double
     timeval = let (t = timeval)
-                  MakeDate(Day(t), MakeTime(HourFromTime(t),
-                                            MinFromTime(t),
+                  <em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(<em>HourFromTime</em>(t),
+                                            <em>MinFromTime</em>(t),
                                             sec,
                                             ms));
 </PRE>
@@ -1458,11 +1564,12 @@ local time zone.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setMinutes(min:double,
+<PRE>
+intrinsic function setMinutes(min:double,
                               sec:double = getSeconds(),
                               ms:double = getMilliseconds()) : double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t),
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(<em>HourFromTime</em>(t),
                                                     min,
                                                     sec,
                                                     ms)));
@@ -1476,11 +1583,12 @@ and milliseconds values) of the Date object,  taking <i>min</i>, <i>sec</i> and 
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCMinutes(min:double,
+<PRE>
+intrinsic function setUTCMinutes(min:double,
                                  sec:double = getUTCSeconds(),
                                  ms:double = getUTCMilliseconds()) : double
     timeval = let (t = timeval)
-                  MakeDate(Day(t), MakeTime(HourFromTime(t),
+                  <em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(<em>HourFromTime</em>(t),
                                             min,
                                             sec,
                                             ms));
@@ -1495,12 +1603,13 @@ local time zone.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setHours(hour: double,
+<PRE>
+intrinsic function setHours(hour: double,
                             min: double = getMinutes(),
                             sec: double = getSeconds(),
                             ms: double = getMilliseconds()) : double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(Day(t), MakeTime(hour,
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(hour,
                                                     min,
                                                     sec,
                                                     ms)));
@@ -1514,12 +1623,13 @@ milliseconds values) of the Date object,  taking <i>hour</i>, <i>min</i>, <i>sec
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCHours(hour: double,
+<PRE>
+intrinsic function setUTCHours(hour: double,
                                min: double = getUTCMinutes(),
                                sec: double = getUTCSeconds(),
                                ms: double = getUTCMilliseconds()) : double
     timeval = let (t = timeval)
-                  MakeDate(Day(t), MakeTime(hour,
+                  <em>MakeDate</em>(<em>Day</em>(t), <em>MakeTime</em>(hour,
                                             min,
                                             sec,
                                             ms));
@@ -1533,10 +1643,11 @@ a value in the local time zone.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setDate(date: double): double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date),
-                                   TimeWithinDay(t)));
+<PRE>
+intrinsic function setDate(date: double): double
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>MakeDay</em>(<em>YearFromTime</em>(t), <em>MonthFromTime</em>(t), date),
+                                   <em>TimeWithinDay</em>(t)));
 </PRE>
 
 <h3>intrinisic::setUTCDate&nbsp;(date)</h3>
@@ -1547,10 +1658,11 @@ a value in UTC.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCDate(date: double): double
+<PRE>
+intrinsic function setUTCDate(date: double): double
     timeval = let (t = timeval)
-                  MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date),
-                           TimeWithinDay(t));
+                  <em>MakeDate</em>(<em>MakeDay</em>(<em>YearFromTime</em>(t), <em>MonthFromTime</em>(t), date),
+                           <em>TimeWithinDay</em>(t));
 </PRE>
 
 <h3>intrinisic::setMonth&nbsp;(month,&nbsp;date=&#x0085;&nbsp;)</h3>
@@ -1561,10 +1673,11 @@ the Date object, taking <i>month</i> and <i>date</i> to be values in the local t
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setMonth(month:double, date:double = getDate()):double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(MakeDay(YearFromTime(t), month, date),
-                                   TimeWithinDay(t)));
+<PRE>
+intrinsic function setMonth(month:double, date:double = getDate()):double
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>MakeDay</em>(<em>YearFromTime</em>(t), month, date),
+                                   <em>TimeWithinDay</em>(t)));
 </PRE>
 
 <h3>intrinisic::setUTCMonth&nbsp;(month,&nbsp;date=&#x0085;&nbsp;)</h3>
@@ -1575,10 +1688,11 @@ the Date object, taking <i>month</i> and <i>date</i> to be values in UTC.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCMonth(month:double, date:double = getUTCDate()):double
+<PRE>
+intrinsic function setUTCMonth(month:double, date:double = getUTCDate()):double
     timeval = let (t = timeval)
-                  MakeDate(MakeDay(YearFromTime(t), month, date),
-                           TimeWithinDay(t));
+                  <em>MakeDate</em>(<em>MakeDay</em>(<em>YearFromTime</em>(t), month, date),
+                           <em>TimeWithinDay</em>(t));
 </PRE>
 
 <h3>intrinisic::setFullYear&nbsp;(year,&nbsp;month=&#x0085;,&nbsp;date=&#x0085;&nbsp;)</h3>
@@ -1589,12 +1703,13 @@ values) of the Date object, taking <i>year</i>, <i>month</i>, and <i>date</i> to
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setFullYear(year:double,
+<PRE>
+intrinsic function setFullYear(year:double,
                                month:double = getMonth(),
                                date:double = getDate()) : double
-    timeval = let (t = LocalTime(timeval))
-                  UTCTime(MakeDate(MakeDay(year, month, date),
-                                   TimeWithinDay(t)));
+    timeval = let (t = <em>LocalTime</em>(timeval))
+                  <em>UTCTime</em>(<em>MakeDate</em>(<em>MakeDay</em>(year, month, date),
+                                   <em>TimeWithinDay</em>(t)));
 </PRE>
 
 <h3>intrinisic::setUTCFullYear&nbsp;(year,&nbsp;month=&#x0085;,&nbsp;date=&#x0085;&nbsp;)</h3>
@@ -1605,12 +1720,13 @@ values) of the Date object, taking <i>year</i>, <i>month</i>, and <i>date</i> to
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The new time value.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>intrinsic function setUTCFullYear(year:double,
+<PRE>
+intrinsic function setUTCFullYear(year:double,
                                   month:double = getUTCMonth(),
                                   date:double = getUTCDate()) : double
     timeval = let (t = timeval)
-                  MakeDate(MakeDay(year, month, date),
-                           TimeWithinDay(t));
+                  <em>MakeDate</em>(<em>MakeDay</em>(year, month, date),
+                           <em>TimeWithinDay</em>(t));
 </PRE>
 
 
@@ -1622,58 +1738,76 @@ object's corresponding accessor methods.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The getters all return what their corresponding accessor methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>function get time(this:Date) : double
+<PRE>
+function get time(this:Date) : double
     getTime();
 </PRE>
-<PRE><span class="pcounter"></span>function get year(this:Date) : double
+<PRE>
+function get year(this:Date) : double
     getYear();
 </PRE>
-<PRE><span class="pcounter"></span>function get fullYear(this:Date) : double
+<PRE>
+function get fullYear(this:Date) : double
     getFullYear();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCFullYear(this:Date) : double
+<PRE>
+function get UTCFullYear(this:Date) : double
     getUTCFullYear();
 </PRE>
-<PRE><span class="pcounter"></span>function get month(this:Date) : double
+<PRE>
+function get month(this:Date) : double
     getMonth();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCMonth(this:Date) : double
+<PRE>
+function get UTCMonth(this:Date) : double
     getUTCMonth();
 </PRE>
-<PRE><span class="pcounter"></span>function get date(this:Date) : double
+<PRE>
+function get date(this:Date) : double
     getDate();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCDate(this:Date) : double
+<PRE>
+function get UTCDate(this:Date) : double
     getUTCDate();
 </PRE>
-<PRE><span class="pcounter"></span>function get day(this:Date) : double
+<PRE>
+function get day(this:Date) : double
     getDay();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCDay(this:Date) : double
+<PRE>
+function get UTCDay(this:Date) : double
     getUTCDay();
 </PRE>
-<PRE><span class="pcounter"></span>function get hours(this:Date) : double
+<PRE>
+function get hours(this:Date) : double
     getHours();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCHours(this:Date) : double
+<PRE>
+function get UTCHours(this:Date) : double
     getUTCHours();
 </PRE>
-<PRE><span class="pcounter"></span>function get minutes(this:Date) : double
+<PRE>
+function get minutes(this:Date) : double
     getMinutes();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCMinutes(this:Date) : double
+<PRE>
+function get UTCMinutes(this:Date) : double
     getUTCMinutes();
 </PRE>
-<PRE><span class="pcounter"></span>function get seconds(this:Date) : double
+<PRE>
+function get seconds(this:Date) : double
     getSeconds();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCSeconds(this:Date) : double
+<PRE>
+function get UTCSeconds(this:Date) : double
     getUTCSeconds();
 </PRE>
-<PRE><span class="pcounter"></span>function get milliseconds(this:Date) : double
+<PRE>
+function get milliseconds(this:Date) : double
     getMilliseconds();
 </PRE>
-<PRE><span class="pcounter"></span>function get UTCMilliseconds(this:Date) : double
+<PRE>
+function get UTCMilliseconds(this:Date) : double
     getUTCMilliseconds();
 </PRE>
 
@@ -1687,52 +1821,68 @@ for all arguments beyond the first.
 <P class="section"><b>Returns</b> <P><span class="pcounter"></span> The setters all return what their corresponding updater methods return.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>function set time(this:Date, t : double) : double
+<PRE>
+function set time(this:Date, t : double) : double
     setTime(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set year(this:Date, t: double) : double
+<PRE>
+function set year(this:Date, t: double) : double
     setYear(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set fullYear(this:Date, t : double) : double
+<PRE>
+function set fullYear(this:Date, t : double) : double
     setFullYear(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCFullYear(this:Date, t : double) : double
+<PRE>
+function set UTCFullYear(this:Date, t : double) : double
     setUTCFullYear(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set month(this:Date, t : double) : double
+<PRE>
+function set month(this:Date, t : double) : double
     setMonth(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCMonth(this:Date, t : double) : double
+<PRE>
+function set UTCMonth(this:Date, t : double) : double
     setUTCMonth(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set date(this:Date, t : double) : double
+<PRE>
+function set date(this:Date, t : double) : double
     setDate(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCDate(this:Date, t : double) : double
+<PRE>
+function set UTCDate(this:Date, t : double) : double
     setUTCDate(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set hours(this:Date, t : double) : double
+<PRE>
+function set hours(this:Date, t : double) : double
     setHours(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCHours(this:Date, t : double) : double
+<PRE>
+function set UTCHours(this:Date, t : double) : double
     setUTCHours(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set minutes(this:Date, t : double) : double
+<PRE>
+function set minutes(this:Date, t : double) : double
     setMinutes(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCMinutes(this:Date, t : double) : double
+<PRE>
+function set UTCMinutes(this:Date, t : double) : double
     setUTCMinutes(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set seconds(this:Date, t : double) : double
+<PRE>
+function set seconds(this:Date, t : double) : double
     setSeconds(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCSeconds(this:Date, t : double) : double
+<PRE>
+function set UTCSeconds(this:Date, t : double) : double
     setUTCSeconds(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set milliseconds(this:Date, t : double) : double
+<PRE>
+function set milliseconds(this:Date, t : double) : double
     setMilliseconds(t);
 </PRE>
-<PRE><span class="pcounter"></span>function set UTCMilliseconds(this:Date, t : double) : double
+<PRE>
+function set UTCMilliseconds(this:Date, t : double) : double
     setUTCMilliseconds(t);
 </PRE>
 
@@ -1749,141 +1899,183 @@ corresponding intrinsic method in all cases.
 the intrinsic methods they call.
 
 <P class="implsection"><b>Implementation</b>
-<PRE><span class="pcounter"></span>prototype function toString(this:Date)
+<PRE>
+prototype function toString(this:Date)
     this.intrinsic::toString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toDateString(this:Date)
+<PRE>
+prototype function toDateString(this:Date)
     this.toDateString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toTimeString(this:Date)
+<PRE>
+prototype function toTimeString(this:Date)
     this.toTimeString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toLocaleString(this:Date)
+<PRE>
+prototype function toLocaleString(this:Date)
     this.toLocaleString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toLocaleDateString(this:Date)
+<PRE>
+prototype function toLocaleDateString(this:Date)
     this.toLocaleDateString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toLocaleTimeString(this:Date)
+<PRE>
+prototype function toLocaleTimeString(this:Date)
     this.toLocaleTimeString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toUTCString(this:Date)
+<PRE>
+prototype function toUTCString(this:Date)
     this.toUTCString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function toISOString(this:Date)
+<PRE>
+prototype function toISOString(this:Date)
     this.toISOString();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function valueOf(this:Date)
+<PRE>
+prototype function valueOf(this:Date)
     this.valueOf();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getTime(this:Date)
+<PRE>
+prototype function getTime(this:Date)
     this.intrinsic::getTime();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getFullYear(this:Date)
+<PRE>
+prototype function getFullYear(this:Date)
     this.intrinsic::getFullYear();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCFullYear(this:Date)
+<PRE>
+prototype function getUTCFullYear(this:Date)
     this.intrinsic::getUTCFullYear();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getMonth(this:Date)
+<PRE>
+prototype function getMonth(this:Date)
     this.intrinsic::getMonth();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCMonth(this:Date)
+<PRE>
+prototype function getUTCMonth(this:Date)
     this.intrinsic::getUTCMonth();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getDate(this:Date)
+<PRE>
+prototype function getDate(this:Date)
     this.intrinsic::getDate();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCDate(this:Date)
+<PRE>
+prototype function getUTCDate(this:Date)
     this.intrinsic::getUTCDate();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getDay(this:Date)
+<PRE>
+prototype function getDay(this:Date)
     this.intrinsic::getDay();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCDay(this:Date)
+<PRE>
+prototype function getUTCDay(this:Date)
     this.intrinsic::getUTCDay();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getHours(this:Date)
+<PRE>
+prototype function getHours(this:Date)
     this.intrinsic::getHours();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCHours(this:Date)
+<PRE>
+prototype function getUTCHours(this:Date)
     this.intrinsic::getUTCHours();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getMinutes(this:Date)
+<PRE>
+prototype function getMinutes(this:Date)
     this.intrinsic::getMinutes();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCMinutes(this:Date)
+<PRE>
+prototype function getUTCMinutes(this:Date)
     this.intrinsic::getUTCMinutes();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getSeconds(this:Date)
+<PRE>
+prototype function getSeconds(this:Date)
     this.intrinsic::getSeconds();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCSeconds(this:Date)
+<PRE>
+prototype function getUTCSeconds(this:Date)
     this.intrinsic::getUTCSeconds();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getMilliseconds(this:Date)
+<PRE>
+prototype function getMilliseconds(this:Date)
     this.intrinsic::getMilliseconds();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getUTCMilliseconds(this:Date)
+<PRE>
+prototype function getUTCMilliseconds(this:Date)
     this.intrinsic::getUTCMilliseconds();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function getTimezoneOffset(this:Date)
+<PRE>
+prototype function getTimezoneOffset(this:Date)
     this.intrinsic::getTimezoneOffset();
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setTime(this:Date, t)
+<PRE>
+prototype function setTime(this:Date, t)
     this.intrinsic::setTime(double(t));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setMilliseconds(this:Date, ms)
-    this.intrinsic::setMilliseconds(double(ms))
+<PRE>
+prototype function setMilliseconds(this:Date, ms)
+    this.intrinsic::setMilliseconds(double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCMilliseconds(this:Date, ms)
+<PRE>
+prototype function setUTCMilliseconds(this:Date, ms)
     this.intrinsic::setUTCMilliseconds(double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setSeconds(this:Date, sec, ms = this.getMilliseconds())
+<PRE>
+prototype function setSeconds(this:Date, sec, ms = this.getMilliseconds())
     this.intrinsic::setSeconds(double(sec), double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCSeconds(this:Date, sec, ms = this.getUTCMilliseconds())
+<PRE>
+prototype function setUTCSeconds(this:Date, sec, ms = this.getUTCMilliseconds())
     this.intrinsic::setUTCSeconds(double(sec), double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setMinutes(this:Date, min, sec = this.getSeconds(), ms = this.getMilliseconds())
+<PRE>
+prototype function setMinutes(this:Date, min, sec = this.getSeconds(), ms = this.getMilliseconds())
     this.intrinsic::setMinutes(double(min), double(sec), double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCMinutes(this:Date,
+<PRE>
+prototype function setUTCMinutes(this:Date,
                                  min,
                                  sec = this.getUTCSeconds(),
                                  ms = this.getUTCMilliseconds())
     this.intrinsic::setUTCMinutes(double(min), double(sec), double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setHours(this:Date,
+<PRE>
+prototype function setHours(this:Date,
                             hour,
                             min=this.getMinutes(),
                             sec=this.getSeconds(),
                             ms=this.getMilliseconds())
     this.intrinsic::setHours(double(hour), double(min), double(sec), double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCHours(this:Date,
+<PRE>
+prototype function setUTCHours(this:Date,
                                hour,
                                min=this.getUTCMinutes(),
                                sec=this.getUTCSeconds(),
                                ms=this.getUTCMilliseconds())
     this.intrinsic::setUTCHours(double(hour), double(min), double(sec), double(ms));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setDate(this:Date, date)
+<PRE>
+prototype function setDate(this:Date, date)
     this.intrinsic::setDate(double(date));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCDate(this:Date, date)
+<PRE>
+prototype function setUTCDate(this:Date, date)
     this.intrinsic::setUTCDate(double(date));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setMonth(this:Date, month, date=this.getDate())
+<PRE>
+prototype function setMonth(this:Date, month, date=this.getDate())
     this.intrinsic::setMonth(double(month), double(date));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCMonth(this:Date, month, date=this.getUTCDate())
+<PRE>
+prototype function setUTCMonth(this:Date, month, date=this.getUTCDate())
     this.intrinsic::setUTCMonth(double(month), double(date));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setFullYear(this:Date, year, month=this.getMonth(), date=this.getDate())
+<PRE>
+prototype function setFullYear(this:Date, year, month=this.getMonth(), date=this.getDate())
     this.intrinsic::setFullYear(double(year), double(month), double(date));
 </PRE>
-<PRE><span class="pcounter"></span>prototype function setUTCFullYear(this:Date, year, month=this.getUTCMonth(), date=this.getUTCDate())
+<PRE>
+prototype function setUTCFullYear(this:Date, year, month=this.getUTCMonth(), date=this.getUTCDate())
     this.intrinsic::setUTCFullYear(double(year), double(month), double(date));
 </PRE>
 

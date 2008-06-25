@@ -67,7 +67,7 @@ target="RegExp ASTs">).
 dynamic class RegExp
 {
     <SIGNATURE file="RegExp.es" name="function RegExp">
-    <SIGNATURE file="RegExp.es" name="meta static function invoke">
+    <SIGNATURE file="RegExp.es" name="static meta function invoke">
 
     static const length: uint = 2
 
@@ -402,6 +402,12 @@ specification, or immediately follows a range specification.
 
 
 === White space and line comments ===
+
+<FIXME> It has been agreed that comment syntax (both forms) is to be
+removed from the spec and that newlines in regex literals must be
+escaped by a backslash.  Both decisions make it possible to retain the
+ES3 split between surface lexing and regex parsing, and probably also
+helps preserve programmers' sanity.
 
 <P> The grammar takes on one of two meanings depending on whether the
 ''x'' flag was supplied to the regular expression constructor.
@@ -982,6 +988,10 @@ const m1: Charset,
 
 ==== CharsetIntersection ====
 
+<FIXME> It has been agreed that character set intersection (which is
+used to represent set intersection and difference on the source level)
+be removed.
+
 <P> The intersection of two sets contains a character if both sets contain it.
 
 {{{
@@ -1035,7 +1045,7 @@ const cs: [string]
 array containing the individual characters in the string, each
 represented as a one-character string.
 
-<INCLUDE file="Unicode.es" name="public function explodeString">
+<INCLUDE file="Unicode.es" name="function explodeString">
 
 === Capturing ===
 
@@ -1131,7 +1141,7 @@ expression from //pattern// and //flags// and return that.
 <RETN> The ''RegExp'' function returns a ''RegExp'' object.
 
 <SHORTIMPL>
-<INCLUDE file="RegExp.es" name="meta static function invoke">
+<INCLUDE file="RegExp.es" name="static meta function invoke">
 
 
 == Methods on ''RegExp'' instances ==

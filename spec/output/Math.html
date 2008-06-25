@@ -254,7 +254,7 @@ representation of <i>x</i>.
 
 <P class="implsection"><b>Implementation</b> <P><span class="pcounter"></span>
 <PRE>
-intrinsic function abs(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function abs(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n)) return n;
@@ -281,17 +281,17 @@ implementation-dependent approximation to the arc cosine of the number
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function acos(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function acos(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n) || n > 1 || n &#60; -1) return NaN;
         if (n == 1) return 0;
-        return informative::acosDouble(n);
+        return <em>acosDouble</em>(n);
     }
     case (n: decimal) {
         if (isNaN(n) || n > 1m || n &#60; 1m) return decimal.NaN;
         if (n == 1m) return 0m;
-        return informative::acosDecimal(n);
+        return <em>acosDecimal</em>(n);
     }
     }
 }
@@ -318,17 +318,17 @@ implementation-dependent approximation to the arc sine of the number
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function asin(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function asin(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n) || n > 1 || n &#60; -1) return NaN;
         if (n == 0) return n;
-        return informative::asinDouble(n);
+        return <em>asinDouble</em>(n);
     }
     case (n: decimal) {
         if (isNaN(n) || n > 1m || n &#60; 1m) return decimal.NaN;
         if (n == 0m) return n;
-        return informative::asinDecimal(n);
+        return <em>asinDecimal</em>(n);
     }
     }
 }
@@ -357,19 +357,19 @@ number <i>x</i>.  The result is expressed in radians and ranges from
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function atan(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function atan(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n) || n == 0) return n;
         if (!isFinite(n))
             return copysign(double.PI / 2, n);
-        return informative::atanDouble(n);
+        return <em>atanDouble</em>(n);
     }
     case (n: decimal) {
         if (isNaN(n) || n == 0m) return n;
         if (!isFinite(n))
             return copysign(decimal.PI / 2m, n);
-        return informative::atanDecimal(n);
+        return <em>atanDecimal</em>(n);
     }
     }
 }
@@ -403,7 +403,7 @@ otherwise <code>double</code>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function atan2(y: helper::PrimitiveNumber, x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function atan2(y: <em>PrimitiveNumber</em>, x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     if (y is decimal && !(x is decimal))
         x = decimal(x);
     else if (x is decimal && !(y is decimal))
@@ -415,10 +415,10 @@ intrinsic function atan2(y: helper::PrimitiveNumber, x: helper::PrimitiveNumber)
         return Type.NaN;
     if (y > 0 && x == 0)
         return Type.PI/2;
-    if (helper::isPositiveZero(y))
-        return helper::isPositive(x) ? Type(+0) : Type.PI;
-    if (helper::isNegativeZero(y))
-        return helper::isPositive(x) ? Type(-0) : -Type.PI;
+    if (<em>isPositiveZero</em>(y))
+        return <em>isPositive</em>(x) ? Type(+0) : Type.PI;
+    if (<em>isNegativeZero</em>(y))
+        return <em>isPositive</em>(x) ? Type(-0) : -Type.PI;
     if (y &#60; 0 && x == 0)
         return -Type.PI/2;
     if (y != 0 && isFinite(y) && !isFinite(x) && x > 0)
@@ -431,8 +431,8 @@ intrinsic function atan2(y: helper::PrimitiveNumber, x: helper::PrimitiveNumber)
         return copysign(x > 0 ? Type.PI/4 : 3*Type.PI/4, y);
 
     if (Type == double)
-        return informative::atan2Double(y, x);
-    return informative::atan2Decimal(y, x);
+        return <em>atan2Double</em>(y, x);
+    return <em>atan2Decimal</em>(y, x);
 }
 </PRE>
 
@@ -464,17 +464,17 @@ representation as <i>x</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function ceil(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function ceil(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (!isFinite(n) || n == 0) return n;
         if (-1 &#60; n && n &#60; 0) return -0;
-        return informative::ceilDouble(n);
+        return <em>ceilDouble</em>(n);
     }
     case (n: decimal) {
         if (!isFinite(n) || n == 0m) return n;
         if (-1m &#60; n && n &#60; 0m) return -0m;
-        return informative::ceilDecimal(n);
+        return <em>ceilDecimal</em>(n);
     }
     }
 }
@@ -500,17 +500,17 @@ implementation-dependent approximation to the cosine of the number
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function cos(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function cos(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (!isFinite(n)) return NaN;
         if (n == 0) return 1;
-        return informative::cosDouble(n);
+        return <em>cosDouble</em>(n);
     }
     case (n: decimal) {
         if (!isFinite(n)) return decimal.NaN;
         if (n == 0m) return 1m;
-        return informative::cosDecimal(n);
+        return <em>cosDecimal</em>(n);
     }
     }
 }
@@ -536,21 +536,21 @@ natural logarithms).
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function exp(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function exp(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n)) return n;
         if (n == 0) return 1d;
         if (n == Infinity) return Infinity;
         if (n == -Infinity) return 0;
-        return informative::expDouble(n);
+        return <em>expDouble</em>(n);
     }
     case (n: decimal) {
         if (isNaN(n)) return n;
         if (n == 0m) return 1m;
         if (n == decimal.POSITIVE_INFINITY) return decimal.POSITIVE_INFINITY;
         if (n == decimal.NEGATIVE_INFINITY) return 0m;
-        return informative::expDecimal(n);
+        return <em>expDecimal</em>(n);
     }
     }
 }
@@ -577,17 +577,17 @@ representation as <i>x</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function floor(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function floor(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (!isFinite(n) || n == 0) return n;
         if (0 &#60; n && n &#60; 1) return +0;
-        return informative::floorDouble(n);
+        return <em>floorDouble</em>(n);
     }
     case (n: decimal) {
         if (!isFinite(n) || n == 0m) return n;
         if (0m &#60; n && n &#60; 1m) return +0m;
-        return informative::floorDecimal(n);
+        return <em>floorDecimal</em>(n);
     }
     }
 }
@@ -616,21 +616,21 @@ number <i>x</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function log(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function log(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n) || n &#60; 0) return NaN;
         if (n == 0) return -Infinity;
         if (n == 1) return +0;
         if (n == Infinity) return n;
-        return informative::logDouble(n);
+        return <em>logDouble</em>(n);
     }
     case (n: decimal) {
         if (isNaN(n) || n &#60; 0m) return decimal.NaN;
         if (n == 0m) return decimal.NEGATIVE_INFINITY;
         if (n == 1m) return +0m;
         if (n == decimal.POSITIVE_INFINITY) return n;
-        return informative::logDecimal(n);
+        return <em>logDecimal</em>(n);
     }
     }
 }
@@ -656,7 +656,7 @@ considered larger than -0.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function max(x: helper::PrimitiveNumber, y: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function max(x: <em>PrimitiveNumber</em>, y: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     if (isNaN(x)) return x;
     if (isNaN(y)) return y;
     if (x > y) return x;
@@ -685,7 +685,7 @@ considered smaller than +0.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function min(x: helper::PrimitiveNumber, y: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function min(x: <em>PrimitiveNumber</em>, y: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     if (isNaN(x)) return x;
     if (isNaN(y)) return y;
     if (x &#60; y) return x;
@@ -717,7 +717,7 @@ representation of <i>x</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function pow(x: helper::PrimitiveNumber, y: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function pow(x: <em>PrimitiveNumber</em>, y: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     if (x is decimal && !(y is decimal))
         y = decimal(y);
     else if (y is decimal && !(x is decimal))
@@ -736,21 +736,21 @@ intrinsic function pow(x: helper::PrimitiveNumber, y: helper::PrimitiveNumber): 
     if (abs(x) &#60; 1 && y == -Infinity) return Type.POSITIVE_INFINITY;
     if (x == Infinity && y > 0) return Type.POSITIVE_INFINITY;
     if (x == Infinity && y &#60; 0) return Type(+0);
-    if (x == -Infinity && y > 0 && helper::isOddInteger(y)) return Type.NEGATIVE_INFINITY;
-    if (x == -Infinity && y > 0 && !helper::isOddInteger(y)) return Type.POSITIVE_INFINITY;
-    if (x == -Infinity && y &#60; 0 && helper::isOddInteger(y)) return Type(-0);
-    if (x == -Infinity && y &#60; 0 && !helper::isOddInteger(y)) return Type(+0);
+    if (x == -Infinity && y > 0 && <em>isOddInteger</em>(y)) return Type.NEGATIVE_INFINITY;
+    if (x == -Infinity && y > 0 && !<em>isOddInteger</em>(y)) return Type.POSITIVE_INFINITY;
+    if (x == -Infinity && y &#60; 0 && <em>isOddInteger</em>(y)) return Type(-0);
+    if (x == -Infinity && y &#60; 0 && !<em>isOddInteger</em>(y)) return Type(+0);
     if (x == 0 && y > 0) return Type(+0);
     if (x == 0 && y &#60; 0) return Type.POSITIVE_INFINITY;
-    if (helper::isNegativeZero(x) && y > 0 && helper::isOddInteger(y)) return Type(-0);
-    if (helper::isNegativeZero(x) && y > 0 && !helper::isOddInteger(y)) return Type(+0);
-    if (helper::isNegativeZero(x) && y &#60; 0 && helper::isOddInteger(y)) return Type.NEGATIVE_INFINITY;
-    if (helper::isNegativeZero(x) && y &#60; 0 && !helper::isOddInteger(y)) return Type.POSITIVE_INFINITY;
+    if (<em>isNegativeZero</em>(x) && y > 0 && <em>isOddInteger</em>(y)) return Type(-0);
+    if (<em>isNegativeZero</em>(x) && y > 0 && !<em>isOddInteger</em>(y)) return Type(+0);
+    if (<em>isNegativeZero</em>(x) && y &#60; 0 && <em>isOddInteger</em>(y)) return Type.NEGATIVE_INFINITY;
+    if (<em>isNegativeZero</em>(x) && y &#60; 0 && !<em>isOddInteger</em>(y)) return Type.POSITIVE_INFINITY;
     if (x &#60; 0 && isFinite(x) && isFinite(y) && !isIntegral(y)) return Type.NaN;
 
     if (Type == double)
-        return informative::powDouble(x, y);
-    return informative::powDecimal(x, y);
+        return <em>powDouble</em>(x, y);
+    return <em>powDecimal</em>(x, y);
 }
 </PRE>
 
@@ -788,19 +788,19 @@ of which is always the same as the representation of the input <i>x</i>.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function round(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function round(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (!isFinite(n) || n == 0) return n;
         if (0 &#60; n && n &#60; 0.5) return +0;
         if (-0.5 &#60; n && n &#60; 0) return -0;
-        return informative::roundDouble(n);
+        return <em>roundDouble</em>(n);
     }
     case (n: decimal) {
         if (!isFinite(n) || n == 0m) return n;
         if (0m &#60; n && n &#60; 0.5m) return +0m;
         if (-0.5m &#60; n && n &#60; 0m) return -0m;
-        return informative::roundDecimal(n);
+        return <em>roundDecimal</em>(n);
     }
     }
 }
@@ -838,17 +838,17 @@ implementation-dependent approximation to the sine of the number
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function sin(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function sin(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (!isFinite(n)) return NaN;
         if (n == 0) return n;
-        return informative::sinDouble(n);
+        return <em>sinDouble</em>(n);
     }
     case (n: decimal) {
         if (!isFinite(n)) return decimal.NaN;
         if (n == 0m) return n;
-        return informative::sinDecimal(n);
+        return <em>sinDecimal</em>(n);
     }
     }
 }
@@ -879,17 +879,17 @@ representation of the result is the same as the representation of
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function sqrt(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function sqrt(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (isNaN(n) || n &#60; 0) return NaN;
         if (n == 0 || n == Infinity) return n;
-        return informative::sqrtDouble(n);
+        return <em>sqrtDouble</em>(n);
     }
     case (n: decimal) {
         if (isNaN(n) || n &#60; 0m) return decimal.NaN;
         if (n == 0m || n == decimal.POSITIVE_INFINITY) return n;
-        return informative::sqrtDecimal(n);
+        return <em>sqrtDecimal</em>(n);
     }
     }
 }
@@ -906,17 +906,17 @@ argument is expressed in radians.
 
 <P class="implsection"><b>Implementation</b>
 <PRE>
-intrinsic function sin(x: helper::PrimitiveNumber): helper::PrimitiveNumber {
+intrinsic function sin(x: <em>PrimitiveNumber</em>): <em>PrimitiveNumber</em> {
     switch type (x) {
     case (n: double) {
         if (!isFinite(n)) return NaN;
         if (n == 0) return n;
-        return informative::sinDouble(n);
+        return <em>sinDouble</em>(n);
     }
     case (n: decimal) {
         if (!isFinite(n)) return decimal.NaN;
         if (n == 0m) return n;
-        return informative::sinDecimal(n);
+        return <em>sinDecimal</em>(n);
     }
     }
 }
@@ -944,49 +944,49 @@ value(s) by invoking the corresponding intrinsic method.
 
 <PRE>
 Math.public::abs =
-    function (x) Math.abs(helper::toPrimitiveNumber(x));
+    function (x) Math.abs(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::acos =
-    function (x) Math.acos(helper::toPrimitiveNumber(x));
+    function (x) Math.acos(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::asin =
-    function (x) Math.asin(helper::toPrimitiveNumber(x));
+    function (x) Math.asin(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::atan =
-    function (x) Math.atan(helper::toPrimitiveNumber(x));
+    function (x) Math.atan(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::atan2 =
     function (y,x)
-        Math.atan2(helper::toPrimitiveNumber(y), helper::toPrimitiveNumber(x));
+        Math.atan2(<em>toPrimitiveNumber</em>(y), <em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::ceil =
-    function (x) Math.ceil(helper::toPrimitiveNumber(x));
+    function (x) Math.ceil(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::cos =
-    function (x) Math.cos(helper::toPrimitiveNumber(x));
+    function (x) Math.cos(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::exp =
-    function (x) Math.exp(helper::toPrimitiveNumber(x));
+    function (x) Math.exp(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::floor =
-    function (x) Math.floor(helper::toPrimitiveNumber(x));
+    function (x) Math.floor(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::log =
-    function (x) Math.log(helper::toPrimitiveNumber(x));
+    function (x) Math.log(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::pow =
     function (x, y)
-        Math.pow(helper::toPrimitiveNumber(x), helper::toPrimitiveNumber(y));
+        Math.pow(<em>toPrimitiveNumber</em>(x), <em>toPrimitiveNumber</em>(y));
 </PRE>
 <PRE>
 Math.public::random =
@@ -994,19 +994,19 @@ Math.public::random =
 </PRE>
 <PRE>
 Math.public::round =
-    function (x) Math.round(helper::toPrimitiveNumber(x));
+    function (x) Math.round(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::sin =
-    function (x) Math.sin(helper::toPrimitiveNumber(x));
+    function (x) Math.sin(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::sqrt =
-    function (x) Math.sqrt(helper::toPrimitiveNumber(x));
+    function (x) Math.sqrt(<em>toPrimitiveNumber</em>(x));
 </PRE>
 <PRE>
 Math.public::tan =
-    function (x) Math.atan(helper::toPrimitiveNumber(x));
+    function (x) Math.atan(<em>toPrimitiveNumber</em>(x));
 </PRE>
 
 <P><span class="pcounter"></span> The <code>max</code> and <code>min</code> functions are more general than their
@@ -1019,9 +1019,9 @@ Math.public::max =
     function max(...xs) {
         if (xs.length == 0)
             return -Infinity;
-        let result = helper::toPrimitiveNumber(xs[0]);
+        let result = <em>toPrimitiveNumber</em>(xs[0]);
         for ( let i=1 ; i &#60; xs.length; ++i ) {
-            result = Math.max(result, helper::toPrimitiveNumber(xs[i]));
+            result = Math.max(result, <em>toPrimitiveNumber</em>(xs[i]));
             if (isNaN(result))
                 break;
         }
@@ -1033,9 +1033,9 @@ Math.public::min =
     function min(...xs) {
         if (xs.length == 0)
             return Infinity;
-        let result = helper::toPrimitiveNumber(xs[0]);
+        let result = <em>toPrimitiveNumber</em>(xs[0]);
         for ( let i=1 ; i &#60; xs.length; ++i ) {
-            result = Math.min(result, helper::toPrimitiveNumber(xs[i]));
+            result = Math.min(result, <em>toPrimitiveNumber</em>(xs[i]));
             if (isNaN(result))
                 break;
         }

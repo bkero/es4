@@ -69,239 +69,239 @@
  * to create it.
  */
 
-    __ES4__ dynamic class Map.<K,V>
-    {
-        static public const length = 2;
+__ES4__ dynamic class Map.<K,V>
+{
+    static const length = 2;
 
-        /* Create the map.  Note that the equality and hashcode
-         * predicates must always agree: if two objects are equal,
-         * they must hash to the same value.
-         */
-        public function Map(equals   /*: Callable*/ = (function (x,y) x === y), 
-                            hashcode /*: Callable*/ = intrinsic::hashcode)
-            : equals = equals
-            , hashcode = function (k) intrinsic::toUint(hashcode(k) cast AnyNumber)
-            , population = 0
+    /* Create the map.  Note that the equality and hashcode
+     * predicates must always agree: if two objects are equal,
+     * they must hash to the same value.
+     */
+    function Map(equals   /*: Callable*/ = (function (x,y) x === y), 
+		 hashcode /*: Callable*/ = intrinsic::hashcode)
+	: equals = equals
+	, hashcode = function (k) intrinsic::toUint(hashcode(k) cast AnyNumber)
+	, population = 0
         {
         }
 
-        /* Marginal utility because of the cruft needed to invoke it (the
-           syntax would be Map.<*,*>(myobj), for example).  Waldemar made
-           the point that a named static method is probably better; I
-           might even say that a named instance method is better.  But
-           using the meta::invoke method is probably wrong.
+    /* Marginal utility because of the cruft needed to invoke it (the
+       syntax would be Map.<*,*>(myobj), for example).  Waldemar made
+       the point that a named static method is probably better; I
+       might even say that a named instance method is better.  But
+       using the meta::invoke method is probably wrong.
 
-        static meta function invoke(object: Object=null): Map.<K,V> {
-            let d = new Map.<K,V>;
-            for (let n in object)
-                if (object.intrinsic::hasOwnProperty(n))
-                    d.put(n, object[n]);
-            return d;
-        }
-        */
+       static meta function invoke(object: Object=null): Map.<K,V> {
+       let d = new Map.<K,V>;
+       for (let n in object)
+       if (object.intrinsic::hasOwnProperty(n))
+       d.put(n, object[n]);
+       return d;
+       }
+    */
 
-        /* Return the number of mappings in the dictionary */
-        intrinsic function size() : double
-            population;
+    /* Return the number of mappings in the dictionary */
+    intrinsic function size() : double
+	population;
 
-        /* Return the value associated with 'key', or the default
-         * value if 'key' does not exist in the dictionary
-         */
-        intrinsic function get(key: K, notfound: (V|undefined)=undefined) : (V|undefined) {
-            let probe = informative::find(key);
-            return probe ? probe.value : notfound;
-        }
-
-        /* Associate 'value' with 'key', overwriting any previous
-         * association for 'key'.  Return the previous associated
-         * value, or the default value if 'key' does not exist in the
-         * dictionary.
-         */
-        intrinsic function put(key: K, value: V, notfound: (V|undefined)=undefined) : (V|undefined) {
-            let oldvalue = notfound;
-            let probe = informative::find(key);
-            if (probe) {
-                oldvalue = probe.value;
-                probe.value = value;
-            }
-            else {
-                ++population;
-                informative::insert(key, value);
-            }
-            return oldvalue;
-        }
-
-        /* Return true iff the dictionary has an association for 'key'
-         */
-        intrinsic function has(key:K) : boolean {
-            let probe = informative::find(key);
-            return probe ? true : false;
-        }
-
-        /* Remove any association for 'key' in the dictionary.  Returns
-         * true if an association was in fact removed
-         */
-        intrinsic function remove(key:K) : boolean {
-            let probe = informative::find(key);
-            if (probe) {
-                --population;
-                informative::eject(probe);
-                return true;
-            }
-            return false;
-        }
-
-        /* Remove all associations.  Note that this implementation is
-         * normative; subclasses that override remove() or
-         * iterator::get will be able to observe the calls.
-         */
-        intrinsic function clear() : void {
-            for (let k in this)
-                intrinsic::remove(k);
-        }
-
-        prototype function size(this: Map.<*,*>)
-            this.intrinsic::size();
-
-        prototype function get(this: Map.<*,*>, key, notfound)
-            this.intrinsic::get(key, notfound);
-
-        prototype function put(this: Map.<*,*>, key, value, notfound)
-            this.intrinsic::put(key, value, notfound);
-
-        prototype function has(this: Map.<*,*>, key)
-            this.intrinsic::has(key);
-
-        prototype function remove(this: Map.<*,*>, key)
-            this.intrinsic::remove(key);
-
-        prototype function clear(this: Map.<*,*>)
-            this.intrinsic::clear();
-
-        iterator function get(deep: boolean = false) : iterator::Iterator.<K>
-            iterator::getKeys(deep);
-
-        iterator function getKeys(deep: boolean = false) : iterator::Iterator.<K>
-            helper::iterate.<K>(function (a,k,v) { a.push(k) });
-
-        iterator function getValues(deep: boolean = false) : iterator::Iterator.<V>
-            helper::iterate.<V>(function (a,k,v) { a.push(v) });
-
-        iterator function getItems(deep: boolean = false) : iterator::Iterator.<[K,V]>
-            helper::iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
-
-        helper function iterate.<T>(f) {
-            let a = [];
-            informative::allItems(function (k,v) { f(a,k,v) });
-            return {
-                const next:
-                    let (i=0, limit=a.length)
-                        function () : T {
-                            if (i < limit)
-                                return a[i++];
-                            throw iterator::StopIteration;
-                        }
-            } : iterator::Iterator.<T>;
-        }
-
-        // Documented behavior: the key in the table is the left
-        // operand, while the key we're looking for is the right
-        // operand.
-
-        informative function find(key:K): Box.<K,V> {
-            let l = null;
-            for (l=tbl[hashcode(key) % limit] ; l && !equals(l.key,key) ; l=l.next )
-                ;
-            return l;
-        }
-
-        informative function insert(key: K, value: V) : void {
-            if (population > limit*REHASH_UP)
-                informative::rehash(true);
-            let box = new Box.<K,V>(key, hashcode(key), value);
-            let h = box.hash % limit;
-            box.prev = null;
-            box.next = (tbl[h] || null);
-            tbl[h] = box;
-        }
-
-        informative function eject(box: Box.<K,V>): void {
-            if (box.prev)
-                box.prev.next = box.next;
-            else
-                tbl[box.hash % limit] = box.next;
-            if (box.next)
-                box.next.prev = box.prev;
-            if (population < limit*REHASH_DOWN)
-                informative::rehash(false);
-        }
-
-        // This is inefficient, it would be better to reuse the existing boxes.
-        informative function rehash(grow: boolean) : void {
-            let oldtbl = tbl;
-            let oldlimit = limit;
-
-            population = 0;
-            limit = grow ? limit * 2 : limit / 2;
-            tbl = Map.informative::newTbl.<K,V>(limit);
-
-            informative::allItemsCore(oldtbl, 
-                                      oldlimit, 
-                                      function (k,v) { ++population; informative::insert(k, v) });
-        }
-
-        informative function allItems(fn)
-            informative::allItemsCore(tbl, limit, fn);
-
-        informative function allItemsCore(tbl, limit, fn) {
-            for (let i=0 ; i < limit ; i++)
-                for (let p=tbl[i] ; p ; p = p.next)
-                    fn(p.key, p.value);
-        }
-
-        informative static function newTbl.<K,V>(limit: double) : [internal::Box.<K,V>] {
-            let a = [] : [internal::Box.<K,V>];
-            a.limit = limit;
-            return a;
-        }
-
-        /* These are part of the spec */
-
-        /* FIXME: #153, #XXX: support "function" as a type here */
-        private const hashcode /*: function*/;        // key hash function
-        private const equals /*: function*/;          // key equality tester
-        private var population: double = 0;             // number of elements in the table */
-
-        /* These are private to the implementation */
-        /* We need to have REHASH_UP > REHASH_DOWN*2 for things to work */
-
-        private const REHASH_UP = 1;                  /* rehash if population > REHASH_UP*limit */
-        private const REHASH_DOWN = 1/3;              /* rehash if population < REHASH_DOWN*limit */
-
-        private var limit: double = 10;                 /* number of buckets in the table */
-
-	/*
-	 * hash table : FIXME: should be "limit" but fixture is not visible during init (?)
-	 *               Also might want to fiddle with the static/instance scope of type params.
-	 */
-        private var tbl: [internal::Box.<K,V>] = Map.informative::newTbl.<K,V>(10);
+    /* Return the value associated with 'key', or the default
+     * value if 'key' does not exist in the dictionary
+     */
+    intrinsic function get(key: K, notfound: (V|undefined)=undefined) : (V|undefined) {
+	let probe = informative::find(key);
+	return probe ? probe.value : notfound;
     }
 
-    internal class Box.<K,V> 
-    {
-        function Box(key:K, hash:double, value:V) 
-            : key = key
-            , hash = hash
-            , value = value
-            , prev = null
-            , next = null
-        {
-        }
-
-        var key: K;
-        var hash: double;
-        var value: V;
-        var prev: Box.<K,V>;
-        var next: Box.<K,V>;
+    /* Associate 'value' with 'key', overwriting any previous
+     * association for 'key'.  Return the previous associated
+     * value, or the default value if 'key' does not exist in the
+     * dictionary.
+     */
+    intrinsic function put(key: K, value: V, notfound: (V|undefined)=undefined) : (V|undefined) {
+	let oldvalue = notfound;
+	let probe = informative::find(key);
+	if (probe) {
+	    oldvalue = probe.value;
+	    probe.value = value;
+	}
+	else {
+	    ++population;
+	    informative::insert(key, value);
+	}
+	return oldvalue;
     }
+
+    /* Return true iff the dictionary has an association for 'key'
+     */
+    intrinsic function has(key:K) : boolean {
+	let probe = informative::find(key);
+	return probe ? true : false;
+    }
+
+    /* Remove any association for 'key' in the dictionary.  Returns
+     * true if an association was in fact removed
+     */
+    intrinsic function remove(key:K) : boolean {
+	let probe = informative::find(key);
+	if (probe) {
+	    --population;
+	    informative::eject(probe);
+	    return true;
+	}
+	return false;
+    }
+
+    /* Remove all associations.  Note that this implementation is
+     * normative; subclasses that override remove() or
+     * iterator::get will be able to observe the calls.
+     */
+    intrinsic function clear() : void {
+	for (let k in this)
+	    intrinsic::remove(k);
+    }
+
+    prototype function size(this: Map.<*,*>)
+	this.intrinsic::size();
+
+    prototype function get(this: Map.<*,*>, key, notfound)
+	this.intrinsic::get(key, notfound);
+
+    prototype function put(this: Map.<*,*>, key, value, notfound)
+	this.intrinsic::put(key, value, notfound);
+
+    prototype function has(this: Map.<*,*>, key)
+	this.intrinsic::has(key);
+
+    prototype function remove(this: Map.<*,*>, key)
+	this.intrinsic::remove(key);
+
+    prototype function clear(this: Map.<*,*>)
+	this.intrinsic::clear();
+
+    iterator function get(deep: boolean = false) : iterator::Iterator.<K>
+	iterator::getKeys(deep);
+
+    iterator function getKeys(deep: boolean = false) : iterator::Iterator.<K>
+	helper::iterate.<K>(function (a,k,v) { a.push(k) });
+
+    iterator function getValues(deep: boolean = false) : iterator::Iterator.<V>
+	helper::iterate.<V>(function (a,k,v) { a.push(v) });
+
+    iterator function getItems(deep: boolean = false) : iterator::Iterator.<[K,V]>
+	helper::iterate.<[K,V]>(function (a,k,v) { a.push([k,v]) });
+
+    helper function iterate.<T>(f) {
+	let a = [];
+	informative::allItems(function (k,v) { f(a,k,v) });
+	return {
+	    const next:
+		let (i=0, limit=a.length)
+		    function () : T {
+		        if (i < limit)
+			    return a[i++];
+			throw iterator::StopIteration;
+	            }
+	} : iterator::Iterator.<T>;
+    }
+
+    // Documented behavior: the key in the table is the left
+    // operand, while the key we're looking for is the right
+    // operand.
+
+    informative function find(key:K): Box.<K,V> {
+	let l = null;
+	for (l=tbl[hashcode(key) % limit] ; l && !equals(l.key,key) ; l=l.next )
+	    ;
+	return l;
+    }
+
+    informative function insert(key: K, value: V) : void {
+	if (population > limit*REHASH_UP)
+	    informative::rehash(true);
+	let box = new Box.<K,V>(key, hashcode(key), value);
+	let h = box.hash % limit;
+	box.prev = null;
+	box.next = (tbl[h] || null);
+	tbl[h] = box;
+    }
+
+    informative function eject(box: Box.<K,V>): void {
+	if (box.prev)
+	    box.prev.next = box.next;
+	else
+	    tbl[box.hash % limit] = box.next;
+	if (box.next)
+	    box.next.prev = box.prev;
+	if (population < limit*REHASH_DOWN)
+	    informative::rehash(false);
+    }
+
+    // This is inefficient, it would be better to reuse the existing boxes.
+    informative function rehash(grow: boolean) : void {
+	let oldtbl = tbl;
+	let oldlimit = limit;
+
+	population = 0;
+	limit = grow ? limit * 2 : limit / 2;
+	tbl = Map.informative::newTbl.<K,V>(limit);
+
+	informative::allItemsCore(oldtbl, 
+				  oldlimit, 
+				  function (k,v) { ++population; informative::insert(k, v) });
+    }
+
+    informative function allItems(fn)
+	informative::allItemsCore(tbl, limit, fn);
+
+    informative function allItemsCore(tbl, limit, fn) {
+	for (let i=0 ; i < limit ; i++)
+	    for (let p=tbl[i] ; p ; p = p.next)
+		fn(p.key, p.value);
+    }
+
+    informative static function newTbl.<K,V>(limit: double) : [internal::Box.<K,V>] {
+	let a = [] : [internal::Box.<K,V>];
+	a.limit = limit;
+	return a;
+    }
+
+    /* These are part of the spec */
+
+    /* FIXME: #153, #XXX: support "function" as a type here */
+    private const hashcode /*: function*/;        // key hash function
+    private const equals /*: function*/;          // key equality tester
+    private var population: double = 0;             // number of elements in the table */
+
+    /* These are private to the implementation */
+    /* We need to have REHASH_UP > REHASH_DOWN*2 for things to work */
+
+    private const REHASH_UP = 1;                  /* rehash if population > REHASH_UP*limit */
+    private const REHASH_DOWN = 1/3;              /* rehash if population < REHASH_DOWN*limit */
+
+    private var limit: double = 10;                 /* number of buckets in the table */
+
+    /*
+     * hash table : FIXME: should be "limit" but fixture is not visible during init (?)
+     *               Also might want to fiddle with the static/instance scope of type params.
+     */
+    private var tbl: [internal::Box.<K,V>] = Map.informative::newTbl.<K,V>(10);
 }
+
+internal class Box.<K,V> 
+{
+    function Box(key:K, hash:double, value:V) 
+	: key = key
+	, hash = hash
+	, value = value
+	, prev = null
+	, next = null
+        {
+        }
+
+    var key: K;
+    var hash: double;
+    var value: V;
+    var prev: Box.<K,V>;
+    var next: Box.<K,V>;
+}
+

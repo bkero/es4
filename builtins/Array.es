@@ -57,7 +57,7 @@
         static const length = 1;
 
         // 15.4.1 The Array Constructor Called as a Function
-        meta static function invoke(...items) {
+        static meta function invoke(...items) {
             if (items.length == 1)
                 return new Array(items[0]);
             else

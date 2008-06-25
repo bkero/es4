@@ -42,174 +42,173 @@
  * See RegExpEvaluator.es for the evaluator and compiled code representation.
  */
 
-    use namespace helper;
-    use namespace intrinsic;
-    use namespace Unicode;
-    use namespace RegExpInternals;
+/* Do *not* open "helper". */
+use namespace intrinsic;
+use namespace RegExpInternals;
  
-    /* E262-3 15.10: Regular expression object */
-    public dynamic class RegExp
-    {
-        static const length = 2;
+/* E262-3 15.10: Regular expression object */
+public dynamic class RegExp
+{
+    static const length = 2;
 
-        /* E262-3 15.10.3.1: The RegExp constructor called as a function */
-        meta static function invoke( pattern, flags ) {
-            if (pattern is RegExp && flags === undefined)
-                return pattern;
-            else
-                return new RegExp(pattern, flags);
-        }
-
-        static function analyzePatternAndFlags (pattern, flags)
-        {
-            let src : string = "";
-
-            if (pattern is RegExp) {
-                if (flags === undefined) {
-                    src = pattern.source;
-                    flags = pattern.flags;
-                }
-                else
-                    throw new TypeError("Illegal construction of regular expression");
-            }
-            else {
-                src = pattern === undefined ? "" : string(pattern);
-                flags = flags === undefined ? "" : string(flags);
-            }
-
-            let usedflags = { m: false, i: false, g: false, x: false, y: false };
-
-            for ( let i=0 ; i < flags.length ; i++ ) {
-                let f = flags[i];
-                if (!(f in usedflags))
-                    throw new SyntaxError("Invalid flag: " + f);
-                if (usedflags[f])
-                    throw new SyntaxError("Duplicated flag: " + f);
-                usedflags[f] = true;
-            }
-
-            [matcher,names] = (new RegExpCompiler(src, usedflags)).compile();
-            return {matcher: matcher,
-                    names: names,
-                    source: src,
-                    multiline: usedflags.m,
-                    ignoreCase: usedflags.i,
-                    global: usedflags.g,
-                    extended: usedflags.e,
-                    sticky: usedflags.y}
-        }
-
-        /* E262-3 15.10.4.1: The RegExp constructor */
-        function RegExp( pattern, flags )
-            : { matcher: matcher, 
-                names: names, 
-                source: source, 
-                multiline: multiline, 
-                ignoreCase: ignoreCase, 
-                global: global, 
-                extended: extended, 
-                sticky: sticky } = analyzePatternAndFlags(pattern, flags),
-            private::lastIndex = 0
-        {
-        }
-
-        /* E262-4 proposals:extend_regexps: RegExp instances are
-           callable, and a call to an instance is equivalent to
-           calling its exec() method.
-        */
-        meta function invoke(s : string) : Array
-            exec(s);
-
-        /* E262-3 15.10.6.2: RegExp.prototype.exec */
-        intrinsic function exec(s : string) : Array {
-            let length = s.length;
-            let i = lastIndex;
-            if (!global)
-                i = 0;
-            let res = failure;
-            while (true) {
-                if (i < 0 || i > length) {
-                    lastIndex = 0;
-                    return null;
-                }
-                res = matcher.match(s, i, multiline, ignoreCase);
-                if (res !== failure)
-                    break;
-                ++i;
-            }
-            if (global)
-                lastIndex = res.endIndex;
-            let a = new Array(res.captures.length);
-            a.index = i;
-            a.input = s;
-            a.length = res.captures.length;
-            a[0] = s.substring(i,res.endIndex);
-            for ( let j=1 ; j < res.captures.length ; j++ )
-                a[j] = res.captures[j];
-            for ( let j=1 ; j < names.length ; j++ )
-                if (names[j] !== null)
-                    a[names[j]] = res.captures[j];
-            return a;
-        }
-
-        prototype function exec(this:RegExp, s)
-            this.exec(string(s));
-
-        /* E262-3 15.10.6.3: RegExp.prototype.test */
-        intrinsic function test(s : string) : boolean
-             exec(s) !== null;
-
-        prototype function test(this:RegExp, s)
-            this.test(string(s));
-
-        /* E262-3 15.10.6.4: RegExp.prototype.toString */
-        override intrinsic function toString() : string
-            "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
-
-        prototype function toString(this:RegExp)
-            this.intrinsic::toString();
-
-        /* E262-3 15.10.7: properties of regexp instances */
-        const multiline  : boolean;
-        const ignoreCase : boolean;
-        const global     : boolean;
-        const extended   : boolean; // E262-4 proposals:extend_regexps
-        const sticky     : boolean; // E262-4 proposals:extend_regexps
-        const source     : string;
-
-        final function get lastIndex() 
-            private::lastIndex;
-
-        final function set lastIndex(x) 
-            private::lastIndex = helper::toInteger(x);
-
-        private var lastIndex : double;
-
-        /* E262-4 - [[Match]] may not *have* to be public, but String
-         * uses it, and if we want to model the language in the
-         * language we should expose it -- it's benign.
-         */
-        helper function match(s : string, i : double) : MatchResult
-            matcher.match(s, i, multiline, ignoreCase);
-
-        /* E262-4 - nCapturingParens used by String.prototype.replace.
-         */
-        helper function get nCapturingParens() : double
-            matcher.nCapturingParens;
-
-        /* Internal */
-        private const matcher : RegExpMatcher?;      // The [[Match]] property
-        private const names : [string?];            // Named submatches
-
-        /* E262-3 15.10.6.4 probably is meant to require the flags to
-         * be returned in lexicographic order for the purposes of
-         * toString().
-         */
-        private function get flags() : string {
-            return (global ? "g" : "") +
-                   (ignoreCase ? "i" : "") +
-                   (multiline ? "m" : "") +
-                   (extended ? "x" : "") +
-                   (sticky ? "y" : "");
-        }
+    /* E262-3 15.10.3.1: The RegExp constructor called as a function */
+    static meta function invoke( pattern, flags ) {
+        if (pattern is RegExp && flags === undefined)
+            return pattern;
+        else
+            return new RegExp(pattern, flags);
     }
+
+    static function analyzePatternAndFlags (pattern, flags)
+    {
+        let src : string = "";
+
+        if (pattern is RegExp) {
+            if (flags === undefined) {
+                src = pattern.source;
+                flags = pattern.flags;
+            }
+            else
+                throw new TypeError("Illegal construction of regular expression");
+        }
+        else {
+            src = pattern === undefined ? "" : string(pattern);
+            flags = flags === undefined ? "" : string(flags);
+        }
+
+        let usedflags = { m: false, i: false, g: false, x: false, y: false };
+
+        for ( let i=0 ; i < flags.length ; i++ ) {
+            let f = flags[i];
+            if (!(f in usedflags))
+                throw new SyntaxError("Invalid flag: " + f);
+            if (usedflags[f])
+                throw new SyntaxError("Duplicated flag: " + f);
+            usedflags[f] = true;
+        }
+
+        [matcher,names] = (new RegExpCompiler(src, usedflags)).compile();
+        return { matcher: matcher,
+                 names: names,
+                 source: src,
+                 multiline: usedflags.m,
+                 ignoreCase: usedflags.i,
+                 global: usedflags.g,
+                 extended: usedflags.e,
+                 sticky: usedflags.y };
+    }
+
+    /* E262-3 15.10.4.1: The RegExp constructor */
+    function RegExp( pattern, flags )
+        : { matcher: matcher, 
+            names: names, 
+            source: source, 
+            multiline: multiline, 
+            ignoreCase: ignoreCase, 
+            global: global, 
+            extended: extended, 
+            sticky: sticky } = analyzePatternAndFlags(pattern, flags)
+        , private::lastIndex = 0
+    {
+    }
+
+    /* E262-4 proposals:extend_regexps: RegExp instances are
+       callable, and a call to an instance is equivalent to
+       calling its exec() method.
+    */
+    meta function invoke(s : string) : Array
+        exec(s);
+
+    /* E262-3 15.10.6.2: RegExp.prototype.exec */
+    intrinsic function exec(s : string) : Array {
+        let length = s.length;
+        let i = lastIndex;
+        if (!global)
+            i = 0;
+        let res = failure;
+        while (true) {
+            if (i < 0 || i > length) {
+                lastIndex = 0;
+                return null;
+            }
+            res = matcher.match(s, i, multiline, ignoreCase);
+            if (res !== failure)
+                break;
+            ++i;
+        }
+        if (global)
+            lastIndex = res.endIndex;
+        let a = new Array(res.captures.length);
+        a.index = i;
+        a.input = s;
+        a.length = res.captures.length;
+        a[0] = s.substring(i,res.endIndex);
+        for ( let j=1 ; j < res.captures.length ; j++ )
+            a[j] = res.captures[j];
+        for ( let j=1 ; j < names.length ; j++ )
+            if (names[j] !== null)
+                a[names[j]] = res.captures[j];
+        return a;
+    }
+
+    prototype function exec(this:RegExp, s)
+        this.exec(string(s));
+
+    /* E262-3 15.10.6.3: RegExp.prototype.test */
+    intrinsic function test(s : string) : boolean
+        exec(s) !== null;
+
+    prototype function test(this:RegExp, s)
+        this.test(string(s));
+
+    /* E262-3 15.10.6.4: RegExp.prototype.toString */
+    override intrinsic function toString() : string
+        "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
+
+    prototype function toString(this:RegExp)
+        this.intrinsic::toString();
+
+    /* E262-3 15.10.7: properties of regexp instances */
+    const multiline  : boolean;
+    const ignoreCase : boolean;
+    const global     : boolean;
+    const extended   : boolean; // E262-4 proposals:extend_regexps
+    const sticky     : boolean; // E262-4 proposals:extend_regexps
+    const source     : string;
+
+    final function get lastIndex() 
+        private::lastIndex;
+
+    final function set lastIndex(x) 
+        private::lastIndex = helper::toInteger(x);
+
+    private var lastIndex : double;
+
+    /* E262-4 - [[Match]] may not *have* to be public, but String
+     * uses it, and if we want to model the language in the
+     * language we should expose it -- it's benign.
+     */
+    helper function match(s : string, i : double) : MatchResult
+        matcher.match(s, i, multiline, ignoreCase);
+
+    /* E262-4 - nCapturingParens used by String.prototype.replace.
+     */
+    helper function get nCapturingParens() : double
+        matcher.nCapturingParens;
+
+    /* Internal */
+    private const matcher : RegExpMatcher?;      // The [[Match]] property
+    private const names : [string?];            // Named submatches
+
+    /* E262-3 15.10.6.4 probably is meant to require the flags to
+     * be returned in lexicographic order for the purposes of
+     * toString().
+     */
+    private function get flags() : string {
+        return (global ? "g" : "") +
+               (ignoreCase ? "i" : "") +
+               (multiline ? "m" : "") +
+               (extended ? "x" : "") +
+               (sticky ? "y" : "");
+    }
+}

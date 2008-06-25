@@ -82,7 +82,7 @@
         }
 
         // FIXME: why no ResultFun, boolean args?
-        meta static function invoke(v) : iterator::Iterator
+        static meta function invoke(v) : iterator::Iterator
             new iterator::Enumerator(v);
 
         iterator function get(e : boolean = false) : iterator::Iterator

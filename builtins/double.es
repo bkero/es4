@@ -76,7 +76,7 @@
         */
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        meta static function invoke(x=0d)
+        static meta function invoke(x=0d)
             (x is double) ? x : new double(x);
 
         override intrinsic function toString(radix = 10) : string {

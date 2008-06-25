@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Date.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-25
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -34,7 +34,7 @@ its creation to within a nanosecond.
 dynamic class Date extends Object
 {
     <SIGNATURE file="Date.es" name="function Date">
-    <SIGNATURE file="Date.es" name="meta static function invoke">
+    <SIGNATURE file="Date.es" name="static meta function invoke">
 
     <SIGNATURE file="Date.es" name="static intrinsic function parse">
     <SIGNATURE file="Date.es" name="static intrinsic function UTC">
@@ -53,7 +53,6 @@ dynamic class Date extends Object
     <SIGNATURE file="Date.es" name="intrinsic function toLocaleTimeString">
     <SIGNATURE file="Date.es" name="intrinsic function toUTCString">
     <SIGNATURE file="Date.es" name="intrinsic function toISOString">
-    <SIGNATURE file="Date.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Date.es" name="intrinsic function nanoAge">
     <SIGNATURE file="Date.es" name="intrinsic function getTime">
     <SIGNATURE file="Date.es" name="intrinsic function getYear">
@@ -145,7 +144,6 @@ time value is NaN.  It provides the following direct properties:
     toLocaleTimeString: function () <LDOTS> ,
     toUTCString:        function () <LDOTS> ,
     toISOString:        function () <LDOTS> ,
-    toJSONString:       function (pretty=false) <LDOTS> ,
     valueOf:            function () <LDOTS> ,
     getTime:            function () <LDOTS> ,
     getFullYear:        function () <LDOTS> ,
@@ -444,7 +442,9 @@ milliseconds from its argument, which must be an ECMAScript ''double''
 value:
 
 <INCLUDE file="Date.es" name="helper function TimeClip">
+{{{
 <SIGNATURE file="Date.es" name="informative function adjustZero">
+}}}
 
 <NOTE> The informative function ''adjustZero(//t//)'' can either
 return //t// unchanged or it can add (+0) to it.  The point of this
@@ -495,6 +495,8 @@ regular expression:
 
 <FIXME> (Ticket #192.) Replace the regexp by a proper grammar, eventually.
 
+<FIXME> The ''T'' is optional if the time stamp does not have a time part.
+
 
 == Methods on the Date class ==
 
@@ -530,7 +532,7 @@ arguments.
 <RETN> The ''Date'' class called as a function returns a ''string'' object.
 
 <SHORTIMPL>
-<INCLUDE file="Date.es" name="meta static function invoke">
+<INCLUDE file="Date.es" name="static meta function invoke">
 
 
 === intrinsic::parse (s, reference=<LDOTS>) ===
@@ -751,17 +753,6 @@ UTC, denoted by a suffix ''Z''.
 
 <P> The helper functions ''removeTrailingZeroes'' and ''zeroFill'' are
 described in section <XREF target="Minor date helpers">.
-
-=== intrinsic::toJSONString ( pretty=false ) ===
-
-<DESC> The intrinsic ''toJSONString'' method convert this date object
-to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
-
-<RETN> The intrinsic ''toJSONString'' method returns a string.
-
-<SHORTIMPL>
-<INCLUDE file="Date.es" name="override intrinsic function toJSONString">
-
 
 === intrinsic::nanoAge() ===
 

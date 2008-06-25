@@ -113,10 +113,10 @@ keys and compute hash values for keys.
 {{{
 __ES4__ dynamic class Map.<K,V> extends Object
 {
-    public function Map(equals:   Callable = (function(a,b) a === b),
-                        hashcode: Callable = intrinsic::hashcode) <LDOTS>
+    function Map(equals:   Callable = (function(a,b) a === b),
+                 hashcode: Callable = intrinsic::hashcode) <LDOTS>
 
-    static public const length = 2;
+    static const length = 2;
 
     <SIGNATURE file="Map.es" name="intrinsic function size">
     <SIGNATURE file="Map.es" name="intrinsic function get">
@@ -187,7 +187,7 @@ values.
 saving its parameters in private storage and initializing the count of
 the number of associations in the table to zero.
 
-<INCLUDE file="Map.es" name="public function Map">
+<INCLUDE file="Map.es" name="function Map">
 
 <!-- Obsolete 
 === Map( object ) ===
@@ -319,11 +319,11 @@ pairs, respectively.  The iterator method ''get'' iterates over keys
 being called on instances of ''Map''.  They all delegate to the
 corresponding intrinsic method on their ''this'' object.
 
-<INCLUDE file="Map.es" name="public prototype function size">
-<INCLUDE file="Map.es" name="public prototype function get">
-<INCLUDE file="Map.es" name="public prototype function put">
-<INCLUDE file="Map.es" name="public prototype function has">
-<INCLUDE file="Map.es" name="public prototype function remove">
-<INCLUDE file="Map.es" name="public prototype function clear">
+<INCLUDE file="Map.es" name="prototype function size">
+<INCLUDE file="Map.es" name="prototype function get">
+<INCLUDE file="Map.es" name="prototype function put">
+<INCLUDE file="Map.es" name="prototype function has">
+<INCLUDE file="Map.es" name="prototype function remove">
+<INCLUDE file="Map.es" name="prototype function clear">
 
 <!-- End of Map.html -->

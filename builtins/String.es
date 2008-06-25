@@ -70,7 +70,7 @@
         static function get length() { return 1 }
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        meta static function invoke(value="")
+        static meta function invoke(value="")
             string(value);
 
         /* 15.5.2 The String Constructor */
