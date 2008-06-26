@@ -58,7 +58,8 @@ datatype NAMESPACE =
 
 type NAME = { ns: NAMESPACE, id: IDENTIFIER }
 
-type NAMESPACE_SET = NAMESPACE list
+type NAMESPACE_SET = (* LDOTS *) 
+     NAMESPACE list
 
 type OPEN_NAMESPACES = NAMESPACE_SET list
 
@@ -417,8 +418,7 @@ withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and FIXTURE_MAP = (FIXTURE_NAME * FIXTURE) list
-     and FIXTURE_MAPS = ((FIXTURE_NAME * FIXTURE) list) (* FIXTURE_MAP *)
-                list
+     and FIXTURE_MAPS = ((FIXTURE_NAME * FIXTURE) list) list
      and INITS = (FIXTURE_NAME * EXPRESSION) list
 
      and INSTANCE_TYPE =

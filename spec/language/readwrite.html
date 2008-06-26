@@ -4,8 +4,8 @@
 testing objects for the presence of a property, reading from and
 writing to a property, and removing a property.  Property access is
 always by the name of the property.  A property name is represented
-either as an instance of the pre-defined class ''Name'', or as a
-''string'' (which represents a name in the ''public'' namespace).
+either as an instance of the pre-defined class **Name**, or as a
+**string** (which represents a name in the **public** namespace).
 
 <SPECNOTE> This chapter complements the chapter on names, scopes, and
 name resolution.  At this time, there is some overlap between the two
@@ -15,10 +15,10 @@ chapters.
 access fails (an exception is thrown) if a check does not pass.  The
 exact exception depends on the particular check.
 
-<NOTE> For example, a property created by ''let'' or ''const'' or a
+<NOTE> For example, a property created by **let** or **const** or a
 property whose type is a non-nullable type without a default value
 must be written (initialized) before it is read; properties created by
-''const'' cannot be written more than once; and properties that have
+**const** cannot be written more than once; and properties that have
 type annotations can be updated with a new value only if the allocated
 type of the new value is a compatible subtype of the storage type of
 the property.  A **ReferenceError** is thrown in the first two
@@ -42,21 +42,21 @@ property access.
 
 <SPECNOTE> Any conflicts between the two descriptions are obviously bugs.
 
-<P> Objects may contain fixture properties in the ''meta'' namespace:
-''meta::get'', ''meta::set'', ''meta::has'', and ''meta::delete''.
+<P> Objects may contain fixture properties in the **meta** namespace:
+**meta::get**, **meta::set**, **meta::has**, and **meta::delete**.
 These properties always name methods.  Jointly they are known as
 //catch-all methods//.
 
-<NOTE> The requirement that the ''meta'' properties always name
+<NOTE> The requirement that the **meta** properties always name
 methods must be checked by the language implementation.  The namespace
-''meta'' is reserved and known to the implementation and may only be
+**meta** is reserved and known to the implementation and may only be
 used in specific circumstances.  See section (...).
 
 <P> If a catch-all method is defined on the object then it is invoked
-when a dynamic property is accessed: ''meta::has'' is invoked to
-determine if the object has the property; ''meta::get'' is invoked to
-read a property's value; ''meta::set'' is invoked to update or create
-a property; and ''meta::delete'' is invoked to delete a property.  A
+when a dynamic property is accessed: **meta::has** is invoked to
+determine if the object has the property; **meta::get** is invoked to
+read a property's value; **meta::set** is invoked to update or create
+a property; and **meta::delete** is invoked to delete a property.  A
 catch-all method is invoked even if the dynamic property that is being
 accessed already exists on the object.
 
@@ -69,34 +69,34 @@ converted to a canonical type.
 
 <P> If a catch-all method throws an exception, and the exception
 thrown is an instance of the pre-defined class
-''__ES4__::DefaultBehaviorClass'', then the default behavior for the catch-all
+**DefaultBehaviorClass**, then the default behavior for the catch-all
 is triggered.
 
-<P> ''DefaultBehaviorClass'' is a singleton class; its only instance
-is is stored in the global constant ''__ES4__::DefaultBehavior''.
+<P> **DefaultBehaviorClass** is a singleton class; its only instance
+is is stored in the global constant **DefaultBehavior**.
 
 <NOTE> The mechanism is analogous to the one defined for iterators,
-where an instance of the singleton ''__ES4__::iterator::StopIterationClass'' is stored in
-the global property ''__ES4__::iterator::StopIteration''.
+where an instance of the singleton **iterator::StopIterationClass** is stored in
+the global property **iterator::StopIteration**.
 
-<P> The ''meta::get'' method is invoked on one argument, a property
+<P> The **meta::get** method is invoked on one argument, a property
 name.  The value returned is the property value.  The default behavior
-for ''meta::get'' is to retrieve the value from a dynamic property in
+for **meta::get** is to retrieve the value from a dynamic property in
 the object's property map.
 
-<P> The ''meta::set'' method is invoked on two arguments, a property
+<P> The **meta::set** method is invoked on two arguments, a property
 name and a value.  Any value returned is ignored.  The default
-behavior for ''meta::set'' is to update or attempt to create a dynamic
+behavior for **meta::set** is to update or attempt to create a dynamic
 property in the object's property map.
 
-<P> The ''meta::has'' method is invoked on one argument, a property
-name.  Any value returned by the method is converted to ''boolean''.
-The default behavior for ''meta::has'' is to search for a dynamic
+<P> The **meta::has** method is invoked on one argument, a property
+name.  Any value returned by the method is converted to **boolean**.
+The default behavior for **meta::has** is to search for a dynamic
 property in the object's property map.
 
-<P> The ''meta::delete'' method is invoked on one argument, a property
-name.  Any value returned by the method is converted to ''boolean''.
-The default behavior for ''meta::delete'' is to attempt to delete a
+<P> The **meta::delete** method is invoked on one argument, a property
+name.  Any value returned by the method is converted to **boolean**.
+The default behavior for **meta::delete** is to attempt to delete a
 dynamic property from the object's property map.
 
 == Checking for the Presence of a Property ==
@@ -110,7 +110,7 @@ a property", as used in the implementations of [[Get]], [[Put]],
 [[HasProperty]], and other internal subroutines.
 
 <P> An object is said to contain a property if the property is in the
-object's prototype map or if the ''meta::has'' catchall claims the
+object's prototype map or if the **meta::has** catchall claims the
 property to be present.
 
 <SEM>
@@ -181,7 +181,7 @@ end
 <P> The internal ''getPropertyHelper'' function reads the property named by
 //name// from an object //obj//, implementing strict mode checking if
 //isStrict// is true.  An error is signalled in strict mode if the
-object's ''meta::has'' catch-all returned true for //name// and the
+object's **meta::has** catch-all returned true for //name// and the
 property cannot be read.
 
 <SEM>
@@ -223,9 +223,9 @@ fun getPropertyHelper(obj, name, isStrict)
 end
 </PRE>
 
-<NOTE> A bound method has identity, so if ''m'' is a method on the
-class of some object ''o'' then the expression ''o.m'' always
-evaluates to the same object value (in terms of ''==='').
+<NOTE> A bound method has identity, so if **m** is a method on the
+class of some object **o** then the expression **o.m** always
+evaluates to the same object value (in terms of **===**).
 
 
 == Writing a property value ==

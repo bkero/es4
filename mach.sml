@@ -74,11 +74,6 @@ val cachesz = 4096
  * all through the code. Yay.
  *)
 
-type BOOLEAN = bool
-type IEEE_754_BINARY_64_BIT = Real64.real
-type IEEE_754R_DECIMAL_128_BIT = Decimal.DEC
-type STRING = Ustring.STRING
-
 datatype WRITABILITY = ReadOnly | WriteOnce | Writable
 
 type ATTRS = { removable: BOOLEAN,
@@ -86,19 +81,16 @@ type ATTRS = { removable: BOOLEAN,
                fixed: BOOLEAN,
                writable: WRITABILITY }
 
-
-type IDENTIFIER = STRING
-
 datatype VALUE = ObjectValue of OBJECT
                | UndefinedValue
                | NullValue
 
      and OBJECT =
-         Object of { ident: OBJECT_IDENTIFIER,                     
-                     tag: TAG,
-                     proto: VALUE,
+         Object of { propertyMap: PROPERTY_MAP,
                      fixtureMap: FIXTURE_MAP,
-                     propertyMap: PROPERTY_MAP }
+                     ident: OBJECT_IDENTIFIER,                     
+                     tag: TAG,
+                     proto: VALUE }
 
      and TAG =
          ObjectTag of FIELD_TYPE list
@@ -1148,9 +1140,6 @@ fun getNativeFunction (name:NAME)
     end
 
 (* begin names experiment *)
-
-type NAMESPACE_SET = NAMESPACE list
-type OPEN_NAMESPACES = NAMESPACE_SET list 
 
 fun getScopeObjectAndKind ( Scope {object, kind, ...}: SCOPE) = (object, kind)
 

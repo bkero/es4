@@ -16,198 +16,149 @@ SCOPE:                      The structure and resolution of names
 <hr>
 -->
 
-<P> Names in ECMAScript are defined in section ...names.
+<P>Names in ECMAScript are defined in section ...names.
 
-<P> Names denote types, namespaces, and locations (properties bound in
-objects and scopes).  The denotation of a name depends on the context
-of the name's use: When a name is used in a type annotation context it
-denotes a type; when it is used in a qualifier context it denotes a
-namespace; and in all other contexts it denotes a location.
+<P>Names are used to identify properties within property maps and fixtures within fixture maps. 
 
-<P> //Unqualified names// are expressed as simple identifiers, for
-example ''encodeURI''.  //Qualified names// are expressed as pairs of
-namespace expressions and simple identifiers, for example
-''intrinsic::substring'' or ''"org.w3.dom"::DOMNode''.
-
-<P> Unqualified names are subject to //name resolution//: every
-unqualified name must resolve to a unique qualified name.  Names that
-denote types and namespaces are resolved at definition time, while
-names that denote locations are resolved (repeatedly) at evaluation
-time.
-
-<NOTE> In a qualified name such as ''intrinsic::substring'' the
-leftmost identifier, ''intrinsic'', is itself unqualified and subject
-to definition-time resolution.
-
-<P> Name resolution makes use of the //open namespaces// that
-implicitly qualify any unqualified name.  In every compilation unit
-the open namespaces consist initially of the **public** and
-**internal** namespaces.  The program can open additional namespaces
-by means of the ''use&nbsp;namespace'' pragma.
-
-<P> Name resolution is performed differently depending on whether the
-name is a //lexical reference// (for example, the variable reference
-''encodeURI'') or a //property reference// on an object (for example,
-the reference ''s.substring'').
-
-<P> In the case of a lexical reference a name is resolved as a
-reference to a name //bound// in the //scope// of the reference; each
-entry in the chain formed by active scope objects binds names to which
-the reference may resolve, with resolutions in scopes closer to the
-point of reference (in "inner scopes") preferred over those in scopes
-further away (in "outer scopes").
-
-<P> In the case of a property reference a name is resolved as a
-reference to a property on a specific object; each entry in the chain
-formed by the object and its prototype objects in order provides named
-properties to which the reference may resolve, with resolutions in
-objects closer to the original object preferred over those further out
-in the prototype chain.
-
-<P> A reference may be found to be ambiguous.  The resolution
-algorithm incorporates several forms of disambiguation, described
-later, but some references are inherently ambiguous.  Such references
-cause errors to be signalled at definition or evaluation time.
-
-<P> Names that denote types, namespaces, and locations are resolved by
-the same algorithm.  Suppose an unqualified name that denotes a type
-or namespace is resolved to a particular type or namespace definition
-in a particular scope.  Then the same unqualified name denoting a
-location will be resolved unambiguously to an immutable location that
-holds a value that represents the type or namespace, if resolution
-takes place in the same scope as for the first name.  A //reservation
-mechanism// ensures that names that are resolved at definition time
-cannot become ambiguous at evaluation time by the introduction of new
-bindings.
-
-== Prototype chain ==
-
-<p>Every object has a distinguished value called its //prototype//
-(see section Object prototype in Values).
-
-<p>If the prototype value of an object is another object, then the
-prototype value is called an object's //prototype object//, and 
-the connection between the initial object and its prototype object
-is called a //prototype link//.
-
-<p>The //prototype chain// is the list of objects formed by following
-prototype links from an object. The prototype chain of an object
-begins with the object itself, and ends with the first object having a
-null prototype value.
-
-<p>When a name is to be resolved against an object, if resolution
-initially fails because the object does not contain a property
-matching the name, then resolution continues along the object's
-prototype chain.
-
-== Scopes and visibility ==
-
-<P> Defining and binding forms introduce names into a program.  These
-names can be referenced by name expressions that occur within the
-//scope// of the binding.  The scope of a binding is primarily
-determined textually (ECMAScript is primarily //lexically scoped//)
-and depends also on the defining or binding form that introduced the
-binding.
-
-<NOTE> For example, the scope of a ''var'' binding inside a block
-statement is the entire body of the function or program containing the
-block, whereas the scope of a ''let'' binding inside a block statement
-is that block statement.
-
-<P> Scopes nest textually, and a name that is bound in one scope may
-be //shadowed// in an inner scope by a binding of the same name in the
-inner scope; name expressions in the inner scope will not be able to
-access the outer binding.
-
-<P> In this Specification, the nesting of scopes is modelled as a
-list of fixture maps in the definition phase and a list of objects during evaluation.
-Both environments are generically called the //scope chain//. Which kind
-of list is being referred to will be clear from the context in which the 
-term is used.
-
-<P> Each scope holds a table of named bindings in that scope. Fixture maps hold
-a table of fixture bindings and objects hold a table of property bindings.
-Every time a new scope is entered the scope chain is extended with a new 
-fixture map or object, and at every point in the program one particular scope chain
-is in effect.
-
-<FIXME> What's a fixture? Is it defined somewhere?
-
-<FIXME> Exhibit the definition-time and evaluation-time structures
-for scope chains here.
-
-<P> Some objects that appear on evaluation-time scope chains are
-dynamically extensible. For example, class objects appear on the 
-scope chain of class and instance methods, and properties can be 
-added to and removed from class objects; however, these properties 
-are not visible to lexical references from the classes methods.
+<P>A name is calculated from a name expression found in ECMAScript source code.
 
 == Name Expressions ==
 
-<p> There are two kinds of name expressions, the unqualified name
-(such as ''encodeURI'') and the namespace-qualified name (such as
-''intrinsic::subtring'' or ''"org.w3.dom"::DOMNode'').  Name
-resolution transforms name expressions into name values.
+<p>A //name expresison// is either qualified or unqualified.
+
+<p> A //qualified name expression// consists of a namespace expression and an identifier.  The
+former is either a literal namespace value (resulting from using a string as a namespace qualifier)
+or else a further name expression identifying a namespace fixture in the lexical environment. Examples
+of a qualified names are **intrinsic::subtring** or **"org.w3.dom"::DOMNode**
+
+<p>An //unqualified name expression// consists of an identifier and a list of sets of open
+namespaces, determined by context. An example of an unqualified name is **encodeURI**.
+
+<P>An unqualified name is subject to //name resolution//, and must resolve to a unique qualified
+name. The algorithm for name resolution is presented in subsequent sections, and differs depending
+on the context the unqualified name occurs within. 
+
+<p>Names that are used in contexts denoting types and namespaces must be resolved statically at
+definition time. Names that denote other properties may be resolved repeatedly at evaluation time.
+
+<NOTE>In a qualified name such as **intrinsic::substring** the leftmost identifier, **intrinsic**,
+is itself unqualified and subject to definition-time resolution.
 
 <SEM>
 <INCLUDE file="ast.sml" name="and NAME_EXPRESSION">
-
-<p> A qualified name expression is comprised of a namespace expression
-and an identifier.  The former is either a literal namespace value
-(resulting from using a string as a namespace qualifier) or a name
-expression denoting a namespace binding.
-
-<SEM>
 <INCLUDE file="ast.sml" name="and NAMESPACE_EXPRESSION">
 
-<p> An unqualified name expression is comprised of the namespaces that
-are open at the point where the name expression occurs in the source
-text and identifier.  The open namespaces will be used to resolve
-the name: an unqualified name matches any binding or property that has
-the same identifier and a namespace value from among the open
-namespaces.
 
-<p> The open namespaces are represented as a list of sets of namespace
-values.  Each set contains namespace values that are given the same
-priority during name resolution.  The list holds sets in priority
-order.
+=== Open namespaces list ===
 
-<NOTE> A new set is added to the list every time a new lexical scope
-is entered, and the innermost (highest priority) set is extended by
-the ''use&nbsp;namespace'' pragma.  An unqualified name expression
-retains a reference to the open namespaces data structure as it appears
-at the point where the expression occurs.
-
-<P class="note"> The two lowest priority sets are singleton sets
-holding the **public** and **internal** namespaces, respectively.  The
-namespace **internal** is specific to each compilation unit.
+<p>The //open namespaces list// of an unqualified name expression is a list of sets of namespaces
+open at the point of the program where the name expression occurs, and is ordered by priority, with
+sets of namespaces earlier in the list taking priority over sets later in the list. The list
+reflects the nesting of lexical scopes, with the namespaces opened in the "innermost" lexical scope
+held in the first set of namespaces in the list, and subsequent sets holding namespaces opened in
+enclosing lexical scopes.
 
 <SEM>
-<INCLUDE file="mach.sml" name="type NAMESPACE_SET">
-<INCLUDE file="mach.sml" name="type OPEN_NAMESPACES">
+<INCLUDE file="ast.sml" name="type NAMESPACE_SET">
+<INCLUDE file="ast.sml" name="type OPEN_NAMESPACES">
 
-<!--
-<FIXME> The use of a ''NAMESPACE list'' here to represents namespace sets
-is a spec bug.  Sets should be modelled as set data structures. -->
+=== Special namespaces ===
 
-<P> The first element on an ''OPEN_NAMESPACES'' list is the highest
-priority element.
+<P>Several namespaces are assigned special meaning, and are generated by an ECMAScript
+implementation in specific contexts. 
 
+<P>These namespaces are bound to predefined names and implicitly opened in their associated
+scopes. In the following sections, when a namespace is said to be //implicitly opened// in a given
+lexical scope, the specified meaning is that a new namespace set is added to the front of the open
+namespaces list for the duration of the scope containing the implicitly opened namespaces.
+
+==== Public and 4th Edition namespaces ====
+
+<P>The public and 4th Edition namespaces are defined in section Standard Namespaces of Values, and
+are defined identically in all programs and lexical scopes.
+
+<p>The 4th Edition namespace is bound to the global property name **%%""%%::__ES4__** (that is, the name
+formed by qualifying the identifier **__ES4__** with the public namespace) and can therefore be seen
+by code loaded in either 3rd Edition or 4th Edition mode.
+
+<P>The public namespace is bound to the global property name **__ES4__::public** (that is, the name
+formed by qualifying the identifier **public** with the 4th Edition namespace). 
+
+<P>When a program is loaded in 3rd Edition or 4th Edition mode, the public namespace is implicitly
+opened.
+
+<P>When a program is loaded in 4th Edition mode, after the public namespace is implicitly opened,
+the 4th edition namespace is implicitly opened. The 4th Edition namespace is therefore opened at 
+a higher priority than the public namespace.
+
+<NOTE> The **public** namespace is distinguished in several ways. The names of properties added
+dynamically to objects are qualified by **public** by default, so all properties created by 3rd
+Edition code running on a 4th Edition implementation are **public**, and **public** is sometimes
+called "the compatibility namespace" for that reason. The default namespace qualifier that is
+applied to declarations in every scope is **public**, so absent other qualification every property
+on every object and every lexically bound name is in the **public** namespace.
+
+==== Internal namespaces ====
+
+<P>Each program (compilation unit) has a new implementation-generated opaque namespace implicitly
+defined as its //internal namespace// at the start of the definition phase.
+
+<P>The internal namespace for a program is bound to the name **internal** in the global fixture map
+for the duration of definition and evaluation. The binding to **internal** is removed after
+definition and evaluation of a program, and is re-bound to new internal namespaces for any
+subsequent programs loaded.
+
+<P>When a program is loaded in 4th Edition mode, after the 4th Edition namespace is implicitly
+opened, the program's internal namespace is implicitly opened. The internal namespace is therefore
+opened at a higher priority than the 4th Edition namespace.
+
+<NOTE>An internal namespace can be used to qualify definitions that are not intended to be visible
+to any other program.
+
+==== Private and protected namespaces ====
+
+<P>Each class definition has two new implementation-generated opaque namespaces implicitly defined
+as its //private namespace// and //protected namespace//.
+
+<P>The private and protected namespaces for a class are bound to the names **private** and
+**protected**, respectively, within the lexical scope of the class definition they are associated
+with.
+
+<P>The private and protected namespaces for a class are implicitly opened within the lexical scope
+of the class.
+
+<P>The protected namespace for a class ''C'' is also implicitly opened within the lexical scope of
+//every class that extends ''C''//.
 
 == Reference Expressions ==
 
-<P> Name expressions are incorporated into //reference expressions//
-that provide context to the name expressions.  Name expressions that
-reference names bound in a scope, such as ''encodeURI'' and
-''intrinsic::substring'', are contained in ''LexicalReference'' nodes.
+<P>A //reference expression// provides context for resolving a name expression to a name, and
+identifying a particular fixture or property to which the name refers. A reference expression is
+either a lexical reference, an object name reference, or an object index reference.
 
-<P> Name expressions that reference properties on objects, such as
-''s.intrinsic::substring'', are contained in ''ObjectNameReference''
-nodes, which contain both the object expression (''s'', in the
-example) and the name (''intrinsic::substring'').
+<p>A //lexical reference// is a reference expression that resolves to a name within a lexical scope,
+and therefore a property or fixture stored in a scope object. Some lexical references are required
+to be resolved to fixtures statically during program definition, while others may be resolved
+dynamically during program evaluation.  Examples of lexical references are **encodeURI** or
+**public::Function**.
 
-<P> Finally, the node ''ObjectIndexReference'' represents names that
-are computed at evaluation time, such as ''s[e]''.
+<P>An //object name reference// is formed by conjoining an object expression and a name expression
+with a period ("."). A name expression in an object name reference resolves to the name of a fixture
+or property on the provided object, or a fixture or property on the object's prototype chain. Some
+object references may be resolved to fixtures statically, but the specified behavior of object
+references is as if they are always resolved dynamically during program evaluation. Examples of
+object references are **s.length** or **s.intrinsic::substring**, where **s** is the name of an
+object.
+
+<P>An //object index reference// is similar to an object name reference, in that it combines an
+expression for a name with an object and resolves the calculated name against the provided
+object. An object index reference differs from an object name reference by the fact that there is no
+proper name expression inside it: rather an object expression is conjoined with a general ECMAScript
+expression, enclosed within square brackets, and determining the name to resolve may require
+arbitrary evaluation of the bracketed expression. An example of an object index reference is
+**s[f()]**, where **s** is the name of an object, and the name to be resolved against **s** is
+//calculated dynamically// by evaluating the function expression **f()**. Object index expressions
+can therefore never be resolved statically.
 
 <SEM>
 {{{
@@ -220,12 +171,74 @@ datatype EXPRESSION =
        <LDOTS>
 }}}
 
-<NOTE> An ''ObjectIndexReference'' is evaluated by evaluating its
-''index'' operand to a ''Name'' object and then treating that value
-the same as a resolved qualified name.  Index operands that do not
-evaluate to ''Name'' objects are converted to ''string'', and a
-''Name'' object is formed from the string and the **public**
-namespace.
+<NOTE> An ''ObjectIndexReference'' is evaluated by evaluating its ''index'' operand to a ''Name''
+object and then treating that value the same as a resolved qualified name.  Index operands that do
+not evaluate to ''Name'' objects are converted to ''string'', and a ''Name'' object is formed from
+the string and the **public** namespace.
+
+== Lexical scopes ==
+
+<P>Lexical scopes are defined in section ...scopes. 
+
+<P>Defining and binding forms introduce names into a lexical scope. These names are then visible to
+lexical references that occur within the scope of the binding. The scope of a binding is primarily
+determined by the textual boundaries of the scope (ECMAScript is primarily //lexically scoped//) and
+depends also on the defining or binding form that introduced the binding.
+
+<NOTE>For example, the scope of a **var** binding inside a block statement is the entire body of the
+function or program containing the block, whereas the scope of a **let** binding inside a block
+statement is that block statement.
+
+<P>Scopes nest textually, and a name that is bound in one scope may be //shadowed// in an inner
+scope by a binding of the same name in the inner scope; name expressions in the inner scope will not
+be able to access the outer binding.
+
+<P>In this specification, the nesting of scopes is modelled as a list of fixture maps in the
+definition phase and a list of objects during evaluation. The former list is called the //static
+scope chain// or the //static environment//. The latter list is called the //dynamic scope chain//
+or the //dynamic environment//.  Both lists are generically referred to as //scope chains//, with
+the distinction between the static and dynamic environments indicated where not otherwise clear from
+context.
+
+<P>Each scope holds a fixture map of the named fixtures defined in that scope. 
+
+<P>The fixture maps in the static environment are arranged into a simple list. 
+
+<SEM>
+<INCLUDE file="ast.sml" name="and FIXTURE_MAPS">
+
+<P>The fixture maps in the dynamic environment are arranged into accompanying objects, each with a
+corresponding property map in which values may be stored as properties.
+
+<SEM>
+<INCLUDE file="mach.sml" name="and SCOPE">
+<INCLUDE file="mach.sml" name="and SCOPE_KIND">
+
+<P>At each point in the program, both during definition and evaluation, exactly one scope chain is
+in effect. This scope chain is called //the scope chain// or //the environment// containing an
+expression, statement or definition.
+
+<P>Some objects that appear on evaluation-time scope chains are dynamically extensible. For
+example, class objects appear on the scope chain of class and instance methods, and properties can
+be added to and removed from class objects; however, these properties are not visible to lexical
+references within the class.
+
+=== Prototype chain ===
+
+<p>Every object has a distinguished value called its //prototype// (see section Object prototype in
+Values).
+
+<p>If the prototype value of an object is another object, then the prototype value is called the
+object's //prototype object//, and the connection between the initial object and its prototype
+object is called its //prototype link//.
+
+<p>The //prototype chain// is the list of objects formed by following prototype links from an
+object. The prototype chain of an object begins with the object itself, and ends with the first
+object having a null prototype value.
+
+<p>When a name is to be resolved against an object, if resolution initially fails because the object
+does not contain a property matching the name, then resolution continues along the object's
+prototype chain.
 
 
 == Name Resolution ==
@@ -283,9 +296,9 @@ in ^^B^^ and ^^ns3::n^^ was defined in ^^C^^, then we'd be left with just
 
 <P> (The motivation for using the order in which names are introduced
 in the class hierarchy is to guarantee that the meaning of valid references
-to object properties doesn't change. In other words, if ''o.x'' is ever
-valid, then it shall always refer to the same property ''x'' as long as the type
-of ''o'' doesn't change.)
+to object properties doesn't change. In other words, if **o.x** is ever
+valid, then it shall always refer to the same property **x** as long as the type
+of **o** doesn't change.)
 
 <P> We then filter by namespace priority.  The open namespaces are
 organized in a prioritized list of namespace sets.  If one of the
@@ -307,8 +320,8 @@ namespaces and types.  (We require definition-time resolution in order
 to make names and types constant, which generally simplifies the
 language and makes programs more easily comprehensible.)  The
 consequence is that namespace and type references are illegal inside
-scopes introduced by ''with'' or scopes that may be extended by the
-''eval'' operator, because those scopes make definition time
+scopes introduced by **with** or scopes that may be extended by the
+**eval** operator, because those scopes make definition time
 resolution impossible -- their contents are unknown.  Such programs
 result in a syntax error being signalled.  (It is possible to ease
 that restriction in various ways but we have not done so.)
@@ -334,8 +347,8 @@ use namespace NS1, namespace NS2
    ... var x: T
 }}}
 
-<P> The reference to ''T'' in the type annotation is resolved uniquely
-at definition time to ''NS1::T''.  Then another compilation unit is
+<P> The reference to **T** in the type annotation is resolved uniquely
+at definition time to **NS1::T**.  Then another compilation unit is
 loaded:
 
 {{{
@@ -344,31 +357,31 @@ NS2 type T = ...
 
 <P> Since the global environment is "flat"--code in earlier
 compilation units can see bindings introduced by later compilation
-units--the reference to ''T'' from the first program is now ambiguous.
+units--the reference to **T** from the first program is now ambiguous.
 
 <P> ES4 protects against this eventuality by //reserving// global
-names that are resolved at definition time.  When ''T'' is resolved in
-the first program and found to be in ''NS1'', the name ''NS2::T'' is
+names that are resolved at definition time.  When **T** is resolved in
+the first program and found to be in **NS1**, the name **NS2::T** is
 reserved: it is made off-limits to later programs.  As a consequence,
 the second program above would not be loaded, because the introduction
-of ''NS2::T'' would be an error.
+of **NS2::T** would be an error.
 
 <P> Names are reserved in namespaces at the same or higher priority
 level as the namespace that the name was resolved to, so in the
-example above neither ''public::T'' nor ''internal::T'' would become
+example above neither **public::T** nor **internal::T** would become
 reserved, as those namespaces are at lower priority levels than
-''NS1'' and ''NS2''.
+**NS1** and **NS2**.
 
 <NOTE> Top-level "use&nbsp;namespace" pragmas are given a higher
 priority level than names originating "outside" the compilation unit,
-as is the case for ''public'' and ''internal''.
+as is the case for **public** and **internal**.
 
 
 === Definition-Time Resolution of Namespace and Type Expressions ===
 
 <P> The definition time scope chain is modelled as a list of fixture maps, defined elsewhere.  A fixture map
-maps names to fixture bindings that result from defining and binding forms (''var'', ''function'',
-''type'', ''class'', ''interface'', ''namespace'', and others).  Fixture maps have no dynamic properties.
+maps names to fixture bindings that result from defining and binding forms (**var**, **function**,
+**type**, **class**, **interface**, **namespace**, and others).  Fixture maps have no dynamic properties.
 
 <P> Definition time resolution resolves name expressions that denote
 namespaces and types, and performs reservation of global names if
@@ -428,7 +441,7 @@ to note that reservation only happens in the global object.
 <P> The evaluation time scope chain is modelled as a list of arbitrary
 objects.  A scope object maps names to properties (both fixtures and
 dynamic properties).  Apart from scope objects introduced by the
-''with'' statement, the evaluation time scope chain mirrors the
+**with** statement, the evaluation time scope chain mirrors the
 definition time scope chain.
 
 <p> The following algorithm resolves a name expression to an object
@@ -476,11 +489,11 @@ object.  Both fixed and dynamic properties are searched in each
 object, in a single pass over the prototype chain.
 
 <p> ''ObjectIndexReference'' expressions represent computed lookup.
-The index expression is computed; if it evaluates to a ''Name'' object
-then it is used as is, otherwise the value is converted to ''string''
-and qualified with the ''public'' namespace.
+The index expression is computed; if it evaluates to a **Name** object
+then it is used as is, otherwise the value is converted to **string**
+and qualified with the **public** namespace.
 
-<FIXME> The following algorithm does not yet handle ''Name'' objects.
+<FIXME> The following algorithm does not yet handle **Name** objects.
 
 <SEM>
 <INCLUDE file="eval.sml" name="and resolveObjectReference">
