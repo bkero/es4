@@ -478,7 +478,7 @@ fun subType (extra : TYPE -> TYPE -> bool)
             (type1 : TYPE)
             (type2 : TYPE)
     : bool = 
-    (type1 = type2)   (* reflexivity *) orelse
+    (type1 = type2)                     orelse
     (subTypeRecord   extra type1 type2) orelse
     (subTypeArray    extra type1 type2) orelse
     (subTypeUnion    extra type1 type2) orelse

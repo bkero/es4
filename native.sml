@@ -186,7 +186,7 @@ fun getClassOfObject (regs:Mach.REGS)
     let
         val Mach.Object { tag, ... } = nthAsObj vals 0
     in
-        Eval.getValue regs (#global regs) (Mach.nominalBaseOfTag tag)
+        Eval.getPropertyValue regs (#global regs) (Mach.nominalBaseOfTag tag)
     end
 
 
@@ -653,7 +653,7 @@ fun get (regs:Mach.REGS)
         val obj = (nthAsObj vals 0)
         val name = (nthAsName regs vals 1)
     in
-        Eval.getValueOrVirtual regs obj name false 
+        Eval.getPropertyValueOrVirtual regs obj name false 
     end
 
 (*

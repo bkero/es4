@@ -31,7 +31,7 @@ reference to the property is in fact an invocation of these methods.
 Virtual dynamic properties may be implemented by //catch-all//
 methods.
 
-<FIXME> We need a definition of "method", this is the first use.
+<FIXME>We need a definition of "method", this is the first use.
 
 == Catch-All Methods ==
 
@@ -42,30 +42,26 @@ property access.
 
 <SPECNOTE> Any conflicts between the two descriptions are obviously bugs.
 
-<P> Objects may contain fixture properties in the **meta** namespace:
-**meta::get**, **meta::set**, **meta::has**, and **meta::delete**.
-These properties always name methods.  Jointly they are known as
-//catch-all methods//.
+<P> Objects may contain fixtures in the **meta** namespace: **meta::get**, **meta::set**,
+**meta::has**, and **meta::delete**.  These properties always name methods.  Jointly they are known
+as //catch-all methods//.
 
 <NOTE> The requirement that the **meta** properties always name
 methods must be checked by the language implementation.  The namespace
 **meta** is reserved and known to the implementation and may only be
 used in specific circumstances.  See section (...).
 
-<P> If a catch-all method is defined on the object then it is invoked
-when a dynamic property is accessed: **meta::has** is invoked to
-determine if the object has the property; **meta::get** is invoked to
-read a property's value; **meta::set** is invoked to update or create
-a property; and **meta::delete** is invoked to delete a property.  A
-catch-all method is invoked even if the dynamic property that is being
-accessed already exists on the object.
+<P> If a catch-all method is defined on the object then it is invoked when a dynamic property is
+accessed: **meta::has** is invoked to determine if the object has the property; **meta::get** is
+invoked to read the property's value; **meta::set** is invoked to update or create the property; and
+**meta::delete** is invoked to delete the property.  A catch-all method is invoked even if the
+dynamic property that is being accessed already exists on the object.
 
 <P> A catch-all method operates on the receiver object of the method
 call, not on the receiver's prototype objects.
 
-<P> If a catch-all method returns normally then the value it returns
-(if any) becomes the result of the operation, possibly after being
-converted to a canonical type.
+<P> If a catch-all method returns normally then the value it returns (if any) becomes the result of
+the property access, possibly after being converted to a canonical type.
 
 <P> If a catch-all method throws an exception, and the exception
 thrown is an instance of the pre-defined class
@@ -101,16 +97,16 @@ dynamic property from the object's property map.
 
 == Checking for the Presence of a Property ==
 
-<P> The HasOwnProperty protocol is invoked to check whether an object
-//obj// contains a property named by //name//.
+<P> The ''HasOwnProperty'' protocol is invoked to check whether an object //obj// contains a
+property named by //name//.
 
 <SPECNOTE> In terms of the 3rd Edition Specification, the
-HasOwnProperty protocol implements the test for whether an object "has
+''HasOwnProperty'' protocol implements the test for whether an object "has
 a property", as used in the implementations of [[Get]], [[Put]],
 [[HasProperty]], and other internal subroutines.
 
 <P> An object is said to contain a property if the property is in the
-object's prototype map or if the **meta::has** catchall claims the
+object's property map or if the **meta::has** catchall claims the
 property to be present.
 
 <SEM>
@@ -121,7 +117,7 @@ operator ''&lt;*'' tests subtype compatibility.
 
 == Reading a property value ==
 
-<P> The GetProperty protocol is invoked to read the value of a
+<P> The ''GetPropertyValue'' protocol is invoked to read the value of a
 property named by //name// from an object //obj//.  The flag
 //isStrict// is true if the ES4 code that caused GetProperty to be
 invoked was compiled in strict mode.
@@ -131,97 +127,15 @@ whose ''strict'' flag is set because it represents a source code
 phrase that was recognized in a region of code that was covered by a
 strict mode pragma.
 
-<SPECNOTE> There may be several types of AST nodes carrying strict
-flags and invoking GetProperty, depending on how the AST is eventually
-structured.
+<SPECNOTE> There may be several types of AST nodes carrying strict flags and invoking
+''GetPropertyValue'', depending on how the AST is eventually structured.
 
-<P> The GetProperty protocol queries the object for the presence of
-the property using the HasOwnProperty protocol, moving up the object's
-prototype chain if the object does not contain the property.  Once an
-object on the prototype chain is found that contains the object, the
-internal ''getPropertyHelper'' function is invoked to extract the
-property value.  If no property is found, then a default value may be
-returned, or, in strict mode, an exception may be thrown.
-
-<FIXME> The GetProperty protocol below overlaps with the
-''searchObject'' algorithm described in Names; the two algorithms must
-be reconciled.  That will happen when the protocol here is described
-in terms of SML (because then they will use the same code).
+<FIXME>Strict mode is not implemented in this code.
 
 <SEM>
-<PRE>
-fun GetProperty(obj, name, isStrict)
-  for every object in obj, obj's prototype, ...
-    if HasOwnProperty(obj, name)
-      return getPropertyHelper(obj, name, isStrict)
-    end
-  end
+<INCLUDE file="eval.sml" name="and getPropertyValue">
+<INCLUDE file="eval.sml" name="and getPropertyValueOrVirtual">
 
-  if obj allows dynamic property creation
-    if obj has a structural array type with a "rest" type constraint, denote it T
-      if T has a default value
-        return that default value
-      else
-        throw a ReferenceError
-            "Cannot read uninitialized property with non-nullable type"
-      end
-    end
-    return undefined
-  end
-
-  if isStrict
-    throw a ReferenceError
-        "Trying to read undefined property from non-dynamic object"
-  end
-
-  return undefined
-end
-</PRE>
-
-<P> The internal ''getPropertyHelper'' function reads the property named by
-//name// from an object //obj//, implementing strict mode checking if
-//isStrict// is true.  An error is signalled in strict mode if the
-object's **meta::has** catch-all returned true for //name// and the
-property cannot be read.
-
-<SEM>
-<PRE>
-fun getPropertyHelper(obj, name, isStrict)
-  if (name is a property in the property map of obj, denote it obj.name && 
-      the fixed attribute of obj.name is true)
-    if obj.name is a method
-      return a closure 
-          where obj is bound as this to the method extracted from obj.name
-    end
-    if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
-      return obj.name.[[Getter]]()
-    end
-    return the value of obj.name
-  end
-
-  if (meta::get is a property in the property map of obj, denote it obj.meta::get
-      && the fixed attribute of obj.meta::get is true)
-    try 
-      return obj.meta::get(name)
-    catch DefaultBehavior
-      ; fall through to the next case
-    end
-  end
-
-  if name is a property in the property map of obj
-    if obj.name is a getter/setter pair, denote the getter obj.name.[[Getter]]
-      return obj.name.[[Getter]]()
-    end
-    return obj.name
-  end
-
-  if isStrict
-    throw a ReferenceError, "Property not found"
-  else
-    return undefined
-  end
-end
-</PRE>
 
 <NOTE> A bound method has identity, so if **m** is a method on the
 class of some object **o** then the expression **o.m** always
@@ -230,7 +144,7 @@ evaluates to the same object value (in terms of **===**).
 
 == Writing a property value ==
 
-<P> The SetProperty protocol is invoked to write a value //value// to
+<P> The ''SetProperty'' protocol is invoked to write a value //value// to
 a property named by //name// on an object //obj//.  The object may or
 may not have a property of that name when SetProperty is invoked, and
 SetProperty may attempt to create the property.  The flag //isStrict//
@@ -335,7 +249,7 @@ end
 
 == Deleting a property ==
 
-<P> The DeleteProperty protocol is invoked to remove a property named
+<P> The ''DeleteProperty'' protocol is invoked to remove a property named
 by //name// from an object //obj//.  The object may or may not have a
 property of that name when DeleteProperty is invoked.  The flag
 //isStrict// is true if the ES4 code that caused DeleteProperty to be

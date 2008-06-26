@@ -21,16 +21,15 @@ subtype relation are consistent.
 
 <p>ECMAScript includes a gradual type system that supports optional
 type annotations on properties (e.g., on variables and fields).  These
-type annotations are currently enforced dynamically.
+type annotations are currently enforced dynamically, during evaluation.
 
 <p>Every value has an //allocated type//. The allocated type is the
 type given to a value when it is created and which defines its fixed
 structure. 
 
-<p>Every property has a //storage type//. The storage type of a
-property is given by its declaration and constrains the set of values
-that can be stored in the property. The storage type of a property is
-also called the property's //type constraint//.
+<p>Every property and fixture has a //storage type//. The storage type of a property or fixture is
+given by its declaration and constrains the set of values that can be stored in the property. The
+storage type of a property or fixture is also called it's //type constraint//.
 
 <p>The declarations of properties can carry type //annotations//,
 which define the storage type of the property. Annotation is denoted
@@ -66,32 +65,31 @@ is meaningful only as the storage type of a property.
 
 === The null type ===
 
-<p>The //null type// is the type populated only by the ^^null^^ value.
+<p>The //null type// is the type populated only by the semantic value ''NullValue''.
 
 <p>The null type is denoted in a type expression as ^^null^^.
 
 === The undefined type ===
 
-<p>The //undefined type// the type populated only by the value stored in
-the global constant ^^public::undefined^^. 
+<p>The //undefined type// the type populated only by the semantic value ''UndefinedValue''.
 
 <p>The undefined type is denoted in type expressions as ^^undefined^^.
 
 === Nominal types ===
 
-<p>A //nominal type// is either a class type or an interface type.
+<p>A //nominal type// is either a class type, an instance type or an interface type.
 
-<p>A //class type// is a type defined by a class definition. 
+<p>A //class type// and an //instance type// are both defined by a class definition. 
 
 <p>An //interface type// is a type defined by an interface definition.
 
 <p>Nominal types are arranged in an explicit subtype relation through the use of ^^extends^^ and
 ^^implements^^ clauses in class and interface definitions.
 
-<p>A nominal type is denoted in type expressions by the name of the class or interface that defined
-the type.
+<p>An instance or interface type is denoted in type expressions by the name of the class or
+interface that defined the type, respectively.
 
-<p>A nominal type ^^C^^ (or ^^C.&lt;T_{1}, .., T_{n}>^^) can be
+<p>An instance or interface type ^^C^^ (or ^^C.&lt;T_{1}, .., T_{n}>^^) can be
 declared as a //non-null// type via any of the following declarations:
 
 **
@@ -102,11 +100,11 @@ declared as a //non-null// type via any of the following declarations:
     interface C.&lt;X_{1}, .., X_{n}>! ..
 }}}
 **
-<p>A nominal type is //nullable// if it is not a non-null type.
+<p>An instance or interface type is //nullable// if it is not a non-null type.
 
 === Record types ===
 
-<p>A //record type// is a subtype of the ^^public::Object^^ class
+<p>A //record type// is a subtype of the ^^public::Object^^ instance
 type that has additional type constraints on some specific set of
 named properties.
 
@@ -215,10 +213,9 @@ returning a ^^String^^ value.
 <p>The return type of a function type can be omitted, in which case
 the return type is implicity the any type.
 
-<p>If a function should not return a value, the function return type
-can be annotated as ^^void^^, which is a notation for defining return
-types of function types only; there is no separate "void type" that
-can be denoted elsewhere. 
+<p>If a function should not return a value, the function return type can be annotated as ^^void^^,
+which is a special notation for indicating the absence of a return type; there is no separate "void
+type" that can be denoted elsewhere.
 
 <p>A function type may include a type constraint for the ^^this^^
 binding. Such a constraint must be listed as the first parameter in 
@@ -296,19 +293,18 @@ given further special treatment.
 === Non-null types ===
 
 <p> A //non-null type// is a type that excludes the ^^null^^ value from the population of a nullable
-class or interface type.
+instance or interface type.
 
-<p>A non-null type is denoted ^^!T^^ for some class or interface type ^^T^^.
+<p>A non-null type is denoted ^^!T^^ for some instance or interface type ^^T^^.
 
 <p>For example, the non-null type ^^!String^^ is populated by instances of ^^public::String^^ but
 //excludes// null values.
 
 === Parametric types ===
 
-<p>A //parametric type// is a user-defined //type constructor// -- not
-a proper type -- associated with some fixed definition such as a
-class, interface or type definition. A parametric type takes some
-number of types as arguments and produces a new type as its result.
+<p>A //parametric type// is a user-defined //type constructor// -- not a proper type -- associated
+with some type definition such as an instance type, interface type or type abbreviation. A
+parametric type takes some number of types as arguments and produces a new type as its result.
 
 <p>Parametric types are denoted by appending a type-parameter list to
 the name of a class, interface, or type at the site of its
@@ -325,9 +321,9 @@ character.
 }}}
 **
 
-defines a class ^^Vector^^ that is parameterized over a single type
-variable ^^X^^. This class therefore also serves as a parametric type
-that can be used in type applications to form proper types.
+defines a class ^^Vector^^ that is parameterized over a single type variable ^^X^^. This class
+definition itherefore also serves as a parametric instance type that can be used in type
+applications to form proper types.
 
 
 === Type applications ===
@@ -343,14 +339,13 @@ single period, a less-than character, a comma-separated list of type
 expressions, and a greater-than character.
 
 <p>For example, the type application ^^Vector.&lt;Number&gt;^^ denotes an
-class type that can be used as the allocated type of new objects.
+instance type that can be used as the allocated type of new objects.
 
 
 === Type names ===
 
-<p>A //type name// is a symbolic reference to a class, an interface, a
-type definition, or a type variable bound by a parameter in a
-parametric type.
+<p>A //type name// is a symbolic reference to an instance type, an interface type, a type
+abbreviation, or a type variable bound by a parameter in a parametric type.
 
 <p>A type name is denoted in a type expression by the same syntax as
 a name expression. 
@@ -388,7 +383,7 @@ any reference to a type variable ^^X^^ in ^^T^^
 is replaced by the type ^^S^^.
 
 <p>
-In the scope of a generic type definition
+In the scope of a parametric type definition
 
 **
 {{{
@@ -400,9 +395,9 @@ a type application ^^X.&lt;S_{1}, .., S_{n}>^^ in ^^T^^ is
 replaced by the type ^^S[y_{1}:=S_{1}, .., y_{n}:=S_{n}]^^.
   
 <p> In the scope of a class definition that associates a
-non-nullable class name ^^C^^ with a class definition ''D'',
+non-nullable instance type name ^^C^^ with a class definition ''D'',
 type resolution replaces any ''TypeName'' that refers to ^^C^^ with
-''ClassType D''. For references to a nullable class, the same
+''InstanceType D''. For references to a nullable instance type, the same
 replacement is made, but the result (or the enclosing ''AppType''
 node, if there is one) is unioned with the ^^null^^ type. 
 
@@ -432,9 +427,9 @@ corresponding fixture.
 the body of that type definition is resolved in its 
 environment, and then replaces the original type name.
 
-<p> If the resulting fixture is for a class or interface definition,
-the type name is replaced by a class type or an interface type
-(unioned with the type ^^null^^ if the nominal type is declared as nullable).
+<p> If the resulting fixture is for a class or interface definition, the type name is replaced by an
+instance type or an interface type (unioned with the type ^^null^^ if the instance or interface type
+is declared as nullable).
 
 <p> A type application that refers to a type-parametric type
 definition is replaced by the body of that type definition, after the
@@ -442,8 +437,8 @@ replacement of each formal parameter name with the corresponding
 resolved type argument.
 
 <p> A type application of a type name that refers to a type-parametric
-class or interface definition is replaced by a type application that
-directly includes that class or interface type (unioned with the type
+instance type or interface type is replaced by a type application that
+directly includes that instance or interface type (unioned with the type
 ^^null^^ if the nominal type is declared as nullable).
 
 <p> If none of the above cases apply, then ''resolveTypeNames'' uses
@@ -469,12 +464,12 @@ type resolution process.
 <p>Resolved types do not include:
 
 <UL>
-  <LI> type names that refer to nominal types (''ClassType'' and ''InterfaceType'' are used instead)
-  <LI> type names that refer to type  definitions (which are inlined)
+  <LI> type names that refer to instance or interface types (''InstanceType'' and ''InterfaceType'' are used instead)
+  <LI> type names that refer to type abbreviations (which are inlined)
 </UL>
   
-<P> Resolved types may include type names that refer to generic type
-parameters; these references include a nonce.
+<P> Resolved types may include type names that refer to type parameters; these references include a
+nonce.
   
 
 == The Subtype and Type Equivalence Relations ==
@@ -510,7 +505,7 @@ described in the following subsections.
 
 === The Type Equivalence Relation ===
 
-<p>The type equivalence relation is also a binary relation on types.
+<p>The type //equivalence/// relation is also a binary relation on types.
 Two types are equivalent if and only if they are both subtypes of each other.
 
 ==== Implementation of the Type Equivalence Relation ====
@@ -550,7 +545,7 @@ checks if two field names are equal.
 <p> A fixed-length array type ^^[S_{1}, .., S_{n}, S]^^ is a subtype of
 ^^[S_{1}, .., S_{n}]^^.  The supertype demands one fewer element in the
 array than the subtype does.  For example, ^^[Number, String,
-String]^^ is a subtype of ^^[Number, String]^^.
+Boolean]^^ is a subtype of ^^[Number, String]^^.
 
 <p> A fixed-length array type ^^[S_{1}, .., S_{n}]^^ is a subtype of ^^[T_{1},
 .., T_{n}]^^ if each ^^S_{i}^^ is equivalent to ^^T_{i}^^ for i in 1..n.
@@ -558,8 +553,8 @@ String]^^ is a subtype of ^^[Number, String]^^.
 <p> A variable-length array type ^^[S_{1}, .., S_{n}, S, ... S]^^ is a
 subtype of ^^[S_{1}, .., S_{n}, ... S]^^.  The supertype demands one fewer
 element in the array than the subtype does.  For example, ^^[Number,
-String, String, ... String]^^ is a subtype of ^^[Number,
-... String]^^, via transitivity.
+String, Boolean, ... Function]^^ is a subtype of ^^[Number,
+... Function]^^, via transitivity.
 
 <NOTE>Since ^^...^^ denotes concrete syntax, we use the
  //meta-syntax// ^^S_{1}, .., S_{n}^^ to denote a sequence of
@@ -633,7 +628,7 @@ equivalent to the any type ^^*^^ for all i in (q+1)..m.
 </UL>
 
 <p>
-For generic functions, alpha-renaming of the type variable preserves
+For type-parametric functions, alpha-renaming of the type variable preserves
 the meaning of types.  Moreover,
 
 **
@@ -662,9 +657,9 @@ is a subtype of
 }}}
 **
 
-Hence, to check subtyping between generic functions, we alpha-rename
+Hence, to check subtyping between type-parametric functions, we alpha-rename
 the type variables to be identical in both types, and then proceed to
-check subtyping on the non-generic versions of the two function types.
+check subtyping on the non-type-parametric versions of the two function types.
 
 <p> The types in a subtype relation may contain free type variables,
 which are assumed to denote the same unknown type in both arguments to
@@ -708,7 +703,7 @@ Given a class definition
 }}}
 **
 
-the class type ^^C^^ is a subtype of class type ^^D^^, and class type ^^C^^ is also a subtype of
+the instance type ^^C^^ is a subtype of instance type ^^D^^, and instance type ^^C^^ is also a subtype of
 interface type ^^I_{j}^^ for j in 1..n.
 
 
@@ -723,9 +718,8 @@ Given an interface definition
 
 the type ^^K^^ is a subtype of ^^I_{j}^^ for j in 1..m.
 
-<p>These rules generalize to applications of generic classes and interfaces via
-appropriate renaming of bound variables. For example, given a generic
-class definition
+<p>These rules generalize to applications of type-parametric instance and interface types via
+appropriate renaming of bound variables. For example, given a type-parametric interface type defined by
 
 **
 {{{
@@ -752,11 +746,11 @@ occurrence of the type variable ^^x_{i}^^ replaced (in a capture-free
 manner) by the corresponding type ^^S_{i}^^.
 
 <NOTE> The above rules also apply if ^^C^^ is declared as a
-non-nullable class.
+non-nullable instance type.
 
 <NOTE> There is a distinction between the type name ^^C^^ and the
-class type to which it refers, in that the type name ^^C^^  includes
-the type ^^null^^ if ^^C^^ is a nullable type, whereas the class type
+instance type to which it refers, in that the type name ^^C^^  includes
+the type ^^null^^ if ^^C^^ is a nullable type, whereas the instance type
 ^^C^^ describes only class instances.
 
 <SEM>
@@ -770,22 +764,22 @@ within the type ''ty''.
 
 === Relating Structural and Nominal Types ===
 
-<p> A record type ^^{N_{1}:S_{1}, .., N_{n}:S_{n}}^^  is a subtype of the class
+<p> A record type ^^{N_{1}:S_{1}, .., N_{n}:S_{n}}^^  is a subtype of the instance
 type ^^public::Object^^.
 
-<p> An array type ^^[S_{1}, .., S_{n}]^^  is a subtype of the class
-type ^^public::Array^^.
+<p> An array type ^^[S_{1}, .., S_{n}]^^  is a subtype of the instance
+type ^^public::Array^^, which is a subtype of the instance type ^^public::Object^^.
 
-<p> Any function type  is a subtype of the class
-type ^^public::Function^^.
+<p> Any function type  is a subtype of the instance
+type ^^public::Function^^, which is a subtype of the instance type ^^public::Object^^.
 
 <SEM>
 <INCLUDE file="type.sml" name="and subTypeStructuralNominal">
 
 == Compatible Types ==
 
-<p>The compatibility relation is a binary relation on type values. Two
-types ^^S^^ and ^^T^^ are compatible if ^^T^^ can be obtained from
+<p>The //compatibility// relation is a binary relation on type values. A type
+^^S^^ is compatible with a type ^^T^^ if ^^T^^ can be obtained from
 ^^S^^ by replacing certain portions of ^^S^^ by the any type ^^*^^.
 
 <p>For example, the record type ^^{x : double}^^ is compatible with
@@ -799,7 +793,7 @@ symmetric.
 
 == Compatible-Subtyping ==
 
-<p>The compatible-subtype relation is a binary relation on types.  A
+<p>The //compatible-subtype// relation is a binary relation on types.  A
 type ^^S^^ is a compatible-subtype of a type ^^T^^ if there exists
 some type ^^U^^ such that ^^S^^ is a subtype of ^^U^^ and ^^U^^
 compatible with ^^T^^.
@@ -812,7 +806,7 @@ compatible-subtype of the types ^^{x : *, y : *}^^, ^^{x : double}^^,
 
 <p>The compatible-subtyping relation is implemented by calling the
 previously-defined ''subType'' predicate and passing in an ''extra''
-parameter that reasons about compatibility, in that every type is
+parameter that implements the compatibility relation, that every type is
 compatible with ^^*^^.
 <SEM>
 <INCLUDE file="type.sml" name="fun compatibleSubtype">
@@ -820,11 +814,11 @@ compatible with ^^*^^.
 
 == Type Invariants at Run Time ==
 
-<p>A type is //reifiable// if it is not the any type or a union type.
+<p>A type is //allocatable// if it is not the any type or a union type.
 
 <p>Every value in ES has an associated //allocated type//, which is a type that is
 associated with the value when the value is first allocated or created. An allocated
-type is always a reifiable type. The allocated type of a value is invariant; for example,
+type is always an allocatable type. The allocated type of a value is invariant; for example,
 updating the fields of an object cannot change the allocated type of that object.
 
 <p>If a property of storage type ^^T^^ hold a value ^^v^^ of type

@@ -93,7 +93,7 @@ datatype VALUE = ObjectValue of OBJECT
                      proto: VALUE }
 
      and TAG =
-         ObjectTag of FIELD_TYPE list
+         RecordTag of FIELD_TYPE list
        | ArrayTag of (TYPE list * TYPE option)
        | PrimitiveTag of PRIMITIVE
        | InstanceTag of CLASS
@@ -680,7 +680,7 @@ fun inspect (v:VALUE)
         fun tag (Object ob) =
             case (#tag ob) of
                 (* FIXME: elaborate printing of structural tags. *)
-                ObjectTag _ => "<Object>"
+                RecordTag _ => "<Record>"
               | ArrayTag _ => "<Arrray>"
               | InstanceTag t => "<Instance " ^ (typ (InstanceType t)) ^ ">"
               | PrimitiveTag p => "<Primitive " ^ (prim p) ^ ">"
@@ -738,7 +738,7 @@ fun inspect (v:VALUE)
 fun nominalBaseOfTag (to:TAG)
     : NAME =
     case to of
-        ObjectTag _ => Name.public_Object
+        RecordTag _ => Name.public_Object
       | ArrayTag _ => Name.public_Array
       | InstanceTag (Class {name, ...}) => name
       | PrimitiveTag (BooleanPrimitive _) => Name.ES4_boolean

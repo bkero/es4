@@ -525,6 +525,14 @@ and defaultValueForType (regs:REGS)
                            
       | _ => NONE
 
+and isNumericName (name:NAME) = 
+    let
+        val { ns, id } = name 
+    in
+        (ns = Name.publicNS) andalso 
+        List.all (fn x => (#"0" <= x) andalso (x <= #"9")) (String.explode (Ustring.toAscii id))
+    end
+    
 (*
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's
  * no Reference type in ES4.
@@ -533,55 +541,72 @@ and defaultValueForType (regs:REGS)
  * name resolution algorithm. There is no recursive-get
  * operation on a single object + prototype chain.
  *)
-and getValue regs obj name = 
-    getValueOrVirtual regs obj name true
+and getPropertyValue regs obj name = 
+    getPropertyValueOrVirtual regs obj name true
 
-and getValueOrVirtual (regs:REGS)
+and getPropertyValueOrVirtual (regs:REGS)
                       (obj:OBJECT)
                       (name:NAME)
                       (doVirtual:bool)
     : VALUE =
     let
         (* INFORMATIVE *) val _ = trace ["getting property ", fmtName name, " on obj #", fmtObjId obj]
-        val Object { propertyMap, ... } = obj
+        val Object { propertyMap, tag, ... } = obj
     in
         case findProp propertyMap name of
-            SOME {state, ...} =>
-            (case state of
-                 ValueProperty v => v
-               | VirtualProperty { getter, ... } =>
-                 if doVirtual
-                 then
-                     case getter of
-                         SOME g => invokeFuncClosure (withThis regs obj) g NONE []
-                       | _ => UndefinedValue
-                 else
-                     UndefinedValue)
+            SOME {state=(ValueProperty v), ...} 
+            => v
+
+          | SOME {state=(VirtualProperty { getter, ... }), ...}
+            => if doVirtual
+               then
+                   case getter of
+                       SOME g => invokeFuncClosure (withThis regs obj) g NONE []
+                     | _ => UndefinedValue
+               else
+                   UndefinedValue
             
           | NONE =>
             case Fixture.findFixture (getFixtureMap regs obj) (PropName name) of 
-                SOME fixture =>                 
+                SOME fixture 
+                =>                 
                 (* INFORMATIVE *) (trace ["getValueOrVirtual reifying fixture ", fmtName name];
-                (* LPAREN *)reifyFixture regs obj name fixture;
-                 getValueOrVirtual regs obj name doVirtual)
-        
+                   (* LPAREN *)reifyFixture regs obj name fixture;
+                   getPropertyValueOrVirtual regs obj name doVirtual)
+                                  
               | NONE =>  
-                if doVirtual andalso 
-                   Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_get)
-                then 
-                    (* INFORMATIVE *) (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), "\") catchall on obj #", fmtObjId obj];
-                    evalNamedMethodCall regs obj meta_get [newString regs (#id name)]
-                    (* INFORMATIVE *) )
-                else 
-                    if isDynamic regs obj
-                    then UndefinedValue
-                    else throwExn (newRefErr (* LDOTS_RPAREN *)
-                                       (* BEGIN_INFORMATIVE *)
-                                       regs
-                                       ["attempting to get nonexistent property ",
-                                        LogErr.name name,
-                                        " from non-dynamic object"])
-                                       (* END_INFORMATIVE *)
+                case (isNumericName name, tag) of
+                    (true, ArrayTag (_, SOME defaultType))
+                    => let 
+                            val defaultVal = defaultValueForType regs defaultType
+                        in
+                            case defaultVal of 
+                                NONE => throwExn (newTypeErr (* LDOTS_RPAREN *)
+                                                      (* BEGIN_INFORMATIVE *) 
+                                                      regs ["default type for property ", 
+                                                            LogErr.name name, 
+                                                            " has no default value "])
+                              (* END_INFORMATIVE *)
+                              | SOME dv 
+                                => (setValueOrVirtual regs obj name dv false; 
+                                    dv)
+                        end
+                  | _ 
+                    => if doVirtual andalso 
+                          Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_get)
+                       then 
+                           (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), "\") catchall on obj #", fmtObjId obj];(* INFORMATIVE *) 
+                           evalNamedMethodCall regs obj meta_get [newString regs (#id name)]
+                           )(* INFORMATIVE *) 
+                       else 
+                           if isDynamic regs obj
+                           then UndefinedValue
+                           else throwExn (newRefErr (* LDOTS_RPAREN *)
+                                              (* BEGIN_INFORMATIVE *)
+                                              regs
+                                              ["attempting to get nonexistent property ",
+                                               LogErr.name name,
+                                               " from non-dynamic object"]) (* END_INFORMATIVE *) 
     end
 
 and reifyFixture (regs:REGS)
@@ -872,7 +897,7 @@ and instantiateGlobalClass (regs:REGS)
     : VALUE =
     let
         val _ = traceConstruct ["instantiating global class ", fmtName n];
-        val (cls:VALUE) = getValue regs (#global regs) n
+        val (cls:VALUE) = getPropertyValue regs (#global regs) n
     in
         case cls of
             ObjectValue ob => evalNewObj regs ob args
@@ -909,8 +934,8 @@ and needNameOrString (regs:REGS)
         if (typeOfVal regs v) <* (instanceType regs ES4_Name [])
         then
             let
-                val nsval = getValue regs obj public_qualifier
-                val idval = getValue regs obj public_identifier
+                val nsval = getPropertyValue regs obj public_qualifier
+                val idval = getPropertyValue regs obj public_identifier
             in
                 { id = (toUstring regs idval), ns = (needNamespaceOrNull nsval) }
             end
@@ -1143,7 +1168,7 @@ and newInterface (regs:REGS)
     : VALUE =
     let
         val { global, ... } = regs
-        val interfaceTypeImpl = needObj regs (getValue regs global helper_InterfaceTypeImpl)
+        val interfaceTypeImpl = needObj regs (getPropertyValue regs global helper_InterfaceTypeImpl)
         val arg = ObjectValue (newObject (PrimitiveTag (TypePrimitive (InterfaceType iface))) NullValue [])
     in
         evalNewObj regs interfaceTypeImpl [arg]
@@ -1230,10 +1255,10 @@ and newNativeFunction (regs:REGS)
     
 and getIteratorNamespace (regs:REGS)
     : NAMESPACE =
-    needNamespace (getValue regs (#global regs) ES4_iterator)
+    needNamespace (getPropertyValue regs (#global regs) ES4_iterator)
 
 and getStopIteration (regs:REGS) =
-    getValue regs (#global regs) { id = Ustring.StopIteration_,
+    getPropertyValue regs (#global regs) { id = Ustring.StopIteration_,
                                    ns = getIteratorNamespace regs }
 
 and isStopIteration (regs:REGS)
@@ -1802,7 +1827,7 @@ and evalExpr (regs:REGS)
                " on obj #", fmtObjId obj, ", with this=", case this of 
                                                               NONE => "<none>"
                                                             | SOME x => "#" ^ fmtObjId x];
-            getValue regs obj name
+            getPropertyValue regs obj name
         end
 
       | LetExpr {defs, body, head} =>
@@ -1886,7 +1911,7 @@ and arrayToList (regs:REGS)
     let
         val len = doubleToInt
                       (toUInt32 regs
-                                (getValue regs arr public_length))
+                                (getPropertyValue regs arr public_length))
         fun build i vs =
             if (i <  (0:Int32.int))
             then vs
@@ -1894,7 +1919,7 @@ and arrayToList (regs:REGS)
                 let
                     val n = public (Ustring.fromInt32 i)
                     val curr = if hasProperty regs arr n
-                               then getValue regs arr n
+                               then getPropertyValue regs arr n
                                else UndefinedValue
                 in
                     build (i - (1:Int32.int)) (curr::vs)
@@ -2230,7 +2255,7 @@ and getClassObjOfInstanceType (regs:REGS)
                               (ity:TYPE)
     : OBJECT = 
     let 
-        fun fetch n = getValue regs (#global regs) n
+        fun fetch n = getPropertyValue regs (#global regs) n
     in
         case ity of 
             InstanceType (Class { name, ... }) => 
@@ -2270,7 +2295,7 @@ and getObjectScope (regs:REGS)
     : SCOPE = 
     let
         val Object { tag, ... } = obj
-        fun fetch n = getValue regs (#global regs) n
+        fun fetch n = getPropertyValue regs (#global regs) n
     in
         case tag of             
             PrimitiveTag (TypePrimitive (ClassType _))
@@ -2294,7 +2319,7 @@ and getInstanceInterface (regs:REGS)
                          (ity:TYPE)
     : OBJECT = 
     let 
-        fun fetch n = getValue regs (#global regs) n
+        fun fetch n = getPropertyValue regs (#global regs) n
     in
         case ity of 
             InterfaceType (Interface { name, ... }) => 
@@ -2359,10 +2384,10 @@ and evalArrayInitialiser (regs:REGS)
             case Option.map (evalTy regs) ty of 
                 NONE => 
                 ((ArrayTag ([], (SOME AnyType))), 
-                 getValue regs (#global regs) public_Array)
+                 getPropertyValue regs (#global regs) public_Array)
               | SOME (ArrayType (tys,tyo)) =>
                 (ArrayTag (tys, tyo),
-                 getValue regs (#global regs) public_Array)
+                 getPropertyValue regs (#global regs) public_Array)
               | SOME ty => 
                 let
                     val cv = ObjectValue (getClassObjOfInstanceType regs ty)
@@ -2404,9 +2429,9 @@ and evalObjectInitialiser (regs:REGS)
                                  | SOME ob => ObjectValue ob
         val (newTag, newClassVal, tyExprs) = 
             case Option.map (evalTy regs) ty of 
-                NONE => ((ObjectTag []), getObjClassVal(), [])
+                NONE => ((RecordTag []), getObjClassVal(), [])
               | SOME (RecordType fields) => 
-                (ObjectTag fields, getObjClassVal(), fields)
+                (RecordTag fields, getObjClassVal(), fields)
               | SOME ty => 
                 let 
                     val cv = ObjectValue (getClassObjOfInstanceType regs ty)
@@ -2607,7 +2632,7 @@ and evalCallByRef (regs:REGS)
     : VALUE =
     let
         val (obj, name) = r
-        val v = getValue regs obj name
+        val v = getPropertyValue regs obj name
         val obj = case v of 
                       ObjectValue ob => ob
                     | _ => throwExn (newRefErr regs ["attempting to get property ", 
@@ -2663,7 +2688,7 @@ and evalSetExpr (regs:REGS)
                     let val v = evalExpr regs rhs
                     in performBinop 
                            regs bop 
-                           (getValue regs obj name) 
+                           (getPropertyValue regs obj name) 
                            v
                     end
             in
@@ -2682,7 +2707,7 @@ and evalSetExpr (regs:REGS)
                   | AssignBitwiseXor => modifyWith BitwiseXor
                   | AssignLogicalAnd =>
                     let
-                        val a = getValue regs obj name
+                        val a = getPropertyValue regs obj name
                     in
                         if toBoolean a
                         then evalExpr regs rhs
@@ -2690,7 +2715,7 @@ and evalSetExpr (regs:REGS)
                     end
                   | AssignLogicalOr =>
                     let
-                        val a = getValue regs obj name
+                        val a = getPropertyValue regs obj name
                     in
                         if toBoolean a
                         then a
@@ -2712,7 +2737,7 @@ and evalCrement (regs:REGS)
     : VALUE = 
     let
         val (_, (obj, name)) = resolveRefExpr regs expr false
-        val v = getValue regs obj name
+        val v = getPropertyValue regs obj name
         val v' = toNumeric regs v
         val i = case numTypeOf regs v of
                     DoubleNum => newDouble regs 1.0
@@ -2807,7 +2832,7 @@ and evalUnaryOp (regs:REGS)
                            let
                                val (obj, name) = resolveLexicalReference regs name true
                            in
-                               typeNameOfVal (getValue regs obj name)
+                               typeNameOfVal (getPropertyValue regs obj name)
                            end
                          | _ => typeNameOfVal (evalExpr regs expr))
     end
@@ -3203,7 +3228,7 @@ and typeOfTag (regs:REGS)
     : (TYPE) =
     case tag of
         InstanceTag ity => InstanceType ity
-      | ObjectTag tys => RecordType tys
+      | RecordTag tys => RecordType tys
       | ArrayTag (tys,tyo) => ArrayType (tys,tyo)
       | PrimitiveTag (TypePrimitive t) => t
       | PrimitiveTag (BooleanPrimitive _) => primitiveInstanceType regs getBooleanClassSlot
@@ -3306,7 +3331,7 @@ and evalBinaryTypeOp (regs:REGS)
                         if hasOwnProperty regs obj name
                         then 
                             let 
-                                val v2 = getValue regs obj name
+                                val v2 = getPropertyValue regs obj name
                             in
                                 isLike v2 ty
                             end
@@ -3648,7 +3673,7 @@ and evalNamespaceExpr (regs:REGS)
         let
            val (obj, name) = resolveLexicalReference regs ne true
         in
-            needNamespace (getValue regs obj name)
+            needNamespace (getPropertyValue regs obj name)
         end
 
 and labelMatch (stmtLabels:IDENTIFIER list)
@@ -4284,7 +4309,7 @@ and parseFunctionFromArgs (regs:REGS)
                                 Parser.AllowColon,
                                 Parser.AllowIn)
 
-        val internalNamespace = needNamespace (getValue regs (#global regs) ES4_internal)
+        val internalNamespace = needNamespace (getPropertyValue regs (#global regs) ES4_internal)
         val funcExpr = Defn.defExpr (Defn.mkTopEnv internalNamespace (#rootFixtureMap regs) (getLangEd regs)) funcExpr
     in
         (fullStr, funcExpr)
@@ -4806,7 +4831,7 @@ and evalClassBlock (regs:REGS)
         val {scope, ...} = regs
 
         val _ = trace ["evaluating class stmt for ", fmtName (valOf name)]
-        val classVal = getValue regs (#global regs) (valOf name)
+        val classVal = getPropertyValue regs (#global regs) (valOf name)
         val classObj = needObj regs classVal
                        
         (* FIXME: might have 'this' binding wrong in class scope *)
