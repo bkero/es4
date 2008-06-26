@@ -194,7 +194,7 @@ attributes on every property:
 <INCLUDE file="ast.sml" name="datatype NAMESPACE">
 <INCLUDE file="ast.sml" name="type OPAQUE_NAMESPACE_IDENTIFIER">
 
-====== Standard namespaces ======
+====== Special namespaces ======
 
 <P>Two important namespaces are used throughout the following sections.
 
@@ -204,29 +204,15 @@ string, **%%""%%**.
 <P>The //4th Edition namespace// is the transparent namespace whose identifying string is the string
 **__ES4__**.
 
-<p>The 4th Edition namespace is bound to the global property name **%%""%%::__ES4__** (that is, the name
-formed by qualifying the identifier **__ES4__** with the public namespace) and can therefore be seen
-by code loaded in either 3rd Edition or 4th Edition mode.
-
-<P>The public namespace is bound to the global property name **__ES4__::public** (that is, the name
-formed by qualifying the identifier **public** with the 4th Edition namespace). 
-
-<P>When a program is loaded in 3rd Edition mode, the initial definition environment has the public
-namespace open. When a program is loaded in 4th Edition mode, the initial definition enviornment has
-both the public namespace and the 4th Edition namespace open.
-
 <P>All global property names defined subsequently in this specification are written in one of two forms:
 <ul>
-<li>Qualified, using the ECMAScript name-expression notation **namespace::identifier**
+<li>Qualified, using the ECMAScript qualitied name expression notation **namespace::identifier**
 <li>Unqualified, using the notation of a bare **identifier**, implicitly qualified by the 4th Edition namespace
 </ul>
 
-<NOTE> The **public** namespace is distinguished in several ways. The names of properties added
-dynamically to objects are qualified by **public** by default, so all properties created by 3rd
-Edition code running on a 4th Edition implementation are **public**, and **public** is sometimes
-called "the compatibility namespace" for that reason. The default namespace qualifier that is
-applied to declarations in every scope is **public**, so absent other qualification every property
-on every object and every lexically bound name is in the **public** namespace.
+<P>The public namespace is bound to the name **public**.
+
+<P>More information on special namespaces is given in section ...Names, Special namespaces.
 
 === Object Prototype === 
 
@@ -314,9 +300,6 @@ present in the object's property map, causes the property to be added to the pro
 
 <p>The //undefined value// is a unique constant denoted by the semantic value ''UndefinedValue'' and
 stored in the global constant property **public::undefined** in ECMAScript.
-
-<NOTE> The namespace **public** is predefined and is used for all global names that were also
-defined by the 3rd Edition Specification.
 
 <p>The //undefined type// is the allocated type of the undefined value. The undefined value is the
 only value with the undefined type as its allocated type. The undefined type is denoted by the
@@ -478,7 +461,7 @@ textual equality or collation are defined.
 <p>A namespace can be held in the primitive tag of an instance of the class **Namespace**. Such
 objects are called //namespace objects//.
 
-<p>A namespace can be defined as a fixture in a global or class static scope using a **namespace**
+<p>A namespace is defined as a fixture in a global or class static scope by a **namespace**
 definition.
 
 === Type Values ===
@@ -567,7 +550,7 @@ a function value.
 <p>A closure value can be held in the primitive tag of an instance of the class
 **public::Function**. Such objects are called //function objects//.
 
-<p>A closure value can be defined as a fixture in a scope using a **function** definition.
+<p>A closure value is defined as a fixture in a scope using a **function** definition.
 
 <p>Each //function definition// corresponds to zero of more function objects. 
 

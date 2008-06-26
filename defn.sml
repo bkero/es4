@@ -2303,7 +2303,7 @@ and mkTopEnv (internalNamespace:Ast.NAMESPACE)
       innerFixtureMaps = [],
       tempOffset = 0,
       openNamespaces = (if (langEd > 3)
-                        then [[internalNamespace, Name.ES4NS], [Name.publicNS]]
+                        then [[internalNamespace], [Name.ES4NS], [Name.publicNS]]
                         else [[Name.publicNS]]),
       labels = [],
       defaultNamespace = Name.publicNS,
