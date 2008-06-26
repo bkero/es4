@@ -246,9 +246,16 @@ def extractSML(fn, name):
     starting = re.compile("^( *)" + name)
     blanks = 0
     prev = ""
-    ldots = re.compile("\(\* *LDOTS *\*\)")
+    ldots = re.compile(r"\(\* *LDOTS *\*\)")
+    lparen = re.compile(r"\(\* LPAREN \*\)")
+    ldots_rparen = re.compile(r"\(\* LDOTS_RPAREN \*\)")
+    spec = re.compile(r"\(\* *SPEC:([^\*]*)\*\)")
     skipping = False
     for line in f:
+
+        line = spec.sub(r"\1", line)
+        line = lparen.sub(r"(", line)
+        line = ldots_rparen.sub(r"&#x0085;)", line)
 
         # Skip informative lines
         if re.search("BEGIN_INFORMATIVE", line):
@@ -264,6 +271,7 @@ def extractSML(fn, name):
 
         if skipping:
             continue
+
 
 	if outside:
 	    m = starting.search(line)

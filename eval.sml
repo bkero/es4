@@ -556,32 +556,32 @@ and getValueOrVirtual (regs:REGS)
                          SOME g => invokeFuncClosure (withThis regs obj) g NONE []
                        | _ => UndefinedValue
                  else
-                     (* FIXME: possibly throw here? *)
                      UndefinedValue)
             
           | NONE =>
             case Fixture.findFixture (getFixtureMap regs obj) (PropName name) of 
-                SOME fixture => 
-
-                (trace ["getValueOrVirtual reifying fixture ", fmtName name];
-                 reifyFixture regs obj name fixture;
+                SOME fixture =>                 
+                (* INFORMATIVE *) (trace ["getValueOrVirtual reifying fixture ", fmtName name];
+                (* LPAREN *)reifyFixture regs obj name fixture;
                  getValueOrVirtual regs obj name doVirtual)
         
               | NONE =>  
                 if doVirtual andalso 
                    Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_get)
                 then 
-                    (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), 
-                            "\") catchall on obj #", fmtObjId obj];
-                     evalNamedMethodCall regs obj meta_get [newString regs (#id name)])
+                    (* INFORMATIVE *) (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), "\") catchall on obj #", fmtObjId obj];
+                    evalNamedMethodCall regs obj meta_get [newString regs (#id name)]
+                    (* INFORMATIVE *) )
                 else 
                     if isDynamic regs obj
                     then UndefinedValue
-                    else throwExn (newRefErr
+                    else throwExn (newRefErr (* LDOTS_RPAREN *)
+                                       (* BEGIN_INFORMATIVE *)
                                        regs
                                        ["attempting to get nonexistent property ",
                                         LogErr.name name,
                                         " from non-dynamic object"])
+                                       (* END_INFORMATIVE *)
     end
 
 and reifyFixture (regs:REGS)
