@@ -42,77 +42,80 @@
  * "double" value.
  */
 
-    use namespace intrinsic;
+use namespace intrinsic;
 
-    __ES4__ type AnyNumber = (double|decimal|Number!);
+__ES4__ type AnyNumber = (double|decimal|Number!);
 
-    dynamic class Number
-    {
-        private var val : double;
+dynamic class Number
+{
+    private var val : double;
         
-        // IMPLEMENTATION ARTIFACT: A getter because Number is loaded before int.
-        static function get length() { return 1 }
+    // IMPLEMENTATION ARTIFACT: A getter because Number is loaded before int.
+    static function get length() { return 1 }
 
-        // IMPLEMENTATION ARTIFACT:  Static getters because Number is loaded before double.
-        static function get MAX_VALUE() : double         1.7976931348623157e+308;  /* INFORMATIVE */
-        static function get MIN_VALUE() : double         5e-324;                   /* INFORMATIVE */
-        static function get NaN() : double               0d / 0d;
-        static function get NEGATIVE_INFINITY() : double -1d / 0d;
-        static function get POSITIVE_INFINITY() : double 1d / 0d;
+    // IMPLEMENTATION ARTIFACT:  Static getters because Number is loaded before double.
+    static function get MAX_VALUE() : double         1.7976931348623157e+308;  /* INFORMATIVE */
+    static function get MIN_VALUE() : double         5e-324;                   /* INFORMATIVE */
+    static function get NaN() : double               0 / 0;
+    static function get NEGATIVE_INFINITY() : double -1 / 0;
+    static function get POSITIVE_INFINITY() : double 1 / 0;
 
-        /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        static meta function invoke(value=0d) {
-            if (value is AnyNumber)
-                return value;
-            return double(value);
-        }
-
-        /* E262-3 15.7.2.1: The Number constructor */
-        function Number(value=0d) : val = double(value) {}
-
-        override intrinsic function toString(radix = 10) : string
-            intrinsic::valueOf().intrinsic::toString(radix);
-
-        override intrinsic function toLocaleString() : string
-            intrinsic::valueOf().intrinsic::toLocaleString();
-
-        override intrinsic function toJSONString(pretty: boolean=false) : string
-            intrinsic::valueOf().intrinsic::toJSONString(pretty);
-
-        override intrinsic function valueOf(): (double|decimal)
-            val;
-
-        intrinsic function toFixed(fractionDigits=0): string
-            intrinsic::valueOf().intrinsic::toFixed(fractionDigits);
-
-        intrinsic function toExponential(fractionDigits=undefined) : string
-            intrinsic::valueOf().intrinsic::toExponential(fractionDigits);
-
-        intrinsic function toPrecision(precision=undefined) : string
-            intrinsic::valueOf().intrinsic::toPrecision(precision);
-
-        /* The prototype is shared with double, and decimal, and none
-         * of these functions may assume they operate on a "Number".
-         */
-
-        prototype function toString(this: AnyNumber, radix=10)
-            this.intrinsic::toString(radix);
-
-        prototype function toLocaleString(this: AnyNumber)
-            this.intrinsic::toLocaleString();
-
-        prototype function toJSONString(this: AnyNumber, pretty=false)
-            this.intrinsic::toJSONString(pretty);
-
-        prototype function valueOf(this: AnyNumber)
-            this.intrinsic::valueOf();
-
-        prototype function toFixed(this:AnyNumber, fractionDigits)
-            this.intrinsic::toFixed(fractionDigits);
-
-        prototype function toExponential(this: AnyNumber, fractionDigits)
-            this.intrinsic::toExponential(fractionDigits);
-
-        prototype function toPrecision(this: AnyNumber, precision)
-            this.intrinsic::toPrecision(precision);
+    /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
+    static meta function invoke(value=0) {
+        if (value is AnyNumber)
+            return value;
+        return double(value);
     }
+
+    /* E262-3 15.7.2.1: The Number constructor */
+    function Number(value=0) 
+        : val = double(value) 
+    {
+    }
+
+    override intrinsic function toString(radix = 10) : string
+        intrinsic::valueOf().intrinsic::toString(radix);
+
+    override intrinsic function toLocaleString() : string
+        intrinsic::valueOf().intrinsic::toLocaleString();
+
+    override intrinsic function toJSONString(pretty: boolean=false) : string
+        intrinsic::valueOf().intrinsic::toJSONString(pretty);
+
+    override intrinsic function valueOf(): (double|decimal)
+        val;
+
+    intrinsic function toFixed(fractionDigits=0): string
+        intrinsic::valueOf().intrinsic::toFixed(fractionDigits);
+
+    intrinsic function toExponential(fractionDigits=undefined) : string
+        intrinsic::valueOf().intrinsic::toExponential(fractionDigits);
+
+    intrinsic function toPrecision(precision=undefined) : string
+        intrinsic::valueOf().intrinsic::toPrecision(precision);
+
+    /* The prototype is shared with double, and decimal, and none
+     * of these functions may assume they operate on a "Number".
+     */
+
+    prototype function toString(this: AnyNumber, radix=10)
+        this.intrinsic::toString(radix);
+
+    prototype function toLocaleString(this: AnyNumber)
+        this.intrinsic::toLocaleString();
+
+    prototype function toJSONString(this: AnyNumber, pretty=false)
+        this.intrinsic::toJSONString(pretty);
+
+    prototype function valueOf(this: AnyNumber)
+        this.intrinsic::valueOf();
+
+    prototype function toFixed(this:AnyNumber, fractionDigits)
+        this.intrinsic::toFixed(fractionDigits);
+
+    prototype function toExponential(this: AnyNumber, fractionDigits)
+        this.intrinsic::toExponential(fractionDigits);
+
+    prototype function toPrecision(this: AnyNumber, precision)
+        this.intrinsic::toPrecision(precision);
+}

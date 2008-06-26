@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/String.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-26
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -61,7 +61,6 @@ dynamic class String
     <SIGNATURE file="String.es" name="static function lastIndexOf">
     <SIGNATURE file="String.es" name="static function localeCompare">
     <SIGNATURE file="String.es" name="static function match">
-    <SIGNATURE file="String.es" name="static function parseJSON">
     <SIGNATURE file="String.es" name="static function replace">
     <SIGNATURE file="String.es" name="static function search">
     <SIGNATURE file="String.es" name="static function slice">
@@ -76,7 +75,6 @@ dynamic class String
     static const length: uint = 1
 
     <SIGNATURE file="String.es" name="override intrinsic function toString">
-    <SIGNATURE file="String.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="String.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="String.es" name="intrinsic function charAt">
@@ -86,7 +84,6 @@ dynamic class String
     <SIGNATURE file="String.es" name="intrinsic function lastIndexOf">
     <SIGNATURE file="String.es" name="intrinsic function localeCompare">
     <SIGNATURE file="String.es" name="intrinsic function match">
-    <SIGNATURE file="String.es" name="intrinsic function parseJSON">
     <SIGNATURE file="String.es" name="intrinsic function replace">
     <SIGNATURE file="String.es" name="intrinsic function search">
     <SIGNATURE file="String.es" name="intrinsic function slice">
@@ -109,7 +106,6 @@ dynamic class String
 
 {{{
     toString:          function (this:Strings) <LDOTS>
-    toJSONString:      function (this:Strings, pretty=false) <LDOTS>
     valueOf:           function (this:Strings) <LDOTS>
     charAt:            function (pos) <LDOTS>
     charCodeAt:        function (pos) <LDOTS>
@@ -118,7 +114,6 @@ dynamic class String
     lastIndexOf:       function (searchString, pos) <LDOTS>
     localeCompare:     function (that) <LDOTS>
     match:             function (regexp) <LDOTS>
-    parseJSON:         function () <LDOTS>
     replace:           function (searchValue, replaceValue) <LDOTS>
     search:            function (regexp) <LDOTS>
     slice:             function (start, end) <LDOTS>
@@ -142,8 +137,6 @@ class ''string''.
 by storing //value//, converted to ''string'', in a private property.
 //Value// defaults to the empty string.
 
-<IMPL> The ''String'' constructor is implementation-defined.
-
 === String( value=<LDOTS> ) ===
 
 <DESC> The ''String'' class object called as a function converts
@@ -159,13 +152,13 @@ the empty string.
 === Methods that delegate to ''string'' methods ===
 
 <DESC> The intrinsic methods ''charAt'', ''charCodeAt'', ''concat'',
-''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'', ''parseJSON'',
+''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'',
 ''replace'', ''search'', ''slice'', ''split'', ''substring'',
 ''toLowerCase'', ''toLocaleLowerCase'', ''toUpperCase'',
 ''toLocaleUpperCase'', and ''trim'' all delegate 
 to the corresponding static methods on the ''string'' class.
 
-<RETN> These intrinsic methods return what their corresponding static
+<RETN> These static methods return what their corresponding static
 methods on the ''string'' class return.
 
 <SHORTIMPL>
@@ -176,7 +169,6 @@ methods on the ''string'' class return.
 <INCLUDE file="String.es" name="static function lastIndexOf">
 <INCLUDE file="String.es" name="static function localeCompare">
 <INCLUDE file="String.es" name="static function match">
-<INCLUDE file="String.es" name="static function parseJSON">
 <INCLUDE file="String.es" name="static function replace">
 <INCLUDE file="String.es" name="static function search">
 <INCLUDE file="String.es" name="static function slice">
@@ -199,16 +191,6 @@ differently by overriding ''toString''.
 <SHORTIMPL>
 <INCLUDE file="String.es" name="override intrinsic function toString">
 
-=== toJSONString ===
-
-<DESC> The intrinsic ''toJSONString'' method convert this string object
-to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
-
-<RETN> The intrinsic ''toJSONString'' method returns a string.
-
-<SHORTIMPL>
-<INCLUDE file="String.es" name="override intrinsic function toJSONString">
-
 === valueOf ===
 
 <RETN> The intrinsic ''valueOf'' method returns the result of calling
@@ -220,7 +202,7 @@ the intrinsic ''toString'' method.
 === Methods that delegate to ''string'' methods ===
 
 <DESC> The intrinsic methods ''charAt'', ''charCodeAt'', ''concat'',
-''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'', ''parseJSON'',
+''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'',
 ''replace'', ''search'', ''slice'', ''split'', ''substring'',
 ''toLowerCase'', ''toLocaleLowerCase'', ''toUpperCase'',
 ''toLocaleUpperCase'', and ''trim'' all delegate 
@@ -238,7 +220,6 @@ methods on the ''string'' class return.
 <INCLUDE file="String.es" name="intrinsic function lastIndexOf">
 <INCLUDE file="String.es" name="intrinsic function localeCompare">
 <INCLUDE file="String.es" name="intrinsic function match">
-<INCLUDE file="String.es" name="intrinsic function parseJSON">
 <INCLUDE file="String.es" name="intrinsic function replace">
 <INCLUDE file="String.es" name="intrinsic function search">
 <INCLUDE file="String.es" name="intrinsic function slice">
@@ -260,7 +241,7 @@ parameter position for anything else.
 
 === toString ( ) ===
 
-<RETN> Returns this result of invoking the intrinsic ''toString''
+<RETN> Returns the result of invoking the intrinsic ''toString''
 method.
 
 <P> The ''toString'' function is not generic; it throws a
@@ -287,7 +268,7 @@ as a method.
 
 <DESC> The methods ''charAt'', ''charCodeAt'', ''concat'',
 ''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'',
-''parseJSON'', ''replace'', ''search'', ''slice'', ''split'',
+''replace'', ''search'', ''slice'', ''split'',
 ''substring'', ''toLowerCase'', ''toLocaleLowerCase'',
 ''toUpperCase'', ''toLocaleUpperCase'', and ''trim'' on the ''String''
 prototype object all delegate to the
@@ -310,7 +291,6 @@ values returned by their corresponding static methods on the
 <INCLUDE file="String.es" name="prototype function lastIndexOf">
 <INCLUDE file="String.es" name="prototype function localeCompare">
 <INCLUDE file="String.es" name="prototype function match">
-<INCLUDE file="String.es" name="prototype function parseJSON">
 <INCLUDE file="String.es" name="prototype function replace">
 <INCLUDE file="String.es" name="prototype function search">
 <INCLUDE file="String.es" name="prototype function slice">

@@ -4,7 +4,7 @@
 
 <pre>
 FILE:                       spec/library/Array.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-20
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-26
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -76,7 +76,6 @@ dynamic class Array extends Object
 
     <SIGNATURE file="Array.es" name="override intrinsic function toString">
     <SIGNATURE file="Array.es" name="override intrinsic function toLocaleString">
-    <SIGNATURE file="Array.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Array.es" name="intrinsic function concat">
     <SIGNATURE file="Array.es" name="intrinsic function every">
     <SIGNATURE file="Array.es" name="intrinsic function filter">
@@ -105,7 +104,6 @@ dynamic class Array extends Object
 {{{
    toString:       function () <LDOTS> ,
    toLocaleString: function () <LDOTS> ,
-   toJSONString:   function (pretty=false) <LDOTS> ,
    concat:         function (...items) <LDOTS> ,
    every:          function (checker, thisObj=null) <LDOTS> ,
    filter:         function (checker, thisObj=null) <LDOTS> ,
@@ -125,6 +123,9 @@ dynamic class Array extends Object
    unshift:        function (...items) <LDOTS> ,
    length:         <LDOTS>
 }}}
+
+<FIXME> We've since also included ''reduce'' and ''reduceRight'' as static,
+intrinsic, and prototype methods.
 
 
 == Methods on the ''Array'' class object ==
@@ -350,6 +351,8 @@ prototype variants of ''push''.
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="static function reverse">
 
+<NOTE> Property deletion is observable to objects that implement the
+''meta::delete'' method, and may not be omitted from this algorithm.
 
 === shift ( object ) ===
 
@@ -424,7 +427,7 @@ satisfied then the behaviour of ''sort'' is implementation-defined:
 <li> //0 <LEQ> i <LT> len//
 <li> //0 <LEQ> j <LT> len//
 <li> //object// does not have a property with name ''string(//i//)''
-<li> //P// is obtained by following one or more [[Prototype]] properties starting at this
+<li> //P// is obtained by following one or more [[Prototype]] properties starting at ''this''
 <li> //P// has a property with name ''string(//j//)''
 </ol>
 
@@ -558,7 +561,7 @@ property of //object// is updated.
 
 <DESC> The intrinsic methods on Array instances delegate to their static
 counterparts.  Unlike their static and prototype counterparts, these
-methods are bound by their instance and they are not generic.
+methods are bound to their instance and they are not generic.
 
 <RETN> The intrinsic methods on Array instances return what their static
 counterparts return.
@@ -566,7 +569,6 @@ counterparts return.
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="override intrinsic function toString">
 <INCLUDE file="Array.es" name="override intrinsic function toLocaleString">
-<INCLUDE file="Array.es" name="override intrinsic function toJSONString">
 <INCLUDE file="Array.es" name="intrinsic function concat">
 <INCLUDE file="Array.es" name="intrinsic function every">
 <INCLUDE file="Array.es" name="intrinsic function filter">
@@ -585,6 +587,7 @@ counterparts return.
 <INCLUDE file="Array.es" name="intrinsic function splice">
 <INCLUDE file="Array.es" name="intrinsic function unshift">
 
+<!--
 === %%[[Put]]%% (P, V) ===
 
 <P>Array objects use a variation of the [[Put]] method used for other
@@ -615,7 +618,7 @@ itself has a property (not an inherited property) named string(k), then delete t
 <LI> Set the value of property P of A to Result(12).
 <LI> Return.
 </OL>
-
+-->
 
 == Value properties of Array instances ==
 
@@ -659,41 +662,6 @@ be locale-specific.
 <NOTE>The first parameter to this method is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
-
-=== toJSONString ( pretty=<LDOTS> ) ===
-
-<DESC> The intrinsic ''toJSONString'' method convert this array object
-to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
-
-<P> The object is serialized as a a sequence of comma (''","'')
-separated values wrapped in square brackets (''"["'' and ''"]"'').
-The string representation of a value is computed by calling the public
-''toJSONString'' method on the value.
-
-<P> The [[Prototype]] internal property is not used when computing the
-set of properties of an object that will be serialized.
-
-<P> Values that are not directly represented in JSON (such as
-**undefined**, functions, and unknown types) will be silently skipped.
-This means that holes in arrays, and array length, are not preserved.
-The value **null** is serialized as the unquoted string ''null''.
-
-<P> An **EncodingError** exception will be thrown if this object
-contains a cyclical (sub)structure.  Recurring objects that do not
-cause cycles are allowed, but will produce a complete text for each
-occurrence.
-
-<P> If //pretty// is true, then linefeeds are inserted after each left
-square bracket and comma and before a right square bracket, and
-multiples of 4 spaces are inserted to indicate the level of nesting.
-Otherwise, no whitespace is inserted between the tokens.
-
-<RETN> The ''toJSONString'' method returns a ''string''.
-
-<IMPL> The ''toJSONString'' method is implementation-dependent.
-
-<FIXME> (Ticket #201.)  Only cycle finding need be
-implementation-dependent, we should have code here.
 
 
 === Generic methods ===

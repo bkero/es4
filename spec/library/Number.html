@@ -17,12 +17,6 @@ the sense that they are represented by final non-dynamic classes for
 which ECMAScript implementations may provide efficient
 representations.
 
-<P> The class ''int'' represents signed 32-bit integer values in the
-range -2<sup>31</sup> to 2<sup>31</sup>-1 inclusive.
-
-<P> The class ''uint'' represents unsigned 32-bit integer values in
-the range 0 to 2<sup>32</sup>-1 inclusive.
-
 <P> The class ''double'' represents 64-bit IEEE-format binary floating
 point numbers approximately in the range -1.7976931348623157 <TIMES>
 10<SUP>308</SUP> to +1.7976931348623157 <TIMES> 10<SUP>308</SUP>.
@@ -38,8 +32,7 @@ floating point.
 
 <P> ECMAScript also provides the class ''Number'', which is a dynamic
 non-final class that represents 64-bit IEEE-format binary floating
-point numbers.  Instances of ''Number'' are converted to
-''double'' when operated upon by the operators ofthe language.
+point numbers.
 
 
 <H2 id="type AnyNumber"> The type ''AnyNumber'' </h2>
@@ -49,16 +42,11 @@ types in the language.
 
 <INCLUDE file="Number.es" name="__ES4__ type AnyNumber">
 
-<FIXME> (Ticket #181.)  The type ''Numeric'' should instead be called
-''Numbers''.
-
 
 <H1 id="class Number"> The class ''Number'' </h1>
 
 <P> The class ''Number'' is a dynamic, nullable, non-final direct
-subclass of ''Object'' that holds a ''double'' value.  Instances of
-''Number'' are converted to ''double'' when operated upon by the
-operators of the language.
+subclass of ''Object'' that holds a ''double'' value.
 
 <P> All intrinsic methods of ''Number'' obtain the number value stored
 in the object by calling the intrinsic ''valueOf'' method.  If the
@@ -88,7 +76,6 @@ dynamic class Number
 
     <SIGNATURE file="Number.es" name="override intrinsic function toString">
     <SIGNATURE file="Number.es" name="override intrinsic function toLocaleString">
-    <SIGNATURE file="Number.es" name="override intrinsic function toJSONString">
     <SIGNATURE file="Number.es" name="override intrinsic function valueOf">
 
     <SIGNATURE file="Number.es" name="intrinsic function toFixed">
@@ -102,7 +89,6 @@ dynamic class Number
 {{{
     toString:       function (this: Numeric, radix) <LDOTS>
     toLocaleString: function (this: Numeric) <LDOTS>
-    toJSONString:   function (this: Numeric, pretty=false) <LDOTS>
     valueOf:        function (this: Numeric) <LDOTS>
     toFixed:        function (this: Numeric, fractionDigits) <LDOTS>
     toExponential:  function (this: Numeric, fractionDigits) <LDOTS>
@@ -118,8 +104,11 @@ dynamic class Number
 ''Number'' object by storing //value// (which defaults to +0),
 converted to ''double'', in a private property.
 
-<IMPL>
-The ''Number'' constructor is implementation-defined.
+<FIXME> It is likely that ''Number' should not be constrained to hold
+''double'' values, but that it should be able to hold any numeric type
+and that its methods should work properly on any numeric type, in a
+type-specific manner.
+
 
 === Number( value=<LDOTS> ) ===
 
@@ -182,17 +171,6 @@ in a base given by //radix//.
 primitive number value, which it then converts to string by invoking
 the intrinsic ''toString'' method on the primitive value.
 
-=== toJSONString ===
-
-<DESC> The intrinsic ''toJSONString'' method convert this number object
-to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
-
-<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
-
-<SHORTIMPL>
-<INCLUDE file="Number.es" name="override intrinsic function toJSONString">
-
-
 === intrinsic::toLocaleString ( ) ===
 
 <DESC> The intrinsic ''toLocaleString'' method converts this number
@@ -252,7 +230,6 @@ their corresponding intrinsic methods return.
 <SHORTIMPL>
 <INCLUDE file="Number.es" name="prototype function toString">
 <INCLUDE file="Number.es" name="prototype function toLocaleString">
-<INCLUDE file="Number.es" name="prototype function toJSONString">
 <INCLUDE file="Number.es" name="prototype function valueOf">
 <INCLUDE file="Number.es" name="prototype function toFixed">
 <INCLUDE file="Number.es" name="prototype function toExponential">

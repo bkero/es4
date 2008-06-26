@@ -2,7 +2,7 @@
 
 <pre>
 FILE:                       spec/library/string_primitive.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2007-09-19
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-26
 REVIEWED AGAINST ES3:       NO
 REVIEWED AGAINST ERRATA:    NO
 REVIEWED AGAINST BASE DOC:  NO
@@ -45,7 +45,6 @@ final class string!
     <SIGNATURE file="string_primitive.es" name="static function lastIndexOf">
     <SIGNATURE file="string_primitive.es" name="static function localeCompare">
     <SIGNATURE file="string_primitive.es" name="static function match">
-    <SIGNATURE file="string_primitive.es" name="static function parseJSON">
     <SIGNATURE file="string_primitive.es" name="static function replace">
     <SIGNATURE file="string_primitive.es" name="static function search">
     <SIGNATURE file="string_primitive.es" name="static function slice">
@@ -69,7 +68,6 @@ final class string!
     <SIGNATURE file="string_primitive.es" name="intrinsic function lastIndexOf">
     <SIGNATURE file="string_primitive.es" name="intrinsic function localeCompare">
     <SIGNATURE file="string_primitive.es" name="intrinsic function match">
-    <SIGNATURE file="string_primitive.es" name="intrinsic function parseJSON">
     <SIGNATURE file="string_primitive.es" name="intrinsic function replace">
     <SIGNATURE file="string_primitive.es" name="intrinsic function search">
     <SIGNATURE file="string_primitive.es" name="intrinsic function slice">
@@ -264,21 +262,6 @@ method returns an array of strings containing the substrings of
 <SHORTIMPL>
 <INCLUDE file="string_primitive.es" name="static function match">
 
-=== parseJSON( self, filter=<LDOTS> ) ===
-
-<DESC> The static ''parseJSON'' method parses //self// (converted to
-''string'') as a JSON object.  The argument ''filter'', if not
-**undefined**, should be a function that takes two arguments //key//
-and //value// and returns a possibly modified //value//.  It will be
-called for each element of objects and arrays.
-
-<P> An **EncodingError** exception will be thrown if //self// is not
-parseable as a JSON object.
-
-<RETN> The ''parseJSON'' method returns an ECMAScript value.
-
-<IMPL> The ''parseJSON'' method is implementation-dependent.
-
 === replace (self, searchValue, replaceValue) ===
 
 <DESC> The static ''replace'' method computes a string from //self//
@@ -379,7 +362,7 @@ if //separator// is the empty string, the string is split up into
 individual characters; the length of the result array equals the
 length of the string, and each substring contains one character.)  If
 //separator// is a regular expression, only the first match at a given
-position of the this string is considered, even if backtracking could
+position of the ''this'' string is considered, even if backtracking could
 yield a non-empty-substring match at that position.  (For example,
 ''string.split("ab",/a*?/)'' evaluates to the array ''["a","b"]'',
 while ''string.split("ab",/a*/)'' evaluates to the array
@@ -534,16 +517,6 @@ whitespace characters at either end.
 
 <INCLUDE file="string_primitive.es" name="override intrinsic function toString">
 
-=== toJSONString ===
-
-<DESC> The intrinsic ''toJSONString'' method convert this string object
-to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
-
-<RETN> The intrinsic ''toJSONString'' method returns a ''string''.
-
-<SHORTIMPL>
-<INCLUDE file="string_primitive.es" name="override intrinsic function toJSONString">
-
 === intrinsic::valueOf ===
 
 <RETN> The intrinsic ''valueOf'' method returns this string value: the object itself.
@@ -554,7 +527,7 @@ to JSON format (<CITE ref="RFC4627">RFC 4627</CITE>).
 
 <DESC> The intrinsic methods ''charAt'', ''charCodeAt'', ''concat'',
 ''indexOf'', ''lastIndexOf'', ''localeCompare'', ''match'',
-''parseJSON'', ''replace'', ''search'', ''slice'', ''split'',
+''replace'', ''search'', ''slice'', ''split'',
 ''substring'', ''toLowerCase'', ''toLocaleLowerCase'',
 ''toUpperCase'', ''toLocaleUpperCase'', and ''trim'' all delegate to
 the corresponding static methods on the ''string'' class.

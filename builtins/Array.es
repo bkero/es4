@@ -351,8 +351,8 @@
                 if (comparefn !== undefined)
                     return comparefn(x, y);
 
-                x = x.toString();
-                y = y.toString();
+                x = String(x);
+                y = String(y);
                 if (x < y) return -1;
                 if (x > y) return 1;
                 return 0;
