@@ -909,6 +909,58 @@ and defValue (regs:REGS)
     : unit =
     setPropertyValueOrVirtual regs base name v false
 
+
+and deletePropertyValueOrVirtual (regs:REGS)
+                                 (obj:OBJECT)
+                                 (name:NAME)
+                                 (doVirtual:bool)
+    : VALUE =
+    let
+        val Object { propertyMap, tag, ... } = obj
+        val existingProp = findProp propertyMap name
+    in
+        case existingProp of
+            SOME { attrs = { fixed = true, ...}, ...} 
+
+            => newBoolean regs false
+               
+          | _ 
+            => if 
+                doVirtual andalso 
+                Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_delete)
+            then 
+                (trace ["running meta::delete(\"", (Ustring.toAscii (#id name)), (* INFORMATIVE *) 
+                        "\") catchall on obj #", fmtObjId obj]; (* INFORMATIVE *) 
+                 (* LPAREN *)(evalNamedMethodCall regs obj meta_delete [newString regs (#id name)])
+                  handle ThrowException e => 
+                         let
+                             val ty = typeOfVal regs e
+                             val defaultBehaviorClassTy = 
+                                 instanceType regs helper_DefaultBehaviorClass []
+                         in
+                             if ty <* defaultBehaviorClassTy then
+                                 deletePropertyValueOrVirtual regs obj name false
+                             else 
+                                 throwExn e
+                         end
+                )(* INFORMATIVE *)
+            else
+                case existingProp of 
+                    SOME { attrs = { removable = true, ... }, ... } 
+                    => (delProp propertyMap name;
+                        newBoolean regs true)
+                       
+                  | _ 
+                    => newBoolean regs false
+    end
+
+
+and deletePropertyValue (regs:REGS)
+                        (base:OBJECT)
+                        (name:NAME)
+    : VALUE =
+    deletePropertyValueOrVirtual regs base name true
+
 and instantiateGlobalClass (regs:REGS)
                            (n:NAME)
                            (args:VALUE list)
@@ -2796,13 +2848,9 @@ and evalUnaryOp (regs:REGS)
         case unop of
             Delete => 
             let
-                val (_, (Object {propertyMap, ...}, name)) = resolveRefExpr regs expr false
+                val (_, (obj, name)) = resolveRefExpr regs expr false
             in
-                if (hasProp propertyMap name)
-                then if (#removable (#attrs (getProp propertyMap name)))
-                     then (delProp propertyMap name; newBoolean regs true)
-                     else newBoolean regs false
-                else newBoolean regs true
+                deletePropertyValue regs obj name
             end
 
           | PreIncrement => evalCrement regs Plus true expr

@@ -179,40 +179,9 @@ whose ''strict'' flag is set because it represents a source code
 phrase that was recognized in a region of code that was covered by a
 strict mode pragma.
 
-<FIXME> This protocol must be specified as SML code.
+
+<FIXME>Strict mode is not implemented in this code.
 
 <SEM>
-<PRE>
-fun DeleteProperty(obj, name, isStrict)
-  if (name is a property in the property map of obj, denote it obj.name &&
-      the fixed attribute of obj.name is true)
-    if isStrict
-      throw a ReferenceError, "can't delete fixture properties"
-    end
-    return false
-  end
-
-  if (meta::delete is a property in the property map of obj, 
-             denote it obj.meta::delete
-      && the fixed attribute of meta::delete is true)
-    try 
-      return obj.meta::delete(name)
-    catch DefaultBehavior
-      ; fall through to the next case
-    end
-  end
-  
-  if name is a property in the property map of obj, denote it obj.name
-    if the removable attribute of obj.name is true
-      remove obj.name from the property map of obj
-      return true
-    end
-
-    if isStrict
-      throw a ReferenceError, "can't delete non-removable property"
-    end
-  end
-
-  return false
-end
-</PRE>
+<INCLUDE file="eval.sml" name="and deletePropertyValue">
+<INCLUDE file="eval.sml" name="and deletePropertyValueOrVirtual">

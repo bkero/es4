@@ -295,6 +295,7 @@ val meta_get = meta Ustring.get_
 val meta_set = meta Ustring.set_
 val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
+val meta_delete = meta Ustring.delete_
 
 val public_arguments = public Ustring.arguments_
 val helper_argsLength = helper Ustring.argsLength_
