@@ -359,6 +359,19 @@ fun delProp (b:PROPERTY_MAP)
 	b := { max_seq = max_seq, bindings = bindings }
     end
 
+fun updateProp (b:PROPERTY_MAP)
+               (n:NAME)
+               (x:PROPERTY)
+    : unit =
+    let
+	val { max_seq, bindings } = !b	
+	val (bindings, {seq, prop}) = NameMap.remove (bindings, n)
+    val binding = {seq=seq, prop=x}
+    val bindings = NameMap.insert ( bindings, n, binding)
+    in
+	b := { max_seq = max_seq, bindings = bindings }
+    end
+
 fun findProp (b:PROPERTY_MAP)
              (n:NAME)
     : PROPERTY option =

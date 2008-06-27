@@ -156,95 +156,14 @@ whose ''strict'' flag is set because it represents a source code
 phrase that was recognized in a region of code that was covered by a
 strict mode pragma.
 
-<FIXME> This protocol must be specified as SML code.
+<FIXME>Strict mode is not implemented in this code.
 
 <SEM>
-<PRE>
-fun SetProperty(obj, name, value, isStrict)
-  if (name is a property in the property map of obj, denote it obj.name && 
-      the fixed attribute of obj.name is true)
-    return setPropertyHelper(obj, name, value, isStrict)
-  end
-
-  if (meta::set is a property in the property map of obj, denote it obj.meta::set
-      && the fixed attribute of meta::set is true)
-    try 
-      invoke obj.meta::set(name, value)
-      return
-    catch DefaultBehavior
-      ; fall through to the next case
-    end
-  end
-
-  if name is a property in the property map of obj
-    return setPropertyHelper(obj, name, value, isStrict)
-  end
-
-  if the dynamic attribute on obj is true
-    if isStrict && obj is a global object
-      throw a ReferenceError
-          "illegal to create props on global obj in strict mode"
-    end
-
-    if (obj has an array type with a "rest" type constraint, denote it T &&
-        the type of value is not a compatible subtype of T)
-      throw a TypeError
-          "allocated type of value is not compatible with \
-          \storage type of property"
-    end
-
-    place a new object into the property map of obj
-      property name = name
-      property value = value
-      property flags = (writable=true, 
-                        enumerable=true, 
-                        removable=true, 
-                        fixed=false)
-    return
-  end
-
-  if isStrict
-    throw a ReferenceError, "cannot create a property on a non-dynamic object"
-  end
-}
-</PRE>
+<INCLUDE file="eval.sml" name="and setPropertyValue">
+<INCLUDE file="eval.sml" name="and setPropertyValueOrVirtual">
+<INCLUDE file="eval.sml" name="and writeProperty">
 
 <FIXME> We must take into account the [[CanPut]] functionality from ES3!
-
-<P> The internal ''setPropertyHelper'' function is invoked when
-//name// is known to name a property in //obj//.
-
-<FIXME> Here I simply assume that methods are not writeable, but this
-may or may not be the right abstraction we want to use; the RI has two
-cases here anyway, and that's the code that will eventually be here.
-
-<SEM>
-<PRE>
-fun setPropertyHelper(obj, name, value, isStrict)
-  if obj.name is a getter/setter pair, denote the setter obj.name.[[Setter]]
-    return obj.name.[[Setter]](value)
-  end
-
-  if the writeable attribute of obj.name is false
-    if isStrict
-      throw a ReferenceError, "Attempting to update read-only value"
-    end
-    return
-  end
-
-  if (obj.name has a type annotation, denote it T &&
-      the type of value is not a compatible subtype of T)
-    throw a TypeError, "Attempting to store value of incompatible type"
-  end
-
-  store value in obj.name
-
-  if the writeOnce attribute of obj.name is true
-    set the writeOnce attribute of obj.name to false
-    set the writeable attribute of obj.name to false
-  end
-end
-</PRE>
 
 
 == Deleting a property ==

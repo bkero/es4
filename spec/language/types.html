@@ -679,19 +679,6 @@ substitution of references to any of the identifiers in
 <INCLUDE file="type.sml" name="fun rename">
 
 
-
-=== Subtyping Non-Null Types ===
-
-<p>A non-null type ^^!S^^ is a subtype of type ^^T^^
-if ^^S^^ is a subtype of the union type ^^(T | null)^^.
-
-<p>A type ^^S^^ is a subtype of a non-null type ^^!T^^
-if ^^S^^ is a subtype of ^^T^^
-and the type ^^null^^ is //not// a subtype of ^^S^^.
-
-<SEM>
-<INCLUDE file="type.sml" name="and subTypeNonNull">
-
 === Subtyping Nominal Types ===
 
 <p>

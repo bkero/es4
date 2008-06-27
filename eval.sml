@@ -541,13 +541,16 @@ and isNumericName (name:NAME) =
  * name resolution algorithm. There is no recursive-get
  * operation on a single object + prototype chain.
  *)
-and getPropertyValue regs obj name = 
+and getPropertyValue (regs:REGS)
+                     (obj:OBJECT)
+                     (name:NAME) 
+    : VALUE = 
     getPropertyValueOrVirtual regs obj name true
-
+    
 and getPropertyValueOrVirtual (regs:REGS)
-                      (obj:OBJECT)
-                      (name:NAME)
-                      (doVirtual:bool)
+                              (obj:OBJECT)
+                              (name:NAME)
+                              (doVirtual:bool)
     : VALUE =
     let
         (* INFORMATIVE *) val _ = trace ["getting property ", fmtName name, " on obj #", fmtObjId obj]
@@ -588,7 +591,7 @@ and getPropertyValueOrVirtual (regs:REGS)
                                                             " has no default value "])
                               (* END_INFORMATIVE *)
                               | SOME dv 
-                                => (setValueOrVirtual regs obj name dv false; 
+                                => (setPropertyValueOrVirtual regs obj name dv false; 
                                     dv)
                         end
                   | _ 
@@ -597,6 +600,17 @@ and getPropertyValueOrVirtual (regs:REGS)
                        then 
                            (trace ["running meta::get(\"", (Ustring.toAscii (#id name)), "\") catchall on obj #", fmtObjId obj];(* INFORMATIVE *) 
                            evalNamedMethodCall regs obj meta_get [newString regs (#id name)]
+                           handle ThrowException e => 
+                                  let
+                                      val ty = typeOfVal regs e
+                                      val defaultBehaviorClassTy = 
+                                          instanceType regs helper_DefaultBehaviorClass []
+                                  in
+                                      if ty <* defaultBehaviorClassTy then
+                                          getPropertyValueOrVirtual regs obj name false
+                                      else 
+                                          throwExn e
+                                  end                                  
                            )(* INFORMATIVE *) 
                        else 
                            if isDynamic regs obj
@@ -768,128 +782,132 @@ and badPropAccess (regs:REGS)
                                    " ", name propName])
     end
 
+and writeProperty (regs:REGS) 
+                  (propertyMap:PROPERTY_MAP)
+                  (name:NAME)
+                  (v:VALUE)
+                  (ty:TYPE)
+                  (removable:BOOLEAN)
+                  (enumerable:BOOLEAN)
+                  (fixed:BOOLEAN)
+                  (writable:WRITABILITY)
+    : unit = 
+    let
+        val newProp = { state = ValueProperty (checkAndConvert regs v ty),
+                        ty = ty,
+                        attrs = { removable = removable,
+                                  enumerable = enumerable,
+                                  fixed = fixed,
+                                  writable = writable } }
+    in
+        if hasProp propertyMap name
+        then updateProp propertyMap name newProp
+        else addProp propertyMap name newProp
+    end
+    
 
-and setValueOrVirtual (regs:REGS)
-                      (obj:OBJECT)
-                      (name:NAME)
-                      (v:VALUE)
-                      (doVirtual:bool)
+and setPropertyValueOrVirtual (regs:REGS)
+                              (obj:OBJECT)
+                              (name:NAME)
+                              (v:VALUE)
+                              (doVirtual:bool)
     : unit =
     let
-        val Object { propertyMap, ... } = obj
+        val Object { propertyMap, tag, ... } = obj
     in
         case findProp propertyMap name of
             SOME existingProp =>
             let
                 val { state, attrs, ty, ... } = existingProp
                 val { removable, enumerable, fixed, writable } = attrs
-                fun newProp _ = 
-                    { state = ValueProperty (checkAndConvert regs v ty),
-                      ty = ty,
-                      attrs = { removable = removable,
-                                enumerable = enumerable,
-                                fixed = fixed,
-                                writable = case writable of 
-                                               (* If we got here we were actually upgrading an uninitprop. *)
-                                               ReadOnly => ReadOnly
-                                             | WriteOnce => ReadOnly
-                                             | Writable => Writable } }
-                fun write _ = 
-                    let
-                        val np = newProp ()
-                    in
-                        (* FIXME: change to "replaceProp" that presrves insert-order. *)
-                        delProp propertyMap name;
-                        addProp propertyMap name np
-                    end
-
-                fun maybeWrite throwIfReadOnly =
-                    case writable of 
-                        ReadOnly => if throwIfReadOnly
-                                    then throwExn (newTypeErr regs ["setValue on non-writable property: ",
-                                                                    LogErr.name name])
-                                    else ()
-                      | WriteOnce => write ()
-                      | Writable => write ()
-            in
-                case state of
                     
-                    VirtualProperty { setter, ... } =>
+                fun writeExisting _ = writeProperty regs propertyMap name v ty 
+                                                    removable enumerable fixed 
+                                                    (case writable of                                                
+                                                         ReadOnly => ReadOnly
+                                                       | WriteOnce => ReadOnly
+                                                       | Writable => Writable)                                      
+            in
+                case state of                    
+                    ValueProperty _ 
+                    => writeExisting ()
+
+                  | VirtualProperty { setter, ... } 
+                    =>
                     if doVirtual
                     then 
                         case setter of 
-                            NONE => throwExn (newTypeErr regs ["attempting to write to a virtual property without a setter: ",
-                                                               LogErr.name name])
+                            NONE => ()
                           | SOME s => (invokeFuncClosure (withThis regs obj) s NONE [v]; ())
                     else 
-                        maybeWrite true
+                        if writable = ReadOnly
+                        then throwExn (newTypeErr (* LDOTS_RPAREN *) 
+                                              (* INFORMATIVE *)regs ["non-virtual setPropertyValue on read-only method: ", LogErr.name name])
+                        else writeExisting ()
 
-                  (* FIXME: predicate throw/ignore on the presence of runtime strict-mode flag. *)
-                  | ValueProperty _ => maybeWrite false                  
             end
           | NONE => 
             case Fixture.findFixture (getFixtureMap regs obj) (PropName name) of 
                 SOME (ValFixture {ty, writable}) 
-                => 
-                let
-                    val newProp = { state = ValueProperty (checkAndConvert regs v ty),
-                                    ty = ty,
-                                    attrs = { removable = false,
-                                              enumerable = false,
-                                              fixed = true,
-                                              writable = if writable 
-                                                         then Writable
-                                                         else ReadOnly } }
-                in
-                    addProp propertyMap name newProp
-                end
+                => writeProperty regs propertyMap name v ty 
+                                 false false true 
+                                 (if writable 
+                                  then Writable
+                                  else ReadOnly)
                     
               | SOME f 
-                => (trace ["setValueOrVirtual reifying fixture ", fmtName name];
-                    reifyFixture regs obj name f; 
-                    setValueOrVirtual regs obj name v doVirtual)
+                => (trace ["setPropertyValueOrVirtual reifying fixture ", fmtName name]; (* INFORMATIVE *) 
+                   (* LPAREN *)reifyFixture regs obj name f; 
+                    setPropertyValueOrVirtual regs obj name v doVirtual)
                    
-              | NONE 
-                =>
-                if 
-                    doVirtual andalso Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_set)
-                then 
-                    let
-                        val _ = trace ["running meta::set(\"", (Ustring.toAscii (#id name)), 
-                                       "\", ", approx v, ") catchall on obj #", fmtObjId obj];
-                    in
-                        evalNamedMethodCall regs obj meta_set [newString regs (#id name), v];
-                        ()
-                    end
-                else 
-                    let
-                        val prop = { state = ValueProperty v,
-                                     ty = AnyType,
-                                     attrs = { removable = true,
-                                               enumerable = true,
-                                               writable = Writable,
-                                               fixed = false } }
-                    in
-                        if isDynamic regs obj
-                        then addProp propertyMap name prop
-                        else throwExn (newTypeErr regs ["attempting to add dynamic property to non-dynamic object"])
-                    end
+              | NONE                 
+                => 
+                case (isNumericName name, tag) of
+                    (true, ArrayTag (_, SOME defaultType))
+                    => writeProperty regs propertyMap name v defaultType true true false Writable
+                       
+                  | _ 
+                    =>
+                    if 
+                        doVirtual andalso 
+                        Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_set)
+                    then 
+                        (trace ["running meta::set(\"", (Ustring.toAscii (#id name)), (* INFORMATIVE *) 
+                                "\", ", approx v, ") catchall on obj #", fmtObjId obj]; (* INFORMATIVE *) 
+                        (* LPAREN *)(evalNamedMethodCall regs obj meta_set [newString regs (#id name), v]; ())
+                        handle ThrowException e => 
+                               let
+                                   val ty = typeOfVal regs e
+                                   val defaultBehaviorClassTy = 
+                                       instanceType regs helper_DefaultBehaviorClass []
+                               in
+                                   if ty <* defaultBehaviorClassTy then
+                                       setPropertyValueOrVirtual regs obj name v false
+                                   else 
+                                       throwExn e
+                               end
+                            )(* INFORMATIVE *)
+                        else 
+                            if isDynamic regs obj
+                            then writeProperty regs propertyMap name v AnyType true true false Writable
+                            else throwExn (newTypeErr (* LDOTS_RPAREN *) 
+                                               (* INFORMATIVE *) regs ["attempting to add dynamic property to non-dynamic object"])
     end
 
 
-and setValue (regs:REGS)
-             (base:OBJECT)
-             (name:NAME)
-             (v:VALUE)
+and setPropertyValue (regs:REGS)
+                     (base:OBJECT)
+                     (name:NAME)
+                     (v:VALUE)
     : unit =
-    setValueOrVirtual regs base name v true
+    setPropertyValueOrVirtual regs base name v true
 
 and defValue (regs:REGS)
              (base:OBJECT)
              (name:NAME)
              (v:VALUE)
     : unit =
-    setValueOrVirtual regs base name v false
+    setPropertyValueOrVirtual regs base name v false
 
 and instantiateGlobalClass (regs:REGS)
                            (n:NAME)
@@ -971,7 +989,7 @@ and newArray (regs:REGS)
                     [newDouble regs (Real64.fromInt (List.length vals))]
         fun init a _ [] = ()
           | init a k (x::xs) =
-            (setValue regs a (public (Ustring.fromInt k)) x ;
+            (setPropertyValue regs a (public (Ustring.fromInt k)) x ;
              init a (k+1) xs)
     in
         init (needObj regs a) 0 vals;
@@ -1229,7 +1247,7 @@ and newFunctionFromClosure (regs:REGS)
         val Object { propertyMap=newProtoPropertyMap, ... } = newProtoObj
     in
         setPrototype regs obj newProto;
-        setValueOrVirtual regs newProtoObj public_constructor (ObjectValue obj) false;
+        setPropertyValueOrVirtual regs newProtoObj public_constructor (ObjectValue obj) false;
         setPropEnumerable newProtoPropertyMap public_constructor false;
         ObjectValue obj
     end
@@ -2405,12 +2423,12 @@ and evalArrayInitialiser (regs:REGS)
             let
                 val name = public (Ustring.fromInt n)
             in
-                setValue regs obj name v;
+                setPropertyValue regs obj name v;
                 putVal (n+1) vs
             end
         val numProps = putVal 0 vals
     in
-        setValue regs obj public_length (newDouble regs (Real64.fromInt numProps));
+        setPropertyValue regs obj public_length (newDouble regs (Real64.fromInt numProps));
         ObjectValue obj
     end
 
@@ -2725,8 +2743,8 @@ and evalSetExpr (regs:REGS)
     in
         trace ["setExpr assignment to slot ", fmtName name];
         (case thisOpt of 
-             NONE => setValue regs obj name v
-           | SOME this => setValue regs this name v);
+             NONE => setPropertyValue regs obj name v
+           | SOME this => setPropertyValue regs this name v);
         v
     end
 
@@ -2744,7 +2762,7 @@ and evalCrement (regs:REGS)
                   | DecimalNum => newDecimal regs Decimal.one
         val v'' = performBinop regs bop v' i
     in
-        setValue regs obj name v'';
+        setPropertyValue regs obj name v'';
         if pre
         then v''
         else v'
@@ -4086,7 +4104,7 @@ and evalInitsMaybePrototype (regs:REGS)
                          let
                              val Object { propertyMap, ... } = obj
                          in
-                             setValue regs obj pn v;
+                             setPropertyValue regs obj pn v;
                              setPropEnumerable propertyMap pn false
                          end
                      else defValue regs obj pn v)
@@ -4331,7 +4349,7 @@ and specialFunctionConstructor (regs:REGS)
                    | _ => error regs ["function did not parse"];
         val fo = needObj regs fv
     in
-        setValue regs fo sname sval;
+        setPropertyValue regs fo sname sval;
         fo
     end
 
@@ -4347,15 +4365,15 @@ and specialArrayConstructor (regs:REGS)
         val Object { propertyMap, ... } = instanceObj
         fun bindVal _ [] = ()
           | bindVal n (x::xs) =
-            (setValue regs instanceObj (public (Ustring.fromInt n)) x;
+            (setPropertyValue regs instanceObj (public (Ustring.fromInt n)) x;
              bindVal (n+1) xs)
     in
         case args of
-            [] => setValue regs instanceObj public_length (newDouble regs 0.0)
+            [] => setPropertyValue regs instanceObj public_length (newDouble regs 0.0)
           | [k] => let val idx = asArrayIndex k
                    in
                        if not (idx = 0wxFFFFFFFF) then
-                           setValue regs instanceObj public_length k
+                           setPropertyValue regs instanceObj public_length k
                        else
                            bindVal 0 args
                    end
@@ -4738,10 +4756,10 @@ and initClassPrototype (regs:REGS)
                 setPrototype regs obj (ObjectValue newPrototype);
                 if setConstructor
                 then 
-                    (setValueOrVirtual regs newPrototype 
-                                       public_constructor 
-                                       (ObjectValue obj) 
-                                       false;
+                    (setPropertyValueOrVirtual regs newPrototype 
+                                               public_constructor 
+                                               (ObjectValue obj) 
+                                               false;
                      setPropEnumerable newProtoPropertyMap public_constructor false)
                 else 
                     ();

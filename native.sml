@@ -662,7 +662,7 @@ fun get (regs:Mach.REGS)
 fun set (regs:Mach.REGS)
         (vals:Mach.VALUE list)
     : Mach.VALUE =
-    (Eval.setValueOrVirtual
+    (Eval.setPropertyValueOrVirtual
          regs
          (nthAsObj vals 0)
          (nthAsName regs vals 1)
