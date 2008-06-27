@@ -3,7 +3,7 @@
 <hr>
 <pre>
 FILE:                       spec/library/Vector.html
-DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-03-03
+DRAFT STATUS:               DRAFT 1 - ROUGH - 2008-06-27
 IMPLEMENTATION STATUS:      ES4 RI
 REVIEWED AGAINST ES3:       N/A
 REVIEWED AGAINST ERRATA:    N/A
@@ -14,6 +14,8 @@ REVIEWED AGAINST CODE:      NO
 CHANGES SINCE DRAFT 1 (2008-03-03)
 
   * Presentation: added an explicit "extends Object" clause.
+
+  * Bug fixes based on comments on es4-discuss
 
 
 KNOWN DISCREPANCIES AGAINST PROPOSALS
@@ -133,7 +135,6 @@ index range in the way an ''Array'' does.
 __ES4__ dynamic class Vector.<T> extends Object
 {
     <SIGNATURE file="Vector.es" name="public function Vector">
-    <SIGNATURE file="Vector.es" name="static meta function invoke">
 
     static const length = 2;
 
@@ -220,9 +221,8 @@ the base type ''T''.
 <P> //Fixed// is the initial value of the ''fixed'' property.  Its
 default value is **false**.
 
-<IMPL> The ''Vector'' constructor is implementation-defined.
 
-
+<!-- I believe this is not what we want 
 === Vector( object ) ===
 
 <DESC> When the ''Vector'' class object is called as a function, it
@@ -236,6 +236,7 @@ and //object//''.length''.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="static meta function invoke">
+-->
 
 
 == Methods on ''Vector'' instances ==
@@ -341,15 +342,6 @@ the ''this'' object in the call.
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function forEach">
 
-<P> The helper function ''clamp'' performs clamping of ''from'' to the
-length of this ''Vector''.
-
-<INCLUDE file="Array.es" name="helper function clamp">
-
-<NOTE> The helper function ''toInteger'', used by ''clamp'', is
-described elsewhere; it performs the ''ToInteger'' operation of the
-3rd Edition.
-
 === intrinsic::indexOf ( value, from=<LDOTS> ) ===
 
 <DESC> The intrinsic ''indexOf'' method compares //value// with every
@@ -360,12 +352,21 @@ by the ''==='' operator.
 <P> If //from// is negative, it is treated as
 ''this.length+//from//''.
 
-<RETN> The static ''indexOf'' method returns the vector index the first
+<RETN> The ''indexOf'' method returns the vector index the first
 time //value// is equal to an element, or -1 if no such element is
 found.
 
 <SHORTIMPL>
 <INCLUDE file="Vector.es" name="intrinsic function indexOf">
+
+<P> The helper function ''clamp'' performs clamping of ''from'' to the
+length of this ''Vector''.
+
+<INCLUDE file="Array.es" name="helper function clamp">
+
+<NOTE> The helper function ''toInteger'', used by ''clamp'', is
+described elsewhere; it performs the ''ToInteger'' operation of the
+3rd Edition.
 
 === intrinsic::join ( separator=<LDOTS> ) ===
 
@@ -566,7 +567,7 @@ property of ''this'' is updated.
 
 <P> Iterators are defined on the ''Vector'' such that ''for''-''in''
 and ''for each''-''in'' loops always iterate across the vector from
-low indices toward high indices.  Only indexed properties defined on
+low indices toward high indices.  Only indexed properties defined 
 directly on the vector object are visited.
 
 <SHORTIMPL>

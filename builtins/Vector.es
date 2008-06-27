@@ -47,6 +47,7 @@
 
         static public const length = 2;
 
+        /* Not what we want 
         static meta function invoke(object) {
             if (object is Vector.<*>)
                 return object;
@@ -56,6 +57,7 @@
                 result[i] = object[i];
             return result;
         }
+        */
 
         public var fixed: boolean;
 
@@ -140,7 +142,7 @@
                 v[k++] = this[i];
 
             for ( let j=0 ; j < items.length ; j++ ) {
-                let item = items[j] cast Vector.<T>;
+                let item = items[j];
                 for ( let i=0, limit=item.length ; i < limit ; i++ )
                     v[k++] = item[i];
             }
@@ -157,9 +159,11 @@
 
         intrinsic function filter(checker: Checker, thisObj: Object=null): Vector.<T> { 
             var result = new Vector.<T>;
-            for ( let i=0, limit=length ; i < limit ; i++ )
-                if (checker.call(thisObj, this[i], i, this))
-                    result[result.length] = this[i];
+            for ( let i=0, limit=length ; i < limit ; i++ ) {
+                let item = this[i];
+                if (checker.call(thisObj, item, i, this))
+                    result[result.length] = item;
+            }
             return result;
         }
 
@@ -170,9 +174,11 @@
 
         intrinsic function indexOf(value: T, from: AnyNumber=0): AnyNumber {
             let start = helper::clamp( from, length );
-            for ( let i=start, limit=length ; i < limit ; i++ )
-                if (this[i] === value)
+            for ( let i=start, limit=length ; i < limit ; i++ ) {
+                let item = this[i];
+                if (item === value)
                     return i;
+            }
             return -1;
         }
 
@@ -182,10 +188,10 @@
             let i = 0;
 
             for (let i = 0; i < limit; i++) {
-                let x = this[i];
+                let item = this[i];
                 if (i != 0)
                     s += separator;
-                if (x !== undefined && x !== null)
+                if (item is Object)
                     s += string(x);
             }
             return s;
@@ -193,16 +199,20 @@
 
         intrinsic function lastIndexOf(value: T, from: AnyNumber=Infinity): AnyNumber { 
             let start = helper::clamp( from, length );
-            for ( let i=start ; i >= 0 ; i-- )
-                if (this[i] === value)
+            for ( let i=start ; i >= 0 ; i-- ) {
+                let item = this[i];
+                if (item === value)
                     return i;
+            }
             return -1;
         }
 
         intrinsic function map(mapper:Mapper, thisObj:Object=null) { 
             var result = new Vector.<T>(length);
-            for ( let i=0, limit=length ; i < limit ; i++ )
-                result[i] = mapper.call(thisObj, this[i], i, this);
+            for ( let i=0, limit=length ; i < limit ; i++ ) {
+                let item = this[i];
+                result[i] = mapper.call(thisObj, item, i, this);
+            }
             return result;
         }
 
@@ -237,8 +247,10 @@
                 i++;
             }
 
-            for (let limit=length ; i < limit ; i++)
-                result = reducer.call(null, result, this[i], i, this);
+            for (let limit=length ; i < limit ; i++) {
+                let item = this[i];
+                result = reducer.call(null, result, item, i, this);
+            }
 
             return result;
         }
@@ -257,7 +269,8 @@
             }
 
             while (i >= 0) {
-                result = reducer.call(null, result, this[i], i, this);
+                let item = this[i];
+                result = reducer.call(null, result, item, i, this);
                 i--;
             }
 
@@ -300,9 +313,11 @@
         }
 
         intrinsic function some(checker: Checker, thisObj: Object=null): boolean { 
-            for ( let i=0, limit=length ; i < limit ; i++ )
-                if (checker.call(thisObj, this[i], i, this))
+            for ( let i=0, limit=length ; i < limit ; i++ ) {
+                let item = this[i];
+                if (checker.call(thisObj, item, i, this))
                     return true;
+            }
             return false;
         }
 
@@ -310,38 +325,54 @@
 
         intrinsic function sort(comparefn: function(T, T): AnyNumber): Vector.<T> {
             let object = this;
-            informative::sortEngine(object,
-                                    0, 
-                                    length-1, 
-                                    (function (j, k) comparefn(object[j], object[k])));
+            return informative::sortEngine(object,
+                                           0, 
+                                           length-1, 
+                                           (function (j, k) comparefn(object[j], object[k])));
         }
 
         intrinsic function splice(start: AnyNumber, deleteCount: AnyNumber, ...items): Vector.<T>
             helper::splice(start, deleteCount, items);
 
         helper function splice(start, deleteCount, items) {
-            let first  = helper::clamp( start, length );
-            let delcnt = helper::clamp( deleteCount, length-first );
+            let out = new Vector.<T>;
+            let len = intrinsic::toUint(length);
 
-            let result = new Vector.<T>;
-            for ( let n=0, i=first ; n < delcnt ; n++, i++ )
-                result[result.length] = this[i];
+            start = helper::clamp( start, len );
+            deleteCount = helper::clamp( deleteCount, len - start );
 
-            if (items.length < delcnt) {
-                let shift = delcnt - items.length;
-                for ( let n=0, i=first; n < shift ; n++, i++ )
-                    this[i] = this[i+shift];
-                length -= shift;
+            let end = start + deleteCount;
+
+            // Copy out the elements we are going to remove
+            for (let i = 0; i < deleteCount; i++)
+                out.push(this[i + start]);
+
+            let insertCount = items.length;
+            let shiftAmount = insertCount - deleteCount;
+
+            // delete items by shifting elements past end (of delete) by l_shiftAmount
+            if (shiftAmount < 0) {
+                // Shift the remaining elements down
+                shiftAmount = -shiftAmount;
+
+                for (let i = end; i < len; i++)
+                    this[i - shiftAmount] = this[i];
             }
             else {
-                let shift = items.length - delcnt;
-                for ( let n=shift-1, i=first+shift; n >= 0 ; n--, i-- )
-                    this[i] = this[i-shift];
+                // Shift the remaining elements up.
+                for (let i = len; i > end; ) {
+                    --i;
+                    this[i + shiftAmount] = this[i];
+                }
             }
-            for ( let n=0, i=first ; n < items.length ; n++, i++ )
-                this[i] = items[n];
 
-            return result;
+            // Add the items to insert
+            for (let i = 0; i < insertCount; i++)
+                this[start+i] = items[i];
+
+            // shrink array if shiftAmount is negative
+            length = len + shiftAmount;
+            return out;
         }
 
         intrinsic function unshift(...items): double
@@ -352,11 +383,12 @@
             let oldlimit = length;
             let newlimit = oldlimit + numitems;
 
-            for ( let i=0 ; i < numitems ; i++ )
+            length = newlimit;
+            for ( let i=0 ; i < length ; i++ )
                 this[newlimit-i] = this[oldlimit-i];
             for ( let i=0 ; i < numitems ; i++ )
                 this[i] = items[i];
-            return newlength;
+            return newlimit;
         }
 
         prototype function toString(this:Vector.<*>)
@@ -369,13 +401,13 @@
             this.helper::concat(items);
 
         prototype function every(this:Vector.<*>, checker, thisObj=undefined)
-            (this.intrinsic::every(checker, thisObj is Object) ? thisObj : null);
+            this.intrinsic::every(checker, thisObj is Object ? thisObj : null);
 
         prototype function filter(this:Vector.<*>, checker, thisObj=undefined)
-            (this.intrinsic::filter(checker, thisObj is Object) ? thisObj : null);
+            this.intrinsic::filter(checker, thisObj is Object ? thisObj : null);
 
         prototype function forEach(this:Vector.<*>, eacher, thisObj=undefined)
-            (this.intrinsic::forEach(checker, thisObj is Object) ? thisObj : null);
+            this.intrinsic::forEach(checker, thisObj is Object ? thisObj : null);
 
         prototype function indexOf(this:Vector.<*>, value, from=undefined)
             this.intrinsic::indexOf(value, Number(from));
@@ -387,7 +419,7 @@
             this.intrinsic::indexOf(value, from == undefined ? Infinity : Number(from));
 
         prototype function map(this:Vector.<*>, mapper, thisObj=undefined)
-            (this.intrinsic::map(mapper, thisObj is Object) ? thisObj : null);
+            this.intrinsic::map(mapper, thisObj is Object ? thisObj : null);
 
         prototype function pop(this:Vector.<*>)
             this.intrinsic::pop();
@@ -411,7 +443,7 @@
             this.intrinsic::slice(Number(start), Number(end), Number(step));
 
         prototype function some(this:Vector.<*>, checker, thisObj=undefined)
-            (this.intrinsic::some(checker, thisObj is Object) ? thisObj : null);
+            this.intrinsic::some(checker, thisObj is Object ? thisObj : null);
 
         prototype function sort(this:Vector.<*>, comparefn)
             this.intrinsic::sort(comparefn);
