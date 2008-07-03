@@ -167,13 +167,15 @@ sub ParseGrammar {
          # First line of abstract syntax has two-column offset
          my $abstractHeaderCell = $ES4Worksheet->{Cells}[$iRow][$iCol+3];
          if ($abstractHeaderCell && $abstractHeaderCell->Value) {
-           push(@abstractSyntax, $abstractHeaderCell->Value);
+	       my $abstractHeaderCellContent = AddFormattingTags($abstractHeaderCell);
+           push(@abstractSyntax, $abstractHeaderCellContent);
          }
          # Remainder of abstract syntax has three-column offset
          my $aNum = 0;
          while ($ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4] &&
                 $ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4]->Value) {
-           push(@abstractSyntax, $ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4]->Value);
+	       my $abstractContent = AddFormattingTags($ES4Worksheet->{Cells}[$iRow+1+$aNum][$iCol+4]);
+           push(@abstractSyntax, $abstractContent);
            # For some reason, instances of ... in the .xls file get converted to
            # ampersand so we need to convert lone instances of ampersand to ...
            if ($abstractSyntax[$#abstractSyntax] =~ /^&$/) {
@@ -648,6 +650,7 @@ sub GenerateGrammar {
   my $endBuffer = '';
   my $numSurfaceSyntax = 0;
   my $indent = "&nbsp;&nbsp;&nbsp;&nbsp;";
+  my $styleAttrib = "style=\"font-family:sans-serif\"";
 
   $numSurfaceSyntax = $grammar{$item}[0];
 
@@ -687,11 +690,12 @@ sub GenerateGrammar {
     if (defined $grammar{$item}[$numSurfaceSyntax + 1]) {
 
       # abstract syntax header
-      $endBuffer .= "$indent<code>$grammar{$item}[$numSurfaceSyntax + 1]</code><br/>\n";
+      # Add right arrow (&rarr;) to header
+      $endBuffer .= "<span $styleAttrib>$indent$grammar{$item}[$numSurfaceSyntax + 1]&nbsp;&nbsp;&nbsp;&rarr;</span><br/>\n";
 
       # remaining abstract syntax elements
       for (my $j = $numSurfaceSyntax + 2; $j < $totalSyntax; $j++) {
-        $endBuffer .= "$indent&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>" . $grammar{$item}[$j] . "</code><br/>\n";
+        $endBuffer .= "<span $styleAttrib>$indent&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" . $grammar{$item}[$j] . "</span><br/>\n";
       }
       $endBuffer .= "<br/>\n<br/>\n";
      }
