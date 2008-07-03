@@ -658,13 +658,17 @@ and reifyFixture (regs:REGS)
           | (MethodFixture { func, ty, writable, inheritedFrom, ... }) => 
             let
                 val Func { native, ... } = func
-                fun scope _ = case (tag, inheritedFrom) of 
-                                  (NoTag, _) => (#scope regs)
-                                | (_, SOME class) => getObjectScope regs obj (SOME (InstanceType class))
-                                | (_, NONE) => getObjectScope regs obj NONE
                 val v = if native 
                         then (newNativeFunction regs (getNativeFunction name))
-                        else (newFunctionFromFunc regs (scope()) func)
+                        else 
+                            let 
+                                val scope = case (tag, inheritedFrom) of 
+                                                (NoTag, _) => (#scope regs)
+                                              | (_, SOME class) => getObjectScope regs obj (SOME (InstanceType class))
+                                              | (_, NONE) => getObjectScope regs obj NONE
+                            in                                
+                                newFunctionFromFunc (withScope regs scope) scope func
+                            end
             in
                 reifiedFixture ty (ValueProperty v) ReadOnly
             end
@@ -1169,66 +1173,22 @@ and newName (regs:REGS)
             ObjectValue (updateNmCache regs (n, needObj regs v))
         end
 
-and getMetaClass (regs:REGS) 
-                 (class:CLASS)
-    : CLASS = 
-    let
-        val Class { name, privateNS, protectedNS, parentProtectedNSs, 
-                    typeParams, classFixtureMap, ... } = class
-        val { rootFixtureMap, ... } = regs
-        val classTypeImpl = case Fixture.getFixture rootFixtureMap (PropName helper_ClassTypeImpl) of
-                                ClassFixture c => c
-                              | _ => error regs ["cannot find public Object class"]
-        val Class { instanceFixtureMap=classTypeImplFixtureMap, ...} = classTypeImpl
-        val protoBinding = (PropName public_prototype, 
-                            ValFixture { ty = AnyType, writable = false })
-        val merge = Fixture.mergeFixtureMaps (Type.matches rootFixtureMap [])
-        val (instanceFixtureMap, extends) = 
-            if not (nameEq name public_Object) andalso 
-               (InstanceType classTypeImpl) <* (InstanceType class)
-            then ([], NONE)
-            else (merge (merge classTypeImplFixtureMap classFixtureMap) [protoBinding],
-                  SOME (InstanceType classTypeImpl))                                            
-    in
-        trace ["built metaClass for ", fmtName name];
-        Class { name = Name.public_empty, 
-                privateNS = privateNS,
-                protectedNS = protectedNS,
-                parentProtectedNSs = parentProtectedNSs,
-                typeParams = typeParams,
-                
-                nonnullable = true,
-                dynamic = true,  (* needs to be dynamic for es3 compat *)
-                extends = extends,
-                implements = [],
-                classFixtureMap = [],
-                instanceFixtureMap = instanceFixtureMap,
-                instanceInits = Head ([],[]),
-                constructor = NONE }
-    end
-
-and getMetaClassAndMetaClassObjectAndTag (regs:REGS)
-                                         (class:CLASS)
-    : (CLASS * OBJECT * TAG) = 
-    let
-        val metaClass = getMetaClass regs class
-        val Class { instanceFixtureMap, ... } = metaClass
-        val metaClassObject = newObject (PrimitiveTag (TypePrimitive (InstanceType metaClass))) NullValue instanceFixtureMap
-        val tag = PrimitiveTag (TypePrimitive (ClassType class))
-    in
-        (metaClass, metaClassObject, tag)
-    end
-    
 and newClass (regs:REGS)
              (class:CLASS)
     : VALUE =
     let
-        val (funClassObj, _) = getFunctionClassObjectAndClass (regs) 
-        val proto = getPrototype regs funClassObj
-        val (metaClass, metaClassObject, tag) = getMetaClassAndMetaClassObjectAndTag regs class
-        val obj = constructStandardWithTag regs metaClassObject metaClass tag proto []
+        val proto = 
+            case !(getFunctionClassSlot regs) of 
+                NONE => NullValue
+              | SOME _ => 
+                let
+                    val (funClassObj, _) = getFunctionClassObjectAndClass (regs) 
+                in
+                    getPrototype regs funClassObj
+                end                
+        val tag = PrimitiveTag (TypePrimitive (ClassType class))
+        val obj = constructStandard regs tag proto []
     in
-        bindAnySpecialIdentity regs obj;
         initClassPrototype regs obj;
         ObjectValue obj
     end
@@ -1260,6 +1220,14 @@ and getClassObjectAndClass regs getter =
         (classObj, class)
     end
 
+and getClass regs getter = 
+    let 
+        val (_, c) = getClassObjectAndClass regs getter
+    in
+        c
+    end
+
+
 and getFunctionClassObjectAndClass (regs:REGS) 
     : (OBJECT * CLASS) = 
     (* LDOTS *)
@@ -1269,6 +1237,26 @@ and getObjectClassObjectAndClass (regs:REGS)
     : (OBJECT * CLASS) = 
     (* LDOTS *)
     getClassObjectAndClass regs getObjectClassSlot
+
+and getArrayClassObjectAndClass (regs:REGS) 
+    : (OBJECT * CLASS) = 
+    (* LDOTS *)
+    getClassObjectAndClass regs getArrayClassSlot
+
+and getFunctionClass (regs:REGS) 
+    : CLASS = 
+    (* LDOTS *)
+    getClass regs getFunctionClassSlot
+
+and getObjectClass (regs:REGS) 
+    : CLASS = 
+    (* LDOTS *)
+    getClass regs getObjectClassSlot
+
+and getArrayClass (regs:REGS) 
+    : CLASS = 
+    (* LDOTS *)
+    getClass regs getArrayClassSlot
 
 
 and newFunctionFromClosure (regs:REGS)
@@ -1290,12 +1278,12 @@ and newFunctionFromClosure (regs:REGS)
          *)
 
         val originalObjectProto = getOriginalObjectPrototype regs
-        val newProtoObj = constructStandard regs funClassObj funClass originalObjectProto []
+        val newProtoObj = constructStandard regs (InstanceTag funClass) originalObjectProto []
         val newProto = ObjectValue newProtoObj
         val _ = traceConstruct ["built new prototype chained to Object.prototype"]
 
         val tag = PrimitiveTag (FunctionPrimitive closure)
-        val obj = constructStandardWithTag regs funClassObj funClass tag funProto []                  
+        val obj = constructStandard regs tag funProto []                  
         val Object { propertyMap=newProtoPropertyMap, ... } = newProtoObj
     in
         setPrototype regs obj newProto;
@@ -1315,10 +1303,10 @@ and newFunctionFromFunc (regs:REGS)
 and newNativeFunction (regs:REGS)
                       (f:NATIVE_FUNCTION) =
     let 
-        val (classObj, class) = getFunctionClassObjectAndClass regs
+        val (classObj, _) = getFunctionClassObjectAndClass regs
         val tag = PrimitiveTag (NativeFunctionPrimitive f)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj class tag proto [] 
+        val obj = constructStandard regs tag proto [] 
     in
         ObjectValue obj
     end
@@ -1365,12 +1353,11 @@ and newGeneratorValue (regs:REGS)
         val classObj = case !(getGeneratorClassSlot regs) of 
                            NONE => error regs ["cannot find helper::GeneratorImpl"]
                          | SOME ob => ob
-        val class = needClass (ObjectValue classObj)
         val objRef = ref (newObjectNoTag [])
         val gen = newGenerator (fn () => execBody (!objRef))
         val tag = PrimitiveTag (GeneratorPrimitive gen)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj class tag proto [] 
+        val obj = constructStandard regs tag proto [] 
     in
         objRef := obj;
         ObjectValue obj
@@ -2325,7 +2312,17 @@ and getClassObjOfInstanceType (regs:REGS)
                               (ity:TYPE)
     : OBJECT = 
     let 
-        fun fetch n = getPropertyValue regs (#global regs) n
+        fun fetch n =
+            let
+                fun f (name,id) = nameEq name n
+            in
+                case List.find f specialBindings of
+                    NONE => getPropertyValue regs (#global regs) n
+                  | SOME (_,func) => 
+                    (case !(func regs) of 
+                         NONE => getPropertyValue regs (#global regs) n
+                       | SOME obj => ObjectValue obj)
+            end
     in
         case ity of 
             InstanceType (Class { name, ... }) => 
@@ -2465,10 +2462,9 @@ and evalArrayInitialiser (regs:REGS)
                     (InstanceTag (needClass cv), cv)
                 end
 
-        val newClass = needClass newClassVal
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj 
-        val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
+        val obj = constructStandard regs newTag proto [] 
         val (Object {propertyMap, ...}) = obj
         fun putVal n [] = n
           | putVal n (v::vs) =
@@ -2509,10 +2505,9 @@ and evalObjectInitialiser (regs:REGS)
                     (InstanceTag (needClass cv), cv, [])
                 end
 
-        val newClass = needClass newClassVal
         val newClassObj = needObj regs newClassVal
         val proto = getPrototype regs newClassObj
-        val obj = constructStandardWithTag regs newClassObj newClass newTag proto [] 
+        val obj = constructStandard regs newTag proto [] 
         val (Object {propertyMap, ...}) = obj
                                  
         fun getPropState (v:VALUE) : PROPERTY_STATE =
@@ -2636,8 +2631,7 @@ and constructObjectViaFunction (regs:REGS)
                         ObjectValue ob => ctorProto
                       | _ => getOriginalObjectPrototype regs
 
-        val (objClassObj, objClass) = getObjectClassObjectAndClass regs
-        val newObject = constructStandard regs objClassObj objClass proto []
+        val newObject = constructStandard regs (InstanceTag (getObjectClass regs)) proto []
         val constructorRegs = withThis regs newObject
         val constructorResult = invokeFuncClosure constructorRegs ctor (SOME ctorObj) args
     in
@@ -3863,7 +3857,8 @@ and checkFixtureMapInitialization (regs:REGS)
             if hasProp propertyMap n
             then ()
             else 
-                (case defaultValueForType regs ty of 
+                (trace ["attempting to build default value for uninitialized property: ", LogErr.name n];
+                 case defaultValueForType regs ty of 
                      NONE => throwExn (newTypeErr regs ["failed to initialize property: ", LogErr.name n])
                    | SOME _ => ())
           | checkOne (_, _) = ()                 
@@ -4238,114 +4233,151 @@ and evalScopeInits (regs:REGS)
 
 
 and initializeAndConstruct (regs:REGS)
-                           (class:CLASS)
-                           (classObj:OBJECT)
+                           (contexts:((CLASS * SCOPE) list))
                            (args:VALUE list)
                            (instanceObj:OBJECT)
     : unit =
-    let
-        val _ = traceConstruct ["initializeAndConstruct: this=#", (fmtObjId (#this regs)),
-                                ", constructee=#", (fmtObjId instanceObj),
-                                ", class=#", (fmtObjId classObj)]
-        val _ = if getObjId (#this regs) = getObjId instanceObj
-                then ()
-                else error regs ["constructor running on non-this value"]
-        val Class { name,
-                  extends,
-                  instanceInits,
-                  constructor,
-                  ... } = class
-        fun initializeAndConstructSuper (superArgs:VALUE list) =
-            case extends of
-                NONE =>
-                (traceConstruct ["checking all properties initialized at root class ", fmtName name];
-                 checkFixtureMapInitialization regs instanceObj NONE)
-              | SOME parentTy  =>                
+    case contexts of 
+        [] 
+        => 
+        (traceConstruct ["checking all properties initialized at root class"]; (* INFORMATVE *) 
+           checkFixtureMapInitialization regs instanceObj NONE
+        (* INFORMATVE *))
+
+      | (class, scope) :: supers
+        =>
+        let
+            val regs = withThis regs instanceObj
+
+            (* BEGIN_INFORMATIVE *)
+            val _ = traceConstruct ["initializeAndConstruct: this=#", (fmtObjId (#this regs)),
+                                    ", constructee=#", (fmtObjId instanceObj),
+                                    ", scope=#", (fmtObjId (getScopeObj scope))]
+            (* END_INFORMATIVE *)
+            val Class { name,
+                        instanceInits,
+                        constructor,
+                        ... } = class
+
+            val classRegs = withScope regs scope
+            val instanceRegs = extendScopeReg classRegs instanceObj (InstanceScope class)
+        in
+            traceConstruct ["evaluating instance initializers for ", fmtName name];            
+            evalObjInits classRegs instanceObj instanceInits;
+            case constructor of
+                NONE => initializeAndConstruct regs supers [] instanceObj
+              | SOME (Ctor { settings, superArgs, func }) =>
                 let
-                    val parentTy = evalTy regs parentTy
-                    val _ = traceConstruct ["initializing and constructing superclass ", fmtType parentTy]
-                    val superObj = getClassObjOfInstanceType regs (AstQuery.needInstanceType parentTy)
-                    val superClass = needClass (ObjectValue superObj)
-                    val superScope = getClassScope regs superObj
-                    val superRegs = withThis (withScope regs superScope) instanceObj
+                    (* INFORMATIVE *) val _ = push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
+                    val Func { block, param=Head (paramFixtureMap,paramInits), ... } = func
+                    val varObj = newObjectNoTag paramFixtureMap
+                    val varRegs = extendScopeReg classRegs varObj ActivationScope
+                    val varScope = (#scope varRegs)
+                    val ctorRegs = extendScopeReg instanceRegs varObj ActivationScope
                 in
-                    initializeAndConstruct
-                        superRegs superClass superObj superArgs instanceObj
+                    (* INFORMATIVE *) traceConstruct ["allocating scope temps for constructor of ", fmtName name];
+                    allocScopeTemps varRegs paramFixtureMap;
+                    (* INFORMATIVE *) traceConstruct ["binding constructor args of ", fmtName name];
+                    bindArgs regs varScope func args;
+                    (* INFORMATIVE *) traceConstruct ["evaluating inits of ", fmtName name, " in scope #", Int.toString (getScopeId varScope)];
+                    evalScopeInits varRegs Local paramInits;
+                    checkScopeInitialization varRegs;
+                    (* INFORMATIVE *) traceConstruct ["evaluating settings"];
+                    evalObjInits varRegs instanceObj settings;
+                    (* INFORMATIVE *) traceConstruct ["initializing and constructing superclass of ", fmtName name];
+                    initializeAndConstruct regs supers (evalExprsAndSpliceSpreads varRegs superArgs) instanceObj;
+                    (* INFORMATIVE *) traceConstruct ["entering constructor for ", fmtName name];
+                    (case block of 
+                         NONE => UndefinedValue
+                       | SOME b => (evalBlock (withThisFun ctorRegs NONE) b
+                                    handle ReturnException v => v));
+                    (* INFORMATIVE *) pop regs;
+                    ()
                 end
-    in
-        traceConstruct ["evaluating instance initializers for ", fmtName name];
-        evalObjInits regs instanceObj instanceInits;
-        case constructor of
-            NONE => initializeAndConstructSuper []
-          | SOME (Ctor { settings, superArgs, func }) =>
+        end
+
+
+and allocateByTag (regs:REGS)
+                  (tag:TAG) 
+                  (proto:VALUE)
+    : (OBJECT * ((CLASS * SCOPE) list)) =
+    let
+        fun lineageOf (class:CLASS) = 
             let
-                val _ = push regs ("ctor " ^ (Ustring.toAscii (#id name))) args
-                val Func { block, param=Head (paramFixtureMap,paramInits), ... } = func
-                val (varObj:OBJECT) = newObjectNoTag paramFixtureMap
-                val (varRegs:REGS) = extendScopeReg regs
-                                                    varObj
-                                                    ActivationScope
-                val varScope = (#scope varRegs)
-                val (instanceRegs:REGS) = withScope regs (getObjectScope regs instanceObj NONE)
-                val (ctorRegs:REGS) = extendScopeReg instanceRegs
-                                                     varObj
-                                                     ActivationScope
+                val ty = InstanceType class
+                val classObj = getClassObjOfInstanceType regs ty
+                val scope = getClassScope regs classObj
+                val pair = (class, scope)
+                val Class { extends, ... } = class
             in
-                traceConstruct ["allocating scope temps for constructor of ", fmtName name];
-                allocScopeTemps varRegs paramFixtureMap;
-                traceConstruct ["binding constructor args of ", fmtName name];
-                bindArgs regs varScope func args;
-                traceConstruct ["evaluating inits of ", fmtName name,
-                                " in scope #", Int.toString (getScopeId varScope)];
-                evalScopeInits varRegs Local paramInits;
-                checkScopeInitialization varRegs;
-                traceConstruct ["evaluating settings"];
-                evalObjInits varRegs instanceObj settings;
-                traceConstruct ["initializing and constructing superclass of ", fmtName name];
-                initializeAndConstructSuper (evalExprsAndSpliceSpreads varRegs superArgs);
-                traceConstruct ["entering constructor for ", fmtName name];
-                (case block of 
-                     NONE => UndefinedValue
-                   | SOME b => (evalBlock (withThisFun ctorRegs (SOME classObj)) b
-                                handle ReturnException v => v));
-                pop regs;
-                ()
+                case extends of 
+                    NONE => [pair]
+                  | SOME (InstanceType c) => pair :: (lineageOf c)
+                  | SOME _ => error regs ["inheriting from non-InstanceType"]
             end
+
+        fun simple (class:CLASS) = 
+            let
+                val Class { instanceFixtureMap, ... } = class 
+                val instanceObject = newObject tag proto instanceFixtureMap
+            in
+                (instanceObject, (lineageOf class))
+            end
+    in
+        case typeOfTag regs tag of 
+            InstanceType class => simple class 
+          | FunctionType _ => simple (getFunctionClass regs)
+          (* FIXME: record and array should integrate their fixtures. *)
+          | RecordType _ => simple (getObjectClass regs)
+          | ArrayType _ => simple (getArrayClass regs)
+          | ClassType class => 
+            let
+                val Class { name, classFixtureMap, instanceFixtureMap, ... } = class 
+                val { rootFixtureMap, ... } = regs
+                val classTypeImpl = case Fixture.getFixture rootFixtureMap (PropName helper_ClassTypeImpl) of
+                                        ClassFixture c => c
+                                      | _ => error regs ["cannot find helper::ClassTypeImpl"]
+                val Class { instanceFixtureMap=classTypeImplFixtureMap, ...} = classTypeImpl
+                fun globalScopedLineageOf (class:CLASS) = 
+                    let
+                        val scope = getGlobalScope regs
+                        val pair = (class, scope)
+                        val Class { extends, ... } = class
+                    in
+                        case extends of 
+                            NONE => [pair]
+                          | SOME (InstanceType c) => pair :: (lineageOf c)
+                          | SOME _ => error regs ["inheriting from non-InstanceType"]
+                    end
+                val merge = Fixture.mergeFixtureMaps (Type.matches rootFixtureMap [])                            
+            in
+                if (InstanceType classTypeImpl) <* (InstanceType class)
+                then 
+                    (newObject tag proto (merge classTypeImplFixtureMap classFixtureMap), 
+                     globalScopedLineageOf class) 
+                else
+                    (newObject tag proto (merge classTypeImplFixtureMap classFixtureMap),
+                     lineageOf classTypeImpl)
+            end
+          | t => error regs ["allocating unknown tag type: ", LogErr.ty t]
     end
 
+
 and constructStandard (regs:REGS)
-                      (classObj:OBJECT)
-                      (class:CLASS)
+                      (tag:TAG)
                       (proto:VALUE)
                       (args:VALUE list)
     : OBJECT =
     let
-        val regs = withScope regs (getClassScope regs classObj)
-        val tag = InstanceTag class
-    in
-        constructStandardWithTag regs classObj class tag proto args 
-    end
-
-and constructStandardWithTag (regs:REGS)
-                             (classObj:OBJECT)
-                             (class:CLASS)
-                             (tag:TAG)
-                             (proto:VALUE)
-                             (args:VALUE list)
-    : OBJECT =
-    let
-        val Class { name, instanceFixtureMap, ...} = class
-        val instanceObj = newObject tag proto instanceFixtureMap
+        val (instanceObj, contexts) = allocateByTag regs tag proto
         val _ = bindAnySpecialIdentity regs instanceObj
-        (* FIXME: might have 'this' binding wrong in class scope here. *)
-        val classScope = getClassScope regs classObj
-        val regs = withThis (withScope regs classScope) instanceObj 
     in
-        traceConstruct ["entering most derived constructor for ", fmtName name];
-        initializeAndConstruct regs class classObj args instanceObj;
-        traceConstruct ["finished constructing new ", fmtName name];
+        traceConstruct [">>> entering most derived constructor"]; (* INFORMATIVE *) 
+        initializeAndConstruct (withThis regs instanceObj) contexts args instanceObj;
+        traceConstruct ["<<< finished construction"]; (* INFORMATIVE *) 
         instanceObj
     end
+
 
 and parseFunctionFromArgs (regs:REGS)
                           (args:VALUE list)
@@ -4409,7 +4441,7 @@ and specialArrayConstructor (regs:REGS)
     OBJECT =
     let
         val proto = getPrototype regs classObj
-        val instanceObj = constructStandard regs classObj class proto args
+        val instanceObj = constructStandard regs (InstanceTag class) proto args
         val Object { propertyMap, ... } = instanceObj
         fun bindVal _ [] = ()
           | bindVal n (x::xs) =
@@ -4445,7 +4477,7 @@ and specialPrimitiveCopyingConstructor (regs:REGS)
               | v :: _ => needPrimitive v
         val tag = (PrimitiveTag primitive)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj class tag proto []
+        val obj = constructStandard regs tag proto []
     in
         obj
     end
@@ -4458,7 +4490,7 @@ and specialObjectConstructor (regs:REGS)
     : OBJECT =
     let
         val proto = getPrototype regs classObj
-        fun instantiate _ = constructStandard regs classObj class proto args
+        fun instantiate _ = constructStandard regs (InstanceTag class) proto args
     in
         case args of
             [] => instantiate ()
@@ -4472,7 +4504,7 @@ and specialObjectConstructor (regs:REGS)
                  * implements its lower half (primitive values) by calling into *here*,
                  * so here is where we do any cloning and primitive-copying.
                  *)
-                PrimitiveTag mt => constructStandardWithTag regs classObj class (PrimitiveTag mt) proto args
+                PrimitiveTag pt => constructStandard regs (PrimitiveTag pt) proto args
               | _ => instantiate()
     end
 
@@ -4497,7 +4529,7 @@ and specialBooleanConstructor (regs:REGS)
             let 
                 val tag = PrimitiveTag (BooleanPrimitive b)
                 val proto = getPrototype regs classObj
-                val obj = constructStandardWithTag regs classObj class tag proto []
+                val obj = constructStandard regs tag proto []
             in 
                 cell := SOME obj;
                 obj
@@ -4518,7 +4550,7 @@ and specialDoubleConstructor (regs:REGS)
             let
                 val tag = PrimitiveTag (DoublePrimitive n)
                 val proto = getPrototype regs classObj
-                val obj = constructStandardWithTag regs classObj class tag proto []
+                val obj = constructStandard regs tag proto []
             in
                 obj
             end
@@ -4562,7 +4594,7 @@ and specialDecimalConstructor (regs:REGS)
                   | v :: _ => toDecimal v
         val tag = PrimitiveTag (DecimalPrimitive n)
         val proto = getPrototype regs classObj
-        val obj = constructStandardWithTag regs classObj class tag proto []
+        val obj = constructStandard regs tag proto []
     in
         obj
     end
@@ -4584,7 +4616,7 @@ and specialStringConstructor (regs:REGS)
             let 
                 val tag = PrimitiveTag (StringPrimitive s)
                 val proto = getPrototype regs classObj
-                val obj = constructStandardWithTag regs classObj class tag proto [] 
+                val obj = constructStandard regs tag proto [] 
             in 
                 updateStrCache regs (s, obj);
                 obj
@@ -4794,7 +4826,7 @@ and initClassPrototype (regs:REGS)
                             val (classObj, class) = getObjectClassObjectAndClass regs
                         in 
                             traceConstruct ["(standard chained-to-base-class proto instance of Object)"];
-                            (constructStandard regs classObj class baseProtoVal [], true)
+                            (constructStandard regs (InstanceTag class) baseProtoVal [], true)
                         end
                 val Object { propertyMap=newProtoPropertyMap, ... } = newPrototype
             in
@@ -4829,7 +4861,7 @@ and constructClassInstance (regs:REGS)
         val obj = 
             case constructSpecial regs ident classObj class args of
                 SOME ob => ob
-              | NONE => constructStandard regs classObj class (getPrototype regs classObj) args
+              | NONE => constructStandard regs (InstanceTag class) (getPrototype regs classObj) args
     in
         (* INFORMATIVE *) pop regs; 
         ObjectValue obj

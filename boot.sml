@@ -58,16 +58,14 @@ fun lookupRoot (rootFixtureMap:Ast.FIXTURE_MAP)
 fun instantiateRootClass (regs:Mach.REGS) 
                          (fullName:Ast.NAME) 
                          (proto:Mach.OBJECT)
-    : (Ast.CLASS * Mach.OBJECT * Ast.CLASS * Mach.OBJECT) =
+    : (Ast.CLASS * Mach.OBJECT * ((Ast.CLASS * Mach.SCOPE) list)) =
   let
       val rootFixtureMap = (#rootFixtureMap regs)
       val class = lookupRoot rootFixtureMap fullName
-      val (metaClass, metaClassObject, tag) = Eval.getMetaClassAndMetaClassObjectAndTag regs class
-
-      val Ast.Class { instanceFixtureMap, ... } = metaClass
+      val tag = Mach.PrimitiveTag (Mach.TypePrimitive (Ast.ClassType class))
 
       val _ = trace ["allocating class ", LogErr.name fullName];
-      val obj = Mach.newObject tag (Mach.ObjectValue proto) instanceFixtureMap
+      val (obj, contexts) = Eval.allocateByTag regs tag (Mach.ObjectValue proto)
 
       val _ = trace ["object identity of  ", LogErr.name fullName];
       val _ = Eval.bindAnySpecialIdentity regs obj
@@ -85,21 +83,8 @@ fun instantiateRootClass (regs:Mach.REGS)
                                        writable = Mach.ReadOnly,
                                        fixed = true } }
   in
-      (class, obj, metaClass, metaClassObject)
+      (class, obj, contexts)
   end
-
-fun runConstructorOnObject (regs:Mach.REGS)
-                           (class:Ast.CLASS) 
-                           (classObj:Mach.OBJECT) 
-                           (obj:Mach.OBJECT)
-    : unit =
-    let
-        val _ = trace ["running deferred constructor"];
-        val classRegs = Eval.getClassScope regs classObj
-        val classRegs = Eval.withThis regs obj
-    in
-        Eval.initializeAndConstruct classRegs class classObj [] obj
-    end
 
 fun loadFile (rootFixtureMap:Ast.FIXTURE_MAP)
              (f:string) 
@@ -307,11 +292,10 @@ fun boot (baseDir:string) : Mach.REGS =
         val objPrototype = Mach.newObject (Mach.InstanceTag objClass) Mach.NullValue instanceFixtureMap
         val funPrototype = Mach.newObject (Mach.InstanceTag objClass) (Mach.ObjectValue objPrototype) instanceFixtureMap
 
-        val (objClass, objClassObj, objMetaClass, objMetaClassObj) = 
-            instantiateRootClass regs Name.public_Object funPrototype
+        val (objClass, objClassObj, objClassContexts) = instantiateRootClass regs Name.public_Object funPrototype
+        val (_, funClassObj, funClassContexts) = instantiateRootClass regs Name.public_Function funPrototype
 
-        val (_, funClassObj, funMetaClass, funMetaClassObj) = 
-            instantiateRootClass regs Name.public_Function funPrototype
+        val objContexts = [(objClass, Eval.getClassScope regs objClassObj)]
 
         val _ = describeGlobal regs;
     in
@@ -323,12 +307,12 @@ fun boot (baseDir:string) : Mach.REGS =
         trace ["evaluating other files"];
         evalFiles regs otherProgs;
 
-        runConstructorOnObject regs objClass objClassObj glob;
-        runConstructorOnObject regs objClass objClassObj objPrototype;
-        runConstructorOnObject regs objClass objClassObj funPrototype;
+        Eval.initializeAndConstruct regs objContexts [] glob;
+        Eval.initializeAndConstruct regs objContexts [] objPrototype;
+        Eval.initializeAndConstruct regs objContexts [] funPrototype;
 
-        runConstructorOnObject regs objMetaClass objMetaClassObj objClassObj;
-        runConstructorOnObject regs funMetaClass funMetaClassObj funClassObj;
+        Eval.initializeAndConstruct regs objClassContexts [] objClassObj;
+        Eval.initializeAndConstruct regs funClassContexts [] funClassObj;
 
         Eval.evalProgram regs (filterOutRootClasses objProg);
         Eval.evalProgram regs (filterOutRootClasses funProg);

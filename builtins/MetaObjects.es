@@ -139,7 +139,7 @@
         var convertsTo;
         var supers = null;
 
-        function NominalTypeMixin(convertsTo) 
+        function NominalTypeMixin() 
             : convertsTo = convertsTo 
         {
         }
@@ -231,6 +231,7 @@
         }
 
         var cls;
+        var prototype;
 
         public function name(): Name
             new Name("unknown");
