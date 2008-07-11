@@ -248,32 +248,9 @@ datatype PRAGMA =
        | InstanceType of CLASS
        | InterfaceType of INTERFACE
 
-(* Following will be removed during defn phase *)
-       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)
-       | TypeIndexReferenceType of (TYPE * int)
-
-(* SPEC
-
-datatype STATEMENT =
-         EmptyStmt
-       | ExprStmt of EXPRESSION
-       | ForStmt of FOR_STATEMENT
-       | ForInStmt of FOR_ENUM_STATEMENT
-       | ThrowStmt of EXPRESSION
-       | ReturnStmt of EXPRESSION
-       | BreakStmt of IDENTIFIER option
-       | ContinueStmt of IDENTIFIER option
-       | BlockStmt of BLOCK
-       | LabeledStmt of (IDENTIFIER * STATEMENT)
-       | WhileStmt of WHILE_STATEMENT
-       | DoWhileStmt of WHILE_STATEMENT
-       | IfStmt of (EXPRESSION * STATEMENT * STATEMENT)
-       | WithStmt of (EXPRESSION * STATEMENT)
-       | TryStmt of TRY_STATEMENT
-       | SwitchStmt of SWITCH_STATEMENT
-       | SwitchTypeStmt of SWITCH_TYPE_STATEMENT
-
-*)
+       (* Following will be removed during defn phase *)    (* INFORMATIVE *)
+       | TypeNameReferenceType of (TYPE * NAME_EXPRESSION)  (* INFORMATIVE *)
+       | TypeIndexReferenceType of (TYPE * int) (* INFORMATIVE *)
 
      and STATEMENT =
          EmptyStmt
