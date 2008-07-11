@@ -842,7 +842,8 @@ and setPropertyValueOrVirtual (regs:REGS)
                     then 
                         case setter of 
                             NONE => ()
-                          | SOME s => (invokeFuncClosure (withThis regs obj) s NONE [v]; ())
+                          | SOME s => (invokeFuncClosure (withThis regs obj) s 
+                                                         NONE [v]; ())
                     else 
                         if writable = ReadOnly
                         then throwExn (newTypeErr (* LDOTS_RPAREN *) 
@@ -868,17 +869,20 @@ and setPropertyValueOrVirtual (regs:REGS)
                 => 
                 case (isNumericName name, tag) of
                     (true, ArrayTag (_, SOME defaultType))
-                    => writeProperty regs propertyMap name v defaultType true true false Writable
+                    => writeProperty regs propertyMap name v defaultType true true 
+                                     false Writable
                        
                   | _ 
                     =>
                     if 
                         doVirtual andalso 
-                        Fixture.hasFixture (getFixtureMap regs obj) (PropName meta_set)
+                        Fixture.hasFixture (getFixtureMap regs obj) 
+                                           (PropName meta_set)
                     then 
                         (trace ["running meta::set(\"", (Ustring.toAscii (#id name)), (* INFORMATIVE *) 
                                 "\", ", approx v, ") catchall on obj #", fmtObjId obj]; (* INFORMATIVE *) 
-                        (* LPAREN *)(evalNamedMethodCall regs obj meta_set [newString regs (#id name), v]; ())
+                        (* LPAREN *)(evalNamedMethodCall regs obj meta_set 
+                                             [newString regs (#id name), v]; ())
                         handle ThrowException e => 
                                let
                                    val ty = typeOfVal regs e
@@ -893,7 +897,8 @@ and setPropertyValueOrVirtual (regs:REGS)
                             )(* INFORMATIVE *)
                         else 
                             if isDynamic regs obj
-                            then writeProperty regs propertyMap name v AnyType true true false Writable
+                            then writeProperty regs propertyMap name v AnyType true true 
+                                               false Writable
                             else throwExn (newTypeErr (* LDOTS_RPAREN *) 
                                                (* INFORMATIVE *) regs ["attempting to add dynamic property to non-dynamic object"])
     end
@@ -935,7 +940,8 @@ and deletePropertyValueOrVirtual (regs:REGS)
             then 
                 (trace ["running meta::delete(\"", (Ustring.toAscii (#id name)), (* INFORMATIVE *) 
                         "\") catchall on obj #", fmtObjId obj]; (* INFORMATIVE *) 
-                 (* LPAREN *)(evalNamedMethodCall regs obj meta_delete [newString regs (#id name)])
+                 (* LPAREN *)(evalNamedMethodCall regs obj meta_delete 
+                                                  [newString regs (#id name)])
                   handle ThrowException e => 
                          let
                              val ty = typeOfVal regs e
@@ -3538,10 +3544,12 @@ and resolveObjectReference (regs:REGS)
     in
         case name of
             UnqualifiedName { identifier, openNamespaces, ... }
-            => (SOME obj, resolveUnqualifiedObjectReference regs obj identifier openNamespaces)
+            => (SOME obj, resolveUnqualifiedObjectReference regs obj identifier 
+                                                            openNamespaces)
                
           | QualifiedName { namespace, identifier }
-            => (SOME obj, resolveQualifiedObjectReference regs obj identifier namespace)
+            => (SOME obj, resolveQualifiedObjectReference regs obj identifier 
+                                                          namespace)
     end
     
   | resolveObjectReference regs 
@@ -3589,12 +3597,14 @@ and resolveOnObject (regs:REGS)
                     (openNamespaces: OPEN_NAMESPACES) 
     : (OBJECT * NAME) =
     let
-        val result = searchObject (regs, SOME object, NONE, identifier, namespaces, false)
+        val result = searchObject (regs, SOME object, NONE, identifier, 
+                                   namespaces, false)
     in
         case result of 
             NONE => (object, {ns=publicNS, id=identifier})
           | SOME (object, namespaces) => 
-            selectNamespacesByInstanceFixtureMaps regs object identifier namespaces openNamespaces
+            selectNamespacesByInstanceFixtureMaps regs object identifier 
+                                                  namespaces openNamespaces
     end
 
 and resolveQualifiedObjectReference (regs: REGS)

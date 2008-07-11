@@ -336,7 +336,8 @@ fun resolveTypeNames (env : FIXTURE_MAPS)
               | (_, _, ClassFixture (c as Class {nonnullable, typeParams=[], ...})   ) => 
                 maybeUnionWithNull nonnullable (InstanceType c) 
                     
-              | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams=[], ...})) => 
+              | (_, _, 
+                 InterfaceFixture (i as Interface {nonnullable, typeParams=[], ...})) => 
                 maybeUnionWithNull nonnullable (InterfaceType i)
                     
               | (_, n, _) => error ["name ", LogErr.name  n, " in type expression ", 
@@ -362,7 +363,8 @@ fun resolveTypeNames (env : FIXTURE_MAPS)
                     maybeUnionWithNull nonnullable (AppType (InstanceType c, typeArgs))
                 end
                 
-              | (_, _, InterfaceFixture (i as Interface {nonnullable, typeParams, ...})) => 
+              | (_, _, 
+                 InterfaceFixture (i as Interface {nonnullable, typeParams, ...})) => 
                 let in
                     checkArgs typeArgs typeParams;
                     maybeUnionWithNull nonnullable (AppType (InterfaceType i, typeArgs))
